@@ -7,7 +7,7 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
-use crate::arguments::{Argument, ArgumentIterator, ArgumentType, Arguments, SimpleArguments};
+use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
     IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVar, TypeVarManager,
@@ -657,8 +657,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
 
     fn next_argument(&mut self, param: &FunctionParam<'db, 'a>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-            match &unused.type_ {
-                ArgumentType::Keyword(name, reference) => {
+            match &unused {
+                Argument::Keyword(_, name, reference) => {
                     if *name == param.name(self.db).unwrap() {
                         return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
                     }
@@ -669,8 +669,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         match param.kind(self.db) {
             ParamKind::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
-                    match argument.type_ {
-                        ArgumentType::Keyword(name, reference) => {
+                    match argument {
+                        Argument::Keyword(_, name, reference) => {
                             if name == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
@@ -683,8 +683,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             }
             ParamKind::KeywordOnly => {
                 for argument in &mut self.arguments {
-                    match argument.type_ {
-                        ArgumentType::Keyword(name, reference) => {
+                    match argument {
+                        Argument::Keyword(_, name, reference) => {
                             if name == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
@@ -935,7 +935,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
                 i_s.db,
                 IssueType::OverloadMismatch {
                     name: function.diagnostic_string(self.class.as_ref()),
-                    args: args.iter_arguments().into_argument_types(i_s),
+                    args: args.iter_arguments().into_argument_types(),
                     variants: self.variants(i_s, search_init),
                 },
             );

@@ -1205,7 +1205,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .current_execution()
                     .and_then(|x| x.1.as_execution(x.0));
                 let args =
-                    SimpleArguments::new(f, node_index, details, x.as_ref(), self.i_s.context);
+                    SimpleArguments::new(self.i_s.clone(), f, node_index, details, x.as_ref());
                 if x.is_none() && !is_target {
                     if let Some(class) = base.maybe_class(self.i_s) {
                         if class.type_vars(self.i_s).is_none()

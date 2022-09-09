@@ -36,23 +36,22 @@ pub struct SimpleArguments<'db, 'a> {
     primary_node_index: NodeIndex,
     details: ArgumentsDetails<'a>,
     in_: Option<&'a Execution>,
-    context: Context<'db, 'a>,
+    i_s: InferenceState<'db, 'a>,
 }
 
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(
-            match self.details {
-                ArgumentsDetails::Node(arguments) => {
-                    ArgumentIteratorBase::Iterator(self.file, arguments.iter().enumerate())
-                }
-                ArgumentsDetails::Comprehension(comprehension) => {
-                    ArgumentIteratorBase::Comprehension(self.file, comprehension)
-                }
-                ArgumentsDetails::None => ArgumentIteratorBase::Finished,
-            },
-            self.context,
-        )
+        ArgumentIterator::new(match self.details {
+            ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator(
+                self.i_s.clone(),
+                self.file,
+                arguments.iter().enumerate(),
+            ),
+            ArgumentsDetails::Comprehension(comprehension) => {
+                ArgumentIteratorBase::Comprehension(self.i_s.context, self.file, comprehension)
+            }
+            ArgumentsDetails::None => ArgumentIteratorBase::Finished,
+        })
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -80,30 +79,30 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 
 impl<'db, 'a> SimpleArguments<'db, 'a> {
     pub fn new(
+        i_s: InferenceState<'db, 'a>,
         file: &'db PythonFile,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails<'a>,
         in_: Option<&'a Execution>,
-        context: Context<'db, 'a>,
     ) -> Self {
         Self {
             file,
             primary_node_index,
             details,
             in_,
-            context,
+            i_s,
         }
     }
 
     pub fn from_primary(
+        i_s: InferenceState<'db, 'a>,
         file: &'db PythonFile,
         primary_node: Primary<'db>,
         in_: Option<&'a Execution>,
-        context: Context<'db, 'a>,
     ) -> Self {
         match primary_node.second() {
             PrimaryContent::Execution(details) => {
-                Self::new(file, primary_node.index(), details, in_, context)
+                Self::new(i_s, file, primary_node.index(), details, in_)
             }
             _ => unreachable!(),
         }
@@ -126,10 +125,7 @@ pub struct KnownArguments<'db, 'a> {
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(
-            ArgumentIteratorBase::Inferred(self.inferred, self.node_ref),
-            Context::None,
-        )
+        ArgumentIterator::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -209,28 +205,40 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub enum ArgumentType<'db, 'a> {
+pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
-    Keyword(&'a str, NodeRef<'db>),
+    Keyword(Context<'db, 'a>, &'a str, NodeRef<'db>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
     // The first argument is the position as a 1-based index
-    Positional(usize, NodeRef<'db>),
-    SlicesTuple(Slices<'db, 'a>),
+    Positional(Context<'db, 'a>, usize, NodeRef<'db>),
+    SlicesTuple(Context<'db, 'a>, Slices<'db, 'a>),
 }
 
-#[derive(Debug, Copy, Clone)]
-pub struct Argument<'db, 'a> {
-    pub type_: ArgumentType<'db, 'a>,
-    context: Context<'db, 'a>,
-}
-
-impl<'db, 'a> ArgumentType<'db, 'a> {
-    fn new_argument(position: usize, file: &'db PythonFile, node_index: NodeIndex) -> Self {
-        Self::Positional(position, NodeRef { file, node_index })
+impl<'db, 'a> Argument<'db, 'a> {
+    fn new_positional_return(
+        context: Context<'db, 'a>,
+        position: usize,
+        file: &'db PythonFile,
+        node_index: NodeIndex,
+    ) -> BaseArgumentReturn<'db, 'a> {
+        BaseArgumentReturn::Argument(Argument::Positional(
+            context,
+            position,
+            NodeRef { file, node_index },
+        ))
     }
 
-    fn new_keyword_argument(file: &'db PythonFile, name: &'a str, node_index: NodeIndex) -> Self {
-        Self::Keyword(name, NodeRef { file, node_index })
+    fn new_keyword_return(
+        context: Context<'db, 'a>,
+        file: &'db PythonFile,
+        name: &'a str,
+        node_index: NodeIndex,
+    ) -> BaseArgumentReturn<'db, 'a> {
+        BaseArgumentReturn::Argument(Argument::Keyword(
+            context,
+            name,
+            NodeRef { file, node_index },
+        ))
     }
 }
 
@@ -240,10 +248,10 @@ impl<'db, 'a> Argument<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         result_context: ResultContext<'db, '_>,
     ) -> Inferred<'db> {
-        let mut i_s = i_s.with_context(self.context);
-        match self.type_ {
-            ArgumentType::Inferred(inferred, _) => (*inferred).clone(),
-            ArgumentType::Positional(_, reference) => {
+        match self {
+            Self::Inferred(inferred, _) => (*inferred).clone(),
+            Self::Positional(context, _, reference) => {
+                let mut i_s = i_s.with_context(*context);
                 reference
                     .file
                     // TODO this execution is wrong
@@ -253,11 +261,15 @@ impl<'db, 'a> Argument<'db, 'a> {
                         result_context,
                     )
             }
-            ArgumentType::Keyword(_, reference) => reference
-                .file
-                .inference(&mut i_s)
-                .infer_expression_with_context(reference.as_expression(), result_context),
-            ArgumentType::SlicesTuple(slices) => {
+            Self::Keyword(context, _, reference) => {
+                let mut i_s = i_s.with_context(*context);
+                reference
+                    .file
+                    .inference(&mut i_s)
+                    .infer_expression_with_context(reference.as_expression(), result_context)
+            }
+            Self::SlicesTuple(context, slices) => {
+                let mut i_s = i_s.with_context(*context);
                 let parts = slices
                     .iter()
                     .map(|x| x.infer(&mut i_s).class_as_db_type(&mut i_s))
@@ -273,46 +285,50 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 
     pub fn as_node_ref(&self) -> NodeRef<'db> {
-        match &self.type_ {
-            ArgumentType::Positional(_, node_ref) => *node_ref,
-            ArgumentType::Keyword(_, node_ref) => *node_ref,
-            ArgumentType::Inferred(_, node_ref) => node_ref.unwrap_or_else(|| {
+        match &self {
+            Self::Positional(_, _, node_ref) => *node_ref,
+            Self::Keyword(_, _, node_ref) => *node_ref,
+            Self::Inferred(_, node_ref) => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }),
-            ArgumentType::SlicesTuple(slices) => todo!(),
+            Self::SlicesTuple(_, slices) => todo!(),
         }
     }
 
     pub fn index(&self) -> String {
-        match self.type_ {
-            ArgumentType::Positional(index, _) => format!("{index}"),
-            ArgumentType::Keyword(kw, _) => format!("{kw:?}"),
-            ArgumentType::Inferred(_, _) => "1".to_owned(), // TODO this is not correct
-            ArgumentType::SlicesTuple(_) => todo!(),
+        match self {
+            Self::Positional(_, index, _) => format!("{index}"),
+            Self::Keyword(_, kw, _) => format!("{kw:?}"),
+            Self::Inferred(_, _) => "1".to_owned(), // TODO this is not correct
+            Self::SlicesTuple(_, _) => todo!(),
         }
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self.type_, ArgumentType::Keyword(_, _))
+        matches!(self, Self::Keyword(_, _, _))
     }
 }
 
 #[derive(Debug)]
 enum ArgumentIteratorBase<'db, 'a> {
-    Iterator(&'db PythonFile, std::iter::Enumerate<ArgumentsIterator<'a>>),
-    Comprehension(&'db PythonFile, Comprehension<'a>),
+    Iterator(
+        InferenceState<'db, 'a>,
+        &'db PythonFile,
+        std::iter::Enumerate<ArgumentsIterator<'a>>,
+    ),
+    Comprehension(Context<'db, 'a>, &'db PythonFile, Comprehension<'a>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
-    SliceType(SliceType<'db, 'a>),
+    SliceType(Context<'db, 'a>, SliceType<'db, 'a>),
     Finished,
 }
 
 enum BaseArgumentReturn<'db, 'a> {
     ArgsKwargsIterator(ArgsKwargsIterator<'db, 'a>),
-    ArgumentType(ArgumentType<'db, 'a>),
+    Argument(Argument<'db, 'a>),
 }
 
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
-    fn into_argument_types(self, i_s: &mut InferenceState<'db, '_>) -> Vec<Box<str>> {
+    fn into_argument_types(self) -> Vec<Box<str>> {
         match self {
             Self::Inferred(inf, _) => {
                 // TODO for now we just skip this, because most of these are instances.
@@ -320,10 +336,10 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 //      vec![inf.class_as_type(i_s).format(i_s, None, FormatStyle::Short)]
                 vec![]
             }
-            Self::Iterator(python_file, iterator) => iterator
+            Self::Iterator(mut i_s, python_file, iterator) => iterator
                 .map(|(_, arg)| {
                     let mut prefix = "".to_owned();
-                    let mut inference = python_file.inference(i_s);
+                    let mut inference = python_file.inference(&mut i_s);
                     let inf = match arg {
                         ASTArgument::Positional(named_expr) => {
                             inference.infer_named_expression(named_expr)
@@ -343,17 +359,17 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                     };
                     format!(
                         "{prefix}{}",
-                        inf.class_as_type(i_s)
+                        inf.class_as_type(&mut i_s)
                             .format(&FormatData::new_short(i_s.db))
                     )
                     .into()
                 })
                 .collect(),
-            Self::Comprehension(file, comprehension) => {
+            Self::Comprehension(_, file, comprehension) => {
                 todo!()
             }
             Self::Finished => vec![],
-            Self::SliceType(slice_type) => match slice_type.unpack() {
+            Self::SliceType(_, slice_type) => match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
                     let file = s.file;
                     let named_expr = s.named_expr;
@@ -373,28 +389,30 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
         match self {
             Self::Inferred(_, _) => {
                 if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
-                    Some(BaseArgumentReturn::ArgumentType(ArgumentType::Inferred(
+                    Some(BaseArgumentReturn::Argument(Argument::Inferred(
                         inf, node_ref,
                     )))
                 } else {
                     unreachable!()
                 }
             }
-            Self::Iterator(python_file, iterator) => {
+            Self::Iterator(i_s, python_file, iterator) => {
                 for (i, arg) in iterator {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
-                            return Some(BaseArgumentReturn::ArgumentType(
-                                ArgumentType::new_argument(i + 1, python_file, named_expr.index()),
+                            return Some(Argument::new_positional_return(
+                                i_s.context,
+                                i + 1,
+                                python_file,
+                                named_expr.index(),
                             ))
                         }
                         ASTArgument::Keyword(name, expr) => {
-                            return Some(BaseArgumentReturn::ArgumentType(
-                                ArgumentType::new_keyword_argument(
-                                    python_file,
-                                    name.as_code(),
-                                    expr.index(),
-                                ),
+                            return Some(Argument::new_keyword_return(
+                                i_s.context,
+                                python_file,
+                                name.as_code(),
+                                expr.index(),
                             ))
                         }
                         ASTArgument::Starred(expr) => todo!("*args {arg:?}"),
@@ -403,25 +421,25 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 }
                 None
             }
-            Self::Comprehension(file, comprehension) => Some(BaseArgumentReturn::ArgumentType(
-                ArgumentType::new_argument(1, file, comprehension.index()),
-            )),
+            Self::Comprehension(context, file, comprehension) => Some(
+                Argument::new_positional_return(*context, 1, file, comprehension.index()),
+            ),
             Self::Finished => None,
-            Self::SliceType(slice_type) => match slice_type.unpack() {
+            Self::SliceType(context, slice_type) => match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
                     let file = s.file;
                     let named_expr = s.named_expr;
+                    let context = *context;
                     *self = Self::Finished;
-                    Some(BaseArgumentReturn::ArgumentType(ArgumentType::Positional(
+                    Some(Argument::new_positional_return(
+                        context,
                         1,
-                        NodeRef {
-                            file,
-                            node_index: named_expr.index(),
-                        },
-                    )))
+                        file,
+                        named_expr.index(),
+                    ))
                 }
-                SliceTypeContent::Slices(slices) => Some(BaseArgumentReturn::ArgumentType(
-                    ArgumentType::SlicesTuple(slices),
+                SliceTypeContent::Slices(slices) => Some(BaseArgumentReturn::Argument(
+                    Argument::SlicesTuple(*context, slices),
                 )),
                 _ => todo!(),
             },
@@ -433,33 +451,30 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 pub struct ArgumentIterator<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'db, 'a>,
-    context: Context<'db, 'a>,
     next: Option<&'a dyn Arguments<'db>>,
 }
 
 impl<'db, 'a> ArgumentIterator<'db, 'a> {
-    fn new(current: ArgumentIteratorBase<'db, 'a>, context: Context<'db, 'a>) -> Self {
+    fn new(current: ArgumentIteratorBase<'db, 'a>) -> Self {
         Self {
             current,
             next: None,
             args_kwargs_iterator: ArgsKwargsIterator::None,
-            context,
         }
     }
 
     pub fn new_slice(slice_type: SliceType<'db, 'a>, context: Context<'db, 'a>) -> Self {
         Self {
-            current: ArgumentIteratorBase::SliceType(slice_type),
+            current: ArgumentIteratorBase::SliceType(context, slice_type),
             args_kwargs_iterator: ArgsKwargsIterator::None,
             next: None,
-            context,
         }
     }
 
-    pub fn into_argument_types(mut self, i_s: &mut InferenceState<'db, '_>) -> Box<[Box<str>]> {
+    pub fn into_argument_types(mut self) -> Box<[Box<str>]> {
         let mut result = vec![];
         loop {
-            result.extend(self.current.into_argument_types(i_s));
+            result.extend(self.current.into_argument_types());
             if let Some(next) = self.next {
                 self = next.iter_arguments();
             } else {
@@ -475,10 +490,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.current.next() {
-            Some(BaseArgumentReturn::ArgumentType(type_)) => Some(Argument {
-                type_,
-                context: self.context,
-            }),
+            Some(BaseArgumentReturn::Argument(arg)) => Some(arg),
             Some(BaseArgumentReturn::ArgsKwargsIterator(args_kwargs)) => todo!(),
             None => {
                 if let Some(next) = self.next {
@@ -510,7 +522,7 @@ impl<'db> NoArguments<'db> {
 
 impl<'db> Arguments<'db> for NoArguments<'db> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Finished, Context::None)
+        ArgumentIterator::new(ArgumentIteratorBase::Finished)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {

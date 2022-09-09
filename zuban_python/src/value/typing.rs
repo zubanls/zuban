@@ -5,7 +5,7 @@ use std::rc::Rc;
 use parsa_python_ast::PrimaryContent;
 
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
-use crate::arguments::{ArgumentType, Arguments};
+use crate::arguments::{Argument, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, PointLink, Specific, TupleContent, TypeVar,
     TypeVarUsage, Variance,
@@ -332,8 +332,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         let mut count = 0;
         let mut had_non_positional = false;
         for arg in args.iter_arguments() {
-            match arg.type_ {
-                ArgumentType::Positional(i, n) => {
+            match arg {
+                Argument::Positional(_, i, n) => {
                     if i == 1 {
                         result = Some(arg.as_node_ref().file.inference(i_s).compute_cast_target(n))
                     } else {
@@ -498,7 +498,7 @@ pub fn maybe_type_var<'db>(
 ) -> Option<TypeVar> {
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgumentType::Positional(_, name_node) = first_arg.type_ {
+        let result = if let Argument::Positional(_, _, name_node) = first_arg {
             name_node
                 .as_named_expression()
                 .maybe_single_string_literal()
@@ -534,8 +534,8 @@ pub fn maybe_type_var<'db>(
         let mut covariant = false;
         let mut contravariant = false;
         for arg in iterator {
-            match arg.type_ {
-                ArgumentType::Positional(_, node) => {
+            match arg {
+                Argument::Positional(_, _, node) => {
                     let mut inference = node.file.inference(i_s);
                     if let Some(t) = inference
                         .compute_type_var_constraint(node.as_named_expression().expression())
@@ -545,7 +545,7 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 }
-                ArgumentType::Keyword(name, node) => match name {
+                Argument::Keyword(_, name, node) => match name {
                     "covariant" => {
                         let code = node.as_expression().as_code();
                         match code {
@@ -603,8 +603,8 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 },
-                ArgumentType::Inferred(v, _) => unreachable!(),
-                ArgumentType::SlicesTuple(slices) => return None,
+                Argument::Inferred(v, _) => unreachable!(),
+                Argument::SlicesTuple(_, slices) => return None,
             }
         }
         if restrictions.len() == 1 {

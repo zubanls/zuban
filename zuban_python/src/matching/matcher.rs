@@ -5,7 +5,7 @@ use super::{
     ArgumentIndexWithParam, FormatData, Generics, Match, MismatchReason, ResultContext,
     SignatureMatch, Type,
 };
-use crate::arguments::{ArgumentType, Arguments};
+use crate::arguments::{Argument, Arguments};
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage,
     TypeVars, Variance,
@@ -870,8 +870,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {
-                match arg.1.type_ {
-                    ArgumentType::Keyword(name, reference) => {
+                match arg.1 {
+                    Argument::Keyword(_, name, reference) => {
                         add_keyword_argument_issue(reference, name)
                     }
                     _ => too_many = true,
@@ -890,8 +890,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         }
     } else if !args_with_params.unused_keyword_arguments.is_empty() && should_generate_errors {
         for unused in args_with_params.unused_keyword_arguments {
-            match unused.1.type_ {
-                ArgumentType::Keyword(name, reference) => {
+            match unused.1 {
+                Argument::Keyword(_, name, reference) => {
                     add_keyword_argument_issue(reference, name)
                 }
                 _ => unreachable!(),
