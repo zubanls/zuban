@@ -204,11 +204,11 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
     }
 }
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(Context<'db, 'a>, &'a str, NodeRef<'db>),
-    Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
+    Inferred(Inferred<'db>, Option<NodeRef<'db>>),
     Positional {
         context: Context<'db, 'a>,
         // The position as a 1-based index
@@ -403,7 +403,8 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
             Self::Inferred(_, _) => {
                 if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
                     Some(BaseArgumentReturn::Argument(Argument::Inferred(
-                        inf, node_ref,
+                        inf.clone(),
+                        node_ref,
                     )))
                 } else {
                     unreachable!()
@@ -431,11 +432,13 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         ASTArgument::Starred(expr) => {
                             let inf = python_file.inference(i_s).infer_expression(expr);
                             let node_ref = NodeRef::new(python_file, expr.index());
-                            return Some(BaseArgumentReturn::ArgsKwargs(ArgsKwargsIterator::Args {
-                                iterator: inf.save_and_iter(i_s, node_ref),
-                                node_ref,
-                                position: i + 1,
-                            }));
+                            return Some(BaseArgumentReturn::ArgsKwargs(
+                                ArgsKwargsIterator::Args {
+                                    iterator: inf.save_and_iter(i_s, node_ref),
+                                    node_ref,
+                                    position: i + 1,
+                                },
+                            ));
                         }
                         ASTArgument::DoubleStarred(expr) => todo!("**kwargs"),
                     }
@@ -510,7 +513,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.args_kwargs_iterator {
+        match &mut self.args_kwargs_iterator {
             ArgsKwargsIterator::None => match self.current.next() {
                 Some(BaseArgumentReturn::Argument(arg)) => Some(arg),
                 Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => {
@@ -532,8 +535,9 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 position,
             } => {
                 if let Some(inf) = iterator.next(self.current.expect_i_s()) {
-                    Some(Argument::Inferred(inf, Some(node_ref)))
+                    Some(Argument::Inferred(inf, Some(*node_ref)))
                 } else {
+                    self.args_kwargs_iterator = ArgsKwargsIterator::None;
                     self.next()
                 }
             }

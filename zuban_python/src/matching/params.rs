@@ -427,12 +427,12 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                 }
                 ParamKind::PositionalOnly => {
                     argument_with_index = self.arguments.next();
-                    if let Some(arg) = argument_with_index {
+                    if let Some(ref arg) = argument_with_index {
                         match arg.1 {
                             Argument::Positional { .. } | Argument::Inferred(_, _) => (),
                             Argument::Keyword(_, _, _) => {
-                                self.unused_keyword_arguments.push(arg);
-                                argument_with_index = None;
+                                self.unused_keyword_arguments
+                                    .push(argument_with_index.take().unwrap());
                             }
                             _ => todo!("{arg:?}"),
                         }
@@ -447,11 +447,19 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                     return self.next();
                 }
             }
-            Some(InferrableParam2 {
-                param,
-                argument_index: argument_with_index.map(|a| a.0),
-                argument: argument_with_index.map(|a| a.1),
-            })
+            Some(
+                argument_with_index
+                    .map(|a| InferrableParam2 {
+                        param,
+                        argument_index: Some(a.0),
+                        argument: Some(a.1),
+                    })
+                    .unwrap_or_else(|| InferrableParam2 {
+                        param,
+                        argument_index: None,
+                        argument: None,
+                    }),
+            )
         })
     }
 }

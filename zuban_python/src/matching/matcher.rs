@@ -748,7 +748,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             missing_params.push(p.param);
             continue;
         }
-        if let Some(argument) = p.argument {
+        if let Some(ref argument) = p.argument {
             if let Some(annotation_type) = p.param.annotation_type(i_s) {
                 let value = if let Some(matcher) = matcher.as_ref() {
                     argument.infer(
