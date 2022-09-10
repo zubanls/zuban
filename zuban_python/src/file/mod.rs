@@ -638,7 +638,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     self.infer_assignment_right_side(right_side, result_context)
                 };
                 for target in targets {
-                    self.assign_targets(target, &right, node_ref, is_definition)
+                    self.assign_targets(target, right.clone(), node_ref, is_definition)
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
@@ -847,13 +847,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn assign_targets(
         &mut self,
         target: Target,
-        value: &Inferred<'db>,
+        value: Inferred<'db>,
         value_node_ref: NodeRef<'db>,
         is_definition: bool,
     ) {
         match target {
             Target::Tuple(mut targets) => {
-                let mut value_iterator = value.iter(self.i_s, value_node_ref);
+                let mut value_iterator = value.save_and_iter(self.i_s, value_node_ref);
                 let mut counter = 0;
                 while let Some(target) = targets.next() {
                     counter += 1;
@@ -876,7 +876,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             ));
                             self.assign_targets(
                                 star_target.as_target(),
-                                &list,
+                                list,
                                 value_node_ref,
                                 is_definition,
                             );
@@ -890,7 +890,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             ));
                             self.assign_targets(
                                 star_target.as_target(),
-                                &list,
+                                list,
                                 value_node_ref,
                                 is_definition,
                             );
@@ -898,12 +898,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             todo!()
                         }
                     } else if let Some(value) = value_iterator.next(self.i_s) {
-                        self.assign_targets(target, &value, value_node_ref, is_definition)
+                        self.assign_targets(target, value, value_node_ref, is_definition)
                     } else {
                         let original_counter = counter;
                         self.assign_targets(
                             target,
-                            &Inferred::new_any(),
+                            Inferred::new_any(),
                             value_node_ref,
                             is_definition,
                         );
@@ -911,7 +911,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             counter += 1;
                             self.assign_targets(
                                 target,
-                                &Inferred::new_any(),
+                                Inferred::new_any(),
                                 value_node_ref,
                                 is_definition,
                             );
@@ -930,7 +930,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             Target::Starred(n) => {
                 todo!("Star tuple unpack");
             }
-            _ => self.assign_single_target(target, value, is_definition, |index| {
+            _ => self.assign_single_target(target, &value, is_definition, |index| {
                 value.clone().save_redirect(self.file, index);
             }),
         };
@@ -1329,7 +1329,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                 StarLikeExpression::StarNamedExpression(e) => {
                     let inferred =
                         self.infer_expression_part(e.expression_part(), ResultContext::Unknown);
-                    let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
+                    let mut iterator =
+                        inferred.save_and_iter(self.i_s, NodeRef::new(self.file, e.index()));
                     if iterator.len().is_some() {
                         while let Some(inf) = iterator.next(self.i_s) {
                             generics.push(inf.class_as_db_type(self.i_s))

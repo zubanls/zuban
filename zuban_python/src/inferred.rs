@@ -169,6 +169,33 @@ impl<'db> Inferred<'db> {
         }
     }
 
+    #[inline]
+    pub fn internal_run_after_save<T>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        save_in_node_ref: NodeRef<'db>,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'db>) -> T,
+        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
+    ) -> T {
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                run_on_saved(i_s, definition, *point, callable, reducer, on_missing)
+            }
+            InferredState::UnsavedComplex(complex) => unreachable!(),
+            InferredState::UnsavedSpecific(specific) => match specific {
+                Specific::None => callable(i_s, &NoneInstance()),
+                Specific::TypingAny => on_missing(i_s),
+                _ => todo!("{specific:?}"),
+            },
+            InferredState::UnsavedFileReference(file_index) => {
+                let f = i_s.db.loaded_python_file(*file_index);
+                callable(i_s, &Module::new(i_s.db, f))
+            }
+            InferredState::Unknown => on_missing(i_s),
+        }
+    }
+
     pub fn run_on_value(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -707,17 +734,19 @@ impl<'db> Inferred<'db> {
         })
     }
 
-    pub fn iter(
-        &self,
+    pub fn save_and_iter(
+        self,
         i_s: &mut InferenceState<'db, '_>,
         from: NodeRef<'db>,
-    ) -> IteratorContent<'db, '_> {
-        self.internal_run(
-            i_s,
-            &mut |i_s, v| v.iter(i_s, from),
-            &|_, i1, i2| todo!(),
-            &mut |i_s| IteratorContent::Any,
-        )
+    ) -> IteratorContent<'db, 'db> {
+        self.save_if_unsaved(from.file, from.node_index)
+            .internal_run_after_save(
+                i_s,
+                from,
+                &mut |i_s, v| v.iter(i_s, from),
+                &|_, i1, i2| todo!(),
+                &mut |i_s| IteratorContent::Any,
+            )
     }
 }
 
