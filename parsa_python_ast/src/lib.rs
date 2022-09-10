@@ -226,6 +226,8 @@ create_nonterminal_structs!(
     StarExpressionsTuple: star_expressions
     StarExpression: star_expression
     StarNamedExpression: star_named_expression
+    StarredExpression: starred_expression
+    DoubleStarredExpression: double_starred_expression
     Expression: expression
     Ternary: expression
     NamedExpression: named_expression
@@ -2418,9 +2420,9 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
                 let arg = kwarg_iterator.next().unwrap();
                 return Some(Argument::Keyword(Name::new(name), Expression::new(arg)));
             } else if node.is_type(Nonterminal(starred_expression)) {
-                return Some(Argument::Starred(Expression::new(node.nth_child(1))));
+                return Some(Argument::Starred(StarredExpression::new(node)));
             } else if node.is_type(Nonterminal(double_starred_expression)) {
-                return Some(Argument::DoubleStarred(Expression::new(node.nth_child(1))));
+                return Some(Argument::DoubleStarred(DoubleStarredExpression::new(node)));
             }
         }
         None
@@ -2431,8 +2433,20 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
 pub enum Argument<'db> {
     Positional(NamedExpression<'db>),
     Keyword(Name<'db>, Expression<'db>),
-    Starred(Expression<'db>),
-    DoubleStarred(Expression<'db>),
+    Starred(StarredExpression<'db>),
+    DoubleStarred(DoubleStarredExpression<'db>),
+}
+
+impl<'db> StarredExpression<'db> {
+    pub fn expression(&self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(1))
+    }
+}
+
+impl<'db> DoubleStarredExpression<'db> {
+    pub fn expression(&self) -> Expression<'db> {
+        Expression::new(self.node.nth_child(1))
+    }
 }
 
 impl<'db> DelStmt<'db> {

@@ -365,13 +365,13 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                             prefix = format!("{}=", name.as_code());
                             inference.infer_expression(expr)
                         }
-                        ASTArgument::Starred(expr) => {
+                        ASTArgument::Starred(starred_expr) => {
                             prefix = "*".to_owned();
-                            inference.infer_expression(expr)
+                            inference.infer_expression(starred_expr.expression())
                         }
-                        ASTArgument::DoubleStarred(expr) => {
+                        ASTArgument::DoubleStarred(double_starred_expr) => {
                             prefix = "*".to_owned();
-                            inference.infer_expression(expr)
+                            inference.infer_expression(double_starred_expr.expression())
                         }
                     };
                     format!(
@@ -434,9 +434,11 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 expr.index(),
                             ))
                         }
-                        ASTArgument::Starred(expr) => {
-                            let inf = python_file.inference(i_s).infer_expression(expr);
-                            let node_ref = NodeRef::new(python_file, expr.index());
+                        ASTArgument::Starred(starred_expr) => {
+                            let inf = python_file
+                                .inference(i_s)
+                                .infer_expression(starred_expr.expression());
+                            let node_ref = NodeRef::new(python_file, starred_expr.index());
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Args {
                                     iterator: inf.save_and_iter(i_s, node_ref),
