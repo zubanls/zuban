@@ -323,7 +323,7 @@ enum ArgumentIteratorBase<'db, 'a> {
 }
 
 enum BaseArgumentReturn<'db, 'a> {
-    ArgsKwargsIterator(ArgsKwargsIterator<'db, 'a>),
+    ArgsKwargs(ArgsKwargsIterator<'db, 'db>),
     Argument(Argument<'db, 'a>),
 }
 
@@ -415,7 +415,15 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 expr.index(),
                             ))
                         }
-                        ASTArgument::Starred(expr) => todo!("*args {arg:?}"),
+                        ASTArgument::Starred(expr) => {
+                            let inf = python_file.inference(i_s).infer_expression(expr);
+                            return Some(BaseArgumentReturn::ArgsKwargs(ArgsKwargsIterator::Args(
+                                {
+                                    // TODO is it ok that we create a new InferenceState here???
+                                    inf.save_and_iter(i_s, NodeRef::new(python_file, expr.index()))
+                                },
+                            )));
+                        }
                         ASTArgument::DoubleStarred(expr) => todo!("**kwargs"),
                     }
                 }
@@ -491,7 +499,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match self.current.next() {
             Some(BaseArgumentReturn::Argument(arg)) => Some(arg),
-            Some(BaseArgumentReturn::ArgsKwargsIterator(args_kwargs)) => todo!(),
+            Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => todo!(),
             None => {
                 if let Some(next) = self.next {
                     *self = next.iter_arguments();
