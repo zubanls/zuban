@@ -334,6 +334,13 @@ enum BaseArgumentReturn<'db, 'a> {
 }
 
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
+    fn expect_i_s(&mut self) -> &mut InferenceState<'db, 'a> {
+        if let Self::Iterator(i_s, ..) = self {
+            i_s
+        } else {
+            unreachable!()
+        }
+    }
     fn into_argument_types(self) -> Vec<Box<str>> {
         match self {
             Self::Inferred(inf, _) => {
@@ -423,12 +430,12 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         }
                         ASTArgument::Starred(expr) => {
                             let inf = python_file.inference(i_s).infer_expression(expr);
-                            return Some(BaseArgumentReturn::ArgsKwargs(ArgsKwargsIterator::Args(
-                                {
-                                    // TODO is it ok that we create a new InferenceState here???
-                                    inf.save_and_iter(i_s, NodeRef::new(python_file, expr.index()))
-                                },
-                            )));
+                            let node_ref = NodeRef::new(python_file, expr.index());
+                            return Some(BaseArgumentReturn::ArgsKwargs(ArgsKwargsIterator::Args {
+                                iterator: inf.save_and_iter(i_s, node_ref),
+                                node_ref,
+                                position: i + 1,
+                            }));
                         }
                         ASTArgument::DoubleStarred(expr) => todo!("**kwargs"),
                     }
@@ -503,16 +510,35 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match self.current.next() {
-            Some(BaseArgumentReturn::Argument(arg)) => Some(arg),
-            Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => todo!(),
-            None => {
-                if let Some(next) = self.next {
-                    *self = next.iter_arguments();
+        match self.args_kwargs_iterator {
+            ArgsKwargsIterator::None => match self.current.next() {
+                Some(BaseArgumentReturn::Argument(arg)) => Some(arg),
+                Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => {
+                    self.args_kwargs_iterator = args_kwargs;
                     self.next()
-                } else {
-                    None
                 }
+                None => {
+                    if let Some(next) = self.next {
+                        *self = next.iter_arguments();
+                        self.next()
+                    } else {
+                        None
+                    }
+                }
+            },
+            ArgsKwargsIterator::Args {
+                iterator,
+                node_ref,
+                position,
+            } => {
+                if let Some(inf) = iterator.next(self.current.expect_i_s()) {
+                    Some(Argument::Inferred(inf, Some(node_ref)))
+                } else {
+                    self.next()
+                }
+            }
+            ArgsKwargsIterator::Kwargs(_) => {
+                todo!()
             }
         }
     }
@@ -520,7 +546,11 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
 
 #[derive(Debug)]
 enum ArgsKwargsIterator<'db, 'a> {
-    Args(IteratorContent<'db, 'a>),
+    Args {
+        iterator: IteratorContent<'db, 'a>,
+        position: usize,
+        node_ref: NodeRef<'db>,
+    },
     Kwargs(()),
     None,
 }
