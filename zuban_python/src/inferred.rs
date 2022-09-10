@@ -302,7 +302,7 @@ impl<'db> Inferred<'db> {
                 callable(i_s, &func)
             }
             _ => {
-                let instance = self.resolve_specific(i_s.db, specific);
+                let instance = resolve_specific(i_s.db, specific);
                 callable(i_s, &instance)
             }
         }
@@ -517,35 +517,6 @@ impl<'db> Inferred<'db> {
         mut on_missing: impl FnMut(),
     ) {
         self.internal_run(i_s, callable, &|_, i1, i2| (), &mut |i_s| on_missing())
-    }
-
-    fn resolve_specific(&self, db: &'db Database, specific: Specific) -> Instance<'db, 'db> {
-        self.load_builtin_instance_from_str(
-            db,
-            match specific {
-                Specific::String => "str",
-                Specific::Integer => "int",
-                Specific::Float => "float",
-                Specific::Boolean => "bool",
-                Specific::Bytes => "bytes",
-                Specific::Complex => "complex",
-                Specific::Ellipsis => "ellipsis", // TODO this should not even be public
-                actual => todo!("{actual:?}"),
-            },
-        )
-    }
-
-    fn load_builtin_instance_from_str(
-        &self,
-        db: &'db Database,
-        name: &'static str,
-    ) -> Instance<'db, 'db> {
-        let builtins = db.python_state.builtins();
-        let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
-        let v = builtins.points.get(node_index);
-        debug_assert_eq!(v.type_(), PointType::Redirect);
-        debug_assert_eq!(v.file_index(), builtins.file_index());
-        use_instance(NodeRef::new(builtins, v.node_index()), Generics::None, None)
     }
 
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Rc<TypeVar>> {
@@ -1051,6 +1022,34 @@ impl fmt::Debug for Inferred<'_> {
         }
         .finish()
     }
+}
+
+fn resolve_specific(db: &Database, specific: Specific) -> Instance {
+    load_builtin_instance_from_str(
+        db,
+        match specific {
+            Specific::String => "str",
+            Specific::Integer => "int",
+            Specific::Float => "float",
+            Specific::Boolean => "bool",
+            Specific::Bytes => "bytes",
+            Specific::Complex => "complex",
+            Specific::Ellipsis => "ellipsis", // TODO this should not even be public
+            actual => todo!("{actual:?}"),
+        },
+    )
+}
+
+fn load_builtin_instance_from_str<'db>(
+    db: &'db Database,
+    name: &'static str,
+) -> Instance<'db, 'db> {
+    let builtins = db.python_state.builtins();
+    let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
+    let v = builtins.points.get(node_index);
+    debug_assert_eq!(v.type_(), PointType::Redirect);
+    debug_assert_eq!(v.file_index(), builtins.file_index());
+    use_instance(NodeRef::new(builtins, v.node_index()), Generics::None, None)
 }
 
 fn infer_instance_with_arguments_cls<'db>(
