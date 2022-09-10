@@ -209,8 +209,12 @@ pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(Context<'db, 'a>, &'a str, NodeRef<'db>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
-    // The first argument is the position as a 1-based index
-    Positional(Context<'db, 'a>, usize, NodeRef<'db>),
+    Positional {
+        context: Context<'db, 'a>,
+        // The position as a 1-based index
+        position: usize,
+        node_ref: NodeRef<'db>,
+    },
     SlicesTuple(Context<'db, 'a>, Slices<'db, 'a>),
 }
 
@@ -221,11 +225,11 @@ impl<'db, 'a> Argument<'db, 'a> {
         file: &'db PythonFile,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
-        BaseArgumentReturn::Argument(Argument::Positional(
+        BaseArgumentReturn::Argument(Argument::Positional {
             context,
             position,
-            NodeRef { file, node_index },
-        ))
+            node_ref: NodeRef { file, node_index },
+        })
     }
 
     fn new_keyword_return(
@@ -250,14 +254,16 @@ impl<'db, 'a> Argument<'db, 'a> {
     ) -> Inferred<'db> {
         match self {
             Self::Inferred(inferred, _) => (*inferred).clone(),
-            Self::Positional(context, _, reference) => {
+            Self::Positional {
+                context, node_ref, ..
+            } => {
                 let mut i_s = i_s.with_context(*context);
-                reference
+                node_ref
                     .file
                     // TODO this execution is wrong
                     .inference(&mut i_s)
                     .infer_named_expression_with_context(
-                        reference.as_named_expression(),
+                        node_ref.as_named_expression(),
                         result_context,
                     )
             }
@@ -286,7 +292,7 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub fn as_node_ref(&self) -> NodeRef<'db> {
         match &self {
-            Self::Positional(_, _, node_ref) => *node_ref,
+            Self::Positional { node_ref, .. } => *node_ref,
             Self::Keyword(_, _, node_ref) => *node_ref,
             Self::Inferred(_, node_ref) => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
@@ -297,7 +303,7 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub fn index(&self) -> String {
         match self {
-            Self::Positional(_, index, _) => format!("{index}"),
+            Self::Positional { position, .. } => format!("{position}"),
             Self::Keyword(_, kw, _) => format!("{kw:?}"),
             Self::Inferred(_, _) => "1".to_owned(), // TODO this is not correct
             Self::SlicesTuple(_, _) => todo!(),

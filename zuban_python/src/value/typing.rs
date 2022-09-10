@@ -333,9 +333,16 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         let mut had_non_positional = false;
         for arg in args.iter_arguments() {
             match arg {
-                Argument::Positional(_, i, n) => {
-                    if i == 1 {
-                        result = Some(arg.as_node_ref().file.inference(i_s).compute_cast_target(n))
+                Argument::Positional {
+                    position, node_ref, ..
+                } => {
+                    if position == 1 {
+                        result = Some(
+                            arg.as_node_ref()
+                                .file
+                                .inference(i_s)
+                                .compute_cast_target(node_ref),
+                        )
                     } else {
                         arg.infer(i_s, ResultContext::Unknown);
                     }
@@ -498,11 +505,11 @@ pub fn maybe_type_var<'db>(
 ) -> Option<TypeVar> {
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
-        let result = if let Argument::Positional(_, _, name_node) = first_arg {
-            name_node
+        let result = if let Argument::Positional { node_ref, .. } = first_arg {
+            node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
-                .map(|py_string| (name_node, py_string))
+                .map(|py_string| (node_ref, py_string))
         } else {
             None
         };
@@ -535,10 +542,10 @@ pub fn maybe_type_var<'db>(
         let mut contravariant = false;
         for arg in iterator {
             match arg {
-                Argument::Positional(_, _, node) => {
-                    let mut inference = node.file.inference(i_s);
+                Argument::Positional { node_ref, .. } => {
+                    let mut inference = node_ref.file.inference(i_s);
                     if let Some(t) = inference
-                        .compute_type_var_constraint(node.as_named_expression().expression())
+                        .compute_type_var_constraint(node_ref.as_named_expression().expression())
                     {
                         restrictions.push(t);
                     } else {
