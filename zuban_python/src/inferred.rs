@@ -3,9 +3,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use crate::arguments::{
-    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
-};
+use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
     PointLink, PointType, Specific, TypeVar,
@@ -182,7 +180,7 @@ impl<'db> Inferred<'db> {
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
     ) -> T {
         match point.type_() {
-            PointType::Specific => self.run_on_specific(
+            PointType::Specific => run_on_specific(
                 i_s,
                 definition,
                 point.specific(),
@@ -212,105 +210,6 @@ impl<'db> Inferred<'db> {
                 callable(i_s, &Module::new(i_s.db, f))
             }
             _ => unreachable!(),
-        }
-    }
-
-    #[inline]
-    fn run_on_specific<'a, T>(
-        &'a self,
-        i_s: &mut InferenceState<'db, '_>,
-        definition: &NodeRef<'db>,
-        specific: Specific,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
-        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
-    ) -> T {
-        match specific {
-            Specific::Function => callable(i_s, &Function::new(*definition, None)),
-            Specific::AnnotationClassInstance => {
-                let expr_def = definition.add_to_node_index(2);
-                let inferred = expr_def
-                    .file
-                    .inference(i_s)
-                    .check_point_cache(expr_def.node_index)
-                    .unwrap();
-                inferred.with_instance(i_s, definition, None, |i_s, instance| {
-                    callable(&mut i_s.with_annotation_instance(), instance)
-                })
-            }
-            Specific::InstanceWithArguments => {
-                let inf_cls = infer_instance_with_arguments_cls(i_s, definition);
-                let class = inf_cls.maybe_class(i_s).unwrap();
-                let args = SimpleArguments::from_primary(
-                    i_s.clone(),
-                    definition.file,
-                    definition.as_primary(),
-                    None,
-                );
-                let init = class.simple_init_func(i_s, &args);
-                inf_cls.with_instance(i_s, definition, None, |i_s, instance| {
-                    // TODO is this MroIndex correct?
-                    /*
-                    let instance_arg = KnownArguments::new(self, None);
-                    let args = CombinedArguments::new(&instance_arg, &args);
-                    callable(&mut i_s.with_func_and_args(&init, &args), instance)
-                    */
-                    todo!()
-                })
-            }
-            Specific::SimpleGeneric => {
-                /*
-                let class = self.maybe_class(i_s).unwrap();
-                callable(i_s, &class)
-                */
-                todo!()
-            }
-            Specific::List => callable(i_s, &ListLiteral::new(*definition)),
-            Specific::Dict => callable(i_s, &DictLiteral::new(*definition)),
-            Specific::AnnotationWithTypeVars => {
-                let db_type = definition
-                    .file
-                    .inference(i_s)
-                    .use_db_type_of_annotation(definition.node_index);
-                run_on_db_type(i_s, db_type, callable, reducer, on_missing)
-            }
-            Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
-            Specific::TypingProtocol
-            | Specific::TypingGeneric
-            | Specific::TypingTuple
-            | Specific::TypingUnion
-            | Specific::TypingOptional
-            | Specific::TypingType
-            | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
-            Specific::TypingWithGenerics => {
-                let inf = definition
-                    .file
-                    .inference(i_s)
-                    .infer_primary_or_atom(definition.as_primary().first());
-                if let InferredState::Saved(_, p) = inf.state {
-                    callable(i_s, &TypingWithGenerics::new(*definition, p.specific()))
-                } else {
-                    unreachable!()
-                }
-            }
-            Specific::TypingAny | Specific::Cycle => on_missing(i_s),
-            Specific::TypingCast => callable(i_s, &TypingCast()),
-            Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
-            Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
-            Specific::None => callable(i_s, &NoneInstance()),
-            Specific::MypyExtensionsArg
-            | Specific::MypyExtensionsDefaultArg
-            | Specific::MypyExtensionsNamedArg
-            | Specific::MypyExtensionsDefaultNamedArg
-            | Specific::MypyExtensionsVarArg
-            | Specific::MypyExtensionsKwArg => {
-                let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
-                callable(i_s, &func)
-            }
-            _ => {
-                let instance = resolve_specific(i_s.db, specific);
-                callable(i_s, &instance)
-            }
         }
     }
 
@@ -1030,6 +929,107 @@ impl fmt::Debug for Inferred<'_> {
             InferredState::Unknown => s.field("unknown", &true),
         }
         .finish()
+    }
+}
+
+#[inline]
+fn run_on_specific<'db, 'a, T>(
+    i_s: &mut InferenceState<'db, '_>,
+    definition: &NodeRef<'db>,
+    specific: Specific,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
+) -> T
+where
+    'db: 'a,
+{
+    match specific {
+        Specific::Function => callable(i_s, &Function::new(*definition, None)),
+        Specific::AnnotationClassInstance => {
+            let expr_def = definition.add_to_node_index(2);
+            let inferred = expr_def
+                .file
+                .inference(i_s)
+                .check_point_cache(expr_def.node_index)
+                .unwrap();
+            inferred.with_instance(i_s, definition, None, |i_s, instance| {
+                callable(&mut i_s.with_annotation_instance(), instance)
+            })
+        }
+        Specific::InstanceWithArguments => {
+            let inf_cls = infer_instance_with_arguments_cls(i_s, definition);
+            let class = inf_cls.maybe_class(i_s).unwrap();
+            let args = SimpleArguments::from_primary(
+                i_s.clone(),
+                definition.file,
+                definition.as_primary(),
+                None,
+            );
+            let init = class.simple_init_func(i_s, &args);
+            inf_cls.with_instance(i_s, definition, None, |i_s, instance| {
+                // TODO is this MroIndex correct?
+                /*
+                let instance_arg = KnownArguments::new(self, None);
+                let args = CombinedArguments::new(&instance_arg, &args);
+                callable(&mut i_s.with_func_and_args(&init, &args), instance)
+                */
+                todo!()
+            })
+        }
+        Specific::SimpleGeneric => {
+            /*
+            let class = self.maybe_class(i_s).unwrap();
+            callable(i_s, &class)
+            */
+            todo!()
+        }
+        Specific::List => callable(i_s, &ListLiteral::new(*definition)),
+        Specific::Dict => callable(i_s, &DictLiteral::new(*definition)),
+        Specific::AnnotationWithTypeVars => {
+            let db_type = definition
+                .file
+                .inference(i_s)
+                .use_db_type_of_annotation(definition.node_index);
+            run_on_db_type(i_s, db_type, callable, reducer, on_missing)
+        }
+        Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
+        Specific::TypingProtocol
+        | Specific::TypingGeneric
+        | Specific::TypingTuple
+        | Specific::TypingUnion
+        | Specific::TypingOptional
+        | Specific::TypingType
+        | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
+        Specific::TypingWithGenerics => {
+            let inf = definition
+                .file
+                .inference(i_s)
+                .infer_primary_or_atom(definition.as_primary().first());
+            if let InferredState::Saved(_, p) = inf.state {
+                callable(i_s, &TypingWithGenerics::new(*definition, p.specific()))
+            } else {
+                unreachable!()
+            }
+        }
+        Specific::TypingAny | Specific::Cycle => on_missing(i_s),
+        Specific::TypingCast => callable(i_s, &TypingCast()),
+        Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
+        Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
+        Specific::None => callable(i_s, &NoneInstance()),
+        Specific::MypyExtensionsArg
+        | Specific::MypyExtensionsDefaultArg
+        | Specific::MypyExtensionsNamedArg
+        | Specific::MypyExtensionsDefaultNamedArg
+        | Specific::MypyExtensionsVarArg
+        | Specific::MypyExtensionsKwArg => {
+            let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
+            callable(i_s, &func)
+        }
+        _ => {
+            let instance = resolve_specific(i_s.db, specific);
+            callable(i_s, &instance)
+        }
     }
 }
 
