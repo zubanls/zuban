@@ -766,11 +766,24 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     matcher.as_deref_mut(),
                     &value,
                     on_type_error.map(|on_type_error| {
-                        |i_s: &mut InferenceState<'db, '_>, t1, t2, reason: &MismatchReason| {
+                        |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
+                            let node_ref = argument.as_node_ref();
+                            if let Some(starred) = node_ref.maybe_starred_expression() {
+                                t1 = format!(
+                                    "*{}",
+                                    node_ref.file.inference(i_s).infer_expression(starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
+                                ).into()
+                            } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
+                                t1 = format!(
+                                    "*{}",
+                                    node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
+                                ).into();
+                                todo!()
+                            }
                             match reason {
                                 MismatchReason::None => on_type_error(
                                     i_s,
-                                    argument.as_node_ref(),
+                                    node_ref,
                                     class,
                                     function,
                                     &p,
@@ -778,7 +791,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                     t2,
                                 ),
                                 MismatchReason::CannotInferTypeArgument(index) => {
-                                    args.as_node_ref().add_typing_issue(
+                                    node_ref.add_typing_issue(
                                         i_s.db,
                                         IssueType::CannotInferTypeArgument {
                                             index: *index,
@@ -791,7 +804,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                 }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
                                     if should_generate_errors {
-                                        args.as_node_ref().add_typing_issue(
+                                        node_ref.add_typing_issue(
                                             i_s.db,
                                             IssueType::InvalidTypeVarValue {
                                                 type_var: Box::from(type_var.name(i_s.db)),

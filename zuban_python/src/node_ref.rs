@@ -1,8 +1,8 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Annotation, Atom, AtomContent, ClassDef, Expression, ImportFrom, Name, NamedExpression,
-    NodeIndex, Primary, PythonString, StringLiteral,
+    Annotation, Atom, AtomContent, ClassDef, DoubleStarredExpression, Expression, ImportFrom, Name,
+    NamedExpression, NodeIndex, Primary, PythonString, StarredExpression, StringLiteral,
 };
 
 use crate::database::{ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType};
@@ -90,6 +90,14 @@ impl<'db> NodeRef<'db> {
 
     pub fn maybe_name(&self) -> Option<Name<'db>> {
         Name::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn maybe_starred_expression(&self) -> Option<StarredExpression<'db>> {
+        StarredExpression::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn maybe_double_starred_expression(&self) -> Option<DoubleStarredExpression<'db>> {
+        DoubleStarredExpression::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn file_index(&self) -> FileIndex {
