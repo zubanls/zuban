@@ -151,10 +151,10 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {
-                self.run_on_saved(i_s, definition, *point, callable, reducer, on_missing)
+                run_on_saved(i_s, definition, *point, callable, reducer, on_missing)
             }
             InferredState::UnsavedComplex(complex) => {
-                self.run_on_complex(i_s, complex, None, callable, reducer, on_missing)
+                run_on_complex(i_s, complex, None, callable, reducer, on_missing)
             }
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => callable(i_s, &NoneInstance()),
@@ -166,201 +166,6 @@ impl<'db> Inferred<'db> {
                 callable(i_s, &Module::new(i_s.db, f))
             }
             InferredState::Unknown => on_missing(i_s),
-        }
-    }
-
-    #[inline]
-    fn run_on_saved<'a, T>(
-        &'a self,
-        i_s: &mut InferenceState<'db, '_>,
-        definition: &NodeRef<'db>,
-        point: Point,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
-        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
-    ) -> T {
-        match point.type_() {
-            PointType::Specific => run_on_specific(
-                i_s,
-                definition,
-                point.specific(),
-                callable,
-                reducer,
-                on_missing,
-            ),
-            PointType::Complex => {
-                let complex = definition.file.complex_points.get(point.complex_index());
-                if let ComplexPoint::Class(cls_storage) = complex {
-                    let class = Class::new(*definition, cls_storage, Generics::None, None);
-                    callable(i_s, &class)
-                } else {
-                    self.run_on_complex(
-                        i_s,
-                        complex,
-                        Some(definition),
-                        callable,
-                        reducer,
-                        on_missing,
-                    )
-                }
-            }
-            PointType::Unknown => on_missing(i_s),
-            PointType::FileReference => {
-                let f = i_s.db.loaded_python_file(point.file_index());
-                callable(i_s, &Module::new(i_s.db, f))
-            }
-            _ => unreachable!(),
-        }
-    }
-
-    fn run_on_complex<'a, T>(
-        &'a self,
-        i_s: &mut InferenceState<'db, '_>,
-        complex: &'a ComplexPoint,
-        definition: Option<&NodeRef<'db>>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
-        on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
-    ) -> T {
-        match complex {
-            ComplexPoint::ExecutionInstance(cls_definition, execution) => {
-                let def = NodeRef::from_link(i_s.db, *cls_definition);
-                let init = Function::from_execution(i_s.db, execution, None);
-                let complex = def.complex().unwrap();
-                if let ComplexPoint::Class(cls_storage) = complex {
-                    /*
-                    let args = SimpleArguments::from_execution(i_s.db, execution);
-                    let class = Class::new(def, cls_storage, Generics::None, None);
-                    debug_assert!(class.type_vars(i_s).is_none());
-                    let instance = Instance::new(class, None);
-                    // TODO is this MroIndex fine? probably not!
-                    let instance_arg = KnownArguments::new(self, None);
-                    let args = CombinedArguments::new(&instance_arg, &args);
-                    callable(&mut i_s.with_func_and_args(&init, &args), &instance)
-                    */
-                    todo!()
-                } else {
-                    unreachable!()
-                }
-            }
-            ComplexPoint::Union(lst) => {
-                let mut previous = None;
-                for any_link in lst.iter() {
-                    let result = match any_link {
-                        AnyLink::Reference(link) => {
-                            let reference = NodeRef::from_link(i_s.db, *link);
-                            self.run_on_saved(
-                                i_s,
-                                &reference,
-                                reference.point(),
-                                callable,
-                                reducer,
-                                on_missing,
-                            )
-                        }
-                        AnyLink::Complex(c) => {
-                            self.run_on_complex(i_s, c, definition, callable, reducer, on_missing)
-                        }
-                        AnyLink::SimpleSpecific(specific) => match specific {
-                            Specific::None => callable(i_s, &NoneInstance()),
-                            Specific::TypingAny => on_missing(i_s),
-                            _ => todo!(
-                                "not even sure if this should be a separate class {specific:?}"
-                            ),
-                        },
-                        AnyLink::Unknown => on_missing(i_s),
-                    };
-                    if let Some(p) = previous {
-                        previous = Some(reducer(i_s, p, result))
-                    } else {
-                        previous = Some(result)
-                    }
-                }
-                previous.unwrap()
-            }
-            ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
-                let reference = NodeRef::from_link(i_s.db, *func_link);
-
-                // TODO this is potentially not needed, a class could lazily be fetched with a
-                // closure
-                let inf = Inferred::from_any_link(i_s.db, instance_link);
-                let instance = inf.expect_instance(i_s);
-
-                let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
-                let class = class_t.maybe_class(i_s.db).unwrap();
-                match reference.complex() {
-                    Some(ComplexPoint::FunctionOverload(overload)) => {
-                        let func = OverloadedFunction::new(reference, overload, Some(class));
-                        callable(
-                            i_s,
-                            &BoundMethod::new(
-                                &instance,
-                                *mro_index,
-                                BoundMethodFunction::Overload(func),
-                            ),
-                        )
-                    }
-                    Some(ComplexPoint::TypeInstance(t)) => match t.as_ref() {
-                        DbType::Callable(c) => callable(
-                            i_s,
-                            &BoundMethod::new(
-                                &instance,
-                                *mro_index,
-                                BoundMethodFunction::Callable(Callable::new(t, c)),
-                            ),
-                        ),
-                        _ => unreachable!("{t:?}"),
-                    },
-                    None => {
-                        let func = Function::new(reference, Some(class));
-                        callable(
-                            i_s,
-                            &BoundMethod::new(
-                                &instance,
-                                *mro_index,
-                                BoundMethodFunction::Function(func),
-                            ),
-                        )
-                    }
-                    _ => unreachable!(),
-                }
-            }
-            ComplexPoint::Closure(function, execution) => {
-                let f = i_s.db.loaded_python_file(function.file);
-                let func = Function::from_execution(i_s.db, execution, None);
-                let args = SimpleArguments::from_execution(i_s.db, execution);
-                callable(
-                    &mut i_s.with_func_and_args(&func, &args),
-                    &Function::new(NodeRef::from_link(i_s.db, *function), None),
-                )
-            }
-            ComplexPoint::Instance(cls, generics_list) => {
-                let generics = generics_list
-                    .as_ref()
-                    .map(Generics::new_list)
-                    .unwrap_or(Generics::None);
-                let instance = use_instance(NodeRef::from_link(i_s.db, *cls), generics, None);
-                callable(i_s, &instance)
-            }
-            ComplexPoint::FunctionOverload(overload) => callable(
-                i_s,
-                &OverloadedFunction::new(*definition.unwrap(), overload, None),
-            ),
-            ComplexPoint::GenericClass(link, generics) => {
-                let class = Class::from_position(
-                    NodeRef::from_link(i_s.db, *link),
-                    Generics::new_list(generics),
-                    None,
-                )
-                .unwrap();
-                callable(i_s, &class)
-            }
-            ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
-            ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
-            ComplexPoint::TypeVar(t) => on_missing(i_s), // TODO this should probably be different
-            _ => {
-                unreachable!("Classes are handled earlier {complex:?}")
-            }
         }
     }
 
@@ -933,17 +738,205 @@ impl fmt::Debug for Inferred<'_> {
 }
 
 #[inline]
-fn run_on_specific<'db, 'a, T>(
+fn run_on_saved<'db: 'a, 'a, T>(
+    i_s: &mut InferenceState<'db, '_>,
+    definition: &NodeRef<'db>,
+    point: Point,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
+) -> T {
+    match point.type_() {
+        PointType::Specific => run_on_specific(
+            i_s,
+            definition,
+            point.specific(),
+            callable,
+            reducer,
+            on_missing,
+        ),
+        PointType::Complex => {
+            let complex = definition.file.complex_points.get(point.complex_index());
+            if let ComplexPoint::Class(cls_storage) = complex {
+                let class = Class::new(*definition, cls_storage, Generics::None, None);
+                callable(i_s, &class)
+            } else {
+                run_on_complex(
+                    i_s,
+                    complex,
+                    Some(definition),
+                    callable,
+                    reducer,
+                    on_missing,
+                )
+            }
+        }
+        PointType::Unknown => on_missing(i_s),
+        PointType::FileReference => {
+            let f = i_s.db.loaded_python_file(point.file_index());
+            callable(i_s, &Module::new(i_s.db, f))
+        }
+        _ => unreachable!(),
+    }
+}
+
+fn run_on_complex<'db: 'a, 'a, T>(
+    i_s: &mut InferenceState<'db, '_>,
+    complex: &'a ComplexPoint,
+    definition: Option<&NodeRef<'db>>,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
+) -> T {
+    match complex {
+        ComplexPoint::ExecutionInstance(cls_definition, execution) => {
+            let def = NodeRef::from_link(i_s.db, *cls_definition);
+            let init = Function::from_execution(i_s.db, execution, None);
+            let complex = def.complex().unwrap();
+            if let ComplexPoint::Class(cls_storage) = complex {
+                /*
+                let args = SimpleArguments::from_execution(i_s.db, execution);
+                let class = Class::new(def, cls_storage, Generics::None, None);
+                debug_assert!(class.type_vars(i_s).is_none());
+                let instance = Instance::new(class, None);
+                // TODO is this MroIndex fine? probably not!
+                let instance_arg = KnownArguments::new(self, None);
+                let args = CombinedArguments::new(&instance_arg, &args);
+                callable(&mut i_s.with_func_and_args(&init, &args), &instance)
+                */
+                todo!()
+            } else {
+                unreachable!()
+            }
+        }
+        ComplexPoint::Union(lst) => {
+            let mut previous = None;
+            for any_link in lst.iter() {
+                let result = match any_link {
+                    AnyLink::Reference(link) => {
+                        let reference = NodeRef::from_link(i_s.db, *link);
+                        run_on_saved(
+                            i_s,
+                            &reference,
+                            reference.point(),
+                            callable,
+                            reducer,
+                            on_missing,
+                        )
+                    }
+                    AnyLink::Complex(c) => {
+                        run_on_complex(i_s, c, definition, callable, reducer, on_missing)
+                    }
+                    AnyLink::SimpleSpecific(specific) => match specific {
+                        Specific::None => callable(i_s, &NoneInstance()),
+                        Specific::TypingAny => on_missing(i_s),
+                        _ => todo!("not even sure if this should be a separate class {specific:?}"),
+                    },
+                    AnyLink::Unknown => on_missing(i_s),
+                };
+                if let Some(p) = previous {
+                    previous = Some(reducer(i_s, p, result))
+                } else {
+                    previous = Some(result)
+                }
+            }
+            previous.unwrap()
+        }
+        ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
+            let reference = NodeRef::from_link(i_s.db, *func_link);
+
+            // TODO this is potentially not needed, a class could lazily be fetched with a
+            // closure
+            let inf = Inferred::from_any_link(i_s.db, instance_link);
+            let instance = inf.expect_instance(i_s);
+
+            let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
+            let class = class_t.maybe_class(i_s.db).unwrap();
+            match reference.complex() {
+                Some(ComplexPoint::FunctionOverload(overload)) => {
+                    let func = OverloadedFunction::new(reference, overload, Some(class));
+                    callable(
+                        i_s,
+                        &BoundMethod::new(
+                            &instance,
+                            *mro_index,
+                            BoundMethodFunction::Overload(func),
+                        ),
+                    )
+                }
+                Some(ComplexPoint::TypeInstance(t)) => match t.as_ref() {
+                    DbType::Callable(c) => callable(
+                        i_s,
+                        &BoundMethod::new(
+                            &instance,
+                            *mro_index,
+                            BoundMethodFunction::Callable(Callable::new(t, c)),
+                        ),
+                    ),
+                    _ => unreachable!("{t:?}"),
+                },
+                None => {
+                    let func = Function::new(reference, Some(class));
+                    callable(
+                        i_s,
+                        &BoundMethod::new(
+                            &instance,
+                            *mro_index,
+                            BoundMethodFunction::Function(func),
+                        ),
+                    )
+                }
+                _ => unreachable!(),
+            }
+        }
+        ComplexPoint::Closure(function, execution) => {
+            let f = i_s.db.loaded_python_file(function.file);
+            let func = Function::from_execution(i_s.db, execution, None);
+            let args = SimpleArguments::from_execution(i_s.db, execution);
+            callable(
+                &mut i_s.with_func_and_args(&func, &args),
+                &Function::new(NodeRef::from_link(i_s.db, *function), None),
+            )
+        }
+        ComplexPoint::Instance(cls, generics_list) => {
+            let generics = generics_list
+                .as_ref()
+                .map(Generics::new_list)
+                .unwrap_or(Generics::None);
+            let instance = use_instance(NodeRef::from_link(i_s.db, *cls), generics, None);
+            callable(i_s, &instance)
+        }
+        ComplexPoint::FunctionOverload(overload) => callable(
+            i_s,
+            &OverloadedFunction::new(*definition.unwrap(), overload, None),
+        ),
+        ComplexPoint::GenericClass(link, generics) => {
+            let class = Class::from_position(
+                NodeRef::from_link(i_s.db, *link),
+                Generics::new_list(generics),
+                None,
+            )
+            .unwrap();
+            callable(i_s, &class)
+        }
+        ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
+        ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
+        ComplexPoint::TypeVar(t) => on_missing(i_s), // TODO this should probably be different
+        _ => {
+            unreachable!("Classes are handled earlier {complex:?}")
+        }
+    }
+}
+
+#[inline]
+fn run_on_specific<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     definition: &NodeRef<'db>,
     specific: Specific,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
-) -> T
-where
-    'db: 'a,
-{
+) -> T {
     match specific {
         Specific::Function => callable(i_s, &Function::new(*definition, None)),
         Specific::AnnotationClassInstance => {
