@@ -1206,7 +1206,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     .and_then(|x| x.1.as_execution(x.0));
                 let args =
                     SimpleArguments::new(self.i_s.clone(), f, node_index, details, x.as_ref());
-                if x.is_none() && !is_target {
+                if x.is_none() && !is_target && false {
                     if let Some(class) = base.maybe_class(self.i_s) {
                         if class.type_vars(self.i_s).is_none()
                             && class.has_non_overloaded_init_func(self.i_s)

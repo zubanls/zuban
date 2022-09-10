@@ -250,14 +250,20 @@ impl<'db> Inferred<'db> {
                 let init = class.simple_init_func(i_s, &args);
                 inf_cls.with_instance(i_s, definition, None, |i_s, instance| {
                     // TODO is this MroIndex correct?
+                    /*
                     let instance_arg = KnownArguments::new(self, None);
                     let args = CombinedArguments::new(&instance_arg, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), instance)
+                    */
+                    todo!()
                 })
             }
             Specific::SimpleGeneric => {
+                /*
                 let class = self.maybe_class(i_s).unwrap();
                 callable(i_s, &class)
+                */
+                todo!()
             }
             Specific::List => callable(i_s, &ListLiteral::new(*definition)),
             Specific::Dict => callable(i_s, &DictLiteral::new(*definition)),
@@ -323,6 +329,7 @@ impl<'db> Inferred<'db> {
                 let init = Function::from_execution(i_s.db, execution, None);
                 let complex = def.complex().unwrap();
                 if let ComplexPoint::Class(cls_storage) = complex {
+                    /*
                     let args = SimpleArguments::from_execution(i_s.db, execution);
                     let class = Class::new(def, cls_storage, Generics::None, None);
                     debug_assert!(class.type_vars(i_s).is_none());
@@ -331,6 +338,8 @@ impl<'db> Inferred<'db> {
                     let instance_arg = KnownArguments::new(self, None);
                     let args = CombinedArguments::new(&instance_arg, &args);
                     callable(&mut i_s.with_func_and_args(&init, &args), &instance)
+                    */
+                    todo!()
                 } else {
                     unreachable!()
                 }

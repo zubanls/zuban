@@ -476,8 +476,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             Inferred::new_unsaved_complex(if generics_list == None && !is_overload {
                 match args.as_execution(&func) {
                     Some(execution) => {
-                        todo!();
-                        //ComplexPoint::ExecutionInstance(self.node_ref.as_link(), Box::new(execution))
+                        // TODO probably use something like this here:
+                        // ComplexPoint::ExecutionInstance(self.node_ref.as_link(), Box::new(execution))
+                        ComplexPoint::Instance(self.node_ref.as_link(), None)
                     }
                     None => ComplexPoint::Instance(self.node_ref.as_link(), None),
                 }
