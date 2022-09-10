@@ -11,7 +11,7 @@ use crate::database::{
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::inference_state::InferenceState;
-use crate::matching::{Generics, ResultContext, Type};
+use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -139,6 +139,10 @@ impl<'db> Inferred<'db> {
 
     pub fn class_as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
         self.class_as_type(i_s).into_db_type(i_s)
+    }
+
+    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
+        self.class_as_type(i_s).format(format_data)
     }
 
     #[inline]

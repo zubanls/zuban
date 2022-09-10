@@ -1092,8 +1092,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             IssueType::Note(
                                 format!(
                                     "Left operand is of type {:?}",
-                                    left.class_as_type(i_s)
-                                        .format(&FormatData::new_short(i_s.db)),
+                                    left.format(i_s, &FormatData::new_short(i_s.db)),
                                 )
                                 .into(),
                             ),
