@@ -429,7 +429,7 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                     argument_with_index = self.arguments.next();
                     if let Some(ref arg) = argument_with_index {
                         match arg.1 {
-                            Argument::Positional { .. } | Argument::Inferred(_, _) => (),
+                            Argument::Positional { .. } | Argument::Inferred { .. } => (),
                             Argument::Keyword(_, _, _) => {
                                 self.unused_keyword_arguments
                                     .push(argument_with_index.take().unwrap());

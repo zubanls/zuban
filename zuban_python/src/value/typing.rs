@@ -610,7 +610,7 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 },
-                Argument::Inferred(v, _) => unreachable!(),
+                Argument::Inferred { .. } => unreachable!(),
                 Argument::SlicesTuple(_, slices) => return None,
             }
         }

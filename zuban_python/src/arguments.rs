@@ -208,11 +208,14 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword(Context<'db, 'a>, &'a str, NodeRef<'db>),
-    Inferred(Inferred<'db>, Option<NodeRef<'db>>),
+    Inferred {
+        inferred: Inferred<'db>,
+        position: usize, // The position as a 1-based index
+        node_ref: Option<NodeRef<'db>>,
+    },
     Positional {
         context: Context<'db, 'a>,
-        // The position as a 1-based index
-        position: usize,
+        position: usize, // The position as a 1-based index
         node_ref: NodeRef<'db>,
     },
     SlicesTuple(Context<'db, 'a>, Slices<'db, 'a>),
@@ -253,7 +256,7 @@ impl<'db, 'a> Argument<'db, 'a> {
         result_context: ResultContext<'db, '_>,
     ) -> Inferred<'db> {
         match self {
-            Self::Inferred(inferred, _) => (*inferred).clone(),
+            Self::Inferred { inferred, .. } => (*inferred).clone(),
             Self::Positional {
                 context, node_ref, ..
             } => {
@@ -294,7 +297,7 @@ impl<'db, 'a> Argument<'db, 'a> {
         match &self {
             Self::Positional { node_ref, .. } => *node_ref,
             Self::Keyword(_, _, node_ref) => *node_ref,
-            Self::Inferred(_, node_ref) => node_ref.unwrap_or_else(|| {
+            Self::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }),
             Self::SlicesTuple(_, slices) => todo!(),
@@ -303,9 +306,10 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub fn index(&self) -> String {
         match self {
-            Self::Positional { position, .. } => format!("{position}"),
+            Self::Positional { position, .. } | Self::Inferred { position, .. } => {
+                format!("{position}")
+            }
             Self::Keyword(_, kw, _) => format!("{kw:?}"),
-            Self::Inferred(_, _) => "1".to_owned(), // TODO this is not correct
             Self::SlicesTuple(_, _) => todo!(),
         }
     }
@@ -402,10 +406,11 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
         match self {
             Self::Inferred(_, _) => {
                 if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
-                    Some(BaseArgumentReturn::Argument(Argument::Inferred(
-                        inf.clone(),
+                    Some(BaseArgumentReturn::Argument(Argument::Inferred {
+                        inferred: inf.clone(),
+                        position: 1, // TODO this is probably a bad assumption
                         node_ref,
-                    )))
+                    }))
                 } else {
                     unreachable!()
                 }
@@ -534,8 +539,12 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 node_ref,
                 position,
             } => {
-                if let Some(inf) = iterator.next(self.current.expect_i_s()) {
-                    Some(Argument::Inferred(inf, Some(*node_ref)))
+                if let Some(inferred) = iterator.next(self.current.expect_i_s()) {
+                    Some(Argument::Inferred {
+                        inferred,
+                        position: *position,
+                        node_ref: Some(*node_ref),
+                    })
                 } else {
                     self.args_kwargs_iterator = ArgsKwargsIterator::None;
                     self.next()
