@@ -531,9 +531,13 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
         while let Some(arg) = self.next() {
             arg.infer(i_s, ResultContext::Unknown);
             if arg.in_args_or_kwargs_and_arbitrary_len() {
-                self.args_kwargs_iterator = ArgsKwargsIterator::None;
+                self.drop_args_kwargs_iterator()
             }
         }
+    }
+
+    pub fn drop_args_kwargs_iterator(&mut self) {
+        self.args_kwargs_iterator = ArgsKwargsIterator::None;
     }
 }
 

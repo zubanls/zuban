@@ -360,6 +360,10 @@ impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
                 .arguments
                 .next_if(|(_, arg)| !arg.is_keyword_argument())
             {
+                if argument.in_args_or_kwargs_and_arbitrary_len() {
+                    //self.arguments.drop_args_kwargs_iterator()
+                    todo!()
+                }
                 return Some(InferrableParam2 {
                     param,
                     argument_index: Some(ix),
