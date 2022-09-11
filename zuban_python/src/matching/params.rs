@@ -349,8 +349,10 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     }
 }
 
-impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator
-    for InferrableParamIterator2<'db, 'a, I, P>
+impl<'db, 'a, 'x, I, P> Iterator for InferrableParamIterator2<'db, 'a, I, P>
+where
+    I: Iterator<Item = P>,
+    P: Param<'db, 'x>,
 {
     type Item = InferrableParam2<'db, 'a, P>;
 
