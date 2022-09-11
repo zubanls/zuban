@@ -340,6 +340,13 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     pub fn has_unused_keyword_arguments(&mut self) -> bool {
         !self.unused_keyword_arguments.is_empty()
     }
+
+    pub fn has_unused_arguments(&mut self) -> bool {
+        self.arguments
+            .peek()
+            .map(|arg| !arg.1.in_args_or_kwargs_and_arbitrary_len())
+            .unwrap_or(false)
+    }
 }
 
 impl<'db, 'a, 'x, I: Iterator<Item = P>, P: Param<'db, 'x>> Iterator

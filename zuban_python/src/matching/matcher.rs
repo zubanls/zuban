@@ -775,7 +775,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                 ).into()
                             } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
                                 t1 = format!(
-                                    "*{}",
+                                    "**{}",
                                     node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
                                 ).into();
                                 todo!()
@@ -878,7 +878,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             args.as_node_ref()
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         }
-    } else if args_with_params.arguments.peek().is_some() {
+    } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
         if should_generate_errors {
             let mut too_many = false;
@@ -901,7 +901,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
-    } else if !args_with_params.unused_keyword_arguments.is_empty() && should_generate_errors {
+    } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
         for unused in args_with_params.unused_keyword_arguments {
             match unused.1 {
                 Argument::Keyword(_, name, reference) => {

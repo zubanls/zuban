@@ -1229,9 +1229,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     &|i_s, i1, i2| i1.union(i2),
                     &mut |i_s| {
                         // Still need to calculate diagnostics for all the arguments
-                        for arg in args.iter_arguments() {
-                            arg.infer(i_s, ResultContext::Unknown);
-                        }
+                        args.iter_arguments().calculate_diagnostics(i_s);
                         Inferred::new_unknown()
                     },
                 )

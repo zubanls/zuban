@@ -212,6 +212,7 @@ pub enum Argument<'db, 'a> {
         inferred: Inferred<'db>,
         position: usize, // The position as a 1-based index
         node_ref: Option<NodeRef<'db>>,
+        in_args_or_kwargs_and_arbitrary_len: bool,
     },
     Positional {
         context: Context<'db, 'a>,
@@ -246,6 +247,16 @@ impl<'db, 'a> Argument<'db, 'a> {
             name,
             NodeRef { file, node_index },
         ))
+    }
+
+    pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
+        match self {
+            Self::Inferred {
+                in_args_or_kwargs_and_arbitrary_len,
+                ..
+            } => *in_args_or_kwargs_and_arbitrary_len,
+            _ => false,
+        }
     }
 }
 
@@ -410,6 +421,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         inferred: inf.clone(),
                         position: 1, // TODO this is probably a bad assumption
                         node_ref,
+                        in_args_or_kwargs_and_arbitrary_len: false,
                     }))
                 } else {
                     unreachable!()
@@ -514,6 +526,15 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
         }
         result.into_boxed_slice()
     }
+
+    pub fn calculate_diagnostics(mut self, i_s: &mut InferenceState<'db, '_>) {
+        while let Some(arg) = self.next() {
+            arg.infer(i_s, ResultContext::Unknown);
+            if arg.in_args_or_kwargs_and_arbitrary_len() {
+                self.args_kwargs_iterator = ArgsKwargsIterator::None;
+            }
+        }
+    }
 }
 
 impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
@@ -546,6 +567,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                         inferred,
                         position: *position,
                         node_ref: Some(*node_ref),
+                        in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
                     })
                 } else {
                     self.args_kwargs_iterator = ArgsKwargsIterator::None;
