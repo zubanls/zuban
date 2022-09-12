@@ -260,6 +260,7 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
 #[derive(Debug, Clone)]
 pub struct Argument<'db, 'a> {
     pub kind: ArgumentKind<'db, 'a>,
+    pub index: usize,
 }
 
 impl<'db, 'a> Argument<'db, 'a> {
@@ -327,10 +328,6 @@ impl<'db, 'a> Argument<'db, 'a> {
             }),
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
         }
-    }
-
-    pub fn index(&self) -> usize {
-        todo!()
     }
 
     pub fn human_readable_index(&self) -> String {
@@ -516,6 +513,7 @@ pub struct ArgumentIterator<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'db, 'a>,
     next: Option<&'a dyn Arguments<'db>>,
+    counter: usize,
 }
 
 impl<'db, 'a> ArgumentIterator<'db, 'a> {
@@ -524,6 +522,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
             current,
             next: None,
             args_kwargs_iterator: ArgsKwargsIterator::None,
+            counter: 0,
         }
     }
 
@@ -532,6 +531,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
             current: ArgumentIteratorBase::SliceType(context, slice_type),
             args_kwargs_iterator: ArgsKwargsIterator::None,
             next: None,
+            counter: 0,
         }
     }
 
@@ -568,7 +568,11 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.args_kwargs_iterator {
             ArgsKwargsIterator::None => match self.current.next() {
-                Some(BaseArgumentReturn::Argument(arg)) => Some(Argument { kind: arg }),
+                Some(BaseArgumentReturn::Argument(arg)) => {
+                    let index = self.counter;
+                    self.counter += 1;
+                    Some(Argument { kind: arg, index })
+                }
                 Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => {
                     self.args_kwargs_iterator = args_kwargs;
                     self.next()
@@ -588,6 +592,8 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 position,
             } => {
                 if let Some(inferred) = iterator.next(self.current.expect_i_s()) {
+                    let index = self.counter;
+                    self.counter += 1;
                     Some(Argument {
                         kind: ArgumentKind::Inferred {
                             inferred,
@@ -595,6 +601,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                             node_ref: Some(*node_ref),
                             in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
                         },
+                        index,
                     })
                 } else {
                     self.args_kwargs_iterator = ArgsKwargsIterator::None;

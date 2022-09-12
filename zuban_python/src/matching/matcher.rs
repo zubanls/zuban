@@ -830,7 +830,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                         // This is never reached when matching callables
                         if let Some(argument) = p.argument {
                             argument_indices_with_any.push(ArgumentIndexWithParam {
-                                argument_index: argument.index(),
+                                argument_index: argument.index,
                                 param_annotation_link,
                             })
                         }
