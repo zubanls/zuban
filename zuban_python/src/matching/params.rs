@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamKind;
 
 use super::{Match, TypeVarMatcher};
-use crate::arguments::{ArgumentIterator, ArgumentKind};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentKind};
 use crate::database::{CallableParam, CallableParams, Database, DbType, PointLink, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
@@ -314,7 +314,7 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
     db: &'db Database,
     pub arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     params: I,
-    pub unused_keyword_arguments: Vec<ArgumentKind<'db, 'a>>,
+    pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
@@ -383,7 +383,7 @@ where
         }
         self.params.next().and_then(|param| {
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-                match unused {
+                match &unused.kind {
                     ArgumentKind::Keyword { key, .. } => {
                         if Some(*key) == param.name(self.db) {
                             return Some(InferrableParam2 {
@@ -399,7 +399,7 @@ where
             match param.kind(self.db) {
                 ParamKind::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
-                        match arg {
+                        match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
                                 if Some(key) == param.name(self.db) {
                                     argument_with_index = Some(arg);
@@ -417,7 +417,7 @@ where
                 }
                 ParamKind::KeywordOnly => {
                     for arg in &mut self.arguments {
-                        match arg {
+                        match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
                                 if Some(key) == param.name(self.db) {
                                     argument_with_index = Some(arg);
@@ -433,7 +433,7 @@ where
                 ParamKind::PositionalOnly => {
                     argument_with_index = self.arguments.next();
                     if let Some(ref arg) = argument_with_index {
-                        match arg {
+                        match arg.kind {
                             ArgumentKind::Positional { .. } | ArgumentKind::Inferred { .. } => (),
                             ArgumentKind::Keyword { .. } => {
                                 self.unused_keyword_arguments
@@ -470,7 +470,7 @@ where
 #[derive(Debug)]
 pub struct InferrableParam2<'db, 'a, P> {
     pub param: P,
-    pub argument: Option<ArgumentKind<'db, 'a>>,
+    pub argument: Option<Argument<'db, 'a>>,
 }
 
 impl<'db, 'a, P> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a, P> {

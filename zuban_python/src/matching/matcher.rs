@@ -883,7 +883,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {
-                match arg {
+                match arg.kind {
                     ArgumentKind::Keyword { key, node_ref, .. } => {
                         add_keyword_argument_issue(node_ref, key)
                     }
@@ -903,7 +903,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
         for unused in args_with_params.unused_keyword_arguments {
-            match unused {
+            match unused.kind {
                 ArgumentKind::Keyword { key, node_ref, .. } => {
                     add_keyword_argument_issue(node_ref, key)
                 }

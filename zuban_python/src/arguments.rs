@@ -255,27 +255,32 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
             node_ref: NodeRef { file, node_index },
         })
     }
+}
 
+#[derive(Debug, Clone)]
+pub struct Argument<'db, 'a> {
+    pub kind: ArgumentKind<'db, 'a>,
+}
+
+impl<'db, 'a> Argument<'db, 'a> {
     pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
-        match self {
-            Self::Inferred {
+        match &self.kind {
+            ArgumentKind::Inferred {
                 in_args_or_kwargs_and_arbitrary_len,
                 ..
             } => *in_args_or_kwargs_and_arbitrary_len,
             _ => false,
         }
     }
-}
 
-impl<'db, 'a> ArgumentKind<'db, 'a> {
     pub fn infer(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         result_context: ResultContext<'db, '_>,
     ) -> Inferred<'db> {
-        match self {
-            Self::Inferred { inferred, .. } => (*inferred).clone(),
-            Self::Positional {
+        match &self.kind {
+            ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),
+            ArgumentKind::Positional {
                 context, node_ref, ..
             } => {
                 let mut i_s = i_s.with_context(*context);
@@ -288,7 +293,7 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
                         result_context,
                     )
             }
-            Self::Keyword {
+            ArgumentKind::Keyword {
                 context, node_ref, ..
             } => {
                 let mut i_s = i_s.with_context(*context);
@@ -297,7 +302,7 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
                     .inference(&mut i_s)
                     .infer_expression_with_context(node_ref.as_expression(), result_context)
             }
-            Self::SlicesTuple { context, slices } => {
+            ArgumentKind::SlicesTuple { context, slices } => {
                 let mut i_s = i_s.with_context(*context);
                 let parts = slices
                     .iter()
@@ -314,13 +319,13 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
     }
 
     pub fn as_node_ref(&self) -> NodeRef<'db> {
-        match &self {
-            Self::Positional { node_ref, .. } => *node_ref,
-            Self::Keyword { node_ref, .. } => *node_ref,
-            Self::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
+        match &self.kind {
+            ArgumentKind::Positional { node_ref, .. } => *node_ref,
+            ArgumentKind::Keyword { node_ref, .. } => *node_ref,
+            ArgumentKind::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }),
-            Self::SlicesTuple { slices, .. } => todo!(),
+            ArgumentKind::SlicesTuple { slices, .. } => todo!(),
         }
     }
 
@@ -329,17 +334,17 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
     }
 
     pub fn human_readable_index(&self) -> String {
-        match self {
-            Self::Positional { position, .. } | Self::Inferred { position, .. } => {
+        match &self.kind {
+            ArgumentKind::Positional { position, .. } | ArgumentKind::Inferred { position, .. } => {
                 format!("{position}")
             }
-            Self::Keyword { key, .. } => format!("{key:?}"),
-            Self::SlicesTuple { .. } => todo!(),
+            ArgumentKind::Keyword { key, .. } => format!("{key:?}"),
+            ArgumentKind::SlicesTuple { .. } => todo!(),
         }
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self, Self::Keyword { .. })
+        matches!(self.kind, ArgumentKind::Keyword { .. })
     }
 }
 
@@ -558,12 +563,12 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
 }
 
 impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
-    type Item = ArgumentKind<'db, 'a>;
+    type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.args_kwargs_iterator {
             ArgsKwargsIterator::None => match self.current.next() {
-                Some(BaseArgumentReturn::Argument(arg)) => Some(arg),
+                Some(BaseArgumentReturn::Argument(arg)) => Some(Argument { kind: arg }),
                 Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => {
                     self.args_kwargs_iterator = args_kwargs;
                     self.next()
@@ -583,11 +588,13 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 position,
             } => {
                 if let Some(inferred) = iterator.next(self.current.expect_i_s()) {
-                    Some(ArgumentKind::Inferred {
-                        inferred,
-                        position: *position,
-                        node_ref: Some(*node_ref),
-                        in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
+                    Some(Argument {
+                        kind: ArgumentKind::Inferred {
+                            inferred,
+                            position: *position,
+                            node_ref: Some(*node_ref),
+                            in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
+                        },
                     })
                 } else {
                     self.args_kwargs_iterator = ArgsKwargsIterator::None;

@@ -333,7 +333,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         let mut had_non_positional = false;
         for arg in args.iter_arguments() {
             // TODO something like *Iterable[str] would loop forever
-            match arg {
+            match arg.kind {
                 ArgumentKind::Positional {
                     position, node_ref, ..
                 } => {
@@ -506,7 +506,7 @@ pub fn maybe_type_var<'db>(
 ) -> Option<TypeVar> {
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
-        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg {
+        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
@@ -542,7 +542,7 @@ pub fn maybe_type_var<'db>(
         let mut covariant = false;
         let mut contravariant = false;
         for arg in iterator {
-            match arg {
+            match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
                     let mut inference = node_ref.file.inference(i_s);
                     if let Some(t) = inference
