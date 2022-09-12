@@ -315,6 +315,10 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
+    pub fn index(&self) -> usize {
+        todo!()
+    }
+
     pub fn human_readable_index(&self) -> String {
         match self {
             Self::Positional { position, .. } | Self::Inferred { position, .. } => {

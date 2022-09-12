@@ -689,7 +689,7 @@ fn calculate_type_vars<'db>(
                     InferrableParamIterator2::new(
                         i_s.db,
                         params.iter(),
-                        args.iter_arguments().enumerate().peekable(),
+                        args.iter_arguments().peekable(),
                     ),
                 )
             } else {
@@ -828,9 +828,9 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                 if matches!(m, Match::TrueWithAny) {
                     if let Some(param_annotation_link) = p.param.func_annotation_link() {
                         // This is never reached when matching callables
-                        if let Some(argument_index) = p.argument_index {
+                        if let Some(argument) = p.argument {
                             argument_indices_with_any.push(ArgumentIndexWithParam {
-                                argument_index,
+                                argument_index: argument.index(),
                                 param_annotation_link,
                             })
                         }
@@ -883,7 +883,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {
-                match arg.1 {
+                match arg {
                     Argument::Keyword(_, name, reference) => {
                         add_keyword_argument_issue(reference, name)
                     }
@@ -903,7 +903,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
         for unused in args_with_params.unused_keyword_arguments {
-            match unused.1 {
+            match unused {
                 Argument::Keyword(_, name, reference) => {
                     add_keyword_argument_issue(reference, name)
                 }

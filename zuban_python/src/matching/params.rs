@@ -312,9 +312,9 @@ impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
 
 pub struct InferrableParamIterator2<'db, 'a, I, P> {
     db: &'db Database,
-    pub arguments: std::iter::Peekable<std::iter::Enumerate<ArgumentIterator<'db, 'a>>>,
+    pub arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     params: I,
-    pub unused_keyword_arguments: Vec<(usize, Argument<'db, 'a>)>,
+    pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
@@ -324,7 +324,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     pub fn new(
         db: &'db Database,
         params: I,
-        arguments: std::iter::Peekable<std::iter::Enumerate<ArgumentIterator<'db, 'a>>>,
+        arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
     ) -> Self {
         Self {
             db,
@@ -344,7 +344,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     pub fn has_unused_arguments(&mut self) -> bool {
         self.arguments
             .peek()
-            .map(|arg| !arg.1.in_args_or_kwargs_and_arbitrary_len())
+            .map(|arg| !arg.in_args_or_kwargs_and_arbitrary_len())
             .unwrap_or(false)
     }
 }
@@ -358,17 +358,13 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
-            if let Some((ix, argument)) = self
-                .arguments
-                .next_if(|(_, arg)| !arg.is_keyword_argument())
-            {
+            if let Some(argument) = self.arguments.next_if(|arg| !arg.is_keyword_argument()) {
                 if argument.in_args_or_kwargs_and_arbitrary_len() {
                     //self.arguments.drop_args_kwargs_iterator()
                     todo!()
                 }
                 return Some(InferrableParam2 {
                     param,
-                    argument_index: Some(ix),
                     argument: Some(argument),
                 });
             } else {
@@ -376,12 +372,9 @@ where
             }
         }
         if let Some(param) = self.current_double_starred_param {
-            if let Some((ix, argument)) =
-                self.arguments.next_if(|(_, arg)| arg.is_keyword_argument())
-            {
+            if let Some(argument) = self.arguments.next_if(|arg| arg.is_keyword_argument()) {
                 return Some(InferrableParam2 {
                     param,
-                    argument_index: Some(ix),
                     argument: Some(argument),
                 });
             } else {
@@ -389,14 +382,13 @@ where
             }
         }
         self.params.next().and_then(|param| {
-            for (i, (argument_index, unused)) in self.unused_keyword_arguments.iter().enumerate() {
+            for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused {
                     Argument::Keyword(_, name, reference) => {
                         if Some(*name) == param.name(self.db) {
                             return Some(InferrableParam2 {
                                 param,
-                                argument_index: Some(*argument_index),
-                                argument: Some(self.unused_keyword_arguments.remove(i).1),
+                                argument: Some(self.unused_keyword_arguments.remove(i)),
                             });
                         }
                     }
@@ -407,7 +399,7 @@ where
             match param.kind(self.db) {
                 ParamKind::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
-                        match arg.1 {
+                        match arg {
                             Argument::Keyword(_, name, reference) => {
                                 if Some(name) == param.name(self.db) {
                                     argument_with_index = Some(arg);
@@ -425,7 +417,7 @@ where
                 }
                 ParamKind::KeywordOnly => {
                     for arg in &mut self.arguments {
-                        match arg.1 {
+                        match arg {
                             Argument::Keyword(_, name, reference) => {
                                 if Some(name) == param.name(self.db) {
                                     argument_with_index = Some(arg);
@@ -441,7 +433,7 @@ where
                 ParamKind::PositionalOnly => {
                     argument_with_index = self.arguments.next();
                     if let Some(ref arg) = argument_with_index {
-                        match arg.1 {
+                        match arg {
                             Argument::Positional { .. } | Argument::Inferred { .. } => (),
                             Argument::Keyword(_, _, _) => {
                                 self.unused_keyword_arguments
@@ -464,12 +456,10 @@ where
                 argument_with_index
                     .map(|a| InferrableParam2 {
                         param,
-                        argument_index: Some(a.0),
-                        argument: Some(a.1),
+                        argument: Some(a),
                     })
                     .unwrap_or_else(|| InferrableParam2 {
                         param,
-                        argument_index: None,
                         argument: None,
                     }),
             )
@@ -480,7 +470,6 @@ where
 #[derive(Debug)]
 pub struct InferrableParam2<'db, 'a, P> {
     pub param: P,
-    pub argument_index: Option<usize>,
     pub argument: Option<Argument<'db, 'a>>,
 }
 
