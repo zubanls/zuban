@@ -384,8 +384,8 @@ where
         self.params.next().and_then(|param| {
             for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
                 match unused {
-                    Argument::Keyword(_, name, reference) => {
-                        if Some(*name) == param.name(self.db) {
+                    Argument::Keyword { key, .. } => {
+                        if Some(*key) == param.name(self.db) {
                             return Some(InferrableParam2 {
                                 param,
                                 argument: Some(self.unused_keyword_arguments.remove(i)),
@@ -400,8 +400,8 @@ where
                 ParamKind::PositionalOrKeyword => {
                     for arg in &mut self.arguments {
                         match arg {
-                            Argument::Keyword(_, name, reference) => {
-                                if Some(name) == param.name(self.db) {
+                            Argument::Keyword { key, .. } => {
+                                if Some(key) == param.name(self.db) {
                                     argument_with_index = Some(arg);
                                     break;
                                 } else {
@@ -418,8 +418,8 @@ where
                 ParamKind::KeywordOnly => {
                     for arg in &mut self.arguments {
                         match arg {
-                            Argument::Keyword(_, name, reference) => {
-                                if Some(name) == param.name(self.db) {
+                            Argument::Keyword { key, .. } => {
+                                if Some(key) == param.name(self.db) {
                                     argument_with_index = Some(arg);
                                     break;
                                 } else {
@@ -435,7 +435,7 @@ where
                     if let Some(ref arg) = argument_with_index {
                         match arg {
                             Argument::Positional { .. } | Argument::Inferred { .. } => (),
-                            Argument::Keyword(_, _, _) => {
+                            Argument::Keyword { .. } => {
                                 self.unused_keyword_arguments
                                     .push(argument_with_index.take().unwrap());
                             }

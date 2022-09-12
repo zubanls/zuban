@@ -207,7 +207,11 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
 #[derive(Debug, Clone)]
 pub enum Argument<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
-    Keyword(Context<'db, 'a>, &'a str, NodeRef<'db>),
+    Keyword {
+        context: Context<'db, 'a>,
+        key: &'a str,
+        node_ref: NodeRef<'db>,
+    },
     Inferred {
         inferred: Inferred<'db>,
         position: usize, // The position as a 1-based index
@@ -219,7 +223,10 @@ pub enum Argument<'db, 'a> {
         position: usize, // The position as a 1-based index
         node_ref: NodeRef<'db>,
     },
-    SlicesTuple(Context<'db, 'a>, Slices<'db, 'a>),
+    SlicesTuple {
+        context: Context<'db, 'a>,
+        slices: Slices<'db, 'a>,
+    },
 }
 
 impl<'db, 'a> Argument<'db, 'a> {
@@ -239,14 +246,14 @@ impl<'db, 'a> Argument<'db, 'a> {
     fn new_keyword_return(
         context: Context<'db, 'a>,
         file: &'db PythonFile,
-        name: &'a str,
+        key: &'a str,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
-        BaseArgumentReturn::Argument(Argument::Keyword(
+        BaseArgumentReturn::Argument(Argument::Keyword {
             context,
-            name,
-            NodeRef { file, node_index },
-        ))
+            key,
+            node_ref: NodeRef { file, node_index },
+        })
     }
 
     pub fn in_args_or_kwargs_and_arbitrary_len(&self) -> bool {
@@ -281,14 +288,16 @@ impl<'db, 'a> Argument<'db, 'a> {
                         result_context,
                     )
             }
-            Self::Keyword(context, _, reference) => {
+            Self::Keyword {
+                context, node_ref, ..
+            } => {
                 let mut i_s = i_s.with_context(*context);
-                reference
+                node_ref
                     .file
                     .inference(&mut i_s)
-                    .infer_expression_with_context(reference.as_expression(), result_context)
+                    .infer_expression_with_context(node_ref.as_expression(), result_context)
             }
-            Self::SlicesTuple(context, slices) => {
+            Self::SlicesTuple { context, slices } => {
                 let mut i_s = i_s.with_context(*context);
                 let parts = slices
                     .iter()
@@ -307,11 +316,11 @@ impl<'db, 'a> Argument<'db, 'a> {
     pub fn as_node_ref(&self) -> NodeRef<'db> {
         match &self {
             Self::Positional { node_ref, .. } => *node_ref,
-            Self::Keyword(_, _, node_ref) => *node_ref,
+            Self::Keyword { node_ref, .. } => *node_ref,
             Self::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }),
-            Self::SlicesTuple(_, slices) => todo!(),
+            Self::SlicesTuple { slices, .. } => todo!(),
         }
     }
 
@@ -324,13 +333,13 @@ impl<'db, 'a> Argument<'db, 'a> {
             Self::Positional { position, .. } | Self::Inferred { position, .. } => {
                 format!("{position}")
             }
-            Self::Keyword(_, kw, _) => format!("{kw:?}"),
-            Self::SlicesTuple(_, _) => todo!(),
+            Self::Keyword { key, .. } => format!("{key:?}"),
+            Self::SlicesTuple { .. } => todo!(),
         }
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self, Self::Keyword(_, _, _))
+        matches!(self, Self::Keyword { .. })
     }
 }
 
@@ -485,9 +494,12 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         named_expr.index(),
                     ))
                 }
-                SliceTypeContent::Slices(slices) => Some(BaseArgumentReturn::Argument(
-                    Argument::SlicesTuple(*context, slices),
-                )),
+                SliceTypeContent::Slices(slices) => {
+                    Some(BaseArgumentReturn::Argument(Argument::SlicesTuple {
+                        context: *context,
+                        slices,
+                    }))
+                }
                 _ => todo!(),
             },
         }

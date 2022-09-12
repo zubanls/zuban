@@ -553,14 +553,14 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 }
-                Argument::Keyword(_, name, node) => match name {
+                Argument::Keyword { key, node_ref, .. } => match key {
                     "covariant" => {
-                        let code = node.as_expression().as_code();
+                        let code = node_ref.as_expression().as_code();
                         match code {
                             "True" => covariant = true,
                             "False" => (),
                             _ => {
-                                node.add_typing_issue(
+                                node_ref.add_typing_issue(
                                     i_s.db,
                                     IssueType::TypeVarVarianceMustBeBool {
                                         argument: "covariant",
@@ -571,12 +571,12 @@ pub fn maybe_type_var<'db>(
                         }
                     }
                     "contravariant" => {
-                        let code = node.as_expression().as_code();
+                        let code = node_ref.as_expression().as_code();
                         match code {
                             "True" => contravariant = true,
                             "False" => (),
                             _ => {
-                                node.add_typing_issue(
+                                node_ref.add_typing_issue(
                                     i_s.db,
                                     IssueType::TypeVarVarianceMustBeBool {
                                         argument: "contravariant",
@@ -588,13 +588,14 @@ pub fn maybe_type_var<'db>(
                     }
                     "bound" => {
                         if !restrictions.is_empty() {
-                            node.add_typing_issue(i_s.db, IssueType::TypeVarValuesAndUpperBound);
+                            node_ref
+                                .add_typing_issue(i_s.db, IssueType::TypeVarValuesAndUpperBound);
                             return None;
                         }
-                        if let Some(t) = node
+                        if let Some(t) = node_ref
                             .file
                             .inference(i_s)
-                            .compute_type_var_constraint(node.as_expression())
+                            .compute_type_var_constraint(node_ref.as_expression())
                         {
                             bound = Some(t)
                         } else {
@@ -602,17 +603,17 @@ pub fn maybe_type_var<'db>(
                         }
                     }
                     _ => {
-                        node.add_typing_issue(
+                        node_ref.add_typing_issue(
                             i_s.db,
                             IssueType::TypeVarUnexpectedArgument {
-                                argument_name: Box::from(name),
+                                argument_name: Box::from(key),
                             },
                         );
                         return None;
                     }
                 },
                 Argument::Inferred { .. } => unreachable!(),
-                Argument::SlicesTuple(_, slices) => return None,
+                Argument::SlicesTuple { slices, .. } => return None,
             }
         }
         if restrictions.len() == 1 {

@@ -658,8 +658,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn next_argument(&mut self, param: &FunctionParam<'db, 'a>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match &unused {
-                Argument::Keyword(_, name, reference) => {
-                    if *name == param.name(self.db).unwrap() {
+                Argument::Keyword { key, .. } => {
+                    if *key == param.name(self.db).unwrap() {
                         return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
                     }
                 }
@@ -670,8 +670,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             ParamKind::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
                     match argument {
-                        Argument::Keyword(_, name, reference) => {
-                            if name == param.name(self.db).unwrap() {
+                        Argument::Keyword { key, .. } => {
+                            if key == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
                                 self.unused_keyword_arguments.push(argument);
@@ -684,8 +684,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             ParamKind::KeywordOnly => {
                 for argument in &mut self.arguments {
                     match argument {
-                        Argument::Keyword(_, name, reference) => {
-                            if name == param.name(self.db).unwrap() {
+                        Argument::Keyword { key, .. } => {
+                            if key == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
                                 self.unused_keyword_arguments.push(argument);
