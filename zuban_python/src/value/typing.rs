@@ -5,7 +5,7 @@ use std::rc::Rc;
 use parsa_python_ast::PrimaryContent;
 
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
-use crate::arguments::{Argument, Arguments};
+use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, PointLink, Specific, TupleContent, TypeVar,
     TypeVarUsage, Variance,
@@ -334,7 +334,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         for arg in args.iter_arguments() {
             // TODO something like *Iterable[str] would loop forever
             match arg {
-                Argument::Positional {
+                ArgumentKind::Positional {
                     position, node_ref, ..
                 } => {
                     if position == 1 {
@@ -506,7 +506,7 @@ pub fn maybe_type_var<'db>(
 ) -> Option<TypeVar> {
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
-        let result = if let Argument::Positional { node_ref, .. } = first_arg {
+        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg {
             node_ref
                 .as_named_expression()
                 .maybe_single_string_literal()
@@ -543,7 +543,7 @@ pub fn maybe_type_var<'db>(
         let mut contravariant = false;
         for arg in iterator {
             match arg {
-                Argument::Positional { node_ref, .. } => {
+                ArgumentKind::Positional { node_ref, .. } => {
                     let mut inference = node_ref.file.inference(i_s);
                     if let Some(t) = inference
                         .compute_type_var_constraint(node_ref.as_named_expression().expression())
@@ -553,7 +553,7 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 }
-                Argument::Keyword { key, node_ref, .. } => match key {
+                ArgumentKind::Keyword { key, node_ref, .. } => match key {
                     "covariant" => {
                         let code = node_ref.as_expression().as_code();
                         match code {
@@ -612,8 +612,8 @@ pub fn maybe_type_var<'db>(
                         return None;
                     }
                 },
-                Argument::Inferred { .. } => unreachable!(),
-                Argument::SlicesTuple { slices, .. } => return None,
+                ArgumentKind::Inferred { .. } => unreachable!(),
+                ArgumentKind::SlicesTuple { slices, .. } => return None,
             }
         }
         if restrictions.len() == 1 {

@@ -7,7 +7,7 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
-use crate::arguments::{Argument, ArgumentIterator, Arguments, SimpleArguments};
+use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
     IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVar, TypeVarManager,
@@ -636,7 +636,7 @@ pub struct InferrableParamIterator<'db, 'a> {
     arguments: ArgumentIterator<'db, 'a>,
     params: ParamIterator<'db>,
     file: &'db PythonFile,
-    unused_keyword_arguments: Vec<Argument<'db, 'a>>,
+    unused_keyword_arguments: Vec<ArgumentKind<'db, 'a>>,
 }
 
 impl<'db, 'a> InferrableParamIterator<'db, 'a> {
@@ -658,7 +658,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn next_argument(&mut self, param: &FunctionParam<'db, 'a>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match &unused {
-                Argument::Keyword { key, .. } => {
+                ArgumentKind::Keyword { key, .. } => {
                     if *key == param.name(self.db).unwrap() {
                         return ParamInput::Argument(self.unused_keyword_arguments.remove(i));
                     }
@@ -670,7 +670,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             ParamKind::PositionalOrKeyword => {
                 for argument in &mut self.arguments {
                     match argument {
-                        Argument::Keyword { key, .. } => {
+                        ArgumentKind::Keyword { key, .. } => {
                             if key == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
@@ -684,7 +684,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
             ParamKind::KeywordOnly => {
                 for argument in &mut self.arguments {
                     match argument {
-                        Argument::Keyword { key, .. } => {
+                        ArgumentKind::Keyword { key, .. } => {
                             if key == param.name(self.db).unwrap() {
                                 return ParamInput::Argument(argument);
                             } else {
@@ -733,8 +733,8 @@ impl<'db, 'a> Iterator for InferrableParamIterator<'db, 'a> {
 
 #[derive(Debug)]
 enum ParamInput<'db, 'a> {
-    Argument(Argument<'db, 'a>),
-    Tuple(Box<[Argument<'db, 'a>]>),
+    Argument(ArgumentKind<'db, 'a>),
+    Tuple(Box<[ArgumentKind<'db, 'a>]>),
     None,
 }
 

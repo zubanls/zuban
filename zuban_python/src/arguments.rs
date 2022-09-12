@@ -205,7 +205,7 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
 }
 
 #[derive(Debug, Clone)]
-pub enum Argument<'db, 'a> {
+pub enum ArgumentKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword {
         context: Context<'db, 'a>,
@@ -229,14 +229,14 @@ pub enum Argument<'db, 'a> {
     },
 }
 
-impl<'db, 'a> Argument<'db, 'a> {
+impl<'db, 'a> ArgumentKind<'db, 'a> {
     fn new_positional_return(
         context: Context<'db, 'a>,
         position: usize,
         file: &'db PythonFile,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
-        BaseArgumentReturn::Argument(Argument::Positional {
+        BaseArgumentReturn::Argument(ArgumentKind::Positional {
             context,
             position,
             node_ref: NodeRef { file, node_index },
@@ -249,7 +249,7 @@ impl<'db, 'a> Argument<'db, 'a> {
         key: &'a str,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
-        BaseArgumentReturn::Argument(Argument::Keyword {
+        BaseArgumentReturn::Argument(ArgumentKind::Keyword {
             context,
             key,
             node_ref: NodeRef { file, node_index },
@@ -267,7 +267,7 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Argument<'db, 'a> {
+impl<'db, 'a> ArgumentKind<'db, 'a> {
     pub fn infer(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -358,7 +358,7 @@ enum ArgumentIteratorBase<'db, 'a> {
 
 enum BaseArgumentReturn<'db, 'a> {
     ArgsKwargs(ArgsKwargsIterator<'db, 'db>),
-    Argument(Argument<'db, 'a>),
+    Argument(ArgumentKind<'db, 'a>),
 }
 
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
@@ -430,7 +430,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
         match self {
             Self::Inferred(_, _) => {
                 if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
-                    Some(BaseArgumentReturn::Argument(Argument::Inferred {
+                    Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
                         inferred: inf.clone(),
                         position: 1, // TODO this is probably a bad assumption
                         node_ref,
@@ -444,7 +444,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 for (i, arg) in iterator {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
-                            return Some(Argument::new_positional_return(
+                            return Some(ArgumentKind::new_positional_return(
                                 i_s.context,
                                 i + 1,
                                 python_file,
@@ -452,7 +452,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             ))
                         }
                         ASTArgument::Keyword(name, expr) => {
-                            return Some(Argument::new_keyword_return(
+                            return Some(ArgumentKind::new_keyword_return(
                                 i_s.context,
                                 python_file,
                                 name.as_code(),
@@ -478,7 +478,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 None
             }
             Self::Comprehension(context, file, comprehension) => Some(
-                Argument::new_positional_return(*context, 1, file, comprehension.index()),
+                ArgumentKind::new_positional_return(*context, 1, file, comprehension.index()),
             ),
             Self::Finished => None,
             Self::SliceType(context, slice_type) => match slice_type.unpack() {
@@ -487,7 +487,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     let named_expr = s.named_expr;
                     let context = *context;
                     *self = Self::Finished;
-                    Some(Argument::new_positional_return(
+                    Some(ArgumentKind::new_positional_return(
                         context,
                         1,
                         file,
@@ -495,7 +495,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     ))
                 }
                 SliceTypeContent::Slices(slices) => {
-                    Some(BaseArgumentReturn::Argument(Argument::SlicesTuple {
+                    Some(BaseArgumentReturn::Argument(ArgumentKind::SlicesTuple {
                         context: *context,
                         slices,
                     }))
@@ -558,7 +558,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
 }
 
 impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
-    type Item = Argument<'db, 'a>;
+    type Item = ArgumentKind<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.args_kwargs_iterator {
@@ -583,7 +583,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 position,
             } => {
                 if let Some(inferred) = iterator.next(self.current.expect_i_s()) {
-                    Some(Argument::Inferred {
+                    Some(ArgumentKind::Inferred {
                         inferred,
                         position: *position,
                         node_ref: Some(*node_ref),
