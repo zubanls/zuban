@@ -247,3 +247,107 @@ impl SymbolTable {
         self.symbols.get(&HashableRawStr::new(name))
     }
 }
+
+// SPECIAL: Copy of stdlib to be able to access the inner iter.
+pub struct Peekable<I: Iterator> {
+    pub iter: I,
+    /// Remember a peeked value, even if it was None.
+    peeked: Option<Option<I::Item>>,
+}
+
+impl<I: Iterator> Peekable<I> {
+    pub fn new(iter: I) -> Peekable<I> {
+        Peekable { iter, peeked: None }
+    }
+}
+
+// Peekable must remember if a None has been seen in the `.peek()` method.
+// It ensures that `.peek(); .peek();` or `.peek(); .next();` only advances the
+// underlying iterator at most once. This does not by itself make the iterator
+// fused.
+impl<I: Iterator> Iterator for Peekable<I> {
+    type Item = I::Item;
+
+    #[inline]
+    fn next(&mut self) -> Option<I::Item> {
+        match self.peeked.take() {
+            Some(v) => v,
+            None => self.iter.next(),
+        }
+    }
+
+    #[inline]
+    fn count(self) -> usize {
+        unreachable!()
+    }
+
+    #[inline]
+    fn nth(&mut self, n: usize) -> Option<I::Item> {
+        unreachable!()
+    }
+
+    #[inline]
+    fn last(self) -> Option<I::Item> {
+        unreachable!()
+    }
+
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let peek_len = match self.peeked {
+            Some(None) => return (0, Some(0)),
+            Some(Some(_)) => 1,
+            None => 0,
+        };
+        let (lo, hi) = self.iter.size_hint();
+        let lo = lo.saturating_add(peek_len);
+        let hi = match hi {
+            Some(x) => x.checked_add(peek_len),
+            None => None,
+        };
+        (lo, hi)
+    }
+
+    #[inline]
+    fn try_fold<B, F, R>(&mut self, init: B, f: F) -> R {
+        unreachable!()
+    }
+
+    #[inline]
+    fn fold<Acc, Fold>(self, init: Acc, fold: Fold) -> Acc {
+        unreachable!()
+    }
+}
+
+impl<I: Iterator> Peekable<I> {
+    #[inline]
+    pub fn peek(&mut self) -> Option<&I::Item> {
+        let iter = &mut self.iter;
+        self.peeked.get_or_insert_with(|| iter.next()).as_ref()
+    }
+
+    #[inline]
+    pub fn peek_mut(&mut self) -> Option<&mut I::Item> {
+        let iter = &mut self.iter;
+        self.peeked.get_or_insert_with(|| iter.next()).as_mut()
+    }
+
+    pub fn next_if(&mut self, func: impl FnOnce(&I::Item) -> bool) -> Option<I::Item> {
+        match self.next() {
+            Some(matched) if func(&matched) => Some(matched),
+            other => {
+                // Since we called `self.next()`, we consumed `self.peeked`.
+                assert!(self.peeked.is_none());
+                self.peeked = Some(other);
+                None
+            }
+        }
+    }
+
+    pub fn next_if_eq<T>(&mut self, expected: &T) -> Option<I::Item>
+    where
+        T: ?Sized,
+        I::Item: PartialEq<T>,
+    {
+        self.next_if(|next| next == expected)
+    }
+}

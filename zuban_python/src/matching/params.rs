@@ -5,6 +5,7 @@ use crate::arguments::{Argument, ArgumentIterator, ArgumentKind};
 use crate::database::{CallableParam, CallableParams, Database, DbType, PointLink, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
+use crate::utils::Peekable;
 use crate::value::ParamWithArgument;
 
 pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
@@ -27,7 +28,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
 ) -> Match {
     if let Some(params1) = params1 {
         if let Some(params2) = params2 {
-            let mut params2 = params2.peekable();
+            let mut params2 = Peekable::new(params2);
             let mut matches = Match::True;
             let mut unused_keyword_params: Vec<P2> = vec![];
 
@@ -312,7 +313,7 @@ impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
 
 pub struct InferrableParamIterator2<'db, 'a, I, P> {
     db: &'db Database,
-    pub arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+    pub arguments: Peekable<ArgumentIterator<'db, 'a>>,
     params: I,
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<P>,
@@ -324,7 +325,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     pub fn new(
         db: &'db Database,
         params: I,
-        arguments: std::iter::Peekable<ArgumentIterator<'db, 'a>>,
+        arguments: Peekable<ArgumentIterator<'db, 'a>>,
     ) -> Self {
         Self {
             db,

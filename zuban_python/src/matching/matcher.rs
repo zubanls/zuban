@@ -14,6 +14,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
+use crate::utils::Peekable;
 use crate::value::{Class, Function, OnTypeError, Value};
 
 #[derive(Debug, Clone, Copy)]
@@ -689,7 +690,7 @@ fn calculate_type_vars<'db>(
                     InferrableParamIterator2::new(
                         i_s.db,
                         params.iter(),
-                        args.iter_arguments().peekable(),
+                        Peekable::new(args.iter_arguments()),
                     ),
                 )
             } else {
