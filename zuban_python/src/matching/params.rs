@@ -485,7 +485,7 @@ pub struct InferrableParam2<'db, 'a, P> {
 }
 
 impl<'db, 'a, P> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a, P> {
-    fn argument_index(&self) -> String {
-        self.argument.as_ref().unwrap().index()
+    fn human_readable_argument_index(&self) -> String {
+        self.argument.as_ref().unwrap().human_readable_index()
     }
 }

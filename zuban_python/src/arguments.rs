@@ -315,7 +315,7 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
-    pub fn index(&self) -> String {
+    pub fn human_readable_index(&self) -> String {
         match self {
             Self::Positional { position, .. } | Self::Inferred { position, .. } => {
                 format!("{position}")

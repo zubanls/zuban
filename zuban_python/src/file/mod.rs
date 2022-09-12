@@ -1189,10 +1189,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                 match function {
                                     Some(function) => format!(
                                         "{} to {}",
-                                        p.argument_index(),
+                                        p.human_readable_argument_index(),
                                         function.diagnostic_string(class),
                                     ),
-                                    None => p.argument_index(),
+                                    None => p.human_readable_argument_index(),
                                 },
                             )
                             .into(),
