@@ -332,6 +332,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         let mut count = 0;
         let mut had_non_positional = false;
         for arg in args.iter_arguments() {
+            // TODO something like *Iterable[str] would loop forever
             match arg {
                 Argument::Positional {
                     position, node_ref, ..
