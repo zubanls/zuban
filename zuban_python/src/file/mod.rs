@@ -1342,7 +1342,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         }
         let content = TupleContent {
-            generics: (!generics.is_empty()).then(|| GenericsList::generics_from_vec(generics)),
+            generics: Some(GenericsList::generics_from_vec(generics)),
             arbitrary_length: false,
         };
         debug!(
