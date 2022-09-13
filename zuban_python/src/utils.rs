@@ -250,7 +250,7 @@ impl SymbolTable {
 
 // SPECIAL: Copy of stdlib to be able to access the inner iter.
 pub struct Peekable<I: Iterator> {
-    pub iter: I,
+    iter: I,
     /// Remember a peeked value, even if it was None.
     peeked: Option<Option<I::Item>>,
 }
@@ -258,6 +258,12 @@ pub struct Peekable<I: Iterator> {
 impl<I: Iterator> Peekable<I> {
     pub fn new(iter: I) -> Peekable<I> {
         Peekable { iter, peeked: None }
+    }
+
+    pub fn as_inner_mut(&mut self) -> &mut I {
+        // Must never be Some(...), otherwise a value will be returned after changing the iterator.
+        debug_assert!(self.peeked.is_none());
+        &mut self.iter
     }
 }
 
