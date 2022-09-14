@@ -155,7 +155,7 @@ impl<'db> IteratorContent<'db, '_> {
         match self {
             Self::Inferred(_) | Self::Any => None,
             Self::TupleGenerics(t) => Some(t.len()),
-            Self::ListLiteral(_, iterator) => todo!(),
+            Self::ListLiteral(_, iterator) => None,
             Self::Empty => Some(0),
         }
     }

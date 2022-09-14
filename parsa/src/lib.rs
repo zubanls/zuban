@@ -122,7 +122,7 @@ macro_rules! create_terminals {
 
 #[macro_export]
 macro_rules! __create_node {
-    (struct $Node:ident, enum $NodeType:ident, enum $NonterminalType:ident,
+    ($Tree:ident, struct $Node:ident, enum $NodeType:ident, enum $NonterminalType:ident,
             $TerminalType:ident, [$($entry:tt)*]) => {
         $crate::__create_type_set!(enum $NonterminalType, $crate::InternalStrToNode,
                                    $crate::InternalNonterminalType, $crate::NODE_START, $($entry)*);
@@ -407,6 +407,16 @@ macro_rules! __create_node {
             ended: bool,
         }
 
+        impl<'a> SiblingIterator<'a> {
+            pub fn new_empty(tree: &'a $Tree) -> Self {
+                Self {
+                    internal_tree: &tree.internal_tree,
+                    next_index: 0,
+                    ended: true,
+                }
+            }
+        }
+
         impl<'a> Iterator for SiblingIterator<'a> {
             type Item = $Node<'a>;
 
@@ -653,7 +663,7 @@ macro_rules! create_grammar {
      soft_keywords=[$($soft_keywords:tt)*]
      $first_node:ident $($rule:tt)+) => {
 
-        $crate::__create_node!(struct $Node, enum $NodeType, enum $NonterminalType, $TerminalType,
+        $crate::__create_node!($Tree, struct $Node, enum $NodeType, enum $NonterminalType, $TerminalType,
                                [rules_to_nodes=$first_node $($rule)+]);
 
         pub struct $Grammar {

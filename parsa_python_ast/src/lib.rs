@@ -507,6 +507,12 @@ impl<'db> List<'db> {
 #[derive(Debug)]
 pub struct ListOrSetElementIterator<'db>(StepBy<SiblingIterator<'db>>);
 
+impl<'db> ListOrSetElementIterator<'db> {
+    pub fn new_empty(tree: &'db Tree) -> Self {
+        Self(SiblingIterator::new_empty(&tree.0).step_by(2))
+    }
+}
+
 impl<'db> Iterator for ListOrSetElementIterator<'db> {
     type Item = StarLikeExpression<'db>;
     fn next(&mut self) -> Option<Self::Item> {

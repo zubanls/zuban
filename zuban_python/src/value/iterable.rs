@@ -1,4 +1,7 @@
-use parsa_python_ast::{Dict, DictElement, Expression, List, NamedExpression, StarLikeExpression};
+use parsa_python_ast::{
+    Dict, DictElement, Expression, List, ListOrSetElementIterator, NamedExpression,
+    StarLikeExpression,
+};
 
 use super::{Class, Instance, IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{ComplexPoint, DbType, GenericsList, Locality};
@@ -105,7 +108,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
     ) -> IteratorContent<'db, 'a> {
         match self.list_node().unpack() {
             Some(elements) => IteratorContent::ListLiteral(*self, elements),
-            None => IteratorContent::Empty,
+            // TODO shouldn't this be IteratorContent::Empty, ???
+            None => IteratorContent::ListLiteral(
+                *self,
+                ListOrSetElementIterator::new_empty(&self.node_ref.file.tree),
+            ),
         }
     }
 
