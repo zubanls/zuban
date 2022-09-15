@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamKind;
 
 use super::{Match, TypeVarMatcher};
-use crate::arguments::{Argument, ArgumentIterator, ArgumentKind};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{CallableParam, CallableParams, Database, DbType, PointLink, Variance};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
@@ -322,14 +322,10 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
 }
 
 impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
-    pub fn new(
-        db: &'db Database,
-        params: I,
-        arguments: Peekable<ArgumentIterator<'db, 'a>>,
-    ) -> Self {
+    pub fn new(db: &'db Database, params: I, arguments: &'a dyn Arguments<'db>) -> Self {
         Self {
             db,
-            arguments,
+            arguments: Peekable::new(arguments.iter_arguments()),
             params,
             unused_keyword_arguments: vec![],
             current_starred_param: None,

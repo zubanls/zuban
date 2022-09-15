@@ -27,7 +27,6 @@ use crate::matching::{
     TypeVarMatcher,
 };
 use crate::node_ref::NodeRef;
-use crate::utils::Peekable;
 use crate::value::Class;
 
 #[derive(Clone, Copy)]
@@ -107,7 +106,7 @@ impl<'db, 'a> Function<'db, 'a> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(db, params, Peekable::new(args.iter_arguments()))
+        InferrableParamIterator2::new(db, params, args)
     }
 
     pub fn infer_param(
