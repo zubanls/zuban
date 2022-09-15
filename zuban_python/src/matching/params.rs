@@ -319,6 +319,7 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
+    has_star_args_after_keyword_arg: bool,
 }
 
 impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
@@ -331,6 +332,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
             current_starred_param: None,
             current_double_starred_param: None,
             too_many_positional_arguments: false,
+            has_star_args_after_keyword_arg: arguments.has_star_args_after_keyword_arg(),
         }
     }
 
