@@ -49,6 +49,18 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
                 i_s: self.i_s.clone(),
                 file: self.file,
                 iterator: arguments.iter().enumerate(),
+                kwargs_before_star_args: {
+                    let mut iterator = arguments.iter();
+                    if iterator.any(|arg| matches!(arg, ASTArgument::Keyword(_, _))) {
+                        if iterator.any(|arg| matches!(arg, ASTArgument::Starred(_))) {
+                            Some(vec![])
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                },
             },
             ArgumentsDetails::Comprehension(comprehension) => {
                 ArgumentIteratorBase::Comprehension(self.i_s.context, self.file, comprehension)
@@ -373,6 +385,7 @@ enum ArgumentIteratorBase<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         file: &'db PythonFile,
         iterator: std::iter::Enumerate<ArgumentsIterator<'a>>,
+        kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
     Comprehension(Context<'db, 'a>, &'db PythonFile, Comprehension<'a>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
@@ -405,6 +418,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 mut i_s,
                 file,
                 iterator,
+                ..
             } => iterator
                 .map(|(_, arg)| {
                     let mut prefix = "".to_owned();
@@ -472,6 +486,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 i_s,
                 file,
                 iterator,
+                kwargs_before_star_args,
             } => {
                 for (i, arg) in iterator {
                     match arg {
@@ -484,12 +499,16 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             ))
                         }
                         ASTArgument::Keyword(name, expr) => {
-                            return Some(ArgumentKind::new_keyword_return(
-                                i_s.context,
-                                file,
-                                name.as_code(),
-                                expr.index(),
-                            ))
+                            if let Some(kwargs_before_star_args) = kwargs_before_star_args {
+                                kwargs_before_star_args.push(arg);
+                            } else {
+                                return Some(ArgumentKind::new_keyword_return(
+                                    i_s.context,
+                                    file,
+                                    name.as_code(),
+                                    expr.index(),
+                                ));
+                            }
                         }
                         ASTArgument::Starred(starred_expr) => {
                             let inf = file
@@ -505,6 +524,21 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             ));
                         }
                         ASTArgument::DoubleStarred(expr) => todo!("**kwargs"),
+                    }
+                }
+                if let Some(kwargs_before_star_args) = kwargs_before_star_args {
+                    if let Some(kwarg_before_star_args) = kwargs_before_star_args.pop() {
+                        match kwarg_before_star_args {
+                            ASTArgument::Keyword(name, expr) => {
+                                return Some(ArgumentKind::new_keyword_return(
+                                    i_s.context,
+                                    file,
+                                    name.as_code(),
+                                    expr.index(),
+                                ))
+                            }
+                            _ => unreachable!(),
+                        }
                     }
                 }
                 None
