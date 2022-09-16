@@ -1274,8 +1274,23 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
                     return result.save_redirect(self.file, atom.index());
+                } else if self.i_s.db.python_state.mypy_compatible {
+                    let result = match list.unpack() {
+                        Some(elements) => self
+                            .file
+                            .inference(self.i_s)
+                            .create_list_or_set_generics(elements),
+                        None => DbType::Any, // TODO shouldn't this be Never?
+                    };
+                    return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        DbType::Class(
+                            self.i_s.db.python_state.builtins_point_link("list"),
+                            Some(GenericsList::new_generics(Box::new([result]))),
+                        ),
+                    )));
                 } else {
-                    Specific::List
+                    todo!();
+                    //Specific::List
                 }
             }
             ListComprehension(_) => Specific::List,
