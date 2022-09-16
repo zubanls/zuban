@@ -208,6 +208,10 @@ testBadOverloadProbableMatch
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
+# bottom up inference for tuple with *args
+testCallerVarArgsListWithTypeInference
+testCallerVarArgsTupleWithTypeInference
+testCallerVarargsAndComplexTypeInference
 # bottom up inference list multiply
 testListMultiplyInContext
 # bottom up dict
@@ -805,16 +809,13 @@ testInvalidVarArg
 testCallingVarArgsFunctionWithListVarArgs
 testDynamicVarArg
 testCallerVarArgsAndDefaultArgs
-testCallerVarArgsListWithTypeInference
-testCallerVarArgsTupleWithTypeInference
-testCallerVarargsAndComplexTypeInference
 testCallerTupleVarArgsAndGenericCalleeVarArg
-testInvariantTypeConfusingNames2
-testInvalidTypevarValues
 testOverloadWithOverlappingItemsAndAnyArgument6
 testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
 testOverloadVarargsSelection
+# *args on TypeVar
+testInvalidTypevarValues
 
 # **kwargs input
 testKwargsAfterBareArgs
