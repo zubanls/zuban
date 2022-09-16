@@ -341,10 +341,15 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     }
 
     pub fn has_unused_arguments(&mut self) -> bool {
-        self.arguments
-            .peek()
-            .map(|arg| !arg.in_args_or_kwargs_and_arbitrary_len())
-            .unwrap_or(false)
+        while let Some(arg) = self.arguments.peek() {
+            if arg.in_args_or_kwargs_and_arbitrary_len() {
+                self.arguments.next();
+                self.arguments.as_inner_mut().drop_args_kwargs_iterator()
+            } else {
+                return true;
+            }
+        }
+        false
     }
 }
 
