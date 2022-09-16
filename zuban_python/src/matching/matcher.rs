@@ -883,7 +883,10 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     ArgumentKind::Keyword { key, node_ref, .. } => {
                         add_keyword_argument_issue(node_ref, key)
                     }
-                    _ => too_many = true,
+                    _ => {
+                        too_many = true;
+                        break;
+                    }
                 }
             }
             if too_many {
