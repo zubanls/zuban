@@ -319,7 +319,6 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
-    has_star_args_after_keyword_arg: bool,
 }
 
 impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
@@ -332,7 +331,6 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
             current_starred_param: None,
             current_double_starred_param: None,
             too_many_positional_arguments: false,
-            has_star_args_after_keyword_arg: arguments.has_star_args_after_keyword_arg(),
         }
     }
 
@@ -407,9 +405,7 @@ where
                     for arg in &mut self.arguments {
                         match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
-                                if Some(key) == param.name(self.db)
-                                    && !self.has_star_args_after_keyword_arg
-                                {
+                                if Some(key) == param.name(self.db) {
                                     argument_with_index = Some(arg);
                                     break;
                                 } else {
@@ -432,9 +428,7 @@ where
                     while let Some(arg) = self.arguments.next() {
                         match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
-                                if Some(key) == param.name(self.db)
-                                    && !self.has_star_args_after_keyword_arg
-                                {
+                                if Some(key) == param.name(self.db) {
                                     argument_with_index = Some(arg);
                                     break;
                                 } else {
@@ -476,21 +470,6 @@ where
                 ParamKind::DoubleStarred => {
                     self.current_double_starred_param = Some(param);
                     return self.next();
-                }
-            }
-            if self.has_star_args_after_keyword_arg && argument_with_index.is_none() {
-                for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
-                    match &unused.kind {
-                        ArgumentKind::Keyword { key, .. } => {
-                            if Some(*key) == param.name(self.db) {
-                                return Some(InferrableParam2 {
-                                    param,
-                                    argument: Some(self.unused_keyword_arguments.remove(i)),
-                                });
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
                 }
             }
             Some(

@@ -26,9 +26,6 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType<'db>;
     fn as_node_ref(&self) -> NodeRef<'db>;
-    fn has_star_args_after_keyword_arg(&self) -> bool {
-        false
-    }
 }
 
 #[derive(Debug)]
@@ -89,21 +86,6 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 
     fn as_node_ref(&self) -> NodeRef<'db> {
         NodeRef::new(self.file, self.primary_node_index)
-    }
-
-    fn has_star_args_after_keyword_arg(&self) -> bool {
-        match self.details {
-            ArgumentsDetails::Node(arguments) => {
-                let mut iterator = arguments.iter();
-                if iterator.any(|arg| matches!(arg, ASTArgument::Keyword(_, _))) {
-                    iterator.any(|arg| matches!(arg, ASTArgument::Starred(_)))
-                } else {
-                    false
-                }
-            }
-            ArgumentsDetails::Comprehension(_) => false,
-            ArgumentsDetails::None => false,
-        }
     }
 }
 
@@ -225,10 +207,6 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
 
     fn as_node_ref(&self) -> NodeRef<'db> {
         self.args2.as_node_ref()
-    }
-
-    fn has_star_args_after_keyword_arg(&self) -> bool {
-        self.args1.has_star_args_after_keyword_arg() && self.args2.has_star_args_after_keyword_arg()
     }
 }
 
