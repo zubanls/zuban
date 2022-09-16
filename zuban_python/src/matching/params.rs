@@ -424,17 +424,25 @@ where
                     }
                 }
                 ParamKind::KeywordOnly => {
-                    for arg in &mut self.arguments {
+                    while let Some(arg) = self.arguments.next() {
                         match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
-                                if Some(key) == param.name(self.db) {
+                                if Some(key) == param.name(self.db)
+                                    && !self.has_star_args_after_keyword_arg
+                                {
                                     argument_with_index = Some(arg);
                                     break;
                                 } else {
                                     self.unused_keyword_arguments.push(arg);
                                 }
                             }
-                            _ => self.too_many_positional_arguments = true,
+                            _ => {
+                                if arg.in_args_or_kwargs_and_arbitrary_len() {
+                                    self.arguments.as_inner_mut().drop_args_kwargs_iterator()
+                                } else {
+                                    self.too_many_positional_arguments = true;
+                                }
+                            }
                         }
                     }
                     if argument_with_index.is_none() {
