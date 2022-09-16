@@ -21,6 +21,8 @@ pub enum ArgumentsType<'db> {
 }
 
 pub trait Arguments<'db>: std::fmt::Debug {
+    // Returns an iterator of arguments, where args are returned before kw args.
+    // This is not the case in the grammar, but here we want that.
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Option<Execution>;
