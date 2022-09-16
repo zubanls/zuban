@@ -244,6 +244,7 @@ testNewAnalyzerBool
 testNoneHasBool
 testNoneHasBoolShowNoneErrorsFalse
 testLiteral*
+testCallerTupleVarArgsAndGenericCalleeVarArg
 
 # int -> float promotion
 testNewAnalyzerPromotion
@@ -805,11 +806,7 @@ testMultipassAndCircularDependency
 *DunderNew*
 
 # *args input
-testInvalidVarArg
-testCallingVarArgsFunctionWithListVarArgs
 testDynamicVarArg
-testCallerVarArgsAndDefaultArgs
-testCallerTupleVarArgsAndGenericCalleeVarArg
 testOverloadWithOverlappingItemsAndAnyArgument6
 testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
@@ -858,6 +855,7 @@ testKeywordArgAfterVarArgs
 testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
 testCallingFunctionsWithDefaultArgumentValues
 testPartiallyInitializedVariableDoesNotEscapeScope2
+testCallerVarArgsAndDefaultArgs
 
 # None late binding, because it's None (x = None; x = 3)
 testAssigningAnyStrToNone
