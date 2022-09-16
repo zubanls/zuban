@@ -798,8 +798,8 @@ testMultipassAndCircularDependency
 # __new__
 *DunderNew*
 
+testVarArgsAfterKeywordArgInCall4
 # *args input
-testVarArgsAfterKeywordArgInCall2
 testInvalidVarArg
 testCallingVarArgsFunctionWithListVarArgs
 testCallingVarArgsFunctionWithTupleVarArgs

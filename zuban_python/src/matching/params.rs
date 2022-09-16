@@ -379,20 +379,23 @@ where
                 self.current_double_starred_param = None;
             }
         }
-        self.params.next().and_then(|param| {
-            for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
+        let check_unused = |self_: &mut Self, param: P| {
+            for (i, unused) in self_.unused_keyword_arguments.iter().enumerate() {
                 match &unused.kind {
                     ArgumentKind::Keyword { key, .. } => {
-                        if Some(*key) == param.name(self.db) {
+                        if Some(*key) == param.name(self_.db) {
                             return Some(InferrableParam2 {
                                 param,
-                                argument: Some(self.unused_keyword_arguments.remove(i)),
+                                argument: Some(self_.unused_keyword_arguments.remove(i)),
                             });
                         }
                     }
                     _ => unreachable!(),
                 }
             }
+            None
+        };
+        self.params.next().and_then(|param| {
             let mut argument_with_index = None;
             match param.kind(self.db) {
                 ParamKind::PositionalOrKeyword => {
@@ -414,6 +417,11 @@ where
                             }
                         }
                     }
+                    if argument_with_index.is_none() {
+                        if let Some(p) = check_unused(self, param) {
+                            return Some(p);
+                        }
+                    }
                 }
                 ParamKind::KeywordOnly => {
                     for arg in &mut self.arguments {
@@ -427,6 +435,11 @@ where
                                 }
                             }
                             _ => self.too_many_positional_arguments = true,
+                        }
+                    }
+                    if argument_with_index.is_none() {
+                        if let Some(p) = check_unused(self, param) {
+                            return Some(p);
                         }
                     }
                 }
