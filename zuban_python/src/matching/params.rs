@@ -399,7 +399,9 @@ where
                     for arg in &mut self.arguments {
                         match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
-                                if Some(key) == param.name(self.db) {
+                                if Some(key) == param.name(self.db)
+                                    && !self.has_star_args_after_keyword_arg
+                                {
                                     argument_with_index = Some(arg);
                                     break;
                                 } else {
@@ -448,6 +450,21 @@ where
                 ParamKind::DoubleStarred => {
                     self.current_double_starred_param = Some(param);
                     return self.next();
+                }
+            }
+            if self.has_star_args_after_keyword_arg && argument_with_index.is_none() {
+                for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
+                    match &unused.kind {
+                        ArgumentKind::Keyword { key, .. } => {
+                            if Some(*key) == param.name(self.db) {
+                                return Some(InferrableParam2 {
+                                    param,
+                                    argument: Some(self.unused_keyword_arguments.remove(i)),
+                                });
+                            }
+                        }
+                        _ => unreachable!(),
+                    }
                 }
             }
             Some(

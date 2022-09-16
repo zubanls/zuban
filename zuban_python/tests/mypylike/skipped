@@ -799,6 +799,7 @@ testMultipassAndCircularDependency
 *DunderNew*
 
 # *args input
+testVarArgsAfterKeywordArgInCall2
 testInvalidVarArg
 testCallingVarArgsFunctionWithListVarArgs
 testCallingVarArgsFunctionWithTupleVarArgs
