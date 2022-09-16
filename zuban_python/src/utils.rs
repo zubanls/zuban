@@ -249,6 +249,7 @@ impl SymbolTable {
 }
 
 // SPECIAL: Copy of stdlib to be able to access the inner iter.
+#[derive(Debug)]
 pub struct Peekable<I: Iterator> {
     iter: I,
     /// Remember a peeked value, even if it was None.
