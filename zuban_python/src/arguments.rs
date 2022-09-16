@@ -45,11 +45,11 @@ pub struct SimpleArguments<'db, 'a> {
 impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::new(match self.details {
-            ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator(
-                self.i_s.clone(),
-                self.file,
-                arguments.iter().enumerate(),
-            ),
+            ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator {
+                i_s: self.i_s.clone(),
+                file: self.file,
+                iterator: arguments.iter().enumerate(),
+            },
             ArgumentsDetails::Comprehension(comprehension) => {
                 ArgumentIteratorBase::Comprehension(self.i_s.context, self.file, comprehension)
             }
@@ -369,11 +369,11 @@ impl<'db, 'a> Argument<'db, 'a> {
 
 #[derive(Debug)]
 enum ArgumentIteratorBase<'db, 'a> {
-    Iterator(
-        InferenceState<'db, 'a>,
-        &'db PythonFile,
-        std::iter::Enumerate<ArgumentsIterator<'a>>,
-    ),
+    Iterator {
+        i_s: InferenceState<'db, 'a>,
+        file: &'db PythonFile,
+        iterator: std::iter::Enumerate<ArgumentsIterator<'a>>,
+    },
     Comprehension(Context<'db, 'a>, &'db PythonFile, Comprehension<'a>),
     Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
     SliceType(Context<'db, 'a>, SliceType<'db, 'a>),
@@ -387,7 +387,7 @@ enum BaseArgumentReturn<'db, 'a> {
 
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     fn expect_i_s(&mut self) -> &mut InferenceState<'db, 'a> {
-        if let Self::Iterator(i_s, ..) = self {
+        if let Self::Iterator { i_s, .. } = self {
             i_s
         } else {
             unreachable!()
@@ -401,10 +401,14 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 //      vec![inf.class_as_type(i_s).format(i_s, None, FormatStyle::Short)]
                 vec![]
             }
-            Self::Iterator(mut i_s, python_file, iterator) => iterator
+            Self::Iterator {
+                mut i_s,
+                file,
+                iterator,
+            } => iterator
                 .map(|(_, arg)| {
                     let mut prefix = "".to_owned();
-                    let mut inference = python_file.inference(&mut i_s);
+                    let mut inference = file.inference(&mut i_s);
                     let inf = match arg {
                         ASTArgument::Positional(named_expr) => {
                             inference.infer_named_expression(named_expr)
@@ -464,30 +468,34 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     unreachable!()
                 }
             }
-            Self::Iterator(i_s, python_file, iterator) => {
+            Self::Iterator {
+                i_s,
+                file,
+                iterator,
+            } => {
                 for (i, arg) in iterator {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
                             return Some(ArgumentKind::new_positional_return(
                                 i_s.context,
                                 i + 1,
-                                python_file,
+                                file,
                                 named_expr.index(),
                             ))
                         }
                         ASTArgument::Keyword(name, expr) => {
                             return Some(ArgumentKind::new_keyword_return(
                                 i_s.context,
-                                python_file,
+                                file,
                                 name.as_code(),
                                 expr.index(),
                             ))
                         }
                         ASTArgument::Starred(starred_expr) => {
-                            let inf = python_file
+                            let inf = file
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
-                            let node_ref = NodeRef::new(python_file, starred_expr.index());
+                            let node_ref = NodeRef::new(file, starred_expr.index());
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Args {
                                     iterator: inf.save_and_iter(i_s, node_ref),
