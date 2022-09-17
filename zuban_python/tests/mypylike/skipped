@@ -3,6 +3,11 @@ testCallableTypeAnalysis
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
+# **kwargs input
+testPassingMappingForKeywordVarArg
+testPassingMappingSubclassForKeywordVarArg
+testStar2Context
+
 # --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
@@ -36,6 +41,14 @@ testInheritedConstructor2
 # Overloading
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
+# *args/**kwargs input use Any if length unclear
+testOverloadWithOverlappingItemsAndAnyArgument6
+testOverloadWithOverlappingItemsAndAnyArgument11
+# *args *params should be preferred in overload
+testOverloadVarargInputAndVarargDefinition
+testOverloadMultipleVarargDefinition
+testOverloadVarargsSelection
+testOverloadVarargsAndKwargsSelection
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
@@ -205,6 +218,9 @@ testCallableListJoinInference
 testPreferExactSignatureMatchInOverload
 # Overload inference of list multiple times
 testBadOverloadProbableMatch
+
+# *args on TypeVar
+testInvalidTypevarValues
 
 # Tuple type var context
 testInferenceWithTypeVariableTwiceInReturnType
@@ -808,22 +824,6 @@ testMultipassAndCircularDependency
 
 # __new__
 *DunderNew*
-
-# *args/**kwargs input use Any if length unclear
-testOverloadWithOverlappingItemsAndAnyArgument6
-testOverloadWithOverlappingItemsAndAnyArgument11
-# *args *params should be preferred in overload
-testOverloadVarargInputAndVarargDefinition
-testOverloadMultipleVarargDefinition
-testOverloadVarargsSelection
-# *args on TypeVar
-testInvalidTypevarValues
-
-# **kwargs input
-testPassingMappingForKeywordVarArg
-testPassingMappingSubclassForKeywordVarArg
-testOverloadVarargsAndKwargsSelection
-testStar2Context
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
