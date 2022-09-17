@@ -131,6 +131,7 @@ testMisguidedSetItem
 
 # Duplicate in Union
 testUnificationRedundantUnion
+testSimplifyingUnionWithTypeTypes1
 
 # Union Not matching type vars
 testJoinUnionWithUnionAndAny

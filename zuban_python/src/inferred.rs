@@ -129,6 +129,17 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn class_as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
+        match self.state {
+            InferredState::Saved(definition, _) => {
+                if let Some(ComplexPoint::TypeInstance(ref t)) = definition.complex() {
+                    return Type::new(t);
+                }
+            }
+            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(ref t)) => {
+                return Type::new(t)
+            }
+            _ => (),
+        };
         self.internal_run(
             i_s,
             &mut |i_s, v| v.as_type(i_s),
