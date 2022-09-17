@@ -22,6 +22,7 @@ pub struct PythonState {
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
+    typing_mapping_index: NodeIndex,
     types_module_type_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
@@ -48,6 +49,7 @@ impl PythonState {
             builtins_tuple_index: 0,
             builtins_base_exception_index: 0,
             types_module_type_index: 0,
+            typing_mapping_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -78,6 +80,7 @@ impl PythonState {
         s.types = types;
         s.mypy_extensions = mypy_extensions;
         let builtins = s.builtins();
+        let typing = s.typing();
 
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
@@ -86,6 +89,7 @@ impl PythonState {
             .symbol_table
             .lookup_symbol("BaseException")
             .unwrap();
+        let typing_mapping_name_index = typing.symbol_table.lookup_symbol("Mapping").unwrap();
         let module_type_name_index = s.types().symbol_table.lookup_symbol("ModuleType").unwrap();
 
         s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
@@ -95,6 +99,12 @@ impl PythonState {
             .builtins()
             .points
             .get(base_exception_name_index - 1)
+            .node_index();
+
+        s.typing_mapping_index = s
+            .typing()
+            .points
+            .get(typing_mapping_name_index - 1)
             .node_index();
         s.types_module_type_index = s
             .types()
@@ -229,6 +239,10 @@ impl PythonState {
         debug_assert!(self.types_module_type_index != 0);
         let node_ref = NodeRef::new(self.types(), self.types_module_type_index);
         Class::from_position(node_ref, Generics::None, None).unwrap()
+    }
+
+    pub fn mapping_node_ref(&self) -> NodeRef {
+        NodeRef::new(self.typing(), self.typing_mapping_index)
     }
 
     pub fn mypy_extensions_arg_func<'x>(&self, specific: Specific) -> Function<'_, 'x> {

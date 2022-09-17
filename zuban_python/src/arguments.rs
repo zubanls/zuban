@@ -507,12 +507,28 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(double_starred_expr.expression());
-                            let type_ = inf.class_as_db_type(i_s);
+                            let type_ = inf.class_as_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
-                            let t = todo!();
+                            let mut value_type = None;
+                            if let Some(mro) = type_.mro(i_s) {
+                                for (_, t) in mro {
+                                    if let Some(class) = t.maybe_class(i_s.db) {
+                                        if class.node_ref == i_s.db.python_state.mapping_node_ref()
+                                        {
+                                            value_type = Some(class.generics().nth(i_s, 1.into()));
+                                            break;
+                                        }
+                                    }
+                                }
+                            }
+                            let value_type = value_type.unwrap_or_else(|| {
+                                // TODO add diagnostic
+                                //DbType::Any
+                                todo!()
+                            });
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Kwargs {
-                                    inferred_value: Inferred::execute_db_type(i_s, t),
+                                    inferred_value: Inferred::execute_db_type(i_s, value_type),
                                     node_ref,
                                     position: i + 1,
                                 },

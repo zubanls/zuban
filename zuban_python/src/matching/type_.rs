@@ -424,7 +424,7 @@ impl<'db, 'a> Type<'db, 'a> {
         Match::new_false()
     }
 
-    fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
+    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
         match self {
             Self::Class(c) => Some(c.mro(i_s)),
             Self::Type(t) => match t.as_ref() {
