@@ -820,7 +820,6 @@ testOverloadVarargsSelection
 testInvalidTypevarValues
 
 # **kwargs input
-testKwargsAfterBareArgs
 testPassingMappingForKeywordVarArg
 testPassingMappingSubclassForKeywordVarArg
 testOverloadVarargsAndKwargsSelection

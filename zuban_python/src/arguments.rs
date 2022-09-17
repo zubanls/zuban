@@ -540,6 +540,8 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                         }
                                     }
                                 }
+                            } else if type_.maybe_db_type() == Some(&DbType::Any) {
+                                value_type = Some(DbType::Any);
                             }
                             let value_type = value_type.unwrap_or_else(|| {
                                 node_ref.add_typing_issue(
