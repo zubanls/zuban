@@ -360,7 +360,7 @@ impl<'db> Inferred<'db> {
                         i_s,
                         &use_instance(
                             *definition,
-                            generics.unwrap_or(Generics::None),
+                            generics.unwrap_or(Generics::Any),
                             Some(*instance),
                         ),
                     )
@@ -390,13 +390,13 @@ impl<'db> Inferred<'db> {
     }
 
     pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, 'db>> {
-        let mut generics = Generics::None;
+        let mut generics = None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
-                generics = Self::expect_generics(*definition, *point).unwrap_or(Generics::None);
+                generics = Self::expect_generics(*definition, *point);
             }
         }
-        self.maybe_class_internal(i_s, generics)
+        self.maybe_class_internal(i_s, generics.unwrap_or(Generics::Any))
     }
 
     fn maybe_class_internal<'a>(
@@ -802,7 +802,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
         PointType::Complex => {
             let complex = definition.file.complex_points.get(point.complex_index());
             if let ComplexPoint::Class(cls_storage) = complex {
-                let class = Class::new(*definition, cls_storage, Generics::None, None);
+                let class = Class::new(*definition, cls_storage, Generics::Any, None);
                 callable(i_s, &class)
             } else {
                 run_on_complex(

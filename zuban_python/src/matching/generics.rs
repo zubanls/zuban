@@ -92,10 +92,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 (*g).clone()
             }
             Self::Any => DbType::Any,
-            Self::None => {
-                debug!("No generics given, but {n:?} was requested");
-                todo!()
-            }
+            Self::None => unreachable!("No generics given, but {n:?} was requested"),
         }
     }
 
@@ -109,8 +106,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             }
             Self::List(l, t) => GenericsIterator::GenericsList(l.iter(), *t),
             Self::DbType(g) => GenericsIterator::DbType(g),
-            Self::None => GenericsIterator::None,
-            Self::Any => GenericsIterator::None,
+            Self::None | Self::Any => GenericsIterator::None,
         }
     }
 
@@ -146,11 +142,12 @@ impl<'db, 'a> Generics<'db, 'a> {
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics))
                     .collect(),
             ),
-            Self::None | Self::Any => GenericsList::new_generics(
+            Self::Any => GenericsList::new_generics(
                 std::iter::repeat(DbType::Any)
                     .take(type_vars.len())
                     .collect(),
             ),
+            Self::None => unreachable!(),
         })
     }
 

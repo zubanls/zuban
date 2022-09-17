@@ -154,7 +154,7 @@ impl<'db, 'a> Class<'db, 'a> {
             ParentScope::Class(node_index) => {
                 let parent_class = Self::from_position(
                     NodeRef::new(self.node_ref.file, node_index),
-                    Generics::None,
+                    Generics::Any, // TODO is this correct?
                     None,
                 )
                 .unwrap();
@@ -422,7 +422,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
             ParentScope::Class(node_index) => {
                 let parent_class = Self::from_position(
                     NodeRef::new(self.node_ref.file, node_index),
-                    Generics::None,
+                    Generics::Any,
                     None,
                 )
                 .unwrap();
@@ -599,8 +599,10 @@ impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
             r
         } else if !self.returned_object {
             self.returned_object = true;
-            Class::from_position(self.db.python_state.object(), Generics::None, None)
-                .map(|c| (MroIndex(self.mro_index), Type::Class(c)))
+            Some((
+                MroIndex(self.mro_index),
+                Type::Class(self.db.python_state.object_class()),
+            ))
         } else {
             None
         }

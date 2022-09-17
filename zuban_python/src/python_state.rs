@@ -211,7 +211,7 @@ impl PythonState {
         debug_assert!(self.builtins_tuple_index != 0);
         Class::from_position(
             NodeRef::new(self.builtins(), self.builtins_tuple_index),
-            Generics::None,
+            Generics::Any,
             None,
         )
         .unwrap()

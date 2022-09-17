@@ -717,7 +717,7 @@ impl DbType {
         let class_name = |link| {
             let class = Class::from_position(
                 NodeRef::from_link(format_data.db, link),
-                Generics::None,
+                Generics::Any,
                 None,
             )
             .unwrap();

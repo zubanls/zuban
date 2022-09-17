@@ -854,7 +854,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             }
         };
         let has_already_calculated_class_generics =
-            search_init && !matches!(class.unwrap().generics(), Generics::None);
+            search_init && !matches!(class.unwrap().generics(), Generics::None | Generics::Any);
         let handle_result = |i_s: &mut _, calculated_type_vars, function| {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {

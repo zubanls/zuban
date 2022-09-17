@@ -604,7 +604,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         slice_type: SliceType<'db, 'x>,
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'x> {
-        if !matches!(class.generics(), Generics::None) {
+        if !matches!(class.generics(), Generics::None | Generics::Any) {
             return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
         let type_vars = class.type_vars(self.inference.i_s);

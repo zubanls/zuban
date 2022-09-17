@@ -165,7 +165,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
         let class =
-            Class::from_position(NodeRef::new(self.file, class.index()), Generics::None, None)
+            Class::from_position(NodeRef::new(self.file, class.index()), Generics::Any, None)
                 .unwrap();
         // Make sure the type vars are properly pre-calculated
         class.class_infos(self.i_s);

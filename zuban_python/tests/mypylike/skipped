@@ -4,7 +4,6 @@ testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
 # **kwargs input
-testPassingMappingForKeywordVarArg
 testPassingMappingSubclassForKeywordVarArg
 
 # --enable-recursive-aliases
