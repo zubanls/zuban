@@ -773,8 +773,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                                 t1 = format!(
                                     "**{}",
                                     node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                                ).into();
-                                todo!()
+                                ).into()
                             }
                             match reason {
                                 MismatchReason::None => on_type_error(

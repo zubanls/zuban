@@ -231,6 +231,7 @@ pub enum ArgumentKind<'db, 'a> {
         position: usize, // The position as a 1-based index
         node_ref: Option<NodeRef<'db>>,
         in_args_or_kwargs_and_arbitrary_len: bool,
+        is_keyword: bool,
     },
     Positional {
         context: Context<'db, 'a>,
@@ -355,7 +356,14 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 
     pub fn is_keyword_argument(&self) -> bool {
-        matches!(self.kind, ArgumentKind::Keyword { .. })
+        matches!(
+            self.kind,
+            ArgumentKind::Keyword { .. }
+                | ArgumentKind::Inferred {
+                    is_keyword: true,
+                    ..
+                }
+        )
     }
 }
 
@@ -457,6 +465,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         position: 1, // TODO this is probably a bad assumption
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
+                        is_keyword: false,
                     }))
                 } else {
                     unreachable!()
@@ -674,6 +683,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                             position: *position,
                             node_ref: Some(*node_ref),
                             in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
+                            is_keyword: false,
                         },
                         index,
                     })
@@ -695,6 +705,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                         position: *position,
                         node_ref: Some(*node_ref),
                         in_args_or_kwargs_and_arbitrary_len: true,
+                        is_keyword: true,
                     },
                     index,
                 })

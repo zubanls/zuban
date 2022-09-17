@@ -374,6 +374,9 @@ where
         }
         if let Some(param) = self.current_double_starred_param {
             if let Some(argument) = self.arguments.next_if(|arg| arg.is_keyword_argument()) {
+                if argument.in_args_or_kwargs_and_arbitrary_len() {
+                    self.arguments.as_inner_mut().drop_args_kwargs_iterator()
+                }
                 return Some(InferrableParam2 {
                     param,
                     argument: Some(argument),
