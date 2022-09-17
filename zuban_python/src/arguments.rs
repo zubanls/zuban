@@ -3,12 +3,13 @@ use std::mem;
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, GenericsList, MroIndex, PointLink, TupleContent,
 };
+use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Function, IteratorContent};
 use parsa_python_ast::{
@@ -524,6 +525,16 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                     if let Some(class) = t.maybe_class(i_s.db) {
                                         if class.node_ref == i_s.db.python_state.mapping_node_ref()
                                         {
+                                            let key = class.generics().nth(i_s, 0.into());
+                                            let s = Type::Class(i_s.db.python_state.str());
+                                            if !Type::new(&key).is_same_type(i_s, None, &s).bool() {
+                                                node_ref.add_typing_issue(
+                                                    i_s.db,
+                                                    IssueType::ArgumentIssue(Box::from(
+                                                        "Keywords must be strings",
+                                                    )),
+                                                );
+                                            }
                                             value_type = Some(class.generics().nth(i_s, 1.into()));
                                             break;
                                         }
@@ -531,9 +542,17 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 }
                             }
                             let value_type = value_type.unwrap_or_else(|| {
-                                // TODO add diagnostic
-                                //DbType::Any
-                                todo!()
+                                node_ref.add_typing_issue(
+                                    i_s.db,
+                                    IssueType::ArgumentIssue(
+                                        format!(
+                                            "Argument after ** must be a mapping, not \"{}\"",
+                                            type_.format(&FormatData::new_short(i_s.db)),
+                                        )
+                                        .into(),
+                                    ),
+                                );
+                                DbType::Any
                             });
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Kwargs {

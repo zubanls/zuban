@@ -22,6 +22,7 @@ pub struct PythonState {
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
+    builtins_str_index: NodeIndex,
     typing_mapping_index: NodeIndex,
     types_module_type_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
@@ -48,6 +49,7 @@ impl PythonState {
             builtins_list_index: 0,
             builtins_tuple_index: 0,
             builtins_base_exception_index: 0,
+            builtins_str_index: 0,
             types_module_type_index: 0,
             typing_mapping_index: 0,
             mypy_extensions_arg_func: 0,
@@ -85,6 +87,7 @@ impl PythonState {
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
         let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
+        let str_name_index = builtins.symbol_table.lookup_symbol("str").unwrap();
         let base_exception_name_index = builtins
             .symbol_table
             .lookup_symbol("BaseException")
@@ -100,6 +103,7 @@ impl PythonState {
             .points
             .get(base_exception_name_index - 1)
             .node_index();
+        s.builtins_str_index = s.builtins().points.get(str_name_index - 1).node_index();
 
         s.typing_mapping_index = s
             .typing()
@@ -207,6 +211,17 @@ impl PythonState {
         debug_assert!(self.builtins_tuple_index != 0);
         Class::from_position(
             NodeRef::new(self.builtins(), self.builtins_tuple_index),
+            Generics::None,
+            None,
+        )
+        .unwrap()
+    }
+
+    #[inline]
+    pub fn str(&self) -> Class {
+        debug_assert!(self.builtins_str_index != 0);
+        Class::from_position(
+            NodeRef::new(self.builtins(), self.builtins_str_index),
             Generics::None,
             None,
         )
