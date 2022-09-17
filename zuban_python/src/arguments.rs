@@ -503,7 +503,21 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 },
                             ));
                         }
-                        ASTArgument::DoubleStarred(expr) => todo!("**kwargs"),
+                        ASTArgument::DoubleStarred(double_starred_expr) => {
+                            let inf = file
+                                .inference(i_s)
+                                .infer_expression(double_starred_expr.expression());
+                            let type_ = inf.class_as_db_type(i_s);
+                            let node_ref = NodeRef::new(file, double_starred_expr.index());
+                            let t = todo!();
+                            return Some(BaseArgumentReturn::ArgsKwargs(
+                                ArgsKwargsIterator::Kwargs {
+                                    inferred_value: Inferred::execute_db_type(i_s, t),
+                                    node_ref,
+                                    position: i + 1,
+                                },
+                            ));
+                        }
                     }
                 }
                 if let Some(kwargs_before_star_args) = kwargs_before_star_args {
@@ -652,8 +666,22 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                     self.next()
                 }
             }
-            ArgsKwargsIterator::Kwargs(_) => {
-                todo!()
+            ArgsKwargsIterator::Kwargs {
+                inferred_value,
+                node_ref,
+                position,
+            } => {
+                let index = self.counter;
+                self.counter += 1;
+                Some(Argument {
+                    kind: ArgumentKind::Inferred {
+                        inferred: inferred_value.clone(),
+                        position: *position,
+                        node_ref: Some(*node_ref),
+                        in_args_or_kwargs_and_arbitrary_len: true,
+                    },
+                    index,
+                })
             }
         }
     }
@@ -666,7 +694,11 @@ enum ArgsKwargsIterator<'db, 'a> {
         position: usize,
         node_ref: NodeRef<'db>,
     },
-    Kwargs(()),
+    Kwargs {
+        inferred_value: Inferred<'db>,
+        position: usize,
+        node_ref: NodeRef<'db>,
+    },
     None,
 }
 

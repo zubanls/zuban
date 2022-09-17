@@ -820,7 +820,6 @@ testInvalidTypevarValues
 
 # **kwargs input
 testKwargsAfterBareArgs
-testCallingFunctionWithKeywordVarArgs
 testPassingMappingForKeywordVarArg
 testPassingMappingSubclassForKeywordVarArg
 testInvalidTypeForKeywordVarArg
