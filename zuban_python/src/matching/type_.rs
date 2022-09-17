@@ -235,7 +235,7 @@ impl<'db, 'a> Type<'db, 'a> {
                         .into()
                 }
                 DbType::Any => Match::True,
-                DbType::Never => todo!(),
+                DbType::Never => Match::True, // TODO is this correct?
                 DbType::Tuple(t1) => match value_type {
                     Self::Type(t2) => match t2.as_ref() {
                         DbType::Tuple(t2) => {

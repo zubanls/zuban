@@ -6,7 +6,6 @@ testNestedOverloadsMutuallyRecursive
 # **kwargs input
 testPassingMappingForKeywordVarArg
 testPassingMappingSubclassForKeywordVarArg
-testStar2Context
 
 # --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
