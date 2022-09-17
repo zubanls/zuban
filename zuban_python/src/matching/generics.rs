@@ -9,7 +9,7 @@ use crate::inference_state::InferenceState;
 macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            None | Some(Generics::None) => $g.clone(),
+            None | Some(Generics::None | Generics::Any) => $g.clone(),
             Some(type_var_generics) => {
                 $g.replace_type_vars(&mut |t| type_var_generics.nth($i_s, t.index))
             }
@@ -24,6 +24,7 @@ pub enum Generics<'db, 'a> {
     List(&'a GenericsList, Option<&'a Generics<'db, 'a>>),
     DbType(&'a DbType),
     None,
+    Any,
 }
 
 impl<'db, 'a> Generics<'db, 'a> {
@@ -90,6 +91,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                 }
                 (*g).clone()
             }
+            Self::Any => DbType::Any,
             Self::None => {
                 debug!("No generics given, but {n:?} was requested");
                 todo!()
@@ -108,6 +110,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             Self::List(l, t) => GenericsIterator::GenericsList(l.iter(), *t),
             Self::DbType(g) => GenericsIterator::DbType(g),
             Self::None => GenericsIterator::None,
+            Self::Any => GenericsIterator::None,
         }
     }
 
@@ -143,7 +146,7 @@ impl<'db, 'a> Generics<'db, 'a> {
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics))
                     .collect(),
             ),
-            Self::None => GenericsList::new_generics(
+            Self::None | Self::Any => GenericsList::new_generics(
                 std::iter::repeat(DbType::Any)
                     .take(type_vars.len())
                     .collect(),
