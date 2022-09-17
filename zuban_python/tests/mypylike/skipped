@@ -3,9 +3,6 @@ testCallableTypeAnalysis
 testSubtypingFunctionsArgsKwargs
 testNestedOverloadsMutuallyRecursive
 
-# **kwargs input
-testPassingMappingSubclassForKeywordVarArg
-
 # --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
