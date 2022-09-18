@@ -1070,7 +1070,11 @@ impl CallableParam {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         if self.param_kind != ParamKind::PositionalOnly || format_data.verbose && self.has_default {
             let t = self.db_type.format(format_data);
-            if let Some(name) = self.name {
+            if self.param_kind == ParamKind::Starred {
+                return format!("VarArg({t})").into();
+            } else if self.param_kind == ParamKind::DoubleStarred {
+                return format!("KwArg({t})").into();
+            } else if let Some(name) = self.name {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
                         let mut string = match self.param_kind {
@@ -1109,8 +1113,7 @@ impl CallableParam {
                                     format!("NamedArg({t}, '{}')", name.as_str(format_data.db))
                                 }
                             }
-                            ParamKind::Starred => format!("VarArg({t})"),
-                            ParamKind::DoubleStarred => format!("KwArg({t})"),
+                            ParamKind::Starred | ParamKind::DoubleStarred => unreachable!(),
                         }
                         .into();
                     }
