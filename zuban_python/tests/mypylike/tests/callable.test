@@ -253,3 +253,14 @@ x: Callable[[Arg(int, "blah"), int], int]  # E: Required positional args may not
 y: Callable[[DefaultArg(int), int], int]  # E: Required positional args may not appear after default, named or var args
 z: Callable[[DefaultArg(int, "foo"), Arg(int, "bar")], int]  # E: Required positional args may not appear after default, named or var args
 a: Callable[[NamedArg(int, "foo"), Arg(int, "bar")], int]  # E: Required positional args may not appear after default, named or var args
+
+[case match_args_kwargs_callable]
+def x(*args: int, **kwargs: object): ...
+def y(*args: object, **kwargs: int): ...
+def z(*args: int, **kwargs: int): ...
+
+def foo(x: int): ...
+
+foo = x # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), KwArg(object)], Any]", variable has type "Callable[[int], Any]")
+foo = y # E: Incompatible types in assignment (expression has type "Callable[[VarArg(object), KwArg(int)], Any]", variable has type "Callable[[int], Any]")
+foo = z
