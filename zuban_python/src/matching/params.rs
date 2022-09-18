@@ -84,6 +84,8 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                             param2,
                                             maybe_kwargs,
                                             variance,
+                                            // TODO should be:
+                                            // Variance::Invariant,
                                         )
                                         .bool()
                                     {
