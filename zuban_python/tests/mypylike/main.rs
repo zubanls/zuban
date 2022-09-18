@@ -553,13 +553,12 @@ fn find_mypy_style_files() -> Vec<PathBuf> {
     let mut path = base.clone();
     path.push("tests");
 
-    entries.extend(
-        read_dir(path)
-            .unwrap()
-            .map(|res| res.map(|e| e.path()).unwrap()),
-    );
+    let mut our_own_tests: Vec<_> = read_dir(path)
+        .unwrap()
+        .map(|res| res.map(|e| e.path()).unwrap())
+        .collect();
 
-    entries.sort();
+    our_own_tests.sort();
 
     // Include mypy tests
     for name in USE_MYPY_TEST_FILES {
@@ -568,6 +567,7 @@ fn find_mypy_style_files() -> Vec<PathBuf> {
         entries.push(path);
     }
 
+    entries.extend(our_own_tests);
     entries
 }
 
