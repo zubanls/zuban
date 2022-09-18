@@ -26,21 +26,27 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
     params2: Option<impl Iterator<Item = P2>>,
     variance: Variance,
 ) -> Match {
-    if let Some(params1) = params1 {
+    fn check_annotation<'db: 'x, 'x>(
+        i_s: &mut InferenceState<'db, '_>,
+        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        param1: impl Param<'db, 'x>,
+        param2: impl Param<'db, 'x>,
+        variance: Variance,
+    ) -> Match {
+        if let Some(t1) = param1.annotation_type(i_s) {
+            if let Some(t2) = param2.annotation_type(i_s) {
+                return t1.matches(i_s, matcher.as_deref_mut(), &t2, variance);
+            }
+        }
+        Match::True
+    }
+    if let Some(mut params1) = params1 {
         if let Some(params2) = params2 {
             let mut params2 = Peekable::new(params2);
             let mut matches = Match::True;
             let mut unused_keyword_params: Vec<P2> = vec![];
 
-            let mut check_annotation = |i_s: &mut _, param1: P1, param2: P2| {
-                if let Some(t1) = param1.annotation_type(i_s) {
-                    if let Some(t2) = param2.annotation_type(i_s) {
-                        return t1.matches(i_s, matcher.as_deref_mut(), &t2, variance);
-                    }
-                }
-                Match::True
-            };
-            for param1 in params1 {
+            for param1 in params1.by_ref() {
                 if let Some(mut param2) = params2
                     .peek()
                     .or_else(|| unused_keyword_params.get(0))
@@ -52,7 +58,13 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                         ParamKind::PositionalOnly => match pt2 {
                             ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => true,
                             ParamKind::Starred => {
-                                let m = check_annotation(i_s, param1, param2);
+                                let m = check_annotation(
+                                    i_s,
+                                    matcher.as_deref_mut(),
+                                    param1,
+                                    param2,
+                                    variance,
+                                );
                                 if !m.bool() {
                                     return m;
                                 }
@@ -61,6 +73,45 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                             _ => false,
                         },
                         ParamKind::PositionalOrKeyword => {
+                            if pt2 == ParamKind::Starred {
+                                params2.next();
+                                let maybe_kwargs = params2.next();
+                                if let Some(maybe_kwargs) = maybe_kwargs {
+                                    if maybe_kwargs.kind(i_s.db) != ParamKind::DoubleStarred
+                                        || !check_annotation(
+                                            i_s,
+                                            matcher.as_deref_mut(),
+                                            param2,
+                                            maybe_kwargs,
+                                            variance,
+                                        )
+                                        .bool()
+                                    {
+                                        return Match::new_false();
+                                    }
+                                    for param1 in params1 {
+                                        // Since this is a *args, **kwargs signature we just check
+                                        // that all annotations are matching.
+                                        matches &= check_annotation(
+                                            i_s,
+                                            matcher.as_deref_mut(),
+                                            param1,
+                                            param2,
+                                            variance,
+                                        );
+                                        matches &= check_annotation(
+                                            i_s,
+                                            matcher.as_deref_mut(),
+                                            param1,
+                                            maybe_kwargs,
+                                            variance,
+                                        );
+                                    }
+                                    return matches;
+                                } else {
+                                    return Match::new_false();
+                                }
+                            }
                             pt1 == pt2 && param1.name(i_s.db) == param2.name(i_s.db)
                         }
                         ParamKind::KeywordOnly => match pt2 {
@@ -100,7 +151,13 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                                 true
                             }
                             ParamKind::DoubleStarred => {
-                                let m = check_annotation(i_s, param1, param2);
+                                let m = check_annotation(
+                                    i_s,
+                                    matcher.as_deref_mut(),
+                                    param1,
+                                    param2,
+                                    variance,
+                                );
                                 if !m.bool() {
                                     return m;
                                 }
@@ -114,7 +171,8 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
                     if !matches_kind || param1.has_default() && !param2.has_default() {
                         return Match::new_false();
                     }
-                    matches &= check_annotation(i_s, param1, param2)
+                    matches &=
+                        check_annotation(i_s, matcher.as_deref_mut(), param1, param2, variance)
                 } else {
                     return Match::new_false();
                 }

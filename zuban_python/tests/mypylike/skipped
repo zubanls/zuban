@@ -1,6 +1,5 @@
 # Next up
 testSubtypingFunctionsArgsKwargs
-testNestedOverloadsMutuallyRecursive
 
 # --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
