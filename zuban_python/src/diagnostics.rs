@@ -13,6 +13,7 @@ pub(crate) enum IssueType {
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
+    IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidType(Box<str>),
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
@@ -183,6 +184,10 @@ impl<'db> Diagnostic<'db> {
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
             IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone().into(),
+            IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => format!(
+                "Incompatible default for argument \"{argument_name}\" \
+                 (default has type \"{got}\", argument has type \"{expected}\")"
+            ),
             IssueType::TypeNotFound => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())

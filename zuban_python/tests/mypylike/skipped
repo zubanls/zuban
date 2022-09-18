@@ -6,7 +6,6 @@ testTypeAliasUpdateNonRecursiveToRecursiveFine
 
 # Incompatible default for argument
 testEllipsisDefaultArgValueInNonStubsOverload
-testDefaultArgumentsWithSubtypes
 testMultipleDefaultArgumentExpressions
 testMultipleDefaultArgumentExpressions2
 testDefaultArgumentsAndSignatureAsComment

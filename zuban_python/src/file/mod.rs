@@ -289,7 +289,7 @@ impl<'db> PythonFile {
 pub struct PythonInference<'db, 'a, 'b> {
     file: &'db PythonFile,
     file_index: FileIndex,
-    i_s: &'b mut InferenceState<'db, 'a>,
+    pub i_s: &'b mut InferenceState<'db, 'a>,
 }
 
 macro_rules! check_point_cache_with {
