@@ -177,28 +177,6 @@ macro_rules! compute_type_application {
     }}
 }
 
-impl<'db> TypeContent<'db, '_> {
-    fn union(self, i_s: &mut InferenceState<'db, '_>, other_t: DbType) -> Self {
-        Self::DbType(match self {
-            Self::ClassWithoutTypeVar(inf) => {
-                inf.maybe_class(i_s).unwrap().as_db_type(i_s).union(other_t)
-            }
-            Self::DbType(t) => t.union(other_t),
-            Self::Module(m) => todo!(),
-            Self::TypeAlias(m) => todo!(),
-            Self::SpecialType(s) => match s {
-                // `Any | something` always is Any
-                SpecialType::Any => DbType::Any,
-                SpecialType::Type => DbType::Type(Box::new(DbType::Any)).union(other_t),
-                _ => todo!("{s:?}"),
-            },
-            // `Any | something` always is Any
-            Self::Unknown => DbType::Any,
-            Self::InvalidVariable(t) => return Self::InvalidVariable(t),
-        })
-    }
-}
-
 pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     manager: &TypeVarManager,
@@ -482,11 +460,12 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
             ExpressionPart::Primary(primary) => self.compute_type_primary(primary),
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
+                let first = self.compute_type_expression_part(a);
+                let first = self.as_db_type(first, NodeRef::new(self.inference.file, b.index()));
                 // TODO this should only merge in annotation contexts
-                let other = self.compute_type_expression_part(b);
-                let other_t = self.as_db_type(other, NodeRef::new(self.inference.file, b.index()));
-                self.compute_type_expression_part(a)
-                    .union(self.inference.i_s, other_t)
+                let second = self.compute_type_expression_part(b);
+                let second = self.as_db_type(second, NodeRef::new(self.inference.file, b.index()));
+                TypeContent::DbType(first.union(second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
