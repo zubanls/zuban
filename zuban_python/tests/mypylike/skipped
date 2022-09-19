@@ -4,16 +4,6 @@
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 
-# Incompatible default for argument
-testEllipsisDefaultArgValueInNonStubsOverload
-testMultipleDefaultArgumentExpressions
-testMultipleDefaultArgumentExpressions2
-testDefaultArgumentsAndSignatureAsComment
-testMethodDefaultArgumentsAndSignatureAsComment
-# Incompatible default for argument "x"  (default has type "B", argument has type "A")
-testDefaultArgumentExpressions2
-testDefaultArgumentExpressionsGeneric
-
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
@@ -1171,6 +1161,8 @@ testEllipsisWithArbitraryArgsOnBareFunctionWithKwargs
 testEllipsisWithArbitraryArgsOnBareFunctionWithVarargs
 testEllipsisWithSomethingAfterItFails
 testEllipsisWithSomethingBeforeItFails
+testMethodDefaultArgumentsAndSignatureAsComment
+testDefaultArgumentsAndSignatureAsComment
 
 # --scripts-are-modules
 testScriptsAreModules

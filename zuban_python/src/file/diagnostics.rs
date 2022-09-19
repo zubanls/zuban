@@ -177,9 +177,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class<'db, '_>>) {
         let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
-        let mut is_overload = false;
+        let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = name_def_node_ref.complex() {
-            is_overload = true;
+            is_overload_member = o.implementing_function.is_none();
             if o.functions.len() < 2 {
                 NodeRef::from_link(self.i_s.db, o.functions[0])
                     .add_typing_issue(self.i_s.db, IssueType::OverloadSingleNotAllowed);
@@ -297,13 +297,13 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }
         } else if name_def_node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
         {
-            is_overload = true;
+            is_overload_member = true;
         }
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
-        if !is_overload && !self.file.is_stub(self.i_s.db) {
+        if !is_overload_member && !self.file.is_stub(self.i_s.db) {
             // Check defaults here.
             for param in params.iter() {
                 if let Some(annotation) = param.annotation() {
