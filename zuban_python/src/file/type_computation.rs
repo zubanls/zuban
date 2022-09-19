@@ -178,16 +178,7 @@ macro_rules! compute_type_application {
 }
 
 impl<'db> TypeContent<'db, '_> {
-    fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
-        let other_t = match other {
-            Self::ClassWithoutTypeVar(i) => i.maybe_class(i_s).unwrap().as_db_type(i_s),
-            Self::DbType(t) => t,
-            Self::Module(m) => todo!(),
-            Self::TypeAlias(m) => todo!(),
-            Self::SpecialType(m) => todo!(),
-            Self::Unknown => DbType::Any,
-            Self::InvalidVariable(t) => return Self::InvalidVariable(t),
-        };
+    fn union(self, i_s: &mut InferenceState<'db, '_>, other_t: DbType) -> Self {
         Self::DbType(match self {
             Self::ClassWithoutTypeVar(inf) => {
                 inf.maybe_class(i_s).unwrap().as_db_type(i_s).union(other_t)
@@ -493,8 +484,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
                 let (a, b) = bitwise_or.unpack();
                 // TODO this should only merge in annotation contexts
                 let other = self.compute_type_expression_part(b);
+                let other_t = self.as_db_type(other, NodeRef::new(self.inference.file, b.index()));
                 self.compute_type_expression_part(a)
-                    .union(self.inference.i_s, other)
+                    .union(self.inference.i_s, other_t)
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }

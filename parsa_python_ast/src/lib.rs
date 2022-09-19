@@ -720,7 +720,7 @@ pub enum ExpressionContent<'db> {
     Lambda(Lambda<'db>),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Copy, Clone)]
 pub enum ExpressionPart<'db> {
     Atom(Atom<'db>),
     Primary(Primary<'db>),
@@ -774,6 +774,26 @@ impl<'db> ExpressionPart<'db> {
             Self::Disjunction(Disjunction::new(node))
         } else {
             unreachable!()
+        }
+    }
+
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Atom(n) => n.index(),
+            Self::Primary(n) => n.index(),
+            Self::AwaitPrimary(n) => n.index(),
+            Self::Power(n) => n.index(),
+            Self::Factor(n) => n.index(),
+            Self::Term(n) => n.index(),
+            Self::Sum(n) => n.index(),
+            Self::ShiftExpr(n) => n.index(),
+            Self::BitwiseAnd(n) => n.index(),
+            Self::BitwiseXor(n) => n.index(),
+            Self::BitwiseOr(n) => n.index(),
+            Self::Comparison(n) => n.index(),
+            Self::Inversion(n) => n.index(),
+            Self::Conjunction(n) => n.index(),
+            Self::Disjunction(n) => n.index(),
         }
     }
 }
