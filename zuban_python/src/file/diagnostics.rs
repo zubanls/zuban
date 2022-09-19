@@ -2,7 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, TypeVarUsage, Variance,
+    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TypeVarUsage,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -176,7 +177,9 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class<'db, '_>>) {
         let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
+        let mut is_overload = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = name_def_node_ref.complex() {
+            is_overload = true;
             if o.functions.len() < 2 {
                 NodeRef::from_link(self.i_s.db, o.functions[0])
                     .add_typing_issue(self.i_s.db, IssueType::OverloadSingleNotAllowed);
@@ -292,11 +295,36 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     }
                 }
             }
+        } else if name_def_node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
+        {
+            is_overload = true;
         }
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
+        if !is_overload && !self.file.is_stub(self.i_s.db) {
+            // Check defaults here.
+            for param in params.iter() {
+                if let Some(annotation) = param.annotation() {
+                    if let Some(default) = param.default() {
+                        let inf = self.infer_expression(default);
+                        self.use_cached_annotation_type(annotation)
+                            .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
+                                NodeRef::new(self.file, default.index()).add_typing_issue(
+                                    i_s.db,
+                                    IssueType::IncompatibleDefaultArgument {
+                                        argument_name: Box::from(param.name_definition().as_code()),
+                                        got,
+                                        expected,
+                                    },
+                                );
+                            });
+                    }
+                }
+            }
+        }
+
         let (i_a, a, i);
         let node_ref = NodeRef::new(self.file, f.index());
         let args: &dyn Arguments = if let Some(class) = class {

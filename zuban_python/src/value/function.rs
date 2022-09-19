@@ -242,28 +242,6 @@ impl<'db, 'a> Function<'db, 'a> {
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
                 type_computation.compute_annotation(annotation);
-
-                // Also check defaults here.
-                if let Some(default) = param.default() {
-                    let inf = type_computation.inference.infer_expression(default);
-                    type_computation
-                        .inference
-                        .use_cached_annotation_type(annotation)
-                        .error_if_not_matches(
-                            type_computation.inference.i_s,
-                            &inf,
-                            |i_s, got, expected| {
-                                NodeRef::new(self.node_ref.file, default.index()).add_typing_issue(
-                                    i_s.db,
-                                    IssueType::IncompatibleDefaultArgument {
-                                        argument_name: Box::from(param.name_definition().as_code()),
-                                        got,
-                                        expected,
-                                    },
-                                );
-                            },
-                        );
-                }
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {

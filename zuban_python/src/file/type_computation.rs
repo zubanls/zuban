@@ -238,7 +238,7 @@ pub(super) fn type_computation_for_variable_annotation(
 }
 
 pub struct TypeComputation<'db, 'a, 'b, 'c> {
-    pub inference: &'c mut PythonInference<'db, 'a, 'b>,
+    inference: &'c mut PythonInference<'db, 'a, 'b>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager,
