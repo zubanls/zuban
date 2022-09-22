@@ -147,7 +147,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    fn is_same_type_internal(
+    fn matches_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
@@ -281,7 +281,7 @@ impl<'db, 'a> Type<'db, 'a> {
         let m = match value_type.mro(i_s) {
             Some(mro) => {
                 for (_, t2) in mro {
-                    let m = self.is_same_type_internal(
+                    let m = self.matches_internal(
                         i_s,
                         matcher.as_deref_mut(),
                         &t2,
@@ -294,7 +294,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 Match::new_false()
             }
             None => {
-                let m = self.is_same_type_internal(
+                let m = self.matches_internal(
                     i_s,
                     matcher.as_deref_mut(),
                     value_type,
@@ -319,12 +319,7 @@ impl<'db, 'a> Type<'db, 'a> {
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value_type: &Self,
     ) -> Match {
-        let m = self.is_same_type_internal(
-            i_s,
-            matcher.as_deref_mut(),
-            value_type,
-            Variance::Invariant,
-        );
+        let m = self.matches_internal(i_s, matcher.as_deref_mut(), value_type, Variance::Invariant);
         m.or(|| {
             self.check_protocol_and_other_side(
                 i_s,
