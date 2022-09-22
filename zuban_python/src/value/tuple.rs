@@ -1,5 +1,4 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
-use crate::base_description;
 use crate::database::{ComplexPoint, DbType, GenericsList, TupleContent};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -127,6 +126,6 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        base_description!(self) + &self.content.format(&FormatData::new_short(i_s.db))
+        self.content.format(&FormatData::new_short(i_s.db)).into()
     }
 }
