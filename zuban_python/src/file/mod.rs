@@ -1361,7 +1361,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             arbitrary_length: false,
         };
         debug!(
-            "Inferred literal: Tuple{}",
+            "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
         );
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
