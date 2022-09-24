@@ -25,7 +25,7 @@ impl<'db> ListLiteral<'db> {
     pub fn infer_named_expr(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        named_expr: NamedExpression<'db>,
+        named_expr: NamedExpression,
     ) -> Inferred {
         self.node_ref
             .file
