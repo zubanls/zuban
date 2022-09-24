@@ -989,11 +989,11 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     check_point_cache_with!(
         pub infer_expression_with_context,
-        Self::_infer_expression,
+        Self::infer_expression_without_cache,
         Expression,
         result_context
     );
-    fn _infer_expression(
+    fn infer_expression_without_cache(
         &mut self,
         expr: Expression,
         result_context: ResultContext<'db, '_>,
@@ -1517,7 +1517,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                                     &inference.file.tree,
                                     next_node_index,
                                 ) {
-                                    inference._infer_expression(expr, ResultContext::Unknown)
+                                    inference.infer_expression_without_cache(
+                                        expr,
+                                        ResultContext::Unknown,
+                                    )
                                 } else if let Some(annotation) = Annotation::maybe_by_index(
                                     &inference.file.tree,
                                     next_node_index,
