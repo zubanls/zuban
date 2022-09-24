@@ -15,7 +15,7 @@ impl<'db, 'a> ResultContext<'db, 'a> {
     pub fn with_type_if_exists<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        mut callable: impl FnMut(&mut InferenceState<'db, '_>, &Type<'db, '_>) -> T,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'db, '_>) -> T,
     ) -> Option<T> {
         match self {
             Self::Known(t) => Some(callable(i_s, t)),
