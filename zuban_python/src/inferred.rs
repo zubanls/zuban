@@ -47,7 +47,7 @@ impl<'db> Inferred {
         Self::new_saved(file, node_index, point)
     }
 
-    pub fn from_saved_node_ref(node_ref: NodeRef<'db>) -> Self {
+    pub fn from_saved_node_ref(node_ref: NodeRef) -> Self {
         Self {
             state: InferredState::Saved(node_ref.as_link(), node_ref.point()),
         }

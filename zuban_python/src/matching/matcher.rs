@@ -835,7 +835,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
             }
         }
     }
-    let add_keyword_argument_issue = |reference: NodeRef<'db>, name| {
+    let add_keyword_argument_issue = |reference: NodeRef, name| {
         let s = if let Some(function) = function {
             if function.iter_params().any(|p| {
                 p.name(i_s.db) == Some(name)

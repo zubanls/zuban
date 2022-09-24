@@ -22,7 +22,7 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &mut InferenceState<'db, '_>,
     &TypeVarManager,
     Rc<TypeVar>,
-    NodeRef<'db>,
+    NodeRef,
     Option<PointLink>, // current_callable
 ) -> Option<DbType>;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
@@ -1368,7 +1368,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
             } else {
                 let mut type_var_manager = TypeVarManager::default();
                 let mut type_var_callback =
-                    |_: &mut InferenceState, _: &_, type_var: Rc<TypeVar>, _, _| {
+                    |_: &mut InferenceState, _: &_, type_var: Rc<TypeVar>, _: NodeRef, _| {
                         // Here we avoid all late bound type var calculation for callable, which is how
                         // mypy works. The default behavior without a type_var_callback would be to
                         // just calculate all late bound type vars, but that would mean that something
@@ -1553,7 +1553,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var =
-            |_: &mut InferenceState, _: &_, type_var, _, current_callable| todo!();
+            |_: &mut InferenceState, _: &_, type_var, _: NodeRef, current_callable| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
         let t = comp.compute_type(expr);

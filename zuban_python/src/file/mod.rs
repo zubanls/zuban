@@ -1175,7 +1175,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             PrimaryContent::Execution(details) => {
                 let f = self.file;
                 let on_type_error = |i_s: &mut InferenceState<'db, '_>,
-                                     node_ref: NodeRef<'db>,
+                                     node_ref: NodeRef,
                                      class: Option<&Class<'db, '_>>,
                                      function: Option<&Function<'db, '_>>,
                                      p: &dyn ParamWithArgument<'db, '_>,

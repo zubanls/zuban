@@ -37,7 +37,7 @@ pub use typing::{
 
 pub type OnTypeError<'db, 'a> = &'a dyn Fn(
     &mut InferenceState<'db, '_>,
-    NodeRef<'db>,
+    NodeRef,
     Option<&Class<'db, '_>>,
     Option<&Function<'db, '_>>,
     &dyn ParamWithArgument<'db, '_>,
