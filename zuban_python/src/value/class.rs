@@ -321,11 +321,7 @@ impl<'db, 'a> Class<'db, 'a> {
         true
     }
 
-    pub fn lookup_symbol(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> LookupResult<'db> {
+    pub fn lookup_symbol(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         match self.class_storage.class_symbol_table.lookup_symbol(name) {
             None => LookupResult::None,
             Some(node_index) => {
@@ -346,7 +342,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-    ) -> (LookupResult<'db>, Option<Class<'db, '_>>) {
+    ) -> (LookupResult, Option<Class<'db, '_>>) {
         for (mro_index, c) in self.mro(i_s) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
@@ -457,7 +453,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         Module::new(db, self.node_ref.file)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         self.lookup_and_class(i_s, name).0
     }
 
@@ -471,7 +467,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         // TODO locality!!!
         if let Some((func, generics_list, is_overload)) =
             self.type_check_init_func(i_s, args, result_context, on_type_error)
@@ -506,7 +502,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         slice_type
             .file
             .inference(i_s)
@@ -544,7 +540,7 @@ struct BasesIterator<'db> {
 }
 
 impl<'db> BasesIterator<'db> {
-    fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+    fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred> {
         if let Some(args) = self.args.as_mut() {
             match args.next() {
                 Some(Argument::Positional(p)) => {

@@ -134,11 +134,7 @@ pub trait File: std::fmt::Debug + AsAny {
         vec![]
     }
     fn leaf<'db>(&'db self, db: &'db Database, position: CodeIndex) -> Leaf<'db>;
-    fn infer_operator_leaf<'db>(
-        &'db self,
-        db: &'db Database,
-        keyword: Keyword<'db>,
-    ) -> Inferred<'db>;
+    fn infer_operator_leaf<'db>(&'db self, db: &'db Database, keyword: Keyword<'db>) -> Inferred;
     fn file_index(&self) -> FileIndex;
     fn set_file_index(&self, index: FileIndex);
 

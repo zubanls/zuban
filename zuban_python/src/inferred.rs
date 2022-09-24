@@ -1,7 +1,6 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::fmt;
-use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
@@ -38,12 +37,11 @@ enum InferredState {
 }
 
 #[derive(Clone)]
-pub struct Inferred<'db> {
+pub struct Inferred {
     state: InferredState,
-    phantom_data: PhantomData<&'db ()>,
 }
 
-impl<'db> Inferred<'db> {
+impl<'db> Inferred {
     pub fn new_and_save(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
         file.points.set(node_index, point);
         Self::new_saved(file, node_index, point)
@@ -52,7 +50,6 @@ impl<'db> Inferred<'db> {
     pub fn from_saved_node_ref(node_ref: NodeRef<'db>) -> Self {
         Self {
             state: InferredState::Saved(node_ref.as_link(), node_ref.point()),
-            phantom_data: PhantomData::default(),
         }
     }
 
@@ -61,49 +58,42 @@ impl<'db> Inferred<'db> {
         let node_ref = NodeRef { file, node_index };
         Self {
             state: InferredState::Saved(node_ref.as_link(), node_ref.point()),
-            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_saved(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
         Self {
             state: InferredState::Saved(PointLink::new(file.file_index(), node_index), point),
-            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_unsaved_complex(complex: ComplexPoint) -> Self {
         Self {
             state: InferredState::UnsavedComplex(complex),
-            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_unsaved_specific(specific: Specific) -> Self {
         Self {
             state: InferredState::UnsavedSpecific(specific),
-            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_unknown() -> Self {
         Self {
             state: InferredState::Unknown,
-            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_none() -> Self {
         Self {
             state: InferredState::UnsavedSpecific(Specific::None),
-            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_any() -> Self {
         Self {
             state: InferredState::UnsavedSpecific(Specific::TypingAny),
-            phantom_data: PhantomData::default(),
         }
     }
 
@@ -111,7 +101,6 @@ impl<'db> Inferred<'db> {
         // TODO maybe remove this and UnsavedFileReference??? unused??
         Self {
             state: InferredState::UnsavedFileReference(index),
-            phantom_data: PhantomData::default(),
         }
     }
 
@@ -129,10 +118,7 @@ impl<'db> Inferred<'db> {
             DbType::Any => return Inferred::new_any(),
             _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic))),
         };
-        Self {
-            state,
-            phantom_data: PhantomData::default(),
-        }
+        Self { state }
     }
 
     pub fn create_instance(class: PointLink, generics: Option<&[DbType]>) -> Self {
@@ -178,7 +164,10 @@ impl<'db> Inferred<'db> {
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
-    ) -> T {
+    ) -> T
+    where
+        'db: 'a,
+    {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 run_on_saved(i_s, *definition, *point, callable, reducer, on_missing)
@@ -609,7 +598,7 @@ impl<'db> Inferred<'db> {
     pub fn bind(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred<'db>,
+        get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred,
         mro_index: MroIndex,
     ) -> Self {
         match &self.state {
@@ -729,7 +718,10 @@ impl<'db> Inferred<'db> {
         &'a self,
         i_s: &mut InferenceState<'db, '_>,
         c: impl Fn(&dyn Value<'db, 'a>) -> Option<T>,
-    ) -> Option<T> {
+    ) -> Option<T>
+    where
+        'db: 'a,
+    {
         self.internal_run(i_s, &mut |i_s, v| c(v), &|_, i1, i2| None, &mut |i_s| None)
     }
 
@@ -765,7 +757,7 @@ impl<'db> Inferred<'db> {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
         from: NodeRef<'db>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         self.run_on_value(i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, name, &|i_s| todo!("{value:?}"))
         })
@@ -795,7 +787,7 @@ impl<'db> Inferred<'db> {
     }
 }
 
-impl fmt::Debug for Inferred<'_> {
+impl fmt::Debug for Inferred {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("Inferred");
         match &self.state {
@@ -1126,7 +1118,7 @@ fn load_builtin_instance_from_str<'db>(
 fn infer_instance_with_arguments_cls<'db>(
     i_s: &mut InferenceState<'db, '_>,
     definition: NodeRef<'db>,
-) -> Inferred<'db> {
+) -> Inferred {
     definition
         .file
         .inference(i_s)

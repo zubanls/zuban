@@ -114,7 +114,7 @@ impl<'db, 'a> Function<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         param_name_def_index: NodeIndex,
         args: &dyn Arguments<'db>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let func_node =
             FunctionDef::from_param_name_def_index(&self.node_ref.file.tree, param_name_def_index);
         let temporary_args;
@@ -150,7 +150,7 @@ impl<'db, 'a> Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }
@@ -337,7 +337,7 @@ impl<'db, 'a> Function<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class<'db, '_>>,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let calculated_type_vars = calculate_function_type_vars_and_return(
@@ -521,7 +521,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         func.name().as_str()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         todo!("{name:?}")
     }
 
@@ -531,7 +531,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         if let Some(class) = &self.class {
             self.execute_internal(
                 &mut i_s.with_class_context(class),
@@ -549,7 +549,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
@@ -767,7 +767,7 @@ impl<'db> InferrableParam<'db, '_> {
         !matches!(self.argument, ParamInput::None)
     }
 
-    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred> {
         if !matches!(&self.argument, ParamInput::None) {
             debug!("Infer param {:?}", self.param.name(i_s.db));
         }
@@ -954,7 +954,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
             .collect()
     }
 
-    fn fallback_type(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    fn fallback_type(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
         let mut t: Option<DbType> = None;
         for link in self.overload.functions.iter() {
             let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
@@ -975,7 +975,7 @@ impl<'db, 'a> OverloadedFunction<'db, 'a> {
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class<'db, '_>>,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, class, false, result_context)
             .map(|(function, _)| function.execute(i_s, args, result_context, on_type_error))
@@ -992,7 +992,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
         self.node_ref.as_code()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         todo!()
     }
 
@@ -1002,7 +1002,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
@@ -1010,7 +1010,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);

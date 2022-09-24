@@ -26,7 +26,7 @@ impl<'db> ListLiteral<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         named_expr: NamedExpression<'db>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         self.node_ref
             .file
             .inference(i_s)
@@ -88,7 +88,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         "list"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         Instance::new(
             Class::from_position(
                 NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list")),
@@ -120,7 +120,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
@@ -204,11 +204,7 @@ impl<'db> DictLiteral<'db> {
         Self { node_ref }
     }
 
-    fn infer_expr(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        expr: Expression<'db>,
-    ) -> Inferred<'db> {
+    fn infer_expr(&self, i_s: &mut InferenceState<'db, '_>, expr: Expression<'db>) -> Inferred {
         self.node_ref.file.inference(i_s).infer_expression(expr)
     }
 
@@ -276,7 +272,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
         "dict"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         todo!()
     }
 
@@ -284,7 +280,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         /*
         match slice_type {
             SliceTypeContent::Simple(simple) => {

@@ -13,7 +13,7 @@ use crate::value::Class;
 #[derive(Debug, Clone)]
 enum BaseLookup<'db> {
     Module(&'db PythonFile),
-    Class(Inferred<'db>),
+    Class(Inferred),
     Protocol,
     Callable,
     Generic,

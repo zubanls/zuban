@@ -86,7 +86,7 @@ impl File for PythonFile {
         }
     }
 
-    fn infer_operator_leaf<'db>(&'db self, db: &'db Database, leaf: Keyword<'db>) -> Inferred<'db> {
+    fn infer_operator_leaf<'db>(&'db self, db: &'db Database, leaf: Keyword<'db>) -> Inferred {
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
             .any(|&x| x == leaf.as_str())
@@ -294,7 +294,7 @@ pub struct PythonInference<'db, 'a, 'b> {
 
 macro_rules! check_point_cache_with {
     ($vis:vis $name:ident, $func:path, $ast:ident $(, $result_context:ident )?) => {
-        $vis fn $name(&mut self, node: $ast $(, $result_context : ResultContext<'db, '_>)?) -> $crate::inferred::Inferred<'db> {
+        $vis fn $name(&mut self, node: $ast $(, $result_context : ResultContext<'db, '_>)?) -> $crate::inferred::Inferred {
             debug_indent(|| {
                 if let Some(inferred) = self.check_point_cache(node.index()) {
                     debug!(
@@ -550,7 +550,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn original_definition(&mut self, assignment: Assignment) -> Option<Inferred<'db>> {
+    fn original_definition(&mut self, assignment: Assignment) -> Option<Inferred> {
         // TODO shouldn't this be merged/using infer_single_target
 
         // TODO it's weird that we unpack assignments here again.
@@ -716,7 +716,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         right: AssignmentRightSide,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match right {
             AssignmentRightSide::StarExpressions(star_exprs) => {
                 self.infer_star_expressions(star_exprs, result_context)
@@ -728,7 +728,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_single_target(&mut self, target: Target) -> Inferred<'db> {
+    fn infer_single_target(&mut self, target: Target) -> Inferred {
         match target {
             Target::Name(name_def) => {
                 todo!()
@@ -744,7 +744,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn assign_single_target(
         &mut self,
         target: Target,
-        value: &Inferred<'db>,
+        value: &Inferred,
         is_definition: bool,
         save: impl Fn(NodeIndex),
     ) {
@@ -847,7 +847,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn assign_targets(
         &mut self,
         target: Target,
-        value: Inferred<'db>,
+        value: Inferred,
         value_node_ref: NodeRef<'db>,
         is_definition: bool,
     ) {
@@ -940,7 +940,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         exprs: StarExpressions,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match exprs.unpack() {
             StarExpressionContent::Expression(expr) => {
                 if true {
@@ -966,7 +966,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_named_expression(&mut self, named_expr: NamedExpression) -> Inferred<'db> {
+    pub fn infer_named_expression(&mut self, named_expr: NamedExpression) -> Inferred {
         self.infer_named_expression_with_context(named_expr, ResultContext::Unknown)
     }
 
@@ -974,7 +974,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         named_expr: NamedExpression,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr)
             | NamedExpressionContent::Definition(_, expr) => {
@@ -983,7 +983,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_expression(&mut self, expr: Expression) -> Inferred<'db> {
+    pub fn infer_expression(&mut self, expr: Expression) -> Inferred {
         self.infer_expression_with_context(expr, ResultContext::Unknown)
     }
 
@@ -997,7 +997,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         expr: Expression,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let inferred = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n, result_context),
             ExpressionContent::Lambda(_) => todo!(),
@@ -1014,7 +1014,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         node: ExpressionPart,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match node {
             ExpressionPart::Atom(atom) => self.infer_atom(atom, result_context),
             ExpressionPart::Primary(primary) => self.infer_primary(primary, result_context),
@@ -1054,7 +1054,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn infer_operation(&mut self, op: Operation) -> Inferred<'db> {
+    fn infer_operation(&mut self, op: Operation) -> Inferred {
         let left = self.infer_expression_part(op.left, ResultContext::Unknown);
         let right = self.infer_expression_part(op.right, ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
@@ -1108,7 +1108,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         primary: Primary,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let base = self.infer_primary_or_atom(primary.first());
         let result = self
             .infer_primary_or_primary_t_content(
@@ -1129,12 +1129,12 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
 
     fn infer_primary_or_primary_t_content(
         &mut self,
-        base: Inferred<'db>,
+        base: Inferred,
         node_index: NodeIndex,
         second: PrimaryContent,
         is_target: bool,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
@@ -1244,7 +1244,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom) -> Inferred<'db> {
+    pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom) -> Inferred {
         match p {
             PrimaryOrAtom::Primary(primary) => self.infer_primary(primary, ResultContext::Unknown),
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, ResultContext::Unknown),
@@ -1252,7 +1252,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
-    fn _infer_atom(&mut self, atom: Atom, result_context: ResultContext<'db, '_>) -> Inferred<'db> {
+    fn _infer_atom(&mut self, atom: Atom, result_context: ResultContext<'db, '_>) -> Inferred {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
@@ -1328,7 +1328,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn infer_tuple_iterator<'x>(
         &mut self,
         iterator: impl Iterator<Item = StarLikeExpression<'x>>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let mut generics = vec![];
         for e in iterator {
             match e {
@@ -1368,7 +1368,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
-    fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred<'db> {
+    fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred {
         let first = match primary_target.first() {
             PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, ResultContext::Unknown),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
@@ -1384,7 +1384,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
-    fn _infer_name_reference(&mut self, name: Name) -> Inferred<'db> {
+    fn _infer_name_reference(&mut self, name: Name) -> Inferred {
         // If it's not inferred already through the name binder, it's either a star import, a
         // builtin or really missing.
         let name_str = name.as_str();
@@ -1493,7 +1493,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred<'db>> {
+    pub fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred> {
         let point = self.file.points.get(node_index);
         let result = point
             .calculated()
@@ -1694,15 +1694,15 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         Self::_infer_multi_definition,
         NameDefinition
     );
-    fn _infer_multi_definition(&mut self, name_def: NameDefinition) -> Inferred<'db> {
+    fn _infer_multi_definition(&mut self, name_def: NameDefinition) -> Inferred {
         self.infer_name_definition(name_def)
     }
 
-    pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
+    pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred {
         self.infer_name(Name::by_index(&self.file.tree, node_index))
     }
 
-    pub fn infer_name(&mut self, name: Name) -> Inferred<'db> {
+    pub fn infer_name(&mut self, name: Name) -> Inferred {
         let point = self.file.points.get(name.index());
         if point.calculated() && point.type_() == PointType::MultiDefinition {
             // We are trying to infer the name here. We don't have to follow the multi definition,
@@ -1735,7 +1735,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     check_point_cache_with!(pub infer_name_definition, Self::_infer_name_definition, NameDefinition);
-    fn _infer_name_definition(&mut self, name_def: NameDefinition) -> Inferred<'db> {
+    fn _infer_name_definition(&mut self, name_def: NameDefinition) -> Inferred {
         let stmt_like = name_def.expect_stmt_like_ancestor();
 
         if !self.file.points.get(stmt_like.index()).calculated() {
@@ -1756,7 +1756,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         self.infer_name_definition(name_def)
     }
 
-    pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred<'db> {
+    pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred {
         self.check_point_cache(node_index)
             .unwrap_or_else(|| todo!())
     }

@@ -133,7 +133,7 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
 #[derive(Debug)]
 pub struct KnownArguments<'db, 'a> {
-    inferred: &'a Inferred<'db>,
+    inferred: &'a Inferred,
     mro_index: MroIndex,
     node_ref: Option<NodeRef<'db>>,
 }
@@ -161,7 +161,7 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
 }
 
 impl<'db, 'a> KnownArguments<'db, 'a> {
-    pub fn new(inferred: &'a Inferred<'db>, node_ref: Option<NodeRef<'db>>) -> Self {
+    pub fn new(inferred: &'a Inferred, node_ref: Option<NodeRef<'db>>) -> Self {
         Self {
             inferred,
             node_ref,
@@ -170,7 +170,7 @@ impl<'db, 'a> KnownArguments<'db, 'a> {
     }
 
     pub fn with_mro_index(
-        inferred: &'a Inferred<'db>,
+        inferred: &'a Inferred,
         mro_index: MroIndex,
         node_ref: Option<NodeRef<'db>>,
     ) -> Self {
@@ -228,7 +228,7 @@ pub enum ArgumentKind<'db, 'a> {
         node_ref: NodeRef<'db>,
     },
     Inferred {
-        inferred: Inferred<'db>,
+        inferred: Inferred,
         position: usize, // The position as a 1-based index
         node_ref: Option<NodeRef<'db>>,
         in_args_or_kwargs_and_arbitrary_len: bool,
@@ -294,7 +294,7 @@ impl<'db, 'a> Argument<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match &self.kind {
             ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),
             ArgumentKind::Positional {
@@ -377,7 +377,7 @@ enum ArgumentIteratorBase<'db, 'a> {
         kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
     Comprehension(Context<'db, 'a>, &'db PythonFile, Comprehension<'a>),
-    Inferred(&'a Inferred<'db>, Option<NodeRef<'db>>),
+    Inferred(&'a Inferred, Option<NodeRef<'db>>),
     SliceType(Context<'db, 'a>, SliceType<'db, 'a>),
     Finished,
 }
@@ -743,7 +743,7 @@ enum ArgsKwargsIterator<'db, 'a> {
         node_ref: NodeRef<'db>,
     },
     Kwargs {
-        inferred_value: Inferred<'db>,
+        inferred_value: Inferred,
         position: usize,
         node_ref: NodeRef<'db>,
     },

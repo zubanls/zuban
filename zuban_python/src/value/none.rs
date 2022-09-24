@@ -18,7 +18,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         "None"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         debug!("TODO None lookup");
         LookupResult::None
     }
@@ -35,7 +35,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         debug!("TODO None[...]");
         Inferred::new_any()
     }

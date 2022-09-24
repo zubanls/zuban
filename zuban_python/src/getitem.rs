@@ -79,7 +79,7 @@ pub struct Simple<'db, 'a> {
 }
 
 impl<'db> Simple<'db, '_> {
-    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
         self.file
             .inference(i_s)
             .infer_named_expression(self.named_expr)
@@ -125,7 +125,7 @@ pub enum SliceOrSimple<'db, 'a> {
 }
 
 impl<'db> SliceOrSimple<'db, '_> {
-    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
         match self {
             Self::Simple(simple) => simple.infer(i_s),
             Self::Slice(slice) => todo!(),

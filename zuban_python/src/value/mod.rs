@@ -106,7 +106,7 @@ macro_rules! base_qualified_name {
 
 #[derive(Debug)]
 pub enum IteratorContent<'db, 'a> {
-    Inferred(Inferred<'db>),
+    Inferred(Inferred),
     ListLiteral(ListLiteral<'db>, ListOrSetElementIterator<'db>),
     // TODO this should include the arbitrary_length
     TupleGenerics(std::slice::Iter<'a, DbType>),
@@ -115,7 +115,7 @@ pub enum IteratorContent<'db, 'a> {
 }
 
 impl<'db> IteratorContent<'db, '_> {
-    pub fn infer_all(self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn infer_all(self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
             Self::ListLiteral(list, _) => {
@@ -131,7 +131,7 @@ impl<'db> IteratorContent<'db, '_> {
         }
     }
 
-    pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred<'db>> {
+    pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred> {
         match self {
             Self::Inferred(inferred) => Some(inferred.clone()),
             Self::TupleGenerics(t) => t.next().map(|g| Inferred::execute_db_type(i_s, g.clone())),
@@ -162,16 +162,16 @@ impl<'db> IteratorContent<'db, '_> {
 }
 
 #[derive(Debug)]
-pub enum LookupResult<'db> {
+pub enum LookupResult {
     // Locality is part of Inferred
-    GotoName(PointLink, Inferred<'db>),
+    GotoName(PointLink, Inferred),
     FileReference(FileIndex),
-    UnknownName(Inferred<'db>),
+    UnknownName(Inferred),
     None,
 }
 
-impl<'db> LookupResult<'db> {
-    fn into_maybe_inferred(self) -> Option<Inferred<'db>> {
+impl<'db> LookupResult {
+    fn into_maybe_inferred(self) -> Option<Inferred> {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {
             Self::GotoName(_, inf) | Self::UnknownName(inf) => Some(inf),
@@ -189,7 +189,7 @@ impl<'db> LookupResult<'db> {
         }
     }
 
-    fn map(self, c: impl FnOnce(Inferred<'db>) -> Inferred<'db>) -> Self {
+    fn map(self, c: impl FnOnce(Inferred) -> Inferred) -> Self {
         match self {
             Self::GotoName(link, inf) => Self::GotoName(link, c(inf)),
             Self::UnknownName(inf) => Self::UnknownName(c(inf)),
@@ -219,7 +219,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         base_description!(self)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db>;
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult;
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         true
@@ -230,7 +230,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
         on_error: OnLookupError<'db, '_>,
-    ) -> LookupResult<'db> {
+    ) -> LookupResult {
         let result = self.lookup_internal(i_s, name);
         if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s) {
             on_error(i_s);
@@ -243,7 +243,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
         on_error: OnLookupError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match self.lookup(i_s, name, on_error) {
             LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
             LookupResult::FileReference(f) => todo!(),
@@ -257,7 +257,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable {
@@ -275,7 +275,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         todo!("get_item not implemented for {self:?}")
     }
 

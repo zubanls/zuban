@@ -23,7 +23,7 @@ impl<'db, 'a> Instance<'db, 'a> {
         }
     }
 
-    pub fn as_inferred(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred<'db> {
+    pub fn as_inferred(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
         if let Some(inferred_link) = self.inferred_link {
             Inferred::from_saved_node_ref(inferred_link)
         } else {
@@ -42,7 +42,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         self.class.name()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         for (mro_index, class) in self.class.mro(i_s) {
             if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
@@ -77,7 +77,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
             inf.run_on_value(i_s, &mut |i_s, value| {
                 value.execute(i_s, args, result_context, on_type_error)
@@ -97,7 +97,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let args = slice_type.as_args(i_s.context);
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(

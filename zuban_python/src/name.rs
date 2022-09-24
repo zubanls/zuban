@@ -67,7 +67,7 @@ pub trait Name<'db>: fmt::Debug {
         vec![]
     }
 
-    fn infer(&self) -> Inferred<'db>;
+    fn infer(&self) -> Inferred;
 
     fn goto(&self) -> Names<'db>;
 
@@ -141,7 +141,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     }
     */
 
-    fn infer(&self) -> Inferred<'db> {
+    fn infer(&self) -> Inferred {
         let mut i_s = InferenceState::new(self.db);
         self.file.inference(&mut i_s).infer_name(self.ast_name)
     }
@@ -202,7 +202,7 @@ impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
         todo!()
     }
 
-    fn infer(&self) -> Inferred<'db> {
+    fn infer(&self) -> Inferred {
         todo!()
     }
 

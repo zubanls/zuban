@@ -29,7 +29,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         "TypeAlias"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         debug!("TODO this should at least have the object results");
         LookupResult::None
     }
@@ -38,7 +38,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let count_given = match slice_type.ast_node {
             ASTSliceType::Slices(s) => s.iter().count(),
             _ => 1,
@@ -60,7 +60,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         if matches!(self.alias.db_type.as_ref(), DbType::Class(_, _)) {
             return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                 self.alias.as_db_type(),

@@ -687,7 +687,7 @@ impl<'db, 'a> Type<'db, 'a> {
     pub fn error_if_not_matches<'x>(
         &self,
         i_s: &mut InferenceState<'db, 'x>,
-        value: &Inferred<'db>,
+        value: &Inferred,
         callback: impl FnOnce(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
     ) {
         self.error_if_not_matches_with_matcher(
@@ -706,7 +706,7 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, 'x>,
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        value: &Inferred<'db>,
+        value: &Inferred,
         callback: Option<
             impl FnOnce(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, &MismatchReason),
         >,
@@ -741,7 +741,7 @@ impl<'db, 'a> Type<'db, 'a> {
         i_s: &mut InferenceState<'db, '_>,
         class: Option<&Class<'db, '_>>,
         calculated_type_args: &CalculatedTypeArguments,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
         debug!(
             "Resolved type vars: {}",
@@ -802,11 +802,7 @@ impl<'db, 'a> Type<'db, 'a> {
         matches!(self, Type::Type(t) if matches!(t.as_ref(), DbType::Any))
     }
 
-    pub fn lookup_symbol(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-    ) -> LookupResult<'db> {
+    pub fn lookup_symbol(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
             _ => todo!("{name:?} {self:?}"),

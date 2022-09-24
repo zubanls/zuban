@@ -70,7 +70,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         self.name().to_owned()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         self.file
             .symbol_table
             .lookup_symbol(name)
@@ -97,7 +97,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable {

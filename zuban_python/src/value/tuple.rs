@@ -32,7 +32,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         "tuple"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         let tuple_cls = i_s.db.python_state.tuple();
         for (mro_index, class) in tuple_cls.mro(i_s) {
             let result = class.lookup_symbol(i_s, name).map(|inf| {
@@ -94,7 +94,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         slice_type: &SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 let by_index = |i_s: &mut InferenceState<'db, '_>, index: usize| {

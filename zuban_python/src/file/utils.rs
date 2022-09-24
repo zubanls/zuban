@@ -32,7 +32,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         list: List,
         result_context: ResultContext<'db, '_>,
-    ) -> Option<Inferred<'db>> {
+    ) -> Option<Inferred> {
         let file = self.file;
         result_context
             .with_type_if_exists(self.i_s, |i_s, type_| {

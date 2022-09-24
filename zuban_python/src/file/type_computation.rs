@@ -126,7 +126,7 @@ impl InvalidVariableType<'_, '_> {
 #[derive(Debug, Clone)]
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
-    ClassWithoutTypeVar(Inferred<'db>),
+    ClassWithoutTypeVar(Inferred),
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType),
@@ -136,7 +136,7 @@ enum TypeContent<'db, 'a> {
 
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
-    Class(Inferred<'db>),
+    Class(Inferred),
     TypeVar(Rc<TypeVar>),
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType),
@@ -1161,7 +1161,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         &mut self,
         class: Class<'db, '_>,
         slice_type: SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         compute_type_application!(
             self,
             slice_type,
@@ -1173,7 +1173,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         &mut self,
         alias: &TypeAlias,
         slice_type: SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         if !matches!(alias.db_type.as_ref(), DbType::Class(_, _)) {
             slice_type
                 .as_node_ref()
@@ -1191,7 +1191,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         &mut self,
         specific: Specific,
         slice_type: SliceType<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 todo!()
@@ -1235,7 +1235,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub(super) fn use_cached_annotation(&mut self, annotation: Annotation) -> Inferred<'db> {
+    pub(super) fn use_cached_annotation(&mut self, annotation: Annotation) -> Inferred {
         let point = self.file.points.get(annotation.index());
         if point.type_() == PointType::Specific {
             if point.specific() != Specific::AnnotationClassInstance {
@@ -1251,7 +1251,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         self.check_point_cache(annotation.index()).unwrap()
     }
 
-    pub fn use_cached_return_annotation(&mut self, annotation: ReturnAnnotation) -> Inferred<'db> {
+    pub fn use_cached_return_annotation(&mut self, annotation: ReturnAnnotation) -> Inferred {
         let point = self.file.points.get(annotation.index());
         assert!(point.calculated());
         if point.type_() == PointType::Specific {
@@ -1442,7 +1442,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         start: CodeIndex,
         s: &str,
         assignment_node_ref: NodeRef,
-    ) -> (Inferred<'db>, Type<'db, 'db>) {
+    ) -> (Inferred, Type<'db, 'db>) {
         let f: &'db PythonFile =
             self.file
                 .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').to_owned());
@@ -1542,7 +1542,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         })
     }
 
-    pub fn compute_cast_target(&mut self, node_ref: NodeRef<'db>) -> Inferred<'db> {
+    pub fn compute_cast_target(&mut self, node_ref: NodeRef<'db>) -> Inferred {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut x));

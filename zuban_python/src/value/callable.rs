@@ -25,7 +25,7 @@ impl<'db, 'a> Callable<'a> {
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class<'db, '_>>,
         result_context: ResultContext<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             class,
@@ -48,7 +48,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         "Callable"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult<'db> {
+    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
         debug!("TODO callable lookups");
         LookupResult::None
     }
@@ -63,7 +63,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         args: &dyn Arguments<'db>,
         result_context: ResultContext<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred<'db> {
+    ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
