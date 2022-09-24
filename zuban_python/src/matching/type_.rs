@@ -688,7 +688,7 @@ impl<'db, 'a> Type<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, 'x>,
         value: &Inferred<'db>,
-        mut callback: impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
+        callback: impl FnOnce(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
     ) {
         self.error_if_not_matches_with_matcher(
             i_s,
@@ -708,7 +708,7 @@ impl<'db, 'a> Type<'db, 'a> {
         mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
         value: &Inferred<'db>,
         callback: Option<
-            impl FnMut(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, &MismatchReason),
+            impl FnOnce(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, &MismatchReason),
         >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
@@ -729,7 +729,7 @@ impl<'db, 'a> Type<'db, 'a> {
                 input = value_type.format(&fmt1);
                 wanted = self.format(&fmt2);
             }
-            if let Some(mut callback) = callback {
+            if let Some(callback) = callback {
                 callback(i_s, input, wanted, reason)
             }
         }

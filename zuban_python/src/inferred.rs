@@ -568,7 +568,7 @@ impl<'db> Inferred<'db> {
     }
 
     #[inline]
-    pub fn gather_union(mut callable: impl FnMut(&mut dyn FnMut(Self))) -> Self {
+    pub fn gather_union(callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
         let mut result: Option<Self> = None;
         let r = &mut result;
         callable(&mut |inferred| {

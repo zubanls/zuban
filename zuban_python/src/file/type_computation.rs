@@ -1133,9 +1133,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }))
     }
 
-    pub fn into_type_vars<C>(self, mut on_type_var_recalculation: C) -> TypeVars
+    pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVars
     where
-        C: FnMut(&PythonInference<'db, '_, '_>, &dyn Fn(&DbType) -> DbType),
+        C: FnOnce(&PythonInference<'db, '_, '_>, &dyn Fn(&DbType) -> DbType),
     {
         if self.type_var_manager.has_late_bound_type_vars() {
             on_type_var_recalculation(self.inference, &|t| {

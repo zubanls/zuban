@@ -53,7 +53,7 @@ impl Match {
         }
     }
 
-    pub fn or(self, mut callable: impl FnMut() -> Self) -> Self {
+    pub fn or(self, mut callable: impl FnOnce() -> Self) -> Self {
         if self.bool() {
             self
         } else {
