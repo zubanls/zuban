@@ -86,7 +86,7 @@ impl File for PythonFile {
         }
     }
 
-    fn infer_operator_leaf<'db>(&'db self, db: &'db Database, leaf: Keyword<'db>) -> Inferred {
+    fn infer_operator_leaf(&self, db: &Database, leaf: Keyword) -> Inferred {
         if ["(", "[", "{", ")", "]", "}"]
             .iter()
             .any(|&x| x == leaf.as_str())
@@ -331,7 +331,7 @@ macro_rules! check_point_cache_with {
 }
 
 impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
-    fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef<'db>) {
+    fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
             self.file.byte_to_line_column(simple_stmts.start()).0,
@@ -356,7 +356,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    fn cache_stmt_name(&mut self, stmt: Stmt, name_def: NodeRef<'db>) {
+    fn cache_stmt_name(&mut self, stmt: Stmt, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
             self.file.byte_to_line_column(stmt.start()).0,

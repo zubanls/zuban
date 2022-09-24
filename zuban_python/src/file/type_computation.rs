@@ -368,7 +368,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         unsaved.save_redirect(self.inference.file, annotation_index);
     }
 
-    fn as_db_type(&mut self, type_: TypeContent<'db, '_>, node_ref: NodeRef<'db>) -> DbType {
+    fn as_db_type(&mut self, type_: TypeContent<'db, '_>, node_ref: NodeRef) -> DbType {
         match type_ {
             TypeContent::ClassWithoutTypeVar(i) => i
                 .maybe_class(self.inference.i_s)
@@ -1145,7 +1145,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         self.type_var_manager.into_type_vars()
     }
 
-    fn add_typing_issue(&self, node_ref: NodeRef<'db>, issue_type: IssueType) {
+    fn add_typing_issue(&self, node_ref: NodeRef, issue_type: IssueType) {
         if !self.errors_already_calculated {
             node_ref.add_typing_issue(self.inference.i_s.db, issue_type)
         }
@@ -1542,7 +1542,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         })
     }
 
-    pub fn compute_cast_target(&mut self, node_ref: NodeRef<'db>) -> Inferred {
+    pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Inferred {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut x));
