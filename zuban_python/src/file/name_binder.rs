@@ -129,7 +129,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         type_: NameBinderType,
         scope_node: NodeIndex,
         symbol_table: &'_ SymbolTable,
-        mut func: impl FnOnce(&mut NameBinder<'db, '_>),
+        func: impl FnOnce(&mut NameBinder<'db, '_>),
     ) {
         let mut name_binder = NameBinder::new(
             self.is_mypy_compatible,

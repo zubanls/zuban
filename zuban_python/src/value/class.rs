@@ -69,7 +69,11 @@ impl<'db, 'a> Class<'db, 'a> {
     pub fn has_non_overloaded_init_func(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let cls = class.unwrap_or_else(|| todo!());
-        match init.into_maybe_inferred().unwrap().init_as_function(cls) {
+        match init
+            .into_maybe_inferred()
+            .unwrap()
+            .init_as_function(i_s.db, cls)
+        {
             Some(FunctionOrOverload::Function(_)) => true,
             Some(FunctionOrOverload::Overload(_)) => false,
             None => unreachable!(), // There is always an init func
@@ -85,7 +89,11 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> Option<(Function<'db, '_>, Option<GenericsList>, bool)> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let cls = class.unwrap_or_else(|| todo!());
-        match init.into_maybe_inferred().unwrap().init_as_function(cls) {
+        match init
+            .into_maybe_inferred()
+            .unwrap()
+            .init_as_function(i_s.db, cls)
+        {
             Some(FunctionOrOverload::Function(func)) => {
                 let calculated_type_args = calculate_class_init_type_vars_and_return(
                     i_s,
@@ -111,7 +119,11 @@ impl<'db, 'a> Class<'db, 'a> {
     ) -> Function<'db, '_> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let class = class.unwrap_or_else(|| todo!());
-        match init.into_maybe_inferred().unwrap().init_as_function(class) {
+        match init
+            .into_maybe_inferred()
+            .unwrap()
+            .init_as_function(i_s.db, class)
+        {
             Some(FunctionOrOverload::Function(func)) => func,
             _ => unreachable!(),
         }

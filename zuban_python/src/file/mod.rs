@@ -1085,7 +1085,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                             right,
                         },
                     );
-                    if left.is_union() && !added_note.get() {
+                    if left.is_union(i_s.db) && !added_note.get() {
                         added_note.set(true);
                         node_ref.add_typing_issue(
                             i_s.db,

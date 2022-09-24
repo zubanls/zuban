@@ -1,6 +1,7 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::fmt;
+use std::marker::PhantomData;
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
@@ -28,8 +29,8 @@ pub enum FunctionOrOverload<'db, 'a> {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-enum InferredState<'db> {
-    Saved(NodeRef<'db>, Point),
+enum InferredState {
+    Saved(PointLink, Point),
     UnsavedFileReference(FileIndex),
     UnsavedComplex(ComplexPoint),
     UnsavedSpecific(Specific),
@@ -38,7 +39,8 @@ enum InferredState<'db> {
 
 #[derive(Clone)]
 pub struct Inferred<'db> {
-    state: InferredState<'db>,
+    state: InferredState,
+    phantom_data: PhantomData<&'db ()>,
 }
 
 impl<'db> Inferred<'db> {
@@ -49,7 +51,8 @@ impl<'db> Inferred<'db> {
 
     pub fn from_saved_node_ref(node_ref: NodeRef<'db>) -> Self {
         Self {
-            state: InferredState::Saved(node_ref, node_ref.point()),
+            state: InferredState::Saved(node_ref.as_link(), node_ref.point()),
+            phantom_data: PhantomData::default(),
         }
     }
 
@@ -57,43 +60,50 @@ impl<'db> Inferred<'db> {
         // TODO rethink this method and new_saved
         let node_ref = NodeRef { file, node_index };
         Self {
-            state: InferredState::Saved(node_ref, node_ref.point()),
+            state: InferredState::Saved(node_ref.as_link(), node_ref.point()),
+            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_saved(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
         Self {
-            state: InferredState::Saved(NodeRef { file, node_index }, point),
+            state: InferredState::Saved(PointLink::new(file.file_index(), node_index), point),
+            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_unsaved_complex(complex: ComplexPoint) -> Self {
         Self {
             state: InferredState::UnsavedComplex(complex),
+            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_unsaved_specific(specific: Specific) -> Self {
         Self {
             state: InferredState::UnsavedSpecific(specific),
+            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_unknown() -> Self {
         Self {
             state: InferredState::Unknown,
+            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_none() -> Self {
         Self {
             state: InferredState::UnsavedSpecific(Specific::None),
+            phantom_data: PhantomData::default(),
         }
     }
 
     pub fn new_any() -> Self {
         Self {
             state: InferredState::UnsavedSpecific(Specific::TypingAny),
+            phantom_data: PhantomData::default(),
         }
     }
 
@@ -101,6 +111,7 @@ impl<'db> Inferred<'db> {
         // TODO maybe remove this and UnsavedFileReference??? unused??
         Self {
             state: InferredState::UnsavedFileReference(index),
+            phantom_data: PhantomData::default(),
         }
     }
 
@@ -110,7 +121,7 @@ impl<'db> Inferred<'db> {
             DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, _)) => match c.as_ref() {
                 DbType::Class(link, None) => {
                     let node_ref = NodeRef::from_link(i_s.db, *link);
-                    InferredState::Saved(node_ref, node_ref.point())
+                    InferredState::Saved(*link, node_ref.point())
                 }
                 _ => unreachable!(),
             },
@@ -118,7 +129,10 @@ impl<'db> Inferred<'db> {
             DbType::Any => return Inferred::new_any(),
             _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic))),
         };
-        Self { state }
+        Self {
+            state,
+            phantom_data: PhantomData::default(),
+        }
     }
 
     pub fn create_instance(class: PointLink, generics: Option<&[DbType]>) -> Self {
@@ -131,7 +145,8 @@ impl<'db> Inferred<'db> {
     pub fn class_as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
         match self.state {
             InferredState::Saved(definition, _) => {
-                if let Some(ComplexPoint::TypeInstance(ref t)) = definition.complex() {
+                let node_ref = NodeRef::from_link(i_s.db, definition);
+                if let Some(ComplexPoint::TypeInstance(ref t)) = node_ref.complex() {
                     return Type::new(t);
                 }
             }
@@ -166,7 +181,7 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {
-                run_on_saved(i_s, definition, *point, callable, reducer, on_missing)
+                run_on_saved(i_s, *definition, *point, callable, reducer, on_missing)
             }
             InferredState::UnsavedComplex(complex) => {
                 run_on_complex(i_s, complex, None, callable, reducer, on_missing)
@@ -195,7 +210,7 @@ impl<'db> Inferred<'db> {
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {
-                run_on_saved(i_s, definition, *point, callable, reducer, on_missing)
+                run_on_saved(i_s, *definition, *point, callable, reducer, on_missing)
             }
             InferredState::UnsavedComplex(complex) => unreachable!(),
             InferredState::UnsavedSpecific(specific) => match specific {
@@ -276,7 +291,8 @@ impl<'db> Inferred<'db> {
 
     pub fn maybe_type_var(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Rc<TypeVar>> {
         if let InferredState::Saved(definition, point) = self.state {
-            if let Some(ComplexPoint::TypeVar(t)) = definition.complex() {
+            let node_ref = NodeRef::from_link(i_s.db, definition);
+            if let Some(ComplexPoint::TypeVar(t)) = node_ref.complex() {
                 return Some(t.clone());
             }
         }
@@ -288,31 +304,32 @@ impl<'db> Inferred<'db> {
             if point.type_() == PointType::Specific {
                 match point.specific() {
                     Specific::InstanceWithArguments => {
-                        let inf_cls = infer_instance_with_arguments_cls(i_s, &definition)
+                        let node_ref = NodeRef::from_link(i_s.db, definition);
+                        let inf_cls = infer_instance_with_arguments_cls(i_s, node_ref)
                             .resolve_function_return(i_s);
                         let class = inf_cls.maybe_class(i_s).unwrap();
                         debug_assert!(class.type_vars(i_s).is_none());
                         let args = SimpleArguments::from_primary(
                             i_s.clone(),
-                            definition.file,
-                            definition.as_primary(),
+                            node_ref.file,
+                            node_ref.as_primary(),
                             None,
                         );
                         let init = class.simple_init_func(i_s, &args);
                         return Inferred::new_unsaved_complex(match args.as_execution(&init) {
                             Some(execution) => ComplexPoint::ExecutionInstance(
-                                inf_cls.get_saved().unwrap().0.as_link(),
+                                inf_cls.get_saved(i_s.db).unwrap().0.as_link(),
                                 Box::new(execution),
                             ),
                             None => ComplexPoint::Instance(
-                                inf_cls.get_saved().unwrap().0.as_link(),
+                                inf_cls.get_saved(i_s.db).unwrap().0.as_link(),
                                 None,
                             ),
                         });
                     }
                     Specific::Closure => {
                         return Inferred::new_unsaved_complex(ComplexPoint::Closure(
-                            PointLink::new(definition.file.file_index(), definition.node_index),
+                            definition,
                             Box::new(i_s.args_as_execution().unwrap()),
                         ));
                     }
@@ -330,12 +347,13 @@ impl<'db> Inferred<'db> {
     fn with_instance<'a, T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        instance: &NodeRef<'db>,
+        instance: NodeRef<'db>,
         generics: Option<Generics<'db, 'a>>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, 'a>) -> T,
     ) -> T {
         match &self.state {
             InferredState::Saved(definition, point) => {
+                let definition = NodeRef::from_link(i_s.db, *definition);
                 if point.type_() == PointType::Specific {
                     if let Specific::SimpleGeneric = point.specific() {
                         let p = Primary::by_index(&definition.file.tree, definition.node_index);
@@ -359,9 +377,9 @@ impl<'db> Inferred<'db> {
                     callable(
                         i_s,
                         &use_instance(
-                            *definition,
+                            definition,
                             generics.unwrap_or(Generics::Any),
-                            Some(*instance),
+                            Some(instance),
                         ),
                     )
                 }
@@ -393,7 +411,8 @@ impl<'db> Inferred<'db> {
         let mut generics = None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
-                generics = Self::expect_generics(*definition, *point);
+                let definition = NodeRef::from_link(i_s.db, *definition);
+                generics = Self::expect_generics(definition, *point);
             }
         }
         self.maybe_class_internal(i_s, generics.unwrap_or(Generics::Any))
@@ -405,27 +424,30 @@ impl<'db> Inferred<'db> {
         generics: Generics<'db, 'a>,
     ) -> Option<Class<'db, 'a>> {
         match &self.state {
-            InferredState::Saved(definition, point) => match point.type_() {
-                PointType::Complex => {
-                    let complex = definition.file.complex_points.get(point.complex_index());
-                    if let ComplexPoint::Class(c) = complex {
-                        Some(Class::new(*definition, c, generics, None))
-                    } else {
-                        None
+            InferredState::Saved(definition, point) => {
+                let definition = NodeRef::from_link(i_s.db, *definition);
+                match point.type_() {
+                    PointType::Complex => {
+                        let complex = definition.file.complex_points.get(point.complex_index());
+                        if let ComplexPoint::Class(c) = complex {
+                            Some(Class::new(definition, c, generics, None))
+                        } else {
+                            None
+                        }
                     }
-                }
-                PointType::Specific => match point.specific() {
-                    Specific::SimpleGeneric => {
-                        let inferred = definition
-                            .file
-                            .inference(i_s)
-                            .infer_primary_or_atom(definition.as_primary().first());
-                        inferred.maybe_class_internal(i_s, generics)
-                    }
+                    PointType::Specific => match point.specific() {
+                        Specific::SimpleGeneric => {
+                            let inferred = definition
+                                .file
+                                .inference(i_s)
+                                .infer_primary_or_atom(definition.as_primary().first());
+                            inferred.maybe_class_internal(i_s, generics)
+                        }
+                        _ => None,
+                    },
                     _ => None,
-                },
-                _ => None,
-            },
+                }
+            }
             InferredState::UnsavedComplex(complex) => {
                 if let ComplexPoint::TypeInstance(g) = complex {
                     return None; // TODO this was originally a return None for tuple class
@@ -438,18 +460,20 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn expect_int(&self) -> Option<i64> {
+    pub fn expect_int(&self, db: &Database) -> Option<i64> {
         if let InferredState::Saved(definition, point) = self.state {
             if let Some(Specific::Integer) = point.maybe_specific() {
+                let definition = NodeRef::from_link(db, definition);
                 return definition.infer_int();
             }
         }
         None
     }
 
-    pub fn maybe_str(&self) -> Option<PythonString<'db>> {
+    pub fn maybe_str(&self, db: &'db Database) -> Option<PythonString<'db>> {
         if let InferredState::Saved(definition, point) = self.state {
             if let Some(Specific::String) = point.maybe_specific() {
+                let definition = NodeRef::from_link(db, definition);
                 return definition.infer_str();
             }
         }
@@ -476,11 +500,7 @@ impl<'db> Inferred<'db> {
                 }
                 file.points.set(
                     index,
-                    Point::new_redirect(
-                        definition.file.file_index(),
-                        definition.node_index,
-                        Locality::Todo,
-                    ),
+                    Point::new_redirect(definition.file, definition.node_index, Locality::Todo),
                 );
                 return self;
             }
@@ -511,18 +531,20 @@ impl<'db> Inferred<'db> {
 
     pub fn init_as_function<'a>(
         &self,
+        db: &'db Database,
         class: Class<'db, 'a>,
     ) -> Option<FunctionOrOverload<'db, 'a>> {
         if let InferredState::Saved(definition, point) = &self.state {
+            let definition = NodeRef::from_link(db, *definition);
             if let Some(Specific::Function) = point.maybe_specific() {
                 return Some(FunctionOrOverload::Function(Function::new(
-                    *definition,
+                    definition,
                     Some(class),
                 )));
             }
             if let Some(ComplexPoint::FunctionOverload(overload)) = definition.complex() {
                 return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
-                    *definition,
+                    definition,
                     overload,
                     Some(class),
                 )));
@@ -531,9 +553,12 @@ impl<'db> Inferred<'db> {
         None
     }
 
-    fn get_saved(&self) -> Option<(NodeRef<'db>, Point)> {
+    fn get_saved(&self, db: &'db Database) -> Option<(NodeRef<'db>, Point)> {
         match self.state {
-            InferredState::Saved(definition, point) => Some((definition, point)),
+            InferredState::Saved(definition, point) => {
+                let definition = NodeRef::from_link(db, definition);
+                Some((definition, point))
+            }
             _ => None,
         }
     }
@@ -546,7 +571,7 @@ impl<'db> Inferred<'db> {
             let insert = |list: &mut Vec<AnyLink>, state| {
                 match state {
                     InferredState::Saved(definition, _) => {
-                        list.push(AnyLink::Reference(definition.as_link()));
+                        list.push(AnyLink::Reference(definition));
                     }
                     InferredState::UnsavedComplex(complex) => match complex {
                         ComplexPoint::Union(lst) => {
@@ -594,18 +619,19 @@ impl<'db> Inferred<'db> {
                         let complex = ComplexPoint::BoundMethod(
                             get_inferred(i_s).as_any_link(i_s),
                             mro_index,
-                            definition.as_link(),
+                            *definition,
                         );
                         return Self::new_unsaved_complex(complex);
                     }
                 }
                 PointType::Complex => {
-                    match definition.file.complex_points.get(point.complex_index()) {
+                    let file = i_s.db.loaded_python_file(definition.file);
+                    match file.complex_points.get(point.complex_index()) {
                         ComplexPoint::FunctionOverload(o) => {
                             let complex = ComplexPoint::BoundMethod(
                                 get_inferred(i_s).as_any_link(i_s),
                                 mro_index,
-                                definition.as_link(),
+                                *definition,
                             );
                             return Self::new_unsaved_complex(complex);
                         }
@@ -614,7 +640,7 @@ impl<'db> Inferred<'db> {
                                 let complex = ComplexPoint::BoundMethod(
                                     get_inferred(i_s).as_any_link(i_s),
                                     mro_index,
-                                    definition.as_link(),
+                                    *definition,
                                 );
                                 return Self::new_unsaved_complex(complex);
                             }
@@ -644,6 +670,7 @@ impl<'db> Inferred<'db> {
     pub fn debug_info(&self, i_s: &mut InferenceState<'db, '_>) -> String {
         let details = match &self.state {
             InferredState::Saved(definition, point) => {
+                let definition = NodeRef::from_link(i_s.db, *definition);
                 format!(
                     "{} (complex?: {:?})",
                     definition.file.file_path(i_s.db),
@@ -660,7 +687,7 @@ impl<'db> Inferred<'db> {
 
     pub fn as_any_link(&self, i_s: &InferenceState<'db, '_>) -> AnyLink {
         match &self.state {
-            InferredState::Saved(definition, _) => AnyLink::Reference(definition.as_link()),
+            InferredState::Saved(definition, _) => AnyLink::Reference(*definition),
             InferredState::UnsavedComplex(complex) => AnyLink::Complex(Box::new(complex.clone())),
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
@@ -714,17 +741,20 @@ impl<'db> Inferred<'db> {
         }
     }
 
-    pub fn is_union(&self) -> bool {
+    pub fn is_union(&self, db: &'db Database) -> bool {
         let check_complex_point = |c: &_| match c {
             ComplexPoint::Union(_) => true,
             ComplexPoint::TypeInstance(t) => matches!(t.as_ref(), DbType::Union(_)),
             _ => false,
         };
         match &self.state {
-            InferredState::Saved(reference, point) => reference
-                .complex()
-                .map(|c| check_complex_point(c))
-                .unwrap_or(false),
+            InferredState::Saved(reference, point) => {
+                let node_ref = NodeRef::from_link(db, *reference);
+                node_ref
+                    .complex()
+                    .map(|c| check_complex_point(c))
+                    .unwrap_or(false)
+            }
             InferredState::UnsavedComplex(c) => check_complex_point(c),
             _ => false,
         }
@@ -784,7 +814,7 @@ impl fmt::Debug for Inferred<'_> {
 #[inline]
 fn run_on_saved<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
-    definition: &NodeRef<'db>,
+    definition: PointLink,
     point: Point,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
@@ -800,9 +830,10 @@ fn run_on_saved<'db: 'a, 'a, T>(
             on_missing,
         ),
         PointType::Complex => {
+            let definition = NodeRef::from_link(i_s.db, definition);
             let complex = definition.file.complex_points.get(point.complex_index());
             if let ComplexPoint::Class(cls_storage) = complex {
-                let class = Class::new(*definition, cls_storage, Generics::Any, None);
+                let class = Class::new(definition, cls_storage, Generics::Any, None);
                 callable(i_s, &class)
             } else {
                 run_on_complex(
@@ -827,7 +858,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
 fn run_on_complex<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     complex: &'a ComplexPoint,
-    definition: Option<&NodeRef<'db>>,
+    definition: Option<NodeRef<'db>>,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
@@ -859,14 +890,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 let result = match any_link {
                     AnyLink::Reference(link) => {
                         let reference = NodeRef::from_link(i_s.db, *link);
-                        run_on_saved(
-                            i_s,
-                            &reference,
-                            reference.point(),
-                            callable,
-                            reducer,
-                            on_missing,
-                        )
+                        run_on_saved(i_s, *link, reference.point(), callable, reducer, on_missing)
                     }
                     AnyLink::Complex(c) => {
                         run_on_complex(i_s, c, definition, callable, reducer, on_missing)
@@ -952,7 +976,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
         }
         ComplexPoint::FunctionOverload(overload) => callable(
             i_s,
-            &OverloadedFunction::new(*definition.unwrap(), overload, None),
+            &OverloadedFunction::new(definition.unwrap(), overload, None),
         ),
         ComplexPoint::GenericClass(link, generics) => {
             let class = Class::from_position(
@@ -975,14 +999,15 @@ fn run_on_complex<'db: 'a, 'a, T>(
 #[inline]
 fn run_on_specific<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
-    definition: &NodeRef<'db>,
+    definition: PointLink,
     specific: Specific,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
+    let definition = NodeRef::from_link(i_s.db, definition);
     match specific {
-        Specific::Function => callable(i_s, &Function::new(*definition, None)),
+        Specific::Function => callable(i_s, &Function::new(definition, None)),
         Specific::AnnotationClassInstance => {
             let expr_def = definition.add_to_node_index(2);
             let inferred = expr_def
@@ -1021,8 +1046,8 @@ fn run_on_specific<'db: 'a, 'a, T>(
             */
             todo!()
         }
-        Specific::List => callable(i_s, &ListLiteral::new(*definition)),
-        Specific::Dict => callable(i_s, &DictLiteral::new(*definition)),
+        Specific::List => callable(i_s, &ListLiteral::new(definition)),
+        Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
         Specific::AnnotationWithTypeVars => {
             let db_type = definition
                 .file
@@ -1044,7 +1069,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 .inference(i_s)
                 .infer_primary_or_atom(definition.as_primary().first());
             if let InferredState::Saved(_, p) = inf.state {
-                callable(i_s, &TypingWithGenerics::new(*definition, p.specific()))
+                callable(i_s, &TypingWithGenerics::new(definition, p.specific()))
             } else {
                 unreachable!()
             }
@@ -1100,7 +1125,7 @@ fn load_builtin_instance_from_str<'db>(
 
 fn infer_instance_with_arguments_cls<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    definition: &NodeRef<'db>,
+    definition: NodeRef<'db>,
 ) -> Inferred<'db> {
     definition
         .file

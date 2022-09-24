@@ -110,7 +110,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 };
                 if self.content.arbitrary_length {
                     by_index(i_s, 0)
-                } else if let Some(wanted) = simple.infer(i_s).expect_int() {
+                } else if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
                     by_index(i_s, usize::try_from(wanted).ok().unwrap_or_else(|| todo!()))
                 } else {
                     todo!()
