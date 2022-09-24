@@ -192,7 +192,6 @@ impl<'db> Inferred {
     pub fn internal_run_after_save<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        save_in_node_ref: NodeRef<'db>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'db>) -> T,
         reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
@@ -779,7 +778,6 @@ impl<'db> Inferred {
         self.save_if_unsaved(from.file, from.node_index)
             .internal_run_after_save(
                 i_s,
-                from,
                 &mut |i_s, v| v.iter(i_s, from),
                 &|_, i1, i2| todo!(),
                 &mut |i_s| IteratorContent::Any,
