@@ -13,14 +13,14 @@ use crate::value::{Class, LookupResult, MroIterator, Value};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
-pub enum Type<'db, 'a> {
+pub enum Type<'a> {
     // The reason why we do not use Class as a DbType as well is that this is an optimization to
     // avoid generating DbType for all possible cases (avoiding allocations).
-    Class(Class<'db, 'a>),
+    Class(Class<'a>),
     Type(Cow<'a, DbType>),
 }
 
-impl<'db, 'a> Type<'db, 'a> {
+impl<'a> Type<'a> {
     pub fn new(t: &'a DbType) -> Self {
         Self::Type(Cow::Borrowed(t))
     }
@@ -29,18 +29,18 @@ impl<'db, 'a> Type<'db, 'a> {
         Self::Type(Cow::Owned(t))
     }
 
-    pub fn union(self, i_s: &mut InferenceState<'db, '_>, other: Self) -> Self {
+    pub fn union(self, i_s: &mut InferenceState, other: Self) -> Self {
         Self::owned(self.into_db_type(i_s).union(other.into_db_type(i_s)))
     }
 
-    pub fn into_db_type(self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn into_db_type(self, i_s: &mut InferenceState) -> DbType {
         match self {
             Self::Class(class) => class.as_db_type(i_s),
             Self::Type(t) => t.into_owned(),
         }
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
+    pub fn as_db_type(&self, i_s: &mut InferenceState) -> DbType {
         match self {
             Self::Class(class) => class.as_db_type(i_s),
             Self::Type(t) => t.clone().into_owned(),
@@ -48,7 +48,7 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     #[inline]
-    pub fn maybe_class(&self, db: &'db Database) -> Option<Class<'db, '_>> {
+    pub fn maybe_class(&self, db: &Database) -> Option<Class> {
         match self {
             Self::Class(c) => Some(*c),
             Self::Type(t) => match t.as_ref() {
@@ -65,7 +65,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn overlaps(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> bool {
+    pub fn overlaps(&self, i_s: &mut InferenceState, other: &Self) -> bool {
         match other.maybe_db_type() {
             Some(DbType::TypeVar(t2)) => {
                 return if let Some(bound) = &t2.type_var.bound {
@@ -149,8 +149,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     fn matches_internal(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -256,8 +256,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn is_sub_type_of(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        matcher: Option<&mut TypeVarMatcher>,
         value_type: &Self,
     ) -> Match {
         if let Some(matcher) = matcher {
@@ -273,8 +273,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn is_super_type_of(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
@@ -315,8 +315,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn is_same_type(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         value_type: &Self,
     ) -> Match {
         let m = self.matches_internal(i_s, matcher.as_deref_mut(), value_type, Variance::Invariant);
@@ -332,8 +332,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn matches(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -348,8 +348,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     fn check_protocol_and_other_side(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -419,7 +419,7 @@ impl<'db, 'a> Type<'db, 'a> {
         Match::new_false()
     }
 
-    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
+    pub fn mro<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
         match self {
             Self::Class(c) => Some(c.mro(i_s)),
             Self::Type(t) => match t.as_ref() {
@@ -468,8 +468,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     fn matches_union(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         u1: &UnionType,
         value_type: &Self,
         variance: Variance,
@@ -519,9 +519,9 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     fn matches_class(
-        i_s: &mut InferenceState<'db, '_>,
-        matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        class1: &Class<'db, '_>,
+        i_s: &mut InferenceState,
+        matcher: Option<&mut TypeVarMatcher>,
+        class1: &Class,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -538,8 +538,8 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     fn matches_callable(
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
@@ -566,8 +566,8 @@ impl<'db, 'a> Type<'db, 'a> {
     }
 
     fn matches_tuple(
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         t1: &TupleContent,
         t2: &TupleContent,
         variance: Variance,
@@ -608,11 +608,7 @@ impl<'db, 'a> Type<'db, 'a> {
         Match::True
     }
 
-    fn overlaps_tuple(
-        i_s: &mut InferenceState<'db, '_>,
-        t1: &TupleContent,
-        t2: &TupleContent,
-    ) -> bool {
+    fn overlaps_tuple(i_s: &mut InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
         if let Some(generics1) = &t1.generics {
             if let Some(generics2) = &t2.generics {
                 return match (t1.arbitrary_length, t2.arbitrary_length) {
@@ -650,14 +646,10 @@ impl<'db, 'a> Type<'db, 'a> {
         true
     }
 
-    pub fn overlaps_class(
-        i_s: &mut InferenceState<'db, '_>,
-        class1: Class<'db, '_>,
-        class2: Class<'db, '_>,
-    ) -> bool {
+    pub fn overlaps_class(i_s: &mut InferenceState, class1: Class, class2: Class) -> bool {
         let check = {
             #[inline]
-            |i_s: &mut InferenceState<'db, '_>, t1: &Type<'db, '_>, t2: &Type<'db, '_>| {
+            |i_s: &mut InferenceState, t1: &Type, t2: &Type| {
                 t1.maybe_class(i_s.db)
                     .and_then(|c1| {
                         t2.maybe_class(i_s.db).map(|c2| {
@@ -686,30 +678,24 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn error_if_not_matches<'x>(
         &self,
-        i_s: &mut InferenceState<'db, 'x>,
+        i_s: &mut InferenceState,
         value: &Inferred,
-        callback: impl FnOnce(&mut InferenceState<'db, 'x>, Box<str>, Box<str>),
+        callback: impl FnOnce(&mut InferenceState, Box<str>, Box<str>),
     ) {
         self.error_if_not_matches_with_matcher(
             i_s,
             None,
             value,
-            Some(
-                |i_s: &mut InferenceState<'db, 'x>, t1, t2, reason: &MismatchReason| {
-                    callback(i_s, t1, t2)
-                },
-            ),
+            Some(|i_s: &mut InferenceState, t1, t2, reason: &MismatchReason| callback(i_s, t1, t2)),
         );
     }
 
     pub fn error_if_not_matches_with_matcher<'x>(
         &self,
-        i_s: &mut InferenceState<'db, 'x>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         value: &Inferred,
-        callback: Option<
-            impl FnOnce(&mut InferenceState<'db, 'x>, Box<str>, Box<str>, &MismatchReason),
-        >,
+        callback: Option<impl FnOnce(&mut InferenceState, Box<str>, Box<str>, &MismatchReason)>,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher.as_deref_mut(), &value_type);
@@ -738,8 +724,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     pub fn execute_and_resolve_type_vars(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class<'db, '_>>,
+        i_s: &mut InferenceState,
+        class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
     ) -> Inferred {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
@@ -752,8 +738,8 @@ impl<'db, 'a> Type<'db, 'a> {
 
     fn internal_resolve_type_vars(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class<'db, '_>>,
+        i_s: &mut InferenceState,
+        class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
         match self {
@@ -766,11 +752,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn on_any_class(
-        &self,
-        db: &'db Database,
-        callable: &mut impl FnMut(&Class<'db, '_>) -> bool,
-    ) -> bool {
+    pub fn on_any_class(&self, db: &Database, callable: &mut impl FnMut(&Class) -> bool) -> bool {
         if let Some(class) = self.maybe_class(db) {
             callable(&class)
         } else if let Some(DbType::Union(union_type)) = self.maybe_db_type() {
@@ -782,7 +764,7 @@ impl<'db, 'a> Type<'db, 'a> {
         }
     }
 
-    pub fn common_base_class(&self, i_s: &mut InferenceState<'db, '_>, other: &Self) -> DbType {
+    pub fn common_base_class(&self, i_s: &mut InferenceState, other: &Self) -> DbType {
         match (self.maybe_class(i_s.db), other.maybe_class(i_s.db)) {
             (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s) {
@@ -802,7 +784,7 @@ impl<'db, 'a> Type<'db, 'a> {
         matches!(self, Type::Type(t) if matches!(t.as_ref(), DbType::Any))
     }
 
-    pub fn lookup_symbol(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    pub fn lookup_symbol(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
             _ => todo!("{name:?} {self:?}"),

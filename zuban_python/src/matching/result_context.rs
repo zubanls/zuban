@@ -5,17 +5,17 @@ use crate::database::DbType;
 use crate::InferenceState;
 
 #[derive(Clone, Copy)]
-pub enum ResultContext<'db, 'a> {
-    Known(&'a Type<'db, 'a>),
-    LazyKnown(&'a dyn Fn(&mut InferenceState<'db, '_>) -> DbType),
+pub enum ResultContext<'a> {
+    Known(&'a Type<'a>),
+    LazyKnown(&'a dyn Fn(&mut InferenceState) -> DbType),
     Unknown,
 }
 
-impl<'db, 'a> ResultContext<'db, 'a> {
+impl<'a> ResultContext<'a> {
     pub fn with_type_if_exists<T>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'db, '_>) -> T,
+        i_s: &mut InferenceState,
+        callable: impl FnOnce(&mut InferenceState, &Type<'_>) -> T,
     ) -> Option<T> {
         match self {
             Self::Known(t) => Some(callable(i_s, t)),
@@ -28,7 +28,7 @@ impl<'db, 'a> ResultContext<'db, 'a> {
     }
 }
 
-impl fmt::Debug for ResultContext<'_, '_> {
+impl fmt::Debug for ResultContext<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Known(t) => write!(f, "Known({t:?})"),

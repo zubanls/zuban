@@ -23,8 +23,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_simple_stmts_diagnostics(
         &mut self,
         simple_stmts: SimpleStmts,
-        class: Option<Class<'db, '_>>,
-        func: Option<&Function<'db, '_>>,
+        class: Option<Class>,
+        func: Option<&Function>,
     ) {
         for simple_stmt in simple_stmts.iter() {
             match simple_stmt.unpack() {
@@ -65,8 +65,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_stmts_diagnostics(
         &mut self,
         stmts: StmtIterator,
-        class: Option<Class<'db, '_>>,
-        func: Option<&Function<'db, '_>>,
+        class: Option<Class>,
+        func: Option<&Function>,
     ) {
         // TODO In general all {} blocks are todos
         for stmt in stmts {
@@ -152,8 +152,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_block_diagnostics(
         &mut self,
         block: Block,
-        class: Option<Class<'db, '_>>,
-        func: Option<&Function<'db, '_>>,
+        class: Option<Class>,
+        func: Option<&Function>,
     ) {
         match block.unpack() {
             BlockContent::Indented(stmts) => self.calc_stmts_diagnostics(stmts, class, func),
@@ -175,7 +175,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             .calc_block_diagnostics(block, Some(class), None)
     }
 
-    fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class<'db, '_>>) {
+    fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = name_def_node_ref.complex() {
@@ -358,11 +358,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         inference.calc_block_diagnostics(block, None, Some(&function))
     }
 
-    fn calc_return_stmt_diagnostics(
-        &mut self,
-        func: Option<&Function<'db, '_>>,
-        return_stmt: ReturnStmt,
-    ) {
+    fn calc_return_stmt_diagnostics(&mut self, func: Option<&Function>, return_stmt: ReturnStmt) {
         if let Some(func) = func {
             if let Some(annotation) = func.return_annotation() {
                 if let Some(star_expressions) = return_stmt.star_expressions() {
@@ -408,8 +404,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_for_stmt_diagnostics(
         &mut self,
         for_stmt: ForStmt,
-        class: Option<Class<'db, '_>>,
-        func: Option<&Function<'db, '_>>,
+        class: Option<Class>,
+        func: Option<&Function>,
     ) {
         let (star_targets, star_exprs, block, else_block) = for_stmt.unpack();
         self.cache_for_stmt_names(star_targets, star_exprs);
@@ -422,8 +418,8 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn calc_try_stmt_diagnostics(
         &mut self,
         try_stmt: TryStmt,
-        class: Option<Class<'db, '_>>,
-        func: Option<&Function<'db, '_>>,
+        class: Option<Class>,
+        func: Option<&Function>,
     ) {
         for b in try_stmt.iter_blocks() {
             match b {

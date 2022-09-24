@@ -48,7 +48,7 @@ pub(super) enum InvalidVariableType<'db, 'a> {
     List,
     Tuple { tuple_length: usize },
     Execution,
-    Function(Function<'db, 'db>),
+    Function(Function<'db>),
     Literal(&'a str),
     Variable(NodeRef<'db>),
     Other,
@@ -571,7 +571,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn compute_type_get_item_on_class(
         &mut self,
-        class: Class<'db, '_>,
+        class: Class,
         slice_type: SliceType,
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
@@ -1153,7 +1153,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
     pub fn compute_type_application_on_class(
         &mut self,
-        class: Class<'db, '_>,
+        class: Class,
         slice_type: SliceType,
     ) -> Inferred {
         compute_type_application!(
@@ -1262,14 +1262,11 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         self.check_point_cache(annotation.index()).unwrap()
     }
 
-    pub fn use_cached_return_annotation_type(
-        &mut self,
-        annotation: ReturnAnnotation,
-    ) -> Type<'db, 'db> {
+    pub fn use_cached_return_annotation_type(&mut self, annotation: ReturnAnnotation) -> Type<'db> {
         self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
     }
 
-    pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Type<'db, 'db> {
+    pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Type<'db> {
         self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
     }
 
@@ -1277,7 +1274,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
-    ) -> Type<'db, 'db> {
+    ) -> Type<'db> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
@@ -1302,7 +1299,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         }
     }
 
-    pub fn use_cached_simple_generic_type(&mut self, expression: Expression) -> Type<'db, 'db> {
+    pub fn use_cached_simple_generic_type(&mut self, expression: Expression) -> Type<'db> {
         debug_assert_eq!(
             self.file.points.get(expression.index()).type_(),
             PointType::Redirect
@@ -1436,7 +1433,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
         start: CodeIndex,
         s: &str,
         assignment_node_ref: NodeRef,
-    ) -> (Inferred, Type<'db, 'db>) {
+    ) -> (Inferred, Type<'db>) {
         let f: &'db PythonFile =
             self.file
                 .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').to_owned());

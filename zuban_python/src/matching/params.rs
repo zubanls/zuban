@@ -11,7 +11,7 @@ use crate::value::ParamWithArgument;
 pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
     fn name(&self, db: &'db Database) -> Option<&str>;
-    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>>;
+    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>>;
     fn func_annotation_link(&self) -> Option<PointLink> {
         // Can be None for Callable
         None
@@ -360,7 +360,7 @@ impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
         self.name.map(|n| n.as_str(db))
     }
 
-    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>> {
+    fn annotation_type(&self, i_s: &mut InferenceState) -> Option<Type<'x>> {
         Some(Type::new(&self.db_type))
     }
 

@@ -10,20 +10,20 @@ use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
-pub struct Instance<'db, 'a> {
-    pub class: Class<'db, 'a>,
-    inferred_link: Option<NodeRef<'db>>,
+pub struct Instance<'a> {
+    pub class: Class<'a>,
+    inferred_link: Option<NodeRef<'a>>,
 }
 
-impl<'db, 'a> Instance<'db, 'a> {
-    pub fn new(class: Class<'db, 'a>, inferred_link: Option<NodeRef<'db>>) -> Self {
+impl<'a> Instance<'a> {
+    pub fn new(class: Class<'a>, inferred_link: Option<NodeRef<'a>>) -> Self {
         Self {
             class,
             inferred_link,
         }
     }
 
-    pub fn as_inferred(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
+    pub fn as_inferred(&self, i_s: &mut InferenceState) -> Inferred {
         if let Some(inferred_link) = self.inferred_link {
             Inferred::from_saved_node_ref(inferred_link)
         } else {
@@ -33,16 +33,16 @@ impl<'db, 'a> Instance<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
+impl<'a> Value<'a> for Instance<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         self.class.name()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         for (mro_index, class) in self.class.mro(i_s) {
             if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
@@ -67,16 +67,16 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         LookupResult::None
     }
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
         !self.class.class_infos(i_s).incomplete_mro
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
             inf.run_on_value(i_s, &mut |i_s, value| {
@@ -93,7 +93,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         }
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         let args = slice_type.as_args(i_s.context);
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(
@@ -122,15 +122,15 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         })
     }
 
-    fn as_instance(&self) -> Option<&Instance<'db, 'a>> {
+    fn as_instance(&self) -> Option<&Instance<'a>> {
         Some(self)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         Type::Class(self.class)
     }
 
-    fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    fn description(&self, i_s: &mut InferenceState) -> String {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),

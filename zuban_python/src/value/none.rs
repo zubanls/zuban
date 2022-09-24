@@ -9,21 +9,21 @@ use crate::matching::Type;
 #[derive(Debug)]
 pub struct NoneInstance();
 
-impl<'db, 'a> Value<'db, 'a> for NoneInstance {
+impl<'a> Value<'a> for NoneInstance {
     fn kind(&self) -> ValueKind {
         ValueKind::Constant
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "None"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         debug!("TODO None lookup");
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         Type::new(&DbType::None)
     }
 
@@ -31,7 +31,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         true
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         debug!("TODO None[...]");
         Inferred::new_any()
     }

@@ -38,8 +38,8 @@ pub use typing::{
 pub type OnTypeError<'db, 'a> = &'a dyn Fn(
     &mut InferenceState<'db, '_>,
     NodeRef,
-    Option<&Class<'db, '_>>,
-    Option<&Function<'db, '_>>,
+    Option<&Class>,
+    Option<&Function>,
     &dyn ParamWithArgument<'db, '_>,
     Box<str>,
     Box<str>,
@@ -115,7 +115,7 @@ pub enum IteratorContent<'a> {
 }
 
 impl<'db> IteratorContent<'_> {
-    pub fn infer_all(self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
+    pub fn infer_all(self, i_s: &mut InferenceState) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
             Self::ListLiteral(list, _) => {
@@ -131,7 +131,7 @@ impl<'db> IteratorContent<'_> {
         }
     }
 
-    pub fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred> {
+    pub fn next(&mut self, i_s: &mut InferenceState) -> Option<Inferred> {
         match self {
             Self::Inferred(inferred) => Some(inferred.clone()),
             Self::TupleGenerics(t) => t.next().map(|g| Inferred::execute_db_type(i_s, g.clone())),
@@ -199,37 +199,36 @@ impl<'db> LookupResult {
     }
 }
 
-// Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
-pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
+pub trait Value<'a>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
 
     //fn file(&self) -> &'db dyn File;
 
-    fn name(&self) -> &'db str;
+    fn name(&self) -> &'a str;
 
-    fn qualified_name(&self, db: &'db Database) -> String {
+    fn qualified_name(&self, db: &Database) -> String {
         base_qualified_name!(self, db, self.name())
     }
 
-    fn module(&self, db: &'db Database) -> Module<'db> {
+    fn module(&self, db: &Database) -> Module<'a> {
         todo!("{:?}", self)
     }
 
-    fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    fn description(&self, i_s: &mut InferenceState) -> String {
         base_description!(self)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult;
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult;
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
         true
     }
 
     fn lookup(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState,
         name: &str,
-        on_error: OnLookupError<'db, '_>,
+        on_error: OnLookupError,
     ) -> LookupResult {
         let result = self.lookup_internal(i_s, name);
         if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s) {
@@ -240,9 +239,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
 
     fn lookup_implicit(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState,
         name: &str,
-        on_error: OnLookupError<'db, '_>,
+        on_error: OnLookupError,
     ) -> Inferred {
         match self.lookup(i_s, name, on_error) {
             LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
@@ -253,10 +252,10 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -271,11 +270,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         Inferred::new_unknown()
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         todo!("get_item not implemented for {self:?}")
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
+    fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", &|i_s| {
                 from.add_typing_issue(
@@ -301,19 +300,16 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         )
     }
 
-    fn as_instance(&self) -> Option<&Instance<'db, 'a>> {
+    fn as_instance(&self) -> Option<&Instance<'a>> {
         None
     }
-    fn as_function(&self) -> Option<&Function<'db, 'a>> {
+    fn as_function(&self) -> Option<&Function<'a>> {
         None
     }
-    fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'db, 'a>> {
+    fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'a>> {
         None
     }
-    fn as_typing_with_generics(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<&TypingWithGenerics<'db>> {
+    fn as_typing_with_generics(&self, i_s: &mut InferenceState) -> Option<&TypingWithGenerics<'a>> {
         None
     }
     fn as_typing_class(&self) -> Option<&TypingClass> {
@@ -325,11 +321,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn is_none(&self) -> bool {
         false
     }
-    fn as_module(&self) -> Option<&Module<'db>> {
+    fn as_module(&self) -> Option<&Module<'a>> {
         None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         todo!("{self:?}")
     }
 }

@@ -294,7 +294,7 @@ pub struct PythonInference<'db, 'a, 'b> {
 
 macro_rules! check_point_cache_with {
     ($vis:vis $name:ident, $func:path, $ast:ident $(, $result_context:ident )?) => {
-        $vis fn $name(&mut self, node: $ast $(, $result_context : ResultContext<'db, '_>)?) -> $crate::inferred::Inferred {
+        $vis fn $name(&mut self, node: $ast $(, $result_context : ResultContext)?) -> $crate::inferred::Inferred {
             debug_indent(|| {
                 if let Some(inferred) = self.check_point_cache(node.index()) {
                     debug!(
@@ -715,7 +715,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn infer_assignment_right_side(
         &mut self,
         right: AssignmentRightSide,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Inferred {
         match right {
             AssignmentRightSide::StarExpressions(star_exprs) => {
@@ -939,7 +939,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_star_expressions(
         &mut self,
         exprs: StarExpressions,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Inferred {
         match exprs.unpack() {
             StarExpressionContent::Expression(expr) => {
@@ -973,7 +973,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_named_expression_with_context(
         &mut self,
         named_expr: NamedExpression,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Inferred {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr)
@@ -996,7 +996,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn infer_expression_without_cache(
         &mut self,
         expr: Expression,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Inferred {
         let inferred = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n, result_context),
@@ -1013,7 +1013,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_expression_part(
         &mut self,
         node: ExpressionPart,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Inferred {
         match node {
             ExpressionPart::Atom(atom) => self.infer_atom(atom, result_context),
@@ -1104,11 +1104,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
-    fn _infer_primary(
-        &mut self,
-        primary: Primary,
-        result_context: ResultContext<'db, '_>,
-    ) -> Inferred {
+    fn _infer_primary(&mut self, primary: Primary, result_context: ResultContext) -> Inferred {
         let base = self.infer_primary_or_atom(primary.first());
         let result = self
             .infer_primary_or_primary_t_content(
@@ -1133,7 +1129,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         node_index: NodeIndex,
         second: PrimaryContent,
         is_target: bool,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Inferred {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
@@ -1174,10 +1170,10 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
-                let on_type_error = |i_s: &mut InferenceState<'db, '_>,
+                let on_type_error = |i_s: &mut InferenceState,
                                      node_ref: NodeRef,
-                                     class: Option<&Class<'db, '_>>,
-                                     function: Option<&Function<'db, '_>>,
+                                     class: Option<&Class>,
+                                     function: Option<&Function>,
                                      p: &dyn ParamWithArgument<'db, '_>,
                                      t1,
                                      t2| {
@@ -1252,7 +1248,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     }
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
-    fn _infer_atom(&mut self, atom: Atom, result_context: ResultContext<'db, '_>) -> Inferred {
+    fn _infer_atom(&mut self, atom: Atom, result_context: ResultContext) -> Inferred {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),

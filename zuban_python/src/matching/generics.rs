@@ -237,7 +237,7 @@ impl<'db> GenericsIterator<'db, '_> {
     fn run_on_next<T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type) -> T,
     ) -> Option<T> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
@@ -272,7 +272,7 @@ impl<'db> GenericsIterator<'db, '_> {
     pub fn run_on_all(
         mut self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>),
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type),
     ) {
         while self.run_on_next(i_s, callable).is_some() {}
     }

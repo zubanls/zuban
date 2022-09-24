@@ -31,7 +31,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_list_literal_from_context(
         &mut self,
         list: List,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Option<Inferred> {
         let file = self.file;
         result_context

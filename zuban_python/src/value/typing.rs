@@ -40,12 +40,12 @@ impl TypingClass {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingClass {
+impl<'a> Value<'a> for TypingClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         match self.specific {
             Specific::TypingGeneric => "Generic",
             Specific::TypingProtocol => "Protocol",
@@ -58,7 +58,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         }
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         todo!()
     }
 
@@ -66,14 +66,14 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         Some(self)
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         slice_type
             .file
             .inference(i_s)
             .compute_type_application_on_typing_class(self.specific, *slice_type)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         match self.specific {
             Specific::TypingGeneric
             | Specific::TypingProtocol
@@ -88,10 +88,10 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         let mut iterator = args.iter_arguments();
         let first = iterator.next();
@@ -133,12 +133,12 @@ impl<'db> TypingWithGenerics<'db> {
     }
 }
 
-impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
+impl<'a> Value<'a> for TypingWithGenerics<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         match self.specific {
             Specific::TypingGeneric => "Generic",
             Specific::TypingProtocol => "Protocol",
@@ -146,11 +146,11 @@ impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
         }
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         todo!()
     }
 
-    fn as_typing_with_generics(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&Self> {
+    fn as_typing_with_generics(&self, i_s: &mut InferenceState) -> Option<&Self> {
         Some(self)
     }
 }
@@ -158,20 +158,20 @@ impl<'db> Value<'db, '_> for TypingWithGenerics<'db> {
 #[derive(Debug)]
 pub struct TypingClassVar();
 
-impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
+impl<'a> Value<'a> for TypingClassVar {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "ClassVar"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         todo!()
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 // TODO if it is a (), it's am empty tuple
@@ -187,13 +187,13 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
     }
 }
 
-pub struct TypingType<'db, 'a> {
-    db: &'db Database,
+pub struct TypingType<'a> {
+    db: &'a Database,
     full_db_type: Cow<'a, DbType>,
     pub db_type: &'a DbType,
 }
 
-impl<'db, 'a> TypingType<'db, 'a> {
+impl<'db, 'a> TypingType<'a> {
     pub fn new(db: &'db Database, full_db_type: Cow<'a, DbType>, db_type: &'a DbType) -> Self {
         Self {
             db,
@@ -203,16 +203,16 @@ impl<'db, 'a> TypingType<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
+impl<'a> Value<'a> for TypingType<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "Type"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
@@ -234,23 +234,23 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
         }
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
         Inferred::new_any()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         Type::Type(Cow::Owned(DbType::Type(Box::new(self.db_type.clone()))))
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         match self.db_type {
             DbType::Tuple(_) => {
@@ -278,7 +278,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
     }
 }
 
-impl<'db> fmt::Debug for TypingType<'db, '_> {
+impl<'db> fmt::Debug for TypingType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypingType")
             .field(
@@ -292,29 +292,29 @@ impl<'db> fmt::Debug for TypingType<'db, '_> {
 #[derive(Debug)]
 pub struct TypingCast();
 
-impl<'db, 'a> Value<'db, 'a> for TypingCast {
+impl<'a> Value<'a> for TypingCast {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "cast"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         todo!()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         todo!()
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         let mut result = None;
         let mut count = 0;
@@ -369,7 +369,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
 #[derive(Debug)]
 pub struct RevealTypeFunction();
 
-impl<'db> Value<'db, '_> for RevealTypeFunction {
+impl Value<'_> for RevealTypeFunction {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -378,16 +378,16 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
         "reveal_type"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         todo!()
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         let mut iterator = args.iter_arguments();
         let arg = iterator.next().unwrap_or_else(|| todo!());
@@ -407,14 +407,14 @@ impl<'db> Value<'db, '_> for RevealTypeFunction {
     }
 }
 
-pub struct TypeVarInstance<'db, 'a> {
-    db: &'db Database,
+pub struct TypeVarInstance<'a> {
+    db: &'a Database,
     db_type: &'a DbType,
     type_var_usage: &'a TypeVarUsage,
 }
 
-impl<'db, 'a> TypeVarInstance<'db, 'a> {
-    pub fn new(db: &'db Database, db_type: &'a DbType, type_var_usage: &'a TypeVarUsage) -> Self {
+impl<'a> TypeVarInstance<'a> {
+    pub fn new(db: &'a Database, db_type: &'a DbType, type_var_usage: &'a TypeVarUsage) -> Self {
         Self {
             db,
             db_type,
@@ -423,16 +423,16 @@ impl<'db, 'a> TypeVarInstance<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
+impl<'a> Value<'a> for TypeVarInstance<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::TypeParameter
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         self.type_var_usage.type_var.name(self.db)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         if !self.type_var_usage.type_var.restrictions.is_empty() {
             debug!("TODO type var values");
             /*
@@ -477,12 +477,12 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'db, 'a> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         Type::new(self.db_type)
     }
 }
 
-impl fmt::Debug for TypeVarInstance<'_, '_> {
+impl fmt::Debug for TypeVarInstance<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypeVarInstance")
             .field("db_type", &self.db_type)
@@ -639,25 +639,25 @@ pub fn maybe_type_var<'db>(
     None
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
+impl<'a> Value<'a> for TypeVarClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "TypeVar"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         LookupResult::None
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(t) = maybe_type_var(i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVar(Rc::new(t)))
@@ -666,7 +666,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }

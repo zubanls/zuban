@@ -22,7 +22,7 @@ enum BaseLookup<'db> {
 
 pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
-    class: &'c Class<'db, 'c>,
+    class: &'c Class<'c>,
     type_var_manager: TypeVarManager,
     generic_or_protocol_slice: Option<SliceType<'a>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
@@ -30,10 +30,7 @@ pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
 }
 
 impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
-    pub fn find(
-        inference: &'c mut PythonInference<'db, 'a, 'b>,
-        class: &'c Class<'db, 'c>,
-    ) -> TypeVars {
+    pub fn find(inference: &'c mut PythonInference<'db, 'a, 'b>, class: &'c Class) -> TypeVars {
         let mut finder = Self {
             inference,
             class,

@@ -17,8 +17,8 @@ use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, OnTypeError, Value};
 
 #[derive(Debug, Clone, Copy)]
-enum FunctionOrCallable<'db, 'a> {
-    Function(Function<'db, 'a>),
+enum FunctionOrCallable<'a> {
+    Function(Function<'a>),
     Callable(&'a CallableContent),
 }
 
@@ -48,7 +48,7 @@ impl TypeVarBound {
         }
     }
 
-    fn format<'db>(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
+    fn format(&self, i_s: &mut InferenceState, style: FormatStyle) -> Box<str> {
         match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
                 t.format(&FormatData::with_style(i_s.db, style))
@@ -85,7 +85,7 @@ impl TypeVarBound {
     fn merge_or_mismatch<'db>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        other: &Type<'db, '_>,
+        other: &Type,
         variance: Variance,
     ) -> Match {
         // First check if the value is between the bounds.
@@ -150,8 +150,8 @@ pub struct CalculatedTypeVar {
 
 #[derive(Debug)]
 pub struct TypeVarMatcher<'db, 'a> {
-    class: Option<&'a Class<'db, 'a>>,
-    func_or_callable: FunctionOrCallable<'db, 'a>,
+    class: Option<&'a Class<'a>>,
+    func_or_callable: FunctionOrCallable<'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
     parent_matcher: Option<&'a mut Self>,
@@ -160,8 +160,8 @@ pub struct TypeVarMatcher<'db, 'a> {
 
 impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     fn new(
-        class: Option<&'a Class<'db, 'a>>,
-        func_or_callable: FunctionOrCallable<'db, 'a>,
+        class: Option<&'a Class<'a>>,
+        func_or_callable: FunctionOrCallable<'a>,
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
         //parent_matcher: Option<&'a mut Self>,
@@ -191,7 +191,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
 
     pub fn new_function(
-        function: Function<'db, 'a>,
+        function: Function<'a>,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
     ) -> Self {
         Self {
@@ -204,7 +204,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    pub(super) fn class(&self) -> Option<Class<'db, '_>> {
+    pub(super) fn class(&self) -> Option<Class<'_>> {
         // Currently this is used for formatting, but it probably shouldn't be.
         match self.func_or_callable {
             FunctionOrCallable::Function(func) => func.class,
@@ -216,7 +216,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         type_var_usage: &TypeVarUsage,
-        value_type: &Type<'db, '_>,
+        value_type: &Type,
         variance: Variance,
     ) -> Match {
         let type_var = &type_var_usage.type_var;
@@ -437,13 +437,13 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
     }
 }
 
-pub fn calculate_class_init_type_vars_and_return<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    class: &Class<'db, '_>,
-    function: Function<'db, '_>,
-    args: &dyn Arguments<'db>,
-    result_context: ResultContext<'db, '_>,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+pub fn calculate_class_init_type_vars_and_return(
+    i_s: &mut InferenceState,
+    class: &Class,
+    function: Function,
+    args: &dyn Arguments,
+    result_context: ResultContext,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArguments {
     debug!(
         "Calculate type vars for class {} ({})",
@@ -494,8 +494,8 @@ pub struct CalculatedTypeArguments {
 impl<'db> CalculatedTypeArguments {
     pub fn lookup_type_var_usage(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class<'db, '_>>,
+        i_s: &mut InferenceState,
+        class: Option<&Class>,
         usage: &TypeVarUsage,
     ) -> DbType {
         if self.in_definition == usage.in_definition {
@@ -515,16 +515,16 @@ impl<'db> CalculatedTypeArguments {
     }
 }
 
-pub fn calculate_function_type_vars_and_return<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    class: Option<&Class<'db, '_>>,
-    function: Function<'db, '_>,
-    args: &dyn Arguments<'db>,
+pub fn calculate_function_type_vars_and_return(
+    i_s: &mut InferenceState,
+    class: Option<&Class>,
+    function: Function,
+    args: &dyn Arguments,
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
-    result_context: ResultContext<'db, '_>,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    result_context: ResultContext,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArguments {
     debug!(
         "Calculate type vars for {} in {}",
@@ -545,13 +545,13 @@ pub fn calculate_function_type_vars_and_return<'db>(
     )
 }
 
-pub fn calculate_callable_type_vars_and_return<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    class: Option<&Class<'db, '_>>,
+pub fn calculate_callable_type_vars_and_return(
+    i_s: &mut InferenceState,
+    class: Option<&Class>,
     callable: &CallableContent,
-    args: &dyn Arguments<'db>,
-    result_context: ResultContext<'db, '_>,
-    on_type_error: OnTypeError<'db, '_>,
+    args: &dyn Arguments,
+    result_context: ResultContext,
+    on_type_error: OnTypeError,
 ) -> CalculatedTypeArguments {
     calculate_type_vars(
         i_s,
@@ -567,17 +567,17 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     )
 }
 
-fn calculate_type_vars<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    class: Option<&Class<'db, '_>>,
-    func_or_callable: FunctionOrCallable<'db, '_>,
-    expected_return_class: Option<&Class<'db, '_>>,
-    args: &dyn Arguments<'db>,
+fn calculate_type_vars(
+    i_s: &mut InferenceState,
+    class: Option<&Class>,
+    func_or_callable: FunctionOrCallable,
+    expected_return_class: Option<&Class>,
+    args: &dyn Arguments,
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
-    result_context: ResultContext<'db, '_>,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    result_context: ResultContext,
+    on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArguments {
     // We could allocate on stack as described here:
     // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
@@ -725,12 +725,12 @@ fn calculate_type_vars<'db>(
 }
 
 fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
-    i_s: &mut InferenceState<'db, '_>,
-    mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-    class: Option<&Class<'db, '_>>,
-    function: Option<&Function<'db, '_>>,
-    args: &dyn Arguments<'db>,
-    on_type_error: Option<OnTypeError<'db, '_>>,
+    i_s: &mut InferenceState,
+    mut matcher: Option<&mut TypeVarMatcher>,
+    class: Option<&Class>,
+    function: Option<&Function>,
+    args: &dyn Arguments,
+    on_type_error: Option<OnTypeError>,
     mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
 ) -> SignatureMatch {
     // TODO this can be calculated multiple times from different places
@@ -762,7 +762,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
                     matcher.as_deref_mut(),
                     &value,
                     on_type_error.map(|on_type_error| {
-                        |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
+                        |i_s: &mut InferenceState, mut t1, t2, reason: &MismatchReason| {
                             let node_ref = argument.as_node_ref();
                             if let Some(starred) = node_ref.maybe_starred_expression() {
                                 t1 = format!(

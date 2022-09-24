@@ -293,7 +293,7 @@ impl<'db, 'a> Argument<'db, 'a> {
     pub fn infer(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Inferred {
         match &self.kind {
             ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),

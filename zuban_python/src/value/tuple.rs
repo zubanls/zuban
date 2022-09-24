@@ -13,7 +13,7 @@ pub struct Tuple<'a> {
     content: &'a TupleContent,
 }
 
-impl<'db, 'a> Tuple<'a> {
+impl<'a> Tuple<'a> {
     pub fn new(db_type: &'a DbType, content: &'a TupleContent) -> Self {
         Self { db_type, content }
     }
@@ -23,16 +23,16 @@ impl<'db, 'a> Tuple<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
+impl<'a> Value<'a> for Tuple<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "tuple"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         let tuple_cls = i_s.db.python_state.tuple();
         for (mro_index, class) in tuple_cls.mro(i_s) {
             let result = class.lookup_symbol(i_s, name).map(|inf| {
@@ -64,7 +64,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         LookupResult::None
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
+    fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
         if let Some(generics) = self.content.generics.as_ref() {
             if self.content.arbitrary_length {
                 IteratorContent::Inferred(Inferred::execute_db_type(
@@ -82,14 +82,14 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         Type::new(self.db_type)
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
-                let by_index = |i_s: &mut InferenceState<'db, '_>, index: usize| {
+                let by_index = |i_s: &mut InferenceState, index: usize| {
                     self.content
                         .generics
                         .as_ref()

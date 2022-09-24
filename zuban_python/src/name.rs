@@ -153,11 +153,11 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
 
 pub struct WithValueName<'db, 'a, 'b> {
     db: &'db Database,
-    value: &'b dyn Value<'db, 'a>,
+    value: &'b dyn Value<'a>,
 }
 
 impl<'db, 'a, 'b> WithValueName<'db, 'a, 'b> {
-    pub fn new(db: &'db Database, value: &'b dyn Value<'db, 'a>) -> Self {
+    pub fn new(db: &'db Database, value: &'b dyn Value<'a>) -> Self {
         Self { db, value }
     }
 }

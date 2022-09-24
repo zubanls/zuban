@@ -260,7 +260,7 @@ impl PythonState {
         NodeRef::new(self.typing(), self.typing_mapping_index)
     }
 
-    pub fn mypy_extensions_arg_func<'x>(&self, specific: Specific) -> Function<'_, 'x> {
+    pub fn mypy_extensions_arg_func(&self, specific: Specific) -> Function {
         let node_index = match specific {
             Specific::MypyExtensionsArg => self.mypy_extensions_arg_func,
             Specific::MypyExtensionsDefaultArg => self.mypy_extensions_default_arg_func,

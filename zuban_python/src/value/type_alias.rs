@@ -20,21 +20,21 @@ impl<'a> TypeAlias<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
+impl<'a> Value<'a> for TypeAlias<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "TypeAlias"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         debug!("TODO this should at least have the object results");
         LookupResult::None
     }
 
-    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         let count_given = match slice_type.ast_node {
             ASTSliceType::Slices(s) => s.iter().count(),
             _ => 1,
@@ -46,16 +46,16 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             .compute_type_application_on_alias(self.alias, *slice_type)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
         Type::new(&self.alias.db_type)
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
-        on_type_error: OnTypeError<'db, '_>,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: ResultContext,
+        on_type_error: OnTypeError,
     ) -> Inferred {
         if matches!(self.alias.db_type.as_ref(), DbType::Class(_, _)) {
             return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
