@@ -368,7 +368,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         unsaved.save_redirect(self.inference.file, annotation_index);
     }
 
-    fn as_db_type(&mut self, type_: TypeContent<'db, '_>, node_ref: NodeRef) -> DbType {
+    fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
         match type_ {
             TypeContent::ClassWithoutTypeVar(i) => i
                 .maybe_class(self.inference.i_s)
@@ -449,7 +449,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         type_content
     }
 
-    fn compute_slice_db_type(&mut self, slice: SliceOrSimple<'db, '_>) -> DbType {
+    fn compute_slice_db_type(&mut self, slice: SliceOrSimple<'_, '_>) -> DbType {
         let t = self.compute_slice_type(slice);
         self.as_db_type(t, slice.as_node_ref())
     }
@@ -572,9 +572,9 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
     fn compute_type_get_item_on_class(
         &mut self,
         class: Class<'db, '_>,
-        slice_type: SliceType<'db, 'x>,
+        slice_type: SliceType,
         primary: Option<Primary>,
-    ) -> TypeContent<'db, 'x> {
+    ) -> TypeContent<'db, 'db> {
         if !matches!(class.generics(), Generics::None | Generics::Any) {
             return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
@@ -689,10 +689,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         result
     }
 
-    fn compute_type_get_item_on_tuple(
-        &mut self,
-        slice_type: SliceType<'db, 'x>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         let generics: Box<[_]> = if let Some(slice_or_simple) = iterator.next() {
@@ -727,8 +724,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn compute_type_get_item_on_callable(
         &mut self,
-        slice_type: SliceType<'db, 'x>,
-    ) -> TypeContent<'db, 'x> {
+        slice_type: SliceType,
+    ) -> TypeContent<'db, 'db> {
         let defined_at = slice_type.as_node_ref().as_link();
         self.type_var_manager.register_callable(CallableWithParent {
             defined_at,
@@ -896,8 +893,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn compute_type_get_item_on_optional(
         &mut self,
-        slice_type: SliceType<'db, 'x>,
-    ) -> TypeContent<'db, 'x> {
+        slice_type: SliceType,
+    ) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(next) = iterator.next() {
@@ -911,10 +908,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         TypeContent::DbType(t)
     }
 
-    fn compute_type_get_item_on_type(
-        &mut self,
-        slice_type: SliceType<'db, 'x>,
-    ) -> TypeContent<'db, 'x> {
+    fn compute_type_get_item_on_type(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let content = iterator.next().unwrap();
         if iterator.count() > 0 {
@@ -926,8 +920,8 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
     fn compute_type_get_item_on_alias(
         &mut self,
         alias: &TypeAlias,
-        slice_type: SliceType<'db, 'x>,
-    ) -> TypeContent<'db, 'x> {
+        slice_type: SliceType,
+    ) -> TypeContent<'db, 'db> {
         let expected_count = alias.type_vars.len();
         let mut given_count = 0;
         let mut generics = vec![];
@@ -954,7 +948,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }))
     }
 
-    fn expect_type_var_args(&mut self, slice_type: SliceType<'db, '_>, class: &'static str) {
+    fn expect_type_var_args(&mut self, slice_type: SliceType, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
             if !matches!(
                 self.compute_slice_type(s),
@@ -1160,7 +1154,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
     pub fn compute_type_application_on_class(
         &mut self,
         class: Class<'db, '_>,
-        slice_type: SliceType<'db, '_>,
+        slice_type: SliceType,
     ) -> Inferred {
         compute_type_application!(
             self,
@@ -1172,7 +1166,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
     pub fn compute_type_application_on_alias(
         &mut self,
         alias: &TypeAlias,
-        slice_type: SliceType<'db, '_>,
+        slice_type: SliceType,
     ) -> Inferred {
         if !matches!(alias.db_type.as_ref(), DbType::Class(_, _)) {
             slice_type
