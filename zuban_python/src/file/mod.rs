@@ -246,7 +246,7 @@ impl<'db> PythonFile {
     }
 
     pub fn inference<'a, 'b>(
-        &'db self,
+        &'a self,
         i_s: &'b mut InferenceState<'db, 'a>,
     ) -> PythonInference<'db, 'a, 'b> {
         PythonInference {
@@ -287,7 +287,7 @@ impl<'db> PythonFile {
 }
 
 pub struct PythonInference<'db, 'a, 'b> {
-    file: &'db PythonFile,
+    file: &'a PythonFile,
     file_index: FileIndex,
     i_s: &'b mut InferenceState<'db, 'a>,
 }
@@ -848,7 +848,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
         &mut self,
         target: Target,
         value: Inferred,
-        value_node_ref: NodeRef<'db>,
+        value_node_ref: NodeRef,
         is_definition: bool,
     ) {
         match target {

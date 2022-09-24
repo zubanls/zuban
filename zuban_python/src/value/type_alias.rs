@@ -34,11 +34,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         LookupResult::None
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         let count_given = match slice_type.ast_node {
             ASTSliceType::Slices(s) => s.iter().count(),
             _ => 1,

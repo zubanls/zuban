@@ -17,8 +17,8 @@ use parsa_python_ast::{
     Primary, PrimaryContent,
 };
 
-pub enum ArgumentsType<'db> {
-    Normal(&'db PythonFile, NodeIndex),
+pub enum ArgumentsType<'a> {
+    Normal(&'a PythonFile, NodeIndex),
 }
 
 pub trait Arguments<'db>: std::fmt::Debug {
@@ -27,15 +27,15 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Option<Execution>;
-    fn type_(&self) -> ArgumentsType<'db>;
-    fn as_node_ref(&self) -> NodeRef<'db>;
+    fn type_(&self) -> ArgumentsType;
+    fn as_node_ref(&self) -> NodeRef;
 }
 
 #[derive(Debug)]
 pub struct SimpleArguments<'db, 'a> {
     // The node id of the grammar node called primary, which is defined like
     // primary "(" [arguments | comprehension] ")"
-    file: &'db PythonFile,
+    file: &'a PythonFile,
     primary_node_index: NodeIndex,
     details: ArgumentsDetails<'a>,
     in_: Option<&'a Execution>,
@@ -83,11 +83,11 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         })
     }
 
-    fn type_(&self) -> ArgumentsType<'db> {
+    fn type_(&self) -> ArgumentsType {
         ArgumentsType::Normal(self.file, self.primary_node_index)
     }
 
-    fn as_node_ref(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef {
         NodeRef::new(self.file, self.primary_node_index)
     }
 }
@@ -95,7 +95,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 impl<'db, 'a> SimpleArguments<'db, 'a> {
     pub fn new(
         i_s: InferenceState<'db, 'a>,
-        file: &'db PythonFile,
+        file: &'a PythonFile,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails<'a>,
         in_: Option<&'a Execution>,
@@ -132,13 +132,13 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct KnownArguments<'db, 'a> {
+pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
     mro_index: MroIndex,
-    node_ref: Option<NodeRef<'db>>,
+    node_ref: Option<NodeRef<'a>>,
 }
 
-impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
+impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
     }
@@ -151,17 +151,17 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'db, 'a> {
         None
     }
 
-    fn type_(&self) -> ArgumentsType<'db> {
+    fn type_(&self) -> ArgumentsType {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef {
         todo!()
     }
 }
 
-impl<'db, 'a> KnownArguments<'db, 'a> {
-    pub fn new(inferred: &'a Inferred, node_ref: Option<NodeRef<'db>>) -> Self {
+impl<'a> KnownArguments<'a> {
+    pub fn new(inferred: &'a Inferred, node_ref: Option<NodeRef<'a>>) -> Self {
         Self {
             inferred,
             node_ref,
@@ -172,7 +172,7 @@ impl<'db, 'a> KnownArguments<'db, 'a> {
     pub fn with_mro_index(
         inferred: &'a Inferred,
         mro_index: MroIndex,
-        node_ref: Option<NodeRef<'db>>,
+        node_ref: Option<NodeRef<'a>>,
     ) -> Self {
         Self {
             inferred,
@@ -204,11 +204,11 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
         None
     }
 
-    fn type_(&self) -> ArgumentsType<'db> {
+    fn type_(&self) -> ArgumentsType {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef {
         self.args2.as_node_ref()
     }
 }
@@ -335,7 +335,7 @@ impl<'db, 'a> Argument<'db, 'a> {
         }
     }
 
-    pub fn as_node_ref(&self) -> NodeRef<'db> {
+    pub fn as_node_ref(&self) -> NodeRef {
         match &self.kind {
             ArgumentKind::Positional { node_ref, .. } => *node_ref,
             ArgumentKind::Keyword { node_ref, .. } => *node_ref,
@@ -372,13 +372,13 @@ impl<'db, 'a> Argument<'db, 'a> {
 enum ArgumentIteratorBase<'db, 'a> {
     Iterator {
         i_s: InferenceState<'db, 'a>,
-        file: &'db PythonFile,
+        file: &'a PythonFile,
         iterator: std::iter::Enumerate<ArgumentsIterator<'a>>,
         kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
-    Comprehension(Context<'db, 'a>, &'db PythonFile, Comprehension<'a>),
-    Inferred(&'a Inferred, Option<NodeRef<'db>>),
-    SliceType(Context<'db, 'a>, SliceType<'db, 'a>),
+    Comprehension(Context<'db, 'a>, &'a PythonFile, Comprehension<'a>),
+    Inferred(&'a Inferred, Option<NodeRef<'a>>),
+    SliceType(Context<'db, 'a>, SliceType<'a>),
     Finished,
 }
 
@@ -630,7 +630,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
         }
     }
 
-    pub fn new_slice(slice_type: SliceType<'db, 'a>, context: Context<'db, 'a>) -> Self {
+    pub fn new_slice(slice_type: SliceType<'a>, context: Context<'db, 'a>) -> Self {
         Self {
             current: ArgumentIteratorBase::SliceType(context, slice_type),
             args_kwargs_iterator: ArgsKwargsIterator::None,
@@ -738,7 +738,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
 #[derive(Debug)]
 enum ArgsKwargsIterator<'db, 'a> {
     Args {
-        iterator: IteratorContent<'db, 'a>,
+        iterator: IteratorContent<'a>,
         position: usize,
         node_ref: NodeRef<'db>,
     },
@@ -751,15 +751,15 @@ enum ArgsKwargsIterator<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct NoArguments<'db>(NodeRef<'db>);
+pub struct NoArguments<'a>(NodeRef<'a>);
 
-impl<'db> NoArguments<'db> {
-    pub fn new(node_ref: NodeRef<'db>) -> Self {
+impl<'a> NoArguments<'a> {
+    pub fn new(node_ref: NodeRef<'a>) -> Self {
         Self(node_ref)
     }
 }
 
-impl<'db> Arguments<'db> for NoArguments<'db> {
+impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::new(ArgumentIteratorBase::Finished)
     }
@@ -772,11 +772,11 @@ impl<'db> Arguments<'db> for NoArguments<'db> {
         None
     }
 
-    fn type_(&self) -> ArgumentsType<'db> {
+    fn type_(&self) -> ArgumentsType {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef {
         self.0
     }
 }

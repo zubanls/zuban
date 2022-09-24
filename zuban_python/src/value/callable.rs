@@ -53,7 +53,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         Type::new(self.db_type)
     }
 

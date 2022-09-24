@@ -12,8 +12,8 @@ use crate::node_ref::NodeRef;
 use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
-pub struct SliceType<'db, 'a> {
-    pub file: &'db PythonFile,
+pub struct SliceType<'a> {
+    pub file: &'a PythonFile,
     pub ast_node: ASTSliceType<'a>,
     node_index: NodeIndex,
 }
@@ -24,8 +24,8 @@ pub enum SliceTypeContent<'db, 'a> {
     Slices(Slices<'db, 'a>),
 }
 
-impl<'db: 'a, 'a> SliceType<'db, 'a> {
-    pub fn new(file: &'db PythonFile, node_index: NodeIndex, ast_node: ASTSliceType<'a>) -> Self {
+impl<'db, 'a> SliceType<'a> {
+    pub fn new(file: &'a PythonFile, node_index: NodeIndex, ast_node: ASTSliceType<'a>) -> Self {
         Self {
             file,
             ast_node,
@@ -33,7 +33,7 @@ impl<'db: 'a, 'a> SliceType<'db, 'a> {
         }
     }
 
-    pub fn as_node_ref(&self) -> NodeRef<'db> {
+    pub fn as_node_ref(&self) -> NodeRef<'a> {
         NodeRef::new(self.file, self.node_index)
     }
 
@@ -187,7 +187,7 @@ impl<'db, 'a> Iterator for SliceTypeIterator<'db, 'a> {
 
 #[derive(Debug)]
 pub struct SliceArguments<'db, 'a> {
-    slice_type: &'a SliceType<'db, 'a>,
+    slice_type: &'a SliceType<'a>,
     context: Context<'db, 'a>,
 }
 
@@ -211,7 +211,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn type_(&self) -> ArgumentsType<'db> {
+    fn type_(&self) -> ArgumentsType {
         /*
         match {
             ArgumentsType::Normal(self.file, self.primary_node)
@@ -220,7 +220,7 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
         todo!()
     }
 
-    fn as_node_ref(&self) -> NodeRef<'db> {
+    fn as_node_ref(&self) -> NodeRef {
         self.slice_type.as_node_ref()
     }
 }

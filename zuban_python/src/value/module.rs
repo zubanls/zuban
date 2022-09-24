@@ -38,7 +38,7 @@ impl<'db> Module<'db> {
     }
 }
 
-impl<'db> Value<'db, '_> for Module<'db> {
+impl<'db: 'a, 'a> Value<'db, 'a> for Module<'db> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -107,7 +107,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         Inferred::new_unknown()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'db> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         Type::Class(i_s.db.python_state.module_type())
     }
 }

@@ -868,7 +868,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn compute_type_get_item_on_union(
         &mut self,
-        slice_type: SliceType<'db, 'x>,
+        slice_type: SliceType<'x>,
     ) -> TypeContent<'db, 'x> {
         let iterator = slice_type.iter();
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
@@ -1184,7 +1184,7 @@ impl<'db: 'x, 'a, 'b, 'x> PythonInference<'db, 'a, 'b> {
     pub fn compute_type_application_on_typing_class(
         &mut self,
         specific: Specific,
-        slice_type: SliceType<'db, '_>,
+        slice_type: SliceType,
     ) -> Inferred {
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {

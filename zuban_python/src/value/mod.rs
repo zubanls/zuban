@@ -105,16 +105,16 @@ macro_rules! base_qualified_name {
 }
 
 #[derive(Debug)]
-pub enum IteratorContent<'db, 'a> {
+pub enum IteratorContent<'a> {
     Inferred(Inferred),
-    ListLiteral(ListLiteral<'db>, ListOrSetElementIterator<'db>),
+    ListLiteral(ListLiteral<'a>, ListOrSetElementIterator<'a>),
     // TODO this should include the arbitrary_length
     TupleGenerics(std::slice::Iter<'a, DbType>),
     Empty,
     Any,
 }
 
-impl<'db> IteratorContent<'db, '_> {
+impl<'db> IteratorContent<'_> {
     pub fn infer_all(self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
@@ -271,19 +271,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         Inferred::new_unknown()
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         todo!("get_item not implemented for {self:?}")
     }
 
-    fn iter(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        from: NodeRef<'db>,
-    ) -> IteratorContent<'db, 'a> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", &|i_s| {
                 from.add_typing_issue(
@@ -337,7 +329,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         todo!("{self:?}")
     }
 }

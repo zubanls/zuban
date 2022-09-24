@@ -66,11 +66,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClass {
         Some(self)
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         slice_type
             .file
             .inference(i_s)
@@ -126,7 +122,7 @@ impl<'db> TypingWithGenerics<'db> {
         Self { node_ref, specific }
     }
 
-    pub fn generics(&self) -> SliceType<'db, '_> {
+    pub fn generics(&self) -> SliceType {
         let primary = self.node_ref.as_primary();
         if let PrimaryContent::GetItem(slice_type) = primary.second() {
             //value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
@@ -175,11 +171,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         todo!()
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 // TODO if it is a (), it's am empty tuple
@@ -242,11 +234,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'db, 'a> {
         }
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);

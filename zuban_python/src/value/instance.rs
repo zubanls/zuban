@@ -93,11 +93,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         }
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         let args = slice_type.as_args(i_s.context);
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(
@@ -130,7 +126,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'db, 'a> {
         Some(self)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         Type::Class(self.class)
     }
 

@@ -24,7 +24,7 @@ pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
     inference: &'c mut PythonInference<'db, 'a, 'b>,
     class: &'c Class<'db, 'c>,
     type_var_manager: TypeVarManager,
-    generic_or_protocol_slice: Option<SliceType<'db, 'a>>,
+    generic_or_protocol_slice: Option<SliceType<'a>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
     had_generic_or_protocol_issue: bool,
 }
@@ -211,7 +211,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn find_in_callable(&mut self, slice_type: SliceType<'db, 'db>) {
+    fn find_in_callable(&mut self, slice_type: SliceType<'db>) {
         if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {

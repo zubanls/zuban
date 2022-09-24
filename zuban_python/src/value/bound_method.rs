@@ -45,7 +45,7 @@ impl<'db, 'a, 'b> BoundMethod<'db, 'a, 'b> {
     }
 }
 
-impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
+impl<'db, 'a> Value<'db, 'a> for BoundMethod<'db, '_, '_> {
     fn kind(&self) -> ValueKind {
         self.function.as_value().kind()
     }
@@ -94,7 +94,7 @@ impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'static> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'static> {
         Type::owned(match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Overload(f) => todo!(),

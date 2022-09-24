@@ -64,11 +64,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         LookupResult::None
     }
 
-    fn iter(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        from: NodeRef<'db>,
-    ) -> IteratorContent<'db, 'a> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
         if let Some(generics) = self.content.generics.as_ref() {
             if self.content.arbitrary_length {
                 IteratorContent::Inferred(Inferred::execute_db_type(
@@ -86,15 +82,11 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         Type::new(self.db_type)
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 let by_index = |i_s: &mut InferenceState<'db, '_>, index: usize| {

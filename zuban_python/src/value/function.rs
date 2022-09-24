@@ -31,7 +31,7 @@ use crate::value::Class;
 
 #[derive(Clone, Copy)]
 pub struct Function<'db, 'a> {
-    pub node_ref: NodeRef<'db>,
+    pub node_ref: NodeRef<'a>,
     pub class: Option<Class<'db, 'a>>,
 }
 
@@ -48,7 +48,7 @@ impl<'db, 'a> Function<'db, 'a> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
-    pub fn new(node_ref: NodeRef<'db>, class: Option<Class<'db, 'a>>) -> Self {
+    pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'db, 'a>>) -> Self {
         Self { node_ref, class }
     }
 
@@ -67,11 +67,11 @@ impl<'db, 'a> Function<'db, 'a> {
         )
     }
 
-    pub fn node(&self) -> FunctionDef<'db> {
+    pub fn node(&self) -> FunctionDef {
         FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
-    pub fn return_annotation(&self) -> Option<ReturnAnnotation<'db>> {
+    pub fn return_annotation(&self) -> Option<ReturnAnnotation> {
         self.node().return_annotation()
     }
 
@@ -319,14 +319,14 @@ impl<'db, 'a> Function<'db, 'a> {
         }))
     }
 
-    pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'db, 'a>> {
+    pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam> {
         self.node().params().iter().map(|param| FunctionParam {
             file: self.node_ref.file,
             param,
         })
     }
 
-    pub fn param_iterator(&self) -> Option<impl Iterator<Item = FunctionParam<'db, 'a>>> {
+    pub fn param_iterator(&self) -> Option<impl Iterator<Item = FunctionParam>> {
         Some(self.iter_params())
     }
 
@@ -545,18 +545,14 @@ impl<'db, 'a> Value<'db, 'a> for Function<'db, 'a> {
         }
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
         Inferred::new_unknown()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         Type::owned(self.as_db_type(i_s, false))
     }
 
@@ -634,7 +630,7 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
 pub struct InferrableParamIterator<'db, 'a> {
     db: &'db Database,
     arguments: ArgumentIterator<'db, 'a>,
-    params: ParamIterator<'db>,
+    params: ParamIterator<'a>,
     file: &'db PythonFile,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
 }
@@ -643,7 +639,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn new(
         db: &'db Database,
         file: &'db PythonFile,
-        params: ParamIterator<'db>,
+        params: ParamIterator<'a>,
         arguments: ArgumentIterator<'db, 'a>,
     ) -> Self {
         Self {
@@ -1006,11 +1002,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
@@ -1022,7 +1014,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'db, 'a> {
         Some(self)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         Type::owned(DbType::Intersection(IntersectionType::new_overload(
             self.overload
                 .functions

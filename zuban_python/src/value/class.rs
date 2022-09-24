@@ -498,11 +498,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         }
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState<'db, '_>, slice_type: &SliceType) -> Inferred {
         slice_type
             .file
             .inference(i_s)
@@ -517,7 +513,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         )
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a, 'a> {
         Type::owned(DbType::Type(Box::new(self.as_db_type(i_s))))
     }
 }

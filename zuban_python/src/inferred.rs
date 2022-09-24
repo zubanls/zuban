@@ -755,7 +755,7 @@ impl<'db> Inferred {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-        from: NodeRef<'db>,
+        from: NodeRef,
     ) -> Inferred {
         self.run_on_value(i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, name, &|i_s| todo!("{value:?}"))
@@ -773,8 +773,8 @@ impl<'db> Inferred {
     pub fn save_and_iter(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        from: NodeRef<'db>,
-    ) -> IteratorContent<'db, 'db> {
+        from: NodeRef,
+    ) -> IteratorContent<'db> {
         self.save_if_unsaved(from.file, from.node_index)
             .internal_run_after_save(
                 i_s,
