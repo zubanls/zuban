@@ -1504,7 +1504,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     debug_assert!(
                         file_index != self.file.file_index() || next_node_index != node_index
                     );
-                    let infer = |inference: &mut PythonInference<'db, '_, '_>| {
+                    let infer = |inference: &mut PythonInference| {
                         let point = inference.file.points.get(next_node_index);
                         inference
                             .check_point_cache(next_node_index)
