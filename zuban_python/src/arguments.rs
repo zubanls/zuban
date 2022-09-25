@@ -42,7 +42,7 @@ pub struct SimpleArguments<'db, 'a> {
     i_s: InferenceState<'db, 'a>,
 }
 
-impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
+impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator {

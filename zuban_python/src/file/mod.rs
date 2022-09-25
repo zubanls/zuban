@@ -330,7 +330,7 @@ macro_rules! check_point_cache_with {
     }
 }
 
-impl<'db, 'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
+impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",

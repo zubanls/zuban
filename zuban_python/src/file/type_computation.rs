@@ -868,11 +868,13 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
 
     fn compute_type_get_item_on_union(
         &mut self,
-        slice_type: SliceType<'x>,
-    ) -> TypeContent<'db, 'x> {
+        slice_type: SliceType,
+    ) -> TypeContent<'static, 'static> {
         let iterator = slice_type.iter();
         if let SliceTypeIterator::SliceOrSimple(s) = iterator {
-            self.compute_slice_type(s)
+            let t = self.compute_slice_type(s);
+            let t = self.as_db_type(t, s.as_node_ref());
+            TypeContent::DbType(t)
         } else {
             let mut t = UnionType::new(
                 iterator
