@@ -415,7 +415,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 }
 
-impl<'a> Value<'a> for Class<'a> {
+impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -461,7 +461,7 @@ impl<'a> Value<'a> for Class<'a> {
         !self.class_infos(i_s).incomplete_mro
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -513,7 +513,7 @@ impl<'a> Value<'a> for Class<'a> {
         )
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Box::new(self.as_db_type(i_s))))
     }
 }

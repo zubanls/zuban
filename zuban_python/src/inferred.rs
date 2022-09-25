@@ -161,7 +161,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn internal_run<'a, T>(
         &'a self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
         reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
     ) -> T
@@ -192,7 +192,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn internal_run_after_save<T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'db>) -> T,
         reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
         on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
     ) -> T {
@@ -271,7 +271,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn run_mut(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl for<'a, 'b, 'c> FnMut(&mut InferenceState<'db, 'c>, &'b dyn Value<'a>),
+        callable: &mut impl for<'a, 'b, 'c> FnMut(&mut InferenceState<'db, 'c>, &'b dyn Value<'db, 'a>),
         mut on_missing: impl FnMut(),
     ) {
         self.internal_run(i_s, callable, &|_, i1, i2| (), &mut |i_s| on_missing())
@@ -725,7 +725,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn maybe_simple<'a, T>(
         &'a self,
         i_s: &mut InferenceState<'db, '_>,
-        c: impl Fn(&dyn Value<'a>) -> Option<T>,
+        c: impl Fn(&dyn Value<'db, 'a>) -> Option<T>,
     ) -> Option<T>
     where
         'db: 'a,
@@ -815,7 +815,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     definition: PointLink,
     point: Point,
-    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
@@ -858,7 +858,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     complex: &'a ComplexPoint,
     definition: Option<NodeRef<'a>>,
-    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
@@ -1000,7 +1000,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     definition: PointLink,
     specific: Specific,
-    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
@@ -1138,7 +1138,7 @@ fn use_instance<'a>(
 pub fn run_on_db_type<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     db_type: &'a DbType,
-    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
@@ -1173,7 +1173,7 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     db_type: &'a DbType,
     type_: &'a DbType,
-    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {

@@ -20,7 +20,7 @@ impl<'a> TypeAlias<'a> {
     }
 }
 
-impl<'a> Value<'a> for TypeAlias<'a> {
+impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -46,11 +46,11 @@ impl<'a> Value<'a> for TypeAlias<'a> {
             .compute_type_application_on_alias(self.alias, *slice_type)
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&self.alias.db_type)
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState,
         args: &dyn Arguments<'db>,

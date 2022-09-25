@@ -39,7 +39,7 @@ impl<'a> Callable<'a> {
     }
 }
 
-impl<'a> Value<'a> for Callable<'a> {
+impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -53,11 +53,11 @@ impl<'a> Value<'a> for Callable<'a> {
         LookupResult::None
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

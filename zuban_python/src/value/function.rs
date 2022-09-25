@@ -506,7 +506,7 @@ impl<'db: 'a, 'a> Function<'a> {
     }
 }
 
-impl<'a> Value<'a> for Function<'a> {
+impl<'db, 'a> Value<'db, 'a> for Function<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -520,7 +520,7 @@ impl<'a> Value<'a> for Function<'a> {
         todo!("{name:?}")
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -547,7 +547,7 @@ impl<'a> Value<'a> for Function<'a> {
         Inferred::new_unknown()
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(self.as_db_type(i_s, false))
     }
 
@@ -970,7 +970,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 }
 
-impl<'a> Value<'a> for OverloadedFunction<'a> {
+impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -983,7 +983,7 @@ impl<'a> Value<'a> for OverloadedFunction<'a> {
         todo!()
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -1005,7 +1005,7 @@ impl<'a> Value<'a> for OverloadedFunction<'a> {
         Some(self)
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Intersection(IntersectionType::new_overload(
             self.overload
                 .functions

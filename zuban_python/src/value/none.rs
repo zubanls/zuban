@@ -9,7 +9,7 @@ use crate::matching::Type;
 #[derive(Debug)]
 pub struct NoneInstance();
 
-impl<'a> Value<'a> for NoneInstance {
+impl<'db, 'a> Value<'db, 'a> for NoneInstance {
     fn kind(&self) -> ValueKind {
         ValueKind::Constant
     }
@@ -23,7 +23,7 @@ impl<'a> Value<'a> for NoneInstance {
         LookupResult::None
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&DbType::None)
     }
 

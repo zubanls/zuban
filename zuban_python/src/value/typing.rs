@@ -40,7 +40,7 @@ impl TypingClass {
     }
 }
 
-impl<'a> Value<'a> for TypingClass {
+impl<'db, 'a> Value<'db, 'a> for TypingClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -73,7 +73,7 @@ impl<'a> Value<'a> for TypingClass {
             .compute_type_application_on_typing_class(self.specific, *slice_type)
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         match self.specific {
             Specific::TypingGeneric
             | Specific::TypingProtocol
@@ -86,7 +86,7 @@ impl<'a> Value<'a> for TypingClass {
         }
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -133,7 +133,7 @@ impl<'db> TypingWithGenerics<'db> {
     }
 }
 
-impl<'a> Value<'a> for TypingWithGenerics<'a> {
+impl<'db, 'a> Value<'db, 'a> for TypingWithGenerics<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -158,7 +158,7 @@ impl<'a> Value<'a> for TypingWithGenerics<'a> {
 #[derive(Debug)]
 pub struct TypingClassVar();
 
-impl<'a> Value<'a> for TypingClassVar {
+impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -203,7 +203,7 @@ impl<'db, 'a> TypingType<'a> {
     }
 }
 
-impl<'a> Value<'a> for TypingType<'a> {
+impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -241,11 +241,11 @@ impl<'a> Value<'a> for TypingType<'a> {
         Inferred::new_any()
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Type(Cow::Owned(DbType::Type(Box::new(self.db_type.clone()))))
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -292,7 +292,7 @@ impl<'db> fmt::Debug for TypingType<'_> {
 #[derive(Debug)]
 pub struct TypingCast();
 
-impl<'a> Value<'a> for TypingCast {
+impl<'db, 'a> Value<'db, 'a> for TypingCast {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -305,11 +305,11 @@ impl<'a> Value<'a> for TypingCast {
         todo!()
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         todo!()
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -369,7 +369,7 @@ impl<'a> Value<'a> for TypingCast {
 #[derive(Debug)]
 pub struct RevealTypeFunction();
 
-impl<'a> Value<'a> for RevealTypeFunction {
+impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -382,7 +382,7 @@ impl<'a> Value<'a> for RevealTypeFunction {
         todo!()
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -423,7 +423,7 @@ impl<'a> TypeVarInstance<'a> {
     }
 }
 
-impl<'a> Value<'a> for TypeVarInstance<'a> {
+impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::TypeParameter
     }
@@ -477,7 +477,7 @@ impl<'a> Value<'a> for TypeVarInstance<'a> {
         }
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 }
@@ -636,7 +636,7 @@ pub fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<
     None
 }
 
-impl<'a> Value<'a> for TypeVarClass {
+impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -649,7 +649,7 @@ impl<'a> Value<'a> for TypeVarClass {
         LookupResult::None
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState,
         args: &dyn Arguments,
@@ -663,7 +663,7 @@ impl<'a> Value<'a> for TypeVarClass {
         }
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }

@@ -79,7 +79,7 @@ impl<'a> ListLiteral<'a> {
     }
 }
 
-impl<'a> Value<'a> for ListLiteral<'a> {
+impl<'db, 'a> Value<'db, 'a> for ListLiteral<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -101,11 +101,7 @@ impl<'a> Value<'a> for ListLiteral<'a> {
         .lookup_internal(i_s, name)
     }
 
-    fn iter<'db: 'a>(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        from: NodeRef,
-    ) -> IteratorContent<'a> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
         match self.list_node().unpack() {
             Some(elements) => IteratorContent::ListLiteral(*self, elements),
             // TODO shouldn't this be IteratorContent::Empty, ???
@@ -181,7 +177,7 @@ impl<'a> Value<'a> for ListLiteral<'a> {
         }
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
         Type::Class(
             Class::from_position(node_ref, Generics::new_list(self.generic_list(i_s)), None)
@@ -259,7 +255,7 @@ impl<'a> DictLiteral<'a> {
     }
 }
 
-impl<'a> Value<'a> for DictLiteral<'a> {
+impl<'db, 'a> Value<'db, 'a> for DictLiteral<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -322,7 +318,7 @@ impl<'a> Value<'a> for DictLiteral<'a> {
         todo!()
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
         Type::Class(
             Class::from_position(node_ref, Generics::new_list(self.db_type(i_s)), None).unwrap(),

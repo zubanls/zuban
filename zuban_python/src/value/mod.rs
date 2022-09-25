@@ -199,7 +199,8 @@ impl<'db> LookupResult {
     }
 }
 
-pub trait Value<'a>: std::fmt::Debug {
+// Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
+pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn kind(&self) -> ValueKind;
 
     //fn file(&self) -> &'db dyn File;
@@ -224,7 +225,7 @@ pub trait Value<'a>: std::fmt::Debug {
         true
     }
 
-    fn lookup<'db: 'a>(
+    fn lookup(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
@@ -237,7 +238,7 @@ pub trait Value<'a>: std::fmt::Debug {
         result
     }
 
-    fn lookup_implicit<'db: 'a>(
+    fn lookup_implicit(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
@@ -250,7 +251,7 @@ pub trait Value<'a>: std::fmt::Debug {
         }
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -274,11 +275,7 @@ pub trait Value<'a>: std::fmt::Debug {
         todo!("get_item not implemented for {self:?}")
     }
 
-    fn iter<'db: 'a>(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        from: NodeRef,
-    ) -> IteratorContent<'a> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", &|i_s| {
                 from.add_typing_issue(
@@ -330,7 +327,7 @@ pub trait Value<'a>: std::fmt::Debug {
         None
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         todo!("{self:?}")
     }
 }

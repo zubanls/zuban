@@ -14,8 +14,8 @@ pub enum BoundMethodFunction<'a> {
     Callable(Callable<'a>),
 }
 
-impl<'a> BoundMethodFunction<'a> {
-    fn as_value(&self) -> &dyn Value<'a> {
+impl<'db, 'a> BoundMethodFunction<'a> {
+    fn as_value(&self) -> &dyn Value<'db, 'a> {
         match self {
             Self::Function(f) => f,
             Self::Overload(f) => f,
@@ -45,7 +45,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     }
 }
 
-impl<'a> Value<'a> for BoundMethod<'_, '_> {
+impl<'db, 'a> Value<'db, 'a> for BoundMethod<'_, '_> {
     fn kind(&self) -> ValueKind {
         self.function.as_value().kind()
     }
@@ -58,7 +58,7 @@ impl<'a> Value<'a> for BoundMethod<'_, '_> {
         self.function.as_value().lookup_internal(i_s, name)
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -94,7 +94,7 @@ impl<'a> Value<'a> for BoundMethod<'_, '_> {
         }
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Overload(f) => todo!(),

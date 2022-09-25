@@ -38,7 +38,7 @@ impl<'a> Module<'a> {
     }
 }
 
-impl<'a> Value<'a> for Module<'a> {
+impl<'db, 'a> Value<'db, 'a> for Module<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -91,7 +91,7 @@ impl<'a> Value<'a> for Module<'a> {
             })
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments,
@@ -107,7 +107,7 @@ impl<'a> Value<'a> for Module<'a> {
         Inferred::new_unknown()
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Class(i_s.db.python_state.module_type())
     }
 }

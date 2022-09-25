@@ -33,7 +33,7 @@ impl<'a> Instance<'a> {
     }
 }
 
-impl<'a> Value<'a> for Instance<'a> {
+impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -71,7 +71,7 @@ impl<'a> Value<'a> for Instance<'a> {
         !self.class.class_infos(i_s).incomplete_mro
     }
 
-    fn execute<'db: 'a>(
+    fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -126,7 +126,7 @@ impl<'a> Value<'a> for Instance<'a> {
         Some(self)
     }
 
-    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Class(self.class)
     }
 
