@@ -210,8 +210,8 @@ pub fn has_overlapping_params<'db>(
     todo!()
 }
 
-pub fn overload_has_overlapping_params<'x, P1: Param<'x>, P2: Param<'x>>(
-    i_s: &mut InferenceState,
+pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
+    i_s: &mut InferenceState<'db, '_>,
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
@@ -409,7 +409,7 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     }
 }
 
-impl<'db, 'a, 'x, I, P> Iterator for InferrableParamIterator2<'db, 'a, I, P>
+impl<'db: 'x, 'a, 'x, I, P> Iterator for InferrableParamIterator2<'db, 'a, I, P>
 where
     I: Iterator<Item = P>,
     P: Param<'x>,

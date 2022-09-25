@@ -18,10 +18,10 @@ impl<'a> Callable<'a> {
         Self { db_type, content }
     }
 
-    pub(super) fn execute_internal(
+    pub(super) fn execute_internal<'db>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         on_type_error: OnTypeError,
         class: Option<&Class>,
         result_context: ResultContext,

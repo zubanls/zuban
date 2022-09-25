@@ -207,7 +207,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
 
     fn name(&self) -> &'a str;
 
-    fn qualified_name(&self, db: &Database) -> String {
+    fn qualified_name(&self, db: &'a Database) -> String {
         base_qualified_name!(self, db, self.name())
     }
 
@@ -290,7 +290,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                 );
             })
             .run_on_value(i_s, &mut |i_s, value| {
-                let x: &mut InferenceState<'db, '_> = i_s;
                 value.execute(
                     i_s,
                     &NoArguments::new(from),

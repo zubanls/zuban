@@ -79,7 +79,7 @@ impl<'a> ListLiteral<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for ListLiteral<'a> {
+impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -255,7 +255,7 @@ impl<'a> DictLiteral<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for DictLiteral<'a> {
+impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }

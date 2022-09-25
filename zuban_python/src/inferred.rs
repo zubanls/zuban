@@ -217,7 +217,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn run_on_value(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value) -> Self,
+        callable: &mut impl Fn(&mut InferenceState<'db, '_>, &dyn Value<'db, '_>) -> Self,
     ) -> Self {
         self.internal_run(i_s, callable, &|i_s, i1, i2| i1.union(i2), &mut |i_s| {
             Inferred::new_unknown()

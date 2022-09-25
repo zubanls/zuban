@@ -40,7 +40,7 @@ impl TypingClass {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingClass {
+impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
@@ -636,7 +636,7 @@ pub fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<
     None
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypeVarClass {
+impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
