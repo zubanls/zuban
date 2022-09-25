@@ -41,7 +41,7 @@ pub struct Inferred {
     state: InferredState,
 }
 
-impl<'db> Inferred {
+impl<'db: 'slf, 'slf> Inferred {
     pub fn new_and_save(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
         file.points.set(node_index, point);
         Self::new_saved(file, node_index, point)
@@ -128,10 +128,7 @@ impl<'db> Inferred {
         ))
     }
 
-    pub fn class_as_type<'x>(&'x self, i_s: &mut InferenceState<'db, '_>) -> Type<'x>
-    where
-        'db: 'x,
-    {
+    pub fn class_as_type(&'slf self, i_s: &mut InferenceState<'db, '_>) -> Type<'slf> {
         match self.state {
             InferredState::Saved(definition, _) => {
                 let node_ref = NodeRef::from_link(i_s.db, definition);
