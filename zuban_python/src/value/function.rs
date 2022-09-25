@@ -67,7 +67,7 @@ impl<'db: 'a, 'a> Function<'a> {
         )
     }
 
-    pub fn node(&self) -> FunctionDef {
+    pub fn node(&self) -> FunctionDef<'a> {
         FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
@@ -80,7 +80,10 @@ impl<'db: 'a, 'a> Function<'a> {
         db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator<'db, 'b> {
+    ) -> InferrableParamIterator<'db, 'b>
+    where
+        'a: 'b,
+    {
         let mut params = self.node().params().iter();
         if skip_first_param {
             params.next();
@@ -314,7 +317,7 @@ impl<'db: 'a, 'a> Function<'a> {
         }))
     }
 
-    pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam> {
+    pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> {
         self.node().params().iter().map(|param| FunctionParam {
             file: self.node_ref.file,
             param,
@@ -633,7 +636,7 @@ pub struct InferrableParamIterator<'db, 'a> {
 impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn new(
         db: &'db Database,
-        file: &'db PythonFile,
+        file: &'a PythonFile,
         params: ParamIterator<'a>,
         arguments: ArgumentIterator<'db, 'a>,
     ) -> Self {

@@ -22,7 +22,7 @@ impl<'a> Callable<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class>,
         result_context: ResultContext,
     ) -> Inferred {

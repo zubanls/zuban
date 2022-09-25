@@ -14,7 +14,7 @@ pub enum BoundMethodFunction<'a> {
     Callable(Callable<'a>),
 }
 
-impl<'db, 'a> BoundMethodFunction<'a> {
+impl<'db: 'a, 'a> BoundMethodFunction<'a> {
     fn as_value(&self) -> &dyn Value<'db, 'a> {
         match self {
             Self::Function(f) => f,
@@ -45,7 +45,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for BoundMethod<'_, '_> {
+impl<'db, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
     fn kind(&self) -> ValueKind {
         self.function.as_value().kind()
     }

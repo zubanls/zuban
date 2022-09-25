@@ -693,12 +693,14 @@ impl<'a> Type<'a> {
         );
     }
 
-    pub fn error_if_not_matches_with_matcher<'x>(
+    pub fn error_if_not_matches_with_matcher<'db, 'x>(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher>,
         value: &Inferred,
-        callback: Option<impl FnOnce(&mut InferenceState, Box<str>, Box<str>, &MismatchReason)>,
+        callback: Option<
+            impl FnOnce(&mut InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason),
+        >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher.as_deref_mut(), &value_type);

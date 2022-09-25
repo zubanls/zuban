@@ -435,7 +435,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     function: Function,
     args: &dyn Arguments<'db>,
     result_context: ResultContext,
-    on_type_error: Option<OnTypeError>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     debug!(
         "Calculate type vars for class {} ({})",
@@ -516,7 +516,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
     result_context: ResultContext,
-    on_type_error: Option<OnTypeError>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     debug!(
         "Calculate type vars for {} in {}",
@@ -543,7 +543,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     callable: &CallableContent,
     args: &dyn Arguments<'db>,
     result_context: ResultContext,
-    on_type_error: OnTypeError,
+    on_type_error: OnTypeError<'db, '_>,
 ) -> CalculatedTypeArguments {
     calculate_type_vars(
         i_s,
@@ -569,7 +569,7 @@ fn calculate_type_vars<'db>(
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
     result_context: ResultContext,
-    on_type_error: Option<OnTypeError>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     // We could allocate on stack as described here:
     // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
@@ -721,8 +721,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
     mut matcher: Option<&mut TypeVarMatcher>,
     class: Option<&Class>,
     function: Option<&Function>,
-    args: &dyn Arguments,
-    on_type_error: Option<OnTypeError>,
+    args: &dyn Arguments<'db>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
 ) -> SignatureMatch {
     // TODO this can be calculated multiple times from different places
@@ -754,7 +754,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                     matcher.as_deref_mut(),
                     &value,
                     on_type_error.map(|on_type_error| {
-                        |i_s: &mut InferenceState, mut t1, t2, reason: &MismatchReason| {
+                        |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
                             let node_ref = argument.as_node_ref();
                             if let Some(starred) = node_ref.maybe_starred_expression() {
                                 t1 = format!(
