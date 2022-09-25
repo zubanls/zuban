@@ -64,7 +64,7 @@ impl<'a> Value<'a> for Tuple<'a> {
         LookupResult::None
     }
 
-    fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
+    fn iter<'db: 'a>(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
         if let Some(generics) = self.content.generics.as_ref() {
             if self.content.arbitrary_length {
                 IteratorContent::Inferred(Inferred::execute_db_type(
@@ -82,7 +82,7 @@ impl<'a> Value<'a> for Tuple<'a> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 

@@ -46,14 +46,14 @@ impl<'a> Value<'a> for TypeAlias<'a> {
             .compute_type_application_on_alias(self.alias, *slice_type)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&self.alias.db_type)
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
         i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {

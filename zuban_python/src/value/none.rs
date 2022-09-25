@@ -23,7 +23,7 @@ impl<'a> Value<'a> for NoneInstance {
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&DbType::None)
     }
 

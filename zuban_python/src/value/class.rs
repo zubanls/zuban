@@ -25,7 +25,7 @@ use crate::{base_qualified_name, debug};
 pub struct Class<'a> {
     pub node_ref: NodeRef<'a>,
     pub class_storage: &'a ClassStorage,
-    pub generics: Generics<'a, 'a>,
+    pub generics: Generics<'a>,
     pub type_var_remap: Option<&'a GenericsList>,
 }
 
@@ -33,7 +33,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn new(
         node_ref: NodeRef<'a>,
         class_storage: &'a ClassStorage,
-        generics: Generics<'a, 'a>,
+        generics: Generics<'a>,
         type_var_remap: Option<&'a GenericsList>,
     ) -> Self {
         Self {
@@ -56,8 +56,8 @@ impl<'db: 'a, 'a> Class<'a> {
     #[inline]
     pub fn from_position(
         node_ref: NodeRef<'a>,
-        generics: Generics<'db, 'a>,
-        type_var_remap: Option<&'db GenericsList>,
+        generics: Generics<'a>,
+        type_var_remap: Option<&'a GenericsList>,
     ) -> Option<Self> {
         let complex = node_ref.complex().unwrap();
         match complex {
@@ -82,8 +82,8 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn type_check_init_func(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
         on_type_error: OnTypeError,
     ) -> Option<(Function, Option<GenericsList>, bool)> {
@@ -129,11 +129,11 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn node(&self) -> ClassDef<'db> {
+    pub fn node(&self) -> ClassDef<'a> {
         ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVars> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
@@ -186,15 +186,15 @@ impl<'db: 'a, 'a> Class<'a> {
         self.class_info_node_ref().point().calculating()
     }
 
-    fn type_vars_node_ref(&self) -> NodeRef<'db> {
+    fn type_vars_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(1)
     }
 
-    fn class_info_node_ref(&self) -> NodeRef<'db> {
+    fn class_info_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(4)
     }
 
-    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
+    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'a ClassInfos {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if point.calculated() {
@@ -357,7 +357,7 @@ impl<'db: 'a, 'a> Class<'a> {
         (LookupResult::None, None)
     }
 
-    pub fn generics(&self) -> Generics<'db, '_> {
+    pub fn generics(&self) -> Generics {
         if let Some(type_var_remap) = self.type_var_remap {
             Generics::List(type_var_remap, Some(&self.generics))
         } else {
@@ -449,7 +449,7 @@ impl<'a> Value<'a> for Class<'a> {
         }
     }
 
-    fn module(&self, db: &Database) -> Module<'a> {
+    fn module(&self, db: &'a Database) -> Module<'a> {
         Module::new(db, self.node_ref.file)
     }
 
@@ -461,12 +461,12 @@ impl<'a> Value<'a> for Class<'a> {
         !self.class_infos(i_s).incomplete_mro
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         // TODO locality!!!
         if let Some((func, generics_list, is_overload)) =
@@ -513,7 +513,7 @@ impl<'a> Value<'a> for Class<'a> {
         )
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Box::new(self.as_db_type(i_s))))
     }
 }
@@ -552,9 +552,9 @@ impl<'db> BasesIterator<'db> {
 
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
-    generics: Option<Generics<'db, 'a>>,
+    generics: Option<Generics<'a>>,
     class: Option<Type<'a>>,
-    iterator: std::slice::Iter<'db, DbType>,
+    iterator: std::slice::Iter<'a, DbType>,
     mro_index: u32,
     returned_object: bool,
 }
@@ -563,8 +563,8 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
         class: Type<'a>,
-        generics: Option<Generics<'db, 'a>>,
-        iterator: std::slice::Iter<'db, DbType>,
+        generics: Option<Generics<'a>>,
+        iterator: std::slice::Iter<'a, DbType>,
     ) -> Self {
         Self {
             db,
@@ -577,7 +577,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
+impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
     type Item = (MroIndex, Type<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {

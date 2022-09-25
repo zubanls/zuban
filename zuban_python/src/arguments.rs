@@ -225,23 +225,23 @@ pub enum ArgumentKind<'db, 'a> {
     Keyword {
         context: Context<'db, 'a>,
         key: &'a str,
-        node_ref: NodeRef<'db>,
+        node_ref: NodeRef<'a>,
     },
     Inferred {
         inferred: Inferred,
         position: usize, // The position as a 1-based index
-        node_ref: Option<NodeRef<'db>>,
+        node_ref: Option<NodeRef<'a>>,
         in_args_or_kwargs_and_arbitrary_len: bool,
         is_keyword: bool,
     },
     Positional {
         context: Context<'db, 'a>,
         position: usize, // The position as a 1-based index
-        node_ref: NodeRef<'db>,
+        node_ref: NodeRef<'a>,
     },
     SlicesTuple {
         context: Context<'db, 'a>,
-        slices: Slices<'db, 'a>,
+        slices: Slices<'a>,
     },
 }
 
@@ -383,7 +383,7 @@ enum ArgumentIteratorBase<'db, 'a> {
 }
 
 enum BaseArgumentReturn<'db, 'a> {
-    ArgsKwargs(ArgsKwargsIterator<'db, 'db>),
+    ArgsKwargs(ArgsKwargsIterator<'a>),
     Argument(ArgumentKind<'db, 'a>),
 }
 
@@ -615,7 +615,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 #[derive(Debug)]
 pub struct ArgumentIterator<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
-    args_kwargs_iterator: ArgsKwargsIterator<'db, 'a>,
+    args_kwargs_iterator: ArgsKwargsIterator<'a>,
     next: Option<&'a dyn Arguments<'db>>,
     counter: usize,
 }
@@ -736,16 +736,16 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
 }
 
 #[derive(Debug)]
-enum ArgsKwargsIterator<'db, 'a> {
+enum ArgsKwargsIterator<'a> {
     Args {
         iterator: IteratorContent<'a>,
         position: usize,
-        node_ref: NodeRef<'db>,
+        node_ref: NodeRef<'a>,
     },
     Kwargs {
         inferred_value: Inferred,
         position: usize,
-        node_ref: NodeRef<'db>,
+        node_ref: NodeRef<'a>,
     },
     None,
 }

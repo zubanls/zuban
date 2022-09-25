@@ -149,7 +149,7 @@ pub struct CalculatedTypeVar {
 }
 
 #[derive(Debug)]
-pub struct TypeVarMatcher<'db, 'a> {
+pub struct TypeVarMatcher<'a> {
     class: Option<&'a Class<'a>>,
     func_or_callable: FunctionOrCallable<'a>,
     calculated_type_vars: &'a mut [CalculatedTypeVar],
@@ -158,7 +158,7 @@ pub struct TypeVarMatcher<'db, 'a> {
     pub match_reverse: bool, // For contravariance subtypes
 }
 
-impl<'db, 'a> TypeVarMatcher<'db, 'a> {
+impl<'a> TypeVarMatcher<'a> {
     fn new(
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
@@ -214,7 +214,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     pub fn match_or_add_type_var(
         &mut self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState,
         type_var_usage: &TypeVarUsage,
         value_type: &Type,
         variance: Variance,
@@ -335,11 +335,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    pub fn set_all_contained_type_vars_to_any(
-        &mut self,
-        i_s: &mut InferenceState<'db, '_>,
-        type_: &DbType,
-    ) {
+    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
         type_.search_type_vars(&mut |t| {
             if t.in_definition == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index.as_usize()];
@@ -352,7 +348,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
 
     pub fn format(
         &self,
-        db: &'db Database,
+        db: &Database,
         type_var_usage: &TypeVarUsage,
         style: FormatStyle,
     ) -> Box<str> {
@@ -397,11 +393,7 @@ impl<'db, 'a> TypeVarMatcher<'db, 'a> {
         }
     }
 
-    fn replace_type_vars_for_nested_context(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        t: &DbType,
-    ) -> DbType {
+    fn replace_type_vars_for_nested_context(&self, i_s: &mut InferenceState, t: &DbType) -> DbType {
         t.replace_type_vars(&mut |type_var_usage| {
             if type_var_usage.in_definition == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
@@ -515,11 +507,11 @@ impl<'db> CalculatedTypeArguments {
     }
 }
 
-pub fn calculate_function_type_vars_and_return(
-    i_s: &mut InferenceState,
+pub fn calculate_function_type_vars_and_return<'db>(
+    i_s: &mut InferenceState<'db, '_>,
     class: Option<&Class>,
     function: Function,
-    args: &dyn Arguments,
+    args: &dyn Arguments<'db>,
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
@@ -545,11 +537,11 @@ pub fn calculate_function_type_vars_and_return(
     )
 }
 
-pub fn calculate_callable_type_vars_and_return(
-    i_s: &mut InferenceState,
+pub fn calculate_callable_type_vars_and_return<'db>(
+    i_s: &mut InferenceState<'db, '_>,
     class: Option<&Class>,
     callable: &CallableContent,
-    args: &dyn Arguments,
+    args: &dyn Arguments<'db>,
     result_context: ResultContext,
     on_type_error: OnTypeError,
 ) -> CalculatedTypeArguments {
@@ -567,12 +559,12 @@ pub fn calculate_callable_type_vars_and_return(
     )
 }
 
-fn calculate_type_vars(
-    i_s: &mut InferenceState,
+fn calculate_type_vars<'db>(
+    i_s: &mut InferenceState<'db, '_>,
     class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
     expected_return_class: Option<&Class>,
-    args: &dyn Arguments,
+    args: &dyn Arguments<'db>,
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
@@ -724,8 +716,8 @@ fn calculate_type_vars(
     }
 }
 
-fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'db, 'x>>(
-    i_s: &mut InferenceState,
+fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
+    i_s: &mut InferenceState<'db, '_>,
     mut matcher: Option<&mut TypeVarMatcher>,
     class: Option<&Class>,
     function: Option<&Function>,

@@ -3,7 +3,7 @@ use crate::database::{Database, FormatStyle};
 
 pub struct FormatData<'db, 'a, 'b> {
     pub db: &'db Database,
-    pub matcher: Option<&'b TypeVarMatcher<'db, 'a>>,
+    pub matcher: Option<&'b TypeVarMatcher<'a>>,
     pub style: FormatStyle,
     pub verbose: bool,
 }
@@ -27,7 +27,7 @@ impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
         }
     }
 
-    pub fn with_matcher(db: &'db Database, matcher: Option<&'b TypeVarMatcher<'db, 'a>>) -> Self {
+    pub fn with_matcher(db: &'db Database, matcher: Option<&'b TypeVarMatcher<'a>>) -> Self {
         Self {
             db,
             matcher,

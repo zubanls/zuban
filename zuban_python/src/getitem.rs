@@ -18,10 +18,10 @@ pub struct SliceType<'a> {
     node_index: NodeIndex,
 }
 
-pub enum SliceTypeContent<'db, 'a> {
-    Simple(Simple<'db, 'a>),
-    Slice(Slice<'db, 'a>),
-    Slices(Slices<'db, 'a>),
+pub enum SliceTypeContent<'a> {
+    Simple(Simple<'a>),
+    Slice(Slice<'a>),
+    Slices(Slices<'a>),
 }
 
 impl<'db, 'a> SliceType<'a> {
@@ -44,7 +44,7 @@ impl<'db, 'a> SliceType<'a> {
         }
     }
 
-    pub fn unpack(&self) -> SliceTypeContent<'db, 'a> {
+    pub fn unpack(&self) -> SliceTypeContent<'a> {
         match self.ast_node {
             ASTSliceType::NamedExpression(named_expr) => SliceTypeContent::Simple(Simple {
                 file: self.file,
@@ -61,7 +61,7 @@ impl<'db, 'a> SliceType<'a> {
         }
     }
 
-    pub fn iter(&self) -> SliceTypeIterator<'db, 'a> {
+    pub fn iter(&self) -> SliceTypeIterator<'a> {
         match self.unpack() {
             SliceTypeContent::Simple(s) => {
                 SliceTypeIterator::SliceOrSimple(SliceOrSimple::Simple(s))
@@ -73,66 +73,66 @@ impl<'db, 'a> SliceType<'a> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Simple<'db, 'a> {
-    pub file: &'db PythonFile,
+pub struct Simple<'a> {
+    pub file: &'a PythonFile,
     pub named_expr: NamedExpression<'a>,
 }
 
-impl<'db> Simple<'db, '_> {
-    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
+impl<'a> Simple<'a> {
+    pub fn infer(&self, i_s: &mut InferenceState) -> Inferred {
         self.file
             .inference(i_s)
             .infer_named_expression(self.named_expr)
     }
 
-    pub fn as_node_ref(&self) -> NodeRef<'db> {
+    pub fn as_node_ref(&self) -> NodeRef<'a> {
         NodeRef::new(self.file, self.named_expr.index())
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slice<'db, 'a> {
-    file: &'db PythonFile,
+pub struct Slice<'a> {
+    file: &'a PythonFile,
     slice: ASTSlice<'a>,
 }
 
-impl<'db> Slice<'db, '_> {
-    pub fn as_node_ref(&self) -> NodeRef<'db> {
+impl<'a> Slice<'a> {
+    pub fn as_node_ref(&self) -> NodeRef<'a> {
         NodeRef::new(self.file, self.slice.index())
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slices<'db, 'a> {
-    pub file: &'db PythonFile,
+pub struct Slices<'a> {
+    pub file: &'a PythonFile,
     slices: ASTSlices<'a>,
 }
 
-impl<'db, 'a> Slices<'db, 'a> {
-    pub fn as_node_ref(&self) -> NodeRef<'db> {
+impl<'a> Slices<'a> {
+    pub fn as_node_ref(&self) -> NodeRef<'a> {
         NodeRef::new(self.file, self.slices.index())
     }
 
-    pub fn iter(&self) -> SliceIterator<'db, 'a> {
+    pub fn iter(&self) -> SliceIterator<'a> {
         SliceIterator(self.file, self.slices.iter())
     }
 }
 
 #[derive(Copy, Clone)]
-pub enum SliceOrSimple<'db, 'a> {
-    Simple(Simple<'db, 'a>),
-    Slice(Slice<'db, 'a>),
+pub enum SliceOrSimple<'a> {
+    Simple(Simple<'a>),
+    Slice(Slice<'a>),
 }
 
-impl<'db> SliceOrSimple<'db, '_> {
-    pub fn infer(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
+impl<'a> SliceOrSimple<'a> {
+    pub fn infer(&self, i_s: &mut InferenceState) -> Inferred {
         match self {
             Self::Simple(simple) => simple.infer(i_s),
             Self::Slice(slice) => todo!(),
         }
     }
 
-    pub fn as_node_ref(&self) -> NodeRef<'db> {
+    pub fn as_node_ref(&self) -> NodeRef<'a> {
         match self {
             SliceOrSimple::Simple(simple) => simple.as_node_ref(),
             SliceOrSimple::Slice(slice) => slice.as_node_ref(),
@@ -140,10 +140,10 @@ impl<'db> SliceOrSimple<'db, '_> {
     }
 }
 
-pub struct SliceIterator<'db, 'a>(&'db PythonFile, ASTSliceIterator<'a>);
+pub struct SliceIterator<'a>(&'a PythonFile, ASTSliceIterator<'a>);
 
-impl<'db, 'a> Iterator for SliceIterator<'db, 'a> {
-    type Item = SliceOrSimple<'db, 'a>;
+impl<'db, 'a> Iterator for SliceIterator<'a> {
+    type Item = SliceOrSimple<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // TODO it's actually a bad idea to pass node_index here
@@ -160,14 +160,14 @@ impl<'db, 'a> Iterator for SliceIterator<'db, 'a> {
     }
 }
 
-pub enum SliceTypeIterator<'db, 'a> {
-    SliceIterator(SliceIterator<'db, 'a>),
-    SliceOrSimple(SliceOrSimple<'db, 'a>),
+pub enum SliceTypeIterator<'a> {
+    SliceIterator(SliceIterator<'a>),
+    SliceOrSimple(SliceOrSimple<'a>),
     Finished,
 }
 
-impl<'db, 'a> Iterator for SliceTypeIterator<'db, 'a> {
-    type Item = SliceOrSimple<'db, 'a>;
+impl<'a> Iterator for SliceTypeIterator<'a> {
+    type Item = SliceOrSimple<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {

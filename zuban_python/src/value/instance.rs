@@ -71,12 +71,12 @@ impl<'a> Value<'a> for Instance<'a> {
         !self.class.class_infos(i_s).incomplete_mro
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
             inf.run_on_value(i_s, &mut |i_s, value| {
@@ -126,7 +126,7 @@ impl<'a> Value<'a> for Instance<'a> {
         Some(self)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Class(self.class)
     }
 

@@ -40,7 +40,7 @@ pub type OnTypeError<'db, 'a> = &'a dyn Fn(
     NodeRef,
     Option<&Class>,
     Option<&Function>,
-    &dyn ParamWithArgument<'db, '_>,
+    &dyn ParamWithArgument,
     Box<str>,
     Box<str>,
 );
@@ -210,7 +210,7 @@ pub trait Value<'a>: std::fmt::Debug {
         base_qualified_name!(self, db, self.name())
     }
 
-    fn module(&self, db: &Database) -> Module<'a> {
+    fn module(&self, db: &'a Database) -> Module<'a> {
         todo!("{:?}", self)
     }
 
@@ -224,11 +224,11 @@ pub trait Value<'a>: std::fmt::Debug {
         true
     }
 
-    fn lookup(
+    fn lookup<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &mut InferenceState<'db, '_>,
         name: &str,
-        on_error: OnLookupError,
+        on_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
         let result = self.lookup_internal(i_s, name);
         if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s) {
@@ -237,11 +237,11 @@ pub trait Value<'a>: std::fmt::Debug {
         result
     }
 
-    fn lookup_implicit(
+    fn lookup_implicit<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &mut InferenceState<'db, '_>,
         name: &str,
-        on_error: OnLookupError,
+        on_error: OnLookupError<'db, '_>,
     ) -> Inferred {
         match self.lookup(i_s, name, on_error) {
             LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
@@ -250,12 +250,12 @@ pub trait Value<'a>: std::fmt::Debug {
         }
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -274,7 +274,11 @@ pub trait Value<'a>: std::fmt::Debug {
         todo!("get_item not implemented for {self:?}")
     }
 
-    fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
+    fn iter<'db: 'a>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        from: NodeRef,
+    ) -> IteratorContent<'a> {
         IteratorContent::Inferred(
             self.lookup_implicit(i_s, "__iter__", &|i_s| {
                 from.add_typing_issue(
@@ -289,6 +293,7 @@ pub trait Value<'a>: std::fmt::Debug {
                 );
             })
             .run_on_value(i_s, &mut |i_s, value| {
+                let x: &mut InferenceState<'db, '_> = i_s;
                 value.execute(
                     i_s,
                     &NoArguments::new(from),
@@ -325,7 +330,7 @@ pub trait Value<'a>: std::fmt::Debug {
         None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         todo!("{self:?}")
     }
 }

@@ -53,16 +53,16 @@ impl<'a> Value<'a> for Callable<'a> {
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }

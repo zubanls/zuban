@@ -128,7 +128,10 @@ impl<'db> Inferred {
         ))
     }
 
-    pub fn class_as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type {
+    pub fn class_as_type<'x>(&'x self, i_s: &mut InferenceState<'db, '_>) -> Type<'x>
+    where
+        'db: 'x,
+    {
         match self.state {
             InferredState::Saved(definition, _) => {
                 let node_ref = NodeRef::from_link(i_s.db, definition);
@@ -336,9 +339,12 @@ impl<'db> Inferred {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         instance: NodeRef<'db>,
-        generics: Option<Generics<'db, 'a>>,
+        generics: Option<Generics<'a>>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'a>) -> T,
-    ) -> T {
+    ) -> T
+    where
+        'db: 'a,
+    {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 let definition = NodeRef::from_link(i_s.db, *definition);
@@ -409,8 +415,11 @@ impl<'db> Inferred {
     fn maybe_class_internal<'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        generics: Generics<'db, 'a>,
-    ) -> Option<Class<'a>> {
+        generics: Generics<'a>,
+    ) -> Option<Class<'a>>
+    where
+        'db: 'a,
+    {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 let definition = NodeRef::from_link(i_s.db, *definition);
@@ -521,7 +530,10 @@ impl<'db> Inferred {
         &self,
         db: &'db Database,
         class: Class<'a>,
-    ) -> Option<FunctionOrOverload<'a>> {
+    ) -> Option<FunctionOrOverload<'a>>
+    where
+        'db: 'a,
+    {
         if let InferredState::Saved(definition, point) = &self.state {
             let definition = NodeRef::from_link(db, *definition);
             if let Some(Specific::Function) = point.maybe_specific() {
@@ -695,7 +707,7 @@ impl<'db> Inferred {
         }
     }
 
-    fn expect_generics(definition: NodeRef<'db>, point: Point) -> Option<Generics<'db, 'db>> {
+    fn expect_generics(definition: NodeRef<'db>, point: Point) -> Option<Generics<'db>> {
         if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
             let primary = definition.as_primary();
             match primary.second() {
@@ -845,13 +857,13 @@ fn run_on_saved<'db: 'a, 'a, T>(
     }
 }
 
-fn run_on_complex<'a, T>(
-    i_s: &mut InferenceState,
+fn run_on_complex<'db: 'a, 'a, T>(
+    i_s: &mut InferenceState<'db, '_>,
     complex: &'a ComplexPoint,
-    definition: Option<NodeRef>,
-    callable: &mut impl FnMut(&mut InferenceState, &dyn Value<'a>) -> T,
-    reducer: &impl Fn(&mut InferenceState, T, T) -> T,
-    on_missing: &mut impl FnMut(&mut InferenceState) -> T,
+    definition: Option<NodeRef<'a>>,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
     match complex {
         ComplexPoint::ExecutionInstance(cls_definition, execution) => {
@@ -1117,21 +1129,21 @@ fn infer_instance_with_arguments_cls(i_s: &mut InferenceState, definition: NodeR
         .infer_primary_or_atom(definition.as_primary().first())
 }
 
-fn use_instance<'db, 'a>(
-    class_reference: NodeRef<'db>,
-    generics: Generics<'db, 'a>,
-    instance_reference: Option<NodeRef<'db>>,
+fn use_instance<'a>(
+    class_reference: NodeRef<'a>,
+    generics: Generics<'a>,
+    instance_reference: Option<NodeRef<'a>>,
 ) -> Instance<'a> {
     let class = Class::from_position(class_reference, generics, None).unwrap();
     Instance::new(class, instance_reference)
 }
 
 pub fn run_on_db_type<'db: 'a, 'a, T>(
-    i_s: &mut InferenceState,
+    i_s: &mut InferenceState<'db, '_>,
     db_type: &'a DbType,
-    callable: &mut impl FnMut(&mut InferenceState, &dyn Value<'a>) -> T,
-    reducer: &impl Fn(&mut InferenceState, T, T) -> T,
-    on_missing: &mut impl FnMut(&mut InferenceState) -> T,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
     match db_type {
         DbType::Class(link, generics) => {
@@ -1160,13 +1172,13 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
     }
 }
 
-fn run_on_db_type_type<'a, T>(
-    i_s: &mut InferenceState,
+fn run_on_db_type_type<'db: 'a, 'a, T>(
+    i_s: &mut InferenceState<'db, '_>,
     db_type: &'a DbType,
     type_: &'a DbType,
-    callable: &mut impl FnMut(&mut InferenceState, &dyn Value<'a>) -> T,
-    reducer: &impl Fn(&mut InferenceState, T, T) -> T,
-    on_missing: &mut impl FnMut(&mut InferenceState) -> T,
+    callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'a>) -> T,
+    reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
+    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
     match type_ {
         DbType::Class(link, generics) => {

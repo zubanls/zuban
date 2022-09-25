@@ -426,7 +426,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn compute_slice_type(&mut self, slice: SliceOrSimple<'x, 'x>) -> TypeContent<'db, 'x> {
+    fn compute_slice_type(&mut self, slice: SliceOrSimple<'x>) -> TypeContent<'db, 'x> {
         match slice {
             SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
             SliceOrSimple::Slice(n) => todo!(),
@@ -449,7 +449,7 @@ impl<'db: 'x, 'a, 'b, 'c, 'x> TypeComputation<'db, 'a, 'b, 'c> {
         type_content
     }
 
-    fn compute_slice_db_type(&mut self, slice: SliceOrSimple<'_, '_>) -> DbType {
+    fn compute_slice_db_type(&mut self, slice: SliceOrSimple) -> DbType {
         let t = self.compute_slice_type(slice);
         self.as_db_type(t, slice.as_node_ref())
     }

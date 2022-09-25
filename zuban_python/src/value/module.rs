@@ -91,12 +91,12 @@ impl<'a> Value<'a> for Module<'a> {
             })
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -107,7 +107,7 @@ impl<'a> Value<'a> for Module<'a> {
         Inferred::new_unknown()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Class(i_s.db.python_state.module_type())
     }
 }

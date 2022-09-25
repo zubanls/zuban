@@ -247,7 +247,7 @@ impl<'db> PythonFile {
 
     pub fn inference<'a, 'b>(
         &'a self,
-        i_s: &'b mut InferenceState<'db, 'a>,
+        i_s: &'a mut InferenceState<'db, 'b>,
     ) -> PythonInference<'db, 'a, 'b> {
         PythonInference {
             file: self,
@@ -281,7 +281,7 @@ impl<'db> PythonFile {
         f
     }
 
-    pub fn is_stub(&self, db: &'db Database) -> bool {
+    pub fn is_stub(&self, db: &Database) -> bool {
         db.file_path(self.file_index()).ends_with(".pyi")
     }
 }
@@ -289,7 +289,7 @@ impl<'db> PythonFile {
 pub struct PythonInference<'db, 'a, 'b> {
     file: &'a PythonFile,
     file_index: FileIndex,
-    i_s: &'b mut InferenceState<'db, 'a>,
+    i_s: &'a mut InferenceState<'db, 'b>,
 }
 
 macro_rules! check_point_cache_with {
@@ -330,7 +330,7 @@ macro_rules! check_point_cache_with {
     }
 }
 
-impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+impl<'db, 'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
     fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
@@ -1149,13 +1149,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
                     );
                 }) {
                     LookupResult::GotoName(link, inferred) => {
-                        // TODO this is not correct, because there can be multiple runs, so setting
-                        // it here can be overwritten.
-                        self.file.points.set(
-                            name.index(),
-                            Point::new_redirect(link.file, link.node_index, Locality::Todo),
-                        );
-                        inferred
+                        todo!()
                     }
                     LookupResult::FileReference(file_index) => {
                         self.file.points.set(

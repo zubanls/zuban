@@ -44,7 +44,7 @@ impl fmt::Debug for Function<'_> {
     }
 }
 
-impl<'db, 'a> Function<'a> {
+impl<'db: 'a, 'a> Function<'a> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "(" to redirect to save calculated type vars
@@ -93,12 +93,7 @@ impl<'db, 'a> Function<'a> {
         db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<
-        'db,
-        'b,
-        impl Iterator<Item = FunctionParam<'db, 'b>>,
-        FunctionParam<'db, 'b>,
-    >
+    ) -> InferrableParamIterator2<'db, 'b, impl Iterator<Item = FunctionParam<'b>>, FunctionParam<'b>>
     where
         'a: 'b,
     {
@@ -177,7 +172,7 @@ impl<'db, 'a> Function<'a> {
         Inferred::new_none()
     }
 
-    fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'db> {
+    fn iter_return_or_yield(&self) -> ReturnOrYieldIterator<'a> {
         let def_point = self.node_ref.file.points.get(self.node_ref.node_index + 1);
         let first_return_or_yield = def_point.node_index();
         ReturnOrYieldIterator {
@@ -195,7 +190,7 @@ impl<'db, 'a> Function<'a> {
         false
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVars> {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (
         let type_var_reference = self.node_ref.add_to_node_index(4);
@@ -332,9 +327,9 @@ impl<'db, 'a> Function<'a> {
 
     pub(super) fn execute_internal(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
-        on_type_error: OnTypeError,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class>,
         result_context: ResultContext,
     ) -> Inferred {
@@ -525,12 +520,12 @@ impl<'a> Value<'a> for Function<'a> {
         todo!("{name:?}")
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         if let Some(class) = &self.class {
             self.execute_internal(
@@ -552,7 +547,7 @@ impl<'a> Value<'a> for Function<'a> {
         Inferred::new_unknown()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(self.as_db_type(i_s, false))
     }
 
@@ -560,18 +555,18 @@ impl<'a> Value<'a> for Function<'a> {
         Some(self)
     }
 
-    fn module(&self, db: &Database) -> Module<'a> {
+    fn module(&self, db: &'a Database) -> Module<'a> {
         Module::new(db, self.node_ref.file)
     }
 }
 
-struct ReturnOrYieldIterator<'db> {
-    file: &'db PythonFile,
+struct ReturnOrYieldIterator<'a> {
+    file: &'a PythonFile,
     next_node_index: NodeIndex,
 }
 
-impl<'db> Iterator for ReturnOrYieldIterator<'db> {
-    type Item = ReturnOrYield<'db>;
+impl<'a> Iterator for ReturnOrYieldIterator<'a> {
+    type Item = ReturnOrYield<'a>;
     fn next(&mut self) -> Option<Self::Item> {
         if self.next_node_index == 0 {
             None
@@ -585,21 +580,21 @@ impl<'db> Iterator for ReturnOrYieldIterator<'db> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub struct FunctionParam<'db, 'x> {
-    file: &'db PythonFile,
+pub struct FunctionParam<'x> {
+    file: &'x PythonFile,
     param: ASTParam<'x>,
 }
 
-impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
+impl<'x> Param<'x> for FunctionParam<'x> {
     fn has_default(&self) -> bool {
         self.param.default().is_some()
     }
 
-    fn name(&self, db: &'db Database) -> Option<&str> {
+    fn name(&self, db: &'x Database) -> Option<&str> {
         Some(self.param.name_definition().as_code())
     }
 
-    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
+    fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
         self.param.annotation().map(|annotation| {
             self.file
                 .inference(i_s)
@@ -613,7 +608,7 @@ impl<'db, 'x> Param<'db, 'x> for FunctionParam<'db, 'x> {
             .map(|a| PointLink::new(self.file.file_index(), a.index()))
     }
 
-    fn kind(&self, db: &'db Database) -> ParamKind {
+    fn kind(&self, db: &Database) -> ParamKind {
         let mut t = self.param.type_();
         if t == ParamKind::PositionalOrKeyword
             && db.python_state.mypy_compatible
@@ -631,7 +626,7 @@ pub struct InferrableParamIterator<'db, 'a> {
     db: &'db Database,
     arguments: ArgumentIterator<'db, 'a>,
     params: ParamIterator<'a>,
-    file: &'db PythonFile,
+    file: &'a PythonFile,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
 }
 
@@ -651,7 +646,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         }
     }
 
-    fn next_argument(&mut self, param: &FunctionParam<'db, 'a>) -> ParamInput<'db, 'a> {
+    fn next_argument(&mut self, param: &FunctionParam<'a>) -> ParamInput<'db, 'a> {
         for (i, unused) in self.unused_keyword_arguments.iter().enumerate() {
             match &unused.kind {
                 ArgumentKind::Keyword { key, .. } => {
@@ -750,7 +745,7 @@ pub trait ParamWithArgument<'db, 'a> {
 
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
-    pub param: FunctionParam<'db, 'a>,
+    pub param: FunctionParam<'a>,
     argument: ParamInput<'db, 'a>,
 }
 
@@ -803,8 +798,8 @@ pub struct OverloadedFunction<'a> {
     class: Option<Class<'a>>,
 }
 
-impl<'db, 'a> OverloadedFunction<'a> {
-    pub fn new(node_ref: NodeRef<'db>, overload: &'a Overload, class: Option<Class<'a>>) -> Self {
+impl<'db: 'a, 'a> OverloadedFunction<'a> {
+    pub fn new(node_ref: NodeRef<'a>, overload: &'a Overload, class: Option<Class<'a>>) -> Self {
         Self {
             node_ref,
             overload,
@@ -820,7 +815,7 @@ impl<'db, 'a> OverloadedFunction<'a> {
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: ResultContext,
     ) -> Option<(Function<'a>, Option<GenericsList>)> {
-        let match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'db, 'a>| {
+        let match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
                 calculate_class_init_type_vars_and_return(
@@ -962,9 +957,9 @@ impl<'db, 'a> OverloadedFunction<'a> {
 
     pub(super) fn execute_internal(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
-        on_type_error: OnTypeError,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class>,
         result_context: ResultContext,
     ) -> Inferred {
@@ -975,12 +970,12 @@ impl<'db, 'a> OverloadedFunction<'a> {
     }
 }
 
-impl<'db, 'a> Value<'a> for OverloadedFunction<'a> {
+impl<'a> Value<'a> for OverloadedFunction<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         self.node_ref.as_code()
     }
 
@@ -988,12 +983,12 @@ impl<'db, 'a> Value<'a> for OverloadedFunction<'a> {
         todo!()
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
@@ -1010,7 +1005,7 @@ impl<'db, 'a> Value<'a> for OverloadedFunction<'a> {
         Some(self)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Intersection(IntersectionType::new_overload(
             self.overload
                 .functions

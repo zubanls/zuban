@@ -48,7 +48,7 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
-    pub fn maybe_class(&self, db: &Database) -> Option<Class> {
+    pub fn maybe_class<'db>(&self, db: &'a Database) -> Option<Class<'_>> {
         match self {
             Self::Class(c) => Some(*c),
             Self::Type(t) => match t.as_ref() {
@@ -419,7 +419,10 @@ impl<'a> Type<'a> {
         Match::new_false()
     }
 
-    pub fn mro<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<MroIterator<'db, '_>> {
+    pub fn mro<'db: 'x, 'x>(
+        &'x self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> Option<MroIterator<'db, '_>> {
         match self {
             Self::Class(c) => Some(c.mro(i_s)),
             Self::Type(t) => match t.as_ref() {

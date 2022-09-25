@@ -50,7 +50,7 @@ impl<'a> Value<'a> for BoundMethod<'_, '_> {
         self.function.as_value().kind()
     }
 
-    fn name(&self) -> &str {
+    fn name(&self) -> &'a str {
         self.function.as_value().name()
     }
 
@@ -58,12 +58,12 @@ impl<'a> Value<'a> for BoundMethod<'_, '_> {
         self.function.as_value().lookup_internal(i_s, name)
     }
 
-    fn execute(
+    fn execute<'db: 'a>(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let instance_inf = self.instance.as_inferred(i_s);
         let instance_arg = KnownArguments::with_mro_index(&instance_inf, self.mro_index, None);
@@ -94,7 +94,7 @@ impl<'a> Value<'a> for BoundMethod<'_, '_> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState) -> Type<'a> {
+    fn as_type<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Overload(f) => todo!(),
