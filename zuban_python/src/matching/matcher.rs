@@ -429,11 +429,11 @@ impl<'a> TypeVarMatcher<'a> {
     }
 }
 
-pub fn calculate_class_init_type_vars_and_return(
-    i_s: &mut InferenceState,
+pub fn calculate_class_init_type_vars_and_return<'db>(
+    i_s: &mut InferenceState<'db, '_>,
     class: &Class,
     function: Function,
-    args: &dyn Arguments,
+    args: &dyn Arguments<'db>,
     result_context: ResultContext,
     on_type_error: Option<OnTypeError>,
 ) -> CalculatedTypeArguments {

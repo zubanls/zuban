@@ -44,13 +44,13 @@ pub(super) enum SpecialType {
 }
 
 #[derive(Debug, Clone)]
-pub(super) enum InvalidVariableType<'db, 'a> {
+pub(super) enum InvalidVariableType<'a> {
     List,
     Tuple { tuple_length: usize },
     Execution,
-    Function(Function<'db>),
+    Function(Function<'a>),
     Literal(&'a str),
-    Variable(NodeRef<'db>),
+    Variable(NodeRef<'a>),
     Other,
 }
 
@@ -60,7 +60,7 @@ enum TypeComputationOrigin {
     CastTarget,
 }
 
-impl InvalidVariableType<'_, '_> {
+impl InvalidVariableType<'_> {
     fn add_issue(
         &self,
         db: &Database,
@@ -130,7 +130,7 @@ enum TypeContent<'db, 'a> {
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType),
-    InvalidVariable(InvalidVariableType<'db, 'a>),
+    InvalidVariable(InvalidVariableType<'a>),
     Unknown,
 }
 
@@ -140,7 +140,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     TypeVar(Rc<TypeVar>),
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType),
-    InvalidVariable(InvalidVariableType<'db, 'a>),
+    InvalidVariable(InvalidVariableType<'a>),
     Unknown,
 }
 

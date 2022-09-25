@@ -11,8 +11,8 @@ use crate::node_ref::NodeRef;
 use crate::value::Class;
 
 #[derive(Debug, Clone)]
-enum BaseLookup<'db> {
-    Module(&'db PythonFile),
+enum BaseLookup<'a> {
+    Module(&'a PythonFile),
     Class(Inferred),
     Protocol,
     Callable,
@@ -30,7 +30,7 @@ pub struct ClassTypeVarFinder<'db, 'a, 'b, 'c> {
 }
 
 impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
-    pub fn find(inference: &'c mut PythonInference<'db, 'a, 'b>, class: &'c Class) -> TypeVars {
+    pub fn find(inference: &'c mut PythonInference<'db, 'a, 'b>, class: &'c Class<'a>) -> TypeVars {
         let mut finder = Self {
             inference,
             class,
@@ -59,7 +59,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         finder.type_var_manager.into_type_vars()
     }
 
-    fn find_in_expr(&mut self, expr: Expression<'db>) {
+    fn find_in_expr(&mut self, expr: Expression<'a>) {
         let type_content = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
                 self.find_in_expression_part(n);
@@ -69,7 +69,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         };
     }
 
-    fn find_in_expression_part(&mut self, node: ExpressionPart<'db>) -> BaseLookup<'db> {
+    fn find_in_expression_part(&mut self, node: ExpressionPart<'a>) -> BaseLookup<'a> {
         match node {
             ExpressionPart::Atom(atom) => self.find_in_atom(atom),
             ExpressionPart::Primary(primary) => self.find_in_primary(primary),
@@ -83,7 +83,7 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn find_in_primary(&mut self, primary: Primary<'db>) -> BaseLookup<'db> {
+    fn find_in_primary(&mut self, primary: Primary<'a>) -> BaseLookup<'db> {
         let base = self.find_in_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => {
@@ -201,14 +201,14 @@ impl<'db, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'a, 'b, 'c> {
         }
     }
 
-    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'db>) -> BaseLookup<'db> {
+    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'a>) -> BaseLookup<'a> {
         match p {
             PrimaryOrAtom::Primary(primary) => self.find_in_primary(primary),
             PrimaryOrAtom::Atom(atom) => self.find_in_atom(atom),
         }
     }
 
-    fn find_in_callable(&mut self, slice_type: SliceType<'db>) {
+    fn find_in_callable(&mut self, slice_type: SliceType<'a>) {
         if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {

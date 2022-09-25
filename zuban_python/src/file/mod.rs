@@ -267,7 +267,7 @@ impl<'db> PythonFile {
     }
 
     fn new_annotation_file(
-        &'db self,
+        &self,
         db: &'db Database,
         start: CodeIndex,
         code: String, // TODO this should not be a string, but probably cow
@@ -1164,11 +1164,11 @@ impl<'db, 'a, 'b, 'c> PythonInference<'a, 'b, 'c> {
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
-                let on_type_error = |i_s: &mut InferenceState,
+                let on_type_error = |i_s: &mut InferenceState<'db, '_>,
                                      node_ref: NodeRef,
                                      class: Option<&Class>,
                                      function: Option<&Function>,
-                                     p: &dyn ParamWithArgument<'db, '_>,
+                                     p: &dyn ParamWithArgument,
                                      t1,
                                      t2| {
                     node_ref.add_typing_issue(

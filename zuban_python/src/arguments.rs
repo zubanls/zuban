@@ -92,7 +92,7 @@ impl<'db, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     }
 }
 
-impl<'db, 'a> SimpleArguments<'db, 'a> {
+impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
     pub fn new(
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
@@ -111,8 +111,8 @@ impl<'db, 'a> SimpleArguments<'db, 'a> {
 
     pub fn from_primary(
         i_s: InferenceState<'db, 'a>,
-        file: &'db PythonFile,
-        primary_node: Primary<'db>,
+        file: &'a PythonFile,
+        primary_node: Primary<'a>,
         in_: Option<&'a Execution>,
     ) -> Self {
         match primary_node.second() {
@@ -249,7 +249,7 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
     fn new_positional_return(
         context: Context<'db, 'a>,
         position: usize,
-        file: &'db PythonFile,
+        file: &'a PythonFile,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
         BaseArgumentReturn::Argument(ArgumentKind::Positional {
@@ -261,7 +261,7 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
 
     fn new_keyword_return(
         context: Context<'db, 'a>,
-        file: &'db PythonFile,
+        file: &'a PythonFile,
         key: &'a str,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
