@@ -1149,7 +1149,13 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                     );
                 }) {
                     LookupResult::GotoName(link, inferred) => {
-                        todo!()
+                        // TODO this is not correct, because there can be multiple runs, so setting
+                        // it here can be overwritten.
+                        self.file.points.set(
+                            name.index(),
+                            Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                        );
+                        inferred
                     }
                     LookupResult::FileReference(file_index) => {
                         self.file.points.set(
