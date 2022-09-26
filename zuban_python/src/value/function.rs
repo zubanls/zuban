@@ -514,7 +514,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'a> {
         ValueKind::Function
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
         func.name().as_str()
     }
@@ -978,7 +978,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         ValueKind::Function
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         self.node_ref.as_code()
     }
 

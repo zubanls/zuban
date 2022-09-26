@@ -28,7 +28,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "tuple"
     }
 

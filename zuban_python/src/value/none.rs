@@ -14,7 +14,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         ValueKind::Constant
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "None"
     }
 

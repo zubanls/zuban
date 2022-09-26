@@ -205,7 +205,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
 
     //fn file(&self) -> &'db dyn File;
 
-    fn name(&self) -> &'a str;
+    fn name(&self) -> &str;
 
     fn qualified_name(&self, db: &'a Database) -> String {
         base_qualified_name!(self, db, self.name())

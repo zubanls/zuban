@@ -38,7 +38,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         self.class.name()
     }
 

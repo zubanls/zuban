@@ -44,7 +44,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "Callable"
     }
 

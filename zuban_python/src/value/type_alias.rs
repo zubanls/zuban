@@ -25,7 +25,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "TypeAlias"
     }
 

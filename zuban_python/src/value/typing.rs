@@ -45,7 +45,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         match self.specific {
             Specific::TypingGeneric => "Generic",
             Specific::TypingProtocol => "Protocol",
@@ -138,7 +138,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingWithGenerics<'a> {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         match self.specific {
             Specific::TypingGeneric => "Generic",
             Specific::TypingProtocol => "Protocol",
@@ -163,7 +163,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "ClassVar"
     }
 
@@ -208,7 +208,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "Type"
     }
 
@@ -297,7 +297,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         ValueKind::Function
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "cast"
     }
 
@@ -641,7 +641,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "TypeVar"
     }
 

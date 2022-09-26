@@ -379,7 +379,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    fn expect_instance(&self, i_s: &mut InferenceState<'db, '_>) -> Instance {
+    fn expect_instance(&self, i_s: &mut InferenceState<'db, '_>) -> Instance<'db> {
         let mut instance = None;
         self.run_mut(
             i_s,

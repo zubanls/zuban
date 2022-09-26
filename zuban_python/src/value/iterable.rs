@@ -84,7 +84,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         "list"
     }
 

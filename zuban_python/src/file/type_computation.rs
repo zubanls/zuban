@@ -1313,7 +1313,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
         Type::Class(inferred.maybe_class(self.i_s).unwrap())
     }
 
-    pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'db DbType {
+    pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'file DbType {
         debug_assert_eq!(
             self.file.points.get(node_index).specific(),
             Specific::AnnotationWithTypeVars

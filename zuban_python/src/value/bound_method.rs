@@ -25,17 +25,17 @@ impl<'db: 'a, 'a> BoundMethodFunction<'a> {
 }
 
 #[derive(Debug)]
-pub struct BoundMethod<'a, 'b> {
+pub struct BoundMethod<'b> {
     instance: &'b Instance<'b>,
-    function: BoundMethodFunction<'a>,
+    function: BoundMethodFunction<'b>,
     mro_index: MroIndex,
 }
 
-impl<'a, 'b> BoundMethod<'a, 'b> {
+impl<'b> BoundMethod<'b> {
     pub fn new(
         instance: &'b Instance<'b>,
         mro_index: MroIndex,
-        function: BoundMethodFunction<'a>,
+        function: BoundMethodFunction<'b>,
     ) -> Self {
         Self {
             instance,
@@ -45,12 +45,12 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
+impl<'db, 'a> Value<'db, 'a> for BoundMethod<'_> {
     fn kind(&self) -> ValueKind {
         self.function.as_value().kind()
     }
 
-    fn name(&self) -> &'a str {
+    fn name(&self) -> &str {
         self.function.as_value().name()
     }
 
