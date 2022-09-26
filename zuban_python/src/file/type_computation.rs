@@ -220,7 +220,7 @@ pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
     origin: TypeComputationOrigin,
 }
 
-impl<'db: 'x, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b, 'c> {
+impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b, 'c> {
     pub fn new(
         inference: &'c mut PythonInference<'db, 'file, 'a, 'b>,
         for_definition: PointLink,
@@ -249,7 +249,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b, 'c> {
                 .new_annotation_file(self.inference.i_s.db, start, string);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
-                |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {
+                |comp: &mut TypeComputation<'db, '_, '_, '_, '_>| match star_exprs.unpack() {
                     StarExpressionContent::Expression(expr) => comp.compute_type(expr),
                     StarExpressionContent::Tuple(t) => todo!(),
                     StarExpressionContent::StarExpression(s) => todo!(),
@@ -1264,11 +1264,14 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
         self.check_point_cache(annotation.index()).unwrap()
     }
 
-    pub fn use_cached_return_annotation_type(&mut self, annotation: ReturnAnnotation) -> Type<'a> {
+    pub fn use_cached_return_annotation_type(
+        &mut self,
+        annotation: ReturnAnnotation,
+    ) -> Type<'file> {
         self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
     }
 
-    pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Type<'a> {
+    pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Type<'file> {
         self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
     }
 
@@ -1276,7 +1279,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
-    ) -> Type<'a> {
+    ) -> Type<'file> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
@@ -1344,7 +1347,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
         }
     }
 
-    fn compute_type_assignment(&mut self, assignment: Assignment<'x>) -> TypeNameLookup<'a, 'a> {
+    fn compute_type_assignment(
+        &mut self,
+        assignment: Assignment<'x>,
+    ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
         let cached_type_node_ref = NodeRef::new(file, assignment.index() + 1);
@@ -1613,10 +1619,10 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
     }
 }
 
-fn check_type_name<'db: 'a, 'a>(
+fn check_type_name<'db: 'file, 'file>(
     i_s: &mut InferenceState<'db, '_>,
-    name_node_ref: NodeRef<'a>,
-) -> TypeNameLookup<'a, 'a> {
+    name_node_ref: NodeRef<'file>,
+) -> TypeNameLookup<'file, 'file> {
     let point = name_node_ref.point();
     // First check redirects. These are probably one of the following cases:
     //

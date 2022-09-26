@@ -12,20 +12,24 @@ use crate::node_ref::NodeRef;
 use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
-pub struct SliceType<'a> {
-    pub file: &'a PythonFile,
-    pub ast_node: ASTSliceType<'a>,
+pub struct SliceType<'file> {
+    pub file: &'file PythonFile,
+    pub ast_node: ASTSliceType<'file>,
     node_index: NodeIndex,
 }
 
-pub enum SliceTypeContent<'a> {
-    Simple(Simple<'a>),
-    Slice(Slice<'a>),
-    Slices(Slices<'a>),
+pub enum SliceTypeContent<'file> {
+    Simple(Simple<'file>),
+    Slice(Slice<'file>),
+    Slices(Slices<'file>),
 }
 
-impl<'db, 'a> SliceType<'a> {
-    pub fn new(file: &'a PythonFile, node_index: NodeIndex, ast_node: ASTSliceType<'a>) -> Self {
+impl<'db, 'file> SliceType<'file> {
+    pub fn new(
+        file: &'file PythonFile,
+        node_index: NodeIndex,
+        ast_node: ASTSliceType<'file>,
+    ) -> Self {
         Self {
             file,
             ast_node,
@@ -33,7 +37,7 @@ impl<'db, 'a> SliceType<'a> {
         }
     }
 
-    pub fn as_node_ref(&self) -> NodeRef<'a> {
+    pub fn as_node_ref(&self) -> NodeRef<'file> {
         NodeRef::new(self.file, self.node_index)
     }
 
@@ -44,7 +48,7 @@ impl<'db, 'a> SliceType<'a> {
         }
     }
 
-    pub fn unpack(&self) -> SliceTypeContent<'a> {
+    pub fn unpack(&self) -> SliceTypeContent<'file> {
         match self.ast_node {
             ASTSliceType::NamedExpression(named_expr) => SliceTypeContent::Simple(Simple {
                 file: self.file,
@@ -61,7 +65,7 @@ impl<'db, 'a> SliceType<'a> {
         }
     }
 
-    pub fn iter(&self) -> SliceTypeIterator<'a> {
+    pub fn iter(&self) -> SliceTypeIterator<'file> {
         match self.unpack() {
             SliceTypeContent::Simple(s) => {
                 SliceTypeIterator::SliceOrSimple(SliceOrSimple::Simple(s))
@@ -73,58 +77,58 @@ impl<'db, 'a> SliceType<'a> {
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Simple<'a> {
-    pub file: &'a PythonFile,
-    pub named_expr: NamedExpression<'a>,
+pub struct Simple<'file> {
+    pub file: &'file PythonFile,
+    pub named_expr: NamedExpression<'file>,
 }
 
-impl<'a> Simple<'a> {
+impl<'file> Simple<'file> {
     pub fn infer(&self, i_s: &mut InferenceState) -> Inferred {
         self.file
             .inference(i_s)
             .infer_named_expression(self.named_expr)
     }
 
-    pub fn as_node_ref(&self) -> NodeRef<'a> {
+    pub fn as_node_ref(&self) -> NodeRef<'file> {
         NodeRef::new(self.file, self.named_expr.index())
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slice<'a> {
-    file: &'a PythonFile,
-    slice: ASTSlice<'a>,
+pub struct Slice<'file> {
+    file: &'file PythonFile,
+    slice: ASTSlice<'file>,
 }
 
-impl<'a> Slice<'a> {
-    pub fn as_node_ref(&self) -> NodeRef<'a> {
+impl<'file> Slice<'file> {
+    pub fn as_node_ref(&self) -> NodeRef<'file> {
         NodeRef::new(self.file, self.slice.index())
     }
 }
 
 #[derive(Debug, Copy, Clone)]
-pub struct Slices<'a> {
-    pub file: &'a PythonFile,
-    slices: ASTSlices<'a>,
+pub struct Slices<'file> {
+    pub file: &'file PythonFile,
+    slices: ASTSlices<'file>,
 }
 
-impl<'a> Slices<'a> {
-    pub fn as_node_ref(&self) -> NodeRef<'a> {
+impl<'file> Slices<'file> {
+    pub fn as_node_ref(&self) -> NodeRef<'file> {
         NodeRef::new(self.file, self.slices.index())
     }
 
-    pub fn iter(&self) -> SliceIterator<'a> {
+    pub fn iter(&self) -> SliceIterator<'file> {
         SliceIterator(self.file, self.slices.iter())
     }
 }
 
 #[derive(Copy, Clone)]
-pub enum SliceOrSimple<'a> {
-    Simple(Simple<'a>),
-    Slice(Slice<'a>),
+pub enum SliceOrSimple<'file> {
+    Simple(Simple<'file>),
+    Slice(Slice<'file>),
 }
 
-impl<'a> SliceOrSimple<'a> {
+impl<'file> SliceOrSimple<'file> {
     pub fn infer(&self, i_s: &mut InferenceState) -> Inferred {
         match self {
             Self::Simple(simple) => simple.infer(i_s),
@@ -132,7 +136,7 @@ impl<'a> SliceOrSimple<'a> {
         }
     }
 
-    pub fn as_node_ref(&self) -> NodeRef<'a> {
+    pub fn as_node_ref(&self) -> NodeRef<'file> {
         match self {
             SliceOrSimple::Simple(simple) => simple.as_node_ref(),
             SliceOrSimple::Slice(slice) => slice.as_node_ref(),
@@ -140,10 +144,10 @@ impl<'a> SliceOrSimple<'a> {
     }
 }
 
-pub struct SliceIterator<'a>(&'a PythonFile, ASTSliceIterator<'a>);
+pub struct SliceIterator<'file>(&'file PythonFile, ASTSliceIterator<'file>);
 
-impl<'db, 'a> Iterator for SliceIterator<'a> {
-    type Item = SliceOrSimple<'a>;
+impl<'db, 'file> Iterator for SliceIterator<'file> {
+    type Item = SliceOrSimple<'file>;
 
     fn next(&mut self) -> Option<Self::Item> {
         // TODO it's actually a bad idea to pass node_index here
@@ -160,14 +164,14 @@ impl<'db, 'a> Iterator for SliceIterator<'a> {
     }
 }
 
-pub enum SliceTypeIterator<'a> {
-    SliceIterator(SliceIterator<'a>),
-    SliceOrSimple(SliceOrSimple<'a>),
+pub enum SliceTypeIterator<'file> {
+    SliceIterator(SliceIterator<'file>),
+    SliceOrSimple(SliceOrSimple<'file>),
     Finished,
 }
 
-impl<'a> Iterator for SliceTypeIterator<'a> {
-    type Item = SliceOrSimple<'a>;
+impl<'file> Iterator for SliceTypeIterator<'file> {
+    type Item = SliceOrSimple<'file>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {

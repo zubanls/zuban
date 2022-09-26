@@ -286,7 +286,7 @@ impl<'db> PythonFile {
     }
 }
 
-pub struct PythonInference<'db, 'file, 'a, 'b> {
+pub struct PythonInference<'db: 'file, 'file, 'a, 'b> {
     file: &'file PythonFile,
     file_index: FileIndex,
     i_s: &'a mut InferenceState<'db, 'b>,

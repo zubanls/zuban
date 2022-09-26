@@ -11,8 +11,8 @@ use crate::node_ref::NodeRef;
 use crate::value::Class;
 
 #[derive(Debug, Clone)]
-enum BaseLookup<'a> {
-    Module(&'a PythonFile),
+enum BaseLookup<'file> {
+    Module(&'file PythonFile),
     Class(Inferred),
     Protocol,
     Callable,
@@ -20,19 +20,19 @@ enum BaseLookup<'a> {
     Other,
 }
 
-pub struct ClassTypeVarFinder<'db, 'file, 'a, 'b, 'c> {
-    inference: &'c mut PythonInference<'db, 'file, 'a, 'b>,
+pub struct ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
+    inference: &'c mut PythonInference<'db, 'file, 'i_s, 'b>,
     class: &'c Class<'c>,
     type_var_manager: TypeVarManager,
-    generic_or_protocol_slice: Option<SliceType<'a>>,
+    generic_or_protocol_slice: Option<SliceType<'file>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
     had_generic_or_protocol_issue: bool,
 }
 
-impl<'db, 'file, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'a, 'b, 'c> {
+impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     pub fn find(
-        inference: &'c mut PythonInference<'db, 'file, 'a, 'b>,
-        class: &'c Class<'a>,
+        inference: &'c mut PythonInference<'db, 'file, 'i_s, 'b>,
+        class: &'c Class<'file>,
     ) -> TypeVars {
         let mut finder = Self {
             inference,
@@ -62,7 +62,7 @@ impl<'db, 'file, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'a, 'b, 'c> {
         finder.type_var_manager.into_type_vars()
     }
 
-    fn find_in_expr(&mut self, expr: Expression<'a>) {
+    fn find_in_expr(&mut self, expr: Expression<'file>) {
         let type_content = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
                 self.find_in_expression_part(n);
@@ -72,7 +72,7 @@ impl<'db, 'file, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'a, 'b, 'c> {
         };
     }
 
-    fn find_in_expression_part(&mut self, node: ExpressionPart<'a>) -> BaseLookup<'a> {
+    fn find_in_expression_part(&mut self, node: ExpressionPart<'file>) -> BaseLookup<'file> {
         match node {
             ExpressionPart::Atom(atom) => self.find_in_atom(atom),
             ExpressionPart::Primary(primary) => self.find_in_primary(primary),
@@ -86,7 +86,7 @@ impl<'db, 'file, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'a, 'b, 'c> {
         }
     }
 
-    fn find_in_primary(&mut self, primary: Primary<'a>) -> BaseLookup<'db> {
+    fn find_in_primary(&mut self, primary: Primary<'file>) -> BaseLookup<'db> {
         let base = self.find_in_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => {
@@ -204,14 +204,14 @@ impl<'db, 'file, 'a, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'a, 'b, 'c> {
         }
     }
 
-    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'a>) -> BaseLookup<'a> {
+    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'file>) -> BaseLookup<'db> {
         match p {
             PrimaryOrAtom::Primary(primary) => self.find_in_primary(primary),
             PrimaryOrAtom::Atom(atom) => self.find_in_atom(atom),
         }
     }
 
-    fn find_in_callable(&mut self, slice_type: SliceType<'a>) {
+    fn find_in_callable(&mut self, slice_type: SliceType<'file>) {
         if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {
