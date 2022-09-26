@@ -7,7 +7,7 @@ use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
-impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+impl PythonInference<'_, '_, '_, '_> {
     pub fn create_list_or_set_generics(&mut self, elements: ListOrSetElementIterator) -> DbType {
         let mut result = DbType::Never;
         for child in elements {

@@ -15,7 +15,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
 
-impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+impl PythonInference<'_, '_, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
     }

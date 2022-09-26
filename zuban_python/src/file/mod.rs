@@ -172,7 +172,7 @@ pub struct StarImport {
 
 impl StarImport {
     #[inline]
-    fn to_file<'db>(&self, inf: &mut PythonInference<'db, '_, '_>) -> Option<&'db PythonFile> {
+    fn to_file<'db>(&self, inf: &mut PythonInference<'db, '_, '_, '_>) -> Option<&'db PythonFile> {
         let point = inf.file.points.get(self.star_node);
         if point.calculated() {
             return if point.type_() == PointType::Unknown {
@@ -245,10 +245,10 @@ impl<'db> PythonFile {
         )
     }
 
-    pub fn inference<'a, 'b>(
-        &'a self,
-        i_s: &'a mut InferenceState<'db, 'b>,
-    ) -> PythonInference<'db, 'a, 'b> {
+    pub fn inference<'file, 'i_s, 'b>(
+        &'file self,
+        i_s: &'i_s mut InferenceState<'db, 'b>,
+    ) -> PythonInference<'db, 'file, 'i_s, 'b> {
         PythonInference {
             file: self,
             file_index: self.file_index(),
@@ -286,8 +286,8 @@ impl<'db> PythonFile {
     }
 }
 
-pub struct PythonInference<'db, 'a, 'b> {
-    file: &'a PythonFile,
+pub struct PythonInference<'db, 'file, 'a, 'b> {
+    file: &'file PythonFile,
     file_index: FileIndex,
     i_s: &'a mut InferenceState<'db, 'b>,
 }
@@ -330,7 +330,7 @@ macro_rules! check_point_cache_with {
     }
 }
 
-impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",
