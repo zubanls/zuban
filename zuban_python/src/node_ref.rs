@@ -13,23 +13,23 @@ use crate::file_state::File;
 use crate::value::Module;
 
 #[derive(Clone, Copy)]
-pub struct NodeRef<'db> {
-    pub file: &'db PythonFile,
+pub struct NodeRef<'file> {
+    pub file: &'file PythonFile,
     pub node_index: NodeIndex,
 }
 
-impl<'db> std::cmp::PartialEq for NodeRef<'db> {
+impl<'file> std::cmp::PartialEq for NodeRef<'file> {
     fn eq(&self, other: &Self) -> bool {
         std::ptr::eq(self.file, other.file) && self.node_index == other.node_index
     }
 }
 
-impl<'db> NodeRef<'db> {
-    pub fn new(file: &'db PythonFile, node_index: NodeIndex) -> Self {
+impl<'file> NodeRef<'file> {
+    pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
         Self { file, node_index }
     }
 
-    pub fn from_link(db: &'db Database, point: PointLink) -> Self {
+    pub fn from_link(db: &'file Database, point: PointLink) -> Self {
         let file = db.loaded_python_file(point.file);
         Self {
             file,
@@ -37,7 +37,7 @@ impl<'db> NodeRef<'db> {
         }
     }
 
-    pub fn in_module(&self, db: &'db Database) -> Module<'db> {
+    pub fn in_module(&self, db: &'file Database) -> Module<'file> {
         Module::new(db, self.file)
     }
 
@@ -53,7 +53,7 @@ impl<'db> NodeRef<'db> {
         self.file.points.set(self.node_index, point)
     }
 
-    pub fn complex(&self) -> Option<&'db ComplexPoint> {
+    pub fn complex(&self) -> Option<&'file ComplexPoint> {
         let point = self.point();
         if let PointType::Complex = point.type_() {
             Some(self.file.complex_points.get(point.complex_index()))
@@ -72,31 +72,31 @@ impl<'db> NodeRef<'db> {
         PointLink::new(self.file.file_index(), self.node_index)
     }
 
-    pub fn as_expression(&self) -> Expression<'db> {
+    pub fn as_expression(&self) -> Expression<'file> {
         Expression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_primary(&self) -> Primary<'db> {
+    pub fn as_primary(&self) -> Primary<'file> {
         Primary::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_name(&self) -> Name<'db> {
+    pub fn as_name(&self) -> Name<'file> {
         Name::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_annotation(&self) -> Annotation<'db> {
+    pub fn as_annotation(&self) -> Annotation<'file> {
         Annotation::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_name(&self) -> Option<Name<'db>> {
+    pub fn maybe_name(&self) -> Option<Name<'file>> {
         Name::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_starred_expression(&self) -> Option<StarredExpression<'db>> {
+    pub fn maybe_starred_expression(&self) -> Option<StarredExpression<'file>> {
         StarredExpression::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_double_starred_expression(&self) -> Option<DoubleStarredExpression<'db>> {
+    pub fn maybe_double_starred_expression(&self) -> Option<DoubleStarredExpression<'file>> {
         DoubleStarredExpression::maybe_by_index(&self.file.tree, self.node_index)
     }
 
@@ -113,7 +113,7 @@ impl<'db> NodeRef<'db> {
         })
     }
 
-    pub fn infer_str(&self) -> Option<PythonString<'db>> {
+    pub fn infer_str(&self) -> Option<PythonString<'file>> {
         Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
             match atom.unpack() {
                 AtomContent::Strings(s) => s.as_python_string(),
@@ -122,19 +122,19 @@ impl<'db> NodeRef<'db> {
         })
     }
 
-    pub fn maybe_str(&self) -> Option<StringLiteral<'db>> {
+    pub fn maybe_str(&self) -> Option<StringLiteral<'file>> {
         StringLiteral::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_class(&self) -> Option<ClassDef<'db>> {
+    pub fn maybe_class(&self) -> Option<ClassDef<'file>> {
         ClassDef::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn as_named_expression(&self) -> NamedExpression<'db> {
+    pub fn as_named_expression(&self) -> NamedExpression<'file> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn expect_import_from(&self) -> ImportFrom<'db> {
+    pub fn expect_import_from(&self) -> ImportFrom<'file> {
         ImportFrom::by_index(&self.file.tree, self.node_index)
     }
 
@@ -146,7 +146,7 @@ impl<'db> NodeRef<'db> {
         )
     }
 
-    pub fn as_code(&self) -> &'db str {
+    pub fn as_code(&self) -> &'file str {
         self.file.tree.code_of_index(self.node_index)
     }
 
