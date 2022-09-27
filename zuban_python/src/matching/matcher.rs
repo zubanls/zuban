@@ -642,10 +642,8 @@ fn calculate_type_vars<'db>(
                     FunctionOrCallable::Function(f) => f.result_type(i_s),
                     FunctionOrCallable::Callable(c) => Type::new(&c.result_type),
                 };
-                matcher.match_reverse = true;
                 // Fill the type var arguments from context
-                type_.is_super_type_of(i_s, Some(matcher), &result_type);
-                matcher.match_reverse = false;
+                result_type.is_sub_type_of(i_s, Some(matcher), type_);
                 for calculated in matcher.calculated_type_vars.iter_mut() {
                     if let Some(type_) = &mut calculated.type_ {
                         calculated.defined_by_result_context = true;
