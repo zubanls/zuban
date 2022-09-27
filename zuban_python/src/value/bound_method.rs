@@ -8,13 +8,13 @@ use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 
 #[derive(Debug)]
-pub enum BoundMethodFunction<'db, 'a> {
-    Function(Function<'db, 'a>),
-    Overload(OverloadedFunction<'db, 'a>),
+pub enum BoundMethodFunction<'a> {
+    Function(Function<'a>),
+    Overload(OverloadedFunction<'a>),
     Callable(Callable<'a>),
 }
 
-impl<'db, 'a> BoundMethodFunction<'db, 'a> {
+impl<'db: 'a, 'a> BoundMethodFunction<'a> {
     fn as_value(&self) -> &dyn Value<'db, 'a> {
         match self {
             Self::Function(f) => f,
@@ -25,17 +25,17 @@ impl<'db, 'a> BoundMethodFunction<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct BoundMethod<'db, 'a, 'b> {
-    instance: &'b Instance<'db, 'b>,
-    function: BoundMethodFunction<'db, 'a>,
+pub struct BoundMethod<'b> {
+    instance: &'b Instance<'b>,
+    function: BoundMethodFunction<'b>,
     mro_index: MroIndex,
 }
 
-impl<'db, 'a, 'b> BoundMethod<'db, 'a, 'b> {
+impl<'b> BoundMethod<'b> {
     pub fn new(
-        instance: &'b Instance<'db, 'b>,
+        instance: &'b Instance<'b>,
         mro_index: MroIndex,
-        function: BoundMethodFunction<'db, 'a>,
+        function: BoundMethodFunction<'b>,
     ) -> Self {
         Self {
             instance,
@@ -45,16 +45,16 @@ impl<'db, 'a, 'b> BoundMethod<'db, 'a, 'b> {
     }
 }
 
-impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
+impl<'db, 'a> Value<'db, 'a> for BoundMethod<'_> {
     fn kind(&self) -> ValueKind {
         self.function.as_value().kind()
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &str {
         self.function.as_value().name()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         self.function.as_value().lookup_internal(i_s, name)
     }
 
@@ -62,7 +62,7 @@ impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let instance_inf = self.instance.as_inferred(i_s);
@@ -94,7 +94,7 @@ impl<'db> Value<'db, '_> for BoundMethod<'db, '_, '_> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'static> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Overload(f) => todo!(),

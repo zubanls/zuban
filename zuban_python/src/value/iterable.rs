@@ -13,18 +13,18 @@ use crate::matching::{FormatData, Generics, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
-pub struct ListLiteral<'db> {
-    node_ref: NodeRef<'db>,
+pub struct ListLiteral<'a> {
+    node_ref: NodeRef<'a>,
 }
 
-impl<'db> ListLiteral<'db> {
-    pub fn new(node_ref: NodeRef<'db>) -> Self {
+impl<'a> ListLiteral<'a> {
+    pub fn new(node_ref: NodeRef<'a>) -> Self {
         Self { node_ref }
     }
 
     pub fn infer_named_expr(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState,
         named_expr: NamedExpression,
     ) -> Inferred {
         self.node_ref
@@ -33,15 +33,15 @@ impl<'db> ListLiteral<'db> {
             .infer_named_expression(named_expr)
     }
 
-    fn list_node(&self) -> List<'db> {
+    fn list_node(&self) -> List<'a> {
         List::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
-    pub fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db DbType {
+    pub fn db_type(&self, i_s: &mut InferenceState) -> &'a DbType {
         &self.generic_list(i_s)[0.into()]
     }
 
-    fn generic_list(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
+    fn generic_list(&self, i_s: &mut InferenceState) -> &'a GenericsList {
         match self.type_instance_ref(i_s).complex().unwrap() {
             ComplexPoint::TypeInstance(t) => match t.as_ref() {
                 DbType::Class(_, Some(generics)) => generics,
@@ -51,7 +51,7 @@ impl<'db> ListLiteral<'db> {
         }
     }
 
-    fn type_instance_ref(&self, i_s: &mut InferenceState<'db, '_>) -> NodeRef<'db> {
+    fn type_instance_ref(&self, i_s: &mut InferenceState) -> NodeRef<'a> {
         let reference = self.node_ref.add_to_node_index(1);
         if !reference.point().calculated() {
             let result = match self.list_node().unpack() {
@@ -79,16 +79,16 @@ impl<'db> ListLiteral<'db> {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
+impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &str {
         "list"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         Instance::new(
             Class::from_position(
                 NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list")),
@@ -101,11 +101,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         .lookup_internal(i_s, name)
     }
 
-    fn iter(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        from: NodeRef<'db>,
-    ) -> IteratorContent<'db, 'a> {
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
         match self.list_node().unpack() {
             Some(elements) => IteratorContent::ListLiteral(*self, elements),
             // TODO shouldn't this be IteratorContent::Empty, ???
@@ -116,11 +112,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         }
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
@@ -185,7 +177,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
         Type::Class(
             Class::from_position(node_ref, Generics::new_list(self.generic_list(i_s)), None)
@@ -195,24 +187,24 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'db> {
 }
 
 #[derive(Debug)]
-pub struct DictLiteral<'db> {
-    node_ref: NodeRef<'db>,
+pub struct DictLiteral<'a> {
+    node_ref: NodeRef<'a>,
 }
 
-impl<'db> DictLiteral<'db> {
-    pub fn new(node_ref: NodeRef<'db>) -> Self {
+impl<'a> DictLiteral<'a> {
+    pub fn new(node_ref: NodeRef<'a>) -> Self {
         Self { node_ref }
     }
 
-    fn infer_expr(&self, i_s: &mut InferenceState<'db, '_>, expr: Expression<'db>) -> Inferred {
+    fn infer_expr(&self, i_s: &mut InferenceState, expr: Expression) -> Inferred {
         self.node_ref.file.inference(i_s).infer_expression(expr)
     }
 
-    fn dict_node(&self) -> Dict<'db> {
+    fn dict_node(&self) -> Dict<'a> {
         Dict::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
-    fn db_type(&self, i_s: &mut InferenceState<'db, '_>) -> &'db GenericsList {
+    fn db_type(&self, i_s: &mut InferenceState) -> &'a GenericsList {
         let reference = self.node_ref.add_to_node_index(1);
         if reference.point().calculated() {
             match reference.complex().unwrap() {
@@ -263,24 +255,20 @@ impl<'db> DictLiteral<'db> {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
+impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         "dict"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         todo!()
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         /*
         match slice_type {
             SliceTypeContent::Simple(simple) => {
@@ -330,7 +318,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'db> {
         todo!()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
         Type::Class(
             Class::from_position(node_ref, Generics::new_list(self.db_type(i_s)), None).unwrap(),

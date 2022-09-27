@@ -22,9 +22,9 @@ use crate::value::{
 };
 
 #[derive(Debug)]
-pub enum FunctionOrOverload<'db, 'a> {
-    Function(Function<'db, 'a>),
-    Overload(OverloadedFunction<'db, 'a>),
+pub enum FunctionOrOverload<'a> {
+    Function(Function<'a>),
+    Overload(OverloadedFunction<'a>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -41,7 +41,7 @@ pub struct Inferred {
     state: InferredState,
 }
 
-impl<'db> Inferred {
+impl<'db: 'slf, 'slf> Inferred {
     pub fn new_and_save(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
         file.points.set(node_index, point);
         Self::new_saved(file, node_index, point)
@@ -128,7 +128,7 @@ impl<'db> Inferred {
         ))
     }
 
-    pub fn class_as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, '_> {
+    pub fn class_as_type(&'slf self, i_s: &mut InferenceState<'db, '_>) -> Type<'slf> {
         match self.state {
             InferredState::Saved(definition, _) => {
                 let node_ref = NodeRef::from_link(i_s.db, definition);
@@ -336,9 +336,12 @@ impl<'db> Inferred {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         instance: NodeRef<'db>,
-        generics: Option<Generics<'db, 'a>>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'db, 'a>) -> T,
-    ) -> T {
+        generics: Option<Generics<'a>>,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'a>) -> T,
+    ) -> T
+    where
+        'db: 'a,
+    {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 let definition = NodeRef::from_link(i_s.db, *definition);
@@ -376,7 +379,7 @@ impl<'db> Inferred {
         }
     }
 
-    fn expect_instance(&self, i_s: &mut InferenceState<'db, '_>) -> Instance<'db, '_> {
+    fn expect_instance(&self, i_s: &mut InferenceState<'db, '_>) -> Instance<'db> {
         let mut instance = None;
         self.run_mut(
             i_s,
@@ -395,7 +398,7 @@ impl<'db> Inferred {
         instance.unwrap()
     }
 
-    pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db, 'db>> {
+    pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db>> {
         let mut generics = None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
@@ -409,8 +412,11 @@ impl<'db> Inferred {
     fn maybe_class_internal<'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        generics: Generics<'db, 'a>,
-    ) -> Option<Class<'db, 'a>> {
+        generics: Generics<'a>,
+    ) -> Option<Class<'a>>
+    where
+        'db: 'a,
+    {
         match &self.state {
             InferredState::Saved(definition, point) => {
                 let definition = NodeRef::from_link(i_s.db, *definition);
@@ -520,8 +526,11 @@ impl<'db> Inferred {
     pub fn init_as_function<'a>(
         &self,
         db: &'db Database,
-        class: Class<'db, 'a>,
-    ) -> Option<FunctionOrOverload<'db, 'a>> {
+        class: Class<'a>,
+    ) -> Option<FunctionOrOverload<'a>>
+    where
+        'db: 'a,
+    {
         if let InferredState::Saved(definition, point) = &self.state {
             let definition = NodeRef::from_link(db, *definition);
             if let Some(Specific::Function) = point.maybe_specific() {
@@ -695,7 +704,7 @@ impl<'db> Inferred {
         }
     }
 
-    fn expect_generics(definition: NodeRef<'db>, point: Point) -> Option<Generics<'db, 'db>> {
+    fn expect_generics(definition: NodeRef<'db>, point: Point) -> Option<Generics<'db>> {
         if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
             let primary = definition.as_primary();
             match primary.second() {
@@ -755,7 +764,7 @@ impl<'db> Inferred {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-        from: NodeRef<'db>,
+        from: NodeRef,
     ) -> Inferred {
         self.run_on_value(i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, name, &|i_s| todo!("{value:?}"))
@@ -773,8 +782,8 @@ impl<'db> Inferred {
     pub fn save_and_iter(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        from: NodeRef<'db>,
-    ) -> IteratorContent<'db, 'db> {
+        from: NodeRef,
+    ) -> IteratorContent<'db> {
         self.save_if_unsaved(from.file, from.node_index)
             .internal_run_after_save(
                 i_s,
@@ -848,7 +857,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
 fn run_on_complex<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     complex: &'a ComplexPoint,
-    definition: Option<NodeRef<'db>>,
+    definition: Option<NodeRef<'a>>,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
@@ -1101,10 +1110,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
     )
 }
 
-fn load_builtin_instance_from_str<'db>(
-    db: &'db Database,
-    name: &'static str,
-) -> Instance<'db, 'db> {
+fn load_builtin_instance_from_str<'db>(db: &'db Database, name: &'static str) -> Instance<'db> {
     let builtins = db.python_state.builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
     let v = builtins.points.get(node_index);
@@ -1113,21 +1119,18 @@ fn load_builtin_instance_from_str<'db>(
     use_instance(NodeRef::new(builtins, v.node_index()), Generics::None, None)
 }
 
-fn infer_instance_with_arguments_cls<'db>(
-    i_s: &mut InferenceState<'db, '_>,
-    definition: NodeRef<'db>,
-) -> Inferred {
+fn infer_instance_with_arguments_cls(i_s: &mut InferenceState, definition: NodeRef) -> Inferred {
     definition
         .file
         .inference(i_s)
         .infer_primary_or_atom(definition.as_primary().first())
 }
 
-fn use_instance<'db, 'a>(
-    class_reference: NodeRef<'db>,
-    generics: Generics<'db, 'a>,
-    instance_reference: Option<NodeRef<'db>>,
-) -> Instance<'db, 'a> {
+fn use_instance<'a>(
+    class_reference: NodeRef<'a>,
+    generics: Generics<'a>,
+    instance_reference: Option<NodeRef<'a>>,
+) -> Instance<'a> {
     let class = Class::from_position(class_reference, generics, None).unwrap();
     Instance::new(class, instance_reference)
 }

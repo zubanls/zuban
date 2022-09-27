@@ -8,29 +8,29 @@ use crate::matching::Type;
 use crate::utils::Peekable;
 use crate::value::ParamWithArgument;
 
-pub trait Param<'db, 'x>: Copy + std::fmt::Debug {
+pub trait Param<'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
-    fn name(&self, db: &'db Database) -> Option<&str>;
-    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>>;
+    fn name(&self, db: &'x Database) -> Option<&str>;
+    fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>>;
     fn func_annotation_link(&self) -> Option<PointLink> {
         // Can be None for Callable
         None
     }
-    fn kind(&self, db: &'db Database) -> ParamKind;
+    fn kind(&self, db: &Database) -> ParamKind;
 }
 
-pub fn matches_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
+pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
-    mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+    mut matcher: Option<&mut TypeVarMatcher>,
     params1: Option<impl Iterator<Item = P1>>,
     params2: Option<impl Iterator<Item = P2>>,
     variance: Variance,
 ) -> Match {
     fn check_annotation<'db: 'x, 'x>(
         i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
-        param1: impl Param<'db, 'x>,
-        param2: impl Param<'db, 'x>,
+        mut matcher: Option<&mut TypeVarMatcher>,
+        param1: impl Param<'x>,
+        param2: impl Param<'x>,
         variance: Variance,
     ) -> Match {
         if let Some(t1) = param1.annotation_type(i_s) {
@@ -210,7 +210,7 @@ pub fn has_overlapping_params<'db>(
     todo!()
 }
 
-pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Param<'db, 'x>>(
+pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
@@ -351,20 +351,20 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'db, 'x>, P2: Para
     !had_any_fallback_with_default
 }
 
-impl<'db: 'x, 'x> Param<'db, 'x> for &'x CallableParam {
+impl<'x> Param<'x> for &'x CallableParam {
     fn has_default(&self) -> bool {
         self.has_default
     }
 
-    fn name(&self, db: &'db Database) -> Option<&str> {
+    fn name(&self, db: &'x Database) -> Option<&str> {
         self.name.map(|n| n.as_str(db))
     }
 
-    fn annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'db, 'x>> {
+    fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
         Some(Type::new(&self.db_type))
     }
 
-    fn kind(&self, db: &'db Database) -> ParamKind {
+    fn kind(&self, db: &Database) -> ParamKind {
         self.param_kind
     }
 }
@@ -409,10 +409,10 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     }
 }
 
-impl<'db, 'a, 'x, I, P> Iterator for InferrableParamIterator2<'db, 'a, I, P>
+impl<'db: 'x, 'a, 'x, I, P> Iterator for InferrableParamIterator2<'db, 'a, I, P>
 where
     I: Iterator<Item = P>,
-    P: Param<'db, 'x>,
+    P: Param<'x>,
 {
     type Item = InferrableParam2<'db, 'a, P>;
 

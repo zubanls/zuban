@@ -11,7 +11,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 
-impl<'db> fmt::Debug for Module<'db> {
+impl<'a> fmt::Debug for Module<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Module")
             .field("file", &self.file.file_path(self.db))
@@ -20,17 +20,17 @@ impl<'db> fmt::Debug for Module<'db> {
 }
 
 #[derive(Copy, Clone)]
-pub struct Module<'db> {
-    db: &'db Database,
-    pub file: &'db PythonFile,
+pub struct Module<'a> {
+    db: &'a Database,
+    pub file: &'a PythonFile,
 }
 
-impl<'db> Module<'db> {
-    pub fn new(db: &'db Database, file: &'db PythonFile) -> Self {
+impl<'a> Module<'a> {
+    pub fn new(db: &'a Database, file: &'a PythonFile) -> Self {
         Self { db, file }
     }
 
-    pub fn sub_module(&self, db: &'db Database, name: &str) -> Option<FileIndex> {
+    pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<FileIndex> {
         self.file.package_dir.as_ref().and_then(|dir| {
             let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
             python_import(db, p, dir, name)
@@ -38,12 +38,12 @@ impl<'db> Module<'db> {
     }
 }
 
-impl<'db> Value<'db, '_> for Module<'db> {
+impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         // TODO this is not correct...
         let (dir, mut name) = self.db.vfs.dir_and_name(self.file.file_path(self.db));
         if name.ends_with(".py") {
@@ -58,7 +58,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         }
     }
 
-    fn module(&self, db: &'db Database) -> Module<'db> {
+    fn module(&self, db: &'a Database) -> Module<'a> {
         *self
     }
 
@@ -66,11 +66,11 @@ impl<'db> Value<'db, '_> for Module<'db> {
         Some(self)
     }
 
-    fn qualified_name(&self, db: &'db Database) -> String {
+    fn qualified_name(&self, db: &Database) -> String {
         self.name().to_owned()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         self.file
             .symbol_table
             .lookup_symbol(name)
@@ -94,8 +94,8 @@ impl<'db> Value<'db, '_> for Module<'db> {
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        args: &dyn Arguments,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         args.as_node_ref().add_typing_issue(
@@ -107,7 +107,7 @@ impl<'db> Value<'db, '_> for Module<'db> {
         Inferred::new_unknown()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'db> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Class(i_s.db.python_state.module_type())
     }
 }

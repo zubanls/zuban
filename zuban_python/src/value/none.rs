@@ -14,16 +14,16 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         ValueKind::Constant
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &str {
         "None"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         debug!("TODO None lookup");
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&DbType::None)
     }
 
@@ -31,11 +31,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         true
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         debug!("TODO None[...]");
         Inferred::new_any()
     }

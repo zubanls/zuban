@@ -18,17 +18,17 @@ macro_rules! replace_class_vars {
 }
 
 #[derive(Debug, Clone, Copy)]
-pub enum Generics<'db, 'a> {
-    SimpleGenericExpression(&'db PythonFile, Expression<'db>),
-    SimpleGenericSlices(&'db PythonFile, Slices<'db>),
-    List(&'a GenericsList, Option<&'a Generics<'db, 'a>>),
+pub enum Generics<'a> {
+    SimpleGenericExpression(&'a PythonFile, Expression<'a>),
+    SimpleGenericSlices(&'a PythonFile, Slices<'a>),
+    List(&'a GenericsList, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
     None,
     Any,
 }
 
-impl<'db, 'a> Generics<'db, 'a> {
-    pub fn new_simple_generic_slice(file: &'db PythonFile, slice_type: SliceType<'db>) -> Self {
+impl<'a> Generics<'a> {
+    pub fn new_simple_generic_slice(file: &'a PythonFile, slice_type: SliceType<'a>) -> Self {
         match slice_type {
             SliceType::NamedExpression(named) => {
                 Self::SimpleGenericExpression(file, named.expression())
@@ -48,7 +48,7 @@ impl<'db, 'a> Generics<'db, 'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn nth(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> DbType {
+    pub fn nth(&self, i_s: &mut InferenceState, n: TypeVarIndex) -> DbType {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
                 if n.as_usize() == 0 {
@@ -96,7 +96,7 @@ impl<'db, 'a> Generics<'db, 'a> {
         }
     }
 
-    pub fn iter(&self) -> GenericsIterator<'db, 'a> {
+    pub fn iter(&self) -> GenericsIterator<'a> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
                 GenericsIterator::SimpleGenericExpression(file, *expr)
@@ -112,7 +112,7 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn as_generics_list(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState,
         type_vars: Option<&TypeVars>,
     ) -> Option<GenericsList> {
         type_vars.map(|type_vars| match self {
@@ -172,8 +172,8 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn matches(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher<'db, '_>>,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
         value_generics: Self,
         variance: Variance,
         type_vars: Option<&TypeVars>,
@@ -201,7 +201,7 @@ impl<'db, 'a> Generics<'db, 'a> {
 
     pub fn overlaps(
         self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &mut InferenceState,
         other_generics: Self,
         type_vars: Option<&TypeVars>,
     ) -> bool {
@@ -225,19 +225,19 @@ impl<'db, 'a> Generics<'db, 'a> {
     }
 }
 
-pub enum GenericsIterator<'db, 'a> {
-    SimpleGenericSliceIterator(&'db PythonFile, SliceIterator<'db>),
-    GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'db, 'a>>),
+pub enum GenericsIterator<'a> {
+    SimpleGenericSliceIterator(&'a PythonFile, SliceIterator<'a>),
+    GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
-    SimpleGenericExpression(&'db PythonFile, Expression<'db>),
+    SimpleGenericExpression(&'a PythonFile, Expression<'a>),
     None,
 }
 
-impl<'db> GenericsIterator<'db, '_> {
+impl<'db> GenericsIterator<'_> {
     fn run_on_next<T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>) -> T,
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type) -> T,
     ) -> Option<T> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
@@ -272,7 +272,7 @@ impl<'db> GenericsIterator<'db, '_> {
     pub fn run_on_all(
         mut self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type<'db, '_>),
+        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type),
     ) {
         while self.run_on_next(i_s, callable).is_some() {}
     }

@@ -7,7 +7,7 @@ use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
-impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
+impl PythonInference<'_, '_, '_, '_> {
     pub fn create_list_or_set_generics(&mut self, elements: ListOrSetElementIterator) -> DbType {
         let mut result = DbType::Never;
         for child in elements {
@@ -31,7 +31,7 @@ impl<'db, 'a, 'b> PythonInference<'db, 'a, 'b> {
     pub fn infer_list_literal_from_context(
         &mut self,
         list: List,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
     ) -> Option<Inferred> {
         let file = self.file;
         result_context

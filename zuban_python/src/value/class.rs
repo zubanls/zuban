@@ -22,19 +22,19 @@ use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
-pub struct Class<'db, 'a> {
-    pub node_ref: NodeRef<'db>,
-    pub class_storage: &'db ClassStorage,
-    pub generics: Generics<'db, 'a>,
-    pub type_var_remap: Option<&'db GenericsList>,
+pub struct Class<'a> {
+    pub node_ref: NodeRef<'a>,
+    pub class_storage: &'a ClassStorage,
+    pub generics: Generics<'a>,
+    pub type_var_remap: Option<&'a GenericsList>,
 }
 
-impl<'db, 'a> Class<'db, 'a> {
+impl<'db: 'a, 'a> Class<'a> {
     pub fn new(
-        node_ref: NodeRef<'db>,
-        class_storage: &'db ClassStorage,
-        generics: Generics<'db, 'a>,
-        type_var_remap: Option<&'db GenericsList>,
+        node_ref: NodeRef<'a>,
+        class_storage: &'a ClassStorage,
+        generics: Generics<'a>,
+        type_var_remap: Option<&'a GenericsList>,
     ) -> Self {
         Self {
             node_ref,
@@ -55,9 +55,9 @@ impl<'db, 'a> Class<'db, 'a> {
 
     #[inline]
     pub fn from_position(
-        node_ref: NodeRef<'db>,
-        generics: Generics<'db, 'a>,
-        type_var_remap: Option<&'db GenericsList>,
+        node_ref: NodeRef<'a>,
+        generics: Generics<'a>,
+        type_var_remap: Option<&'a GenericsList>,
     ) -> Option<Self> {
         let complex = node_ref.complex().unwrap();
         match complex {
@@ -84,9 +84,9 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<(Function<'db, '_>, Option<GenericsList>, bool)> {
+    ) -> Option<(Function, Option<GenericsList>, bool)> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let cls = class.unwrap_or_else(|| todo!());
         match init
@@ -116,7 +116,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-    ) -> Function<'db, '_> {
+    ) -> Function {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let class = class.unwrap_or_else(|| todo!());
         match init
@@ -129,11 +129,11 @@ impl<'db, 'a> Class<'db, 'a> {
         }
     }
 
-    pub fn node(&self) -> ClassDef<'db> {
+    pub fn node(&self) -> ClassDef<'a> {
         ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'db TypeVars> {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVars> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
@@ -186,15 +186,15 @@ impl<'db, 'a> Class<'db, 'a> {
         self.class_info_node_ref().point().calculating()
     }
 
-    fn type_vars_node_ref(&self) -> NodeRef<'db> {
+    fn type_vars_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(1)
     }
 
-    fn class_info_node_ref(&self) -> NodeRef<'db> {
+    fn class_info_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(4)
     }
 
-    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
+    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'a ClassInfos {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if point.calculated() {
@@ -342,7 +342,7 @@ impl<'db, 'a> Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
-    ) -> (LookupResult, Option<Class<'db, '_>>) {
+    ) -> (LookupResult, Option<Class>) {
         for (mro_index, c) in self.mro(i_s) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
@@ -357,7 +357,7 @@ impl<'db, 'a> Class<'db, 'a> {
         (LookupResult::None, None)
     }
 
-    pub fn generics(&self) -> Generics<'db, '_> {
+    pub fn generics(&self) -> Generics {
         if let Some(type_var_remap) = self.type_var_remap {
             Generics::List(type_var_remap, Some(&self.generics))
         } else {
@@ -415,16 +415,16 @@ impl<'db, 'a> Class<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
+impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &'a str {
         self.node().name().as_str()
     }
 
-    fn qualified_name(&self, db: &'db Database) -> String {
+    fn qualified_name(&self, db: &Database) -> String {
         match self.class_storage.parent_scope {
             ParentScope::Module => base_qualified_name!(self, db, self.name()),
             ParentScope::Class(node_index) => {
@@ -449,15 +449,15 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         }
     }
 
-    fn module(&self, db: &'db Database) -> Module<'db> {
+    fn module(&self, db: &'a Database) -> Module<'a> {
         Module::new(db, self.node_ref.file)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         self.lookup_and_class(i_s, name).0
     }
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
         !self.class_infos(i_s).incomplete_mro
     }
 
@@ -465,7 +465,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         // TODO locality!!!
@@ -498,18 +498,14 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         }
     }
 
-    fn get_item(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        slice_type: &SliceType<'db, '_>,
-    ) -> Inferred {
+    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         slice_type
             .file
             .inference(i_s)
             .compute_type_application_on_class(*self, *slice_type)
     }
 
-    fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
+    fn description(&self, i_s: &mut InferenceState) -> String {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
@@ -517,12 +513,12 @@ impl<'db, 'a> Value<'db, 'a> for Class<'db, 'a> {
         )
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Box::new(self.as_db_type(i_s))))
     }
 }
 
-impl fmt::Debug for Class<'_, '_> {
+impl fmt::Debug for Class<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Class")
             .field("file_index", &self.node_ref.file.file_index())
@@ -556,9 +552,9 @@ impl<'db> BasesIterator<'db> {
 
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
-    generics: Option<Generics<'db, 'a>>,
-    class: Option<Type<'db, 'a>>,
-    iterator: std::slice::Iter<'db, DbType>,
+    generics: Option<Generics<'a>>,
+    class: Option<Type<'a>>,
+    iterator: std::slice::Iter<'a, DbType>,
     mro_index: u32,
     returned_object: bool,
 }
@@ -566,9 +562,9 @@ pub struct MroIterator<'db, 'a> {
 impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
-        class: Type<'db, 'a>,
-        generics: Option<Generics<'db, 'a>>,
-        iterator: std::slice::Iter<'db, DbType>,
+        class: Type<'a>,
+        generics: Option<Generics<'a>>,
+        iterator: std::slice::Iter<'a, DbType>,
     ) -> Self {
         Self {
             db,
@@ -581,8 +577,8 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     }
 }
 
-impl<'db, 'a> Iterator for MroIterator<'db, 'a> {
-    type Item = (MroIndex, Type<'db, 'a>);
+impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
+    type Item = (MroIndex, Type<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.class.is_some() {

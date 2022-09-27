@@ -13,18 +13,18 @@ pub struct Callable<'a> {
     pub content: &'a CallableContent,
 }
 
-impl<'db, 'a> Callable<'a> {
+impl<'a> Callable<'a> {
     pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
         Self { db_type, content }
     }
 
-    pub(super) fn execute_internal(
+    pub(super) fn execute_internal<'db>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
-        class: Option<&Class<'db, '_>>,
-        result_context: ResultContext<'db, '_>,
+        class: Option<&Class>,
+        result_context: ResultContext,
     ) -> Inferred {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
@@ -44,16 +44,16 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         ValueKind::Object
     }
 
-    fn name(&self) -> &'db str {
+    fn name(&self) -> &str {
         "Callable"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         debug!("TODO callable lookups");
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'db, 'a> {
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 
@@ -61,7 +61,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext<'db, '_>,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
