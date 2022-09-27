@@ -41,6 +41,11 @@ impl<'file> NodeRef<'file> {
         Module::new(db, self.file)
     }
 
+    pub fn to_db_lifetime(self, db: &Database) -> NodeRef {
+        // This should be safe, because all files are added to the database.
+        unsafe { std::mem::transmute(self) }
+    }
+
     pub fn add_to_node_index(&self, add: NodeIndex) -> Self {
         Self::new(self.file, self.node_index + add)
     }

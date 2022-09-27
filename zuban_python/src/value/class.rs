@@ -194,11 +194,11 @@ impl<'db: 'a, 'a> Class<'a> {
         self.node_ref.add_to_node_index(4)
     }
 
-    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'a ClassInfos {
+    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if point.calculated() {
-            match node_ref.complex().unwrap() {
+            match node_ref.to_db_lifetime(i_s.db).complex().unwrap() {
                 ComplexPoint::ClassInfos(class_infos) => class_infos,
                 _ => unreachable!(),
             }
@@ -251,10 +251,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             BaseClass::DbType(t) => {
                                 let mro_index = mro.len();
                                 mro.push(t);
-                                // This clone might not be needed if it wasn't for the lifetime of
-                                // class_infos below.
-                                let mro_last = mro.last().unwrap().clone();
-                                let class = match &mro_last {
+                                let class = match &mro.last().unwrap() {
                                     DbType::Class(link, generics) => Some(
                                         Class::from_position(
                                             NodeRef::from_link(i_s.db, *link),
