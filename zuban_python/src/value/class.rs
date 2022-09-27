@@ -251,7 +251,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             BaseClass::DbType(t) => {
                                 let mro_index = mro.len();
                                 mro.push(t);
-                                let class = match &mro.last().unwrap() {
+                                // This clone might not be needed if it wasn't for the lifetime of
+                                // class_infos below.
+                                let mro_last = mro.last().unwrap().clone();
+                                let class = match &mro_last {
                                     DbType::Class(link, generics) => Some(
                                         Class::from_position(
                                             NodeRef::from_link(i_s.db, *link),
