@@ -391,7 +391,11 @@ impl<'a> TypeVarMatcher<'a> {
         }
     }
 
-    fn replace_type_vars_for_nested_context(&self, i_s: &mut InferenceState, t: &DbType) -> DbType {
+    pub fn replace_type_vars_for_nested_context(
+        &self,
+        i_s: &mut InferenceState,
+        t: &DbType,
+    ) -> DbType {
         t.replace_type_vars(&mut |type_var_usage| {
             if type_var_usage.in_definition == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
@@ -737,13 +741,13 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         }
         if let Some(ref argument) = p.argument {
             if let Some(annotation_type) = p.param.annotation_type(i_s) {
-                let value = if let Some(matcher) = matcher.as_ref() {
+                let value = if let Some(matcher) = matcher.as_deref_mut() {
                     argument.infer(
                         i_s,
-                        ResultContext::LazyKnown(&|i_s| {
-                            let t = annotation_type.as_db_type(i_s);
-                            matcher.replace_type_vars_for_nested_context(i_s, &t)
-                        }),
+                        ResultContext::WithMatcher {
+                            type_: &annotation_type,
+                            matcher,
+                        },
                     )
                 } else {
                     argument.infer(i_s, ResultContext::Known(&annotation_type))
