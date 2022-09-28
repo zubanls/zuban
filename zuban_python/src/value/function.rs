@@ -287,7 +287,7 @@ impl<'db: 'a, 'a> Function<'a> {
             t.as_db_type(i_s).replace_type_vars(&mut |usage| {
                 if let Some(class) = self.class {
                     if usage.in_definition == class.node_ref.as_link() {
-                        return class.generics().nth(i_s, usage.index);
+                        return class.generics().nth(i_s, usage.index).into_db_type(i_s);
                     }
                 }
                 DbType::TypeVar(usage.clone())

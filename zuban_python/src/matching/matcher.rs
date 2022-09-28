@@ -294,8 +294,6 @@ impl<'a> TypeVarMatcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class.generics.nth(i_s, type_var_usage.index);
-                    // TODO nth should return a type instead of DbType
-                    let g = Type::new(&g);
                     return g.matches(i_s, None, value_type, type_var.variance);
                 }
             }
@@ -408,7 +406,10 @@ impl<'a> TypeVarMatcher<'a> {
                     FunctionOrCallable::Function(f) => {
                         if let Some(class) = self.class {
                             if class.node_ref.as_link() == type_var_usage.in_definition {
-                                return class.generics.nth(i_s, type_var_usage.index);
+                                return class
+                                    .generics
+                                    .nth(i_s, type_var_usage.index)
+                                    .into_db_type(i_s);
                             }
                             let func_class = f.class.unwrap();
                             if type_var_usage.in_definition == func_class.node_ref.as_link() {
@@ -500,7 +501,7 @@ impl<'db> CalculatedTypeArguments {
         }
         if let Some(c) = class {
             if usage.in_definition == c.node_ref.as_link() {
-                return c.generics().nth(i_s, usage.index);
+                return c.generics().nth(i_s, usage.index).into_db_type(i_s);
             }
         }
         DbType::TypeVar(usage.clone())

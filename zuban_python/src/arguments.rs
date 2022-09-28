@@ -527,7 +527,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                         {
                                             let key = class.generics().nth(i_s, 0.into());
                                             let s = Type::Class(i_s.db.python_state.str());
-                                            if !Type::new(&key).is_same_type(i_s, None, &s).bool() {
+                                            if !key.is_same_type(i_s, None, &s).bool() {
                                                 node_ref.add_typing_issue(
                                                     i_s.db,
                                                     IssueType::ArgumentIssue(Box::from(
@@ -535,7 +535,12 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                                     )),
                                                 );
                                             }
-                                            value_type = Some(class.generics().nth(i_s, 1.into()));
+                                            value_type = Some(
+                                                class
+                                                    .generics()
+                                                    .nth(i_s, 1.into())
+                                                    .into_db_type(i_s),
+                                            );
                                             break;
                                         }
                                     }

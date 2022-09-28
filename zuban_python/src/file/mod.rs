@@ -1630,7 +1630,10 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             .replace_type_vars(&mut |t| {
                                 if let Some(class) = self.i_s.current_class() {
                                     if class.node_ref.as_link() == t.in_definition {
-                                        return class.generics().nth(self.i_s, t.index);
+                                        return class
+                                            .generics()
+                                            .nth(self.i_s, t.index)
+                                            .into_db_type(self.i_s);
                                     }
                                 }
                                 DbType::TypeVar(t.clone())

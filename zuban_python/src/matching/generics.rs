@@ -9,10 +9,10 @@ use crate::inference_state::InferenceState;
 macro_rules! replace_class_vars {
     ($i_s:ident, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            None | Some(Generics::None | Generics::Any) => $g.clone(),
-            Some(type_var_generics) => {
-                $g.replace_type_vars(&mut |t| type_var_generics.nth($i_s, t.index))
-            }
+            None | Some(Generics::None | Generics::Any) => Type::new($g),
+            Some(type_var_generics) => Type::owned($g.replace_type_vars(&mut |t| {
+                type_var_generics.nth($i_s, t.index).into_db_type($i_s)
+            })),
         }
     };
 }
@@ -48,13 +48,11 @@ impl<'a> Generics<'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn nth(&self, i_s: &mut InferenceState, n: TypeVarIndex) -> DbType {
+    pub fn nth<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Type<'a> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
                 if n.as_usize() == 0 {
-                    file.inference(i_s)
-                        .use_cached_simple_generic_type(*expr)
-                        .into_db_type(i_s)
+                    file.inference(i_s).use_cached_simple_generic_type(*expr)
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {n:?} was requested",
@@ -69,8 +67,7 @@ impl<'a> Generics<'a> {
                 .map(|slice_content| match slice_content {
                     SliceContent::NamedExpression(n) => file
                         .inference(i_s)
-                        .use_cached_simple_generic_type(n.expression())
-                        .into_db_type(i_s),
+                        .use_cached_simple_generic_type(n.expression()),
                     SliceContent::Slice(s) => todo!(),
                 })
                 .unwrap_or_else(|| todo!()),
@@ -89,9 +86,9 @@ impl<'a> Generics<'a> {
                 if n.as_usize() > 0 {
                     todo!()
                 }
-                (*g).clone()
+                Type::owned((*g).clone())
             }
-            Self::Any => DbType::Any,
+            Self::Any => Type::new(&DbType::Any),
             Self::None => unreachable!("No generics given, but {n:?} was requested"),
         }
     }
@@ -139,7 +136,7 @@ impl<'a> Generics<'a> {
             Self::DbType(g) => todo!(),
             Self::List(l, type_var_generics) => GenericsList::new_generics(
                 l.iter()
-                    .map(|c| replace_class_vars!(i_s, c, type_var_generics))
+                    .map(|c| replace_class_vars!(i_s, c, type_var_generics).into_db_type(i_s))
                     .collect(),
             ),
             Self::Any => GenericsList::new_generics(
@@ -257,8 +254,8 @@ impl<'db> GenericsIterator<'_> {
                 }
             }
             Self::GenericsList(iterator, type_var_generics) => iterator.next().map(|g| {
-                let g = replace_class_vars!(i_s, g, type_var_generics);
-                callable(i_s, Type::new(&g))
+                let t = replace_class_vars!(i_s, g, type_var_generics);
+                callable(i_s, t)
             }),
             Self::DbType(g) => {
                 let result = Some(callable(i_s, Type::new(g)));
