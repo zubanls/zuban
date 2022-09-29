@@ -7,6 +7,7 @@ testTypeAliasUpdateNonRecursiveToRecursiveFine
 # Type var: Cannot infer type argument
 testGenericTypeAliasesPEPBasedExample
 testGenericTypeAliasesImporting
+nested_context_inference*
 
 overload_not_overlapping_optional
 overload_overlapping_any
