@@ -679,7 +679,7 @@ impl<'a> Type<'a> {
         false
     }
 
-    pub fn error_if_not_matches<'x>(
+    pub fn error_if_not_matches(
         &self,
         i_s: &mut InferenceState,
         value: &Inferred,
@@ -693,7 +693,7 @@ impl<'a> Type<'a> {
         );
     }
 
-    pub fn error_if_not_matches_with_matcher<'db, 'x>(
+    pub fn error_if_not_matches_with_matcher<'db>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         mut matcher: Option<&mut TypeVarMatcher>,
