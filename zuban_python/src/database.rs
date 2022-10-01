@@ -27,12 +27,6 @@ pub struct TypeVarIndex(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MroIndex(pub u32);
 
-impl From<MroIndex> for usize {
-    fn from(item: MroIndex) -> Self {
-        item.0 as usize
-    }
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StringSlice {
     file_index: FileIndex,

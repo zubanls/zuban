@@ -125,7 +125,7 @@ impl TypeVarBound {
                         let m = Type::new(t).is_super_type_of(i_s, None, other);
                         if !m.bool() && matches!(self, Self::Upper(_)) {
                             *self = Self::Upper(Type::new(t).common_base_class(i_s, other));
-                            return Match::new_true();
+                            return Match::True;
                         }
                         return m;
                     }
@@ -250,7 +250,7 @@ impl<'a> TypeVarMatcher<'a> {
                         }) {
                             current.type_ =
                                 Some(TypeVarBound::Invariant(value_type.as_db_type(i_s)));
-                            return Match::new_true();
+                            return Match::True;
                         }
                     }
                     _ => {
@@ -278,9 +278,9 @@ impl<'a> TypeVarMatcher<'a> {
             }
             current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
-                Match::TrueWithAny(None)
+                Match::TrueWithAny
             } else {
-                Match::new_true()
+                Match::True
             }
         } else {
             if let Some(parent_matcher) = self.parent_matcher.as_mut() {
@@ -732,7 +732,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
-    let mut matches = Match::new_true();
+    let mut matches = Match::True;
     for (i, p) in args_with_params.by_ref().enumerate() {
         if p.argument.is_none() && !p.param.has_default() {
             matches = Match::new_false();
@@ -815,7 +815,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                         }
                     }),
                 );
-                if matches!(m, Match::TrueWithAny(_)) {
+                if matches!(m, Match::TrueWithAny) {
                     if let Some(param_annotation_link) = p.param.func_annotation_link() {
                         // This is never reached when matching callables
                         if let Some(argument) = p.argument {
@@ -945,8 +945,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         };
     }
     match matches {
-        Match::True(_) => SignatureMatch::True,
-        Match::TrueWithAny(_) => SignatureMatch::TrueWithAny {
+        Match::True => SignatureMatch::True,
+        Match::TrueWithAny => SignatureMatch::TrueWithAny {
             argument_indices: argument_indices_with_any.into(),
         },
         Match::FalseButSimilar(_) => SignatureMatch::FalseButSimilar,

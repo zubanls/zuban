@@ -62,20 +62,11 @@ impl PythonInference<'_, '_, '_, '_> {
                                         },
                                     );
                                     if m.bool() && found.is_none() {
-                                        let t = if let Some(mro_index) = m.mro_index() {
-                                            let t = inferred.class_as_type(i_s);
-                                            t.mro(i_s)
-                                                .unwrap()
-                                                .nth(mro_index.into())
-                                                .unwrap()
-                                                .1
-                                                .into_db_type(i_s)
-                                        } else {
-                                            inferred.class_as_db_type(i_s)
-                                        };
                                         found = Some(DbType::Class(
                                             i_s.db.python_state.list().as_link(),
-                                            Some(GenericsList::new_generics(Box::new([t]))),
+                                            Some(GenericsList::new_generics(Box::new([
+                                                inferred.class_as_db_type(i_s)
+                                            ]))),
                                         ));
                                     }
                                 };

@@ -38,12 +38,12 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 return t1.matches(i_s, matcher.as_deref_mut(), &t2, variance);
             }
         }
-        Match::new_true()
+        Match::True
     }
     if let Some(mut params1) = params1 {
         if let Some(params2) = params2 {
             let mut params2 = Peekable::new(params2);
-            let mut matches = Match::new_true();
+            let mut matches = Match::True;
             let mut unused_keyword_params: Vec<P2> = vec![];
 
             for param1 in params1.by_ref() {
@@ -194,7 +194,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         }
     }
     // If there are no params, it means that anything is accepted, i.e. *args, **kwargs
-    Match::new_true()
+    Match::True
 }
 
 pub fn has_overlapping_params<'db>(
