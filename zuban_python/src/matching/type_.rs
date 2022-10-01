@@ -234,8 +234,8 @@ impl<'a> Type<'a> {
                     matches!(value_type, Self::Type(ref t2) if matches!(t2.as_ref(), DbType::None))
                         .into()
                 }
-                DbType::Any => Match::True,
-                DbType::Never => Match::True, // TODO is this correct?
+                DbType::Any => Match::new_true(),
+                DbType::Never => Match::new_true(), // TODO is this correct?
                 DbType::Tuple(t1) => match value_type {
                     Self::Type(t2) => match t2.as_ref() {
                         DbType::Tuple(t2) => {
@@ -280,7 +280,7 @@ impl<'a> Type<'a> {
         // 1. Check if the type is part of the mro.
         let m = match value_type.mro(i_s) {
             Some(mro) => {
-                for (_, t2) in mro {
+                for (mro_index, t2) in mro {
                     let m = self.matches_internal(
                         i_s,
                         matcher.as_deref_mut(),
@@ -288,7 +288,7 @@ impl<'a> Type<'a> {
                         Variance::Covariant,
                     );
                     if !matches!(m, Match::False(MismatchReason::None)) {
-                        return m;
+                        return m.add_mro_index(mro_index);
                     }
                 }
                 Match::new_false()
@@ -374,9 +374,9 @@ impl<'a> Type<'a> {
                         };
                         matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
                     }
-                    return Match::TrueWithAny;
+                    return Match::TrueWithAny(None);
                 }
-                DbType::None => return Match::True,
+                DbType::None => return Match::new_true(),
                 DbType::TypeVar(t2) => {
                     if let Some(matcher) = matcher {
                         if matcher.match_reverse {
@@ -396,7 +396,7 @@ impl<'a> Type<'a> {
                                 });
                             if m {
                                 todo!();
-                                //return Match::True;
+                                //return Match::new_true();
                             }
                         }
                     }
@@ -412,7 +412,7 @@ impl<'a> Type<'a> {
                         .any(|t2| self.matches(i_s, None, &Type::new(t2), variance).bool())
                         .into();
                 }
-                DbType::Never => return Match::True, // TODO is this correct?
+                DbType::Never => return Match::new_true(), // TODO is this correct?
                 _ => (),
             }
         }
@@ -461,7 +461,7 @@ impl<'a> Type<'a> {
                         .map(|t| matches!(t, DbType::Any))
                         .unwrap_or(false)
                 {
-                    Match::TrueWithAny
+                    Match::TrueWithAny(None)
                 } else {
                     m
                 }
@@ -608,7 +608,7 @@ impl<'a> Type<'a> {
                 };
             }
         }
-        Match::True
+        Match::new_true()
     }
 
     fn overlaps_tuple(i_s: &mut InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {

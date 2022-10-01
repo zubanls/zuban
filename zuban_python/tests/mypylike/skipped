@@ -1,9 +1,4 @@
 # Next up
-testSingleItemListExpressions
-testMultiItemListExpressions
-testNestedListExpressions
-testParenthesesAndContext
-testInferTypeVariableFromTwoGenericTypes2
 nested_context_inference*
 testGenericTypeAliasesImporting
 
