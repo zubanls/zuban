@@ -1,6 +1,6 @@
 use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 
-use crate::database::{ComplexPoint, DbType};
+use crate::database::{ComplexPoint, DbType, GenericsList};
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::matching::ResultContext;
@@ -46,8 +46,8 @@ impl PythonInference<'_, '_, '_, '_> {
                         // generic;
                         if let Some(elements) = list.unpack() {
                             for (item, element) in elements.enumerate() {
-                                let check_item = |i_s, inferred, index| {
-                                    generic_t.error_if_not_matches(
+                                let mut check_item = |i_s: &mut _, inferred, index| {
+                                    let m = generic_t.error_if_not_matches(
                                         i_s,
                                         &inferred,
                                         |i_s, got, expected| {
@@ -61,6 +61,14 @@ impl PythonInference<'_, '_, '_, '_> {
                                             );
                                         },
                                     );
+                                    if m.bool() && found.is_none() {
+                                        found = Some(DbType::Class(
+                                            i_s.db.python_state.list().as_link(),
+                                            Some(GenericsList::new_generics(Box::new([
+                                                inferred.class_as_db_type(i_s)
+                                            ]))),
+                                        ));
+                                    }
                                 };
                                 let mut inference = file.inference(i_s);
                                 match element {
@@ -88,8 +96,11 @@ impl PythonInference<'_, '_, '_, '_> {
                                 };
                             }
                         }
-
-                        found = Some(list_cls.as_db_type(i_s));
+                        if found.is_none() {
+                            // As a fallback if there were only errors or no items at all, just use
+                            // the given and expected result context as a type.
+                            found = Some(list_cls.as_db_type(i_s));
+                        }
                         true
                     } else {
                         false

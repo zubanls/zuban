@@ -684,13 +684,13 @@ impl<'a> Type<'a> {
         i_s: &mut InferenceState,
         value: &Inferred,
         callback: impl FnOnce(&mut InferenceState, Box<str>, Box<str>),
-    ) {
+    ) -> Match {
         self.error_if_not_matches_with_matcher(
             i_s,
             None,
             value,
             Some(|i_s: &mut InferenceState, t1, t2, reason: &MismatchReason| callback(i_s, t1, t2)),
-        );
+        )
     }
 
     pub fn error_if_not_matches_with_matcher<'db>(
