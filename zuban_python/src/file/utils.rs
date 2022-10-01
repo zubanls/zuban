@@ -37,7 +37,7 @@ impl PythonInference<'_, '_, '_, '_> {
         result_context
             .with_type_if_exists(self.i_s, |i_s, type_| {
                 let mut found = None;
-                let maybe = type_.on_any_class(i_s.db, &mut |list_cls| {
+                type_.on_any_class(i_s.db, &mut |list_cls| {
                     if list_cls.node_ref == i_s.db.python_state.list() {
                         let generic_t = list_cls.generics().nth(i_s, 0.into());
                         let mut new_result_context = ResultContext::Known(&generic_t);
@@ -96,7 +96,7 @@ impl PythonInference<'_, '_, '_, '_> {
                     }
                 });
                 // `found` might still be empty, because we matched Any.
-                found.filter(|_| maybe).map(|found| {
+                found.map(|found| {
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(found)))
                 })
             })
