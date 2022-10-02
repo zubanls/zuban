@@ -64,9 +64,9 @@ impl PythonInference<'_, '_, '_, '_> {
                                     if m.bool() && found.is_none() {
                                         found = Some(DbType::Class(
                                             i_s.db.python_state.list().as_link(),
-                                            Some(GenericsList::new_generics(Box::new([
-                                                inferred.class_as_db_type(i_s)
-                                            ]))),
+                                            Some(GenericsList::new_generics(Box::new([inferred
+                                                .class_as_type(i_s)
+                                                .try_to_resemble_context(i_s, &generic_t)]))),
                                         ));
                                     }
                                 };

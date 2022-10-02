@@ -524,7 +524,7 @@ impl<'a> Type<'a> {
         i_s: &mut InferenceState,
         matcher: Option<&mut TypeVarMatcher>,
         class1: &Class,
-        value_type: &Self,
+        value_type: &Type,
     ) -> Match {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
             if class1.node_ref == class2.node_ref {
@@ -738,6 +738,19 @@ impl<'a> Type<'a> {
             }
         }
         matches
+    }
+
+    pub fn try_to_resemble_context(self, i_s: &mut InferenceState, t: &Self) -> DbType {
+        if let Some(class) = t.maybe_class(i_s.db) {
+            if let Some(mro) = self.mro(i_s) {
+                for (_, value_type) in mro {
+                    if Self::matches_class(i_s, None, &class, &value_type).bool() {
+                        return value_type.into_db_type(i_s);
+                    }
+                }
+            }
+        }
+        self.into_db_type(i_s)
     }
 
     pub fn execute_and_resolve_type_vars(
