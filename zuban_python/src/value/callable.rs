@@ -24,7 +24,7 @@ impl<'a> Callable<'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class>,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
     ) -> Inferred {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
@@ -61,7 +61,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)

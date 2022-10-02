@@ -54,7 +54,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         &self,
         i_s: &mut InferenceState,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
         if matches!(self.alias.db_type.as_ref(), DbType::Class(_, _)) {

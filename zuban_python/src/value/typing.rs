@@ -90,7 +90,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
         let mut iterator = args.iter_arguments();
@@ -101,7 +101,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
                 Box::new(
                     first
-                        .infer(i_s, ResultContext::Unknown)
+                        .infer(i_s, &mut ResultContext::Unknown)
                         .class_as_db_type(i_s),
                 ),
             ))))
@@ -249,7 +249,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         match self.db_type {
@@ -313,7 +313,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let mut result = None;
@@ -338,11 +338,11 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
                                 .compute_cast_target(node_ref),
                         )
                     } else {
-                        arg.infer(i_s, ResultContext::Unknown);
+                        arg.infer(i_s, &mut ResultContext::Unknown);
                     }
                 }
                 _ => {
-                    arg.infer(i_s, ResultContext::Unknown);
+                    arg.infer(i_s, &mut ResultContext::Unknown);
                     had_non_positional = true;
                 }
             }
@@ -386,7 +386,7 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let mut iterator = args.iter_arguments();
@@ -653,7 +653,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         &self,
         i_s: &mut InferenceState,
         args: &dyn Arguments,
-        result_context: ResultContext,
+        result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(t) = maybe_type_var(i_s, args) {

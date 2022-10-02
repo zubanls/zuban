@@ -439,7 +439,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     class: &Class,
     function: Function,
     args: &dyn Arguments<'db>,
-    result_context: ResultContext,
+    result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     debug!(
@@ -520,7 +520,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
-    result_context: ResultContext,
+    result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     debug!(
@@ -547,7 +547,7 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     class: Option<&Class>,
     callable: &CallableContent,
     args: &dyn Arguments<'db>,
-    result_context: ResultContext,
+    result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> CalculatedTypeArguments {
     calculate_type_vars(
@@ -573,7 +573,7 @@ fn calculate_type_vars<'db>(
     skip_first_param: bool,
     type_vars: Option<&TypeVars>,
     match_in_definition: PointLink,
-    result_context: ResultContext,
+    result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     // We could allocate on stack as described here:
@@ -744,13 +744,13 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                 let value = if let Some(matcher) = matcher.as_deref_mut() {
                     argument.infer(
                         i_s,
-                        ResultContext::WithMatcher {
+                        &mut ResultContext::WithMatcher {
                             type_: &annotation_type,
                             matcher,
                         },
                     )
                 } else {
-                    argument.infer(i_s, ResultContext::Known(&annotation_type))
+                    argument.infer(i_s, &mut ResultContext::Known(&annotation_type))
                 };
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,
