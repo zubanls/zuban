@@ -559,7 +559,7 @@ foo: X[int] = X([X([1])])
 reveal_type(foo) # N: Revealed type is "__main__.X[int]"
 reveal_type(foo[0]) # N: Revealed type is "__main__.X[int] | int"
 
-[case nested_context_inference1]
+[case nested_tuple_context_inference1]
 from typing import TypeVar
 T = TypeVar('T')
 U = TypeVar('U')
@@ -573,14 +573,16 @@ def g(x: TupList[T, T]) -> TupList[T, T]:
     return x
 
 f(g([(1, 1)]))
-f(g([(1, "")])) # E: Cannot infer type argument 1 of "g"
+f(g([(1, "")]))
+x = [(1, "")]
+g(x) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[object, object] = f(g([(1, 1)]))
 x2: TupList[int, int] = f(g([(1, 1)]))
 x3: TupList[int, int] = f(g([(1, "")])) # E: List item 0 has incompatible type "tuple[int, str]"; expected "tuple[int, int]"
 x4: TupList[str, str] = f(g([(1, 1)])) # E: List item 0 has incompatible type "tuple[int, int]"; expected "tuple[str, str]"
 
-[case nested_context_inference2]
+[case nested_tuple_context_inference2]
 from typing import TypeVar
 T = TypeVar('T')
 U = TypeVar('U')
@@ -593,14 +595,16 @@ def g(x: TupList[tuple[T, T], tuple[T, T]]) -> TupList[T, T]:
     raise NotImplementedError
 
 f(g([((1, 1), (1, 1))]))
-f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "g"
+f(g([((1, 1), (1, ""))]))
+x = [((1, 1), (1, ""))]
+g(x) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[object, object] = f(g([((1, 1), (1, 1))]))
 x2: TupList[int, int] = f(g([((1, 1), (1, 1))]))
 x3: TupList[int, int] = f(g([((1, 1), (1, ""))])) # E: List item 0 has incompatible type "tuple[tuple[int, int], tuple[int, str]]"; expected "tuple[tuple[int, int], tuple[int, int]]"
 x4: TupList[str, str] = f(g([((1, 1), (1, 1))])) # E: List item 0 has incompatible type "tuple[tuple[int, int], tuple[int, int]]"; expected "tuple[tuple[str, str], tuple[str, str]]"
 
-[case nested_context_inference3]
+[case nested_tuple_context_inference3]
 from typing import TypeVar
 T = TypeVar('T')
 U = TypeVar('U')
@@ -613,14 +617,16 @@ def g(x: TupList[T, T]) -> TupList[tuple[T, T], tuple[T, T]]:
     raise NotImplementedError
 
 f(g([(1, 1)]))
-f(g([(1, "")])) # E: Cannot infer type argument 1 of "g"
+f(g([(1, "")]))
+x = [(1, "")]
+g(x) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[tuple[object, object], tuple[object, object]] = f(g([(1, 1)]))
 x2: TupList[tuple[int, int], tuple[int, int]] = f(g([(1, 1)]))
 x3: TupList[tuple[int, int], tuple[int, int]] = f(g([(1, "")])) # E: List item 0 has incompatible type "tuple[int, str]"; expected "tuple[int, int]"
 x4: TupList[tuple[str, str], tuple[str, str]] = f(g([(1, 1)])) # E: List item 0 has incompatible type "tuple[int, int]"; expected "tuple[str, str]"
 
-[case nested_context_inference4]
+[case nested_tuple_context_inference4]
 from typing import TypeVar
 T = TypeVar('T')
 U = TypeVar('U')
@@ -633,7 +639,9 @@ def g(x: TupList[T, U]) -> TupList[T, U]:
     raise NotImplementedError
 
 f(g([((1, 1), (1, 1))]))
-f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "g"
+f(g([((1, 1), (1, ""))]))
+x = [((1, 1), (1, ""))]
+f(g(x)) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[object, object] = f(g([((1, 1), (1, 1))]))
 x2: TupList[int, int] = f(g([((1, 1), (1, 1))]))
@@ -655,6 +663,7 @@ x: list[Foo[int]] = f(fi, fi)
 x: list[Foo[int]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
 x: list[Foo[int]] = f(fs, fi) # E: Argument 1 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
 y: list[Foo[Any]] = f(fi, fi)
+y: list[Foo[Any]] = f(fs, fs)
 f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
 y: list[Foo[Any]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
 f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
