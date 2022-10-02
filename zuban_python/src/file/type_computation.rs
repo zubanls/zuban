@@ -1662,11 +1662,11 @@ fn check_type_name<'db: 'file, 'file>(
                     _ => (),
                 }
             }
-            return TypeNameLookup::Class(Inferred::new_saved(
+            TypeNameLookup::Class(Inferred::new_saved(
                 name_node_ref.file,
                 c.index(),
                 name_node_ref.file.points.get(c.index()),
-            ));
+            ))
         }
         TypeLike::Assignment(assignment) => {
             if name_node_ref.point().calculated() {

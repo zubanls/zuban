@@ -48,7 +48,7 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
-    pub fn maybe_class<'db>(&self, db: &'a Database) -> Option<Class<'_>> {
+    pub fn maybe_class(&self, db: &'a Database) -> Option<Class<'_>> {
         match self {
             Self::Class(c) => Some(*c),
             Self::Type(t) => match t.as_ref() {
