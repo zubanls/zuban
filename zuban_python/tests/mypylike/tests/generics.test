@@ -573,7 +573,7 @@ def g(x: TupList[T, T]) -> TupList[T, T]:
     return x
 
 f(g([(1, 1)]))
-f(g([(1, "")])) # E: Cannot infer type argument 1 of "fun1"
+f(g([(1, "")])) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[object, object] = f(g([(1, 1)]))
 x2: TupList[int, int] = f(g([(1, 1)]))
@@ -593,7 +593,7 @@ def g(x: TupList[tuple[T, T], tuple[T, T]]) -> TupList[T, T]:
     raise NotImplementedError
 
 f(g([((1, 1), (1, 1))]))
-f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "fun1"
+f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[object, object] = f(g([((1, 1), (1, 1))]))
 x2: TupList[int, int] = f(g([((1, 1), (1, 1))]))
@@ -613,7 +613,7 @@ def g(x: TupList[T, T]) -> TupList[tuple[T, T], tuple[T, T]]:
     raise NotImplementedError
 
 f(g([(1, 1)]))
-f(g([(1, "")])) # E: Cannot infer type argument 1 of "fun1"
+f(g([(1, "")])) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[tuple[object, object], tuple[object, object]] = f(g([(1, 1)]))
 x2: TupList[tuple[int, int], tuple[int, int]] = f(g([(1, 1)]))
@@ -633,7 +633,7 @@ def g(x: TupList[T, U]) -> TupList[T, U]:
     raise NotImplementedError
 
 f(g([((1, 1), (1, 1))]))
-f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "fun1"
+f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "g"
 
 x1: TupList[object, object] = f(g([((1, 1), (1, 1))]))
 x2: TupList[int, int] = f(g([((1, 1), (1, 1))]))

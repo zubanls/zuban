@@ -5,7 +5,9 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, MismatchReason,
     TypeVarMatcher,
 };
-use crate::database::{CallableContent, Database, DbType, TupleContent, UnionType, Variance};
+use crate::database::{
+    CallableContent, Database, DbType, GenericsList, TupleContent, UnionType, Variance,
+};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -748,6 +750,49 @@ impl<'a> Type<'a> {
                         return value_type.into_db_type(i_s);
                     }
                 }
+            }
+        }
+        if let Some(db_type) = t.maybe_db_type() {
+            match db_type {
+                DbType::Tuple(t1) => {
+                    if let Some(DbType::Tuple(t2)) = self.maybe_db_type() {
+                        if let Some(generics1) = &t1.generics {
+                            if let Some(generics2) = &t2.generics {
+                                let tuple_generics: Vec<_> =
+                                    match (t1.arbitrary_length, t2.arbitrary_length) {
+                                        (false, false) | (true, true) => generics1
+                                            .iter()
+                                            .zip(generics2.iter())
+                                            .map(|(g1, g2)| {
+                                                Type::new(g2)
+                                                    .try_to_resemble_context(i_s, &Type::new(g1))
+                                            })
+                                            .collect(),
+                                        (true, false) => {
+                                            /*
+                                            let t1 = Type::new(&generics1[0.into()]);
+                                            generics2
+                                                .iter()
+                                                .all(|g2| {
+                                                    let t2 = Type::new(g2);
+                                                    t1.is_super_type_of(i_s, matcher.as_deref_mut(), &t2).bool()
+                                                })
+                                                .into()
+                                            */
+                                            todo!()
+                                        }
+                                        (false, true) => unreachable!(),
+                                    };
+                                return DbType::Tuple(TupleContent {
+                                    generics: Some(GenericsList::generics_from_vec(tuple_generics)),
+                                    arbitrary_length: t1.arbitrary_length,
+                                });
+                            }
+                        }
+                    }
+                }
+                DbType::Type(t1) => todo!(),
+                _ => (),
             }
         }
         self.into_db_type(i_s)
