@@ -1,17 +1,18 @@
 use std::fmt;
 
-use super::Type;
-use crate::database::DbType;
+use super::{Type, TypeVarMatcher};
 use crate::InferenceState;
 
-#[derive(Clone, Copy)]
-pub enum ResultContext<'a> {
+pub enum ResultContext<'a, 'b> {
     Known(&'a Type<'a>),
-    LazyKnown(&'a dyn Fn(&mut InferenceState) -> DbType),
+    WithMatcher {
+        matcher: &'a mut TypeVarMatcher<'b>,
+        type_: &'a Type<'a>,
+    },
     Unknown,
 }
 
-impl<'a> ResultContext<'a> {
+impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists<T>(
         &self,
         i_s: &mut InferenceState,
@@ -19,8 +20,9 @@ impl<'a> ResultContext<'a> {
     ) -> Option<T> {
         match self {
             Self::Known(t) => Some(callable(i_s, t)),
-            Self::LazyKnown(c) => {
-                let t = c(i_s);
+            Self::WithMatcher { matcher, type_ } => {
+                let t = type_.as_db_type(i_s);
+                let t = matcher.replace_type_vars_for_nested_context(i_s, &t);
                 Some(callable(i_s, &Type::new(&t)))
             }
             Self::Unknown => None,
@@ -28,11 +30,11 @@ impl<'a> ResultContext<'a> {
     }
 }
 
-impl fmt::Debug for ResultContext<'_> {
+impl fmt::Debug for ResultContext<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
             Self::Known(t) => write!(f, "Known({t:?})"),
-            Self::LazyKnown(c) => write!(f, "LazyKnown(_)"),
+            Self::WithMatcher { .. } => write!(f, "WithMatcher(_)"),
             Self::Unknown => write!(f, "UnKnown"),
         }
     }
