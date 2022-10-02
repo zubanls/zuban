@@ -163,7 +163,7 @@ impl<'db: 'a, 'a> Function<'a> {
                             .node_ref
                             .file
                             .inference(&mut inner_i_s)
-                            .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
+                            .infer_star_expressions(star_expressions, ResultContext::Unknown)
                             .resolve_function_return(&mut inner_i_s);
                     } else {
                         todo!()
@@ -334,7 +334,7 @@ impl<'db: 'a, 'a> Function<'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class>,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
@@ -527,7 +527,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         if let Some(class) = &self.class {
@@ -766,13 +766,13 @@ impl<'db> InferrableParam<'db, '_> {
             debug!("Infer param {:?}", self.param.name(i_s.db));
         }
         match &self.argument {
-            ParamInput::Argument(arg) => Some(arg.infer(i_s, &mut ResultContext::Unknown)),
+            ParamInput::Argument(arg) => Some(arg.infer(i_s, ResultContext::Unknown)),
             ParamInput::Tuple(args) => {
                 todo!();
                 /*
                 let mut list = vec![];
                 for arg in args.iter() {
-                    list.push(arg.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s))
+                    list.push(arg.infer(i_s, ResultContext::Unknown).as_db_type(i_s))
                 }
                 let t = TupleContent {
                     generics: Some(GenericsList::generics_from_vec(list)),
@@ -816,9 +816,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         args: &dyn Arguments<'db>,
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Option<(Function<'a>, Option<GenericsList>)> {
-        let mut match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'a>| {
+        let match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
                 calculate_class_init_type_vars_and_return(
@@ -964,7 +964,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class>,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name());
         self.find_matching_function(i_s, args, class, false, result_context)
@@ -990,7 +990,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)

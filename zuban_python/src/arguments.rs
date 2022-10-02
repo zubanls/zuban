@@ -293,7 +293,7 @@ impl<'db, 'a> Argument<'db, 'a> {
     pub fn infer(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         match &self.kind {
             ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),
@@ -659,7 +659,7 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
 
     pub fn calculate_diagnostics(mut self, i_s: &mut InferenceState<'db, '_>) {
         while let Some(arg) = self.next() {
-            arg.infer(i_s, &mut ResultContext::Unknown);
+            arg.infer(i_s, ResultContext::Unknown);
             if arg.in_args_or_kwargs_and_arbitrary_len() {
                 self.drop_args_kwargs_iterator()
             }

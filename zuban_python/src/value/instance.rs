@@ -75,7 +75,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
@@ -107,7 +107,7 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
             v.execute(
                 i_s,
                 &args,
-                &mut ResultContext::Unknown,
+                ResultContext::Unknown,
                 &|i_s, node_ref, class, function, p, actual, expected| {
                     node_ref.add_typing_issue(
                         i_s.db,

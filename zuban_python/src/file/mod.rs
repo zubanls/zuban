@@ -95,7 +95,7 @@ impl File for PythonFile {
                 let mut i_s = InferenceState::new(db);
                 return self
                     .inference(&mut i_s)
-                    .infer_primary(primary, &mut ResultContext::Unknown);
+                    .infer_primary(primary, ResultContext::Unknown);
             }
         }
         todo!()
@@ -294,7 +294,7 @@ pub struct PythonInference<'db: 'file, 'file, 'a, 'b> {
 
 macro_rules! check_point_cache_with {
     ($vis:vis $name:ident, $func:path, $ast:ident $(, $result_context:ident )?) => {
-        $vis fn $name(&mut self, node: $ast $(, $result_context : &mut ResultContext)?) -> $crate::inferred::Inferred {
+        $vis fn $name(&mut self, node: $ast $(, $result_context : ResultContext)?) -> $crate::inferred::Inferred {
             debug_indent(|| {
                 if let Some(inferred) = self.check_point_cache(node.index()) {
                     debug!(
@@ -619,8 +619,8 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 }
                 let is_definition = type_comment_result.is_some();
                 let right = if let Some((r, type_)) = type_comment_result {
-                    let right = self
-                        .infer_assignment_right_side(right_side, &mut ResultContext::Known(&type_));
+                    let right =
+                        self.infer_assignment_right_side(right_side, ResultContext::Known(&type_));
                     type_.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
                         node_ref.add_typing_issue(
                             i_s.db,
@@ -631,11 +631,11 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 } else {
                     let original_def = self.original_definition(assignment);
                     let result_type = original_def.as_ref().map(|inf| inf.class_as_type(self.i_s));
-                    let mut result_context = match &result_type {
+                    let result_context = match &result_type {
                         Some(t) => ResultContext::Known(t),
                         None => ResultContext::Unknown,
                     };
-                    self.infer_assignment_right_side(right_side, &mut result_context)
+                    self.infer_assignment_right_side(right_side, result_context)
                 };
                 for target in targets {
                     self.assign_targets(target, right.clone(), node_ref, is_definition)
@@ -651,7 +651,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 if let Some(right_side) = right_side {
                     let t = self.use_cached_annotation_type(annotation);
                     let right =
-                        self.infer_assignment_right_side(right_side, &mut ResultContext::Known(&t));
+                        self.infer_assignment_right_side(right_side, ResultContext::Known(&t));
                     t.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
                         node_ref.add_typing_issue(
                             i_s.db,
@@ -673,8 +673,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let (inplace, normal, reverse) = aug_assign.magic_methods();
-                let right =
-                    self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
+                let right = self.infer_assignment_right_side(right_side, ResultContext::Unknown);
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
@@ -683,7 +682,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             v.execute(
                                 i_s,
                                 &KnownArguments::new(&right, Some(node_ref)),
-                                &mut ResultContext::Unknown,
+                                ResultContext::Unknown,
                                 &|i_s, node_ref, class, function, p, right, wanted| {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -716,7 +715,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     fn infer_assignment_right_side(
         &mut self,
         right: AssignmentRightSide,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         match right {
             AssignmentRightSide::StarExpressions(star_exprs) => {
@@ -800,7 +799,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             Target::IndexExpression(primary_target) => {
                 let base = match primary_target.first() {
                     PrimaryTargetOrAtom::Atom(atom) => {
-                        self.infer_atom(atom, &mut ResultContext::Unknown)
+                        self.infer_atom(atom, ResultContext::Unknown)
                     }
                     PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
                 };
@@ -821,7 +820,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             v.execute(
                                 i_s,
                                 &CombinedArguments::new(&args, &KnownArguments::new(value, None)),
-                                &mut ResultContext::Unknown,
+                                ResultContext::Unknown,
                                 &|i_s, node_ref, class, function, p, actual, expected| {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -940,7 +939,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     pub fn infer_star_expressions(
         &mut self,
         exprs: StarExpressions,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         match exprs.unpack() {
             StarExpressionContent::Expression(expr) => {
@@ -968,13 +967,13 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     }
 
     pub fn infer_named_expression(&mut self, named_expr: NamedExpression) -> Inferred {
-        self.infer_named_expression_with_context(named_expr, &mut ResultContext::Unknown)
+        self.infer_named_expression_with_context(named_expr, ResultContext::Unknown)
     }
 
     pub fn infer_named_expression_with_context(
         &mut self,
         named_expr: NamedExpression,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         match named_expr.unpack() {
             NamedExpressionContent::Expression(expr)
@@ -985,7 +984,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     }
 
     pub fn infer_expression(&mut self, expr: Expression) -> Inferred {
-        self.infer_expression_with_context(expr, &mut ResultContext::Unknown)
+        self.infer_expression_with_context(expr, ResultContext::Unknown)
     }
 
     check_point_cache_with!(
@@ -997,14 +996,14 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     fn infer_expression_without_cache(
         &mut self,
         expr: Expression,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         let inferred = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n, result_context),
             ExpressionContent::Lambda(_) => todo!(),
             ExpressionContent::Ternary(t) => {
                 let (if_, condition, else_) = t.unpack();
-                self.infer_expression_part(if_, &mut ResultContext::Unknown)
+                self.infer_expression_part(if_, ResultContext::Unknown)
                     .union(self.infer_expression(else_))
             }
         };
@@ -1014,7 +1013,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     pub fn infer_expression_part(
         &mut self,
         node: ExpressionPart,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         match node {
             ExpressionPart::Atom(atom) => self.infer_atom(atom, result_context),
@@ -1026,8 +1025,8 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             ),
             ExpressionPart::Disjunction(or) => {
                 let (first, second) = or.unpack();
-                let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
-                let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
+                let first = self.infer_expression_part(first, ResultContext::Unknown);
+                let second = self.infer_expression_part(second, ResultContext::Unknown);
                 Inferred::new_unsaved_complex(ComplexPoint::Instance(
                     self.i_s.db.python_state.builtins_point_link("bool"),
                     None,
@@ -1041,9 +1040,8 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                     | ComparisonContent::IsNot(first, _, second)
                     | ComparisonContent::In(first, _, second)
                     | ComparisonContent::NotIn(first, _, second) => {
-                        let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
-                        let second =
-                            self.infer_expression_part(second, &mut ResultContext::Unknown);
+                        let first = self.infer_expression_part(first, ResultContext::Unknown);
+                        let second = self.infer_expression_part(second, ResultContext::Unknown);
                     }
                     ComparisonContent::Operation(op) => return self.infer_operation(op),
                 }
@@ -1057,8 +1055,8 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     }
 
     fn infer_operation(&mut self, op: Operation) -> Inferred {
-        let left = self.infer_expression_part(op.left, &mut ResultContext::Unknown);
-        let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
+        let left = self.infer_expression_part(op.left, ResultContext::Unknown);
+        let right = self.infer_expression_part(op.right, ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let added_note = Cell::new(false);
         left.run_on_value(self.i_s, &mut |i_s, value| {
@@ -1077,7 +1075,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             value.execute(
                 i_s,
                 &KnownArguments::new(&right, Some(node_ref)),
-                &mut ResultContext::Unknown,
+                ResultContext::Unknown,
                 &|i_s, node_ref, class, function, p, right, _| {
                     node_ref.add_typing_issue(
                         i_s.db,
@@ -1106,7 +1104,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     }
 
     check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
-    fn _infer_primary(&mut self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
+    fn _infer_primary(&mut self, primary: Primary, result_context: ResultContext) -> Inferred {
         let base = self.infer_primary_or_atom(primary.first());
         let result = self
             .infer_primary_or_primary_t_content(
@@ -1131,7 +1129,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
         node_index: NodeIndex,
         second: PrimaryContent,
         is_target: bool,
-        result_context: &mut ResultContext,
+        result_context: ResultContext,
     ) -> Inferred {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
@@ -1244,15 +1242,13 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
 
     pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom) -> Inferred {
         match p {
-            PrimaryOrAtom::Primary(primary) => {
-                self.infer_primary(primary, &mut ResultContext::Unknown)
-            }
-            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
+            PrimaryOrAtom::Primary(primary) => self.infer_primary(primary, ResultContext::Unknown),
+            PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, ResultContext::Unknown),
         }
     }
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
-    fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
+    fn _infer_atom(&mut self, atom: Atom, result_context: ResultContext) -> Inferred {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
@@ -1339,8 +1335,8 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                     generics.push(self.infer_expression(e).class_as_db_type(self.i_s))
                 }
                 StarLikeExpression::StarNamedExpression(e) => {
-                    let inferred = self
-                        .infer_expression_part(e.expression_part(), &mut ResultContext::Unknown);
+                    let inferred =
+                        self.infer_expression_part(e.expression_part(), ResultContext::Unknown);
                     let mut iterator =
                         inferred.save_and_iter(self.i_s, NodeRef::new(self.file, e.index()));
                     if iterator.len().is_some() {
@@ -1370,7 +1366,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
     fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred {
         let first = match primary_target.first() {
-            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
+            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, ResultContext::Unknown),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
         };
         self.infer_primary_or_primary_t_content(
@@ -1378,7 +1374,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             primary_target.index(),
             primary_target.second(),
             true,
-            &mut ResultContext::Unknown,
+            ResultContext::Unknown,
         )
         .save_redirect(self.file, primary_target.index())
     }
@@ -1519,7 +1515,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                 ) {
                                     inference.infer_expression_without_cache(
                                         expr,
-                                        &mut ResultContext::Unknown,
+                                        ResultContext::Unknown,
                                     )
                                 } else if let Some(annotation) = Annotation::maybe_by_index(
                                     &inference.file.tree,

@@ -1041,7 +1041,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut name = None;
         let mut db_type = None;
         self.inference
-            .infer_primary(primary, &mut ResultContext::Unknown);
+            .infer_primary(primary, ResultContext::Unknown);
         match details {
             ArgumentsDetails::Node(arguments) => {
                 let mut iterator = arguments.iter();
