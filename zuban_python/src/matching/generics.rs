@@ -1,7 +1,7 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{FormatData, Match, Type, TypeVarMatcher};
-use crate::database::{DbType, GenericsList, TypeVarIndex, TypeVars, Variance};
+use crate::database::{DbType, GenericsList, TypeVarIndex, TypeVars};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -172,21 +172,14 @@ impl<'a> Generics<'a> {
         i_s: &mut InferenceState,
         mut matcher: Option<&mut TypeVarMatcher>,
         value_generics: Self,
-        variance: Variance,
-        type_vars: Option<&TypeVars>,
+        type_vars: &TypeVars,
     ) -> Match {
         let mut value_generics = value_generics.iter();
         let mut matches = Match::True;
-        let mut type_var_iterator = type_vars.map(|t| t.iter());
+        let mut type_var_iterator = type_vars.iter();
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                let v = if let Some(t) = type_var_iterator.as_mut().map(|t| t.next().unwrap()) {
-                    t.variance
-                } else {
-                    // The type var iterator is for example not there when we iterate over tuple
-                    // generics.
-                    variance
-                };
+                let v = type_var_iterator.next().unwrap().variance;
                 matches &= type_.matches(i_s, matcher.as_deref_mut(), &g, v);
             });
             if appeared.is_none() {
@@ -231,7 +224,7 @@ pub enum GenericsIterator<'a> {
 }
 
 impl<'db> GenericsIterator<'_> {
-    fn run_on_next<T>(
+    pub fn run_on_next<T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type) -> T,

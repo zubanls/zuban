@@ -155,14 +155,13 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match self {
-            Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type, variance),
+            Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type),
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => Self::matches_class(
                     i_s,
                     matcher,
                     &Class::from_db_type(i_s.db, *link, generics),
                     value_type,
-                    variance,
                 ),
                 DbType::Type(t1) => match value_type.maybe_db_type() {
                     Some(DbType::Type(t2)) => {
@@ -526,15 +525,16 @@ impl<'a> Type<'a> {
         matcher: Option<&mut TypeVarMatcher>,
         class1: &Class,
         value_type: &Self,
-        variance: Variance,
     ) -> Match {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
             if class1.node_ref == class2.node_ref {
-                let type_vars = class1.type_vars(i_s);
-                return class1
-                    .generics()
-                    .matches(i_s, matcher, class2.generics(), variance, type_vars)
-                    .similar_if_false();
+                if let Some(type_vars) = class1.type_vars(i_s) {
+                    return class1
+                        .generics()
+                        .matches(i_s, matcher, class2.generics(), type_vars)
+                        .similar_if_false();
+                }
+                return Match::True;
             }
         }
         Match::new_false()
@@ -582,13 +582,26 @@ impl<'a> Type<'a> {
                         if generics1.len() != generics2.len() {
                             Match::new_false()
                         } else {
-                            Generics::new_list(generics1).matches(
+                            let mut value_generics = Generics::new_list(generics2).iter();
+                            let mut matches = Match::True;
+                            Generics::new_list(generics1).iter().run_on_all(
                                 i_s,
-                                matcher,
-                                Generics::new_list(generics2),
-                                variance,
-                                None,
-                            )
+                                &mut |i_s, type_| {
+                                    let appeared =
+                                        value_generics.run_on_next(i_s, &mut |i_s, g| {
+                                            matches &= type_.matches(
+                                                i_s,
+                                                matcher.as_deref_mut(),
+                                                &g,
+                                                variance,
+                                            );
+                                        });
+                                    if appeared.is_none() {
+                                        debug!("Generic not found for: {type_:?}");
+                                    }
+                                },
+                            );
+                            matches
                         }
                     }
                     (false, true, Variance::Covariant) | (_, _, Variance::Invariant) => {
