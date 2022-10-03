@@ -2,7 +2,6 @@
 testGenericTypeAliasesImporting
 
 testGenericTypeAliasesForAliases
-testImportedTypeAliasInRuntimeContext
 testGenericTypeAliasesPEPBasedExample
 nested_tuple_context_inference4
 

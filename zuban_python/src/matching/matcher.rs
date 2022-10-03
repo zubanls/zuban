@@ -616,7 +616,7 @@ fn calculate_type_vars<'db>(
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
                 if let Some(type_vars) = class.type_vars(i_s) {
-                    type_.on_any_class(i_s.db, &mut |result_class| {
+                    type_.on_any_class(i_s, None, &mut |i_s, _, result_class| {
                         if result_class.node_ref == class.node_ref {
                             let mut calculating = matcher.calculated_type_vars.iter_mut();
                             let mut i = 0;

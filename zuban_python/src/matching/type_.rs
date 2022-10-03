@@ -843,15 +843,29 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn on_any_class(&self, db: &Database, callable: &mut impl FnMut(&Class) -> bool) -> bool {
-        if let Some(class) = self.maybe_class(db) {
-            callable(&class)
-        } else if let Some(DbType::Union(union_type)) = self.maybe_db_type() {
-            union_type
-                .iter()
-                .any(|t| Type::new(t).on_any_class(db, callable))
+    pub fn on_any_class(
+        &self,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
+        callable: &mut impl FnMut(&mut InferenceState, Option<&mut TypeVarMatcher>, &Class) -> bool,
+    ) -> bool {
+        if let Some(class) = self.maybe_class(i_s.db) {
+            callable(i_s, matcher, &class)
         } else {
-            false
+            match self.maybe_db_type() {
+                Some(DbType::Union(union_type)) => union_type
+                    .iter()
+                    .any(|t| Type::new(t).on_any_class(i_s, matcher.as_deref_mut(), callable)),
+                Some(db_type @ DbType::TypeVar(_)) => {
+                    if let Some(m) = matcher.as_mut() {
+                        Type::owned(m.replace_type_vars_for_nested_context(i_s, db_type))
+                            .on_any_class(i_s, matcher, callable)
+                    } else {
+                        false
+                    }
+                }
+                _ => false,
+            }
         }
     }
 
