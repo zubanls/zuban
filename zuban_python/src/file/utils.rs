@@ -117,7 +117,11 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
-                                found = Some(list_cls.as_db_type(i_s));
+                                found = Some(
+                                    list_cls
+                                        .as_db_type(i_s)
+                                        .replace_type_vars(&mut |type_var_usage| DbType::Any),
+                                );
                             }
                             true
                         } else {

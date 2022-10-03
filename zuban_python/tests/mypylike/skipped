@@ -2,6 +2,9 @@
 testGenericTypeAliasesImporting
 
 testGenericTypeAliasesForAliases
+testImportedTypeAliasInRuntimeContext
+testGenericTypeAliasesPEPBasedExample
+nested_tuple_context_inference4
 
 # --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
