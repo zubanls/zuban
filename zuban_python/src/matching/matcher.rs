@@ -314,6 +314,11 @@ impl<'a> TypeVarMatcher<'a> {
                             // Happens e.g. for testInvalidNumberOfTypeArgs
                             // class C:  # Forgot to add type params here
                             //     def __init__(self, t: T) -> None: pass
+                            if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
+                                if v == type_var_usage {
+                                    return Match::True;
+                                }
+                            }
                             todo!(
                                 "TODO free type param annotations; searched ({:?}), found {:?}",
                                 self.match_in_definition,
@@ -421,7 +426,7 @@ impl<'a> TypeVarMatcher<'a> {
                                 let g = &type_var_remap[type_var_usage.index];
                                 self.replace_type_vars_for_nested_context(i_s, g)
                             } else {
-                                todo!()
+                                DbType::TypeVar(type_var_usage.clone())
                             }
                         } else {
                             todo!()
