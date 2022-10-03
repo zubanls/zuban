@@ -3,11 +3,12 @@ use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 use crate::database::{ComplexPoint, DbType, GenericsList};
 use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
-use crate::matching::ResultContext;
+use crate::inference_state::InferenceState;
+use crate::matching::{MismatchReason, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
-impl PythonInference<'_, '_, '_, '_> {
+impl<'db> PythonInference<'db, '_, '_, '_> {
     pub fn create_list_or_set_generics(&mut self, elements: ListOrSetElementIterator) -> DbType {
         let mut result = DbType::Never;
         for child in elements {
@@ -35,10 +36,11 @@ impl PythonInference<'_, '_, '_, '_> {
     ) -> Option<Inferred> {
         let file = self.file;
         result_context
-            .with_type_if_exists(self.i_s, |i_s, type_| {
+            .with_type_if_exists(self.i_s, |i_s: &mut InferenceState<'db, '_>, type_, mut matcher| {
                 let mut found = None;
-                type_.on_any_class(i_s.db, &mut |list_cls| {
-                    if list_cls.node_ref == i_s.db.python_state.list() {
+                let db = i_s.db;
+                type_.on_any_class(db, &mut |list_cls| {
+                    if list_cls.node_ref == db.python_state.list() {
                         let generic_t = list_cls.generics().nth(i_s, 0.into());
                         let mut new_result_context = ResultContext::Known(&generic_t);
 
@@ -46,20 +48,22 @@ impl PythonInference<'_, '_, '_, '_> {
                         // generic;
                         if let Some(elements) = list.unpack() {
                             for (item, element) in elements.enumerate() {
-                                let mut check_item = |i_s: &mut _, inferred, index| {
-                                    let m = generic_t.error_if_not_matches(
+                                let mut check_item = |i_s: &mut InferenceState, inferred, index| {
+                                    let on_error = |i_s: &mut InferenceState, got: Box<str>, expected: Box<str>, _: &MismatchReason| {
+                                        NodeRef::new(file, index).add_typing_issue(
+                                            i_s.db,
+                                            IssueType::ListItemMismatch {
+                                                item,
+                                                got,
+                                                expected,
+                                            },
+                                        );
+                                    };
+                                    let m = generic_t.error_if_not_matches_with_matcher(
                                         i_s,
+                                        matcher.as_deref_mut(),
                                         &inferred,
-                                        |i_s, got, expected| {
-                                            NodeRef::new(file, index).add_typing_issue(
-                                                i_s.db,
-                                                IssueType::ListItemMismatch {
-                                                    item,
-                                                    got,
-                                                    expected,
-                                                },
-                                            );
-                                        },
+                                        Some(on_error),
                                     );
                                     if m.bool() && found.is_none() {
                                         found = Some(DbType::Class(

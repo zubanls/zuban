@@ -611,7 +611,7 @@ fn calculate_type_vars<'db>(
         }
     };
     if let Some(matcher) = matcher.as_mut() {
-        result_context.with_type_if_exists(i_s, |i_s, type_| {
+        result_context.with_type_if_exists(i_s, |i_s, type_, _| {
             if let Some(class) = expected_return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.

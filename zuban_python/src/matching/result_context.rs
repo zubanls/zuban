@@ -13,17 +13,17 @@ pub enum ResultContext<'a, 'b> {
 }
 
 impl<'a> ResultContext<'a, '_> {
-    pub fn with_type_if_exists<T>(
-        &self,
-        i_s: &mut InferenceState,
-        callable: impl FnOnce(&mut InferenceState, &Type<'_>) -> T,
+    pub fn with_type_if_exists<'db, T>(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'_>, Option<&mut TypeVarMatcher>) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(t) => Some(callable(i_s, t)),
+            Self::Known(t) => Some(callable(i_s, t, None)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = type_.as_db_type(i_s);
                 let t = matcher.replace_type_vars_for_nested_context(i_s, &t);
-                Some(callable(i_s, &Type::new(&t)))
+                Some(callable(i_s, &Type::new(&t), Some(matcher)))
             }
             Self::Unknown => None,
         }

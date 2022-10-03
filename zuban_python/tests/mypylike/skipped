@@ -1,6 +1,8 @@
 # Next up
 testGenericTypeAliasesImporting
 
+testGenericTypeAliasesForAliases
+
 # --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
