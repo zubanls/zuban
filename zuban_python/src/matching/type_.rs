@@ -721,10 +721,6 @@ impl<'a> Type<'a> {
         let matches = self.is_super_type_of(i_s, matcher.as_deref_mut(), &value_type);
         if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
             let value_type = value.class_as_type(i_s);
-            debug!(
-                "Mismatch between {value_type:?} and {self:?} -> {:?}",
-                matches.clone()
-            );
             let mut fmt1 = FormatData::new_short(i_s.db);
             let mut fmt2 = FormatData::with_matcher(i_s.db, matcher.as_deref());
             let mut input = value_type.format(&fmt1);
@@ -735,6 +731,10 @@ impl<'a> Type<'a> {
                 input = value_type.format(&fmt1);
                 wanted = self.format(&fmt2);
             }
+            debug!(
+                "Mismatch between {input:?} and {wanted:?} -> {:?}",
+                matches.clone()
+            );
             if let Some(callback) = callback {
                 callback(i_s, input, wanted, reason)
             }
@@ -742,7 +742,12 @@ impl<'a> Type<'a> {
         matches
     }
 
-    pub fn try_to_resemble_context(self, i_s: &mut InferenceState, t: &Self) -> DbType {
+    pub fn try_to_resemble_context(
+        self,
+        i_s: &mut InferenceState,
+        mut matcher: Option<&mut TypeVarMatcher>,
+        t: &Self,
+    ) -> DbType {
         if let Some(class) = t.maybe_class(i_s.db) {
             if let Some(mro) = self.mro(i_s) {
                 for (_, value_type) in mro {
@@ -764,8 +769,11 @@ impl<'a> Type<'a> {
                                             .iter()
                                             .zip(generics2.iter())
                                             .map(|(g1, g2)| {
-                                                Type::new(g2)
-                                                    .try_to_resemble_context(i_s, &Type::new(g1))
+                                                Type::new(g2).try_to_resemble_context(
+                                                    i_s,
+                                                    matcher.as_deref_mut(),
+                                                    &Type::new(g1),
+                                                )
                                             })
                                             .collect(),
                                         (true, false) => {
@@ -789,6 +797,13 @@ impl<'a> Type<'a> {
                                 });
                             }
                         }
+                    }
+                }
+                DbType::TypeVar(t) => {
+                    if let Some(matcher) = matcher {
+                        let t =
+                            Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type));
+                        return self.try_to_resemble_context(i_s, None, &t);
                     }
                 }
                 DbType::Type(t1) => todo!(),
@@ -866,6 +881,7 @@ impl<'a> Type<'a> {
             _ => todo!("{name:?} {self:?}"),
         }
     }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Class(c) => c.format(format_data),

@@ -36,20 +36,28 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
     ) -> Option<Inferred> {
         let file = self.file;
         result_context
-            .with_type_if_exists(self.i_s, |i_s: &mut InferenceState<'db, '_>, type_, mut matcher| {
-                let mut found = None;
-                let db = i_s.db;
-                type_.on_any_class(db, &mut |list_cls| {
-                    if list_cls.node_ref == db.python_state.list() {
-                        let generic_t = list_cls.generics().nth(i_s, 0.into());
-                        let mut new_result_context = ResultContext::Known(&generic_t);
+            .with_type_if_exists(
+                self.i_s,
+                |i_s: &mut InferenceState<'db, '_>, type_, mut matcher| {
+                    let mut found = None;
+                    let db = i_s.db;
+                    type_.on_any_class(db, &mut |list_cls| {
+                        if list_cls.node_ref == db.python_state.list() {
+                            let generic_t = list_cls.generics().nth(i_s, 0.into());
+                            let mut new_result_context = ResultContext::Known(&generic_t);
 
-                        // Since it's a list, now check all the entries if they match the given result
-                        // generic;
-                        if let Some(elements) = list.unpack() {
-                            for (item, element) in elements.enumerate() {
-                                let mut check_item = |i_s: &mut InferenceState, inferred, index| {
-                                    let on_error = |i_s: &mut InferenceState, got: Box<str>, expected: Box<str>, _: &MismatchReason| {
+                            // Since it's a list, now check all the entries if they match the given
+                            // result generic;
+                            if let Some(elements) = list.unpack() {
+                                for (item, element) in elements.enumerate() {
+                                    let mut check_item =
+                                        |i_s: &mut InferenceState, inferred: Inferred, index| {
+                                            let on_error = |
+                                        i_s: &mut InferenceState,
+                                        got,
+                                        expected,
+                                        _: &MismatchReason,
+                                    | {
                                         NodeRef::new(file, index).add_typing_issue(
                                             i_s.db,
                                             IssueType::ListItemMismatch {
@@ -59,62 +67,69 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                                             },
                                         );
                                     };
-                                    let m = generic_t.error_if_not_matches_with_matcher(
-                                        i_s,
-                                        matcher.as_deref_mut(),
-                                        &inferred,
-                                        Some(on_error),
-                                    );
-                                    if m.bool() && found.is_none() {
-                                        found = Some(DbType::Class(
-                                            i_s.db.python_state.list().as_link(),
-                                            Some(GenericsList::new_generics(Box::new([inferred
-                                                .class_as_type(i_s)
-                                                .try_to_resemble_context(i_s, &generic_t)]))),
-                                        ));
-                                    }
-                                };
-                                let mut inference = file.inference(i_s);
-                                match element {
-                                    StarLikeExpression::NamedExpression(e) => {
-                                        let inferred = inference
-                                            .infer_named_expression_with_context(
+                                            let m = generic_t.error_if_not_matches_with_matcher(
+                                                i_s,
+                                                matcher.as_deref_mut(),
+                                                &inferred,
+                                                Some(on_error),
+                                            );
+                                            if m.bool() && found.is_none() {
+                                                found = Some(DbType::Class(
+                                                    i_s.db.python_state.list().as_link(),
+                                                    Some(GenericsList::new_generics(Box::new([
+                                                        inferred
+                                                            .class_as_type(i_s)
+                                                            .try_to_resemble_context(
+                                                                i_s,
+                                                                matcher.as_deref_mut(),
+                                                                &generic_t,
+                                                            ),
+                                                    ]))),
+                                                ));
+                                            }
+                                        };
+                                    let mut inference = file.inference(i_s);
+                                    match element {
+                                        StarLikeExpression::NamedExpression(e) => {
+                                            let inferred = inference
+                                                .infer_named_expression_with_context(
+                                                    e,
+                                                    &mut new_result_context,
+                                                );
+                                            check_item(i_s, inferred, e.index())
+                                        }
+                                        StarLikeExpression::Expression(e) => {
+                                            let inferred = inference.infer_expression_with_context(
                                                 e,
                                                 &mut new_result_context,
                                             );
-                                        check_item(i_s, inferred, e.index())
-                                    }
-                                    StarLikeExpression::Expression(e) => {
-                                        let inferred = inference.infer_expression_with_context(
-                                            e,
-                                            &mut new_result_context,
-                                        );
-                                        check_item(i_s, inferred, e.index())
-                                    }
-                                    StarLikeExpression::StarNamedExpression(e) => {
-                                        todo!("{e:?}")
-                                    }
-                                    StarLikeExpression::StarExpression(e) => {
-                                        todo!("{e:?}")
-                                    }
-                                };
+                                            check_item(i_s, inferred, e.index())
+                                        }
+                                        StarLikeExpression::StarNamedExpression(e) => {
+                                            todo!("{e:?}")
+                                        }
+                                        StarLikeExpression::StarExpression(e) => {
+                                            todo!("{e:?}")
+                                        }
+                                    };
+                                }
                             }
+                            if found.is_none() {
+                                // As a fallback if there were only errors or no items at all, just use
+                                // the given and expected result context as a type.
+                                found = Some(list_cls.as_db_type(i_s));
+                            }
+                            true
+                        } else {
+                            false
                         }
-                        if found.is_none() {
-                            // As a fallback if there were only errors or no items at all, just use
-                            // the given and expected result context as a type.
-                            found = Some(list_cls.as_db_type(i_s));
-                        }
-                        true
-                    } else {
-                        false
-                    }
-                });
-                // `found` might still be empty, because we matched Any.
-                found.map(|found| {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(found)))
-                })
-            })
+                    });
+                    // `found` might still be empty, because we matched Any.
+                    found.map(|found| {
+                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(found)))
+                    })
+                },
+            )
             .flatten()
     }
 }
