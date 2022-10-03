@@ -89,21 +89,22 @@ fn check_list_with_context(
     if let Some(elements) = list.unpack() {
         for (item, element) in elements.enumerate() {
             let mut check_item = |i_s: &mut InferenceState, inferred: Inferred, index| {
-                let on_error = |i_s: &mut InferenceState, got, expected, _: &MismatchReason| {
-                    NodeRef::new(file, index).add_typing_issue(
-                        i_s.db,
-                        IssueType::ListItemMismatch {
-                            item,
-                            got,
-                            expected,
-                        },
-                    );
-                };
                 let m = generic_t.error_if_not_matches_with_matcher(
                     i_s,
                     matcher.as_deref_mut(),
                     &inferred,
-                    Some(on_error),
+                    Some(
+                        |i_s: &mut InferenceState, got, expected, _: &MismatchReason| {
+                            NodeRef::new(file, index).add_typing_issue(
+                                i_s.db,
+                                IssueType::ListItemMismatch {
+                                    item,
+                                    got,
+                                    expected,
+                                },
+                            );
+                        },
+                    ),
                 );
                 if m.bool() && found.is_none() {
                     found = Some(DbType::Class(
