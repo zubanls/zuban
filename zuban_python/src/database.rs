@@ -803,6 +803,33 @@ impl DbType {
         result
     }
 
+    pub fn has_any(&self) -> bool {
+        let search_in_generics = |generics: &GenericsList| generics.iter().any(|t| t.has_any());
+        match self {
+            Self::Class(_, Some(generics)) => search_in_generics(generics),
+            Self::Union(u) => u.iter().any(|t| t.has_any()),
+            Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any()),
+            Self::TypeVar(t) => false,
+            Self::Type(db_type) => db_type.has_any(),
+            Self::Tuple(content) => {
+                if let Some(generics) = &content.generics {
+                    search_in_generics(generics)
+                } else {
+                    true
+                }
+            }
+            Self::Callable(content) => {
+                if let Some(params) = &content.params {
+                    params.iter().any(|param| param.db_type.has_any())
+                } else {
+                    true
+                }
+            }
+            Self::Class(_, None) | Self::None | Self::Never => false,
+            Self::Any => true,
+        }
+    }
+
     pub fn replace_type_vars(&self, callable: &mut impl FnMut(&TypeVarUsage) -> Self) -> Self {
         let mut remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(

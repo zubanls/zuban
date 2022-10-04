@@ -639,9 +639,9 @@ def g(x: TupList[T, U]) -> TupList[T, U]:
     raise NotImplementedError
 
 f(g([((1, 1), (1, 1))]))
-f(g([((1, 1), (1, ""))]))
+f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "f"
 x = [((1, 1), (1, ""))]
-f(g(x)) # E: Cannot infer type argument 1 of "g"
+f(g(x)) # E: Cannot infer type argument 1 of "f"
 
 x1: TupList[object, object] = f(g([((1, 1), (1, 1))]))
 x2: TupList[int, int] = f(g([((1, 1), (1, 1))]))

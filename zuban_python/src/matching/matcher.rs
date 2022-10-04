@@ -656,7 +656,17 @@ fn calculate_type_vars<'db>(
                 result_type.is_sub_type_of(i_s, Some(matcher), type_);
                 for calculated in matcher.calculated_type_vars.iter_mut() {
                     if let Some(type_) = &mut calculated.type_ {
-                        calculated.defined_by_result_context = true;
+                        let has_any = match type_ {
+                            TypeVarBound::Invariant(t)
+                            | TypeVarBound::Lower(t)
+                            | TypeVarBound::Upper(t) => t.has_any(),
+                            TypeVarBound::LowerAndUpper(t1, t2) => t1.has_any() | t2.has_any(),
+                        };
+                        if has_any {
+                            calculated.type_ = None
+                        } else {
+                            calculated.defined_by_result_context = true;
+                        }
                     }
                 }
             }
