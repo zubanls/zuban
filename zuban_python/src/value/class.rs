@@ -107,7 +107,18 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
                 .find_matching_function(i_s, args, class.as_ref(), true, result_context)
-                .map(|(func, list)| (func, list, true)),
+                .map(|(func, list)| {
+                    // Execute the found function to create the diagnostics.
+                    calculate_class_init_type_vars_and_return(
+                        i_s,
+                        self,
+                        func,
+                        args,
+                        result_context,
+                        Some(on_type_error),
+                    );
+                    (func, list, true)
+                }),
             None => unreachable!("Should never happen, because there's always object.__init__"),
         }
     }
