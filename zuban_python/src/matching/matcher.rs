@@ -257,8 +257,16 @@ impl<'a> TypeVarMatcher<'a> {
                         for restriction in type_var.restrictions.iter() {
                             let m = Type::new(restriction).matches(i_s, None, value_type, variance);
                             if m.bool() {
+                                if current.type_.is_some() {
+                                    // This means that any is involved and multiple restrictions
+                                    // are matching. Therefore just return Any.
+                                    current.type_ = Some(TypeVarBound::Invariant(DbType::Any));
+                                    return m;
+                                }
                                 current.type_ = Some(TypeVarBound::Invariant(restriction.clone()));
-                                return m;
+                                if !value_type.has_any(i_s) {
+                                    return m;
+                                }
                             }
                         }
                     }

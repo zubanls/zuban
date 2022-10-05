@@ -889,6 +889,14 @@ impl<'a> Type<'a> {
         matches!(self, Type::Type(t) if matches!(t.as_ref(), DbType::Any))
     }
 
+    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+        match self {
+            // TODO this does not not need to generate a db type
+            Self::Class(c) => c.as_db_type(i_s).has_any(),
+            Self::Type(t) => t.has_any(),
+        }
+    }
+
     pub fn lookup_symbol(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),

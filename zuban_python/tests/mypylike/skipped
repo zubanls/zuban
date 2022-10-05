@@ -9,7 +9,6 @@ testTypeAliasUpdateNonRecursiveToRecursiveFine
 
 union_context_class_matching_with_overload
 callable_return_from_method_nested_multiple1
-context_inference_with_any
 
 # func type var in __init__
 testInvalidNumberOfTypeArgs
