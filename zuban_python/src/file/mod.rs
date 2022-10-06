@@ -611,6 +611,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 for target in targets {
                     self.set_cycle_on_target(target);
                 }
+                todo!("This is probably fine, but we should still test it.");
             }
             Target::Starred(_) => {
                 todo!()
