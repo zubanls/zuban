@@ -900,7 +900,11 @@ impl<'a> Type<'a> {
     pub fn lookup_symbol(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
-            _ => todo!("{name:?} {self:?}"),
+            Self::Type(t) => match t.as_ref() {
+                DbType::Class(c, generics) => todo!(),
+                DbType::Tuple(t) => todo!(),
+                _ => todo!("{name:?} {self:?}"),
+            },
         }
     }
 

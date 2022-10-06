@@ -1,6 +1,6 @@
-use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Class, LookupResult, OnTypeError, Tuple, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::PointLink;
+use crate::database::{DbType, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file_state::File;
 use crate::getitem::SliceType;
@@ -94,6 +94,11 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+        for (mro_index, class) in self.class.mro(i_s) {
+            if let Some(db_type @ DbType::Tuple(t)) = class.maybe_db_type() {
+                return Tuple::new(db_type, t).get_item(i_s, slice_type);
+            }
+        }
         let args = slice_type.as_args(i_s.context);
         self.lookup_implicit(i_s, "__getitem__", &|i_s| {
             slice_type.as_node_ref().add_typing_issue(

@@ -607,7 +607,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                         )
                         .unwrap(),
                     ),
-                    _ => todo!("{c:?}"),
+                    _ => Type::new(c),
                 },
             ));
             self.mro_index += 1;
