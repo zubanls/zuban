@@ -595,10 +595,50 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
         None
     }
 
+    fn set_cycle_on_target(&mut self, target: Target) {
+        match target {
+            Target::Name(name_def) => {
+                self.file.points.set(
+                    name_def.index(),
+                    Point::new_simple_specific(Specific::Cycle, Locality::Todo),
+                );
+            }
+            Target::NameExpression(primary_target, name_def_node) => {
+                todo!()
+            }
+            Target::IndexExpression(t) => (),
+            Target::Tuple(targets) => {
+                for target in targets {
+                    self.set_cycle_on_target(target);
+                }
+            }
+            Target::Starred(_) => {
+                todo!()
+            }
+        }
+    }
+
     fn cache_assignment_nodes(&mut self, assignment: Assignment) {
-        if self.file.points.get(assignment.index()).calculated() {
+        let point = self.file.points.get(assignment.index());
+        if point.calculated() {
+            return;
+        } else if point.calculating() {
+            match assignment.unpack() {
+                AssignmentContent::Normal(targets, right_side) => {
+                    for target in targets {
+                        self.set_cycle_on_target(target);
+                    }
+                }
+                AssignmentContent::WithAnnotation(target, _, _) => self.set_cycle_on_target(target),
+                AssignmentContent::AugAssign(target, aug_assign, right_side) => {
+                    todo!()
+                }
+            };
             return;
         }
+        self.file
+            .points
+            .set(assignment.index(), Point::new_calculating());
         let node_ref = NodeRef::new(self.file, assignment.index());
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
