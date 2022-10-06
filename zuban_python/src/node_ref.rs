@@ -183,6 +183,7 @@ impl fmt::Debug for NodeRef<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut s = f.debug_struct("NodeRef");
         s.field("file_index", &self.file.file_index());
+        s.field("node_index", &self.node_index);
         s.field(
             "node",
             &self.file.tree.short_debug_of_index(self.node_index),

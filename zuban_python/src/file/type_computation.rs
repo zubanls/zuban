@@ -141,6 +141,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
+    Recursive(NodeRef<'a>),
     Unknown,
 }
 
@@ -1029,6 +1030,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
+            // TODO this ANY is completely incorrect
+            TypeNameLookup::Recursive(ref_) => TypeContent::DbType(DbType::Any),
         }
     }
 
@@ -1672,10 +1675,19 @@ fn check_type_name<'db: 'file, 'file>(
             if name_node_ref.point().calculated() {
                 return load_cached_type(name_node_ref);
             }
-            name_node_ref
+            let def_point = name_node_ref
                 .file
-                .inference(i_s)
-                .compute_type_assignment(assignment)
+                .points
+                .get(new_name.name_definition().unwrap().index());
+            if def_point.calculated() && def_point.maybe_specific() == Some(Specific::Cycle) {
+                // This means it's a recursive type definition.
+                TypeNameLookup::Recursive(name_node_ref)
+            } else {
+                name_node_ref
+                    .file
+                    .inference(i_s)
+                    .compute_type_assignment(assignment)
+            }
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None),
