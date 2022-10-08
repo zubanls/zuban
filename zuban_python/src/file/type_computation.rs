@@ -130,6 +130,7 @@ enum TypeContent<'db, 'a> {
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType),
+    RecursiveAlias(PointLink, Option<GenericsList>),
     InvalidVariable(InvalidVariableType<'a>),
     Unknown,
 }
@@ -141,7 +142,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
-    Recursive(PointLink),
+    RecursiveAlias(PointLink),
     Unknown,
 }
 
@@ -415,6 +416,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     DbType::Any
                 }
             },
+            // TODO here we would need to check if the generics are actually valid.
+            TypeContent::RecursiveAlias(link, generics) => DbType::RecursiveAlias(link, generics),
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
@@ -519,7 +522,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         DbType::Any => TypeContent::DbType(DbType::Any),
                         _ => todo!("{primary:?} {t:?}"),
                     },
-                    TypeContent::TypeAlias(m) => todo!(),
+                    TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_, _) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
                     TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
                     TypeContent::Unknown => TypeContent::Unknown,
@@ -565,6 +568,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
                     },
+                    TypeContent::RecursiveAlias(link, generics) => {
+                        if generics.is_some() {
+                            todo!()
+                        } else {
+                            TypeContent::RecursiveAlias(
+                                link,
+                                Some(GenericsList::new_generics(
+                                    s.iter().map(|c| self.compute_slice_db_type(c)).collect(),
+                                )),
+                            )
+                        }
+                    }
                     TypeContent::InvalidVariable(t) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
@@ -1035,7 +1050,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
-            TypeNameLookup::Recursive(link) => TypeContent::DbType(DbType::RecursiveAlias(link)),
+            TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link, None),
         }
     }
 
@@ -1685,7 +1700,7 @@ fn check_type_name<'db: 'file, 'file>(
                 .get(new_name.name_definition().unwrap().index());
             if def_point.calculated() && def_point.maybe_specific() == Some(Specific::Cycle) {
                 // This means it's a recursive type definition.
-                TypeNameLookup::Recursive(name_node_ref.as_link())
+                TypeNameLookup::RecursiveAlias(name_node_ref.as_link())
             } else {
                 name_node_ref
                     .file
