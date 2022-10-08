@@ -350,7 +350,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::DbType(d) => {
                 if self.has_type_vars {
                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                        .save_redirect(self.inference.file, expr.index());
+                        .save_redirect(self.inference.i_s.db, self.inference.file, expr.index());
                     self.inference.file.points.set(
                         annotation_index,
                         Point::new_simple_specific(
@@ -366,7 +366,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
         };
         let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
-        unsaved.save_redirect(self.inference.file, annotation_index);
+        unsaved.save_redirect(self.inference.i_s.db, self.inference.file, annotation_index);
     }
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
@@ -442,9 +442,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
         if !self.inference.file.points.get(expr.index()).calculated() {
             if let TypeContent::ClassWithoutTypeVar(inferred) = &type_content {
-                inferred
-                    .clone()
-                    .save_redirect(self.inference.file, expr.index());
+                inferred.clone().save_redirect(
+                    self.inference.i_s.db,
+                    self.inference.file,
+                    expr.index(),
+                );
             }
         }
         type_content
@@ -655,8 +657,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let result = if generics.is_empty() && given_count == expected_count {
             match primary {
                 Some(primary) => TypeContent::ClassWithoutTypeVar(
-                    Inferred::new_unsaved_specific(Specific::SimpleGeneric)
-                        .save_if_unsaved(self.inference.file, primary.index()),
+                    Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
+                        self.inference.i_s.db,
+                        self.inference.file,
+                        primary.index(),
+                    ),
                 ),
                 None => unreachable!(),
             }
@@ -1462,7 +1467,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                         let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                             Box::new(db_type),
                         ));
-                        unsaved.save_redirect(f, index);
+                        unsaved.save_redirect(inference.i_s.db, f, index);
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
@@ -1487,7 +1492,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                     let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                         Box::new(db_type),
                     ));
-                    unsaved.save_redirect(f, index);
+                    unsaved.save_redirect(self.i_s.db, f, index);
                     let complex_index = f.points.get(index).complex_index();
                     (
                         Inferred::new_saved2(f, index),

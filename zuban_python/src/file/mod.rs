@@ -602,19 +602,14 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                     .points
                     .set(name_def.index(), Point::new_calculating());
             }
-            Target::NameExpression(primary_target, name_def_node) => {
-                todo!()
-            }
+            Target::NameExpression(primary_target, name_def_node) => (),
             Target::IndexExpression(t) => (),
             Target::Tuple(targets) => {
                 for target in targets {
                     self.set_calculating_on_target(target);
                 }
-                todo!("This is probably fine, but we should still test it.");
             }
-            Target::Starred(_) => {
-                todo!()
-            }
+            Target::Starred(s) => self.set_calculating_on_target(s.as_target()),
         }
     }
 
@@ -632,9 +627,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             AssignmentContent::WithAnnotation(target, _, _) => {
                 self.set_calculating_on_target(target)
             }
-            AssignmentContent::AugAssign(target, aug_assign, right_side) => {
-                todo!()
-            }
+            AssignmentContent::AugAssign(target, aug_assign, right_side) => (),
         };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
@@ -968,7 +961,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 todo!("Star tuple unpack");
             }
             _ => self.assign_single_target(target, &value, is_definition, |index| {
-                value.clone().save_redirect(self.file, index);
+                value.clone().save_redirect(self.i_s.db, self.file, index);
             }),
         };
     }
@@ -999,7 +992,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             }
             StarExpressionContent::Tuple(tuple) => self
                 .infer_tuple_iterator(tuple.iter())
-                .save_redirect(self.file, tuple.index()),
+                .save_redirect(self.i_s.db, self.file, tuple.index()),
         }
     }
 
@@ -1044,7 +1037,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                     .union(self.infer_expression(else_))
             }
         };
-        inferred.save_redirect(self.file, expr.index())
+        inferred.save_redirect(self.i_s.db, self.file, expr.index())
     }
 
     pub fn infer_expression_part(
@@ -1152,7 +1145,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 false,
                 result_context,
             )
-            .save_redirect(self.file, primary.index());
+            .save_redirect(self.i_s.db, self.file, primary.index());
         debug!(
             "Infer primary {} as {}",
             primary.short_debug(),
@@ -1309,7 +1302,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             Ellipsis => Specific::Ellipsis,
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
-                    return result.save_redirect(self.file, atom.index());
+                    return result.save_redirect(self.i_s.db, self.file, atom.index());
                 } else if self.i_s.db.python_state.mypy_compatible {
                     let result = match list.unpack() {
                         Some(elements) => self
@@ -1340,16 +1333,18 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             self.create_list_or_set_generics(elements)
                         ]))),
                     ))
-                    .save_redirect(self.file, atom.index());
+                    .save_redirect(self.i_s.db, self.file, atom.index());
                 } else {
                     todo!()
                 }
             }
             SetComprehension(_) => todo!(),
             Tuple(tuple) => {
-                return self
-                    .infer_tuple_iterator(tuple.iter())
-                    .save_redirect(self.file, atom.index())
+                return self.infer_tuple_iterator(tuple.iter()).save_redirect(
+                    self.i_s.db,
+                    self.file,
+                    atom.index(),
+                )
             }
             GeneratorComprehension(_) => Specific::GeneratorComprehension,
             YieldExpr(_) => todo!(),
@@ -1416,7 +1411,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             true,
             &mut ResultContext::Unknown,
         )
-        .save_redirect(self.file, primary_target.index())
+        .save_redirect(self.i_s.db, self.file, primary_target.index())
     }
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
@@ -1707,13 +1702,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
                     node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
-                    node_ref.add_typing_issue(
-                        self.i_s.db,
-                        IssueType::CyclicDefinition {
-                            name: Box::from(node_ref.as_code()),
-                        },
-                    );
-                    self.check_point_cache(node_index)
+                    Some(Inferred::new_unsaved_specific(Specific::Cycle))
                 } else {
                     None
                 }
