@@ -1371,11 +1371,11 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
 
     fn compute_type_assignment(
         &mut self,
+        cached_type_node_ref: NodeRef<'file>,
         assignment: Assignment<'x>,
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
-        let cached_type_node_ref = NodeRef::new(file, assignment.index() + 1);
         if cached_type_node_ref.point().calculated() {
             return load_cached_type(cached_type_node_ref);
         }
@@ -1698,14 +1698,16 @@ fn check_type_name<'db: 'file, 'file>(
                 .file
                 .points
                 .get(new_name.name_definition().unwrap().index());
+
+            let cached_type_node_ref = NodeRef::new(name_node_ref.file, assignment.index() + 1);
             if def_point.calculated() && def_point.maybe_specific() == Some(Specific::Cycle) {
                 // This means it's a recursive type definition.
-                TypeNameLookup::RecursiveAlias(name_node_ref.as_link())
+                TypeNameLookup::RecursiveAlias(cached_type_node_ref.as_link())
             } else {
                 name_node_ref
                     .file
                     .inference(i_s)
-                    .compute_type_assignment(assignment)
+                    .compute_type_assignment(cached_type_node_ref, assignment)
             }
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(

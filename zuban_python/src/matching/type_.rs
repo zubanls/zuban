@@ -11,6 +11,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 use crate::value::{Class, LookupResult, MroIterator, Value};
 
 #[derive(Debug, Clone)]
@@ -252,7 +253,10 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
-                DbType::RecursiveAlias(link, generics) => todo!(),
+                DbType::RecursiveAlias(link, generics) => {
+                    dbg!(link, NodeRef::from_link(i_s.db, *link));
+                    todo!()
+                }
             },
         }
     }
