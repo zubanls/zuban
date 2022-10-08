@@ -634,6 +634,7 @@ pub enum DbType {
     Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
+    RecursiveAlias(PointLink),
     None,
     Any,
     Never,
@@ -750,6 +751,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
+            Self::RecursiveAlias(link) => todo!(),
         }
     }
 
@@ -794,6 +796,7 @@ impl DbType {
                 content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(_, None) | Self::Any | Self::None | Self::Never => (),
+            Self::RecursiveAlias(link) => todo!(),
         }
     }
 
@@ -827,6 +830,7 @@ impl DbType {
             }
             Self::Class(_, None) | Self::None | Self::Never => false,
             Self::Any => true,
+            Self::RecursiveAlias(link) => todo!(),
         }
     }
 
@@ -890,6 +894,7 @@ impl DbType {
                 }),
                 result_type: content.result_type.replace_type_vars(callable),
             })),
+            Self::RecursiveAlias(link) => todo!(),
         }
     }
 
@@ -965,6 +970,7 @@ impl DbType {
                     result_type: content.result_type.rewrite_late_bound_callables(manager),
                 }))
             }
+            Self::RecursiveAlias(link) => todo!(),
         }
     }
 

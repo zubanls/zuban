@@ -145,6 +145,7 @@ impl<'a> Type<'a> {
                 },
                 DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
                 DbType::Intersection(intersection) => todo!(),
+                DbType::RecursiveAlias(link) => todo!(),
             },
         }
     }
@@ -251,6 +252,7 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
+                DbType::RecursiveAlias(link) => todo!(),
             },
         }
     }

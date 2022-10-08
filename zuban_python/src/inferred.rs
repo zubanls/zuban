@@ -1177,6 +1177,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
+        DbType::RecursiveAlias(link) => unreachable!(),
     }
 }
 
