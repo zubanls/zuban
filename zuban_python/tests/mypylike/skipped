@@ -3,18 +3,12 @@ testGenericTypeAliasesImporting
 
 # Recursive Alias Formatting
 testRecursiveAliasesMutual
-testRecursiveAliasesSimplifiedUnion
 testRecursiveAliasesJoins
-testRecursiveAliasesRestrictions
 # Recursive Alias Base Class
 testRecursiveAliasViaBaseClass
-testRecursiveAliasViaBaseClass2
-testRecursiveAliasViaBaseClass3
 testRecursiveAliasViaBaseClassImported
 # Recursive Alias --enable-recursive-aliases
 testRecursiveAliasBasicGenericSubtype
-testRecursiveAliasBasicGenericInference
-testRecursiveAliasNewStyleSupported
 testRecursiveAliasesRestrictions2
 testRecursiveAliasWithRecursiveInstance
 testRecursiveAliasWithRecursiveInstanceInference
@@ -22,12 +16,13 @@ testRecursiveAliasTopUnion
 testRecursiveAliasesWithOptional
 testRecursiveAliasesProhibitBadAliases
 testRecursiveRegularTupleClass
-
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
-testNoRecursiveTuplesAtFunctionScope
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasBasic
+testRecursiveAliasesRestrictions
+testRecursiveAliasBasicGenericInference
+testRecursiveAliasNewStyleSupported
 
 # func type var in __init__
 testInvalidNumberOfTypeArgs
@@ -138,10 +133,6 @@ testUnificationEmptySet*
 testUnificationEmptyDict*
 testUnificationDictWithEmptyList*
 testMisguidedSetItem
-
-# Duplicate in Union
-testUnificationRedundantUnion
-testSimplifyingUnionWithTypeTypes1
 
 # Union Not matching type vars
 testJoinUnionWithUnionAndAny
@@ -352,6 +343,8 @@ testInfiniteLoop2
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testRegression11705_NoStrict
 testNewAnalyzerCastForward3
+testRecursiveAliasViaBaseClass3
+testNoRecursiveTuplesAtFunctionScope
 # namedtuple
 testCallableParsingInInheritence
 
@@ -372,8 +365,11 @@ testIfTypeCheckingUnreachableClass
 testDataclass*
 testAttrs*
 *PartialType*
-*NewType*
 *Enum*
+
+# NewType
+*NewType*
+testRecursiveAliasViaBaseClass2
 
 # TypedDict
 *TypedDict*
@@ -393,6 +389,10 @@ testTypeAliasesResultingInPlainInstance
 # typing.no_type_check
 *NoTypeCheck*
 
+# Duplicate in Union
+testUnificationRedundantUnion
+testSimplifyingUnionWithTypeTypes1
+testRecursiveAliasesSimplifiedUnion
 # Incomplete Unions: `int | int`
 testNewAnalyzerForwardAliasFromUnion
 # Union simplification
