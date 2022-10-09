@@ -1490,7 +1490,7 @@ pub struct TypeAlias {
 }
 
 impl TypeAlias {
-    pub fn as_db_type(&self) -> DbType {
+    pub fn as_db_type_and_set_type_vars_any(&self) -> DbType {
         if self.type_vars.is_empty() {
             self.db_type.as_ref().clone()
         } else {

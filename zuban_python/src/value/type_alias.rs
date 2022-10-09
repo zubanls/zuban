@@ -59,7 +59,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     ) -> Inferred {
         if matches!(self.alias.db_type.as_ref(), DbType::Class(_, _)) {
             return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                self.alias.as_db_type(),
+                self.alias.as_db_type_and_set_type_vars_any(),
             )));
         }
         args.as_node_ref().add_typing_issue(

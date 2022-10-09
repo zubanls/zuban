@@ -391,7 +391,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 );
                 DbType::Any
             }
-            TypeContent::TypeAlias(a) => a.as_db_type(),
+            TypeContent::TypeAlias(a) => a.as_db_type_and_set_type_vars_any(),
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => DbType::Callable(Box::new(CallableContent {
                     defined_at: node_ref.as_link(),
