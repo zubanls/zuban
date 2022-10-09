@@ -1,10 +1,30 @@
 # Next up
 testGenericTypeAliasesImporting
 
+# Recursive Alias Formatting
+testRecursiveAliasesMutual
+testRecursiveAliasesSimplifiedUnion
+testRecursiveAliasesJoins
+testRecursiveAliasesRestrictions
+# Recursive Alias Base Class
+testRecursiveAliasViaBaseClass
+testRecursiveAliasViaBaseClass2
+testRecursiveAliasViaBaseClass3
+testRecursiveAliasViaBaseClassImported
 # Recursive Alias --enable-recursive-aliases
+testRecursiveAliasBasicGenericSubtype
+testRecursiveAliasBasicGenericInference
+testRecursiveAliasNewStyleSupported
+testRecursiveAliasesRestrictions2
+testRecursiveAliasWithRecursiveInstance
+testRecursiveAliasWithRecursiveInstanceInference
+testRecursiveAliasTopUnion
+testRecursiveAliasesWithOptional
+testRecursiveAliasesProhibitBadAliases
+testRecursiveRegularTupleClass
+
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
-testRecursive*
 testNoRecursiveTuplesAtFunctionScope
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasBasic

@@ -752,7 +752,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
-            Self::RecursiveAlias(link, generics) => format!("<TODO Recursive({link:?})>").into(),
+            Self::RecursiveAlias(link, generics) => Box::from("..."),
         }
     }
 
