@@ -751,7 +751,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
-            Self::RecursiveAlias(link, generics) => todo!(),
+            Self::RecursiveAlias(link, generics) => Box::from("<TODO Recursive>"),
         }
     }
 
@@ -898,7 +898,9 @@ impl DbType {
                 }),
                 result_type: content.result_type.replace_type_vars(callable),
             })),
-            Self::RecursiveAlias(link, generics) => todo!(),
+            Self::RecursiveAlias(link, generics) => {
+                Self::RecursiveAlias(*link, generics.as_ref().map(remap_generics))
+            }
         }
     }
 

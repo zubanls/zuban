@@ -255,7 +255,7 @@ impl<'a> Type<'a> {
                 DbType::Intersection(intersection) => todo!(),
                 DbType::RecursiveAlias(link, generics) => {
                     dbg!(link, NodeRef::from_link(i_s.db, *link));
-                    todo!()
+                    return Match::True; // TODO wrong
                 }
             },
         }

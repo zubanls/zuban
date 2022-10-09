@@ -1371,14 +1371,19 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
 
     fn compute_type_assignment(
         &mut self,
-        cached_type_node_ref: NodeRef<'file>,
         assignment: Assignment<'x>,
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
-        if cached_type_node_ref.point().calculated() {
+        let cached_type_node_ref = NodeRef::new(file, assignment.index() + 1);
+        let point = cached_type_node_ref.point();
+        if point.calculated() {
             return load_cached_type(cached_type_node_ref);
+        } else if point.calculating() {
+            // This means it's a recursive type definition.
+            return TypeNameLookup::RecursiveAlias(cached_type_node_ref.as_link());
         }
+        cached_type_node_ref.set_point(Point::new_calculating());
         self.cache_assignment_nodes(assignment);
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
@@ -1699,16 +1704,10 @@ fn check_type_name<'db: 'file, 'file>(
                 .points
                 .get(new_name.name_definition().unwrap().index());
 
-            let cached_type_node_ref = NodeRef::new(name_node_ref.file, assignment.index() + 1);
-            if def_point.calculated() && def_point.maybe_specific() == Some(Specific::Cycle) {
-                // This means it's a recursive type definition.
-                TypeNameLookup::RecursiveAlias(cached_type_node_ref.as_link())
-            } else {
-                name_node_ref
-                    .file
-                    .inference(i_s)
-                    .compute_type_assignment(cached_type_node_ref, assignment)
-            }
+            name_node_ref
+                .file
+                .inference(i_s)
+                .compute_type_assignment(assignment)
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None),
