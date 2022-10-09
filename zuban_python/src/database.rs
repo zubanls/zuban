@@ -1,4 +1,5 @@
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
@@ -1499,6 +1500,14 @@ impl TypeAlias {
                     true => DbType::Any,
                     false => DbType::TypeVar(t.clone()),
                 })
+        }
+    }
+
+    pub fn as_db_type(&self, callable: &mut impl FnMut(&TypeVarUsage) -> DbType) -> Cow<DbType> {
+        if self.type_vars.is_empty() {
+            Cow::Borrowed(self.db_type.as_ref())
+        } else {
+            Cow::Owned(self.db_type.replace_type_vars(callable))
         }
     }
 }

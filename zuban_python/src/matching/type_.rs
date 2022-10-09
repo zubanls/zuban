@@ -6,7 +6,8 @@ use super::{
     TypeVarMatcher,
 };
 use crate::database::{
-    CallableContent, Database, DbType, GenericsList, TupleContent, UnionType, Variance,
+    CallableContent, ComplexPoint, Database, DbType, GenericsList, TupleContent, UnionType,
+    Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -254,8 +255,19 @@ impl<'a> Type<'a> {
                 }
                 DbType::Intersection(intersection) => todo!(),
                 DbType::RecursiveAlias(link, generics) => {
-                    dbg!(link, NodeRef::from_link(i_s.db, *link));
-                    return Match::True; // TODO wrong
+                    let node_ref = NodeRef::from_link(i_s.db, *link);
+                    match node_ref.complex() {
+                        Some(ComplexPoint::TypeAlias(alias)) => {
+                            let g = alias.as_db_type(&mut |t| {
+                                generics
+                                    .as_ref()
+                                    .map(|g| g.nth(t.index).unwrap().clone())
+                                    .unwrap_or(DbType::Any)
+                            });
+                            Type::Type(g).matches_internal(i_s, matcher, value_type, variance)
+                        }
+                        _ => unreachable!(),
+                    }
                 }
             },
         }
