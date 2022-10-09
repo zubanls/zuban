@@ -167,6 +167,7 @@ macro_rules! compute_type_application {
                 });
                 if type_vars.len() > 0 {
                     ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                        name: None,
                         type_vars,
                         location: $slice_type.as_node_ref().as_link(),
                         db_type: Rc::new(db_type),
@@ -1435,6 +1436,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
                             type_vars: type_var_manager.into_type_vars(),
                             location: in_definition,
+                            name: Some(PointLink::new(file.file_index(), name_def.name().index())),
                             db_type: Rc::new(db_type),
                         }))
                     }

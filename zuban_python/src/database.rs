@@ -1494,6 +1494,7 @@ pub struct TypeVarUsage {
 pub struct TypeAlias {
     pub type_vars: TypeVars,
     pub location: PointLink,
+    pub name: Option<PointLink>,
     pub db_type: Rc<DbType>,
 }
 
