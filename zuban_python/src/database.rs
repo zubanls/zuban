@@ -752,7 +752,10 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
-            Self::RecursiveAlias(_) => Box::from("..."),
+            Self::RecursiveAlias(rec) => {
+                let alias = rec.type_alias(format_data.db);
+                Box::from(alias.name(format_data.db).unwrap())
+            }
         }
     }
 
@@ -1527,6 +1530,10 @@ impl TypeAlias {
         } else {
             Cow::Owned(self.db_type.replace_type_vars(callable))
         }
+    }
+
+    pub fn name<'db>(&self, db: &'db Database) -> Option<&'db str> {
+        self.name.map(|name| NodeRef::from_link(db, name).as_code())
     }
 }
 
