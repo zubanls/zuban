@@ -131,7 +131,7 @@ enum TypeContent<'db, 'a> {
     TypeAlias(&'db TypeAlias),
     DbType(DbType),
     SpecialType(SpecialType),
-    RecursiveAlias(RecursiveAlias),
+    RecursiveAlias(PointLink),
     InvalidVariable(InvalidVariableType<'a>),
     Unknown,
 }
@@ -418,7 +418,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             },
             // TODO here we would need to check if the generics are actually valid.
-            TypeContent::RecursiveAlias(rec) => DbType::RecursiveAlias(rec),
+            TypeContent::RecursiveAlias(link) => DbType::RecursiveAlias(RecursiveAlias {
+                link,
+                generics: None,
+            }),
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
@@ -569,17 +572,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
                     },
-                    TypeContent::RecursiveAlias(rec) => {
-                        if rec.generics.is_some() {
-                            todo!()
-                        } else {
-                            TypeContent::RecursiveAlias(RecursiveAlias {
-                                link: rec.link,
-                                generics: Some(GenericsList::new_generics(
-                                    s.iter().map(|c| self.compute_slice_db_type(c)).collect(),
-                                )),
-                            })
-                        }
+                    TypeContent::RecursiveAlias(link) => {
+                        TypeContent::DbType(DbType::RecursiveAlias(RecursiveAlias {
+                            link,
+                            generics: Some(GenericsList::new_generics(
+                                s.iter().map(|c| self.compute_slice_db_type(c)).collect(),
+                            )),
+                        }))
                     }
                     TypeContent::InvalidVariable(t) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
@@ -1051,10 +1050,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
-            TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(RecursiveAlias {
-                link,
-                generics: None,
-            }),
+            TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
         }
     }
 
