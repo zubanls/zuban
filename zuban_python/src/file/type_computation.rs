@@ -1418,11 +1418,15 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                 comp.errors_already_calculated = p.calculated();
                 let t = comp.compute_type(expr);
                 let complex = match t {
-                    TypeContent::ClassWithoutTypeVar(i) => return TypeNameLookup::Class(i),
+                    TypeContent::ClassWithoutTypeVar(i) => {
+                        cached_type_node_ref.set_point(Point::new_uncalculated());
+                        return TypeNameLookup::Class(i);
+                    }
                     TypeContent::InvalidVariable(t) => {
+                        cached_type_node_ref.set_point(Point::new_uncalculated());
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                             NodeRef::new(file, name_def.index()),
-                        ))
+                        ));
                     }
                     _ => {
                         let node_ref = NodeRef::new(file, expr.index());
