@@ -6,13 +6,11 @@ use super::{
     TypeVarMatcher,
 };
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, GenericsList, TupleContent, UnionType,
-    Variance,
+    CallableContent, Database, DbType, GenericsList, TupleContent, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::node_ref::NodeRef;
 use crate::value::{Class, LookupResult, MroIterator, Value};
 
 #[derive(Debug, Clone)]
@@ -255,19 +253,13 @@ impl<'a> Type<'a> {
                 }
                 DbType::Intersection(intersection) => todo!(),
                 DbType::RecursiveAlias(rec) => {
-                    let node_ref = NodeRef::from_link(i_s.db, rec.link);
-                    match node_ref.complex() {
-                        Some(ComplexPoint::TypeAlias(alias)) => {
-                            let g = alias.as_db_type(&mut |t| {
-                                rec.generics
-                                    .as_ref()
-                                    .map(|g| g.nth(t.index).unwrap().clone())
-                                    .unwrap_or(DbType::Any)
-                            });
-                            Type::Type(g).matches_internal(i_s, matcher, value_type, variance)
-                        }
-                        _ => unreachable!(),
-                    }
+                    let g = rec.type_alias(i_s.db).as_db_type(&mut |t| {
+                        rec.generics
+                            .as_ref()
+                            .map(|g| g.nth(t.index).unwrap().clone())
+                            .unwrap_or(DbType::Any)
+                    });
+                    Type::Type(g).matches_internal(i_s, matcher, value_type, variance)
                 }
             },
         }
