@@ -1383,8 +1383,6 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             // This means it's a recursive type definition.
             return TypeNameLookup::RecursiveAlias(cached_type_node_ref.as_link());
         }
-        cached_type_node_ref.set_point(Point::new_calculating());
-        self.cache_assignment_nodes(assignment);
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
             let node_ref = NodeRef::new(file, name.index());
@@ -1398,6 +1396,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                 TypeNameLookup::TypeVar(tv)
             } else {
+                cached_type_node_ref.set_point(Point::new_calculating());
                 let mut type_var_manager = TypeVarManager::default();
                 let mut type_var_callback =
                     |_: &mut InferenceState, _: &_, type_var: Rc<TypeVar>, _: NodeRef, _| {
@@ -1703,11 +1702,11 @@ fn check_type_name<'db: 'file, 'file>(
                 .file
                 .points
                 .get(new_name.name_definition().unwrap().index());
-
-            name_node_ref
-                .file
-                .inference(i_s)
-                .compute_type_assignment(assignment)
+            let mut inference = name_node_ref.file.inference(i_s);
+            if !def_point.calculated() || def_point.maybe_specific() != Some(Specific::Cycle) {
+                inference.cache_assignment_nodes(assignment);
+            }
+            inference.compute_type_assignment(assignment)
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None),

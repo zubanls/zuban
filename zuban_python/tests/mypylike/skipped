@@ -1,9 +1,10 @@
 # Next up
 testGenericTypeAliasesImporting
 
-# --enable-recursive-aliases
+# Recursive Alias --enable-recursive-aliases
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
+testRecursive*
 testNoRecursiveTuplesAtFunctionScope
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasBasic
