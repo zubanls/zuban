@@ -147,7 +147,7 @@ impl<'a> Type<'a> {
                 },
                 DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
                 DbType::Intersection(intersection) => todo!(),
-                DbType::RecursiveAlias(link, generics) => todo!(),
+                DbType::RecursiveAlias(_) => todo!(),
             },
         }
     }
@@ -254,12 +254,12 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
-                DbType::RecursiveAlias(link, generics) => {
-                    let node_ref = NodeRef::from_link(i_s.db, *link);
+                DbType::RecursiveAlias(rec) => {
+                    let node_ref = NodeRef::from_link(i_s.db, rec.link);
                     match node_ref.complex() {
                         Some(ComplexPoint::TypeAlias(alias)) => {
                             let g = alias.as_db_type(&mut |t| {
-                                generics
+                                rec.generics
                                     .as_ref()
                                     .map(|g| g.nth(t.index).unwrap().clone())
                                     .unwrap_or(DbType::Any)

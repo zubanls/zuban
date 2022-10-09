@@ -635,7 +635,7 @@ pub enum DbType {
     Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
-    RecursiveAlias(PointLink, Option<GenericsList>),
+    RecursiveAlias(RecursiveAlias),
     None,
     Any,
     Never,
@@ -752,7 +752,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
-            Self::RecursiveAlias(link, generics) => Box::from("..."),
+            Self::RecursiveAlias(_) => Box::from("..."),
         }
     }
 
@@ -797,8 +797,8 @@ impl DbType {
                 content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(_, None) | Self::Any | Self::None | Self::Never => (),
-            Self::RecursiveAlias(link, generics) => {
-                if let Some(generics) = generics {
+            Self::RecursiveAlias(rec) => {
+                if let Some(generics) = rec.generics.as_ref() {
                     search_in_generics(generics)
                 }
             }
@@ -835,7 +835,7 @@ impl DbType {
             }
             Self::Class(_, None) | Self::None | Self::Never => false,
             Self::Any => true,
-            Self::RecursiveAlias(link, generics) => todo!(),
+            Self::RecursiveAlias(_) => todo!(),
         }
     }
 
@@ -899,9 +899,10 @@ impl DbType {
                 }),
                 result_type: content.result_type.replace_type_vars(callable),
             })),
-            Self::RecursiveAlias(link, generics) => {
-                Self::RecursiveAlias(*link, generics.as_ref().map(remap_generics))
-            }
+            Self::RecursiveAlias(rec) => Self::RecursiveAlias(RecursiveAlias {
+                link: rec.link,
+                generics: rec.generics.as_ref().map(remap_generics),
+            }),
         }
     }
 
@@ -977,7 +978,7 @@ impl DbType {
                     result_type: content.result_type.rewrite_late_bound_callables(manager),
                 }))
             }
-            Self::RecursiveAlias(link, generics) => todo!(),
+            Self::RecursiveAlias(_) => todo!(),
         }
     }
 
@@ -1229,6 +1230,12 @@ impl CallableContent {
             }
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct RecursiveAlias {
+    pub link: PointLink,
+    pub generics: Option<GenericsList>,
 }
 
 #[derive(Debug)]
