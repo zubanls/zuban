@@ -1,4 +1,5 @@
 # Next up
+testUnboundTypeVar
 testGenericTypeAliasesImporting
 
 # Recursive Alias Formatting
@@ -16,6 +17,7 @@ testRecursiveAliasTopUnion
 testRecursiveAliasesWithOptional
 testRecursiveAliasesProhibitBadAliases
 testRecursiveRegularTupleClass
+testRecursiveClassLevelAlias
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 # --enable-recursive-aliases & isinstance
@@ -761,6 +763,9 @@ testMethodWithDynamicallyTypedMethodAsDataAttribute
 testPartiallyTypedSelfInMethodDataAttribute
 testCallableDataAttribute
 
+# "Variance of TypeVar "T_contra" incompatible with variance in parent type"
+testIncompatibleVariance
+
 # Liskov
 *Liskov*
 testPositionalOverridingArgumentNameInsensitivity
@@ -1130,6 +1135,7 @@ testLimitLegacyStubErrorVolume
 # --pretty
 testReprocessMethodShowSource
 testGenericTypeAliasesWithNestedArgs
+testPrettyMessageSorting
 
 # syntax not yet supported
 testBreakOutsideLoop

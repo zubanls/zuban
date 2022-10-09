@@ -73,6 +73,7 @@ const USE_MYPY_TEST_FILES: [&str; 21] = [
     //"check-optional.test",
     //"check-unreachable-code.test",
     //"check-slots.test",
+    //"check-partially-defined.test",
 
     //"check-newsyntax.test",
     //"check-fastparse.test",
