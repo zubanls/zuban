@@ -665,3 +665,16 @@ f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo
 y: list[Foo[Any]] = f(fi, fs) # E: Argument 2 to "f" has incompatible type "Foo[str]"; expected "Foo[int]"
 f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
 y: list[Foo[Any]] = f(fs, fi) # E: Argument 2 to "f" has incompatible type "Foo[int]"; expected "Foo[str]"
+
+[case generic_covariant_match]
+from typing import TypeVar, Sequence
+
+T = TypeVar("T")
+
+def foo(x: T, y: T) -> T: ...
+
+x: list[Sequence[int]]
+y: list[Sequence[object]]
+
+reveal_type(foo(x, y)) # N: Revealed type is "list[typing.Sequence[object]]"
+reveal_type(foo(y, x)) # N: Revealed type is "list[typing.Sequence[object]]"
