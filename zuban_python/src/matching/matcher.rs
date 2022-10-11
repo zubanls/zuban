@@ -1,7 +1,9 @@
 use super::type_var_matcher::{CalculatedTypeVar, FunctionOrCallable, TypeVarMatcher};
 use super::{Match, Type};
 
-use crate::database::{CallableContent, DbType, TypeVarUsage, TypeVars, Variance};
+use crate::database::{
+    CallableContent, Database, DbType, FormatStyle, TypeVarUsage, TypeVars, Variance,
+};
 use crate::inference_state::InferenceState;
 use crate::value::Function;
 
@@ -111,6 +113,19 @@ impl<'a> Matcher<'a> {
     pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
         if let Some(matcher) = self.type_var_matcher {
             matcher.set_all_contained_type_vars_to_any(i_s, type_)
+        }
+    }
+
+    pub fn format(
+        &self,
+        db: &Database,
+        type_var_usage: &TypeVarUsage,
+        style: FormatStyle,
+    ) -> Box<str> {
+        if let Some(matcher) = self.type_var_matcher {
+            return matcher.format(db, type_var_usage, style);
+        } else {
+            Box::from(type_var_usage.type_var.name(db))
         }
     }
 }
