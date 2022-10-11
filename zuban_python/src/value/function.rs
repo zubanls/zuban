@@ -23,8 +23,7 @@ use crate::inferred::Inferred;
 use crate::matching::params::{InferrableParamIterator2, Param};
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, FormatData, Generics, ResultContext, SignatureMatch, Type,
-    TypeVarMatcher,
+    ArgumentIndexWithParam, FormatData, Generics, Matcher, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -407,12 +406,7 @@ impl<'db: 'a, 'a> Function<'a> {
             .unwrap_or_else(|| Type::new(&DbType::Any))
     }
 
-    fn format_overload_variant(
-        &self,
-        i_s: &mut InferenceState,
-        matcher: Option<&TypeVarMatcher>,
-        is_init: bool,
-    ) -> Box<str> {
+    fn format_overload_variant(&self, i_s: &mut InferenceState, is_init: bool) -> Box<str> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
@@ -421,7 +415,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(&FormatData::with_matcher(i_s.db, matcher))
+                .format(&FormatData::with_matcher(i_s.db, &mut Matcher::default()))
         };
         let node = self.node();
         let mut previous_kind = None;
@@ -431,7 +425,7 @@ impl<'db: 'a, 'a> Function<'a> {
             .map(|(i, p)| {
                 let annotation_str = p
                     .annotation_type(i_s)
-                    .map(|t| t.format(&FormatData::with_matcher(i_s.db, matcher)));
+                    .map(|t| t.format(&FormatData::with_matcher(i_s.db, &mut Matcher::default())));
                 let current_kind = p.kind(i_s.db);
                 let stars = match current_kind {
                     ParamKind::Starred => "*",
@@ -939,7 +933,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .iter()
             .map(|link| {
                 let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                func.format_overload_variant(i_s, None, is_init)
+                func.format_overload_variant(i_s, is_init)
             })
             .collect()
     }

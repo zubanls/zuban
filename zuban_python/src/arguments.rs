@@ -527,7 +527,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                         {
                                             let key = class.generics().nth(i_s, 0.into());
                                             let s = Type::Class(i_s.db.python_state.str());
-                                            if !key.is_same_type(i_s, None, &s).bool() {
+                                            if !key.is_simple_same_type(i_s, &s).bool() {
                                                 node_ref.add_typing_issue(
                                                     i_s.db,
                                                     IssueType::ArgumentIssue(Box::from(

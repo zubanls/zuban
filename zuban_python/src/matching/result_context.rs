@@ -1,12 +1,12 @@
 use std::fmt;
 
-use super::{Type, TypeVarMatcher};
+use super::{Matcher, Type};
 use crate::InferenceState;
 
 pub enum ResultContext<'a, 'b> {
     Known(&'a Type<'a>),
     WithMatcher {
-        matcher: &'a mut TypeVarMatcher<'b>,
+        matcher: &'a mut Matcher<'b>,
         type_: &'a Type<'a>,
     },
     Unknown,
@@ -32,11 +32,11 @@ impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists<'db, T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'_>, Option<&mut TypeVarMatcher>) -> T,
+        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'_>, &mut Matcher) -> T,
     ) -> Option<T> {
         match self {
-            Self::Known(type_) => Some(callable(i_s, type_, None)),
-            Self::WithMatcher { matcher, type_ } => Some(callable(i_s, type_, Some(matcher))),
+            Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
+            Self::WithMatcher { matcher, type_ } => Some(callable(i_s, type_, matcher)),
             Self::Unknown => None,
         }
     }

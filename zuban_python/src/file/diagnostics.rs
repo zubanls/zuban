@@ -10,7 +10,7 @@ use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::inferred::Inferred;
 use crate::matching::{
-    matches_params, overload_has_overlapping_params, Generics, Match, ResultContext, TypeVarMatcher,
+    matches_params, overload_has_overlapping_params, Generics, Match, Matcher, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
@@ -204,20 +204,17 @@ impl PythonInference<'_, '_, '_, '_> {
                     let impl_type_vars = implementation.type_vars(self.i_s);
 
                     let mut calculated_type_vars = vec![];
-                    let mut matcher = impl_type_vars.map(|type_vars| {
-                        calculated_type_vars.resize_with(type_vars.len(), Default::default);
-                        let mut matcher =
-                            TypeVarMatcher::new_function(implementation, &mut calculated_type_vars);
-                        matcher.match_reverse = true;
-                        matcher
-                    });
-
+                    let mut matcher = Matcher::new_reverse_function_matcher(
+                        implementation,
+                        impl_type_vars,
+                        &mut calculated_type_vars,
+                    );
                     let implementation_type = implementation.result_type(self.i_s);
                     if !f1_result_type
-                        .is_sub_type_of(self.i_s, matcher.as_mut(), &implementation_type)
+                        .is_sub_type_of(self.i_s, &mut matcher, &implementation_type)
                         .bool()
                         && !f1_result_type
-                            .is_super_type_of(self.i_s, matcher.as_mut(), &implementation_type)
+                            .is_super_type_of(self.i_s, &mut matcher, &implementation_type)
                             .bool()
                     {
                         name_def_node_ref.add_typing_issue(
@@ -230,7 +227,7 @@ impl PythonInference<'_, '_, '_, '_> {
 
                     if !matches_params(
                         self.i_s,
-                        matcher.as_mut(),
+                        &mut matcher,
                         f1.param_iterator(),
                         implementation.param_iterator(),
                         Variance::Contravariant,
@@ -249,17 +246,15 @@ impl PythonInference<'_, '_, '_, '_> {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
                     let f2_type_vars = f2.type_vars(self.i_s);
                     let mut calculated_type_vars = vec![];
-                    let mut matcher = f1_type_vars.map(|type_vars| {
-                        calculated_type_vars.resize_with(type_vars.len(), Default::default);
-                        let mut matcher =
-                            TypeVarMatcher::new_function(f1, &mut calculated_type_vars);
-                        matcher.match_reverse = true;
-                        matcher
-                    });
+                    let mut matcher = Matcher::new_reverse_function_matcher(
+                        f1,
+                        f1_type_vars,
+                        &mut calculated_type_vars,
+                    );
                     if matches!(
                         matches_params(
                             self.i_s,
-                            matcher.as_mut(),
+                            &mut matcher,
                             f2.param_iterator(),
                             f1.param_iterator(),
                             Variance::Contravariant
@@ -276,7 +271,7 @@ impl PythonInference<'_, '_, '_, '_> {
                     } else {
                         let f2_result_type = f2.result_type(self.i_s);
                         if !f1_result_type
-                            .is_sub_type_of(self.i_s, None, &f2_result_type)
+                            .is_simple_sub_type_of(self.i_s, &f2_result_type)
                             .bool()
                             && overload_has_overlapping_params(
                                 self.i_s,

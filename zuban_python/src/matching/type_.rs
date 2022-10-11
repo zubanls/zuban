@@ -2,8 +2,7 @@ use std::borrow::Cow;
 
 use super::params::has_overlapping_params;
 use super::{
-    matches_params, CalculatedTypeArguments, FormatData, Generics, Match, MismatchReason,
-    TypeVarMatcher,
+    matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
     CallableContent, Database, DbType, GenericsList, TupleContent, UnionType, Variance,
@@ -153,7 +152,7 @@ impl<'a> Type<'a> {
     fn matches_internal(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -172,21 +171,13 @@ impl<'a> Type<'a> {
                     }
                     _ => Match::new_false(),
                 },
-                DbType::TypeVar(t1) => match matcher {
-                    Some(matcher) => {
-                        if matcher.match_reverse {
-                            Match::new_false()
-                        } else {
-                            matcher.match_or_add_type_var(i_s, t1, value_type, variance)
-                        }
+                DbType::TypeVar(t1) => {
+                    if matcher.is_matching_reverse() {
+                        Match::new_false()
+                    } else {
+                        matcher.match_or_add_type_var(i_s, t1, value_type, variance)
                     }
-                    None => match value_type.maybe_db_type() {
-                        Some(DbType::TypeVar(t2)) => {
-                            (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
-                        }
-                        _ => Match::new_false(),
-                    },
-                },
+                }
                 DbType::Callable(c1) => match value_type {
                     Self::Type(ref t2) => match t2.as_ref() {
                         DbType::Type(t2) => match t2.as_ref() {
@@ -202,7 +193,7 @@ impl<'a> Type<'a> {
                                         // of the __init__ functions and the class as a return type separately.
                                         return Type::new(&c1.result_type).is_super_type_of(
                                             i_s,
-                                            matcher.as_deref_mut(),
+                                            matcher,
                                             &Type::Class(cls),
                                         ) & matches_params(
                                             i_s,
@@ -219,7 +210,7 @@ impl<'a> Type<'a> {
                                 if c1.params.is_none() {
                                     Type::new(&c1.result_type).is_super_type_of(
                                         i_s,
-                                        matcher.as_deref_mut(),
+                                        matcher,
                                         &Type::new(t2.as_ref()),
                                     )
                                 } else {
@@ -273,36 +264,34 @@ impl<'a> Type<'a> {
     pub fn is_sub_type_of(
         &self,
         i_s: &mut InferenceState,
-        matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
-        if let Some(matcher) = matcher {
-            let old = matcher.match_reverse;
-            matcher.match_reverse = !old;
-            let result = value_type.is_super_type_of(i_s, Some(matcher), self);
-            matcher.match_reverse = old;
-            result
-        } else {
-            value_type.is_super_type_of(i_s, None, self)
-        }
+        matcher.match_reverse();
+        let result = value_type.is_super_type_of(i_s, matcher, self);
+        matcher.match_reverse();
+        result
+    }
+
+    pub fn is_simple_sub_type_of(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
+        self.is_sub_type_of(i_s, &mut Matcher::default(), value_type)
+    }
+
+    pub fn is_simple_super_type_of(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
+        self.is_super_type_of(i_s, &mut Matcher::default(), value_type)
     }
 
     pub fn is_super_type_of(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
         let m = match value_type.mro(i_s) {
             Some(mro) => {
                 for (_, t2) in mro {
-                    let m = self.matches_internal(
-                        i_s,
-                        matcher.as_deref_mut(),
-                        &t2,
-                        Variance::Covariant,
-                    );
+                    let m = self.matches_internal(i_s, matcher, &t2, Variance::Covariant);
                     if !matches!(m, Match::False(MismatchReason::None)) {
                         return m;
                     }
@@ -310,46 +299,40 @@ impl<'a> Type<'a> {
                 Match::new_false()
             }
             None => {
-                let m = self.matches_internal(
-                    i_s,
-                    matcher.as_deref_mut(),
-                    value_type,
-                    Variance::Covariant,
-                );
+                let m = self.matches_internal(i_s, matcher, value_type, Variance::Covariant);
                 m.or(|| self.matches_object_class(i_s.db, value_type))
             }
         };
-        m.or(|| {
-            self.check_protocol_and_other_side(
-                i_s,
-                matcher.as_deref_mut(),
-                value_type,
-                Variance::Covariant,
-            )
-        })
+        m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant))
+    }
+
+    pub fn is_simple_same_type(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
+        self.is_same_type(i_s, &mut Matcher::default(), value_type)
     }
 
     pub fn is_same_type(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
-        let m = self.matches_internal(i_s, matcher.as_deref_mut(), value_type, Variance::Invariant);
-        m.or(|| {
-            self.check_protocol_and_other_side(
-                i_s,
-                matcher.as_deref_mut(),
-                value_type,
-                Variance::Invariant,
-            )
-        })
+        let m = self.matches_internal(i_s, matcher, value_type, Variance::Invariant);
+        m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant))
+    }
+
+    pub fn simple_matches(
+        &self,
+        i_s: &mut InferenceState,
+        value_type: &Self,
+        variance: Variance,
+    ) -> Match {
+        self.matches(i_s, &mut Matcher::default(), value_type, variance)
     }
 
     pub fn matches(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -357,7 +340,7 @@ impl<'a> Type<'a> {
             Variance::Covariant => self.is_super_type_of(i_s, matcher, value_type),
             Variance::Invariant => self.is_same_type(i_s, matcher, value_type),
             Variance::Contravariant => {
-                return self.is_sub_type_of(i_s, matcher.as_deref_mut(), value_type);
+                return self.is_sub_type_of(i_s, matcher, value_type);
             }
         }
     }
@@ -365,7 +348,7 @@ impl<'a> Type<'a> {
     fn check_protocol_and_other_side(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -383,32 +366,28 @@ impl<'a> Type<'a> {
         if let Type::Type(t2) = value_type {
             match t2.as_ref() {
                 DbType::Any => {
-                    if let Some(matcher) = matcher.as_deref_mut() {
-                        let t1 = match self {
-                            Self::Class(c) => Cow::Owned(c.as_db_type(i_s)),
-                            Self::Type(t) => Cow::Borrowed(t.as_ref()),
-                        };
-                        matcher.set_all_contained_type_vars_to_any(i_s, t1.as_ref())
-                    }
+                    let t1 = match self {
+                        Self::Class(c) => Cow::Owned(c.as_db_type(i_s)),
+                        Self::Type(t) => Cow::Borrowed(t.as_ref()),
+                    };
+                    matcher.set_all_contained_type_vars_to_any(i_s, &t1);
                     return Match::TrueWithAny;
                 }
                 DbType::None => return Match::True,
                 DbType::TypeVar(t2) => {
-                    if let Some(matcher) = matcher {
-                        if matcher.match_reverse {
-                            return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
-                        }
+                    if matcher.is_matching_reverse() {
+                        return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
                     }
                     if variance == Variance::Covariant {
                         if let Some(bound) = &t2.type_var.bound {
-                            let m = self.matches(i_s, None, &Type::new(bound), variance);
+                            let m = self.simple_matches(i_s, &Type::new(bound), variance);
                             if m.bool() {
                                 return m;
                             }
                         } else if !t2.type_var.restrictions.is_empty() {
                             let m =
                                 t2.type_var.restrictions.iter().all(|r| {
-                                    self.matches(i_s, None, &Type::new(r), variance).bool()
+                                    self.simple_matches(i_s, &Type::new(r), variance).bool()
                                 });
                             if m {
                                 todo!();
@@ -418,14 +397,12 @@ impl<'a> Type<'a> {
                     }
                 }
                 DbType::Intersection(i2) if variance == Variance::Covariant => {
-                    if let Some(matcher) = matcher {
-                        if matcher.match_reverse {
-                            todo!()
-                        }
+                    if matcher.is_matching_reverse() {
+                        todo!()
                     }
                     return i2
                         .iter()
-                        .any(|t2| self.matches(i_s, None, &Type::new(t2), variance).bool())
+                        .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
                         .into();
                 }
                 DbType::Never => return Match::True, // TODO is this correct?
@@ -488,12 +465,12 @@ impl<'a> Type<'a> {
     fn matches_union(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         u1: &UnionType,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        let match_reverse = matcher.as_ref().map(|m| m.match_reverse).unwrap_or(false);
+        let match_reverse = matcher.is_matching_reverse();
         match value_type.maybe_db_type() {
             // TODO this should use the variance argument
             Some(DbType::Union(u2)) => match variance {
@@ -502,26 +479,23 @@ impl<'a> Type<'a> {
                     if match_reverse {
                         for g1 in u1.iter() {
                             let t1 = Type::new(g1);
-                            matches &= u2.iter().any(|g2| {
-                                t1.matches(i_s, matcher.as_deref_mut(), &Type::new(g2), variance)
-                                    .bool()
-                            })
+                            matches &= u2
+                                .iter()
+                                .any(|g2| t1.matches(i_s, matcher, &Type::new(g2), variance).bool())
                         }
                     } else {
                         for g2 in u2.iter() {
                             let t2 = Type::new(g2);
-                            matches &= u1.iter().any(|g1| {
-                                Type::new(g1)
-                                    .matches(i_s, matcher.as_deref_mut(), &t2, variance)
-                                    .bool()
-                            })
+                            matches &= u1
+                                .iter()
+                                .any(|g1| Type::new(g1).matches(i_s, matcher, &t2, variance).bool())
                         }
                     }
                     matches.into()
                 }
                 Variance::Invariant => {
-                    self.is_super_type_of(i_s, matcher.as_deref_mut(), value_type)
-                        & self.is_sub_type_of(i_s, matcher.as_deref_mut(), value_type)
+                    self.is_super_type_of(i_s, matcher, value_type)
+                        & self.is_sub_type_of(i_s, matcher, value_type)
                 }
                 Variance::Contravariant => unreachable!(),
             },
@@ -530,7 +504,7 @@ impl<'a> Type<'a> {
                 .iter()
                 .any(|g| {
                     Type::new(g)
-                        .matches(i_s, matcher.as_deref_mut(), value_type, variance)
+                        .matches(i_s, matcher, value_type, variance)
                         .bool()
                 })
                 .into(),
@@ -539,7 +513,7 @@ impl<'a> Type<'a> {
 
     fn matches_class(
         i_s: &mut InferenceState,
-        matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         class1: &Class,
         value_type: &Type,
     ) -> Match {
@@ -559,35 +533,32 @@ impl<'a> Type<'a> {
 
     fn matches_callable(
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
-        if matcher.is_none() {
+        if !matcher.has_type_var_matcher() {
             if let Some(c2_type_vars) = c2.type_vars.as_ref() {
                 let mut calculated_type_vars = vec![];
                 calculated_type_vars.resize_with(c2_type_vars.len(), Default::default);
-                let mut matcher = TypeVarMatcher::new_callable(c2, &mut calculated_type_vars);
-                matcher.match_reverse = true;
-                return Type::matches_callable(i_s, Some(&mut matcher), c1, c2);
+                let mut matcher =
+                    Matcher::new_reverse_callable_matcher(c2, &mut calculated_type_vars);
+                return Type::matches_callable(i_s, &mut matcher, c1, c2);
             }
         }
-        Type::new(&c1.result_type).is_super_type_of(
-            i_s,
-            matcher.as_deref_mut(),
-            &Type::new(&c2.result_type),
-        ) & matches_params(
-            i_s,
-            matcher,
-            c1.params.as_ref().map(|params| params.iter()),
-            c2.params.as_ref().map(|params| params.iter()),
-            Variance::Contravariant,
-        )
+        Type::new(&c1.result_type).is_super_type_of(i_s, matcher, &Type::new(&c2.result_type))
+            & matches_params(
+                i_s,
+                matcher,
+                c1.params.as_ref().map(|params| params.iter()),
+                c2.params.as_ref().map(|params| params.iter()),
+                Variance::Contravariant,
+            )
     }
 
     fn matches_tuple(
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         t1: &TupleContent,
         t2: &TupleContent,
         variance: Variance,
@@ -606,12 +577,7 @@ impl<'a> Type<'a> {
                                 &mut |i_s, type_| {
                                     let appeared =
                                         value_generics.run_on_next(i_s, &mut |i_s, g| {
-                                            matches &= type_.matches(
-                                                i_s,
-                                                matcher.as_deref_mut(),
-                                                &g,
-                                                variance,
-                                            );
+                                            matches &= type_.matches(i_s, matcher, &g, variance);
                                         });
                                     if appeared.is_none() {
                                         debug!("Generic not found for: {type_:?}");
@@ -630,7 +596,7 @@ impl<'a> Type<'a> {
                             .iter()
                             .all(|g2| {
                                 let t2 = Type::new(g2);
-                                t1.is_super_type_of(i_s, matcher.as_deref_mut(), &t2).bool()
+                                t1.is_super_type_of(i_s, matcher, &t2).bool()
                             })
                             .into()
                     }
@@ -717,7 +683,7 @@ impl<'a> Type<'a> {
     ) -> Match {
         self.error_if_not_matches_with_matcher(
             i_s,
-            None,
+            &mut Matcher::default(),
             value,
             Some(|i_s: &mut InferenceState, t1, t2, reason: &MismatchReason| callback(i_s, t1, t2)),
         )
@@ -726,18 +692,18 @@ impl<'a> Type<'a> {
     pub fn error_if_not_matches_with_matcher<'db>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         value: &Inferred,
         callback: Option<
             impl FnOnce(&mut InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason),
         >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
-        let matches = self.is_super_type_of(i_s, matcher.as_deref_mut(), &value_type);
+        let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
             let value_type = value.class_as_type(i_s);
             let mut fmt1 = FormatData::new_short(i_s.db);
-            let mut fmt2 = FormatData::with_matcher(i_s.db, matcher.as_deref());
+            let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);
             let mut input = value_type.format(&fmt1);
             let mut wanted = self.format(&fmt2);
             if input == wanted {
@@ -760,13 +726,14 @@ impl<'a> Type<'a> {
     pub fn try_to_resemble_context(
         self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        matcher: &mut Matcher,
         t: &Self,
     ) -> DbType {
         if let Some(class) = t.maybe_class(i_s.db) {
             if let Some(mro) = self.mro(i_s) {
                 for (_, value_type) in mro {
-                    if Self::matches_class(i_s, None, &class, &value_type).bool() {
+                    if Self::matches_class(i_s, &mut Matcher::default(), &class, &value_type).bool()
+                    {
                         return value_type.into_db_type(i_s);
                     }
                 }
@@ -786,7 +753,7 @@ impl<'a> Type<'a> {
                                             .map(|(g1, g2)| {
                                                 Type::new(g2).try_to_resemble_context(
                                                     i_s,
-                                                    matcher.as_deref_mut(),
+                                                    matcher,
                                                     &Type::new(g1),
                                                 )
                                             })
@@ -798,7 +765,7 @@ impl<'a> Type<'a> {
                                                 .iter()
                                                 .all(|g2| {
                                                     let t2 = Type::new(g2);
-                                                    t1.is_super_type_of(i_s, matcher.as_deref_mut(), &t2).bool()
+                                                    t1.is_super_type_of(i_s, matcher, &t2).bool()
                                                 })
                                                 .into()
                                             */
@@ -815,10 +782,10 @@ impl<'a> Type<'a> {
                     }
                 }
                 DbType::TypeVar(t) => {
-                    if let Some(matcher) = matcher {
+                    if matcher.has_type_var_matcher() {
                         let t =
                             Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type));
-                        return self.try_to_resemble_context(i_s, None, &t);
+                        return self.try_to_resemble_context(i_s, &mut Matcher::default(), &t);
                     }
                 }
                 DbType::Type(t1) => todo!(),
@@ -861,8 +828,8 @@ impl<'a> Type<'a> {
     pub fn on_any_class(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
-        callable: &mut impl FnMut(&mut InferenceState, Option<&mut TypeVarMatcher>, &Class) -> bool,
+        matcher: &mut Matcher,
+        callable: &mut impl FnMut(&mut InferenceState, &mut Matcher, &Class) -> bool,
     ) -> bool {
         if let Some(class) = self.maybe_class(i_s.db) {
             callable(i_s, matcher, &class)
@@ -870,10 +837,10 @@ impl<'a> Type<'a> {
             match self.maybe_db_type() {
                 Some(DbType::Union(union_type)) => union_type
                     .iter()
-                    .any(|t| Type::new(t).on_any_class(i_s, matcher.as_deref_mut(), callable)),
+                    .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
                 Some(db_type @ DbType::TypeVar(_)) => {
-                    if let Some(m) = matcher.as_mut() {
-                        Type::owned(m.replace_type_vars_for_nested_context(i_s, db_type))
+                    if matcher.has_type_var_matcher() {
+                        Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type))
                             .on_any_class(i_s, matcher, callable)
                     } else {
                         false
@@ -889,7 +856,7 @@ impl<'a> Type<'a> {
             (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s) {
                     for (_, c2) in c2.mro(i_s) {
-                        if c1.is_same_type(i_s, None, &c2).bool() {
+                        if c1.is_simple_same_type(i_s, &c2).bool() {
                             return c1.as_db_type(i_s);
                         }
                     }

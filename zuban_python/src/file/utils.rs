@@ -4,7 +4,7 @@ use crate::database::{ComplexPoint, DbType, GenericsList};
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::inference_state::InferenceState;
-use crate::matching::{MismatchReason, ResultContext, Type, TypeVarMatcher};
+use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
@@ -43,13 +43,7 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                     type_.on_any_class(i_s, matcher, &mut |i_s, mut matcher, list_cls| {
                         if list_cls.node_ref == i_s.db.python_state.list() {
                             let generic_t = list_cls.generics().nth(i_s, 0.into());
-                            found = check_list_with_context(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                generic_t,
-                                file,
-                                list,
-                            );
+                            found = check_list_with_context(i_s, matcher, generic_t, file, list);
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
@@ -76,7 +70,7 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
 
 fn check_list_with_context(
     i_s: &mut InferenceState,
-    mut matcher: Option<&mut TypeVarMatcher>,
+    matcher: &mut Matcher,
     generic_t: Type,
     file: &PythonFile,
     list: List,
@@ -91,7 +85,7 @@ fn check_list_with_context(
             let mut check_item = |i_s: &mut InferenceState, inferred: Inferred, index| {
                 let m = generic_t.error_if_not_matches_with_matcher(
                     i_s,
-                    matcher.as_deref_mut(),
+                    matcher,
                     &inferred,
                     Some(
                         |i_s: &mut InferenceState, got, expected, _: &MismatchReason| {
@@ -111,11 +105,7 @@ fn check_list_with_context(
                         i_s.db.python_state.list().as_link(),
                         Some(GenericsList::new_generics(Box::new([inferred
                             .class_as_type(i_s)
-                            .try_to_resemble_context(
-                                i_s,
-                                matcher.as_deref_mut(),
-                                &generic_t,
-                            )]))),
+                            .try_to_resemble_context(i_s, matcher, &generic_t)]))),
                     ));
                 }
             };

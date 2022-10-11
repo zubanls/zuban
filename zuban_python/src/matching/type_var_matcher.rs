@@ -2,7 +2,7 @@ use parsa_python_ast::ParamKind;
 
 use super::params::{InferrableParamIterator2, Param};
 use super::{
-    ArgumentIndexWithParam, FormatData, Generics, Match, MismatchReason, ResultContext,
+    ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, ResultContext,
     SignatureMatch, Type,
 };
 use crate::arguments::{ArgumentKind, Arguments};
@@ -17,7 +17,7 @@ use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, OnTypeError, Value};
 
 #[derive(Debug, Clone, Copy)]
-enum FunctionOrCallable<'a> {
+pub enum FunctionOrCallable<'a> {
     Function(Function<'a>),
     Callable(&'a CallableContent),
 }
@@ -91,17 +91,17 @@ impl TypeVarBound {
         // First check if the value is between the bounds.
         let matches = match self {
             Self::Invariant(t) => {
-                let m = Type::new(t).is_same_type(i_s, None, other);
+                let m = Type::new(t).is_simple_same_type(i_s, other);
                 if m.bool() {
                     return m; // In the false case we still have to check for the variance cases.
                 }
                 m
             }
-            Self::Lower(lower) => Type::new(lower).is_super_type_of(i_s, None, other),
-            Self::Upper(upper) => Type::new(upper).is_sub_type_of(i_s, None, other),
+            Self::Lower(lower) => Type::new(lower).is_simple_super_type_of(i_s, other),
+            Self::Upper(upper) => Type::new(upper).is_simple_sub_type_of(i_s, other),
             Self::LowerAndUpper(lower, upper) => {
-                Type::new(lower).is_super_type_of(i_s, None, other)
-                    & Type::new(upper).is_sub_type_of(i_s, None, other)
+                Type::new(lower).is_simple_super_type_of(i_s, other)
+                    & Type::new(upper).is_simple_sub_type_of(i_s, other)
             }
         };
         if matches.bool() {
@@ -122,7 +122,7 @@ impl TypeVarBound {
                     | Self::Upper(ref t)
                     | Self::LowerAndUpper(_, ref t) = self
                     {
-                        let m = Type::new(t).is_super_type_of(i_s, None, other);
+                        let m = Type::new(t).is_simple_super_type_of(i_s, other);
                         if !m.bool() && matches!(self, Self::Upper(_)) {
                             *self = Self::Upper(Type::new(t).common_base_class(i_s, other));
                             return Match::True;
@@ -132,7 +132,7 @@ impl TypeVarBound {
                 }
                 Variance::Contravariant => {
                     if let Self::Invariant(t) | Self::Lower(t) | Self::LowerAndUpper(t, _) = self {
-                        return Type::new(t).is_sub_type_of(i_s, None, other);
+                        return Type::new(t).is_simple_sub_type_of(i_s, other);
                     }
                 }
             };
@@ -152,14 +152,14 @@ pub struct CalculatedTypeVar {
 pub struct TypeVarMatcher<'a> {
     class: Option<&'a Class<'a>>,
     func_or_callable: FunctionOrCallable<'a>,
-    calculated_type_vars: &'a mut [CalculatedTypeVar],
+    pub(super) calculated_type_vars: &'a mut [CalculatedTypeVar],
     match_in_definition: PointLink,
     parent_matcher: Option<&'a mut Self>,
     pub match_reverse: bool, // For contravariance subtypes
 }
 
 impl<'a> TypeVarMatcher<'a> {
-    fn new(
+    pub fn new(
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
         match_in_definition: PointLink,
@@ -174,30 +174,6 @@ impl<'a> TypeVarMatcher<'a> {
             match_reverse: false,
             parent_matcher: None, //parent_matcher,
         }
-    }
-
-    pub fn new_callable(
-        callable: &'a CallableContent,
-        calculated_type_vars: &'a mut [CalculatedTypeVar],
-    ) -> Self {
-        Self::new(
-            None,
-            FunctionOrCallable::Callable(callable),
-            callable.defined_at,
-            calculated_type_vars,
-        )
-    }
-
-    pub fn new_function(
-        function: Function<'a>,
-        calculated_type_vars: &'a mut [CalculatedTypeVar],
-    ) -> Self {
-        Self::new(
-            None,
-            FunctionOrCallable::Function(function),
-            function.node_ref.as_link(),
-            calculated_type_vars,
-        )
     }
 
     pub(super) fn class(&self) -> Option<Class<'_>> {
@@ -240,7 +216,7 @@ impl<'a> TypeVarMatcher<'a> {
                         } else if t2.type_var.restrictions.iter().all(|r2| {
                             type_var.restrictions.iter().any(|r1| {
                                 Type::new(r1)
-                                    .is_super_type_of(i_s, None, &Type::new(r2))
+                                    .is_simple_super_type_of(i_s, &Type::new(r2))
                                     .bool()
                             })
                         }) {
@@ -251,7 +227,8 @@ impl<'a> TypeVarMatcher<'a> {
                     }
                     _ => {
                         for restriction in type_var.restrictions.iter() {
-                            let m = Type::new(restriction).matches(i_s, None, value_type, variance);
+                            let m =
+                                Type::new(restriction).simple_matches(i_s, value_type, variance);
                             if m.bool() {
                                 if current.type_.is_some() {
                                     // This means that any is involved and multiple restrictions
@@ -271,7 +248,7 @@ impl<'a> TypeVarMatcher<'a> {
             }
             if let Some(bound) = &type_var.bound {
                 mismatch_constraints |= !Type::new(bound)
-                    .is_super_type_of(i_s, None, value_type)
+                    .is_simple_super_type_of(i_s, value_type)
                     .bool();
             }
             if mismatch_constraints {
@@ -298,7 +275,7 @@ impl<'a> TypeVarMatcher<'a> {
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class.generics.nth(i_s, type_var_usage.index);
-                    return g.matches(i_s, None, value_type, type_var.variance);
+                    return g.simple_matches(i_s, value_type, type_var.variance);
                 }
             }
             match self.func_or_callable {
@@ -593,7 +570,7 @@ fn calculate_type_vars<'db>(
     };
     let mut calculated_type_vars = vec![];
     calculated_type_vars.resize_with(type_vars_len, Default::default);
-    let mut matcher = match type_vars {
+    let matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
             class,
             func_or_callable,
@@ -619,37 +596,42 @@ fn calculate_type_vars<'db>(
             }
         }
     };
-    if let Some(matcher) = matcher.as_mut() {
+    let matcher = Matcher::new(matcher);
+    if matcher.has_type_var_matcher() {
         result_context.with_type_if_exists_and_replace_type_vars(i_s, |i_s, type_| {
             if let Some(class) = expected_return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
                 if let Some(type_vars) = class.type_vars(i_s) {
-                    type_.on_any_class(i_s, None, &mut |i_s, _, result_class| {
-                        if result_class.node_ref == class.node_ref {
-                            let mut calculating = matcher.calculated_type_vars.iter_mut();
-                            let mut i = 0;
-                            result_class
-                                .generics()
-                                .iter()
-                                .run_on_all(i_s, &mut |i_s, g| {
-                                    let calculated = calculating.next().unwrap();
-                                    if !g.is_any() {
-                                        let mut bound = TypeVarBound::new(
-                                            g.as_db_type(i_s),
-                                            type_vars[i].variance,
-                                        );
-                                        bound.invert_bounds();
-                                        calculated.type_ = Some(bound);
-                                        calculated.defined_by_result_context = true;
-                                        i += 1; // TODO please test that this works for multiple type vars
-                                    }
-                                });
-                            true
-                        } else {
-                            false
-                        }
-                    });
+                    type_.on_any_class(
+                        i_s,
+                        &mut Matcher::default(),
+                        &mut |i_s, _, result_class| {
+                            if result_class.node_ref == class.node_ref {
+                                let mut calculating = matcher.iter_calculated_type_vars();
+                                let mut i = 0;
+                                result_class
+                                    .generics()
+                                    .iter()
+                                    .run_on_all(i_s, &mut |i_s, g| {
+                                        let calculated = calculating.next().unwrap();
+                                        if !g.is_any() {
+                                            let mut bound = TypeVarBound::new(
+                                                g.as_db_type(i_s),
+                                                type_vars[i].variance,
+                                            );
+                                            bound.invert_bounds();
+                                            calculated.type_ = Some(bound);
+                                            calculated.defined_by_result_context = true;
+                                            i += 1; // TODO please test that this works for multiple type vars
+                                        }
+                                    });
+                                true
+                            } else {
+                                false
+                            }
+                        },
+                    );
                 }
             } else {
                 let result_type = match func_or_callable {
@@ -657,8 +639,8 @@ fn calculate_type_vars<'db>(
                     FunctionOrCallable::Callable(c) => Type::new(&c.result_type),
                 };
                 // Fill the type var arguments from context
-                result_type.is_sub_type_of(i_s, Some(matcher), type_);
-                for calculated in matcher.calculated_type_vars.iter_mut() {
+                result_type.is_sub_type_of(i_s, &mut matcher, type_);
+                for calculated in matcher.iter_calculated_type_vars() {
                     if let Some(type_) = &mut calculated.type_ {
                         let has_any = match type_ {
                             TypeVarBound::Invariant(t)
@@ -683,7 +665,7 @@ fn calculate_type_vars<'db>(
             function.type_vars(i_s);
             calculate_type_vars_for_params(
                 i_s,
-                matcher.as_mut(),
+                &mut matcher,
                 class,
                 Some(&function),
                 args,
@@ -695,7 +677,7 @@ fn calculate_type_vars<'db>(
             if let Some(params) = &callable.params {
                 calculate_type_vars_for_params(
                     i_s,
-                    matcher.as_mut(),
+                    &mut matcher,
                     None,
                     None,
                     args,
@@ -707,7 +689,7 @@ fn calculate_type_vars<'db>(
             }
         }
     };
-    let type_arguments = matcher.is_some().then(|| {
+    let type_arguments = matcher.has_type_var_matcher().then(|| {
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
@@ -740,7 +722,7 @@ fn calculate_type_vars<'db>(
 
 fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
-    mut matcher: Option<&mut TypeVarMatcher>,
+    matcher: &mut Matcher,
     class: Option<&Class>,
     function: Option<&Function>,
     args: &dyn Arguments<'db>,
@@ -760,7 +742,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         }
         if let Some(ref argument) = p.argument {
             if let Some(annotation_type) = p.param.annotation_type(i_s) {
-                let value = if let Some(matcher) = matcher.as_deref_mut() {
+                let value = if matcher.has_type_var_matcher() {
                     argument.infer(
                         i_s,
                         &mut ResultContext::WithMatcher {
@@ -773,7 +755,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                 };
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,
-                    matcher.as_deref_mut(),
+                    matcher,
                     &value,
                     on_type_error.map(|on_type_error| {
                         |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {

@@ -1,6 +1,6 @@
 use parsa_python_ast::ParamKind;
 
-use super::{Match, TypeVarMatcher};
+use super::{Match, Matcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{CallableParam, CallableParams, Database, DbType, PointLink, Variance};
 use crate::inference_state::InferenceState;
@@ -21,21 +21,21 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
 
 pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
-    mut matcher: Option<&mut TypeVarMatcher>,
+    mut matcher: &mut Matcher,
     params1: Option<impl Iterator<Item = P1>>,
     params2: Option<impl Iterator<Item = P2>>,
     variance: Variance,
 ) -> Match {
     fn check_annotation<'db: 'x, 'x>(
         i_s: &mut InferenceState<'db, '_>,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        mut matcher: &mut Matcher,
         param1: impl Param<'x>,
         param2: impl Param<'x>,
         variance: Variance,
     ) -> Match {
         if let Some(t1) = param1.annotation_type(i_s) {
             if let Some(t2) = param2.annotation_type(i_s) {
-                return t1.matches(i_s, matcher.as_deref_mut(), &t2, variance);
+                return t1.matches(i_s, matcher, &t2, variance);
             }
         }
         Match::True
@@ -58,13 +58,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         ParamKind::PositionalOnly => match pt2 {
                             ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => true,
                             ParamKind::Starred => {
-                                let m = check_annotation(
-                                    i_s,
-                                    matcher.as_deref_mut(),
-                                    param1,
-                                    param2,
-                                    variance,
-                                );
+                                let m = check_annotation(i_s, matcher, param1, param2, variance);
                                 if !m.bool() {
                                     return m;
                                 }
@@ -80,7 +74,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                     if maybe_kwargs.kind(i_s.db) != ParamKind::DoubleStarred
                                         || !check_annotation(
                                             i_s,
-                                            matcher.as_deref_mut(),
+                                            matcher,
                                             param2,
                                             maybe_kwargs,
                                             Variance::Invariant,
@@ -93,15 +87,11 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                         // Since this is a *args, **kwargs signature we just check
                                         // that all annotations are matching.
                                         matches &= check_annotation(
-                                            i_s,
-                                            matcher.as_deref_mut(),
-                                            param1,
-                                            param2,
-                                            variance,
+                                            i_s, matcher, param1, param2, variance,
                                         );
                                         matches &= check_annotation(
                                             i_s,
-                                            matcher.as_deref_mut(),
+                                            matcher,
                                             param1,
                                             maybe_kwargs,
                                             variance,
@@ -151,13 +141,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                 true
                             }
                             ParamKind::DoubleStarred => {
-                                let m = check_annotation(
-                                    i_s,
-                                    matcher.as_deref_mut(),
-                                    param1,
-                                    param2,
-                                    variance,
-                                );
+                                let m = check_annotation(i_s, matcher, param1, param2, variance);
                                 if !m.bool() {
                                     return m;
                                 }
@@ -171,8 +155,7 @@ pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     if !matches_kind || param1.has_default() && !param2.has_default() {
                         return Match::new_false();
                     }
-                    matches &=
-                        check_annotation(i_s, matcher.as_deref_mut(), param1, param2, variance)
+                    matches &= check_annotation(i_s, matcher, param1, param2, variance)
                 } else {
                     return Match::new_false();
                 }

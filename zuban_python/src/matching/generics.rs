@@ -1,6 +1,6 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
-use super::{FormatData, Match, Type, TypeVarMatcher};
+use super::{FormatData, Match, Matcher, Type};
 use crate::database::{DbType, GenericsList, TypeVarIndex, TypeVars};
 use crate::debug;
 use crate::file::PythonFile;
@@ -170,7 +170,7 @@ impl<'a> Generics<'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: Option<&mut TypeVarMatcher>,
+        mut matcher: &mut Matcher,
         value_generics: Self,
         type_vars: &TypeVars,
     ) -> Match {
@@ -180,7 +180,7 @@ impl<'a> Generics<'a> {
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                 let v = type_var_iterator.next().unwrap().variance;
-                matches &= type_.matches(i_s, matcher.as_deref_mut(), &g, v);
+                matches &= type_.matches(i_s, matcher, &g, v);
             });
             if appeared.is_none() {
                 debug!("Generic not found for: {type_:?}");
