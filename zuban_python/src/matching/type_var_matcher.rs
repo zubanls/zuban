@@ -180,28 +180,24 @@ impl<'a> TypeVarMatcher<'a> {
         callable: &'a CallableContent,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
     ) -> Self {
-        Self {
-            class: None,
-            func_or_callable: FunctionOrCallable::Callable(callable),
+        Self::new(
+            None,
+            FunctionOrCallable::Callable(callable),
+            callable.defined_at,
             calculated_type_vars,
-            match_in_definition: callable.defined_at,
-            match_reverse: false,
-            parent_matcher: None, //parent_matcher,
-        }
+        )
     }
 
     pub fn new_function(
         function: Function<'a>,
         calculated_type_vars: &'a mut [CalculatedTypeVar],
     ) -> Self {
-        Self {
-            class: None,
-            func_or_callable: FunctionOrCallable::Function(function),
+        Self::new(
+            None,
+            FunctionOrCallable::Function(function),
+            function.node_ref.as_link(),
             calculated_type_vars,
-            match_in_definition: function.node_ref.as_link(),
-            match_reverse: false,
-            parent_matcher: None, //parent_matcher,
-        }
+        )
     }
 
     pub(super) fn class(&self) -> Option<Class<'_>> {
