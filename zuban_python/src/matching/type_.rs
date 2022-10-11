@@ -252,15 +252,20 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
-                DbType::RecursiveAlias(rec) => {
-                    let g = rec.type_alias(i_s.db).as_db_type(&mut |t| {
-                        rec.generics
-                            .as_ref()
-                            .map(|g| g.nth(t.index).unwrap().clone())
-                            .unwrap_or(DbType::Any)
-                    });
-                    Type::Type(g).matches_internal(i_s, matcher, value_type, variance)
-                }
+                DbType::RecursiveAlias(rec1) => match value_type.maybe_db_type() {
+                    Some(DbType::RecursiveAlias(rec2)) => {
+                        todo!()
+                    }
+                    _ => {
+                        let g = rec1.type_alias(i_s.db).as_db_type(&mut |t| {
+                            rec1.generics
+                                .as_ref()
+                                .map(|g| g.nth(t.index).unwrap().clone())
+                                .unwrap_or(DbType::Any)
+                        });
+                        Type::Type(g).matches_internal(i_s, matcher, value_type, variance)
+                    }
+                },
             },
         }
     }
