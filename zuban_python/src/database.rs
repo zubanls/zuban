@@ -1509,6 +1509,9 @@ pub struct TypeAlias {
 
 impl TypeAlias {
     pub fn as_db_type_and_set_type_vars_any(&self) -> DbType {
+        if self.is_recursive {
+            todo!()
+        }
         if self.type_vars.is_empty() {
             self.db_type.as_ref().clone()
         } else {
@@ -1521,6 +1524,9 @@ impl TypeAlias {
     }
 
     pub fn as_db_type(&self, callable: &mut impl FnMut(&TypeVarUsage) -> DbType) -> Cow<DbType> {
+        if self.is_recursive {
+            todo!()
+        }
         if self.type_vars.is_empty() {
             Cow::Borrowed(self.db_type.as_ref())
         } else {
@@ -1530,6 +1536,10 @@ impl TypeAlias {
 
     pub fn name<'db>(&self, db: &'db Database) -> Option<&'db str> {
         self.name.map(|name| NodeRef::from_link(db, name).as_code())
+    }
+
+    pub fn is_class(&self) -> bool {
+        matches!(self.db_type.as_ref(), DbType::Class(_, _))
     }
 }
 

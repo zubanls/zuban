@@ -1204,7 +1204,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
         alias: &TypeAlias,
         slice_type: SliceType,
     ) -> Inferred {
-        if !matches!(alias.db_type.as_ref(), DbType::Class(_, _)) {
+        if !alias.is_class() {
             slice_type
                 .as_node_ref()
                 .add_typing_issue(self.i_s.db, IssueType::OnlyClassTypeApplication);

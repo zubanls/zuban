@@ -1,6 +1,6 @@
 use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{ComplexPoint, DbType, TypeAlias as DbTypeAlias};
+use crate::database::{ComplexPoint, TypeAlias as DbTypeAlias};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
@@ -57,7 +57,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        if matches!(self.alias.db_type.as_ref(), DbType::Class(_, _)) {
+        if self.alias.is_class() {
             return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                 self.alias.as_db_type_and_set_type_vars_any(),
             )));
