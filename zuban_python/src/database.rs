@@ -748,8 +748,13 @@ impl DbType {
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
             Self::RecursiveAlias(rec) => {
-                let alias = rec.type_alias(format_data.db);
-                Box::from(alias.name(format_data.db).unwrap())
+                if format_data.has_already_seen_recursive_alias(rec) {
+                    let alias = rec.type_alias(format_data.db);
+                    Box::from(alias.name(format_data.db).unwrap())
+                } else {
+                    let format_data = format_data.with_seen_recursive_alias(rec);
+                    rec.as_db_type(format_data.db).format(&format_data)
+                }
             }
         }
     }
@@ -1243,6 +1248,15 @@ impl RecursiveAlias {
             Some(ComplexPoint::TypeAlias(alias)) => alias,
             _ => unreachable!(),
         }
+    }
+
+    pub fn as_db_type<'db>(&self, db: &'db Database) -> Cow<'db, DbType> {
+        self.type_alias(db).replace_type_vars(true, &mut |t| {
+            self.generics
+                .as_ref()
+                .map(|g| g.nth(t.index).unwrap().clone())
+                .unwrap()
+        })
     }
 }
 

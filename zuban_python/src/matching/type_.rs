@@ -248,12 +248,7 @@ impl<'a> Type<'a> {
                         todo!()
                     }
                     _ => {
-                        let g = rec1.type_alias(i_s.db).replace_type_vars(true, &mut |t| {
-                            rec1.generics
-                                .as_ref()
-                                .map(|g| g.nth(t.index).unwrap().clone())
-                                .unwrap_or(DbType::Any)
-                        });
+                        let g = rec1.as_db_type(i_s.db);
                         Type::Type(g).matches_internal(i_s, matcher, value_type, variance)
                     }
                 },

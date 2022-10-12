@@ -1,20 +1,37 @@
 use super::Matcher;
-use crate::database::{Database, FormatStyle, TypeVarUsage};
+use crate::database::{Database, FormatStyle, RecursiveAlias, TypeVarUsage};
 
-pub struct FormatData<'db, 'a, 'b> {
+struct DisplayedRecursive<'a> {
+    current: &'a RecursiveAlias,
+    parent: Option<&'a DisplayedRecursive<'a>>,
+}
+
+impl DisplayedRecursive<'_> {
+    fn has_already_seen_recursive_alias(&self, rec: &RecursiveAlias) -> bool {
+        self.current == rec
+            || self
+                .parent
+                .map(|d| d.has_already_seen_recursive_alias(rec))
+                .unwrap_or(false)
+    }
+}
+
+pub struct FormatData<'db, 'a, 'b, 'c> {
     pub db: &'db Database,
     matcher: Option<&'b Matcher<'a>>,
     pub style: FormatStyle,
     pub verbose: bool,
+    displayed_recursive: Option<DisplayedRecursive<'c>>,
 }
 
-impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
+impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
     pub fn new_short(db: &'db Database) -> Self {
         Self {
             db,
             matcher: None,
             style: FormatStyle::Short,
             verbose: false,
+            displayed_recursive: None,
         }
     }
 
@@ -24,6 +41,7 @@ impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
             matcher: None,
             style,
             verbose: false,
+            displayed_recursive: None,
         }
     }
 
@@ -33,6 +51,7 @@ impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
             matcher: Some(matcher),
             style: FormatStyle::Short,
             verbose: false,
+            displayed_recursive: None,
         }
     }
 
@@ -46,6 +65,31 @@ impl<'db, 'a, 'b> FormatData<'db, 'a, 'b> {
             matcher: Some(matcher),
             style,
             verbose: false,
+            displayed_recursive: None,
+        }
+    }
+
+    pub fn with_seen_recursive_alias<'x: 'c>(
+        &'x self,
+        rec: &'x RecursiveAlias,
+    ) -> FormatData<'db, 'a, 'b, 'x> {
+        Self {
+            db: self.db,
+            matcher: self.matcher,
+            style: self.style,
+            verbose: self.verbose,
+            displayed_recursive: Some(DisplayedRecursive {
+                current: rec,
+                parent: self.displayed_recursive.as_ref(),
+            }),
+        }
+    }
+
+    pub fn has_already_seen_recursive_alias(&self, rec: &RecursiveAlias) -> bool {
+        if let Some(displayed_recursive) = &self.displayed_recursive {
+            displayed_recursive.has_already_seen_recursive_alias(rec)
+        } else {
+            false
         }
     }
 

@@ -2,11 +2,8 @@
 testUnboundTypeVar
 testGenericTypeAliasesImporting
 
-testRecursiveAliasImported
-testNoCrashOnRecursiveTupleFallback
-
 # Recursive Alias Formatting
-testRecursiveAliasesMutual
+testRecursiveAliasImported
 testRecursiveAliasesJoins
 # Recursive Alias Base Class
 testRecursiveAliasViaBaseClass
