@@ -8,14 +8,20 @@ use crate::database::{
 use crate::inference_state::InferenceState;
 use crate::value::Function;
 
+struct CheckedTypeRecursion {}
+
 #[derive(Default)]
 pub struct Matcher<'a> {
     type_var_matcher: Option<TypeVarMatcher<'a>>,
+    checked_type_recursions: Vec<CheckedTypeRecursion>,
 }
 
 impl<'a> Matcher<'a> {
     pub fn new(type_var_matcher: Option<TypeVarMatcher<'a>>) -> Self {
-        Self { type_var_matcher }
+        Self {
+            type_var_matcher,
+            ..Self::default()
+        }
     }
 
     pub fn new_reverse_callable_matcher(
@@ -31,6 +37,7 @@ impl<'a> Matcher<'a> {
         m.match_reverse = true;
         Self {
             type_var_matcher: Some(m),
+            ..Self::default()
         }
     }
 
@@ -50,6 +57,7 @@ impl<'a> Matcher<'a> {
             m.match_reverse = true;
             Self {
                 type_var_matcher: Some(m),
+                ..Self::default()
             }
         } else {
             Matcher::default()
