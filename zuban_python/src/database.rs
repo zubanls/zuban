@@ -1510,7 +1510,16 @@ pub struct TypeAlias {
 impl TypeAlias {
     pub fn as_db_type_and_set_type_vars_any(&self) -> DbType {
         if self.is_recursive {
-            todo!()
+            return DbType::RecursiveAlias(RecursiveAlias {
+                link: self.location,
+                generics: (!self.type_vars.is_empty()).then(|| {
+                    GenericsList::new_generics(
+                        std::iter::repeat(DbType::Any)
+                            .take(self.type_vars.len())
+                            .collect(),
+                    )
+                }),
+            });
         }
         if self.type_vars.is_empty() {
             self.db_type.as_ref().clone()
@@ -1525,7 +1534,24 @@ impl TypeAlias {
 
     pub fn as_db_type(&self, callable: &mut impl FnMut(&TypeVarUsage) -> DbType) -> Cow<DbType> {
         if self.is_recursive {
-            todo!()
+            return Cow::Owned(DbType::RecursiveAlias(RecursiveAlias {
+                link: self.location,
+                generics: (!self.type_vars.is_empty()).then(|| {
+                    GenericsList::new_generics(
+                        self.type_vars
+                            .iter()
+                            .enumerate()
+                            .map(|(i, type_var)| {
+                                callable(&TypeVarUsage {
+                                    type_var: type_var.clone(),
+                                    index: i.into(),
+                                    in_definition: todo!(), //self.location,
+                                })
+                            })
+                            .collect(),
+                    )
+                }),
+            }));
         }
         if self.type_vars.is_empty() {
             Cow::Borrowed(self.db_type.as_ref())
