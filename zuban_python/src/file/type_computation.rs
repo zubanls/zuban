@@ -55,9 +55,10 @@ pub(super) enum InvalidVariableType<'a> {
     Other,
 }
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 enum TypeComputationOrigin {
     TypeCommentOrAnnotation,
+    TypeApplication,
     CastTarget,
 }
 
@@ -118,6 +119,7 @@ impl InvalidVariableType<'_> {
             ),
             Self::Other => match origin {
                 TypeComputationOrigin::TypeCommentOrAnnotation => todo!(),
+                TypeComputationOrigin::TypeApplication => todo!(),
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
             },
         })
@@ -158,6 +160,7 @@ pub enum BaseClass {
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
         let mut tcomp = TypeComputation::new($self, $slice_type.as_node_ref().as_link(), None);
+        tcomp.origin = TypeComputationOrigin::TypeApplication;
         let t = tcomp.$method $args;
         Inferred::new_unsaved_complex(match t {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,

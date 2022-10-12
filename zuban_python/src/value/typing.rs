@@ -2,8 +2,6 @@ use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use parsa_python_ast::PrimaryContent;
-
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
@@ -16,7 +14,6 @@ use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
 use crate::matching::{FormatData, ResultContext, Type};
-use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TypingClass {
