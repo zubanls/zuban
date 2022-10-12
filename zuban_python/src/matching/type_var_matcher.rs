@@ -7,8 +7,7 @@ use super::{
 };
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage,
-    TypeVars, Variance,
+    CallableContent, DbType, FormatStyle, GenericsList, PointLink, TypeVarUsage, TypeVars, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -23,7 +22,7 @@ pub enum FunctionOrCallable<'a> {
 }
 
 #[derive(Debug, Clone)]
-enum TypeVarBound {
+pub enum TypeVarBound {
     Invariant(DbType),
     Lower(DbType),
     LowerAndUpper(DbType, DbType),
@@ -31,7 +30,7 @@ enum TypeVarBound {
 }
 
 impl TypeVarBound {
-    fn new(t: DbType, variance: Variance) -> Self {
+    pub fn new(t: DbType, variance: Variance) -> Self {
         match variance {
             Variance::Invariant => Self::Invariant(t),
             Variance::Covariant => Self::Upper(t),
@@ -48,7 +47,7 @@ impl TypeVarBound {
         }
     }
 
-    fn format(&self, i_s: &mut InferenceState, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, i_s: &mut InferenceState, style: FormatStyle) -> Box<str> {
         match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
                 t.format(&FormatData::with_style(i_s.db, style))
@@ -82,7 +81,7 @@ impl TypeVarBound {
         }
     }
 
-    fn merge_or_mismatch<'db>(
+    pub fn merge_or_mismatch<'db>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         other: &Type,
@@ -143,18 +142,18 @@ impl TypeVarBound {
 
 #[derive(Debug, Default)]
 pub struct CalculatedTypeVar {
-    type_: Option<TypeVarBound>,
+    pub(super) type_: Option<TypeVarBound>,
     //variance: Variance,
-    defined_by_result_context: bool,
+    pub(super) defined_by_result_context: bool,
 }
 
 #[derive(Debug)]
 pub struct TypeVarMatcher<'a> {
-    class: Option<&'a Class<'a>>,
-    func_or_callable: FunctionOrCallable<'a>,
+    pub(super) class: Option<&'a Class<'a>>,
+    pub(super) func_or_callable: FunctionOrCallable<'a>,
     pub(super) calculated_type_vars: &'a mut [CalculatedTypeVar],
-    match_in_definition: PointLink,
-    parent_matcher: Option<&'a mut Self>,
+    pub(super) match_in_definition: PointLink,
+    pub(super) parent_matcher: Option<&'a mut Self>,
     pub match_reverse: bool, // For contravariance subtypes
 }
 
@@ -184,141 +183,6 @@ impl<'a> TypeVarMatcher<'a> {
         }
     }
 
-    pub fn match_or_add_type_var(
-        &mut self,
-        i_s: &mut InferenceState,
-        type_var_usage: &TypeVarUsage,
-        value_type: &Type,
-        variance: Variance,
-    ) -> Match {
-        let type_var = &type_var_usage.type_var;
-        if self.match_in_definition == type_var_usage.in_definition {
-            let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
-            if let Some(current_type) = &mut current.type_ {
-                let m = current_type.merge_or_mismatch(i_s, value_type, variance);
-                return match m.bool() || !type_var_usage.type_var.restrictions.is_empty() {
-                    true => m,
-                    false => match current.defined_by_result_context {
-                        true => Match::new_false(),
-                        false => Match::False(MismatchReason::CannotInferTypeArgument(
-                            type_var_usage.index,
-                        )),
-                    },
-                };
-            }
-            // Before setting the type var, we need to check if the constraints match.
-            let mut mismatch_constraints = false;
-            if !type_var.restrictions.is_empty() {
-                match value_type.maybe_db_type() {
-                    Some(DbType::TypeVar(t2)) if !t2.type_var.restrictions.is_empty() => {
-                        if let Some(type_) = &current.type_ {
-                            todo!()
-                        } else if t2.type_var.restrictions.iter().all(|r2| {
-                            type_var.restrictions.iter().any(|r1| {
-                                Type::new(r1)
-                                    .is_simple_super_type_of(i_s, &Type::new(r2))
-                                    .bool()
-                            })
-                        }) {
-                            current.type_ =
-                                Some(TypeVarBound::Invariant(value_type.as_db_type(i_s)));
-                            return Match::True;
-                        }
-                    }
-                    _ => {
-                        for restriction in type_var.restrictions.iter() {
-                            let m =
-                                Type::new(restriction).simple_matches(i_s, value_type, variance);
-                            if m.bool() {
-                                if current.type_.is_some() {
-                                    // This means that any is involved and multiple restrictions
-                                    // are matching. Therefore just return Any.
-                                    current.type_ = Some(TypeVarBound::Invariant(DbType::Any));
-                                    return m;
-                                }
-                                current.type_ = Some(TypeVarBound::Invariant(restriction.clone()));
-                                if !value_type.has_any(i_s) {
-                                    return m;
-                                }
-                            }
-                        }
-                    }
-                }
-                mismatch_constraints = true;
-            }
-            if let Some(bound) = &type_var.bound {
-                mismatch_constraints |= !Type::new(bound)
-                    .is_simple_super_type_of(i_s, value_type)
-                    .bool();
-            }
-            if mismatch_constraints {
-                return Match::False(MismatchReason::ConstraintMismatch {
-                    expected: value_type.as_db_type(i_s),
-                    type_var: type_var_usage.type_var.clone(),
-                });
-            }
-            current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
-            if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
-                Match::TrueWithAny
-            } else {
-                Match::True
-            }
-        } else {
-            if let Some(parent_matcher) = self.parent_matcher.as_mut() {
-                return parent_matcher.match_or_add_type_var(
-                    i_s,
-                    type_var_usage,
-                    value_type,
-                    variance,
-                );
-            }
-            if let Some(class) = self.class {
-                if class.node_ref.as_link() == type_var_usage.in_definition {
-                    let g = class.generics.nth(i_s, type_var_usage.index);
-                    return g.simple_matches(i_s, value_type, type_var.variance);
-                }
-            }
-            match self.func_or_callable {
-                FunctionOrCallable::Function(f) => {
-                    // If we're in a class context, we must also be in a method.
-                    if let Some(func_class) = f.class {
-                        if type_var_usage.in_definition == func_class.node_ref.as_link() {
-                            // By definition, because the class did not match there will never be a
-                            // type_var_remap that is not defined.
-                            let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g = Type::new(&type_var_remap[type_var_usage.index]);
-                            // The remapping of type vars needs to be checked now. In a lot of
-                            // cases this is T -> T and S -> S, but it could also be T -> S and S
-                            // -> List[T] or something completely arbitrary.
-                            g.matches(i_s, Some(self), value_type, type_var.variance)
-                        } else {
-                            // Happens e.g. for testInvalidNumberOfTypeArgs
-                            // class C:  # Forgot to add type params here
-                            //     def __init__(self, t: T) -> None: pass
-                            if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
-                                if v == type_var_usage {
-                                    return Match::True;
-                                }
-                            }
-                            todo!(
-                                "TODO free type param annotations; searched ({:?}), found {:?}",
-                                self.match_in_definition,
-                                type_var_usage.in_definition,
-                            )
-                        }
-                    } else {
-                        todo!(
-                            "Probably nested generic functions??? {:?} {:?}",
-                            type_var_usage.in_definition,
-                            self.match_in_definition
-                        )
-                    }
-                }
-                FunctionOrCallable::Callable(c) => todo!(),
-            }
-        }
-    }
-
     pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
         type_.search_type_vars(&mut |t| {
             if t.in_definition == self.match_in_definition {
@@ -328,53 +192,6 @@ impl<'a> TypeVarMatcher<'a> {
                 }
             }
         });
-    }
-
-    pub fn format(
-        &self,
-        db: &Database,
-        type_var_usage: &TypeVarUsage,
-        style: FormatStyle,
-    ) -> Box<str> {
-        let i_s = &mut InferenceState::new(db);
-        // In general this whole function should look very similar to the matches function, since
-        // on mismatches this can be run.
-        if self.match_in_definition == type_var_usage.in_definition {
-            let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
-            if let Some(bound) = current.type_.as_ref() {
-                bound.format(i_s, style)
-            } else {
-                DbType::Never.format(&FormatData::with_style(db, style))
-            }
-        } else {
-            match self.func_or_callable {
-                FunctionOrCallable::Function(f) => {
-                    if let Some(class) = self.class {
-                        if class.node_ref.as_link() == type_var_usage.in_definition {
-                            return class
-                                .generics
-                                .nth(i_s, type_var_usage.index)
-                                .format(&FormatData::with_style(db, style));
-                        }
-                        let func_class = f.class.unwrap();
-                        if type_var_usage.in_definition == func_class.node_ref.as_link() {
-                            let type_var_remap = func_class.type_var_remap.unwrap();
-                            type_var_remap[type_var_usage.index].format(&FormatData {
-                                db,
-                                matcher: Some(self),
-                                style,
-                                verbose: false,
-                            })
-                        } else {
-                            type_var_usage.type_var.name(db).into()
-                        }
-                    } else {
-                        todo!("Probably nested generic functions???")
-                    }
-                }
-                FunctionOrCallable::Callable(c) => todo!(),
-            }
-        }
     }
 
     pub fn replace_type_vars_for_nested_context(
@@ -596,7 +413,7 @@ fn calculate_type_vars<'db>(
             }
         }
     };
-    let matcher = Matcher::new(matcher);
+    let mut matcher = Matcher::new(matcher);
     if matcher.has_type_var_matcher() {
         result_context.with_type_if_exists_and_replace_type_vars(i_s, |i_s, type_| {
             if let Some(class) = expected_return_class {

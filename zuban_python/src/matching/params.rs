@@ -21,14 +21,14 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
 
 pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
-    mut matcher: &mut Matcher,
+    matcher: &mut Matcher,
     params1: Option<impl Iterator<Item = P1>>,
     params2: Option<impl Iterator<Item = P2>>,
     variance: Variance,
 ) -> Match {
     fn check_annotation<'db: 'x, 'x>(
         i_s: &mut InferenceState<'db, '_>,
-        mut matcher: &mut Matcher,
+        matcher: &mut Matcher,
         param1: impl Param<'x>,
         param2: impl Param<'x>,
         variance: Variance,

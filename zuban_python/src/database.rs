@@ -740,9 +740,7 @@ impl DbType {
             .into(),
             Self::Union(union) => union.format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
-            Self::TypeVar(t) => format_data
-                .matcher
-                .format(format_data.db, t, format_data.style),
+            Self::TypeVar(t) => format_data.format_type_var(t),
             Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),

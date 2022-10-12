@@ -40,7 +40,7 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                 self.i_s,
                 |i_s: &mut InferenceState<'db, '_>, type_, matcher| {
                     let mut found = None;
-                    type_.on_any_class(i_s, matcher, &mut |i_s, mut matcher, list_cls| {
+                    type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
                         if list_cls.node_ref == i_s.db.python_state.list() {
                             let generic_t = list_cls.generics().nth(i_s, 0.into());
                             found = check_list_with_context(i_s, matcher, generic_t, file, list);

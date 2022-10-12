@@ -170,7 +170,7 @@ impl<'a> Generics<'a> {
     pub fn matches(
         &self,
         i_s: &mut InferenceState,
-        mut matcher: &mut Matcher,
+        matcher: &mut Matcher,
         value_generics: Self,
         type_vars: &TypeVars,
     ) -> Match {
