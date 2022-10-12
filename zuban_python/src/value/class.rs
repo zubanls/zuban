@@ -10,7 +10,9 @@ use crate::database::{
     MroIndex, ParentScope, Point, PointLink, PointType, TypeVar, TypeVarUsage, TypeVars,
 };
 use crate::diagnostics::IssueType;
-use crate::file::{BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation};
+use crate::file::{
+    BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation, TypeComputationOrigin,
+};
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -256,6 +258,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                                 todo!("Maybe class in func");
                             }),
+                            TypeComputationOrigin::BaseClass,
                         )
                         .compute_base_class(n.expression());
                         match base {

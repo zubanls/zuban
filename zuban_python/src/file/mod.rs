@@ -33,7 +33,7 @@ use crate::workspaces::DirContent;
 pub use class_type_var_finder::ClassTypeVarFinder;
 use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
-pub use type_computation::{BaseClass, TypeComputation};
+pub use type_computation::{BaseClass, TypeComputation, TypeComputationOrigin};
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);
@@ -672,7 +672,12 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
                 let mut x = type_computation_for_variable_annotation;
-                let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut x));
+                let mut comp = TypeComputation::new(
+                    self,
+                    node_ref.as_link(),
+                    Some(&mut x),
+                    TypeComputationOrigin::TypeCommentOrAnnotation,
+                );
                 comp.compute_annotation(annotation);
                 comp.into_type_vars(|inf, recalculate_type_vars| {
                     inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);

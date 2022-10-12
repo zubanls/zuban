@@ -15,7 +15,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{PythonFile, TypeComputation};
+use crate::file::{PythonFile, TypeComputation, TypeComputationOrigin};
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -235,6 +235,7 @@ impl<'db: 'a, 'a> Function<'a> {
             &mut inference,
             self.node_ref.as_link(),
             Some(&mut on_type_var),
+            TypeComputationOrigin::TypeCommentOrAnnotation,
         );
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {

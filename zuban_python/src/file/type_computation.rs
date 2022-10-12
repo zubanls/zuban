@@ -56,10 +56,12 @@ pub(super) enum InvalidVariableType<'a> {
 }
 
 #[derive(Clone, Copy, PartialEq)]
-enum TypeComputationOrigin {
+pub enum TypeComputationOrigin {
     TypeCommentOrAnnotation,
     TypeApplication,
+    TypeAlias,
     CastTarget,
+    BaseClass,
 }
 
 impl InvalidVariableType<'_> {
@@ -118,9 +120,8 @@ impl InvalidVariableType<'_> {
                 format!("Invalid type: try using Literal[{s}] instead?").into(),
             ),
             Self::Other => match origin {
-                TypeComputationOrigin::TypeCommentOrAnnotation => todo!(),
-                TypeComputationOrigin::TypeApplication => todo!(),
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
+                _ => todo!(),
             },
         })
     }
@@ -159,8 +160,7 @@ pub enum BaseClass {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
-        let mut tcomp = TypeComputation::new($self, $slice_type.as_node_ref().as_link(), None);
-        tcomp.origin = TypeComputationOrigin::TypeApplication;
+        let mut tcomp = TypeComputation::new($self, $slice_type.as_node_ref().as_link(), None, TypeComputationOrigin::TypeApplication);
         let t = tcomp.$method $args;
         Inferred::new_unsaved_complex(match t {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,
@@ -234,6 +234,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         inference: &'c mut PythonInference<'db, 'file, 'a, 'b>,
         for_definition: PointLink,
         type_var_callback: Option<TypeVarCallback<'db, 'c>>,
+        origin: TypeComputationOrigin,
     ) -> Self {
         Self {
             inference,
@@ -243,7 +244,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             type_var_callback,
             errors_already_calculated: false,
             has_type_vars: false,
-            origin: TypeComputationOrigin::TypeCommentOrAnnotation,
+            origin,
             is_recursive_alias: false,
         }
     }
@@ -1436,8 +1437,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                         }))
                     };
                 let p = file.points.get(expr.index());
-                let mut comp =
-                    TypeComputation::new(self, in_definition, Some(&mut type_var_callback));
+                let mut comp = TypeComputation::new(
+                    self,
+                    in_definition,
+                    Some(&mut type_var_callback),
+                    TypeComputationOrigin::TypeAlias,
+                );
                 comp.errors_already_calculated = p.calculated();
                 let t = comp.compute_type(expr);
                 let complex = match t {
@@ -1522,6 +1527,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                             &mut inference,
                             assignment_node_ref.as_link(),
                             Some(&mut x),
+                            TypeComputationOrigin::TypeCommentOrAnnotation,
                         );
                         comp.cache_annotation_internal(index, expr);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
@@ -1579,8 +1585,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                 } else {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
                     let mut x = type_computation_for_variable_annotation;
-                    let mut comp =
-                        TypeComputation::new(self, assignment_node_ref.as_link(), Some(&mut x));
+                    let mut comp = TypeComputation::new(
+                        self,
+                        assignment_node_ref.as_link(),
+                        Some(&mut x),
+                        TypeComputationOrigin::TypeCommentOrAnnotation,
+                    );
                     let t = comp.compute_type(expr);
                     let mut db_type = comp.as_db_type(t, expr_node_ref);
                     let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
@@ -1600,8 +1610,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
     pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Inferred {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
-        let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut x));
-        comp.origin = TypeComputationOrigin::CastTarget;
+        let mut comp = TypeComputation::new(
+            self,
+            node_ref.as_link(),
+            Some(&mut x),
+            TypeComputationOrigin::CastTarget,
+        );
 
         let t = comp.compute_type(named_expr.expression());
         let mut db_type = comp.as_db_type(t, node_ref);
@@ -1616,7 +1630,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
         let mut on_type_var =
             |_: &mut InferenceState, _: &_, type_var, _: NodeRef, current_callable| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
-        let mut comp = TypeComputation::new(self, node_ref.as_link(), Some(&mut on_type_var));
+        let mut comp = TypeComputation::new(
+            self,
+            node_ref.as_link(),
+            Some(&mut on_type_var),
+            TypeComputationOrigin::TypeCommentOrAnnotation,
+        );
         let t = comp.compute_type(expr);
         if matches!(t, TypeContent::InvalidVariable(_)) {
             // TODO this is a bit weird and should probably generate other errors
