@@ -1404,7 +1404,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
         if let Some((name_def, expr)) = assignment.maybe_simple_type_expression_assignment() {
             debug_assert!(file.points.get(name_def.index()).calculated());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
-            let in_definition = NodeRef::new(file, assignment.index()).as_link();
+            let in_definition = cached_type_node_ref.as_link();
             if let Some(tv) = inferred.maybe_type_var(self.i_s) {
                 TypeNameLookup::TypeVar(tv)
             } else {
