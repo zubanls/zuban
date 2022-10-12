@@ -748,7 +748,15 @@ impl DbType {
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
             Self::RecursiveAlias(rec) => {
-                if format_data.has_already_seen_recursive_alias(rec) {
+                if let Some(generics) = &rec.generics {
+                    let alias = rec.type_alias(format_data.db);
+                    format!(
+                        "{}[{}]",
+                        alias.name(format_data.db).unwrap(),
+                        generics.format(format_data)
+                    )
+                    .into()
+                } else if format_data.has_already_seen_recursive_alias(rec) {
                     let alias = rec.type_alias(format_data.db);
                     Box::from(alias.name(format_data.db).unwrap())
                 } else {

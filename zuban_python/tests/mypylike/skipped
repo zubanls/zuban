@@ -7,7 +7,6 @@ testRecursiveAliasViaBaseClass
 testRecursiveAliasViaBaseClassImported
 # Recursive Alias --enable-recursive-aliases
 testRecursiveAliasesJoins
-testRecursiveAliasBasicGenericSubtype
 testRecursiveAliasesRestrictions2
 testRecursiveAliasWithRecursiveInstance
 testRecursiveAliasWithRecursiveInstanceInference
