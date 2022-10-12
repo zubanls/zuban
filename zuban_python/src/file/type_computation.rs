@@ -166,13 +166,13 @@ macro_rules! compute_type_application {
                     db_type = recalculate_type_vars(&db_type);
                 });
                 if type_vars.len() > 0 {
-                    ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                        name: None,
+                    ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
                         type_vars,
-                        location: $slice_type.as_node_ref().as_link(),
-                        db_type: Rc::new(db_type),
-                        is_recursive: false,
-                    }))
+                        $slice_type.as_node_ref().as_link(),
+                        None,
+                        Rc::new(db_type),
+                        false,
+                    )))
                 } else {
                     ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
                 }
@@ -1449,13 +1449,13 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                         let db_type = comp.as_db_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let is_recursive = comp.is_recursive_alias;
-                        ComplexPoint::TypeAlias(Box::new(TypeAlias {
-                            type_vars: type_var_manager.into_type_vars(),
-                            location: in_definition,
-                            name: Some(PointLink::new(file.file_index(), name_def.name().index())),
-                            db_type: Rc::new(db_type),
+                        ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
+                            type_var_manager.into_type_vars(),
+                            in_definition,
+                            Some(PointLink::new(file.file_index(), name_def.name().index())),
+                            Rc::new(db_type),
                             is_recursive,
-                        }))
+                        )))
                     }
                 };
                 cached_type_node_ref.insert_complex(complex, Locality::Todo);

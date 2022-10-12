@@ -1503,11 +1503,28 @@ pub struct TypeAlias {
     pub type_vars: TypeVars,
     pub location: PointLink,
     pub name: Option<PointLink>,
-    pub db_type: Rc<DbType>,
-    pub is_recursive: bool,
+    // This is intentionally private, it should not be used anywhere else, because the behavior of
+    // a type alias that has `is_recursive` is different.
+    db_type: Rc<DbType>,
+    is_recursive: bool,
 }
 
 impl TypeAlias {
+    pub fn new(
+        type_vars: TypeVars,
+        location: PointLink,
+        name: Option<PointLink>,
+        db_type: Rc<DbType>,
+        is_recursive: bool,
+    ) -> Self {
+        Self {
+            type_vars,
+            location,
+            name,
+            db_type,
+            is_recursive,
+        }
+    }
     pub fn as_db_type_and_set_type_vars_any(&self) -> DbType {
         if self.is_recursive {
             return DbType::RecursiveAlias(RecursiveAlias {
