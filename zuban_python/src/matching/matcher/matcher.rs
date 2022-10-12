@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::super::{FormatData, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{CalculatedTypeVar, FunctionOrCallable, TypeVarMatcher};
@@ -9,7 +11,10 @@ use crate::database::{
 use crate::inference_state::InferenceState;
 use crate::value::Function;
 
-struct CheckedTypeRecursion {}
+struct CheckedTypeRecursion {
+    recursive_alias1: Rc<RecursiveAlias>,
+    recursive_alias2: Rc<RecursiveAlias>,
+}
 
 #[derive(Default)]
 pub struct Matcher<'a> {
@@ -310,6 +315,24 @@ impl<'a> Matcher<'a> {
         rec1: &RecursiveAlias,
         rec2: &RecursiveAlias,
     ) -> bool {
+        for checked in &self.checked_type_recursions {
+            if rec1 == checked.recursive_alias1.as_ref()
+                && rec2 == checked.recursive_alias2.as_ref()
+            {
+                return true;
+            }
+        }
         false
+    }
+
+    pub fn add_checked_type_recursion(
+        &mut self,
+        recursive_alias1: Rc<RecursiveAlias>,
+        recursive_alias2: Rc<RecursiveAlias>,
+    ) {
+        self.checked_type_recursions.push(CheckedTypeRecursion {
+            recursive_alias1,
+            recursive_alias2,
+        })
     }
 }

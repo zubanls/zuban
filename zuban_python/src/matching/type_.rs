@@ -248,7 +248,11 @@ impl<'a> Type<'a> {
                         if matcher.has_already_matched_recursive_alias(rec1, rec2) {
                             Match::True
                         } else {
-                            todo!()
+                            // We are going to check it, so we mark it as checked.
+                            matcher.add_checked_type_recursion(rec1.clone(), rec2.clone());
+                            let t1 = rec1.as_db_type(i_s.db);
+                            let t2 = rec2.as_db_type(i_s.db);
+                            Type::Type(t1).matches_internal(i_s, matcher, &Type::Type(t2), variance)
                         }
                     }
                     _ => {

@@ -635,7 +635,7 @@ pub enum DbType {
     Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
-    RecursiveAlias(RecursiveAlias),
+    RecursiveAlias(Rc<RecursiveAlias>),
     None,
     Any,
     Never,
@@ -902,10 +902,10 @@ impl DbType {
                 }),
                 result_type: content.result_type.replace_type_vars(callable),
             })),
-            Self::RecursiveAlias(rec) => Self::RecursiveAlias(RecursiveAlias {
+            Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias {
                 link: rec.link,
                 generics: rec.generics.as_ref().map(remap_generics),
-            }),
+            })),
         }
     }
 
@@ -1541,7 +1541,7 @@ impl TypeAlias {
     }
     pub fn as_db_type_and_set_type_vars_any(&self) -> DbType {
         if self.is_recursive {
-            return DbType::RecursiveAlias(RecursiveAlias {
+            return DbType::RecursiveAlias(Rc::new(RecursiveAlias {
                 link: self.location,
                 generics: (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
@@ -1550,7 +1550,7 @@ impl TypeAlias {
                             .collect(),
                     )
                 }),
-            });
+            }));
         }
         if self.type_vars.is_empty() {
             self.db_type.as_ref().clone()
@@ -1569,7 +1569,7 @@ impl TypeAlias {
         callable: &mut impl FnMut(&TypeVarUsage) -> DbType,
     ) -> Cow<DbType> {
         if self.is_recursive && !remove_recursive_wrapper {
-            return Cow::Owned(DbType::RecursiveAlias(RecursiveAlias {
+            return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias {
                 link: self.location,
                 generics: (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
@@ -1586,7 +1586,7 @@ impl TypeAlias {
                             .collect(),
                     )
                 }),
-            }));
+            })));
         }
         if self.type_vars.is_empty() {
             Cow::Borrowed(self.db_type.as_ref())

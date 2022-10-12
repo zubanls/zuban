@@ -431,10 +431,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
-                DbType::RecursiveAlias(RecursiveAlias {
+                DbType::RecursiveAlias(Rc::new(RecursiveAlias {
                     link,
                     generics: None,
-                })
+                }))
             }
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
@@ -588,12 +588,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
-                        TypeContent::DbType(DbType::RecursiveAlias(RecursiveAlias {
+                        TypeContent::DbType(DbType::RecursiveAlias(Rc::new(RecursiveAlias {
                             link,
                             generics: Some(GenericsList::new_generics(
                                 s.iter().map(|c| self.compute_slice_db_type(c)).collect(),
                             )),
-                        }))
+                        })))
                     }
                     TypeContent::InvalidVariable(t) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
