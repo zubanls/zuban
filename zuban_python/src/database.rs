@@ -1519,7 +1519,8 @@ pub struct TypeAlias {
     pub name: Option<PointLink>,
     // This is intentionally private, it should not be used anywhere else, because the behavior of
     // a type alias that has `is_recursive` is different.
-    db_type: Rc<DbType>,
+    // TODO make this private again
+    pub db_type: Rc<DbType>,
     pub is_recursive: bool,
 }
 

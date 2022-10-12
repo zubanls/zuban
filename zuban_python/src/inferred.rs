@@ -1177,7 +1177,19 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
-        DbType::RecursiveAlias(..) => unreachable!(),
+        DbType::RecursiveAlias(rec1) => {
+            if rec1.generics.is_none() {
+                run_on_db_type(
+                    i_s,
+                    &rec1.type_alias(i_s.db).db_type,
+                    callable,
+                    reducer,
+                    on_missing,
+                )
+            } else {
+                todo!("shit, how do we handle this one???")
+            }
+        }
     }
 }
 
