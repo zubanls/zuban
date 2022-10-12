@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamKind;
 
-use super::params::{InferrableParamIterator2, Param};
-use super::{
+use super::super::params::{InferrableParamIterator2, Param};
+use super::super::{
     ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, ResultContext,
     SignatureMatch, Type,
 };
