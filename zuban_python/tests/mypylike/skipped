@@ -2,6 +2,9 @@
 testUnboundTypeVar
 testGenericTypeAliasesImporting
 
+# Recursive Alias Base Class
+testRecursiveAliasViaBaseClass
+testRecursiveAliasViaBaseClassImported
 # Recursive Alias --enable-recursive-aliases
 testRecursiveAliasesJoins
 testRecursiveAliasesRestrictions2
