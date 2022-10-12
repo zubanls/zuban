@@ -248,7 +248,7 @@ impl<'a> Type<'a> {
                         todo!()
                     }
                     _ => {
-                        let g = rec1.type_alias(i_s.db).as_db_type(&mut |t| {
+                        let g = rec1.type_alias(i_s.db).replace_type_vars(&mut |t| {
                             rec1.generics
                                 .as_ref()
                                 .map(|g| g.nth(t.index).unwrap().clone())

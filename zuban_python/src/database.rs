@@ -1532,7 +1532,10 @@ impl TypeAlias {
         }
     }
 
-    pub fn as_db_type(&self, callable: &mut impl FnMut(&TypeVarUsage) -> DbType) -> Cow<DbType> {
+    pub fn replace_type_vars(
+        &self,
+        callable: &mut impl FnMut(&TypeVarUsage) -> DbType,
+    ) -> Cow<DbType> {
         if self.is_recursive {
             return Cow::Owned(DbType::RecursiveAlias(RecursiveAlias {
                 link: self.location,
