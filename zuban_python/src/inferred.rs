@@ -19,7 +19,7 @@ use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
     Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
-    TypingType, TypingWithGenerics, Value,
+    TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -1073,17 +1073,6 @@ fn run_on_specific<'db: 'a, 'a, T>(
         | Specific::TypingOptional
         | Specific::TypingType
         | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
-        Specific::TypingWithGenerics => {
-            let inf = definition
-                .file
-                .inference(i_s)
-                .infer_primary_or_atom(definition.as_primary().first());
-            if let InferredState::Saved(_, p) = inf.state {
-                callable(i_s, &TypingWithGenerics::new(definition, p.specific()))
-            } else {
-                unreachable!()
-            }
-        }
         Specific::TypingAny | Specific::Cycle => on_missing(i_s),
         Specific::TypingCast => callable(i_s, &TypingCast()),
         Specific::TypingClassVar => callable(i_s, &TypingClassVar()),

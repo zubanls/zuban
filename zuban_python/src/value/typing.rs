@@ -112,50 +112,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
 }
 
 #[derive(Debug)]
-pub struct TypingWithGenerics<'db> {
-    node_ref: NodeRef<'db>,
-    pub specific: Specific,
-}
-
-impl<'db> TypingWithGenerics<'db> {
-    pub fn new(node_ref: NodeRef<'db>, specific: Specific) -> Self {
-        Self { node_ref, specific }
-    }
-
-    pub fn generics(&self) -> SliceType {
-        let primary = self.node_ref.as_primary();
-        if let PrimaryContent::GetItem(slice_type) = primary.second() {
-            //value.get_item(i_s, &SliceType::new(f, primary.index(), slice_type))
-            SliceType::new(self.node_ref.file, primary.index(), slice_type)
-        } else {
-            unreachable!()
-        }
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for TypingWithGenerics<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        match self.specific {
-            Specific::TypingGeneric => "Generic",
-            Specific::TypingProtocol => "Protocol",
-            _ => unreachable!(),
-        }
-    }
-
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        todo!()
-    }
-
-    fn as_typing_with_generics(&self, i_s: &mut InferenceState) -> Option<&Self> {
-        Some(self)
-    }
-}
-
-#[derive(Debug)]
 pub struct TypingClassVar();
 
 impl<'db, 'a> Value<'db, 'a> for TypingClassVar {

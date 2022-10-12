@@ -32,7 +32,7 @@ pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
     RevealTypeFunction, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
-    TypingType, TypingWithGenerics,
+    TypingType,
 };
 
 pub type OnTypeError<'db, 'a> = &'a dyn Fn(
@@ -308,9 +308,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         None
     }
     fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'a>> {
-        None
-    }
-    fn as_typing_with_generics(&self, i_s: &mut InferenceState) -> Option<&TypingWithGenerics<'a>> {
         None
     }
     fn as_typing_class(&self) -> Option<&TypingClass> {
