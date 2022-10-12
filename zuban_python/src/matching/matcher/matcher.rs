@@ -3,7 +3,8 @@ use super::bound::TypeVarBound;
 use super::type_var_matcher::{CalculatedTypeVar, FunctionOrCallable, TypeVarMatcher};
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, TypeVarUsage, TypeVars, Variance,
+    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TypeVarUsage, TypeVars,
+    Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -302,5 +303,13 @@ impl<'a> Matcher<'a> {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
             matcher.set_all_contained_type_vars_to_any(i_s, type_)
         }
+    }
+
+    pub fn has_already_matched_recursive_alias(
+        &self,
+        rec1: &RecursiveAlias,
+        rec2: &RecursiveAlias,
+    ) -> bool {
+        false
     }
 }

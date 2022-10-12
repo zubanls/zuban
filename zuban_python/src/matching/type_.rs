@@ -245,7 +245,11 @@ impl<'a> Type<'a> {
                 DbType::Intersection(intersection) => todo!(),
                 DbType::RecursiveAlias(rec1) => match value_type.maybe_db_type() {
                     Some(DbType::RecursiveAlias(rec2)) => {
-                        todo!()
+                        if matcher.has_already_matched_recursive_alias(rec1, rec2) {
+                            Match::True
+                        } else {
+                            todo!()
+                        }
                     }
                     _ => {
                         let g = rec1.as_db_type(i_s.db);
