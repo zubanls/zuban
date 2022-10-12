@@ -1520,7 +1520,7 @@ pub struct TypeAlias {
     // This is intentionally private, it should not be used anywhere else, because the behavior of
     // a type alias that has `is_recursive` is different.
     db_type: Rc<DbType>,
-    is_recursive: bool,
+    pub is_recursive: bool,
 }
 
 impl TypeAlias {

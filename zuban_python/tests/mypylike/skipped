@@ -3,7 +3,7 @@ testUnboundTypeVar
 testGenericTypeAliasesImporting
 
 # Recursive Alias Formatting
-testRecursiveAliasImported
+testRecursiveAliasesMutual
 testRecursiveAliasesJoins
 # Recursive Alias Base Class
 testRecursiveAliasViaBaseClass
