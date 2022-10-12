@@ -47,7 +47,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(&self.alias.db_type)
+        todo!()
     }
 
     fn execute(
