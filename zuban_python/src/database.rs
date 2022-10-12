@@ -1551,9 +1551,10 @@ impl TypeAlias {
 
     pub fn replace_type_vars(
         &self,
+        remove_recursive_wrapper: bool,
         callable: &mut impl FnMut(&TypeVarUsage) -> DbType,
     ) -> Cow<DbType> {
-        if self.is_recursive {
+        if self.is_recursive && !remove_recursive_wrapper {
             return Cow::Owned(DbType::RecursiveAlias(RecursiveAlias {
                 link: self.location,
                 generics: (!self.type_vars.is_empty()).then(|| {
@@ -1565,7 +1566,7 @@ impl TypeAlias {
                                 callable(&TypeVarUsage {
                                     type_var: type_var.clone(),
                                     index: i.into(),
-                                    in_definition: todo!(), //self.location,
+                                    in_definition: self.location,
                                 })
                             })
                             .collect(),

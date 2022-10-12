@@ -2,10 +2,7 @@
 testUnboundTypeVar
 testGenericTypeAliasesImporting
 
-testRecursiveAliasGenericInferenceNested
-testRecursiveAliasesProhibited-skip
 testRecursiveAliasImported
-testRecursiveAliasInferenceExplicitNonRecursive
 testNoCrashOnRecursiveTupleFallback
 
 # Recursive Alias Formatting

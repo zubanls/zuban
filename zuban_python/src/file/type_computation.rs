@@ -976,7 +976,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
         TypeContent::DbType(
             alias
-                .replace_type_vars(&mut |usage| {
+                .replace_type_vars(false, &mut |usage| {
                     if mismatch {
                         DbType::Any
                     } else {
