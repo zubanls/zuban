@@ -415,7 +415,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(&FormatData::with_matcher(i_s.db, &mut Matcher::default()))
+                .format(&FormatData::with_matcher(i_s.db, &Matcher::default()))
         };
         let node = self.node();
         let mut previous_kind = None;
@@ -425,7 +425,7 @@ impl<'db: 'a, 'a> Function<'a> {
             .map(|(i, p)| {
                 let annotation_str = p
                     .annotation_type(i_s)
-                    .map(|t| t.format(&FormatData::with_matcher(i_s.db, &mut Matcher::default())));
+                    .map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())));
                 let current_kind = p.kind(i_s.db);
                 let stars = match current_kind {
                     ParamKind::Starred => "*",

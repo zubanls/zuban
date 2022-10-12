@@ -339,9 +339,7 @@ impl<'a> Type<'a> {
         match variance {
             Variance::Covariant => self.is_super_type_of(i_s, matcher, value_type),
             Variance::Invariant => self.is_same_type(i_s, matcher, value_type),
-            Variance::Contravariant => {
-                return self.is_sub_type_of(i_s, matcher, value_type);
-            }
+            Variance::Contravariant => self.is_sub_type_of(i_s, matcher, value_type),
         }
     }
 

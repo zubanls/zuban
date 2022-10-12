@@ -293,7 +293,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
                 value.execute(
                     i_s,
                     &NoArguments::new(from),
-                    &mut &mut ResultContext::Unknown,
+                    &mut ResultContext::Unknown,
                     &|_, _, _, _, _, _, _| todo!(),
                 )
             })
