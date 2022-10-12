@@ -566,7 +566,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     TypeContent::DbType(d) => match d {
                         DbType::Any => TypeContent::DbType(d),
-                        _ => todo!("{d:?}"),
+                        _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::Module(m) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
@@ -613,7 +613,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
         if !matches!(class.generics(), Generics::None | Generics::Any) {
-            return TypeContent::InvalidVariable(InvalidVariableType::Other);
+            todo!();
+            //return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }
         let type_vars = class.type_vars(self.inference.i_s);
         let expected_count = type_vars.map(|t| t.len()).unwrap_or(0);
@@ -688,7 +689,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             self.compute_slice_db_type(slice_content);
             given_count += 1;
         }
-        let result = if generics.is_empty() && given_count == expected_count {
+        let result = if generics.is_empty()
+            && given_count == expected_count
+            && self.origin == TypeComputationOrigin::TypeCommentOrAnnotation
+        {
             match primary {
                 Some(primary) => TypeContent::ClassWithoutTypeVar(
                     Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
