@@ -974,13 +974,17 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 },
             );
         }
-        TypeContent::DbType(alias.db_type.replace_type_vars(&mut |usage| {
-            if mismatch {
-                DbType::Any
-            } else {
-                generics[usage.index.as_usize()].clone()
-            }
-        }))
+        TypeContent::DbType(
+            alias
+                .replace_type_vars(&mut |usage| {
+                    if mismatch {
+                        DbType::Any
+                    } else {
+                        generics[usage.index.as_usize()].clone()
+                    }
+                })
+                .into_owned(),
+        )
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType, class: &'static str) {
