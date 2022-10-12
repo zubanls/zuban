@@ -1,7 +1,6 @@
 use super::super::{FormatData, Match, MismatchReason, Type};
-use super::type_var_matcher::{
-    CalculatedTypeVar, FunctionOrCallable, TypeVarBound, TypeVarMatcher,
-};
+use super::bound::TypeVarBound;
+use super::type_var_matcher::{CalculatedTypeVar, FunctionOrCallable, TypeVarMatcher};
 
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, TypeVarUsage, TypeVars, Variance,
