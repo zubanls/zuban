@@ -562,7 +562,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     TypeContent::DbType(d) => match d {
                         DbType::Any => TypeContent::DbType(d),
-                        _ => todo!("{d:?}"),
+                        _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
                     },
                     TypeContent::Module(m) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
@@ -684,34 +684,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             self.compute_slice_db_type(slice_content);
             given_count += 1;
         }
-        let result = if generics.is_empty() && given_count == expected_count {
-            match primary {
-                Some(primary) => TypeContent::ClassWithoutTypeVar(
-                    Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
-                        self.inference.i_s.db,
-                        self.inference.file,
-                        primary.index(),
-                    ),
-                ),
-                None => unreachable!(),
-            }
-        } else {
-            TypeContent::DbType(match expected_count {
-                0 => DbType::Class(class.node_ref.as_link(), None),
-                _ => {
-                    // Need to fill the generics, because we might have been in a
-                    // ClassWithoutTypeVar case.
-                    if generics.is_empty() {
-                        backfill(self, &mut generics, expected_count);
-                        generics.resize(expected_count, DbType::Any);
-                    }
-                    DbType::Class(
-                        class.node_ref.as_link(),
-                        Some(GenericsList::generics_from_vec(generics)),
-                    )
-                }
-            })
-        };
         if given_count != expected_count {
             self.add_typing_issue(
                 slice_type.as_node_ref(),
@@ -722,7 +694,21 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 },
             );
         }
-        result
+        TypeContent::DbType(match expected_count {
+            0 => DbType::Class(class.node_ref.as_link(), None),
+            _ => {
+                // Need to fill the generics, because we might have been in a
+                // ClassWithoutTypeVar case.
+                if generics.is_empty() {
+                    backfill(self, &mut generics, expected_count);
+                    generics.resize(expected_count, DbType::Any);
+                }
+                DbType::Class(
+                    class.node_ref.as_link(),
+                    Some(GenericsList::generics_from_vec(generics)),
+                )
+            }
+        })
     }
 
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
