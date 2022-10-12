@@ -1504,6 +1504,7 @@ pub struct TypeAlias {
     pub location: PointLink,
     pub name: Option<PointLink>,
     pub db_type: Rc<DbType>,
+    pub is_recursive: bool,
 }
 
 impl TypeAlias {

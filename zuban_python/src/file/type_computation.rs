@@ -171,6 +171,7 @@ macro_rules! compute_type_application {
                         type_vars,
                         location: $slice_type.as_node_ref().as_link(),
                         db_type: Rc::new(db_type),
+                        is_recursive: false,
                     }))
                 } else {
                     ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
@@ -222,6 +223,7 @@ pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
     errors_already_calculated: bool,
     pub has_type_vars: bool,
     origin: TypeComputationOrigin,
+    is_recursive_alias: bool,
 }
 
 impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b, 'c> {
@@ -239,6 +241,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             errors_already_calculated: false,
             has_type_vars: false,
             origin: TypeComputationOrigin::TypeCommentOrAnnotation,
+            is_recursive_alias: false,
         }
     }
 
@@ -270,10 +273,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     errors_already_calculated: self.errors_already_calculated,
                     has_type_vars: false,
                     origin: self.origin,
+                    is_recursive_alias: false,
                 };
                 let type_ = compute_type(&mut comp);
                 self.type_var_manager = comp.type_var_manager;
                 self.has_type_vars |= comp.has_type_vars;
+                self.is_recursive_alias |= comp.is_recursive_alias;
                 type_
             } else {
                 let mut comp = TypeComputation {
@@ -285,10 +290,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     errors_already_calculated: self.errors_already_calculated,
                     has_type_vars: false,
                     origin: self.origin,
+                    is_recursive_alias: false,
                 };
                 let type_ = compute_type(&mut comp);
                 self.type_var_manager = comp.type_var_manager;
                 self.has_type_vars |= comp.has_type_vars;
+                self.is_recursive_alias |= comp.is_recursive_alias;
                 type_
             }
         } else {
@@ -419,10 +426,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             },
             // TODO here we would need to check if the generics are actually valid.
-            TypeContent::RecursiveAlias(link) => DbType::RecursiveAlias(RecursiveAlias {
-                link,
-                generics: None,
-            }),
+            TypeContent::RecursiveAlias(link) => {
+                self.is_recursive_alias = true;
+                DbType::RecursiveAlias(RecursiveAlias {
+                    link,
+                    generics: None,
+                })
+            }
             TypeContent::Unknown => DbType::Any,
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
@@ -574,6 +584,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::CallableParam(_) => todo!(),
                     },
                     TypeContent::RecursiveAlias(link) => {
+                        self.is_recursive_alias = true;
                         TypeContent::DbType(DbType::RecursiveAlias(RecursiveAlias {
                             link,
                             generics: Some(GenericsList::new_generics(
@@ -1433,11 +1444,13 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                         let node_ref = NodeRef::new(file, expr.index());
                         let db_type = comp.as_db_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
+                        let is_recursive = comp.is_recursive_alias;
                         ComplexPoint::TypeAlias(Box::new(TypeAlias {
                             type_vars: type_var_manager.into_type_vars(),
                             location: in_definition,
                             name: Some(PointLink::new(file.file_index(), name_def.name().index())),
                             db_type: Rc::new(db_type),
+                            is_recursive,
                         }))
                     }
                 };
