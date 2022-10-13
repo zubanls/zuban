@@ -189,6 +189,8 @@ testTypeVarValuesMethod2
 testTypeVarBoundToOldUnionAttributeAccess
 testTypeVarBoundToNewUnionAttributeAccess
 testUnboundedTypevarUnpacking
+# Tuple Bound with iter unpacking
+testIterableBoundUnpacking
 
 # questionable list/dict type inference
 testInferredTypeIsObjectMismatch

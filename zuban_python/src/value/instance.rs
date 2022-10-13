@@ -1,5 +1,5 @@
-use super::{Class, LookupResult, OnTypeError, Tuple, Value, ValueKind};
-use crate::arguments::Arguments;
+use super::{Class, IteratorContent, LookupResult, OnTypeError, Tuple, Value, ValueKind};
+use crate::arguments::{Arguments, NoArguments};
 use crate::database::{DbType, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file_state::File;
@@ -125,6 +125,32 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
                 },
             )
         })
+    }
+
+    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
+        IteratorContent::Inferred(
+            self.lookup_implicit(i_s, "__iter__", &|i_s| {
+                from.add_typing_issue(
+                    i_s.db,
+                    IssueType::NotIterable {
+                        type_: format!(
+                            "{:?}",
+                            self.as_type(i_s).format(&FormatData::new_short(i_s.db))
+                        )
+                        .into(),
+                    },
+                );
+            })
+            .run_on_value(i_s, &mut |i_s, value| {
+                value.execute(
+                    i_s,
+                    &NoArguments::new(from),
+                    &mut ResultContext::Unknown,
+                    &|_, _, _, _, _, _, _| todo!(),
+                )
+            })
+            .execute_function(i_s, "__next__", from),
+        )
     }
 
     fn as_instance(&self) -> Option<&Instance<'a>> {

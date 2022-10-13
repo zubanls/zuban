@@ -885,7 +885,7 @@ impl<'a> Type<'a> {
             Self::Class(c) => c.lookup_symbol(i_s, name),
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(c, generics) => todo!(),
-                DbType::Tuple(t) => todo!(),
+                DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
                 _ => todo!("{name:?} {self:?}"),
             },
         }

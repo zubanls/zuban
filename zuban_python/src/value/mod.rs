@@ -12,7 +12,7 @@ mod typing;
 
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
-use crate::arguments::{Arguments, NoArguments};
+use crate::arguments::Arguments;
 use crate::database::{Database, DbType, FileIndex, PointLink};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
@@ -276,29 +276,17 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     }
 
     fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        IteratorContent::Inferred(
-            self.lookup_implicit(i_s, "__iter__", &|i_s| {
-                from.add_typing_issue(
-                    i_s.db,
-                    IssueType::NotIterable {
-                        type_: format!(
-                            "{:?}",
-                            self.as_type(i_s).format(&FormatData::new_short(i_s.db))
-                        )
-                        .into(),
-                    },
-                );
-            })
-            .run_on_value(i_s, &mut |i_s, value| {
-                value.execute(
-                    i_s,
-                    &NoArguments::new(from),
-                    &mut ResultContext::Unknown,
-                    &|_, _, _, _, _, _, _| todo!(),
+        from.add_typing_issue(
+            i_s.db,
+            IssueType::NotIterable {
+                type_: format!(
+                    "{:?}",
+                    self.as_type(i_s).format(&FormatData::new_short(i_s.db))
                 )
-            })
-            .execute_function(i_s, "__next__", from),
-        )
+                .into(),
+            },
+        );
+        IteratorContent::Any
     }
 
     fn as_instance(&self) -> Option<&Instance<'a>> {
