@@ -144,29 +144,46 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        IteratorContent::Inferred(
-            self.lookup_implicit(i_s, "__iter__", &|i_s| {
-                from.add_typing_issue(
-                    i_s.db,
-                    IssueType::NotIterable {
-                        type_: format!(
-                            "{:?}",
-                            self.as_type(i_s).format(&FormatData::new_short(i_s.db))
-                        )
-                        .into(),
-                    },
-                );
-            })
-            .run_on_value(i_s, &mut |i_s, value| {
-                value.execute(
-                    i_s,
-                    &NoArguments::new(from),
-                    &mut ResultContext::Unknown,
-                    &|_, _, _, _, _, _, _| todo!(),
+        let mro_iterator = self.class.mro(i_s);
+        let finder = ClassMroFinder {
+            i_s,
+            instance: self,
+            mro_iterator,
+            name: "__iter__",
+        };
+        for found_on_class in finder {
+            match found_on_class {
+                FoundOnClass::Attribute(inf) => {
+                    return IteratorContent::Inferred(inf.run_on_value(i_s, &mut |i_s, value| {
+                        value
+                            .execute(
+                                i_s,
+                                &NoArguments::new(from),
+                                &mut ResultContext::Unknown,
+                                &|_, _, _, _, _, _, _| todo!(),
+                            )
+                            .execute_function(i_s, "__next__", from)
+                    }));
+                }
+                FoundOnClass::UnresolvedDbType(t) => {
+                    if let Some(db_type @ DbType::Tuple(t)) = t.maybe_db_type() {
+                        todo!();
+                        return Tuple::new(db_type, t).iter(i_s, from);
+                    }
+                }
+            }
+        }
+        from.add_typing_issue(
+            i_s.db,
+            IssueType::NotIterable {
+                type_: format!(
+                    "{:?}",
+                    self.as_type(i_s).format(&FormatData::new_short(i_s.db))
                 )
-            })
-            .execute_function(i_s, "__next__", from),
-        )
+                .into(),
+            },
+        );
+        IteratorContent::Any
     }
 
     fn as_instance(&self) -> Option<&Instance<'a>> {
