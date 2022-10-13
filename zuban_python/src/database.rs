@@ -762,7 +762,7 @@ impl DbType {
                     Box::from(alias.name(format_data.db).unwrap())
                 } else {
                     let format_data = format_data.with_seen_recursive_alias(rec);
-                    rec.as_db_type(format_data.db).format(&format_data)
+                    rec.calculated_db_type(format_data.db).format(&format_data)
                 }
             }
         }
@@ -1244,7 +1244,7 @@ impl CallableContent {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone)]
 pub struct RecursiveAlias {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
@@ -1268,18 +1268,28 @@ impl RecursiveAlias {
         }
     }
 
-    pub fn as_db_type<'db>(&self, db: &'db Database) -> Cow<'db, DbType> {
-        self.type_alias(db).replace_type_vars(true, &mut |t| {
-            self.generics
-                .as_ref()
-                .map(|g| g.nth(t.index).unwrap().clone())
-                .unwrap()
-        })
+    pub fn calculated_db_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf DbType {
+        let alias = self.type_alias(db);
+        if self.generics.is_none() {
+            alias.db_type.as_ref()
+        } else {
+            self.calculated_db_type.get_or_init(|| {
+                self.type_alias(db)
+                    .replace_type_vars(true, &mut |t| {
+                        self.generics
+                            .as_ref()
+                            .map(|g| g.nth(t.index).unwrap().clone())
+                            .unwrap()
+                    })
+                    .into_owned()
+            })
+        }
     }
+}
 
-    pub fn calculated_db_type(&self, db: &Database) -> &DbType {
-        self.calculated_db_type
-            .get_or_init(|| self.as_db_type(db).into_owned())
+impl std::cmp::PartialEq for RecursiveAlias {
+    fn eq(&self, other: &Self) -> bool {
+        return self.link == other.link && self.generics == other.generics;
     }
 }
 

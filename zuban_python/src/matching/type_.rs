@@ -245,14 +245,14 @@ impl<'a> Type<'a> {
                 DbType::Intersection(intersection) => todo!(),
                 DbType::RecursiveAlias(rec1) => {
                     if let Some(class) = value_type.maybe_class(i_s.db) {
-                        let g = rec1.as_db_type(i_s.db);
+                        let g = rec1.calculated_db_type(i_s.db);
                         let cls_db_type = value_type.as_db_type(i_s);
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         if matcher.has_already_matched_recursive_alias(rec1, &cls_db_type) {
                             return Match::True;
                         } else {
                             matcher.add_checked_type_recursion(rec1.clone(), cls_db_type);
-                            return Type::Type(g)
+                            return Type::new(g)
                                 .matches_internal(i_s, matcher, value_type, variance);
                         }
                     }
@@ -263,19 +263,19 @@ impl<'a> Type<'a> {
                             } else {
                                 // We are going to check it, so we mark it as checked.
                                 matcher.add_checked_type_recursion(rec1.clone(), t.clone());
-                                let t1 = rec1.as_db_type(i_s.db);
-                                let t2 = rec2.as_db_type(i_s.db);
-                                Type::Type(t1).matches_internal(
+                                let t1 = rec1.calculated_db_type(i_s.db);
+                                let t2 = rec2.calculated_db_type(i_s.db);
+                                Type::new(t1).matches_internal(
                                     i_s,
                                     matcher,
-                                    &Type::Type(t2),
+                                    &Type::new(t2),
                                     variance,
                                 )
                             }
                         }
                         _ => {
-                            let g = rec1.as_db_type(i_s.db);
-                            Type::Type(g).matches_internal(i_s, matcher, value_type, variance)
+                            let g = rec1.calculated_db_type(i_s.db);
+                            Type::new(g).matches_internal(i_s, matcher, value_type, variance)
                         }
                     }
                 }
