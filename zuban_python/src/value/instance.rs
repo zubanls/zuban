@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::{
     Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
 };
@@ -35,7 +37,7 @@ impl<'a> Instance<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
+impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     fn kind(&self) -> ValueKind {
         ValueKind::Object
     }
@@ -127,11 +129,10 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
                         )
                     });
                 }
-                FoundOnClass::UnresolvedDbType(t) => {
-                    if let Some(db_type @ DbType::Tuple(t)) = t.maybe_db_type() {
-                        return Tuple::new(db_type, t).get_item(i_s, slice_type);
-                    }
+                FoundOnClass::UnresolvedDbType(db_type @ DbType::Tuple(t)) => {
+                    return Tuple::new(db_type, t).get_item(i_s, slice_type);
                 }
+                _ => (),
             }
         }
         slice_type.as_node_ref().add_typing_issue(
@@ -165,12 +166,10 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
                             .execute_function(i_s, "__next__", from)
                     }));
                 }
-                FoundOnClass::UnresolvedDbType(t) => {
-                    if let Some(db_type @ DbType::Tuple(t)) = t.maybe_db_type() {
-                        todo!();
-                        return Tuple::new(db_type, t).iter(i_s, from);
-                    }
+                FoundOnClass::UnresolvedDbType(db_type @ DbType::Tuple(t)) => {
+                    return Tuple::new(db_type, t).iter(i_s, from);
                 }
+                _ => (),
             }
         }
         from.add_typing_issue(
@@ -205,17 +204,17 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
 
 enum FoundOnClass<'a> {
     Attribute(Inferred),
-    UnresolvedDbType(Type<'a>),
+    UnresolvedDbType(&'a DbType),
 }
 
-struct ClassMroFinder<'db, 'a, 'b, 'c, 'd> {
-    i_s: &'d mut InferenceState<'b, 'c>,
+struct ClassMroFinder<'db, 'a, 'c, 'd> {
+    i_s: &'d mut InferenceState<'db, 'c>,
     instance: &'d Instance<'d>,
     mro_iterator: MroIterator<'db, 'a>,
     name: &'d str,
 }
 
-impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_, '_> {
+impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_> {
     type Item = FoundOnClass<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -235,7 +234,11 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_, '_> {
                     return Some(FoundOnClass::Attribute(result));
                 }
             } else {
-                return Some(FoundOnClass::UnresolvedDbType(t));
+                match t {
+                    // Types are always precalculated in the class mro.
+                    Type::Type(Cow::Borrowed(t)) => return Some(FoundOnClass::UnresolvedDbType(t)),
+                    _ => unreachable!(),
+                }
             }
         }
         None
