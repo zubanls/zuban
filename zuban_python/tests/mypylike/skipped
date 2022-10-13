@@ -5,7 +5,6 @@ testGenericTypeAliasesImporting
 # Recursive Alias --enable-recursive-aliases
 testRecursiveAliasesJoins
 testRecursiveAliasWithRecursiveInstanceInference
-testRecursiveAliasesWithOptional
 testRecursiveClassLevelAlias
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
