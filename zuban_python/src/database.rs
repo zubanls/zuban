@@ -1,4 +1,3 @@
-use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::collections::HashMap;
@@ -7,6 +6,9 @@ use std::mem;
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
+
+use once_cell::unsync::OnceCell;
+use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
 use crate::file::PythonFile;
 use crate::file_state::{
@@ -909,10 +911,10 @@ impl DbType {
                 }),
                 result_type: content.result_type.replace_type_vars(callable),
             })),
-            Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias {
-                link: rec.link,
-                generics: rec.generics.as_ref().map(remap_generics),
-            })),
+            Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                rec.link,
+                rec.generics.as_ref().map(remap_generics),
+            ))),
         }
     }
 
@@ -1246,9 +1248,18 @@ impl CallableContent {
 pub struct RecursiveAlias {
     pub link: PointLink,
     pub generics: Option<GenericsList>,
+    calculated_db_type: OnceCell<DbType>,
 }
 
 impl RecursiveAlias {
+    pub fn new(link: PointLink, generics: Option<GenericsList>) -> Self {
+        Self {
+            link,
+            generics,
+            calculated_db_type: OnceCell::new(),
+        }
+    }
+
     pub fn type_alias<'db>(&self, db: &'db Database) -> &'db TypeAlias {
         let node_ref = NodeRef::from_link(db, self.link);
         match node_ref.complex() {
@@ -1264,6 +1275,11 @@ impl RecursiveAlias {
                 .map(|g| g.nth(t.index).unwrap().clone())
                 .unwrap()
         })
+    }
+
+    pub fn calculated_db_type(&self, db: &Database) -> &DbType {
+        self.calculated_db_type
+            .get_or_init(|| self.as_db_type(db).into_owned())
     }
 }
 
@@ -1549,16 +1565,16 @@ impl TypeAlias {
     }
     pub fn as_db_type_and_set_type_vars_any(&self) -> DbType {
         if self.is_recursive {
-            return DbType::RecursiveAlias(Rc::new(RecursiveAlias {
-                link: self.location,
-                generics: (!self.type_vars.is_empty()).then(|| {
+            return DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                self.location,
+                (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
                         std::iter::repeat(DbType::Any)
                             .take(self.type_vars.len())
                             .collect(),
                     )
                 }),
-            }));
+            )));
         }
         if self.type_vars.is_empty() {
             self.db_type.as_ref().clone()
@@ -1577,9 +1593,9 @@ impl TypeAlias {
         callable: &mut impl FnMut(&TypeVarUsage) -> DbType,
     ) -> Cow<DbType> {
         if self.is_recursive && !remove_recursive_wrapper {
-            return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias {
-                link: self.location,
-                generics: (!self.type_vars.is_empty()).then(|| {
+            return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                self.location,
+                (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
                         self.type_vars
                             .iter()
@@ -1594,7 +1610,7 @@ impl TypeAlias {
                             .collect(),
                     )
                 }),
-            })));
+            ))));
         }
         if self.type_vars.is_empty() {
             Cow::Borrowed(self.db_type.as_ref())
