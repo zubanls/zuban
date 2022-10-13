@@ -4,7 +4,6 @@ testGenericTypeAliasesImporting
 
 # Recursive Alias --enable-recursive-aliases
 testRecursiveAliasesJoins
-testRecursiveAliasesRestrictions2
 testRecursiveAliasWithRecursiveInstance
 testRecursiveAliasWithRecursiveInstanceInference
 testRecursiveAliasesWithOptional
@@ -508,6 +507,7 @@ testOverloadsIgnorePromotions
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasBasic
 testRecursiveAliasesRestrictions
+testRecursiveAliasesRestrictions2
 testRecursiveAliasBasicGenericInference
 testRecursiveAliasNewStyleSupported
 

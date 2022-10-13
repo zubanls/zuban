@@ -13,7 +13,7 @@ use crate::value::Function;
 
 struct CheckedTypeRecursion {
     recursive_alias1: Rc<RecursiveAlias>,
-    recursive_alias2: Rc<RecursiveAlias>,
+    type2: DbType,
 }
 
 #[derive(Default)]
@@ -313,12 +313,10 @@ impl<'a> Matcher<'a> {
     pub fn has_already_matched_recursive_alias(
         &self,
         rec1: &RecursiveAlias,
-        rec2: &RecursiveAlias,
+        rec2: &DbType,
     ) -> bool {
         for checked in &self.checked_type_recursions {
-            if rec1 == checked.recursive_alias1.as_ref()
-                && rec2 == checked.recursive_alias2.as_ref()
-            {
+            if rec1 == checked.recursive_alias1.as_ref() && rec2 == &checked.type2 {
                 return true;
             }
         }
@@ -328,11 +326,11 @@ impl<'a> Matcher<'a> {
     pub fn add_checked_type_recursion(
         &mut self,
         recursive_alias1: Rc<RecursiveAlias>,
-        recursive_alias2: Rc<RecursiveAlias>,
+        type2: DbType,
     ) {
         self.checked_type_recursions.push(CheckedTypeRecursion {
             recursive_alias1,
-            recursive_alias2,
+            type2,
         })
     }
 }
