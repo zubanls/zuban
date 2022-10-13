@@ -1,4 +1,6 @@
-use super::{Class, IteratorContent, LookupResult, OnTypeError, Tuple, Value, ValueKind};
+use super::{
+    Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
+};
 use crate::arguments::{Arguments, NoArguments};
 use crate::database::{DbType, PointLink};
 use crate::diagnostics::IssueType;
@@ -94,37 +96,51 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
-        for (mro_index, class) in self.class.mro(i_s) {
-            if let Some(db_type @ DbType::Tuple(t)) = class.maybe_db_type() {
-                return Tuple::new(db_type, t).get_item(i_s, slice_type);
+        let mro_iterator = self.class.mro(i_s);
+        let finder = ClassMroFinder {
+            i_s,
+            instance: self,
+            mro_iterator,
+            name: "__getitem__",
+        };
+        for found_on_class in finder {
+            match found_on_class {
+                FoundOnClass::Attribute(inf) => {
+                    let args = slice_type.as_args(i_s.context);
+                    return inf.run_on_value(i_s, &mut |i_s, v| {
+                        v.execute(
+                            i_s,
+                            &args,
+                            &mut ResultContext::Unknown,
+                            &|i_s, node_ref, class, function, p, actual, expected| {
+                                node_ref.add_typing_issue(
+                                    i_s.db,
+                                    IssueType::InvalidGetItem {
+                                        actual,
+                                        type_: class
+                                            .unwrap()
+                                            .format(&FormatData::new_short(i_s.db)),
+                                        expected,
+                                    },
+                                )
+                            },
+                        )
+                    });
+                }
+                FoundOnClass::UnresolvedDbType(t) => {
+                    if let Some(db_type @ DbType::Tuple(t)) = t.maybe_db_type() {
+                        return Tuple::new(db_type, t).get_item(i_s, slice_type);
+                    }
+                }
             }
         }
-        let args = slice_type.as_args(i_s.context);
-        self.lookup_implicit(i_s, "__getitem__", &|i_s| {
-            slice_type.as_node_ref().add_typing_issue(
-                i_s.db,
-                IssueType::NotIndexable {
-                    type_: self.class.format(&FormatData::new_short(i_s.db)),
-                },
-            )
-        })
-        .run_on_value(i_s, &mut |i_s, v| {
-            v.execute(
-                i_s,
-                &args,
-                &mut ResultContext::Unknown,
-                &|i_s, node_ref, class, function, p, actual, expected| {
-                    node_ref.add_typing_issue(
-                        i_s.db,
-                        IssueType::InvalidGetItem {
-                            actual,
-                            type_: class.unwrap().format(&FormatData::new_short(i_s.db)),
-                            expected,
-                        },
-                    )
-                },
-            )
-        })
+        slice_type.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::NotIndexable {
+                type_: self.class.format(&FormatData::new_short(i_s.db)),
+            },
+        );
+        Inferred::new_any()
     }
 
     fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
@@ -167,5 +183,44 @@ impl<'db, 'a> Value<'db, 'a> for Instance<'a> {
             format!("{:?}", self.kind()).to_lowercase(),
             self.class.format(&FormatData::new_short(i_s.db)),
         )
+    }
+}
+
+enum FoundOnClass<'a> {
+    Attribute(Inferred),
+    UnresolvedDbType(Type<'a>),
+}
+
+struct ClassMroFinder<'i_s, 'db, 'a, 'b, 'c, 'd, 'e> {
+    i_s: &'i_s mut InferenceState<'b, 'd>,
+    instance: &'e Instance<'c>,
+    mro_iterator: MroIterator<'db, 'a>,
+    name: &'static str,
+}
+
+impl<'db: 'a, 'a> Iterator for ClassMroFinder<'_, 'db, 'a, '_, '_, '_, '_> {
+    type Item = FoundOnClass<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        for (mro_index, t) in self.mro_iterator.by_ref() {
+            if let Some(class) = t.maybe_class(self.i_s.db) {
+                let result = class
+                    .lookup_symbol(self.i_s, self.name)
+                    .map(|inf| {
+                        inf.resolve_function_return(self.i_s).bind(
+                            self.i_s,
+                            |i_s| self.instance.as_inferred(i_s),
+                            mro_index,
+                        )
+                    })
+                    .into_maybe_inferred();
+                if let Some(result) = result {
+                    return Some(FoundOnClass::Attribute(result));
+                }
+            } else {
+                return Some(FoundOnClass::UnresolvedDbType(t));
+            }
+        }
+        None
     }
 }
