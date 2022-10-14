@@ -1506,6 +1506,13 @@ impl std::ops::Index<usize> for TypeVars {
 }
 
 #[derive(Debug, Clone)]
+pub enum TypeVarLike {
+    TypeVar(TypeVar),
+    TypeVarTuple(TypeVarTuple),
+    ParamSpec(ParamSpec),
+}
+
+#[derive(Debug, Clone)]
 pub struct TypeVar {
     pub name_string: PointLink,
     pub restrictions: Box<[DbType]>,
@@ -1535,6 +1542,28 @@ impl TypeVar {
             node_ref.maybe_str().unwrap().content()
         )
         .into()
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct TypeVarTuple {
+    pub name_string: PointLink,
+}
+
+impl PartialEq for TypeVarTuple {
+    fn eq(&self, other: &Self) -> bool {
+        self.name_string == other.name_string
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct ParamSpec {
+    pub name_string: PointLink,
+}
+
+impl PartialEq for ParamSpec {
+    fn eq(&self, other: &Self) -> bool {
+        self.name_string == other.name_string
     }
 }
 
