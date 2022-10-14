@@ -74,6 +74,7 @@ const USE_MYPY_TEST_FILES: [&str; 22] = [
     //"check-unreachable-code.test",
     //"check-slots.test",
     //"check-partially-defined.test",
+    //"check-typevar-tuple.test",
 
     //"check-newsyntax.test",
     //"check-fastparse.test",
@@ -92,7 +93,6 @@ const USE_MYPY_TEST_FILES: [&str; 22] = [
     //"fine-grained-attr.test",
     //"fine-grained-inspect.test",
 
-    //"check-typevar-tuple.test",
     //"check-columns.test",
     //"check-errorcodes.test",
     //"check-formatting.test",
@@ -106,7 +106,6 @@ const USE_MYPY_TEST_FILES: [&str; 22] = [
 
     // Won't do, because it tests mypy internals
     //"check-incomplete-fixture.test",
-    //"check-python2.test",
 ];
 
 const BASE_PATH: &str = "/mypylike/";
