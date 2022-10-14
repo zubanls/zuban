@@ -104,9 +104,7 @@ testParamSpec
 testOverloadingWithParamSpec
 testParamSpecCached
 testBoundGenericMethodParamSpecFine
-
-testInvalidParamSpecDefinitions
-testBasicParamSpec
+# Also param spec
 testInvalidParamSpecDefinitions
 testInvalidParamSpecType
 testNonStrictParamSpecConcatenateNamedArgs
@@ -583,9 +581,22 @@ testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 # typing extensions
 testInvalidUnpackTypes
 
-# TypeVarTuple / typing_extensions.Unpack
+# TypeVarTuple
+testTypeVarTupleBasic
+testTypeVarTupleMixed
+testTypeVarTupleChaining
+testTypeVarTupleGenericClassDefn
+testTypeVarTupleGenericClassWithFunctions
+testTypeVarTupleGenericClassWithMethods
+testTypeVarTupleIsNotValidAliasTarget
+testPep646ArrayExample
+testPep646ArrayExampleWithDType
+testPep646ArrayExampleInfer
+testPep646TypeConcatenation
+testPep646TypeVarConcatenation
 testTypeVarTuple
 testTypeVarTupleCached
+# typing_extensions.Unpack
 testRuntimeProtoTwoBases
 testUnpackKwargsReveal
 testUnpackOutsideOfKwargs
