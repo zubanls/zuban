@@ -237,7 +237,7 @@ impl<'a> Type<'a> {
                         }
                         _ => Match::new_false(),
                     },
-                    _ => Match::False(MismatchReason::None),
+                    _ => Match::new_false(),
                 },
                 DbType::Union(union_type1) => {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
@@ -314,7 +314,13 @@ impl<'a> Type<'a> {
             Some(mro) => {
                 for (_, t2) in mro {
                     let m = self.matches_internal(i_s, matcher, &t2, Variance::Covariant);
-                    if !matches!(m, Match::False(MismatchReason::None)) {
+                    if !matches!(
+                        m,
+                        Match::False {
+                            reason: MismatchReason::None,
+                            similar: false
+                        }
+                    ) {
                         return m;
                     }
                 }
@@ -720,7 +726,7 @@ impl<'a> Type<'a> {
     ) -> Match {
         let value_type = value.class_as_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
-        if let Match::False(ref reason) | Match::FalseButSimilar(ref reason) = matches {
+        if let Match::False { ref reason, .. } = matches {
             let value_type = value.class_as_type(i_s);
             let mut fmt1 = FormatData::new_short(i_s.db);
             let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);

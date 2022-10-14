@@ -126,9 +126,10 @@ impl<'a> Matcher<'a> {
                     true => m,
                     false => match current.defined_by_result_context {
                         true => Match::new_false(),
-                        false => Match::False(MismatchReason::CannotInferTypeArgument(
-                            type_var_usage.index,
-                        )),
+                        false => Match::False {
+                            reason: MismatchReason::CannotInferTypeArgument(type_var_usage.index),
+                            similar: false,
+                        },
                     },
                 };
             }
@@ -178,10 +179,13 @@ impl<'a> Matcher<'a> {
                     .bool();
             }
             if mismatch_constraints {
-                return Match::False(MismatchReason::ConstraintMismatch {
-                    expected: value_type.as_db_type(i_s),
-                    type_var: type_var_usage.type_var.clone(),
-                });
+                return Match::False {
+                    reason: MismatchReason::ConstraintMismatch {
+                        expected: value_type.as_db_type(i_s),
+                        type_var: type_var_usage.type_var.clone(),
+                    },
+                    similar: false,
+                };
             }
             current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {

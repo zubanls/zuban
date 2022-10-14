@@ -505,7 +505,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                                         );
                                     } else {
                                         debug!(
-                                            "TODO this is wrong, because this might also be Match::FalseButSimilar"
+                                            "TODO this is wrong, because this might also be Match::False{{similar: true}}"
                                         );
                                     }
                                 }
@@ -647,7 +647,6 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         Match::TrueWithAny => SignatureMatch::TrueWithAny {
             argument_indices: argument_indices_with_any.into(),
         },
-        Match::FalseButSimilar(_) => SignatureMatch::FalseButSimilar,
-        Match::False(_) => SignatureMatch::False,
+        Match::False { similar, .. } => SignatureMatch::False { similar },
     }
 }

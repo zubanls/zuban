@@ -11,8 +11,9 @@ pub struct ArgumentIndexWithParam {
 
 #[derive(Debug)]
 pub enum SignatureMatch {
-    False,
-    FalseButSimilar,
+    False {
+        similar: bool,
+    },
     TrueWithAny {
         argument_indices: Box<[ArgumentIndexWithParam]>,
     },
@@ -21,8 +22,10 @@ pub enum SignatureMatch {
 
 #[derive(Clone, Debug)]
 pub enum Match {
-    False(MismatchReason),
-    FalseButSimilar(MismatchReason),
+    False {
+        similar: bool,
+        reason: MismatchReason,
+    },
     TrueWithAny,
     True,
 }
@@ -38,8 +41,11 @@ pub enum MismatchReason {
 }
 
 impl Match {
-    pub fn new_false() -> Self {
-        Self::False(MismatchReason::None)
+    pub const fn new_false() -> Self {
+        Self::False {
+            reason: MismatchReason::None,
+            similar: false,
+        }
     }
 
     pub fn bool(&self) -> bool {
@@ -48,7 +54,13 @@ impl Match {
 
     pub fn similar_if_false(self) -> Self {
         match self {
-            Self::False(reason) => Self::FalseButSimilar(reason),
+            Self::False {
+                reason,
+                similar: false,
+            } => Self::False {
+                reason,
+                similar: true,
+            },
             _ => self,
         }
     }
@@ -58,7 +70,15 @@ impl Match {
             self
         } else {
             let result = callable();
-            if result.bool() || matches!(self, Match::False(MismatchReason::None)) {
+            if result.bool()
+                || matches!(
+                    self,
+                    Match::False {
+                        reason: MismatchReason::None,
+                        similar: false
+                    }
+                )
+            {
                 result
             } else {
                 self
@@ -77,11 +97,20 @@ impl BitAnd for Match {
                 Self::True => Self::TrueWithAny,
                 _ => rhs,
             },
-            Self::FalseButSimilar(reason) => match rhs {
-                Self::False(_) => Self::False(reason),
-                _ => Self::FalseButSimilar(reason),
+            Self::False {
+                reason,
+                similar: true,
+            } => match rhs {
+                Self::False { similar: false, .. } => Self::False {
+                    reason,
+                    similar: false,
+                },
+                _ => Self::False {
+                    reason,
+                    similar: true,
+                },
             },
-            Self::False(reason) => Self::False(reason),
+            Self::False { .. } => self,
         }
     }
 }
@@ -97,7 +126,7 @@ impl From<bool> for Match {
     fn from(item: bool) -> Self {
         match item {
             true => Match::True,
-            _ => Match::False(MismatchReason::None),
+            _ => Match::new_false(),
         }
     }
 }

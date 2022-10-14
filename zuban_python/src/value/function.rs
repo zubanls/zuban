@@ -894,12 +894,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         ))
                     }
                 }
-                SignatureMatch::FalseButSimilar => {
+                SignatureMatch::False { similar: true } => {
                     if first_similar.is_none() {
                         first_similar = Some(function)
                     }
                 }
-                SignatureMatch::False => (),
+                SignatureMatch::False { similar: false } => (),
             }
         }
         if let Some((type_arguments, function, _)) = multi_any_match {
