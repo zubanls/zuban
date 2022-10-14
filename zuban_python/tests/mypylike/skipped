@@ -2,14 +2,14 @@
 testUnboundTypeVar
 testGenericTypeAliasesImporting
 
-# Recursive Alias --enable-recursive-aliases
-testRecursiveAliasesJoins
-testRecursiveAliasWithRecursiveInstanceInference
-testRecursiveClassLevelAlias
-testTupleTypeUpdateNonRecursiveToRecursiveFine
-testTypeAliasUpdateNonRecursiveToRecursiveFine
-# Invalid aliases
+# Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
+# Recursive Alias wrong type var inference --enable-recursive-aliases
+testRecursiveAliasesJoins
+# Recursive alias union type var inference --enable-recursive-aliases
+testRecursiveAliasWithRecursiveInstanceInference
+# Recursive alias class type aliases --enable-recursive-aliases
+testRecursiveClassLevelAlias
 
 # func type var in __init__
 testInvalidNumberOfTypeArgs
@@ -508,6 +508,9 @@ testRecursiveAliasesRestrictions
 testRecursiveAliasesRestrictions2
 testRecursiveAliasBasicGenericInference
 testRecursiveAliasNewStyleSupported
+#  --enable-recursive-aliases & is not None
+testTupleTypeUpdateNonRecursiveToRecursiveFine
+testTypeAliasUpdateNonRecursiveToRecursiveFine
 
 # weird narrowing
 testInferredTypeIsSimpleNestedList
