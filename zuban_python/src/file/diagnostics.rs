@@ -259,7 +259,7 @@ impl PythonInference<'_, '_, '_, '_> {
                             f1.param_iterator(),
                             Variance::Contravariant
                         ),
-                        Match::True
+                        Match::True { with_any: false }
                     ) {
                         f2.node_ref.add_typing_issue(
                             self.i_s.db,

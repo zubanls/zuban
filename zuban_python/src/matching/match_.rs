@@ -26,8 +26,9 @@ pub enum Match {
         similar: bool,
         reason: MismatchReason,
     },
-    TrueWithAny,
-    True,
+    True {
+        with_any: bool,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -48,8 +49,12 @@ impl Match {
         }
     }
 
+    pub const fn new_true() -> Self {
+        Self::True { with_any: false }
+    }
+
     pub fn bool(&self) -> bool {
-        matches!(self, Self::True | Self::TrueWithAny)
+        matches!(self, Self::True { .. })
     }
 
     pub fn similar_if_false(self) -> Self {
@@ -92,9 +97,9 @@ impl BitAnd for Match {
 
     fn bitand(self, rhs: Self) -> Self::Output {
         match self {
-            Self::True => rhs,
-            Self::TrueWithAny => match rhs {
-                Self::True => Self::TrueWithAny,
+            Self::True { with_any: false } => rhs,
+            Self::True { with_any: true } => match rhs {
+                Self::True { with_any: false } => Self::True { with_any: true },
                 _ => rhs,
             },
             Self::False {
@@ -117,7 +122,7 @@ impl BitAnd for Match {
 
 impl BitAndAssign for Match {
     fn bitand_assign(&mut self, rhs: Self) {
-        let left = std::mem::replace(self, Match::True);
+        let left = std::mem::replace(self, Match::new_true());
         *self = left & rhs
     }
 }
@@ -125,7 +130,7 @@ impl BitAndAssign for Match {
 impl From<bool> for Match {
     fn from(item: bool) -> Self {
         match item {
-            true => Match::True,
+            true => Match::new_true(),
             _ => Match::new_false(),
         }
     }

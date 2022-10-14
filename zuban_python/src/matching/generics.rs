@@ -175,7 +175,7 @@ impl<'a> Generics<'a> {
         type_vars: &TypeVars,
     ) -> Match {
         let mut value_generics = value_generics.iter();
-        let mut matches = Match::True;
+        let mut matches = Match::new_true();
         let mut type_var_iterator = type_vars.iter();
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {

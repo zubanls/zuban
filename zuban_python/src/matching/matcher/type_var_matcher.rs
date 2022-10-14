@@ -430,7 +430,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
-    let mut matches = Match::True;
+    let mut matches = Match::new_true();
     for (i, p) in args_with_params.by_ref().enumerate() {
         if p.argument.is_none() && !p.param.has_default() {
             matches = Match::new_false();
@@ -513,7 +513,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                         }
                     }),
                 );
-                if matches!(m, Match::TrueWithAny) {
+                if matches!(m, Match::True { with_any: true }) {
                     if let Some(param_annotation_link) = p.param.func_annotation_link() {
                         // This is never reached when matching callables
                         if let Some(argument) = p.argument {
@@ -643,8 +643,8 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         };
     }
     match matches {
-        Match::True => SignatureMatch::True,
-        Match::TrueWithAny => SignatureMatch::TrueWithAny {
+        Match::True { with_any: false } => SignatureMatch::True,
+        Match::True { with_any: true } => SignatureMatch::TrueWithAny {
             argument_indices: argument_indices_with_any.into(),
         },
         Match::False { similar, .. } => SignatureMatch::False { similar },

@@ -105,7 +105,7 @@ impl TypeVarBound {
                         let m = Type::new(t).is_simple_super_type_of(i_s, other);
                         if !m.bool() && matches!(self, Self::Upper(_)) {
                             *self = Self::Upper(Type::new(t).common_base_class(i_s, other));
-                            return Match::True;
+                            return Match::new_true();
                         }
                         return m;
                     }

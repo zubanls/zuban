@@ -149,7 +149,7 @@ impl<'a> Matcher<'a> {
                         }) {
                             current.type_ =
                                 Some(TypeVarBound::Invariant(value_type.as_db_type(i_s)));
-                            return Match::True;
+                            return Match::new_true();
                         }
                     }
                     _ => {
@@ -189,9 +189,9 @@ impl<'a> Matcher<'a> {
             }
             current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
-                Match::TrueWithAny
+                Match::True { with_any: true }
             } else {
-                Match::True
+                Match::new_true()
             }
         } else {
             if let Some(parent_matcher) = type_var_matcher.parent_matcher.as_mut() {
@@ -222,7 +222,7 @@ impl<'a> Matcher<'a> {
                             //     def __init__(self, t: T) -> None: pass
                             if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
                                 if v == type_var_usage {
-                                    return Match::True;
+                                    return Match::new_true();
                                 }
                             }
                             todo!(

@@ -227,8 +227,8 @@ impl<'a> Type<'a> {
                     matches!(value_type, Self::Type(ref t2) if matches!(t2.as_ref(), DbType::None))
                         .into()
                 }
-                DbType::Any => Match::True,
-                DbType::Never => Match::True, // TODO is this correct?
+                DbType::Any => Match::new_true(),
+                DbType::Never => Match::new_true(), // TODO is this correct?
                 DbType::Tuple(t1) => match value_type {
                     Self::Type(t2) => match t2.as_ref() {
                         DbType::Tuple(t2) => {
@@ -249,7 +249,7 @@ impl<'a> Type<'a> {
                         let cls_db_type = value_type.as_db_type(i_s);
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         if matcher.has_already_matched_recursive_alias(rec1, &cls_db_type) {
-                            return Match::True;
+                            return Match::new_true();
                         } else {
                             matcher.add_checked_type_recursion(rec1.clone(), cls_db_type);
                             return Type::new(g)
@@ -259,7 +259,7 @@ impl<'a> Type<'a> {
                     match value_type.maybe_db_type() {
                         Some(t @ DbType::RecursiveAlias(rec2)) => {
                             if matcher.has_already_matched_recursive_alias(rec1, t) {
-                                Match::True
+                                Match::new_true()
                             } else {
                                 // We are going to check it, so we mark it as checked.
                                 matcher.add_checked_type_recursion(rec1.clone(), t.clone());
@@ -397,9 +397,9 @@ impl<'a> Type<'a> {
                         Self::Type(t) => Cow::Borrowed(t.as_ref()),
                     };
                     matcher.set_all_contained_type_vars_to_any(i_s, &t1);
-                    return Match::TrueWithAny;
+                    return Match::True { with_any: true };
                 }
-                DbType::None => return Match::True,
+                DbType::None => return Match::new_true(),
                 DbType::TypeVar(t2) => {
                     if matcher.is_matching_reverse() {
                         return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
@@ -417,7 +417,7 @@ impl<'a> Type<'a> {
                                 });
                             if m {
                                 todo!();
-                                //return Match::True;
+                                //return Match::new_true();
                             }
                         }
                     }
@@ -431,7 +431,7 @@ impl<'a> Type<'a> {
                         .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
                         .into();
                 }
-                DbType::Never => return Match::True, // TODO is this correct?
+                DbType::Never => return Match::new_true(), // TODO is this correct?
                 _ => (),
             }
         }
@@ -480,7 +480,7 @@ impl<'a> Type<'a> {
                         .map(|t| matches!(t, DbType::Any))
                         .unwrap_or(false)
                 {
-                    Match::TrueWithAny
+                    Match::True { with_any: true }
                 } else {
                     m
                 }
@@ -551,7 +551,7 @@ impl<'a> Type<'a> {
                         .matches(i_s, matcher, class2.generics(), type_vars)
                         .similar_if_false();
                 }
-                return Match::True;
+                return Match::new_true();
             }
         }
         Match::new_false()
@@ -597,7 +597,7 @@ impl<'a> Type<'a> {
                             Match::new_false()
                         } else {
                             let mut value_generics = Generics::new_list(generics2).iter();
-                            let mut matches = Match::True;
+                            let mut matches = Match::new_true();
                             Generics::new_list(generics1).iter().run_on_all(
                                 i_s,
                                 &mut |i_s, type_| {
@@ -630,7 +630,7 @@ impl<'a> Type<'a> {
                 };
             }
         }
-        Match::True
+        Match::new_true()
     }
 
     fn overlaps_tuple(i_s: &mut InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
