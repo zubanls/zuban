@@ -1289,7 +1289,7 @@ impl RecursiveAlias {
 
 impl std::cmp::PartialEq for RecursiveAlias {
     fn eq(&self, other: &Self) -> bool {
-        return self.link == other.link && self.generics == other.generics;
+        self.link == other.link && self.generics == other.generics
     }
 }
 
