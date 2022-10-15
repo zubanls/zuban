@@ -818,6 +818,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         class: Option<&Class>,
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Option<(Function<'a>, Option<GenericsList>)> {
         let mut match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'a>| {
             let func_type_vars = function.type_vars(i_s);
@@ -922,14 +923,18 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 NodeRef::from_link(i_s.db, self.overload.functions[0]),
                 self.class,
             );
-            args.as_node_ref().add_typing_issue(
-                i_s.db,
-                IssueType::OverloadMismatch {
-                    name: function.diagnostic_string(self.class.as_ref()),
-                    args: args.iter_arguments().into_argument_types(),
-                    variants: self.variants(i_s, search_init),
-                },
-            );
+            if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
+                on_overload_mismatch(i_s, class)
+            } else {
+                args.as_node_ref().add_typing_issue(
+                    i_s.db,
+                    IssueType::OverloadMismatch {
+                        name: function.diagnostic_string(self.class.as_ref()),
+                        args: args.iter_arguments().into_argument_types(),
+                        variants: self.variants(i_s, search_init),
+                    },
+                );
+            }
         }
         None
     }
@@ -968,7 +973,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name());
-        self.find_matching_function(i_s, args, class, false, result_context)
+        self.find_matching_function(i_s, args, class, false, result_context, on_type_error)
             .map(|(function, _)| function.execute(i_s, args, result_context, on_type_error))
             .unwrap_or_else(|| self.fallback_type(i_s))
     }

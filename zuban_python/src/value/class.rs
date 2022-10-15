@@ -108,7 +108,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 Some((func, calculated_type_args.type_arguments, false))
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
-                .find_matching_function(i_s, args, class.as_ref(), true, result_context)
+                .find_matching_function(
+                    i_s,
+                    args,
+                    class.as_ref(),
+                    true,
+                    result_context,
+                    on_type_error,
+                )
                 .map(|(func, list)| {
                     // Execute the found function to create the diagnostics.
                     calculate_class_init_type_vars_and_return(

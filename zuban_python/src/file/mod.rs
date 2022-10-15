@@ -1114,6 +1114,29 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let added_note = Cell::new(false);
+        let on_error = |i_s: &mut InferenceState, class: Option<&Class>| {
+            node_ref.add_typing_issue(
+                i_s.db,
+                IssueType::UnsupportedOperand {
+                    operand: Box::from(op.operand),
+                    left: class.unwrap().format(&FormatData::new_short(i_s.db)),
+                    right: right.format(i_s, &FormatData::new_short(i_s.db)),
+                },
+            );
+            if left.is_union(i_s.db) && !added_note.get() {
+                added_note.set(true);
+                node_ref.add_typing_issue(
+                    i_s.db,
+                    IssueType::Note(
+                        format!(
+                            "Left operand is of type {:?}",
+                            left.format(i_s, &FormatData::new_short(i_s.db)),
+                        )
+                        .into(),
+                    ),
+                );
+            }
+        };
         left.run_on_value(self.i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, op.magic_method, &|i_s| {
                 node_ref.add_typing_issue(
@@ -1131,29 +1154,10 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 i_s,
                 &KnownArguments::new(&right, Some(node_ref)),
                 &mut ResultContext::Unknown,
-                OnTypeError::new(&|i_s, node_ref, class, function, p, right, _| {
-                    node_ref.add_typing_issue(
-                        i_s.db,
-                        IssueType::UnsupportedOperand {
-                            operand: Box::from(op.operand),
-                            left: class.unwrap().format(&FormatData::new_short(i_s.db)),
-                            right,
-                        },
-                    );
-                    if left.is_union(i_s.db) && !added_note.get() {
-                        added_note.set(true);
-                        node_ref.add_typing_issue(
-                            i_s.db,
-                            IssueType::Note(
-                                format!(
-                                    "Left operand is of type {:?}",
-                                    left.format(i_s, &FormatData::new_short(i_s.db)),
-                                )
-                                .into(),
-                            ),
-                        );
-                    }
-                }),
+                OnTypeError {
+                    on_overload_mismatch: Some(&on_error),
+                    callback: &|i_s, _, class, _, _, _, _| on_error(i_s, class),
+                },
             )
         })
     }

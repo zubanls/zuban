@@ -38,11 +38,15 @@ pub use typing::{
 #[derive(Clone, Copy)]
 pub struct OnTypeError<'db, 'a> {
     pub callback: OnTypeErrorCallback<'db, 'a>,
+    pub on_overload_mismatch: Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>,
 }
 
 impl<'db, 'a> OnTypeError<'db, 'a> {
     pub fn new(callback: OnTypeErrorCallback<'db, 'a>) -> Self {
-        Self { callback }
+        Self {
+            callback,
+            on_overload_mismatch: None,
+        }
     }
 }
 

@@ -7,12 +7,6 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 
-testConditionalFunctionDefinitionWithIfElse
-testConditionalMethodDefinitionWithIfElse
-testCallableWithArbitraryArgsInGenericFunction
-testUnionIndexing
-testUnionAndBinaryOperation
-
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
 # Recursive Alias wrong type var inference --enable-recursive-aliases
