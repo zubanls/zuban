@@ -459,6 +459,11 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                 .db
                                 .add_invalidates(file_index, self.file.file_index());
                             Point::new_file_reference(file_index, Locality::Todo)
+                        } else if let Some(link) = import_file
+                            .inference(self.i_s)
+                            .lookup_from_star_import(import_name.as_str(), false)
+                        {
+                            Point::new_redirect(link.file, link.node_index, Locality::Todo)
                         } else {
                             NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                 self.i_s.db,
