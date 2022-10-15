@@ -380,6 +380,7 @@ pub enum Specific {
     TypingOptional,
     TypingCast,
     TypingTypeVarClass,
+    TypingLiteralString,
 
     // TODO reactivate these or remove
     //TypingFinal,

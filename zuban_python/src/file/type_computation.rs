@@ -40,6 +40,7 @@ pub(super) enum SpecialType {
     Callable,
     Type,
     Tuple,
+    LiteralString,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -424,6 +425,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     generics: None,
                     arbitrary_length: true,
                 }),
+                SpecialType::LiteralString => DbType::Class(
+                    self.inference.i_s.db.python_state.str_node_ref().as_link(),
+                    None,
+                ),
                 _ => {
                     self.add_typing_issue(
                         node_ref,
@@ -586,6 +591,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
+                        SpecialType::LiteralString => todo!(),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -1693,12 +1699,12 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
             TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
         } else {
             let specific = point.maybe_specific().unwrap();
-            if specific == Specific::TypingType {
-                TypeNameLookup::SpecialType(SpecialType::Type)
-            } else {
-                debug_assert_eq!(specific, Specific::TypingCallable);
-                TypeNameLookup::SpecialType(SpecialType::Callable)
-            }
+            TypeNameLookup::SpecialType(match specific {
+                Specific::TypingType => SpecialType::Type,
+                Specific::TypingCallable => SpecialType::Callable,
+                Specific::TypingLiteralString => SpecialType::LiteralString,
+                _ => unreachable!(),
+            })
         }
     }
 }

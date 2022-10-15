@@ -137,6 +137,11 @@ impl PythonState {
 
         // TODO this is completely wrong, but for now it's good enough
         setup_type_alias(s.typing_extensions(), "SupportsIndex", s.builtins(), "int");
+        set_typing_inference(
+            s.typing_extensions(),
+            "LiteralString",
+            Specific::TypingLiteralString,
+        );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
         s.mypy_extensions_arg_func =
@@ -233,13 +238,13 @@ impl PythonState {
 
     #[inline]
     pub fn str(&self) -> Class {
+        Class::from_position(self.str_node_ref(), Generics::None, None).unwrap()
+    }
+
+    #[inline]
+    pub fn str_node_ref(&self) -> NodeRef {
         debug_assert!(self.builtins_str_index != 0);
-        Class::from_position(
-            NodeRef::new(self.builtins(), self.builtins_str_index),
-            Generics::None,
-            None,
-        )
-        .unwrap()
+        NodeRef::new(self.builtins(), self.builtins_str_index)
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
@@ -304,6 +309,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
     set_typing_inference(typing, "Type", Specific::TypingType);
     set_typing_inference(typing, "TypeVar", Specific::TypingTypeVarClass);
+    set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
@@ -325,7 +331,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
-    if !["cast", "type", "tuple", "TypeVar"].contains(&name) {
+    if !["cast", "type", "tuple", "TypeVar", "LiteralString"].contains(&name) {
         debug_assert!(!file.points.get(node_index).calculated());
         set_assignments_cached(file, node_index);
     }
