@@ -86,7 +86,7 @@ impl FileStateLoader for PythonFileLoader {
     }
 
     fn might_be_relevant(&self, name: &str) -> bool {
-        if name.ends_with(".py") {
+        if name.ends_with(".py") || name.ends_with(".pyi") {
             return true;
         }
         !name.contains('.') && !name.contains('-')

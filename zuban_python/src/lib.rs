@@ -46,6 +46,8 @@ impl Project {
         let loaders = Box::new([Box::new(PythonFileLoader::default()) as Box<_>]);
         // TODO use a real sys path
         let sys_path = vec![
+            "../typeshed/stdlib".to_owned(),
+            "../typeshed/stubs".to_owned(),
             "/usr/lib/python3/dist-packages".to_owned(),
             "/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".to_owned(),
             "/usr/lib/python3.8".to_owned(),
