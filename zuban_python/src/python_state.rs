@@ -2,13 +2,13 @@ use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, TypeLike};
 use std::ptr::null;
 
 use crate::database::{
-    Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
+    ComplexPoint, Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function};
+use crate::value::{Class, OverloadedFunction};
 
 pub struct PythonState {
     pub mypy_compatible: bool,
@@ -140,26 +140,26 @@ impl PythonState {
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
         s.mypy_extensions_arg_func =
-            set_mypy_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
-        s.mypy_extensions_default_arg_func = set_mypy_specific(
+            set_mypy_extension_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
+        s.mypy_extensions_default_arg_func = set_mypy_extension_specific(
             mypy_extensions,
             "DefaultArg",
             Specific::MypyExtensionsDefaultArg,
         );
-        s.mypy_extensions_named_arg_func = set_mypy_specific(
+        s.mypy_extensions_named_arg_func = set_mypy_extension_specific(
             mypy_extensions,
             "NamedArg",
             Specific::MypyExtensionsNamedArg,
         );
-        s.mypy_extensions_default_named_arg_func = set_mypy_specific(
+        s.mypy_extensions_default_named_arg_func = set_mypy_extension_specific(
             mypy_extensions,
             "DefaultNamedArg",
             Specific::MypyExtensionsDefaultNamedArg,
         );
         s.mypy_extensions_var_arg_func =
-            set_mypy_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
+            set_mypy_extension_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
         s.mypy_extensions_kw_arg_func =
-            set_mypy_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
+            set_mypy_extension_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
     }
 
     #[inline]
@@ -274,7 +274,7 @@ impl PythonState {
         NodeRef::new(self.typing(), self.typing_mapping_index)
     }
 
-    pub fn mypy_extensions_arg_func(&self, specific: Specific) -> Function {
+    pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {
         let node_index = match specific {
             Specific::MypyExtensionsArg => self.mypy_extensions_arg_func,
             Specific::MypyExtensionsDefaultArg => self.mypy_extensions_default_arg_func,
@@ -284,7 +284,12 @@ impl PythonState {
             Specific::MypyExtensionsKwArg => self.mypy_extensions_kw_arg_func,
             _ => unreachable!(),
         };
-        Function::new(NodeRef::new(self.mypy_extensions(), node_index), None)
+        let node_ref = NodeRef::new(self.mypy_extensions(), node_index);
+        let overload = match node_ref.complex().unwrap() {
+            ComplexPoint::FunctionOverload(overload) => overload,
+            _ => unreachable!(),
+        };
+        OverloadedFunction::new(node_ref, overload, None)
     }
 }
 
@@ -370,14 +375,14 @@ fn precalculate_type_var_instance(file: &PythonFile, name: &str) {
     }
 }
 
-fn set_mypy_specific(file: &PythonFile, name: &str, specific: Specific) -> NodeIndex {
+fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific) -> NodeIndex {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
     // Act on the name def index and not the name.
-    let old_point = file.points.get(node_index - 1);
+    let old_point = file.points.get(node_index);
     file.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
     );
-    debug_assert_eq!(old_point.type_(), PointType::Redirect);
-    old_point.node_index()
+    debug_assert!(!old_point.calculated());
+    node_index - 1
 }

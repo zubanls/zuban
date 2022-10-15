@@ -1041,6 +1041,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             AtomContent::Tuple(t) => TypeContent::InvalidVariable(InvalidVariableType::Tuple {
                 tuple_length: t.iter().count(),
             }),
+            AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Other),
             _ => todo!("{atom:?}"),
         }
     }
