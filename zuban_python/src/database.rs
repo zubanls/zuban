@@ -19,7 +19,7 @@ use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
-use crate::workspaces::{DirContent, WorkspaceFileIndex, Workspaces};
+use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 
 pub type CallableParams = Option<Box<[CallableParam]>>;
 
@@ -1895,8 +1895,6 @@ impl Database {
 
         let builtins = self.py_load_tmp(&dir, "../typeshed/stdlib/builtins.pyi") as *const _;
         let typing = self.py_load_tmp(&dir, "../typeshed/stdlib/typing.pyi") as *const _;
-        let collections =
-            self.py_load_tmp(&dir, "../typeshed/stdlib/collections/__init__.pyi") as *const _;
         let types = self.py_load_tmp(&dir, "../typeshed/stdlib/types.pyi") as *const _;
         let typing_extensions =
             self.py_load_tmp(&dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
@@ -1904,6 +1902,16 @@ impl Database {
             &dir,
             "../typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
         ) as *const _;
+
+        let collections_dir = match &dir.search("collections").unwrap().type_ {
+            DirOrFile::Directory(c) => c.clone(),
+            _ => unreachable!(),
+        };
+        let collections = self.py_load_tmp(
+            &collections_dir,
+            "../typeshed/stdlib/collections/__init__.pyi",
+        ) as *const _;
+
         PythonState::initialize(
             self,
             builtins,

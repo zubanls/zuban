@@ -282,6 +282,7 @@ impl DirEntry {
 #[derive(Debug, Default, Clone)]
 pub struct DirContent(RefCell<Vec<DirEntry>>);
 
+#[derive(Debug)]
 pub struct AddedFile {
     pub invalidations: Invalidations,
     pub directory: Rc<DirContent>,
