@@ -17,9 +17,9 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Module, NoneInstance, OverloadedFunction, RevealTypeFunction,
-    Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
-    TypingType, Value,
+    IteratorContent, ListLiteral, Module, NoneInstance, OnTypeError, OverloadedFunction,
+    RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
+    TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -788,7 +788,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s,
                 &NoArguments::new(from),
                 &mut ResultContext::Unknown,
-                &|_, _, _, _, _, _, _| todo!("currently only used for __next__"),
+                OnTypeError::new(&|_, _, _, _, _, _, _| todo!("currently only used for __next__")),
             )
         })
     }

@@ -28,7 +28,7 @@ use crate::matching::{FormatData, ResultContext};
 use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
-use crate::value::{Class, Function, LookupResult, Module, ParamWithArgument, Value};
+use crate::value::{Class, Function, LookupResult, Module, OnTypeError, ParamWithArgument, Value};
 use crate::workspaces::DirContent;
 pub use class_type_var_finder::ClassTypeVarFinder;
 use name_binder::NameBinder;
@@ -733,18 +733,20 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                 i_s,
                                 &KnownArguments::new(&right, Some(node_ref)),
                                 &mut ResultContext::Unknown,
-                                &|i_s, node_ref, class, function, p, right, wanted| {
-                                    node_ref.add_typing_issue(
-                                        i_s.db,
-                                        IssueType::UnsupportedOperand {
-                                            operand: Box::from(aug_assign.operand()),
-                                            left: class
-                                                .unwrap()
-                                                .format(&FormatData::new_short(i_s.db)),
-                                            right,
-                                        },
-                                    )
-                                },
+                                OnTypeError::new(
+                                    &|i_s, node_ref, class, function, p, right, wanted| {
+                                        node_ref.add_typing_issue(
+                                            i_s.db,
+                                            IssueType::UnsupportedOperand {
+                                                operand: Box::from(aug_assign.operand()),
+                                                left: class
+                                                    .unwrap()
+                                                    .format(&FormatData::new_short(i_s.db)),
+                                                right,
+                                            },
+                                        )
+                                    },
+                                ),
                             )
                         })
                 });
@@ -871,18 +873,20 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                 i_s,
                                 &CombinedArguments::new(&args, &KnownArguments::new(value, None)),
                                 &mut ResultContext::Unknown,
-                                &|i_s, node_ref, class, function, p, actual, expected| {
-                                    node_ref.add_typing_issue(
-                                        i_s.db,
-                                        IssueType::InvalidGetItem {
-                                            actual,
-                                            type_: class
-                                                .unwrap()
-                                                .format(&FormatData::new_short(i_s.db)),
-                                            expected,
-                                        },
-                                    )
-                                },
+                                OnTypeError::new(
+                                    &|i_s, node_ref, class, function, p, actual, expected| {
+                                        node_ref.add_typing_issue(
+                                            i_s.db,
+                                            IssueType::InvalidGetItem {
+                                                actual,
+                                                type_: class
+                                                    .unwrap()
+                                                    .format(&FormatData::new_short(i_s.db)),
+                                                expected,
+                                            },
+                                        )
+                                    },
+                                ),
                             )
                         })
                     });
@@ -1127,7 +1131,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 i_s,
                 &KnownArguments::new(&right, Some(node_ref)),
                 &mut ResultContext::Unknown,
-                &|i_s, node_ref, class, function, p, right, _| {
+                OnTypeError::new(&|i_s, node_ref, class, function, p, right, _| {
                     node_ref.add_typing_issue(
                         i_s.db,
                         IssueType::UnsupportedOperand {
@@ -1149,7 +1153,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             ),
                         );
                     }
-                },
+                }),
             )
         })
     }
@@ -1261,7 +1265,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                 self.i_s,
                                 &args,
                                 result_context,
-                                &on_type_error,
+                                OnTypeError::new(&on_type_error),
                             );
                             return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
                         }
@@ -1271,7 +1275,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                     self.i_s,
                     &mut |i_s, value| {
                         debug!("Execute {}", value.name());
-                        value.execute(i_s, &args, result_context, &on_type_error)
+                        value.execute(i_s, &args, result_context, OnTypeError::new(&on_type_error))
                     },
                     &|i_s, i1, i2| i1.union(i2),
                     &mut |i_s| {

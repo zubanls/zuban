@@ -114,18 +114,20 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                             i_s,
                             &args,
                             &mut ResultContext::Unknown,
-                            &|i_s, node_ref, class, function, p, actual, expected| {
-                                node_ref.add_typing_issue(
-                                    i_s.db,
-                                    IssueType::InvalidGetItem {
-                                        actual,
-                                        type_: class
-                                            .unwrap()
-                                            .format(&FormatData::new_short(i_s.db)),
-                                        expected,
-                                    },
-                                )
-                            },
+                            OnTypeError::new(
+                                &|i_s, node_ref, class, function, p, actual, expected| {
+                                    node_ref.add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidGetItem {
+                                            actual,
+                                            type_: class
+                                                .unwrap()
+                                                .format(&FormatData::new_short(i_s.db)),
+                                            expected,
+                                        },
+                                    )
+                                },
+                            ),
                         )
                     });
                 }
@@ -161,7 +163,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                                 i_s,
                                 &NoArguments::new(from),
                                 &mut ResultContext::Unknown,
-                                &|_, _, _, _, _, _, _| todo!(),
+                                OnTypeError::new(&|_, _, _, _, _, _, _| todo!()),
                             )
                             .execute_function(i_s, "__next__", from)
                     }));

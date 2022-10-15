@@ -459,7 +459,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                     i_s,
                     matcher,
                     &value,
-                    on_type_error.map(|on_type_error| {
+                    on_type_error.as_ref().map(|on_type_error| {
                         |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
                             let node_ref = argument.as_node_ref();
                             if let Some(starred) = node_ref.maybe_starred_expression() {
@@ -474,7 +474,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                                 ).into()
                             }
                             match reason {
-                                MismatchReason::None => on_type_error(
+                                MismatchReason::None => (on_type_error.callback)(
                                     i_s,
                                     node_ref,
                                     class,

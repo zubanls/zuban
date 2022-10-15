@@ -35,7 +35,18 @@ pub use typing::{
     TypingType,
 };
 
-pub type OnTypeError<'db, 'a> = &'a dyn Fn(
+#[derive(Clone, Copy)]
+pub struct OnTypeError<'db, 'a> {
+    pub callback: OnTypeErrorCallback<'db, 'a>,
+}
+
+impl<'db, 'a> OnTypeError<'db, 'a> {
+    pub fn new(callback: OnTypeErrorCallback<'db, 'a>) -> Self {
+        Self { callback }
+    }
+}
+
+pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &mut InferenceState<'db, '_>,
     NodeRef,
     Option<&Class>,
