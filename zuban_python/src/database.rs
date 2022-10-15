@@ -1877,13 +1877,11 @@ impl Database {
         }
     }
 
-    fn py_load_tmp(&self, p: &'static str) -> &PythonFile {
+    fn py_load_tmp(&self, dir: &Rc<DirContent>, p: &'static str) -> &PythonFile {
         // TODO give this function a better name and put it into a workspace
         let loader = self.loader(p).unwrap();
-        // TODO this is wrong, because it's just a random dir...
-        let dir = self.workspaces.directories().next().unwrap().1.clone();
         let code = self.vfs.read_file(p).unwrap();
-        let file_index = self.add_file_state(loader.load_parsed(dir, p.to_owned(), code));
+        let file_index = self.add_file_state(loader.load_parsed(dir.clone(), p.to_owned(), code));
         self.loaded_python_file(file_index)
     }
 
@@ -1892,15 +1890,20 @@ impl Database {
     }
 
     fn initial_python_load(&mut self) {
-        let builtins = self.py_load_tmp("../typeshed/stdlib/builtins.pyi") as *const _;
-        let typing = self.py_load_tmp("../typeshed/stdlib/typing.pyi") as *const _;
+        // TODO this is wrong, because it's just a random dir...
+        let dir = self.workspaces.directories().next().unwrap().1.clone();
+
+        let builtins = self.py_load_tmp(&dir, "../typeshed/stdlib/builtins.pyi") as *const _;
+        let typing = self.py_load_tmp(&dir, "../typeshed/stdlib/typing.pyi") as *const _;
         let collections =
-            self.py_load_tmp("../typeshed/stdlib/collections/__init__.pyi") as *const _;
-        let types = self.py_load_tmp("../typeshed/stdlib/types.pyi") as *const _;
+            self.py_load_tmp(&dir, "../typeshed/stdlib/collections/__init__.pyi") as *const _;
+        let types = self.py_load_tmp(&dir, "../typeshed/stdlib/types.pyi") as *const _;
         let typing_extensions =
-            self.py_load_tmp("../typeshed/stdlib/typing_extensions.pyi") as *const _;
-        let mypy_extensions =
-            self.py_load_tmp("../typeshed/stubs/mypy-extensions/mypy_extensions.pyi") as *const _;
+            self.py_load_tmp(&dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
+        let mypy_extensions = self.py_load_tmp(
+            &dir,
+            "../typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
+        ) as *const _;
         PythonState::initialize(
             self,
             builtins,
