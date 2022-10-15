@@ -1676,7 +1676,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                             .into_db_type(self.i_s);
                                     }
                                 }
-                                DbType::TypeVar(t.clone())
+                                DbType::TypeVarLike(t.clone())
                             });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }

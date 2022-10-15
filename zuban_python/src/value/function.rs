@@ -10,8 +10,8 @@ use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
-    IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVar, TypeVarManager,
-    TypeVars,
+    IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike, TypeVarLikes,
+    TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -192,14 +192,14 @@ impl<'db: 'a, 'a> Function<'a> {
         false
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVars> {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (
         let type_var_reference = self.node_ref.add_to_node_index(4);
         if type_var_reference.point().calculated() {
             if let Some(complex) = type_var_reference.complex() {
                 match complex {
-                    ComplexPoint::TypeVars(vars) => return Some(vars),
+                    ComplexPoint::TypeVarLikes(vars) => return Some(vars),
                     _ => unreachable!(),
                 }
             }
@@ -211,7 +211,7 @@ impl<'db: 'a, 'a> Function<'a> {
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &mut InferenceState,
                                manager: &TypeVarManager,
-                               type_var: Rc<TypeVar>,
+                               type_var: Rc<TypeVarLike>,
                                node_ref: NodeRef,
                                current_callable: Option<_>| {
             self.class
@@ -219,7 +219,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     class
                         .type_vars(i_s)
                         .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
-                        .map(DbType::TypeVar)
+                        .map(DbType::TypeVarLike)
                 })
                 .or_else(|| {
                     if in_result_type.get()
@@ -257,8 +257,8 @@ impl<'db: 'a, 'a> Function<'a> {
             }
         });
         if !unbound_type_vars.is_empty() {
-            if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
-                if unbound_type_vars.contains(&t.type_var) {
+            if let Some(DbType::TypeVarLike(t)) = self.result_type(i_s).maybe_db_type() {
+                if unbound_type_vars.contains(&t.type_var_like) {
                     NodeRef::new(
                         self.node_ref.file,
                         func_node.return_annotation().unwrap().expression().index(),
@@ -269,9 +269,8 @@ impl<'db: 'a, 'a> Function<'a> {
         }
         match type_vars.len() {
             0 => type_var_reference.set_point(Point::new_node_analysis(Locality::Todo)),
-            _ => {
-                type_var_reference.insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo)
-            }
+            _ => type_var_reference
+                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo),
         }
         debug_assert!(type_var_reference.point().calculated());
         self.type_vars(i_s)
@@ -290,7 +289,7 @@ impl<'db: 'a, 'a> Function<'a> {
                         return class.generics().nth(i_s, usage.index).into_db_type(i_s);
                     }
                 }
-                DbType::TypeVar(usage.clone())
+                DbType::TypeVarLike(usage.clone())
             })
         };
         let result_type = self.result_type(i_s);
@@ -474,21 +473,28 @@ impl<'db: 'a, 'a> Function<'a> {
                 "[{}] ",
                 type_vars
                     .iter()
-                    .map(|t| {
-                        let mut s = t.name(i_s.db).to_owned();
-                        if let Some(bound) = &t.bound {
-                            s += &format!(" <: {}", bound.format(&FormatData::new_short(i_s.db)));
-                        } else if !t.restrictions.is_empty() {
-                            s += &format!(
-                                " in ({})",
-                                t.restrictions
-                                    .iter()
-                                    .map(|t| t.format(&FormatData::new_short(i_s.db)))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            );
+                    .map(|t| match t.as_ref() {
+                        TypeVarLike::TypeVar(t) => {
+                            let mut s = t.name(i_s.db).to_owned();
+                            if let Some(bound) = &t.bound {
+                                s += &format!(
+                                    " <: {}",
+                                    bound.format(&FormatData::new_short(i_s.db))
+                                );
+                            } else if !t.restrictions.is_empty() {
+                                s += &format!(
+                                    " in ({})",
+                                    t.restrictions
+                                        .iter()
+                                        .map(|t| t.format(&FormatData::new_short(i_s.db)))
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                );
+                            }
+                            s
                         }
-                        s
+                        TypeVarLike::TypeVarTuple(t) => todo!(),
+                        TypeVarLike::ParamSpec(s) => todo!(),
                     })
                     .collect::<Vec<_>>()
                     .join(", "),

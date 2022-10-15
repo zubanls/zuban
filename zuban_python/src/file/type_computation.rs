@@ -5,7 +5,7 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     GenericsList, Locality, Point, PointLink, PointType, RecursiveAlias, Specific, StringSlice,
-    TupleContent, TypeAlias, TypeVar, TypeVarManager, TypeVarUsage, TypeVars, UnionEntry,
+    TupleContent, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager, TypeVarUsage, UnionEntry,
     UnionType,
 };
 use crate::debug;
@@ -22,7 +22,7 @@ use crate::value::{Class, Function, Module, Value};
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &mut InferenceState<'db, '_>,
     &TypeVarManager,
-    Rc<TypeVar>,
+    Rc<TypeVarLike>,
     NodeRef,
     Option<PointLink>, // current_callable
 ) -> Option<DbType>;
@@ -142,7 +142,7 @@ enum TypeContent<'db, 'a> {
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Class(Inferred),
-    TypeVar(Rc<TypeVar>),
+    TypeVarLike(Rc<TypeVarLike>),
     TypeAlias(&'db TypeAlias),
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
@@ -188,28 +188,28 @@ macro_rules! compute_type_application {
 pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     manager: &TypeVarManager,
-    type_var: Rc<TypeVar>,
+    type_var_like: Rc<TypeVarLike>,
     node_ref: NodeRef,
     current_callable: Option<PointLink>,
 ) -> Option<DbType> {
     if let Some(class) = i_s.current_class() {
         if let Some(usage) = class
             .type_vars(i_s)
-            .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
+            .and_then(|t| t.find(type_var_like.clone(), class.node_ref.as_link()))
         {
-            return Some(DbType::TypeVar(usage));
+            return Some(DbType::TypeVarLike(usage));
         }
     }
     if let Some(func) = i_s.current_function() {
         if let Some(type_vars) = func.type_vars(i_s) {
-            let usage = type_vars.find(type_var.clone(), func.node_ref.as_link());
+            let usage = type_vars.find(type_var_like.clone(), func.node_ref.as_link());
             if let Some(usage) = usage {
-                return Some(DbType::TypeVar(usage));
+                return Some(DbType::TypeVarLike(usage));
             }
         }
     }
     current_callable.is_none().then(|| {
-        node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVar { type_var });
+        node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVarLike { type_var_like });
         DbType::Any
     })
 }
@@ -624,7 +624,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             }
         };
         if let Some(type_vars) = type_vars {
-            for type_var in type_vars.iter() {
+            for type_var_like in type_vars.iter() {
+                let type_var = match type_var_like.as_ref() {
+                    TypeVarLike::TypeVar(type_var) => type_var,
+                    _ => todo!(), // Not sure what to do here yet
+                };
                 let db_type = if let Some(slice_content) = iterator.next() {
                     let t = self.compute_slice_type(slice_content);
                     if let Some(bound) = &type_var.bound {
@@ -655,7 +659,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             slice_content.as_node_ref().add_typing_issue(
                                 i_s.db,
                                 IssueType::InvalidTypeVarValue {
-                                    type_var: Box::from(type_var.name(i_s.db)),
+                                    type_var_name: Box::from(type_var.name(i_s.db)),
                                     func: format!("{:?}", class.name()).into(),
                                     actual: t2.format(&FormatData::new_short(i_s.db)),
                                 },
@@ -1000,7 +1004,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         for (i, s) in slice_type.iter().enumerate() {
             if !matches!(
                 self.compute_slice_type(s),
-                TypeContent::DbType(DbType::TypeVar(usage))
+                TypeContent::DbType(DbType::TypeVarLike(usage))
                     if usage.in_definition == self.for_definition
             ) {
                 self.add_typing_issue(s.as_node_ref(), IssueType::TypeVarExpected { class })
@@ -1045,7 +1049,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
-            TypeNameLookup::TypeVar(type_var) => {
+            TypeNameLookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars = true;
                 TypeContent::DbType({
                     self.type_var_callback
@@ -1054,7 +1058,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             callback(
                                 self.inference.i_s,
                                 &self.type_var_manager,
-                                type_var.clone(),
+                                type_var_like.clone(),
                                 NodeRef::new(self.inference.file, name.index()),
                                 self.current_callable,
                             )
@@ -1062,9 +1066,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         .unwrap_or_else(|| {
                             let index = self
                                 .type_var_manager
-                                .add(type_var.clone(), self.current_callable);
-                            DbType::TypeVar(TypeVarUsage {
-                                type_var,
+                                .add(type_var_like.clone(), self.current_callable);
+                            DbType::TypeVarLike(TypeVarUsage {
+                                type_var_like,
                                 index,
                                 in_definition: self.for_definition,
                             })
@@ -1176,7 +1180,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }))
     }
 
-    pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVars
+    pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
     where
         C: FnOnce(&PythonInference, &dyn Fn(&DbType) -> DbType),
     {
@@ -1418,25 +1422,28 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             debug_assert!(file.points.get(name_def.index()).calculated());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
             let in_definition = cached_type_node_ref.as_link();
-            if let Some(tv) = inferred.maybe_type_var(self.i_s) {
-                TypeNameLookup::TypeVar(tv)
+            if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
+                TypeNameLookup::TypeVarLike(tv)
             } else {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let mut type_var_manager = TypeVarManager::default();
-                let mut type_var_callback =
-                    |_: &mut InferenceState, _: &_, type_var: Rc<TypeVar>, _: NodeRef, _| {
-                        // Here we avoid all late bound type var calculation for callable, which is how
-                        // mypy works. The default behavior without a type_var_callback would be to
-                        // just calculate all late bound type vars, but that would mean that something
-                        // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
-                        // generally how type aliases work.
-                        let index = type_var_manager.add(type_var.clone(), None);
-                        Some(DbType::TypeVar(TypeVarUsage {
-                            type_var,
-                            index,
-                            in_definition,
-                        }))
-                    };
+                let mut type_var_callback = |_: &mut InferenceState,
+                                             _: &_,
+                                             type_var_like: Rc<TypeVarLike>,
+                                             _: NodeRef,
+                                             _| {
+                    // Here we avoid all late bound type var calculation for callable, which is how
+                    // mypy works. The default behavior without a type_var_callback would be to
+                    // just calculate all late bound type vars, but that would mean that something
+                    // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
+                    // generally how type aliases work.
+                    let index = type_var_manager.add(type_var_like.clone(), None);
+                    Some(DbType::TypeVarLike(TypeVarUsage {
+                        type_var_like,
+                        index,
+                        in_definition,
+                    }))
+                };
                 let p = file.points.get(expr.index());
                 let mut comp = TypeComputation::new(
                     self,
@@ -1675,7 +1682,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
     if let Some(complex) = node_ref.complex() {
         match complex {
             ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
-            ComplexPoint::TypeVar(t) => TypeNameLookup::TypeVar(t.clone()),
+            ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
             _ => unreachable!(),
         }
     } else {

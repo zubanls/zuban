@@ -6,7 +6,7 @@ use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, PointLink, Specific, TupleContent, TypeVar,
-    TypeVarUsage, Variance,
+    TypeVarLike, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -167,18 +167,21 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
 
     fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self.db_type {
-            DbType::TypeVar(t) => {
-                if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(
-                        self.db,
-                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
-                        bound,
-                    )
-                    .lookup_internal(i_s, name)
-                } else {
-                    todo!("{t:?}")
+            DbType::TypeVarLike(t) => match t.type_var_like.as_ref() {
+                TypeVarLike::TypeVar(type_var) => {
+                    if let Some(bound) = &type_var.bound {
+                        TypingType::new(
+                            self.db,
+                            Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                            bound,
+                        )
+                        .lookup_internal(i_s, name)
+                    } else {
+                        todo!("{type_var:?}")
+                    }
                 }
-            }
+                _ => todo!("is this even reachable for paramspec and typevartuple?"),
+            },
             DbType::Class(link, generics_list) => {
                 Class::from_db_type(i_s.db, *link, generics_list).lookup_internal(i_s, name)
             }
@@ -214,18 +217,21 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
             }
             DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
                 .execute(i_s, args, result_context, on_type_error),
-            DbType::TypeVar(t) => {
-                if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(
-                        self.db,
-                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
-                        bound,
-                    )
-                    .execute(i_s, args, result_context, on_type_error)
-                } else {
-                    todo!("{t:?}")
+            DbType::TypeVarLike(t) => match t.type_var_like.as_ref() {
+                TypeVarLike::TypeVar(type_var) => {
+                    if let Some(bound) = &type_var.bound {
+                        TypingType::new(
+                            self.db,
+                            Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                            bound,
+                        )
+                        .execute(i_s, args, result_context, on_type_error)
+                    } else {
+                        todo!("{t:?}")
+                    }
                 }
-            }
+                _ => todo!("probably unreachable"),
+            },
             _ => todo!("{:?}", self.db_type),
         }
     }
@@ -382,11 +388,18 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
     }
 
     fn name(&self) -> &'a str {
-        self.type_var_usage.type_var.name(self.db)
+        match self.type_var_usage.type_var_like.as_ref() {
+            TypeVarLike::TypeVar(type_var) => type_var.name(self.db),
+            _ => todo!(),
+        }
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        if !self.type_var_usage.type_var.restrictions.is_empty() {
+        let type_var = match self.type_var_usage.type_var_like.as_ref() {
+            TypeVarLike::TypeVar(type_var) => type_var,
+            _ => todo!(),
+        };
+        if !type_var.restrictions.is_empty() {
             debug!("TODO type var values");
             /*
             for db_type in self.type_var_usage.type_var.restrictions.iter() {
@@ -402,7 +415,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
             }
             */
         }
-        if let Some(db_type) = &self.type_var_usage.type_var.bound {
+        if let Some(db_type) = &type_var.bound {
             run_on_db_type(
                 i_s,
                 db_type,
@@ -446,7 +459,7 @@ impl fmt::Debug for TypeVarInstance<'_> {
 #[derive(Debug)]
 pub struct TypeVarClass();
 
-pub fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<TypeVar> {
+pub fn maybe_type_var_like(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<TypeVarLike> {
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
@@ -564,7 +577,7 @@ pub fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<
                 .add_typing_issue(i_s.db, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
-        return Some(TypeVar {
+        return Some(TypeVarLike::TypeVar(TypeVar {
             name_string: PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
@@ -581,7 +594,7 @@ pub fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<
                     return None;
                 }
             },
-        });
+        }));
     } else {
         args.as_node_ref()
             .add_typing_issue(i_s.db, IssueType::TypeVarTooFewArguments);
@@ -609,8 +622,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        if let Some(t) = maybe_type_var(i_s, args) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVar(Rc::new(t)))
+        if let Some(t) = maybe_type_var_like(i_s, args) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(Rc::new(t)))
         } else {
             Inferred::new_unknown()
         }

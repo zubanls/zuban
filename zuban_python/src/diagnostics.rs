@@ -1,6 +1,6 @@
 use parsa_python_ast::{CodeIndex, NodeIndex};
 
-use crate::database::{Database, TypeVar, TypeVarIndex};
+use crate::database::{Database, TypeVarIndex, TypeVarLike};
 use crate::file::PythonFile;
 use crate::file_state::File;
 use crate::name::TreePosition;
@@ -43,11 +43,11 @@ pub(crate) enum IssueType {
     EnsureSingleGenericOrProtocol,
 
     DuplicateTypeVar,
-    UnboundTypeVar { type_var: std::rc::Rc<TypeVar> },
+    UnboundTypeVarLike { type_var_like: std::rc::Rc<TypeVarLike> },
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
     TypeVarBoundViolation { actual: Box<str>, executable: Box<str>, expected: Box<str> },
-    InvalidTypeVarValue { type_var: Box<str>, func: Box<str>, actual: Box<str> },
+    InvalidTypeVarValue { type_var_name: Box<str>, func: Box<str>, actual: Box<str> },
     CannotInferTypeArgument { index: TypeVarIndex, callable: Box<str> },
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
@@ -281,14 +281,22 @@ impl<'db> Diagnostic<'db> {
 
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
-            IssueType::UnboundTypeVar{type_var} => {
-                let qualified = type_var.qualified_name(self.db);
-                let name = type_var.name(self.db);
-                format!(
-                    "Type variable {qualified:?} is unbound\n\
-                     {path}:{line}: note: (Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)\n\
-                     {path}:{line}: note: (Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)"
-                )
+            IssueType::UnboundTypeVarLike{type_var_like} => match type_var_like.as_ref() {
+                TypeVarLike::TypeVar(type_var) => {
+                    let qualified = type_var.qualified_name(self.db);
+                    let name = type_var.name(self.db);
+                    format!(
+                        "Type variable {qualified:?} is unbound\n\
+                         {path}:{line}: note: (Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)\n\
+                         {path}:{line}: note: (Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)"
+                    )
+                }
+                TypeVarLike::TypeVarTuple(type_var_tuple) => {
+                    todo!()
+                }
+                TypeVarLike::ParamSpec(param_spec) => {
+                    todo!()
+                }
             }
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
@@ -296,8 +304,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::TypeVarBoundViolation{actual, executable, expected} => format!(
                 "Type argument \"{actual}\" of \"{executable}\" must be a subtype of \"{expected}\"",
             ),
-            IssueType::InvalidTypeVarValue{type_var, func, actual} =>
-                format!("Value of type variable {type_var:?} of {func} cannot be {actual:?}"),
+            IssueType::InvalidTypeVarValue{type_var_name, func, actual} =>
+                format!("Value of type variable {type_var_name:?} of {func} cannot be {actual:?}"),
             IssueType::InvalidCastTarget => "Cast target is not a type".to_owned(),
             IssueType::CannotInferTypeArgument{index, callable} =>
                 format!("Cannot infer type argument {} of {callable}", index.as_usize() + 1),

@@ -7,7 +7,7 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, PointType, TypeVar, TypeVarUsage, TypeVars,
+    MroIndex, ParentScope, Point, PointLink, PointType, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -146,13 +146,13 @@ impl<'db: 'a, 'a> Class<'a> {
         ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVars> {
+    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
             return (point.type_() != PointType::NodeAnalysis).then(|| {
                 match node_ref.complex().unwrap() {
-                    ComplexPoint::TypeVars(type_vars) => type_vars,
+                    ComplexPoint::TypeVarLikes(type_vars) => type_vars,
                     _ => unreachable!(),
                 }
             });
@@ -164,15 +164,15 @@ impl<'db: 'a, 'a> Class<'a> {
                 .set_point(Point::new_node_analysis(Locality::Todo));
         } else {
             self.type_vars_node_ref()
-                .insert_complex(ComplexPoint::TypeVars(type_vars), Locality::Todo);
+                .insert_complex(ComplexPoint::TypeVarLikes(type_vars), Locality::Todo);
         }
         self.type_vars(i_s)
     }
 
-    pub fn maybe_type_var_in_parent(
+    pub fn maybe_type_var_like_in_parent(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        type_var: &Rc<TypeVar>,
+        type_var: &Rc<TypeVarLike>,
     ) -> Option<TypeVarUsage> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
@@ -184,7 +184,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 )
                 .unwrap();
                 parent_class
-                    .maybe_type_var_in_parent(i_s, type_var)
+                    .maybe_type_var_like_in_parent(i_s, type_var)
                     .or_else(|| {
                         parent_class
                             .type_vars(i_s)
@@ -245,16 +245,18 @@ impl<'db: 'a, 'a> Class<'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, _: &_, type_var: Rc<TypeVar>, _, _| {
+                            Some(&mut |i_s, _: &_, type_var_like: Rc<TypeVarLike>, _, _| {
                                 if let Some(type_vars) = type_vars {
-                                    if let Some(usage) =
-                                        type_vars.find(type_var.clone(), self.node_ref.as_link())
+                                    if let Some(usage) = type_vars
+                                        .find(type_var_like.clone(), self.node_ref.as_link())
                                     {
-                                        return Some(DbType::TypeVar(usage));
+                                        return Some(DbType::TypeVarLike(usage));
                                     }
                                 }
-                                if let Some(usage) = self.maybe_type_var_in_parent(i_s, &type_var) {
-                                    return Some(DbType::TypeVar(usage));
+                                if let Some(usage) =
+                                    self.maybe_type_var_like_in_parent(i_s, &type_var_like)
+                                {
+                                    return Some(DbType::TypeVarLike(usage));
                                 }
                                 todo!("Maybe class in func");
                             }),

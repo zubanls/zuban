@@ -1,7 +1,7 @@
 use parsa_python_ast::*;
 
 use super::type_computation::{cache_name_on_class, SpecialType, TypeNameLookup};
-use crate::database::{Locality, Point, PointType, TypeVarIndex, TypeVarManager, TypeVars};
+use crate::database::{Locality, Point, PointType, TypeVarIndex, TypeVarLikes, TypeVarManager};
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
@@ -33,7 +33,7 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     pub fn find(
         inference: &'c mut PythonInference<'db, 'file, 'i_s, 'b>,
         class: &'c Class<'file>,
-    ) -> TypeVars {
+    ) -> TypeVarLikes {
         let mut finder = Self {
             inference,
             class,
@@ -177,13 +177,13 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
             TypeNameLookup::Class(i) => BaseLookup::Class(i),
-            TypeNameLookup::TypeVar(type_var) => {
+            TypeNameLookup::TypeVarLike(type_var_like) => {
                 if self
                     .class
-                    .maybe_type_var_in_parent(self.inference.i_s, &type_var)
+                    .maybe_type_var_like_in_parent(self.inference.i_s, &type_var_like)
                     .is_none()
                 {
-                    let old_index = self.type_var_manager.add(type_var, None);
+                    let old_index = self.type_var_manager.add(type_var_like, None);
                     if let Some(force_index) = self.current_generic_or_protocol_index {
                         if old_index < force_index {
                             NodeRef::new(self.inference.file, name.index()).add_typing_issue(

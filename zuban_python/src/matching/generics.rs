@@ -1,7 +1,7 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{FormatData, Match, Matcher, Type};
-use crate::database::{DbType, GenericsList, TypeVarIndex, TypeVars};
+use crate::database::{DbType, GenericsList, TypeVarIndex, TypeVarLike, TypeVarLikes};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -110,7 +110,7 @@ impl<'a> Generics<'a> {
     pub fn as_generics_list(
         &self,
         i_s: &mut InferenceState,
-        type_vars: Option<&TypeVars>,
+        type_vars: Option<&TypeVarLikes>,
     ) -> Option<GenericsList> {
         type_vars.map(|type_vars| match self {
             Self::SimpleGenericExpression(file, expr) => {
@@ -172,14 +172,18 @@ impl<'a> Generics<'a> {
         i_s: &mut InferenceState,
         matcher: &mut Matcher,
         value_generics: Self,
-        type_vars: &TypeVars,
+        type_vars: &TypeVarLikes,
     ) -> Match {
         let mut value_generics = value_generics.iter();
         let mut matches = Match::new_true();
         let mut type_var_iterator = type_vars.iter();
         self.iter().run_on_all(i_s, &mut |i_s, type_| {
             let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                let v = type_var_iterator.next().unwrap().variance;
+                let v = match type_var_iterator.next().unwrap().as_ref() {
+                    TypeVarLike::TypeVar(t) => t.variance,
+                    TypeVarLike::TypeVarTuple(_) => todo!(),
+                    TypeVarLike::ParamSpec(_) => todo!(),
+                };
                 matches &= type_.matches(i_s, matcher, &g, v);
             });
             if appeared.is_none() {
@@ -193,7 +197,7 @@ impl<'a> Generics<'a> {
         self,
         i_s: &mut InferenceState,
         other_generics: Self,
-        type_vars: Option<&TypeVars>,
+        type_vars: Option<&TypeVarLikes>,
     ) -> bool {
         let mut other_generics = other_generics.iter();
         let mut matches = true;

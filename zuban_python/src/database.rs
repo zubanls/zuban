@@ -460,12 +460,12 @@ pub enum ComplexPoint {
     GenericClass(PointLink, GenericsList),
     Instance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
-    TypeVars(TypeVars),
+    TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
 
     // Relevant for types only (not inference)
-    TypeVar(Rc<TypeVar>),
+    TypeVarLike(Rc<TypeVarLike>),
     TypeAlias(Box<TypeAlias>),
 }
 
@@ -596,7 +596,7 @@ impl UnionType {
 
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
-            DbType::TypeVar(_) => 2,
+            DbType::TypeVarLike(_) => 2,
             DbType::None => 3,
             DbType::Any => 4,
             _ => t.type_.has_type_vars().into(),
@@ -632,7 +632,7 @@ pub enum DbType {
     Class(PointLink, Option<GenericsList>),
     Union(UnionType),
     Intersection(IntersectionType),
-    TypeVar(TypeVarUsage),
+    TypeVarLike(TypeVarUsage),
     Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
@@ -741,7 +741,7 @@ impl DbType {
             .into(),
             Self::Union(union) => union.format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
-            Self::TypeVar(t) => format_data.format_type_var(t),
+            Self::TypeVarLike(t) => format_data.format_type_var(t),
             Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
@@ -793,7 +793,7 @@ impl DbType {
                     t.search_type_vars(found_type_var);
                 }
             }
-            Self::TypeVar(t) => found_type_var(t),
+            Self::TypeVarLike(t) => found_type_var(t),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => {
                 if let Some(generics) = &content.generics {
@@ -829,7 +829,7 @@ impl DbType {
             Self::Class(_, Some(generics)) => search_in_generics(generics),
             Self::Union(u) => u.iter().any(|t| t.has_any()),
             Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any()),
-            Self::TypeVar(t) => false,
+            Self::TypeVarLike(t) => false,
             Self::Type(db_type) => db_type.has_any(),
             Self::Tuple(content) => {
                 if let Some(generics) = &content.generics {
@@ -886,7 +886,7 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::TypeVar(t) => callable(t),
+            Self::TypeVarLike(t) => callable(t),
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
                 generics: content
@@ -953,7 +953,7 @@ impl DbType {
                     .collect(),
                 format_as_overload: intersection.format_as_overload,
             }),
-            Self::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
+            Self::TypeVarLike(t) => DbType::TypeVarLike(manager.remap_type_var(t)),
             Self::Type(db_type) => {
                 Self::Type(Box::new(db_type.rewrite_late_bound_callables(manager)))
             }
@@ -975,7 +975,7 @@ impl DbType {
                     .collect::<Box<_>>();
                 Self::Callable(Box::new(CallableContent {
                     defined_at: content.defined_at,
-                    type_vars: (!type_vars.is_empty()).then(|| TypeVars(type_vars)),
+                    type_vars: (!type_vars.is_empty()).then(|| TypeVarLikes(type_vars)),
                     params: content.params.as_ref().map(|params| {
                         params
                             .iter()
@@ -1182,7 +1182,7 @@ impl CallableParam {
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
     pub defined_at: PointLink,
-    pub type_vars: Option<TypeVars>,
+    pub type_vars: Option<TypeVarLikes>,
     pub params: CallableParams,
     pub result_type: DbType,
 }
@@ -1216,13 +1216,17 @@ impl CallableContent {
                     format!(
                         " [{}]",
                         t.iter()
-                            .map(|t| {
-                                let mut name = t.name(format_data.db).to_owned();
-                                if let Some(bound) = &t.bound {
-                                    name += " <: ";
-                                    name += &bound.format(format_data);
+                            .map(|t| match t.as_ref() {
+                                TypeVarLike::TypeVar(t) => {
+                                    let mut name = t.name(format_data.db).to_owned();
+                                    if let Some(bound) = &t.bound {
+                                        name += " <: ";
+                                        name += &bound.format(format_data);
+                                    }
+                                    name
                                 }
-                                name
+                                TypeVarLike::TypeVarTuple(_) => todo!(),
+                                TypeVarLike::ParamSpec(_) => todo!(),
                             })
                             .collect::<Vec<_>>()
                             .join(", ")
@@ -1294,8 +1298,8 @@ impl std::cmp::PartialEq for RecursiveAlias {
 }
 
 #[derive(Debug)]
-struct UnresolvedTypeVar {
-    type_var: Rc<TypeVar>,
+struct UnresolvedTypeVarLike {
+    type_var: Rc<TypeVarLike>,
     most_outer_callable: Option<PointLink>,
 }
 
@@ -1333,18 +1337,22 @@ impl Iterator for CallableAncestors<'_> {
 
 #[derive(Default)]
 pub struct TypeVarManager {
-    type_vars: Vec<UnresolvedTypeVar>,
+    type_vars: Vec<UnresolvedTypeVarLike>,
     callables: Vec<CallableWithParent>,
 }
 
 impl TypeVarManager {
-    pub fn position(&self, type_var: &TypeVar) -> Option<usize> {
+    pub fn position(&self, type_var: &TypeVarLike) -> Option<usize> {
         self.type_vars
             .iter()
             .position(|t| t.type_var.as_ref() == type_var)
     }
 
-    pub fn add(&mut self, type_var: Rc<TypeVar>, in_callable: Option<PointLink>) -> TypeVarIndex {
+    pub fn add(
+        &mut self,
+        type_var: Rc<TypeVarLike>,
+        in_callable: Option<PointLink>,
+    ) -> TypeVarIndex {
         if let Some(index) = self.position(type_var.as_ref()) {
             self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
                 self.type_vars[index].most_outer_callable,
@@ -1352,7 +1360,7 @@ impl TypeVarManager {
             );
             index.into()
         } else {
-            self.type_vars.push(UnresolvedTypeVar {
+            self.type_vars.push(UnresolvedTypeVarLike {
                 type_var,
                 most_outer_callable: in_callable,
             });
@@ -1371,8 +1379,8 @@ impl TypeVarManager {
 
     pub fn lookup_for_remap(&self, tv: &TypeVarUsage) -> TypeVarUsage {
         TypeVarUsage {
-            type_var: tv.type_var.clone(),
-            index: self.position(&tv.type_var).unwrap().into(),
+            type_var_like: tv.type_var_like.clone(),
+            index: self.position(&tv.type_var_like).unwrap().into(),
             in_definition: tv.in_definition,
         }
     }
@@ -1387,8 +1395,8 @@ impl TypeVarManager {
         !self.type_vars.is_empty()
     }
 
-    pub fn into_type_vars(self) -> TypeVars {
-        TypeVars(
+    pub fn into_type_vars(self) -> TypeVarLikes {
+        TypeVarLikes(
             self.type_vars
                 .into_iter()
                 .filter_map(|t| t.most_outer_callable.is_none().then(|| t.type_var))
@@ -1425,7 +1433,7 @@ impl TypeVarManager {
         let mut index = 0;
         let mut in_definition = None;
         for t in self.type_vars.iter().rev() {
-            if t.type_var == usage.type_var {
+            if t.type_var == usage.type_var_like {
                 if t.most_outer_callable.is_some() {
                     in_definition = t.most_outer_callable;
                 } else {
@@ -1437,7 +1445,7 @@ impl TypeVarManager {
         }
         if let Some(in_definition) = in_definition {
             TypeVarUsage {
-                type_var: usage.type_var.clone(),
+                type_var_like: usage.type_var_like.clone(),
                 in_definition,
                 index: index.into(),
             }
@@ -1466,10 +1474,10 @@ impl Variance {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeVars(Box<[Rc<TypeVar>]>);
+pub struct TypeVarLikes(Box<[Rc<TypeVarLike>]>);
 
-impl TypeVars {
-    pub fn from_vec(vec: Vec<Rc<TypeVar>>) -> Self {
+impl TypeVarLikes {
+    pub fn from_vec(vec: Vec<Rc<TypeVarLike>>) -> Self {
         Self(vec.into_boxed_slice())
     }
 
@@ -1481,35 +1489,49 @@ impl TypeVars {
         self.0.is_empty()
     }
 
-    pub fn find(&self, type_var: Rc<TypeVar>, in_definition: PointLink) -> Option<TypeVarUsage> {
+    pub fn find(
+        &self,
+        type_var_like: Rc<TypeVarLike>,
+        in_definition: PointLink,
+    ) -> Option<TypeVarUsage> {
         self.0
             .iter()
-            .position(|t| t == &type_var)
+            .position(|t| t == &type_var_like)
             .map(|index| TypeVarUsage {
-                type_var,
+                type_var_like,
                 index: index.into(),
                 in_definition,
             })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Rc<TypeVar>> {
+    pub fn iter(&self) -> impl Iterator<Item = &Rc<TypeVarLike>> {
         self.0.iter()
     }
 }
 
-impl std::ops::Index<usize> for TypeVars {
-    type Output = TypeVar;
+impl std::ops::Index<usize> for TypeVarLikes {
+    type Output = TypeVarLike;
 
-    fn index(&self, index: usize) -> &TypeVar {
+    fn index(&self, index: usize) -> &TypeVarLike {
         &self.0[index]
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum TypeVarLike {
     TypeVar(TypeVar),
     TypeVarTuple(TypeVarTuple),
     ParamSpec(ParamSpec),
+}
+
+impl TypeVarLike {
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        match self {
+            Self::TypeVar(t) => t.name(db),
+            Self::TypeVarTuple(t) => todo!(), //t.name(db),
+            Self::ParamSpec(s) => todo!(),    // s.name(db),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1569,14 +1591,14 @@ impl PartialEq for ParamSpec {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarUsage {
-    pub type_var: Rc<TypeVar>,
+    pub type_var_like: Rc<TypeVarLike>,
     pub index: TypeVarIndex,
     pub in_definition: PointLink,
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
-    pub type_vars: TypeVars,
+    pub type_vars: TypeVarLikes,
     pub location: PointLink,
     pub name: Option<PointLink>,
     // This is intentionally private, it should not be used anywhere else, because the behavior of
@@ -1588,7 +1610,7 @@ pub struct TypeAlias {
 
 impl TypeAlias {
     pub fn new(
-        type_vars: TypeVars,
+        type_vars: TypeVarLikes,
         location: PointLink,
         name: Option<PointLink>,
         db_type: Rc<DbType>,
@@ -1621,7 +1643,7 @@ impl TypeAlias {
             self.db_type
                 .replace_type_vars(&mut |t| match t.in_definition == self.location {
                     true => DbType::Any,
-                    false => DbType::TypeVar(t.clone()),
+                    false => DbType::TypeVarLike(t.clone()),
                 })
         }
     }
@@ -1641,7 +1663,7 @@ impl TypeAlias {
                             .enumerate()
                             .map(|(i, type_var)| {
                                 callable(&TypeVarUsage {
-                                    type_var: type_var.clone(),
+                                    type_var_like: type_var.clone(),
                                     index: i.into(),
                                     in_definition: self.location,
                                 })

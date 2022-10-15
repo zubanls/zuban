@@ -1,7 +1,7 @@
 use std::ops::{BitAnd, BitAndAssign};
 use std::rc::Rc;
 
-use crate::database::{DbType, PointLink, TypeVar, TypeVarIndex};
+use crate::database::{DbType, PointLink, TypeVarIndex, TypeVarLike};
 
 #[derive(Debug)]
 pub struct ArgumentIndexWithParam {
@@ -37,7 +37,7 @@ pub enum MismatchReason {
     CannotInferTypeArgument(TypeVarIndex),
     ConstraintMismatch {
         expected: DbType,
-        type_var: Rc<TypeVar>,
+        type_var: Rc<TypeVarLike>,
     },
 }
 

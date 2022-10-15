@@ -332,8 +332,8 @@ impl PythonInference<'_, '_, '_, '_> {
                             .iter()
                             .enumerate()
                             .map(|(i, t)| {
-                                DbType::TypeVar(TypeVarUsage {
-                                    type_var: t.clone(),
+                                DbType::TypeVarLike(TypeVarUsage {
+                                    type_var_like: t.clone(),
                                     index: i.into(),
                                     in_definition: class.node_ref.as_link(),
                                 })

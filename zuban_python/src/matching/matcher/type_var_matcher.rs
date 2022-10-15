@@ -7,7 +7,9 @@ use super::super::{
 };
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentKind, Arguments};
-use crate::database::{CallableContent, DbType, GenericsList, PointLink, TypeVarUsage, TypeVars};
+use crate::database::{
+    CallableContent, DbType, GenericsList, PointLink, TypeVarLike, TypeVarLikes, TypeVarUsage,
+};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
@@ -104,7 +106,7 @@ impl<'a> TypeVarMatcher<'a> {
                                 let g = &type_var_remap[type_var_usage.index];
                                 self.replace_type_vars_for_nested_context(i_s, g)
                             } else {
-                                DbType::TypeVar(type_var_usage.clone())
+                                DbType::TypeVarLike(type_var_usage.clone())
                             }
                         } else {
                             todo!()
@@ -183,7 +185,7 @@ impl<'db> CalculatedTypeArguments {
                 fm[usage.index].clone()
             } else {
                 // TODO we are just passing the type vars again. Does this make sense?
-                DbType::TypeVar(usage.clone())
+                DbType::TypeVarLike(usage.clone())
             };
         }
         if let Some(c) = class {
@@ -191,7 +193,7 @@ impl<'db> CalculatedTypeArguments {
                 return c.generics().nth(i_s, usage.index).into_db_type(i_s);
             }
         }
-        DbType::TypeVar(usage.clone())
+        DbType::TypeVarLike(usage.clone())
     }
 }
 
@@ -201,7 +203,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
     function: Function,
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
-    type_vars: Option<&TypeVars>,
+    type_vars: Option<&TypeVarLikes>,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -254,7 +256,7 @@ fn calculate_type_vars<'db>(
     expected_return_class: Option<&Class>,
     args: &dyn Arguments<'db>,
     skip_first_param: bool,
-    type_vars: Option<&TypeVars>,
+    type_vars: Option<&TypeVarLikes>,
     match_in_definition: PointLink,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -315,7 +317,10 @@ fn calculate_type_vars<'db>(
                                         if !g.is_any() {
                                             let mut bound = TypeVarBound::new(
                                                 g.as_db_type(i_s),
-                                                type_vars[i].variance,
+                                                match &type_vars[i] {
+                                                    TypeVarLike::TypeVar(t) => t.variance,
+                                                    _ => todo!("????"),
+                                                },
                                             );
                                             bound.invert_bounds();
                                             calculated.type_ = Some(bound);
@@ -492,10 +497,14 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                                 }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
                                     if should_generate_errors {
+                                        let type_var = match type_var.as_ref() {
+                                            TypeVarLike::TypeVar(type_var) => type_var,
+                                            _ => unreachable!(),
+                                        };
                                         node_ref.add_typing_issue(
                                             i_s.db,
                                             IssueType::InvalidTypeVarValue {
-                                                type_var: Box::from(type_var.name(i_s.db)),
+                                                type_var_name: Box::from(type_var.name(i_s.db)),
                                                 func: match function {
                                                     Some(f) => f.diagnostic_string(class),
                                                     None => Box::from("function"),

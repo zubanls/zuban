@@ -5,7 +5,7 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
-    CallableContent, Database, DbType, GenericsList, TupleContent, UnionType, Variance,
+    CallableContent, Database, DbType, GenericsList, TupleContent, TypeVarLike, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -68,18 +68,22 @@ impl<'a> Type<'a> {
 
     pub fn overlaps(&self, i_s: &mut InferenceState, other: &Self) -> bool {
         match other.maybe_db_type() {
-            Some(DbType::TypeVar(t2)) => {
-                return if let Some(bound) = &t2.type_var.bound {
-                    self.overlaps(i_s, &Type::new(bound))
-                } else if !t2.type_var.restrictions.is_empty() {
-                    t2.type_var
-                        .restrictions
-                        .iter()
-                        .all(|r2| self.overlaps(i_s, &Type::new(r2)))
-                } else {
-                    true
-                };
-            }
+            Some(DbType::TypeVarLike(t2)) => match t2.type_var_like.as_ref() {
+                TypeVarLike::TypeVar(t2_type_var) => {
+                    return if let Some(bound) = &t2_type_var.bound {
+                        self.overlaps(i_s, &Type::new(bound))
+                    } else if !t2_type_var.restrictions.is_empty() {
+                        t2_type_var
+                            .restrictions
+                            .iter()
+                            .all(|r2| self.overlaps(i_s, &Type::new(r2)))
+                    } else {
+                        true
+                    };
+                }
+                TypeVarLike::TypeVarTuple(_) => todo!(),
+                TypeVarLike::ParamSpec(_) => todo!(),
+            },
             Some(DbType::Union(union_type2)) => {
                 return union_type2
                     .iter()
@@ -126,15 +130,19 @@ impl<'a> Type<'a> {
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
-                DbType::TypeVar(t1) => {
-                    if let Some(db_t) = &t1.type_var.bound {
-                        Type::new(db_t).overlaps(i_s, other)
-                    } else if !t1.type_var.restrictions.is_empty() {
-                        todo!("{other:?}")
-                    } else {
-                        true
+                DbType::TypeVarLike(t1) => match t1.type_var_like.as_ref() {
+                    TypeVarLike::TypeVar(t1_type_var) => {
+                        if let Some(db_t) = &t1_type_var.bound {
+                            Type::new(db_t).overlaps(i_s, other)
+                        } else if !t1_type_var.restrictions.is_empty() {
+                            todo!("{other:?}")
+                        } else {
+                            true
+                        }
                     }
-                }
+                    TypeVarLike::TypeVarTuple(_) => todo!(),
+                    TypeVarLike::ParamSpec(_) => todo!(),
+                },
                 DbType::Tuple(t1) => match other {
                     Self::Type(t2) => match t2.as_ref() {
                         DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
@@ -171,7 +179,7 @@ impl<'a> Type<'a> {
                     }
                     _ => Match::new_false(),
                 },
-                DbType::TypeVar(t1) => {
+                DbType::TypeVarLike(t1) => {
                     if matcher.is_matching_reverse() {
                         Match::new_false()
                     } else {
@@ -400,24 +408,25 @@ impl<'a> Type<'a> {
                     return Match::True { with_any: true };
                 }
                 DbType::None => return Match::new_true(),
-                DbType::TypeVar(t2) => {
+                DbType::TypeVarLike(t2) => {
                     if matcher.is_matching_reverse() {
                         return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
                     }
                     if variance == Variance::Covariant {
-                        if let Some(bound) = &t2.type_var.bound {
-                            let m = self.simple_matches(i_s, &Type::new(bound), variance);
-                            if m.bool() {
-                                return m;
-                            }
-                        } else if !t2.type_var.restrictions.is_empty() {
-                            let m =
-                                t2.type_var.restrictions.iter().all(|r| {
+                        if let TypeVarLike::TypeVar(t2_type_var) = t2.type_var_like.as_ref() {
+                            if let Some(bound) = &t2_type_var.bound {
+                                let m = self.simple_matches(i_s, &Type::new(bound), variance);
+                                if m.bool() {
+                                    return m;
+                                }
+                            } else if !t2_type_var.restrictions.is_empty() {
+                                let m = t2_type_var.restrictions.iter().all(|r| {
                                     self.simple_matches(i_s, &Type::new(r), variance).bool()
                                 });
-                            if m {
-                                todo!();
-                                //return Match::new_true();
+                                if m {
+                                    todo!();
+                                    //return Match::new_true();
+                                }
                             }
                         }
                     }
@@ -807,7 +816,7 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                DbType::TypeVar(t) => {
+                DbType::TypeVarLike(t) => {
                     if matcher.has_type_var_matcher() {
                         let t =
                             Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type));
@@ -864,7 +873,7 @@ impl<'a> Type<'a> {
                 Some(DbType::Union(union_type)) => union_type
                     .iter()
                     .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
-                Some(db_type @ DbType::TypeVar(_)) => {
+                Some(db_type @ DbType::TypeVarLike(_)) => {
                     if matcher.has_type_var_matcher() {
                         Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type))
                             .on_any_class(i_s, matcher, callable)
