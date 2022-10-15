@@ -405,7 +405,10 @@ testIfTypeCheckingUnreachableClass
 testDataclass*
 testAttrs*
 *PartialType*
+
+# Enum
 *Enum*
+testInvariance
 
 # NewType
 *NewType*
@@ -629,7 +632,6 @@ testOverloadSpecialCase
 testSubclassingGenericABCWithImplicitAny
 testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy
 testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2
-testInvariance
 testSubtypingAndABCExtension
 testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers

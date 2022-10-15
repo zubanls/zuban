@@ -452,6 +452,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                         } else if let Some(Some(file_index)) = import_file
                             .package_dir
                             .as_ref()
+                            // TODO this dir is unused???
                             .map(|dir| module.sub_module(self.i_s.db, import_name.as_str()))
                         {
                             self.i_s
