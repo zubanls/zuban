@@ -1897,9 +1897,19 @@ impl Database {
         let collections =
             self.py_load_tmp("../typeshed/stdlib/collections/__init__.pyi") as *const _;
         let types = self.py_load_tmp("../typeshed/stdlib/types.pyi") as *const _;
+        let typing_extensions =
+            self.py_load_tmp("../typeshed/stdlib/typing_extensions.pyi") as *const _;
         let mypy_extensions =
             self.py_load_tmp("../typeshed/stubs/mypy-extensions/mypy_extensions.pyi") as *const _;
-        PythonState::initialize(self, builtins, typing, collections, types, mypy_extensions);
+        PythonState::initialize(
+            self,
+            builtins,
+            typing,
+            collections,
+            types,
+            typing_extensions,
+            mypy_extensions,
+        );
     }
 }
 

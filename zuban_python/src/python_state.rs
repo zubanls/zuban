@@ -18,6 +18,8 @@ pub struct PythonState {
     collections: *const PythonFile,
     types: *const PythonFile,
     mypy_extensions: *const PythonFile,
+    typing_extensions: *const PythonFile,
+
     builtins_object_node_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
@@ -45,6 +47,7 @@ impl PythonState {
             collections: null(),
             types: null(),
             mypy_extensions: null(),
+            typing_extensions: null(),
             builtins_object_node_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
@@ -73,6 +76,7 @@ impl PythonState {
         typing: *const PythonFile,
         collections: *const PythonFile,
         types: *const PythonFile,
+        typing_extensions: *const PythonFile,
         mypy_extensions: *const PythonFile,
     ) {
         let s = &mut db.python_state;
@@ -80,6 +84,7 @@ impl PythonState {
         s.typing = typing;
         s.collections = collections;
         s.types = types;
+        s.typing_extensions = typing_extensions;
         s.mypy_extensions = mypy_extensions;
         let builtins = s.builtins();
         let typing = s.typing();
@@ -176,6 +181,12 @@ impl PythonState {
     pub fn types(&self) -> &PythonFile {
         debug_assert!(!self.types.is_null());
         unsafe { &*self.types }
+    }
+
+    #[inline]
+    pub fn typing_extensions(&self) -> &PythonFile {
+        debug_assert!(!self.typing_extensions.is_null());
+        unsafe { &*self.typing_extensions }
     }
 
     #[inline]

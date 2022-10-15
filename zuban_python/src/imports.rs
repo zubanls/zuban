@@ -10,8 +10,7 @@ pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<
         return Some(db.python_state.typing().file_index());
     }
     if name == "typing_extensions" {
-        // TODO this is completely wrong
-        return Some(db.python_state.typing().file_index());
+        return Some(db.python_state.typing_extensions().file_index());
     }
     if name == "collections" {
         return Some(db.python_state.collections().file_index());
