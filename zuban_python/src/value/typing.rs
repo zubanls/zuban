@@ -601,8 +601,12 @@ fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<Type
             },
         }));
     } else {
-        args.as_node_ref()
-            .add_typing_issue(i_s.db, IssueType::TypeVarTooFewArguments);
+        args.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::TypeVarLikeTooFewArguments {
+                class_name: "TypeVar",
+            },
+        );
     }
     None
 }
@@ -752,8 +756,12 @@ fn maybe_type_var_tuple(i_s: &mut InferenceState, args: &dyn Arguments) -> Optio
             default,
         }));
     } else {
-        args.as_node_ref()
-            .add_typing_issue(i_s.db, IssueType::TypeVarTooFewArguments);
+        args.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::TypeVarLikeTooFewArguments {
+                class_name: "TypeVarTuple",
+            },
+        );
     }
     None
 }

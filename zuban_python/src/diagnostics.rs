@@ -53,7 +53,7 @@ pub(crate) enum IssueType {
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
     UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
-    TypeVarTooFewArguments,
+    TypeVarLikeTooFewArguments { class_name: &'static str },
     TypeVarLikeFirstArgMustBeString{class_name: &'static str},
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
@@ -322,7 +322,7 @@ impl<'db> Diagnostic<'db> {
                  "TypeVar cannot have only a single constraint".to_owned(),
             IssueType::UnexpectedArgument{class_name, argument_name} => format!(
                  "Unexpected argument to \"{class_name}()\": \"{argument_name}\""),
-            IssueType::TypeVarTooFewArguments => "Too few arguments for TypeVar()".to_owned(),
+            IssueType::TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
             IssueType::TypeVarLikeFirstArgMustBeString{class_name} => format!(
                 "{class_name}() expects a string literal as first argument"),
             IssueType::TypeVarVarianceMustBeBool{argument} => format!(
