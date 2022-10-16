@@ -295,8 +295,10 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::TypeInstance(t)) = node_ref.complex() {
-                if let DbType::NewType(n) = t.as_ref() {
-                    return Some(n.clone());
+                if let DbType::Type(t) = t.as_ref() {
+                    if let DbType::NewType(n) = t.as_ref() {
+                        return Some(n.clone());
+                    }
                 }
             }
         }

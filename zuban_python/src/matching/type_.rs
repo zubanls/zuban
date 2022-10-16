@@ -252,7 +252,10 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
-                DbType::NewType(_) => todo!(),
+                DbType::NewType(new_type1) => match value_type.maybe_db_type() {
+                    Some(DbType::NewType(new_type2)) => (new_type1 == new_type2).into(),
+                    _ => Match::new_false(),
+                },
                 DbType::RecursiveAlias(rec1) => {
                     if let Some(class) = value_type.maybe_class(i_s.db) {
                         let g = rec1.calculated_db_type(i_s.db);
@@ -441,6 +444,9 @@ impl<'a> Type<'a> {
                         .iter()
                         .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
                         .into();
+                }
+                DbType::NewType(n2) => {
+                    return self.matches(i_s, matcher, &Type::new(n2.type_.as_ref()), variance)
                 }
                 DbType::Never => return Match::new_true(), // TODO is this correct?
                 _ => (),

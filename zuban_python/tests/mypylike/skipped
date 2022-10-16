@@ -416,7 +416,6 @@ testAttrs*
 testInvariance
 
 # NewType
-testNewAnalyzerNewTypeMultiplePasses
 testNewAnalyzerNewTypeRedefinition
 testNewAnalyzerNewTypeForwardClass
 testNewAnalyzerNewTypeForwardClassAlias

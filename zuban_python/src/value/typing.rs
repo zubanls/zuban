@@ -232,6 +232,18 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 }
                 _ => todo!("probably unreachable"),
             },
+            DbType::NewType(n) => {
+                let mut iterator = args.iter_arguments();
+                if let Some(first) = iterator.next() {
+                    if iterator.next().is_some() {
+                        todo!()
+                    }
+                    // TODO match
+                    Inferred::execute_db_type(i_s, self.db_type.clone())
+                } else {
+                    todo!()
+                }
+            }
             _ => todo!("{:?}", self.db_type),
         }
     }
@@ -812,7 +824,9 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(n) = maybe_new_type(i_s, args) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::NewType(n))))
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
+                Box::new(DbType::NewType(n)),
+            ))))
         } else {
             Inferred::new_unknown()
         }
