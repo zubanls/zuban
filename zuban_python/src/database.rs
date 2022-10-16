@@ -1576,6 +1576,15 @@ pub struct TypeVarTuple {
     pub default: Option<DbType>,
 }
 
+impl TypeVarTuple {
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        NodeRef::from_link(db, self.name_string)
+            .maybe_str()
+            .unwrap()
+            .content()
+    }
+}
+
 impl PartialEq for TypeVarTuple {
     fn eq(&self, other: &Self) -> bool {
         self.name_string == other.name_string

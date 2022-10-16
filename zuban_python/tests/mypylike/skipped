@@ -603,7 +603,6 @@ testPep646ArrayExampleWithDType
 testPep646ArrayExampleInfer
 testPep646TypeConcatenation
 testPep646TypeVarConcatenation
-testTypeVarTuple
 testTypeVarTupleCached
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
