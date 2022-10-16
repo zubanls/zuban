@@ -865,7 +865,7 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
-            type_: Box::new(type_),
+            type_: Rc::new(type_),
         })
     } else {
         todo!();

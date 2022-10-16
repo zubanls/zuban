@@ -5,8 +5,8 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, Point,
-    PointLink, PointType, Specific, TypeVarLike,
+    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, NewType,
+    Point, PointLink, PointType, Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
@@ -286,6 +286,18 @@ impl<'db: 'slf, 'slf> Inferred {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::TypeVarLike(t)) = node_ref.complex() {
                 return Some(t.clone());
+            }
+        }
+        None
+    }
+
+    pub fn maybe_new_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NewType> {
+        if let InferredState::Saved(definition, point) = self.state {
+            let node_ref = NodeRef::from_link(i_s.db, definition);
+            if let Some(ComplexPoint::TypeInstance(t)) = node_ref.complex() {
+                if let DbType::NewType(n) = t.as_ref() {
+                    return Some(n.clone());
+                }
             }
         }
         None

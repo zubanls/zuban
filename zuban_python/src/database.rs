@@ -1261,7 +1261,7 @@ impl CallableContent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NewType {
     pub name_string: PointLink,
-    pub type_: Box<DbType>,
+    pub type_: Rc<DbType>,
 }
 
 impl NewType {

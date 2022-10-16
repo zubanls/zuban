@@ -4,9 +4,9 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
-    GenericsList, Locality, Point, PointLink, PointType, RecursiveAlias, Specific, StringSlice,
-    TupleContent, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager, TypeVarUsage, UnionEntry,
-    UnionType,
+    GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias, Specific,
+    StringSlice, TupleContent, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager, TypeVarUsage,
+    UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -147,6 +147,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     Class(Inferred),
     TypeVarLike(Rc<TypeVarLike>),
     TypeAlias(&'db TypeAlias),
+    NewType(NewType),
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
     RecursiveAlias(PointLink),
@@ -1107,6 +1108,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 })
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
+            TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
@@ -1455,6 +1457,8 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             let in_definition = cached_type_node_ref.as_link();
             if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
                 TypeNameLookup::TypeVarLike(tv)
+            } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
+                TypeNameLookup::NewType(n)
             } else {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let mut type_var_manager = TypeVarManager::default();
