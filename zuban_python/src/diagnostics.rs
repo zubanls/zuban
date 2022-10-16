@@ -64,6 +64,7 @@ pub(crate) enum IssueType {
     },
     TypeVarInReturnButNotArgument,
     UnexpectedTypeForTypeVar,
+    TypeVarTupleTooManyArguments,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -338,6 +339,8 @@ impl<'db> Diagnostic<'db> {
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_owned(),
             IssueType::UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_owned(),
+            IssueType::TypeVarTupleTooManyArguments =>
+                "Only the first argument to TypeVarTuple has defined semantics".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

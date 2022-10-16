@@ -737,7 +737,10 @@ fn maybe_type_var_tuple(
         let mut default = None;
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Positional { node_ref, .. } => return None, // TODO is this ok/?
+                ArgumentKind::Positional { node_ref, .. } => {
+                    node_ref.add_typing_issue(i_s.db, IssueType::TypeVarTupleTooManyArguments);
+                    return None;
+                }
                 ArgumentKind::Keyword { key, node_ref, .. } => match key {
                     "default" => {
                         if let Some(t) = node_ref
