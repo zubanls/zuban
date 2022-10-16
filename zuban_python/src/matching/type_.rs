@@ -152,6 +152,7 @@ impl<'a> Type<'a> {
                 },
                 DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
                 DbType::Intersection(intersection) => todo!(),
+                DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(_) => todo!(),
             },
         }
@@ -251,6 +252,7 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
+                DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(rec1) => {
                     if let Some(class) = value_type.maybe_class(i_s.db) {
                         let g = rec1.calculated_db_type(i_s.db);

@@ -640,6 +640,7 @@ pub enum DbType {
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
+    NewType(NewType),
     None,
     Any,
     Never,
@@ -751,6 +752,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
+            Self::NewType(n) => n.name(format_data.db).into(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
                     let alias = rec.type_alias(format_data.db);
@@ -812,6 +814,7 @@ impl DbType {
                 content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(_, None) | Self::Any | Self::None | Self::Never => (),
+            Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
                     search_in_generics(generics)
@@ -850,6 +853,7 @@ impl DbType {
             }
             Self::Class(_, None) | Self::None | Self::Never => false,
             Self::Any => true,
+            Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
         }
     }
@@ -914,6 +918,7 @@ impl DbType {
                 }),
                 result_type: content.result_type.replace_type_vars(callable),
             })),
+            Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 rec.link,
                 rec.generics.as_ref().map(remap_generics),
@@ -993,6 +998,7 @@ impl DbType {
                     result_type: content.result_type.rewrite_late_bound_callables(manager),
                 }))
             }
+            Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
         }
     }
@@ -1248,6 +1254,21 @@ impl CallableContent {
                 format!("Callable[{param_str}, {result}]")
             }
         }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct NewType {
+    pub name_string: PointLink,
+    pub type_: Box<DbType>,
+}
+
+impl NewType {
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        NodeRef::from_link(db, self.name_string)
+            .maybe_str()
+            .unwrap()
+            .content()
     }
 }
 
