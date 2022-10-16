@@ -519,6 +519,7 @@ fn maybe_type_var(
                     {
                         restrictions.push(t);
                     } else {
+                        todo!();
                         return None;
                     }
                 }
@@ -568,6 +569,7 @@ fn maybe_type_var(
                         {
                             bound = Some(t)
                         } else {
+                            todo!();
                             return None;
                         }
                     }
@@ -583,7 +585,7 @@ fn maybe_type_var(
                     }
                 },
                 ArgumentKind::Inferred { .. } => unreachable!(),
-                ArgumentKind::SlicesTuple { slices, .. } => return None,
+                ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
             }
         }
         if restrictions.len() == 1 {
