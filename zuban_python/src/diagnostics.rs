@@ -300,7 +300,7 @@ impl<'db> Diagnostic<'db> {
                 }
                 TypeVarLike::TypeVarTuple(type_var_tuple) => {
                     let name = type_var_tuple.name(self.db);
-                    format!("Type variable {name:?} is unbound")
+                    format!("TypeVarTuple {name:?} is unbound")
                 }
                 TypeVarLike::ParamSpec(param_spec) => {
                     todo!()
