@@ -138,6 +138,7 @@ enum TypeContent<'db, 'a> {
     SpecialType(SpecialType),
     RecursiveAlias(PointLink),
     InvalidVariable(InvalidVariableType<'a>),
+    Unpacked(DbType),
     Unknown,
 }
 
@@ -438,6 +439,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     DbType::Any
                 }
             },
+            TypeContent::Unpacked(t) => t, // TODO this is wrong
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
@@ -549,6 +551,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     },
                     TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
+                    TypeContent::Unpacked(_) => todo!(),
                     TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
@@ -605,6 +608,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         ))))
                     }
                     TypeContent::InvalidVariable(t) => todo!(),
+                    TypeContent::Unpacked(_) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
@@ -1012,8 +1016,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.count() == 0 {
-            self.compute_slice_db_type(first);
-            TypeContent::Unknown
+            TypeContent::Unpacked(self.compute_slice_db_type(first))
         } else {
             todo!()
         }
@@ -1022,8 +1025,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     fn expect_type_var_args(&mut self, slice_type: SliceType, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
             if !matches!(
-                self.compute_slice_type(s),
-                TypeContent::DbType(DbType::TypeVarLike(usage))
+                self.compute_slice_db_type(s),
+                DbType::TypeVarLike(usage)
                     if usage.in_definition == self.for_definition
             ) {
                 self.add_typing_issue(s.as_node_ref(), IssueType::TypeVarExpected { class })

@@ -1,7 +1,9 @@
 use parsa_python_ast::*;
 
 use super::type_computation::{cache_name_on_class, SpecialType, TypeNameLookup};
-use crate::database::{Locality, Point, PointType, TypeVarIndex, TypeVarLikes, TypeVarManager};
+use crate::database::{
+    Locality, Point, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager,
+};
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::file_state::File;
@@ -183,6 +185,15 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
                     .maybe_type_var_like_in_parent(self.inference.i_s, &type_var_like)
                     .is_none()
                 {
+                    if let TypeVarLike::TypeVarTuple(t) = type_var_like.as_ref() {
+                        if self.type_var_manager.has_type_var_tuples() {
+                            NodeRef::new(self.inference.file, name.index()).add_typing_issue(
+                                self.inference.i_s.db,
+                                IssueType::MultipleTypeVarTuplesInClassDef,
+                            )
+                            // TODO this type var tuple should probably not be added
+                        }
+                    }
                     let old_index = self.type_var_manager.add(type_var_like, None);
                     if let Some(force_index) = self.current_generic_or_protocol_index {
                         if old_index < force_index {

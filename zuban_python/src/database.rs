@@ -1398,6 +1398,11 @@ impl TypeVarManager {
         !self.type_vars.is_empty()
     }
 
+    pub fn has_type_var_tuples(&self) -> bool {
+        self.type_vars
+            .iter()
+            .any(|t| matches!(t.type_var.as_ref(), TypeVarLike::TypeVarTuple(_)))
+    }
     pub fn into_type_vars(self) -> TypeVarLikes {
         TypeVarLikes(
             self.type_vars
