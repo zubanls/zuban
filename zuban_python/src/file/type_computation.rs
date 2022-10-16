@@ -1024,11 +1024,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
     fn expect_type_var_args(&mut self, slice_type: SliceType, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
+            let result = self.compute_slice_type(s);
+            let unpacked_type_var_tuple = matches!(
+                result,
+                TypeContent::Unpacked(DbType::TypeVarLike(ref t))
+                    if matches!(t.type_var_like.as_ref(), TypeVarLike::TypeVarTuple(_))
+                    && t.in_definition == self.for_definition
+            );
             if !matches!(
-                self.compute_slice_db_type(s),
-                DbType::TypeVarLike(usage)
+                result,
+                TypeContent::DbType(DbType::TypeVarLike(usage))
                     if usage.in_definition == self.for_definition
-            ) {
+            ) && !unpacked_type_var_tuple
+            {
                 self.add_typing_issue(s.as_node_ref(), IssueType::TypeVarExpected { class })
             }
         }
