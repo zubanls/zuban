@@ -277,6 +277,8 @@ tuple_methods_empty
 
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
+# Type variable "__main__.Ts" is invalid as target for type alias
+testTypeVarTupleIsNotValidAliasTarget
 
 # type var backtracking
 testUnionInference
@@ -594,7 +596,6 @@ testTypeVarTupleChaining
 testTypeVarTupleGenericClassDefn
 testTypeVarTupleGenericClassWithFunctions
 testTypeVarTupleGenericClassWithMethods
-testTypeVarTupleIsNotValidAliasTarget
 testPep646ArrayExample
 testPep646ArrayExampleWithDType
 testPep646ArrayExampleInfer
