@@ -519,7 +519,6 @@ fn maybe_type_var(
                     {
                         restrictions.push(t);
                     } else {
-                        todo!();
                         return None;
                     }
                 }
@@ -569,7 +568,6 @@ fn maybe_type_var(
                         {
                             bound = Some(t)
                         } else {
-                            todo!();
                             return None;
                         }
                     }
