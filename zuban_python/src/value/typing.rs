@@ -837,31 +837,29 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg.as_node_ref().add_typing_issue(
-                    i_s.db,
-                    IssueType::TypeVarLikeFirstArgMustBeString {
-                        class_name: "TypeVar",
-                    },
-                );
-                return None;
+                todo!();
             }
         };
         if let Some(name) = py_string.in_simple_assignment() {
             if name.as_code() != py_string.content() {
-                name_node.add_typing_issue(
-                    i_s.db,
-                    IssueType::TypeVarLikeNameMismatch {
-                        class_name: "TypeVar",
-                        string_name: Box::from(py_string.content()),
-                        variable_name: Box::from(name.as_code()),
-                    },
-                );
+                todo!()
             }
         } else {
             todo!()
         }
-
-        let type_ = DbType::Any;
+        let type_ = if let Some(second_arg) = iterator.next() {
+            if let ArgumentKind::Positional { node_ref, .. } = second_arg.kind {
+                node_ref
+                    .file
+                    .inference(i_s)
+                    .compute_type_var_constraint(node_ref.as_named_expression().expression())
+                    .unwrap_or(DbType::Any)
+            } else {
+                todo!()
+            }
+        } else {
+            todo!()
+        };
         Some(NewType {
             name_string: PointLink {
                 file: name_node.file_index(),
