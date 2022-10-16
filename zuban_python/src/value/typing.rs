@@ -5,8 +5,8 @@ use std::rc::Rc;
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, PointLink, Specific, TupleContent, TypeVar,
-    TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
+    ComplexPoint, Database, DbType, FormatStyle, NewType, PointLink, Specific, TupleContent,
+    TypeVar, TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -785,4 +785,92 @@ fn maybe_type_var_tuple(
         );
     }
     None
+}
+
+#[derive(Debug)]
+pub struct NewTypeClass();
+
+impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &str {
+        "NewType"
+    }
+
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+        // TODO?
+        LookupResult::None
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(n) = maybe_new_type(i_s, args) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::NewType(n))))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
+    }
+}
+
+fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewType> {
+    let mut iterator = args.iter_arguments();
+    if let Some(first_arg) = iterator.next() {
+        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
+            node_ref
+                .as_named_expression()
+                .maybe_single_string_literal()
+                .map(|py_string| (node_ref, py_string))
+        } else {
+            None
+        };
+        let (name_node, py_string) = match result {
+            Some(result) => result,
+            None => {
+                first_arg.as_node_ref().add_typing_issue(
+                    i_s.db,
+                    IssueType::TypeVarLikeFirstArgMustBeString {
+                        class_name: "TypeVar",
+                    },
+                );
+                return None;
+            }
+        };
+        if let Some(name) = py_string.in_simple_assignment() {
+            if name.as_code() != py_string.content() {
+                name_node.add_typing_issue(
+                    i_s.db,
+                    IssueType::TypeVarLikeNameMismatch {
+                        class_name: "TypeVar",
+                        string_name: Box::from(py_string.content()),
+                        variable_name: Box::from(name.as_code()),
+                    },
+                );
+            }
+        } else {
+            todo!()
+        }
+
+        let type_ = DbType::Any;
+        Some(NewType {
+            name_string: PointLink {
+                file: name_node.file_index(),
+                node_index: py_string.index(),
+            },
+            type_: Box::new(type_),
+        })
+    } else {
+        todo!();
+        None
+    }
 }
