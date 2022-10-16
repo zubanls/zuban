@@ -1002,7 +1002,10 @@ fn run_on_complex<'db: 'a, 'a, T>(
         }
         ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
         ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
-        ComplexPoint::TypeVarLike(t) => on_missing(i_s), // TODO this should probably be different
+        ComplexPoint::TypeVarLike(t) => callable(
+            i_s,
+            &Instance::new(i_s.db.python_state.object_class(), None),
+        ),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }

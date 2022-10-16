@@ -278,9 +278,6 @@ tuple_methods_empty
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
 
-# "Cannot declare the type of a TypeVar or similar construct" (semanal)
-testTypevarWithType
-
 # type var backtracking
 testUnionInference
 testMapWithOverloadedFunc

@@ -459,7 +459,16 @@ impl fmt::Debug for TypeVarInstance<'_> {
 #[derive(Debug)]
 pub struct TypeVarClass();
 
-fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<TypeVarLike> {
+fn maybe_type_var(
+    i_s: &mut InferenceState,
+    args: &dyn Arguments,
+    result_context: &ResultContext,
+) -> Option<TypeVarLike> {
+    if !matches!(result_context, ResultContext::Unknown) {
+        args.as_node_ref()
+            .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
+        return None;
+    }
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
@@ -631,7 +640,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        if let Some(t) = maybe_type_var(i_s, args) {
+        if let Some(t) = maybe_type_var(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(Rc::new(t)))
         } else {
             Inferred::new_unknown()
@@ -666,7 +675,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        if let Some(t) = maybe_type_var_tuple(i_s, args) {
+        if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(Rc::new(t)))
         } else {
             Inferred::new_unknown()
@@ -678,7 +687,16 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
     }
 }
 
-fn maybe_type_var_tuple(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<TypeVarLike> {
+fn maybe_type_var_tuple(
+    i_s: &mut InferenceState,
+    args: &dyn Arguments,
+    result_context: &ResultContext,
+) -> Option<TypeVarLike> {
+    if !matches!(result_context, ResultContext::Unknown) {
+        args.as_node_ref()
+            .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
+        return None;
+    }
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
@@ -719,7 +737,7 @@ fn maybe_type_var_tuple(i_s: &mut InferenceState, args: &dyn Arguments) -> Optio
         let mut default = None;
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Positional { node_ref, .. } => return None,
+                ArgumentKind::Positional { node_ref, .. } => return None, // TODO is this ok/?
                 ArgumentKind::Keyword { key, node_ref, .. } => match key {
                     "default" => {
                         if let Some(t) = node_ref
@@ -745,7 +763,7 @@ fn maybe_type_var_tuple(i_s: &mut InferenceState, args: &dyn Arguments) -> Optio
                     }
                 },
                 ArgumentKind::Inferred { .. } => unreachable!(),
-                ArgumentKind::SlicesTuple { slices, .. } => return None,
+                ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
             }
         }
         return Some(TypeVarLike::TypeVarTuple(TypeVarTuple {
