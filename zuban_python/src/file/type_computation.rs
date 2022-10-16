@@ -41,6 +41,7 @@ pub(super) enum SpecialType {
     Type,
     Tuple,
     LiteralString,
+    Unpack,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -592,6 +593,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
                         SpecialType::LiteralString => todo!(),
+                        SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -1004,6 +1006,17 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 })
                 .into_owned(),
         )
+    }
+
+    fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.count() == 0 {
+            self.compute_slice_db_type(first);
+            TypeContent::Unknown
+        } else {
+            todo!()
+        }
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType, class: &'static str) {
@@ -1703,6 +1716,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingType => SpecialType::Type,
                 Specific::TypingCallable => SpecialType::Callable,
                 Specific::TypingLiteralString => SpecialType::LiteralString,
+                Specific::TypingUnpack => SpecialType::Unpack,
                 _ => unreachable!(),
             })
         }

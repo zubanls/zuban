@@ -381,6 +381,7 @@ pub enum Specific {
     TypingCast,
     TypingTypeVarClass,
     TypingLiteralString,
+    TypingUnpack,
 
     // TODO reactivate these or remove
     //TypingFinal,
