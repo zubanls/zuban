@@ -63,6 +63,7 @@ pub(crate) enum IssueType {
         variable_name: Box<str>
     },
     TypeVarInReturnButNotArgument,
+    UnexpectedTypeForTypeVar,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -335,6 +336,8 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::TypeVarInReturnButNotArgument =>
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_owned(),
+            IssueType::UnexpectedTypeForTypeVar =>
+                "Cannot declare the type of a TypeVar or similar construct".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
