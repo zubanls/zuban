@@ -416,8 +416,20 @@ testAttrs*
 testInvariance
 
 # NewType
-*NewType*
+testNewAnalyzerNewTypeMultiplePasses
+testNewAnalyzerNewTypeRedefinition
+testNewAnalyzerNewTypeForwardClass
+testNewAnalyzerNewTypeForwardClassAlias
+testNewAnalyzerNewTypeForwardClassAliasReversed
+testNewAnalyzerNewTypeForwardClassAliasDirect
+testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
+testNewAnalyzerNewTypeSpecialCase
+testRecursiveTupleClassesNewType
 testRecursiveAliasViaBaseClass2
+testNewTypeRefresh
+testNewTypeDependencies1
+testNewTypeDependencies2
+testNewTypeDependencies3
 
 # TypedDict
 *TypedDict*
