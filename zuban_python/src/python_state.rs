@@ -314,6 +314,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "Any", Specific::TypingAny);
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
     set_typing_inference(typing, "Type", Specific::TypingType);
+    set_typing_inference(typing, "NewType", Specific::TypingNewType);
     set_typing_inference(typing, "TypeVar", Specific::TypingTypeVarClass);
     set_typing_inference(typing, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
@@ -343,6 +344,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "cast",
         "type",
         "tuple",
+        "NewType",
         "TypeVar",
         "TypeVarTuple",
         "LiteralString",

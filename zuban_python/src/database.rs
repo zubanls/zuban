@@ -379,6 +379,7 @@ pub enum Specific {
     TypingUnion,
     TypingOptional,
     TypingCast,
+    TypingNewType,
     TypingTypeVarClass,
     TypingTypeVarTupleClass,
     TypingLiteralString,
