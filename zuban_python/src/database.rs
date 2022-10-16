@@ -380,6 +380,7 @@ pub enum Specific {
     TypingOptional,
     TypingCast,
     TypingTypeVarClass,
+    TypingTypeVarTupleClass,
     TypingLiteralString,
     TypingUnpack,
 
@@ -1572,6 +1573,7 @@ impl TypeVar {
 #[derive(Debug, Clone)]
 pub struct TypeVarTuple {
     pub name_string: PointLink,
+    pub default: Option<DbType>,
 }
 
 impl PartialEq for TypeVarTuple {

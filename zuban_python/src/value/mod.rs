@@ -31,8 +31,8 @@ pub use none::NoneInstance;
 pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
-    RevealTypeFunction, TypeVarClass, TypeVarInstance, TypingCast, TypingClass, TypingClassVar,
-    TypingType,
+    RevealTypeFunction, TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingCast, TypingClass,
+    TypingClassVar, TypingType,
 };
 
 #[derive(Clone, Copy)]

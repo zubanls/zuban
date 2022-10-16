@@ -52,12 +52,16 @@ pub(crate) enum IssueType {
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
     TypeVarOnlySingleRestriction,
-    TypeVarUnexpectedArgument { argument_name: Box<str> },
+    UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
     TypeVarTooFewArguments,
-    TypeVarFirstArgMustBeString,
+    TypeVarLikeFirstArgMustBeString{class_name: &'static str},
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
-    TypeVarNameMismatch { string_name: Box<str>, variable_name: Box<str> },
+    TypeVarLikeNameMismatch {
+        class_name: &'static str,
+        string_name: Box<str>,
+        variable_name: Box<str>
+    },
     TypeVarInReturnButNotArgument,
 
     BaseExceptionExpected,
@@ -315,17 +319,17 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar cannot have both values and an upper bound".to_owned(),
             IssueType::TypeVarOnlySingleRestriction =>
                  "TypeVar cannot have only a single constraint".to_owned(),
-            IssueType::TypeVarUnexpectedArgument{argument_name} => format!(
-                 "Unexpected argument to \"TypeVar()\": \"{argument_name}\""),
+            IssueType::UnexpectedArgument{class_name, argument_name} => format!(
+                 "Unexpected argument to \"{class_name}()\": \"{argument_name}\""),
             IssueType::TypeVarTooFewArguments => "Too few arguments for TypeVar()".to_owned(),
-            IssueType::TypeVarFirstArgMustBeString =>
-                "TypeVar() expects a string literal as first argument".to_owned(),
+            IssueType::TypeVarLikeFirstArgMustBeString{class_name} => format!(
+                "{class_name}() expects a string literal as first argument"),
             IssueType::TypeVarVarianceMustBeBool{argument} => format!(
                 "TypeVar \"{argument}\" may only be a literal bool"
             ),
             IssueType::TypeVarTypeExpected => "Type expected".to_owned(),
-            IssueType::TypeVarNameMismatch{string_name, variable_name} => format!(
-                "String argument 1 \"{string_name}\" to TypeVar(...) does not \
+            IssueType::TypeVarLikeNameMismatch{class_name, string_name, variable_name} => format!(
+                "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
             ),
             IssueType::TypeVarInReturnButNotArgument =>

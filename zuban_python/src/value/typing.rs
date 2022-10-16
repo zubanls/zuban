@@ -6,7 +6,7 @@ use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, PointLink, Specific, TupleContent, TypeVar,
-    TypeVarLike, TypeVarUsage, Variance,
+    TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -459,7 +459,7 @@ impl fmt::Debug for TypeVarInstance<'_> {
 #[derive(Debug)]
 pub struct TypeVarClass();
 
-pub fn maybe_type_var_like(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<TypeVarLike> {
+fn maybe_type_var(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<TypeVarLike> {
     let mut iterator = args.iter_arguments();
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
@@ -473,9 +473,12 @@ pub fn maybe_type_var_like(i_s: &mut InferenceState, args: &dyn Arguments) -> Op
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg
-                    .as_node_ref()
-                    .add_typing_issue(i_s.db, IssueType::TypeVarFirstArgMustBeString);
+                first_arg.as_node_ref().add_typing_issue(
+                    i_s.db,
+                    IssueType::TypeVarLikeFirstArgMustBeString {
+                        class_name: "TypeVar",
+                    },
+                );
                 return None;
             }
         };
@@ -483,7 +486,8 @@ pub fn maybe_type_var_like(i_s: &mut InferenceState, args: &dyn Arguments) -> Op
             if name.as_code() != py_string.content() {
                 name_node.add_typing_issue(
                     i_s.db,
-                    IssueType::TypeVarNameMismatch {
+                    IssueType::TypeVarLikeNameMismatch {
+                        class_name: "TypeVar",
                         string_name: Box::from(py_string.content()),
                         variable_name: Box::from(name.as_code()),
                     },
@@ -561,7 +565,8 @@ pub fn maybe_type_var_like(i_s: &mut InferenceState, args: &dyn Arguments) -> Op
                     _ => {
                         node_ref.add_typing_issue(
                             i_s.db,
-                            IssueType::TypeVarUnexpectedArgument {
+                            IssueType::UnexpectedArgument {
+                                class_name: "TypeVar",
                                 argument_name: Box::from(key),
                             },
                         );
@@ -622,7 +627,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        if let Some(t) = maybe_type_var_like(i_s, args) {
+        if let Some(t) = maybe_type_var(i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(Rc::new(t)))
         } else {
             Inferred::new_unknown()
@@ -632,4 +637,125 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
+}
+
+#[derive(Debug)]
+pub struct TypeVarTupleClass();
+
+impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &str {
+        "TypeVarTuple"
+    }
+
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+        LookupResult::None
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(t) = maybe_type_var_tuple(i_s, args) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(Rc::new(t)))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
+    }
+}
+
+fn maybe_type_var_tuple(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<TypeVarLike> {
+    let mut iterator = args.iter_arguments();
+    if let Some(first_arg) = iterator.next() {
+        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
+            node_ref
+                .as_named_expression()
+                .maybe_single_string_literal()
+                .map(|py_string| (node_ref, py_string))
+        } else {
+            None
+        };
+        let (name_node, py_string) = match result {
+            Some(result) => result,
+            None => {
+                first_arg.as_node_ref().add_typing_issue(
+                    i_s.db,
+                    IssueType::TypeVarLikeFirstArgMustBeString {
+                        class_name: "TypeVarTuple",
+                    },
+                );
+                return None;
+            }
+        };
+        if let Some(name) = py_string.in_simple_assignment() {
+            if name.as_code() != py_string.content() {
+                name_node.add_typing_issue(
+                    i_s.db,
+                    IssueType::TypeVarLikeNameMismatch {
+                        class_name: "TypeVarTuple",
+                        string_name: Box::from(py_string.content()),
+                        variable_name: Box::from(name.as_code()),
+                    },
+                );
+            }
+        } else {
+            todo!()
+        }
+
+        let mut default = None;
+        for arg in iterator {
+            match arg.kind {
+                ArgumentKind::Positional { node_ref, .. } => {
+                    todo!()
+                }
+                ArgumentKind::Keyword { key, node_ref, .. } => match key {
+                    "default" => {
+                        if let Some(t) = node_ref
+                            .file
+                            .inference(i_s)
+                            .compute_type_var_constraint(node_ref.as_expression())
+                        {
+                            default = Some(t);
+                            todo!()
+                        } else {
+                            todo!()
+                        }
+                    }
+                    _ => {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::UnexpectedArgument {
+                                class_name: "TypeVarTuple",
+                                argument_name: Box::from(key),
+                            },
+                        );
+                        return None;
+                    }
+                },
+                ArgumentKind::Inferred { .. } => unreachable!(),
+                ArgumentKind::SlicesTuple { slices, .. } => return None,
+            }
+        }
+        return Some(TypeVarLike::TypeVarTuple(TypeVarTuple {
+            name_string: PointLink {
+                file: name_node.file_index(),
+                node_index: py_string.index(),
+            },
+            default,
+        }));
+    } else {
+        args.as_node_ref()
+            .add_typing_issue(i_s.db, IssueType::TypeVarTooFewArguments);
+    }
+    None
 }

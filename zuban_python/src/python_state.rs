@@ -61,7 +61,7 @@ impl PythonState {
             mypy_extensions_default_named_arg_func: 0,
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
-            type_of_object: DbType::Type(Box::new(DbType::Any)),
+            type_of_object: DbType::Type(Box::new(DbType::Any)), // Will be set later
             type_of_any: DbType::Type(Box::new(DbType::Any)),
             type_of_arbitrary_tuple: DbType::Type(Box::new(DbType::Tuple(TupleContent {
                 generics: None,
@@ -143,6 +143,11 @@ impl PythonState {
             Specific::TypingLiteralString,
         );
         set_typing_inference(s.typing_extensions(), "Unpack", Specific::TypingUnpack);
+        set_typing_inference(
+            s.typing_extensions(),
+            "TypeVarTuple",
+            Specific::TypingTypeVarTupleClass,
+        );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
         s.mypy_extensions_arg_func =
@@ -310,6 +315,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "Callable", Specific::TypingCallable);
     set_typing_inference(typing, "Type", Specific::TypingType);
     set_typing_inference(typing, "TypeVar", Specific::TypingTypeVarClass);
+    set_typing_inference(typing, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
 
@@ -338,6 +344,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "type",
         "tuple",
         "TypeVar",
+        "TypeVarTuple",
         "LiteralString",
         "Unpack",
     ]

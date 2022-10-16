@@ -18,8 +18,8 @@ use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NoneInstance, OnTypeError, OverloadedFunction,
-    RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypingCast, TypingClass,
-    TypingClassVar, TypingType, Value,
+    RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass,
+    TypingCast, TypingClass, TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -1069,6 +1069,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
             run_on_db_type(i_s, db_type, callable, reducer, on_missing)
         }
         Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
+        Specific::TypingTypeVarTupleClass => callable(i_s, &TypeVarTupleClass()),
         Specific::TypingProtocol
         | Specific::TypingGeneric
         | Specific::TypingTuple
