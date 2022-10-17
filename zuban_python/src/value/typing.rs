@@ -508,7 +508,7 @@ fn maybe_type_var(
             if name.as_code() != py_string.content() {
                 name_node.add_typing_issue(
                     i_s.db,
-                    IssueType::TypeVarLikeNameMismatch {
+                    IssueType::NameMismatch {
                         class_name: "TypeVar",
                         string_name: Box::from(py_string.content()),
                         variable_name: Box::from(name.as_code()),
@@ -736,7 +736,7 @@ fn maybe_type_var_tuple(
             if name.as_code() != py_string.content() {
                 name_node.add_typing_issue(
                     i_s.db,
-                    IssueType::TypeVarLikeNameMismatch {
+                    IssueType::NameMismatch {
                         class_name: "TypeVarTuple",
                         string_name: Box::from(py_string.content()),
                         variable_name: Box::from(name.as_code()),
@@ -857,7 +857,14 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
         };
         if let Some(name) = py_string.in_simple_assignment() {
             if name.as_code() != py_string.content() {
-                todo!()
+                name_node.add_typing_issue(
+                    i_s.db,
+                    IssueType::NameMismatch {
+                        class_name: "NewType",
+                        string_name: Box::from(py_string.content()),
+                        variable_name: Box::from(name.as_code()),
+                    },
+                );
             }
         } else {
             todo!()

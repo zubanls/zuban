@@ -57,7 +57,7 @@ pub(crate) enum IssueType {
     TypeVarLikeFirstArgMustBeString{class_name: &'static str},
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
-    TypeVarLikeNameMismatch {
+    NameMismatch {
         class_name: &'static str,
         string_name: Box<str>,
         variable_name: Box<str>
@@ -332,7 +332,7 @@ impl<'db> Diagnostic<'db> {
                 "TypeVar \"{argument}\" may only be a literal bool"
             ),
             IssueType::TypeVarTypeExpected => "Type expected".to_owned(),
-            IssueType::TypeVarLikeNameMismatch{class_name, string_name, variable_name} => format!(
+            IssueType::NameMismatch{class_name, string_name, variable_name} => format!(
                 "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
             ),

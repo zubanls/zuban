@@ -416,9 +416,7 @@ testAttrs*
 testInvariance
 
 # NewType
-testNewAnalyzerNewTypeRedefinition
 testNewAnalyzerNewTypeForwardClassAliasDirect
-testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNewAnalyzerNewTypeSpecialCase
 testRecursiveTupleClassesNewType
 testNewTypeDependencies3
@@ -778,6 +776,8 @@ testModuleAliasToQualifiedImport2
 testRedefineFunctionDefinedAsVariableWithInvalidSignature
 # Incompatible redefinition
 testRedefineFunctionDefinedAsVariableInitializedToEmptyList
+# NewType Redefinition
+testNewAnalyzerNewTypeRedefinition
 
 # Metaclass
 *Metaclass*
@@ -1159,6 +1159,8 @@ testWideOuterContextOptionalTypeVarReturn
 testCastConfusion
 # overload none matching in no-strict-optional
 testOptionalIsNotAUnionIfNoStrictOverload
+# None | Iterable[X] -> ignore None
+testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 
 # type: ignore leads to Any type?
 testDunderCallAddition
