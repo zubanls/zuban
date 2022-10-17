@@ -5,11 +5,14 @@ use parsa_python_ast::{
     NamedExpression, NodeIndex, Primary, PythonString, StarredExpression, StringLiteral,
 };
 
-use crate::database::{ComplexPoint, Database, FileIndex, Locality, Point, PointLink, PointType};
+use crate::database::{
+    ComplexPoint, Database, DbType, FileIndex, Locality, Point, PointLink, PointType,
+};
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file::PythonFile;
 use crate::file_state::File;
+use crate::inference_state::InferenceState;
 use crate::value::Module;
 
 #[derive(Clone, Copy)]
@@ -60,6 +63,13 @@ impl<'file> NodeRef<'file> {
 
     pub fn set_point(&self, point: Point) {
         self.file.points.set(self.node_index, point)
+    }
+
+    pub fn set_point_redirect_in_same_file(&self, node_index: NodeIndex, locality: Locality) {
+        self.file.points.set(
+            self.node_index,
+            Point::new_redirect(self.file.file_index(), node_index, locality),
+        )
     }
 
     pub fn complex(&self) -> Option<&'file ComplexPoint> {
@@ -153,6 +163,13 @@ impl<'file> NodeRef<'file> {
             self.file.file_path(db),
             self.file.tree.debug_info(self.node_index)
         )
+    }
+
+    pub fn compute_type_constraint(&self, i_s: &mut InferenceState) -> DbType {
+        self.file
+            .inference(i_s)
+            .compute_type_var_constraint(self.as_expression())
+            .unwrap_or(DbType::Any)
     }
 
     pub fn as_code(&self) -> &'file str {

@@ -1188,7 +1188,10 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
-        DbType::NewType(n) => run_on_db_type(i_s, n.type_.as_ref(), callable, reducer, on_missing),
+        DbType::NewType(n) => {
+            let t = n.type_(i_s);
+            run_on_db_type(i_s, t, callable, reducer, on_missing)
+        }
         DbType::RecursiveAlias(rec1) => run_on_db_type(
             i_s,
             rec1.calculated_db_type(i_s.db),

@@ -14,6 +14,7 @@ use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
 use crate::matching::{FormatData, ResultContext, Type};
+use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
 pub struct TypingClass {
@@ -861,26 +862,25 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
         } else {
             todo!()
         }
-        let type_ = if let Some(second_arg) = iterator.next() {
+        let type_node_ref = if let Some(second_arg) = iterator.next() {
             if let ArgumentKind::Positional { node_ref, .. } = second_arg.kind {
-                node_ref
-                    .file
-                    .inference(i_s)
-                    .compute_type_var_constraint(node_ref.as_named_expression().expression())
-                    .unwrap_or(DbType::Any)
+                NodeRef::new(
+                    node_ref.file,
+                    node_ref.as_named_expression().expression().index(),
+                )
             } else {
                 todo!()
             }
         } else {
             todo!()
         };
-        Some(NewType {
-            name_string: PointLink {
+        Some(NewType::new(
+            PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
-            type_: Rc::new(type_),
-        })
+            type_node_ref.as_link(),
+        ))
     } else {
         todo!();
         None

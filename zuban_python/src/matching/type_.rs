@@ -446,7 +446,8 @@ impl<'a> Type<'a> {
                         .into();
                 }
                 DbType::NewType(n2) => {
-                    return self.matches(i_s, matcher, &Type::new(n2.type_.as_ref()), variance)
+                    let t = n2.type_(i_s);
+                    return self.matches(i_s, matcher, &Type::new(t), variance);
                 }
                 DbType::Never => return Match::new_true(), // TODO is this correct?
                 _ => (),

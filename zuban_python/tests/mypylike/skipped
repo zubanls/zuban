@@ -417,7 +417,6 @@ testInvariance
 
 # NewType
 testNewAnalyzerNewTypeRedefinition
-testNewAnalyzerNewTypeForwardClass
 testNewAnalyzerNewTypeForwardClassAlias
 testNewAnalyzerNewTypeForwardClassAliasReversed
 testNewAnalyzerNewTypeForwardClassAliasDirect

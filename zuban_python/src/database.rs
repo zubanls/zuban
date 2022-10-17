@@ -14,6 +14,7 @@ use crate::file::PythonFile;
 use crate::file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
+use crate::inference_state::InferenceState;
 use crate::matching::{FormatData, Generics};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -1261,10 +1262,25 @@ impl CallableContent {
 #[derive(Debug, Clone, PartialEq)]
 pub struct NewType {
     pub name_string: PointLink,
-    pub type_: Rc<DbType>,
+    type_expression: PointLink,
+    type_: Rc<OnceCell<DbType>>,
 }
 
 impl NewType {
+    pub fn new(name_string: PointLink, type_expression: PointLink) -> Self {
+        Self {
+            name_string,
+            type_expression,
+            type_: Rc::new(OnceCell::new()),
+        }
+    }
+
+    pub fn type_(&self, i_s: &mut InferenceState) -> &DbType {
+        self.type_.as_ref().get_or_init(|| {
+            NodeRef::from_link(i_s.db, self.type_expression).compute_type_constraint(i_s)
+        })
+    }
+
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         NodeRef::from_link(db, self.name_string)
             .maybe_str()
