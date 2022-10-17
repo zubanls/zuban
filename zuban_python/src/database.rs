@@ -754,7 +754,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
-            Self::NewType(n) => n.name(format_data.db).into(),
+            Self::NewType(n) => n.format(format_data),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
                     let alias = rec.type_alias(format_data.db);
@@ -1281,11 +1281,30 @@ impl NewType {
         })
     }
 
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        match format_data.style {
+            FormatStyle::Short => self.name(format_data.db).into(),
+            FormatStyle::Qualified | FormatStyle::MypyRevealType => {
+                self.qualified_name(format_data.db)
+            }
+        }
+    }
+
+    fn name<'db>(&self, db: &'db Database) -> &'db str {
         NodeRef::from_link(db, self.name_string)
             .maybe_str()
             .unwrap()
             .content()
+    }
+
+    pub fn qualified_name(&self, db: &Database) -> Box<str> {
+        let node_ref = NodeRef::from_link(db, self.name_string);
+        format!(
+            "{}.{}",
+            node_ref.in_module(db).qualified_name(db),
+            node_ref.maybe_str().unwrap().content()
+        )
+        .into()
     }
 }
 
