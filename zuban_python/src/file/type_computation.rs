@@ -1789,6 +1789,8 @@ fn check_type_name<'db: 'file, 'file>(
         }
         TypeLike::Assignment(assignment) => {
             if name_node_ref.point().calculated() {
+                // TODO This is mostly for loading Callable and other builtins. Should probably be
+                //      changed/removed
                 return load_cached_type(name_node_ref);
             }
             let def_point = name_node_ref
