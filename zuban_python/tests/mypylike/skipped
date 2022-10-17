@@ -295,6 +295,7 @@ testNoneHasBool
 testNoneHasBoolShowNoneErrorsFalse
 testLiteral*
 testCallerTupleVarArgsAndGenericCalleeVarArg
+testNewAnalyzerNewTypeSpecialCase
 
 # int -> float promotion
 testNewAnalyzerPromotion
@@ -390,6 +391,7 @@ testRegression11705_NoStrict
 testNewAnalyzerCastForward3
 testRecursiveAliasViaBaseClass3
 testNoRecursiveTuplesAtFunctionScope
+testRecursiveTupleClassesNewType
 # namedtuple
 testCallableParsingInInheritence
 
@@ -414,12 +416,6 @@ testAttrs*
 # Enum
 *Enum*
 testInvariance
-
-# NewType
-testNewAnalyzerNewTypeForwardClassAliasDirect
-testNewAnalyzerNewTypeSpecialCase
-testRecursiveTupleClassesNewType
-testNewTypeDependencies3
 
 # TypedDict
 *TypedDict*
@@ -1106,6 +1102,9 @@ testInvalidOperationsOnModules
 testConditionalImportAndAssignInvalidToModule
 testModuleAliasRepeatedWithAnnotation
 
+# NewType formatting instead of internal type
+testNewTypeDependencies3
+
 # Tuple iter
 testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
 
@@ -1282,6 +1281,9 @@ testMypyPathAndPython2Dir
 
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
+
+# Won't support --disable-recursive-alias
+testNewAnalyzerNewTypeForwardClassAliasDirect
 
 # Skips
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
