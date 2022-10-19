@@ -1683,6 +1683,12 @@ pub struct TypeVarUsage {
     pub in_definition: PointLink,
 }
 
+impl TypeVarUsage {
+    pub fn is_type_var_tuple(&self) -> bool {
+        matches!(self.type_var_like.as_ref(), TypeVarLike::TypeVarTuple(_))
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub type_vars: TypeVarLikes,

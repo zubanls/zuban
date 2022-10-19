@@ -750,10 +750,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
+        let mut kind = TupleKind::FixedLength;
         let generics: Box<[_]> = if let Some(slice_or_simple) = iterator.next() {
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_db_type(first);
+                    if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
+                        todo!()
+                    }
                     return TypeContent::DbType(DbType::Tuple(TupleContent {
                         generics: Some(GenericsList::new_generics(Box::new([t]))),
                         kind: TupleKind::ArbitraryLength,
@@ -762,7 +766,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             }
             slice_type
                 .iter()
-                .map(|slice_content| self.compute_slice_db_type(slice_content))
+                .map(|slice_content| {
+                    let t = self.compute_slice_db_type(slice_content);
+                    if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
+                        todo!()
+                    }
+                    t
+                })
                 .collect()
         } else {
             let t = self.compute_slice_type(first);
@@ -771,12 +781,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
                     Box::new([])
                 }
-                _ => Box::new([self.as_db_type(t, first.as_node_ref())]),
+                _ => {
+                    let t = self.as_db_type(t, first.as_node_ref());
+                    if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
+                        kind = TupleKind::WithTypeVarTuple;
+                    }
+                    Box::new([t])
+                }
             }
         };
         TypeContent::DbType(DbType::Tuple(TupleContent {
             generics: Some(GenericsList::new_generics(generics)),
-            kind: TupleKind::FixedLength,
+            kind,
         }))
     }
 
