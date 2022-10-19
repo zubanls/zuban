@@ -5,7 +5,8 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
-    CallableContent, Database, DbType, GenericsList, TupleContent, TypeVarLike, UnionType, Variance,
+    CallableContent, Database, DbType, GenericsList, TupleContent, TupleKind, TypeVarLike,
+    UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -468,7 +469,10 @@ impl<'a> Type<'a> {
                 }
                 DbType::Tuple(tup) => Some({
                     let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
-                    if !tup.arbitrary_length {
+                    if matches!(
+                        tup.kind,
+                        TupleKind::FixedLength | TupleKind::WithTypeVarTuple
+                    ) {
                         debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
                     }
                     MroIterator::new(
@@ -609,8 +613,9 @@ impl<'a> Type<'a> {
     ) -> Match {
         if let Some(generics1) = &t1.generics {
             if let Some(generics2) = &t2.generics {
-                return match (t1.arbitrary_length, t2.arbitrary_length, variance) {
-                    (false, false, _) | (true, true, _) => {
+                return match (t1.kind, t2.kind, variance) {
+                    (TupleKind::FixedLength, TupleKind::FixedLength, _)
+                    | (TupleKind::ArbitraryLength, TupleKind::ArbitraryLength, _) => {
                         if generics1.len() != generics2.len() {
                             Match::new_false()
                         } else {
@@ -631,10 +636,9 @@ impl<'a> Type<'a> {
                             matches
                         }
                     }
-                    (false, true, Variance::Covariant) | (_, _, Variance::Invariant) => {
-                        Match::new_false()
-                    }
-                    (true, false, Variance::Covariant) => {
+                    (TupleKind::FixedLength, TupleKind::ArbitraryLength, Variance::Covariant)
+                    | (_, _, Variance::Invariant) => Match::new_false(),
+                    (TupleKind::ArbitraryLength, TupleKind::FixedLength, Variance::Covariant) => {
                         let t1 = Type::new(&generics1[0.into()]);
                         generics2
                             .iter()
@@ -644,6 +648,8 @@ impl<'a> Type<'a> {
                             })
                             .into()
                     }
+                    (TupleKind::WithTypeVarTuple, _, _) => todo!(),
+                    (_, TupleKind::WithTypeVarTuple, _) => todo!(),
                     _ => unreachable!(),
                 };
             }
@@ -654,8 +660,9 @@ impl<'a> Type<'a> {
     fn overlaps_tuple(i_s: &mut InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
         if let Some(generics1) = &t1.generics {
             if let Some(generics2) = &t2.generics {
-                return match (t1.arbitrary_length, t2.arbitrary_length) {
-                    (false, false) | (true, true) => {
+                return match (t1.kind, t2.kind) {
+                    (TupleKind::FixedLength, TupleKind::FixedLength)
+                    | (TupleKind::ArbitraryLength, TupleKind::ArbitraryLength) => {
                         generics1.len() == generics2.len()
                             && Generics::new_list(generics1).overlaps(
                                 i_s,
@@ -663,7 +670,7 @@ impl<'a> Type<'a> {
                                 None,
                             )
                     }
-                    (false, true) => {
+                    (TupleKind::FixedLength, TupleKind::ArbitraryLength) => {
                         let t2 = Type::new(&generics2[0.into()]);
                         for g in generics1.iter() {
                             let t1 = Type::new(g);
@@ -673,7 +680,7 @@ impl<'a> Type<'a> {
                         }
                         true
                     }
-                    (true, false) => {
+                    (TupleKind::ArbitraryLength, TupleKind::FixedLength) => {
                         let t1 = Type::new(&generics1[0.into()]);
                         for g in generics2.iter() {
                             let t2 = Type::new(g);
@@ -683,6 +690,8 @@ impl<'a> Type<'a> {
                         }
                         true
                     }
+                    (TupleKind::WithTypeVarTuple, _) => todo!(),
+                    (_, TupleKind::WithTypeVarTuple) => todo!(),
                 };
             }
         }
@@ -789,9 +798,10 @@ impl<'a> Type<'a> {
                     if let Some(DbType::Tuple(t2)) = self.maybe_db_type() {
                         if let Some(generics1) = &t1.generics {
                             if let Some(generics2) = &t2.generics {
-                                let tuple_generics: Vec<_> =
-                                    match (t1.arbitrary_length, t2.arbitrary_length) {
-                                        (false, false) | (true, true) => generics1
+                                let tuple_generics: Vec<_> = match (t1.kind, t2.kind) {
+                                    (TupleKind::FixedLength, TupleKind::FixedLength)
+                                    | (TupleKind::ArbitraryLength, TupleKind::ArbitraryLength) => {
+                                        generics1
                                             .iter()
                                             .zip(generics2.iter())
                                             .map(|(g1, g2)| {
@@ -801,25 +811,30 @@ impl<'a> Type<'a> {
                                                     &Type::new(g1),
                                                 )
                                             })
-                                            .collect(),
-                                        (true, false) => {
-                                            /*
-                                            let t1 = Type::new(&generics1[0.into()]);
-                                            generics2
-                                                .iter()
-                                                .all(|g2| {
-                                                    let t2 = Type::new(g2);
-                                                    t1.is_super_type_of(i_s, matcher, &t2).bool()
-                                                })
-                                                .into()
-                                            */
-                                            todo!()
-                                        }
-                                        (false, true) => unreachable!(),
-                                    };
+                                            .collect()
+                                    }
+                                    (TupleKind::ArbitraryLength, TupleKind::FixedLength) => {
+                                        /*
+                                        let t1 = Type::new(&generics1[0.into()]);
+                                        generics2
+                                            .iter()
+                                            .all(|g2| {
+                                                let t2 = Type::new(g2);
+                                                t1.is_super_type_of(i_s, matcher, &t2).bool()
+                                            })
+                                            .into()
+                                        */
+                                        todo!()
+                                    }
+                                    (TupleKind::WithTypeVarTuple, _)
+                                    | (_, TupleKind::WithTypeVarTuple) => todo!(),
+                                    (TupleKind::FixedLength, TupleKind::ArbitraryLength) => {
+                                        unreachable!()
+                                    }
+                                };
                                 return DbType::Tuple(TupleContent {
                                     generics: Some(GenericsList::generics_from_vec(tuple_generics)),
-                                    arbitrary_length: t1.arbitrary_length,
+                                    kind: t1.kind,
                                 });
                             }
                         }

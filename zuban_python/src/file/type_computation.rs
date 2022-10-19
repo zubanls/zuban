@@ -5,8 +5,8 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias, Specific,
-    StringSlice, TupleContent, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager, TypeVarUsage,
-    UnionEntry, UnionType,
+    StringSlice, TupleContent, TupleKind, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager,
+    TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -426,7 +426,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 ))),
                 SpecialType::Tuple => DbType::Tuple(TupleContent {
                     generics: None,
-                    arbitrary_length: true,
+                    kind: TupleKind::ArbitraryLength,
                 }),
                 SpecialType::LiteralString => DbType::Class(
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
@@ -756,7 +756,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     let t = self.compute_slice_db_type(first);
                     return TypeContent::DbType(DbType::Tuple(TupleContent {
                         generics: Some(GenericsList::new_generics(Box::new([t]))),
-                        arbitrary_length: true,
+                        kind: TupleKind::ArbitraryLength,
                     }));
                 }
             }
@@ -776,7 +776,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
         TypeContent::DbType(DbType::Tuple(TupleContent {
             generics: Some(GenericsList::new_generics(generics)),
-            arbitrary_length: false,
+            kind: TupleKind::FixedLength,
         }))
     }
 
@@ -1646,7 +1646,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             .collect();
         DbType::Tuple(TupleContent {
             generics: Some(GenericsList::new_generics(generics)),
-            arbitrary_length: false,
+            kind: TupleKind::FixedLength,
         })
     }
 

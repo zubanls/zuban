@@ -6,7 +6,7 @@ use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, PointLink, Specific, TupleContent,
-    TypeVar, TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
+    TupleKind, TypeVar, TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -30,7 +30,7 @@ impl TypingClass {
         match self.specific {
             Specific::TypingTuple => DbType::Tuple(TupleContent {
                 generics: None,
-                arbitrary_length: true,
+                kind: TupleKind::ArbitraryLength,
             }),
             Specific::TypingType => DbType::Type(Box::new(DbType::Any)),
             _ => todo!("{:?}", self.specific),
