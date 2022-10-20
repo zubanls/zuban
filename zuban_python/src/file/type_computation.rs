@@ -5,8 +5,8 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias, Specific,
-    StringSlice, TupleContent, TupleKind, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager,
-    TypeVarUsage, UnionEntry, UnionType,
+    StringSlice, TupleContent, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager, TypeVarUsage,
+    UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -426,7 +426,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 ))),
                 SpecialType::Tuple => DbType::Tuple(TupleContent {
                     generics: None,
-                    kind: TupleKind::ArbitraryLength,
+                    arbitrary_length: true,
                 }),
                 SpecialType::LiteralString => DbType::Class(
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
@@ -750,7 +750,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        let mut kind = TupleKind::FixedLength;
         let generics: Box<[_]> = if let Some(slice_or_simple) = iterator.next() {
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
@@ -760,7 +759,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     return TypeContent::DbType(DbType::Tuple(TupleContent {
                         generics: Some(GenericsList::new_generics(Box::new([t]))),
-                        kind: TupleKind::ArbitraryLength,
+                        arbitrary_length: true,
                     }));
                 }
             }
@@ -783,16 +782,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
                 _ => {
                     let t = self.as_db_type(t, first.as_node_ref());
-                    if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
-                        kind = TupleKind::WithTypeVarTuple;
-                    }
                     Box::new([t])
                 }
             }
         };
         TypeContent::DbType(DbType::Tuple(TupleContent {
             generics: Some(GenericsList::new_generics(generics)),
-            kind,
+            arbitrary_length: false,
         }))
     }
 
@@ -1662,7 +1658,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             .collect();
         DbType::Tuple(TupleContent {
             generics: Some(GenericsList::new_generics(generics)),
-            kind: TupleKind::FixedLength,
+            arbitrary_length: false,
         })
     }
 

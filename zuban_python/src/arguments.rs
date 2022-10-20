@@ -2,7 +2,6 @@ use std::mem;
 
 use crate::database::{
     ComplexPoint, Database, DbType, Execution, GenericsList, MroIndex, PointLink, TupleContent,
-    TupleKind,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
@@ -329,7 +328,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
                     TupleContent {
                         generics: Some(GenericsList::new_generics(parts)),
-                        kind: TupleKind::FixedLength,
+                        arbitrary_length: false,
                     },
                 ))))
             }

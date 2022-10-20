@@ -3,7 +3,6 @@ use std::ptr::null;
 
 use crate::database::{
     ComplexPoint, Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
-    TupleKind,
 };
 use crate::file::PythonFile;
 use crate::file_state::File;
@@ -66,7 +65,7 @@ impl PythonState {
             type_of_any: DbType::Type(Box::new(DbType::Any)),
             type_of_arbitrary_tuple: DbType::Type(Box::new(DbType::Tuple(TupleContent {
                 generics: None,
-                kind: TupleKind::ArbitraryLength,
+                arbitrary_length: true,
             }))),
         }
     }

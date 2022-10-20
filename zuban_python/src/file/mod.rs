@@ -14,7 +14,7 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, LocalityLink, Point,
-    PointLink, PointType, Points, Specific, TupleContent, TupleKind,
+    PointLink, PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -1417,7 +1417,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
         }
         let content = TupleContent {
             generics: Some(GenericsList::generics_from_vec(generics)),
-            kind: TupleKind::FixedLength,
+            arbitrary_length: false,
         };
         debug!(
             "Inferred: {}",
@@ -1634,7 +1634,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                             generics: Some(GenericsList::new_generics(Box::new([
                                                 p,
                                             ]))),
-                                            kind: TupleKind::ArbitraryLength,
+                                            arbitrary_length: true,
                                         })),
                                     ))
                                 }

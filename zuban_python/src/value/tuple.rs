@@ -1,5 +1,5 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{ComplexPoint, DbType, GenericsList, TupleContent, TupleKind};
+use crate::database::{ComplexPoint, DbType, GenericsList, TupleContent};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
@@ -66,17 +66,15 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
 
     fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
         if let Some(generics) = self.content.generics.as_ref() {
-            match self.content.kind {
-                TupleKind::ArbitraryLength => IteratorContent::Inferred(Inferred::execute_db_type(
+            if self.content.arbitrary_length {
+                IteratorContent::Inferred(Inferred::execute_db_type(
                     i_s,
                     generics[0.into()].clone(),
-                )),
-                TupleKind::FixedLength => match &self.content.generics {
+                ))
+            } else {
+                match &self.content.generics {
                     Some(generics) => IteratorContent::TupleGenerics(generics.iter()),
                     None => todo!(),
-                },
-                TupleKind::WithTypeVarTuple => {
-                    todo!()
                 }
             }
         } else {
@@ -102,16 +100,12 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         })
                         .unwrap_or_else(Inferred::new_unknown)
                 };
-                match self.content.kind {
-                    TupleKind::ArbitraryLength => by_index(i_s, 0),
-                    TupleKind::FixedLength => {
-                        if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
-                            by_index(i_s, usize::try_from(wanted).ok().unwrap_or_else(|| todo!()))
-                        } else {
-                            todo!()
-                        }
-                    }
-                    TupleKind::WithTypeVarTuple => todo!(),
+                if self.content.arbitrary_length {
+                    by_index(i_s, 0)
+                } else if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
+                    by_index(i_s, usize::try_from(wanted).ok().unwrap_or_else(|| todo!()))
+                } else {
+                    todo!()
                 }
             }
             SliceTypeContent::Slice(simple) => {

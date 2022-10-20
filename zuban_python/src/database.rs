@@ -897,17 +897,13 @@ impl DbType {
             }),
             Self::TypeVarLike(t) => callable(t),
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
-            Self::Tuple(content) => {
-                let generics = content
+            Self::Tuple(content) => Self::Tuple(TupleContent {
+                generics: content
                     .generics
                     .as_ref()
-                    .map(|generics| remap_generics(generics));
-                let kind = match content.kind {
-                    TupleKind::FixedLength | TupleKind::ArbitraryLength => content.kind,
-                    TupleKind::WithTypeVarTuple => todo!(),
-                };
-                Self::Tuple(TupleContent { generics, kind })
-            }
+                    .map(|generics| remap_generics(generics)),
+                arbitrary_length: content.arbitrary_length,
+            }),
             Self::Callable(content) => Self::Callable(Box::new(CallableContent {
                 defined_at: content.defined_at,
                 type_vars: content.type_vars.clone(), // TODO should this change as well?
@@ -976,7 +972,7 @@ impl DbType {
                     .generics
                     .as_ref()
                     .map(|generics| rewrite_generics(generics)),
-                kind: content.kind,
+                arbitrary_length: content.arbitrary_length,
             }),
             Self::Callable(content) => {
                 let type_vars = manager
@@ -1036,12 +1032,12 @@ impl DbType {
             },
             Self::Tuple(c1) => match other {
                 Self::Tuple(c2) => Self::Tuple({
-                    if c1.kind == c2.kind
+                    if c1.arbitrary_length == c2.arbitrary_length
                         && c1.generics.as_ref().map(|g| g.len())
                             == c2.generics.as_ref().map(|g| g.len())
                     {
                         TupleContent {
-                            kind: c1.kind,
+                            arbitrary_length: c1.arbitrary_length,
                             generics: merge_generics(c1.generics, c2.generics),
                         }
                     } else {
@@ -1094,24 +1090,17 @@ impl Overload {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
-pub enum TupleKind {
-    WithTypeVarTuple,
-    ArbitraryLength,
-    FixedLength,
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleContent {
     pub generics: Option<GenericsList>,
-    pub kind: TupleKind,
+    pub arbitrary_length: bool, // Is also homogenous
 }
 
 impl TupleContent {
     fn new_empty() -> Self {
         Self {
             generics: None,
-            kind: TupleKind::FixedLength,
+            arbitrary_length: true,
         }
     }
 
@@ -1122,11 +1111,10 @@ impl TupleContent {
         };
         if let Some(generics) = self.generics.as_ref() {
             let list = generics.format(format_data);
-            match self.kind {
-                TupleKind::ArbitraryLength => format!("{base}[{list}, ...]").into(),
-                TupleKind::FixedLength | TupleKind::WithTypeVarTuple => {
-                    format!("{base}[{list}]").into()
-                }
+            if self.arbitrary_length {
+                format!("{base}[{list}, ...]").into()
+            } else {
+                format!("{base}[{list}]").into()
             }
         } else {
             format!("{base}[Any, ...]").into()
