@@ -611,25 +611,22 @@ impl<'a> Type<'a> {
             if let Some(generics2) = &t2.generics {
                 return match (t1.arbitrary_length, t2.arbitrary_length, variance) {
                     (false, false, _) | (true, true, _) => {
-                        if generics1.len() != generics2.len() {
-                            Match::new_false()
-                        } else {
-                            let mut value_generics = Generics::new_list(generics2).iter();
-                            let mut matches = Match::new_true();
-                            Generics::new_list(generics1).iter().run_on_all(
-                                i_s,
-                                &mut |i_s, type_| {
-                                    let appeared =
-                                        value_generics.run_on_next(i_s, &mut |i_s, g| {
-                                            matches &= type_.matches(i_s, matcher, &g, variance);
-                                        });
-                                    if appeared.is_none() {
-                                        debug!("Generic not found for: {type_:?}");
-                                    }
-                                },
-                            );
-                            matches
+                        let mut value_generics = Generics::new_list(generics2).iter();
+                        let mut matches = Match::new_true();
+                        Generics::new_list(generics1)
+                            .iter()
+                            .run_on_all(i_s, &mut |i_s, type_| {
+                                let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
+                                    matches &= type_.matches(i_s, matcher, &g, variance);
+                                });
+                                if appeared.is_none() {
+                                    matches = Match::new_false();
+                                }
+                            });
+                        if !value_generics.is_empty(i_s) {
+                            matches = Match::new_false();
                         }
+                        matches
                     }
                     (false, true, Variance::Covariant) | (_, _, Variance::Invariant) => {
                         Match::new_false()

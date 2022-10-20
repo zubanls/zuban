@@ -270,4 +270,8 @@ impl<'db> GenericsIterator<'_> {
     ) {
         while self.run_on_next(i_s, callable).is_some() {}
     }
+
+    pub fn is_empty(mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        self.run_on_next(i_s, &mut |_, _| ()).is_none()
+    }
 }
