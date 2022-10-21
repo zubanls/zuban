@@ -23,7 +23,7 @@ pub enum FunctionOrCallable<'a> {
 }
 
 #[derive(Debug, Default)]
-pub struct CalculatedTypeVar {
+pub struct CalculatedTypeVarLike {
     pub(super) type_: Option<TypeVarBound>,
     //variance: Variance,
     pub(super) defined_by_result_context: bool,
@@ -33,7 +33,7 @@ pub struct CalculatedTypeVar {
 pub struct TypeVarMatcher<'a> {
     pub(super) class: Option<&'a Class<'a>>,
     pub(super) func_or_callable: FunctionOrCallable<'a>,
-    pub(super) calculated_type_vars: &'a mut [CalculatedTypeVar],
+    pub(super) calculated_type_vars: &'a mut [CalculatedTypeVarLike],
     pub(super) match_in_definition: PointLink,
     pub(super) parent_matcher: Option<&'a mut Self>,
     pub match_reverse: bool, // For contravariance subtypes
@@ -44,7 +44,7 @@ impl<'a> TypeVarMatcher<'a> {
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
         match_in_definition: PointLink,
-        calculated_type_vars: &'a mut [CalculatedTypeVar],
+        calculated_type_vars: &'a mut [CalculatedTypeVarLike],
         //parent_matcher: Option<&'a mut Self>,
     ) -> Self {
         Self {

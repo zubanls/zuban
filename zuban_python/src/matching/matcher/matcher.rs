@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::super::{FormatData, GenericsIterator, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
-use super::type_var_matcher::{CalculatedTypeVar, FunctionOrCallable, TypeVarMatcher};
+use super::type_var_matcher::{CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher};
 
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, GenericsList, RecursiveAlias, TypeVar,
@@ -32,7 +32,7 @@ impl<'a> Matcher<'a> {
 
     pub fn new_reverse_callable_matcher(
         callable: &'a CallableContent,
-        calculated_type_vars: &'a mut [CalculatedTypeVar],
+        calculated_type_vars: &'a mut [CalculatedTypeVarLike],
     ) -> Self {
         let mut m = TypeVarMatcher::new(
             None,
@@ -50,7 +50,7 @@ impl<'a> Matcher<'a> {
     pub fn new_reverse_function_matcher(
         function: Function<'a>,
         type_vars: Option<&TypeVarLikes>,
-        calculated_type_vars: &'a mut Vec<CalculatedTypeVar>,
+        calculated_type_vars: &'a mut Vec<CalculatedTypeVarLike>,
     ) -> Self {
         if let Some(type_vars) = type_vars {
             calculated_type_vars.resize_with(type_vars.len(), Default::default);
@@ -326,7 +326,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVar> {
+    pub fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {
         if let Some(type_var_matcher) = self.type_var_matcher.as_mut() {
             type_var_matcher.calculated_type_vars.iter_mut()
         } else {
