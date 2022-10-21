@@ -616,6 +616,16 @@ impl<'a> Type<'a> {
                         Generics::new_list(generics1)
                             .iter()
                             .run_on_all(i_s, &mut |i_s, type_| {
+                                if matcher.has_type_var_matcher() {
+                                    match type_.maybe_db_type() {
+                                        Some(DbType::TypeVarLike(t)) if t.is_type_var_tuple() => {
+                                            let fetch = generics2.len() as isize + 1
+                                                - generics1.len() as isize;
+                                            todo!("{fetch:?}")
+                                        }
+                                        _ => (),
+                                    }
+                                }
                                 let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
                                     matches &= type_.matches(i_s, matcher, &g, variance);
                                 });

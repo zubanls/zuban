@@ -112,6 +112,22 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    pub fn match_type_var_tuple(
+        &mut self,
+        i_s: &mut InferenceState,
+        t1: &TypeVarUsage,
+        value_type: &Type,
+        variance: Variance,
+    ) -> Match {
+        let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+        match t1.type_var_like.as_ref() {
+            TypeVarLike::TypeVarTuple(t) => {
+                todo!()
+            }
+            _ => unreachable!(),
+        }
+    }
+
     fn match_or_add_type_var_in_type_var_matcher(
         &mut self,
         i_s: &mut InferenceState,
