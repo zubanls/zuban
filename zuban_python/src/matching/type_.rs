@@ -618,9 +618,14 @@ impl<'a> Type<'a> {
                             if matcher.has_type_var_matcher() {
                                 match type_.maybe_db_type() {
                                     Some(DbType::TypeVarLike(t)) if t.is_type_var_tuple() => {
-                                        let fetch =
-                                            generics2.len() as isize + 1 - generics1.len() as isize;
-                                        todo!("{fetch:?}")
+                                        matcher.match_type_var_tuple(
+                                            i_s,
+                                            t.index,
+                                            generics1,
+                                            generics2,
+                                            &mut value_generics,
+                                            variance,
+                                        );
                                     }
                                     _ => (),
                                 }

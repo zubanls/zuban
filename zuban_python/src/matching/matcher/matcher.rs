@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
-use super::super::{FormatData, Match, MismatchReason, Type};
+use super::super::{FormatData, GenericsIterator, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{CalculatedTypeVar, FunctionOrCallable, TypeVarMatcher};
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TypeVar, TypeVarLike,
-    TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, Database, DbType, FormatStyle, GenericsList, RecursiveAlias, TypeVar,
+    TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -115,16 +115,30 @@ impl<'a> Matcher<'a> {
     pub fn match_type_var_tuple(
         &mut self,
         i_s: &mut InferenceState,
-        t1: &TypeVarUsage,
-        value_type: &Type,
+        index: TypeVarIndex,
+        generics1: &GenericsList,
+        generics2: &GenericsList,
+        generics2_iterator: &mut GenericsIterator,
         variance: Variance,
     ) -> Match {
-        let tv_matcher = self.type_var_matcher.as_mut().unwrap();
-        match t1.type_var_like.as_ref() {
-            TypeVarLike::TypeVarTuple(t) => {
-                todo!()
+        let fetch = generics2.len() as isize + 1 - generics1.len() as isize;
+        if let Ok(fetch) = fetch.try_into() {
+            let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+            let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];
+            if calculated.type_.is_some() {
+            } else {
+                let types: Box<_> = generics2_iterator
+                    .take(fetch)
+                    .map(|t| t.as_db_type(i_s))
+                    .collect();
+                //calculated.type_ = Some(types)
             }
-            _ => unreachable!(),
+            todo!()
+        } else {
+            // Negative numbers mean that we have non-matching tuples, but the fact they do not match
+            // will be noticed in a different place.
+            todo!()
+            //Match::new_true()
         }
     }
 

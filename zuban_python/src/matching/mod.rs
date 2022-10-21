@@ -7,7 +7,7 @@ mod result_context;
 mod type_;
 
 pub use format_data::FormatData;
-pub use generics::Generics;
+pub use generics::{Generics, GenericsIterator};
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub use matcher::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,
