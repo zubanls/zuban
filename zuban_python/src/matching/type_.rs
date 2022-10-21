@@ -611,29 +611,27 @@ impl<'a> Type<'a> {
             if let Some(generics2) = &t2.generics {
                 return match (t1.arbitrary_length, t2.arbitrary_length, variance) {
                     (false, false, _) | (true, true, _) => {
-                        let mut value_generics = Generics::new_list(generics2).iter();
+                        let g = Generics::new_list(generics2);
+                        let mut value_generics = g.iter(i_s.clone());
                         let mut matches = Match::new_true();
-                        Generics::new_list(generics1)
-                            .iter()
-                            .run_on_all(i_s, &mut |i_s, type_| {
-                                if matcher.has_type_var_matcher() {
-                                    match type_.maybe_db_type() {
-                                        Some(DbType::TypeVarLike(t)) if t.is_type_var_tuple() => {
-                                            let fetch = generics2.len() as isize + 1
-                                                - generics1.len() as isize;
-                                            todo!("{fetch:?}")
-                                        }
-                                        _ => (),
+                        for type_ in Generics::new_list(generics1).iter(i_s.clone()) {
+                            if matcher.has_type_var_matcher() {
+                                match type_.maybe_db_type() {
+                                    Some(DbType::TypeVarLike(t)) if t.is_type_var_tuple() => {
+                                        let fetch =
+                                            generics2.len() as isize + 1 - generics1.len() as isize;
+                                        todo!("{fetch:?}")
                                     }
+                                    _ => (),
                                 }
-                                let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                                    matches &= type_.matches(i_s, matcher, &g, variance);
-                                });
-                                if appeared.is_none() {
-                                    matches = Match::new_false();
-                                }
-                            });
-                        if !value_generics.is_empty(i_s) {
+                            }
+                            if let Some(g) = value_generics.next() {
+                                matches &= type_.matches(i_s, matcher, &g, variance);
+                            } else {
+                                matches = Match::new_false();
+                            }
+                        }
+                        if value_generics.next().is_some() {
                             matches = Match::new_false();
                         }
                         matches

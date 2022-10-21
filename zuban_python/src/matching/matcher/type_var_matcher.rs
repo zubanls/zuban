@@ -309,25 +309,22 @@ fn calculate_type_vars<'db>(
                             if result_class.node_ref == class.node_ref {
                                 let mut calculating = matcher.iter_calculated_type_vars();
                                 let mut i = 0;
-                                result_class
-                                    .generics()
-                                    .iter()
-                                    .run_on_all(i_s, &mut |i_s, g| {
-                                        let calculated = calculating.next().unwrap();
-                                        if !g.is_any() {
-                                            let mut bound = TypeVarBound::new(
-                                                g.as_db_type(i_s),
-                                                match &type_vars[i] {
-                                                    TypeVarLike::TypeVar(t) => t.variance,
-                                                    _ => todo!("????"),
-                                                },
-                                            );
-                                            bound.invert_bounds();
-                                            calculated.type_ = Some(bound);
-                                            calculated.defined_by_result_context = true;
-                                            i += 1; // TODO please test that this works for multiple type vars
-                                        }
-                                    });
+                                for g in result_class.generics().iter(i_s.clone()) {
+                                    let calculated = calculating.next().unwrap();
+                                    if !g.is_any() {
+                                        let mut bound = TypeVarBound::new(
+                                            g.as_db_type(i_s),
+                                            match &type_vars[i] {
+                                                TypeVarLike::TypeVar(t) => t.variance,
+                                                _ => todo!("????"),
+                                            },
+                                        );
+                                        bound.invert_bounds();
+                                        calculated.type_ = Some(bound);
+                                        calculated.defined_by_result_context = true;
+                                        i += 1; // TODO please test that this works for multiple type vars
+                                    }
+                                }
                                 true
                             } else {
                                 false

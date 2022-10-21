@@ -7,7 +7,7 @@ use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 
 macro_rules! replace_class_vars {
-    ($i_s:ident, $g:ident, $type_var_generics:ident) => {
+    ($i_s:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None | Generics::Any) => Type::new($g),
             Some(type_var_generics) => Type::owned($g.replace_type_vars(&mut |t| {
@@ -93,18 +93,21 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn iter(&self) -> GenericsIterator<'a> {
-        match self {
-            Self::SimpleGenericExpression(file, expr) => {
-                GenericsIterator::SimpleGenericExpression(file, *expr)
-            }
-            Self::SimpleGenericSlices(file, slices) => {
-                GenericsIterator::SimpleGenericSliceIterator(file, slices.iter())
-            }
-            Self::List(l, t) => GenericsIterator::GenericsList(l.iter(), *t),
-            Self::DbType(g) => GenericsIterator::DbType(g),
-            Self::None | Self::Any => GenericsIterator::None,
-        }
+    pub fn iter<'x, 'y>(&'y self, i_s: InferenceState<'x, 'y>) -> GenericsIterator<'x, 'y> {
+        GenericsIterator::new(
+            i_s,
+            match self {
+                Self::SimpleGenericExpression(file, expr) => {
+                    GenericsIteratorItem::SimpleGenericExpression(file, *expr)
+                }
+                Self::SimpleGenericSlices(file, slices) => {
+                    GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
+                }
+                Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
+                Self::DbType(g) => GenericsIteratorItem::DbType(g),
+                Self::None | Self::Any => GenericsIteratorItem::None,
+            },
+        )
     }
 
     pub fn as_generics_list(
@@ -150,19 +153,15 @@ impl<'a> Generics<'a> {
 
     pub fn format(&self, format_data: &FormatData, expected: Option<usize>) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
-        let mut strings = vec![];
-        let mut i = 0;
-        self.iter()
-            .run_on_all(&mut InferenceState::new(format_data.db), &mut |i_s, g| {
-                if expected.map(|e| i < e).unwrap_or(false) {
-                    strings.push(g.format(format_data));
-                    i += 1;
-                }
-            });
+        let mut strings: Vec<_> = self
+            .iter(InferenceState::new(format_data.db))
+            .map(|g| g.format(format_data))
+            .collect();
         if let Some(expected) = expected {
-            for _ in i..expected {
-                strings.push(Box::from("Any"));
+            if strings.len() != expected {
+                // TODO this should probably never happen and we should assert this
             }
+            strings.resize_with(expected, || Box::from("Any"))
         }
         format!("[{}]", strings.join(", "))
     }
@@ -174,22 +173,20 @@ impl<'a> Generics<'a> {
         value_generics: Self,
         type_vars: &TypeVarLikes,
     ) -> Match {
-        let mut value_generics = value_generics.iter();
+        let value_generics = value_generics.iter(i_s.clone());
         let mut matches = Match::new_true();
-        let mut type_var_iterator = type_vars.iter();
-        self.iter().run_on_all(i_s, &mut |i_s, type_| {
-            let appeared = value_generics.run_on_next(i_s, &mut |i_s, g| {
-                let v = match type_var_iterator.next().unwrap().as_ref() {
-                    TypeVarLike::TypeVar(t) => t.variance,
-                    TypeVarLike::TypeVarTuple(_) => todo!(),
-                    TypeVarLike::ParamSpec(_) => todo!(),
-                };
-                matches &= type_.matches(i_s, matcher, &g, v);
-            });
-            if appeared.is_none() {
-                debug!("Generic not found for: {type_:?}");
-            }
-        });
+        for ((t1, t2), tv) in self
+            .iter(i_s.clone())
+            .zip(value_generics)
+            .zip(type_vars.iter())
+        {
+            let v = match tv.as_ref() {
+                TypeVarLike::TypeVar(t) => t.variance,
+                TypeVarLike::TypeVarTuple(_) => todo!(),
+                TypeVarLike::ParamSpec(_) => todo!(),
+            };
+            matches &= t1.matches(i_s, matcher, &t2, v);
+        }
         matches
     }
 
@@ -199,27 +196,37 @@ impl<'a> Generics<'a> {
         other_generics: Self,
         type_vars: Option<&TypeVarLikes>,
     ) -> bool {
-        let mut other_generics = other_generics.iter();
+        let other_generics = other_generics.iter(i_s.clone());
         let mut matches = true;
         let mut type_var_iterator = type_vars.map(|t| t.iter());
-        self.iter().run_on_all(i_s, &mut |i_s, type_| {
-            let appeared = other_generics.run_on_next(i_s, &mut |i_s, g| {
-                let xxx = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
-                    // TODO ?
-                } else {
-                };
-                matches &= type_.overlaps(i_s, &g);
-            });
-            if appeared.is_none() {
-                debug!("Overlap Generic not found for: {type_:?}");
-                todo!();
-            }
-        });
+        for (t1, t2) in self.iter(i_s.clone()).zip(other_generics) {
+            let xxx = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
+                // TODO ?
+            } else {
+            };
+            matches &= t1.overlaps(i_s, &t2);
+        }
         matches
     }
 }
 
-pub enum GenericsIterator<'a> {
+pub struct GenericsIterator<'a, 'b> {
+    i_s: InferenceState<'a, 'b>,
+    ended: bool,
+    item: GenericsIteratorItem<'b>,
+}
+
+impl<'a, 'b> GenericsIterator<'a, 'b> {
+    fn new(i_s: InferenceState<'a, 'b>, item: GenericsIteratorItem<'b>) -> Self {
+        Self {
+            i_s,
+            ended: false,
+            item,
+        }
+    }
+}
+
+enum GenericsIteratorItem<'a> {
     SimpleGenericSliceIterator(&'a PythonFile, SliceIterator<'a>),
     GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
@@ -227,51 +234,42 @@ pub enum GenericsIterator<'a> {
     None,
 }
 
-impl<'db> GenericsIterator<'_> {
-    pub fn run_on_next<T>(
-        &mut self,
-        i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type) -> T,
-    ) -> Option<T> {
-        match self {
-            Self::SimpleGenericExpression(file, expr) => {
-                let g = file.inference(i_s).use_cached_simple_generic_type(*expr);
-                let result = callable(i_s, g);
-                *self = Self::None;
-                Some(result)
+impl<'b> Iterator for GenericsIterator<'_, 'b> {
+    type Item = Type<'b>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match &mut self.item {
+            GenericsIteratorItem::SimpleGenericExpression(file, expr) => {
+                if self.ended {
+                    return None;
+                }
+                self.ended = true;
+                Some(
+                    file.inference(&mut self.i_s)
+                        .use_cached_simple_generic_type(*expr),
+                )
             }
-            Self::SimpleGenericSliceIterator(file, iter) => {
+            GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    let g = file
-                        .inference(i_s)
-                        .use_cached_simple_generic_type(s.expression());
-                    Some(callable(i_s, g))
+                    Some(
+                        file.inference(&mut self.i_s)
+                            .use_cached_simple_generic_type(s.expression()),
+                    )
                 } else {
                     None
                 }
             }
-            Self::GenericsList(iterator, type_var_generics) => iterator.next().map(|g| {
-                let t = replace_class_vars!(i_s, g, type_var_generics);
-                callable(i_s, t)
-            }),
-            Self::DbType(g) => {
-                let result = Some(callable(i_s, Type::new(g)));
-                *self = Self::None;
-                result
+            GenericsIteratorItem::GenericsList(iterator, type_var_generics) => iterator
+                .next()
+                .map(|g| replace_class_vars!(&mut self.i_s, g, type_var_generics)),
+            GenericsIteratorItem::DbType(g) => {
+                if self.ended {
+                    return None;
+                }
+                self.ended = true;
+                Some(Type::new(g))
             }
-            Self::None => None,
+            GenericsIteratorItem::None => None,
         }
-    }
-
-    pub fn run_on_all(
-        mut self,
-        i_s: &mut InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&mut InferenceState<'db, '_>, Type),
-    ) {
-        while self.run_on_next(i_s, callable).is_some() {}
-    }
-
-    pub fn is_empty(mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
-        self.run_on_next(i_s, &mut |_, _| ()).is_none()
     }
 }
