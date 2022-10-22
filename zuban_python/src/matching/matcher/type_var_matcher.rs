@@ -22,11 +22,29 @@ pub enum FunctionOrCallable<'a> {
     Callable(&'a CallableContent),
 }
 
+#[derive(Debug)]
+pub enum BoundKind {
+    TypeVar(TypeVarBound),
+    TypeVarTuple(Box<[DbType]>),
+    Uncalculated,
+}
+
+impl Default for BoundKind {
+    fn default() -> Self {
+        Self::Uncalculated
+    }
+}
+
 #[derive(Debug, Default)]
 pub struct CalculatedTypeVarLike {
-    pub(super) type_: Option<TypeVarBound>,
-    //variance: Variance,
+    pub(super) type_: BoundKind,
     pub(super) defined_by_result_context: bool,
+}
+
+impl CalculatedTypeVarLike {
+    pub fn calculated(&self) -> bool {
+        !matches!(self.type_, BoundKind::Uncalculated)
+    }
 }
 
 #[derive(Debug)]
@@ -69,8 +87,8 @@ impl<'a> TypeVarMatcher<'a> {
         type_.search_type_vars(&mut |t| {
             if t.in_definition == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index.as_usize()];
-                if current.type_.is_none() {
-                    current.type_ = Some(TypeVarBound::Invariant(DbType::Any));
+                if !current.calculated() {
+                    current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
                 }
             }
         });
@@ -84,12 +102,12 @@ impl<'a> TypeVarMatcher<'a> {
         t.replace_type_vars(&mut |type_var_usage| {
             if type_var_usage.in_definition == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
-                current
-                    .type_
-                    .clone()
-                    .map(|t| t.into_db_type())
+                match &current.type_ {
+                    BoundKind::TypeVar(t) => t.clone().into_db_type(),
+                    BoundKind::TypeVarTuple(_) => todo!(),
                     // Any is just ignored by the context later.
-                    .unwrap_or(DbType::Any)
+                    BoundKind::Uncalculated => DbType::Any,
+                }
             } else {
                 match self.func_or_callable {
                     FunctionOrCallable::Function(f) => {
@@ -320,7 +338,7 @@ fn calculate_type_vars<'db>(
                                             },
                                         );
                                         bound.invert_bounds();
-                                        calculated.type_ = Some(bound);
+                                        calculated.type_ = BoundKind::TypeVar(bound);
                                         calculated.defined_by_result_context = true;
                                         i += 1; // TODO please test that this works for multiple type vars
                                     }
@@ -340,18 +358,22 @@ fn calculate_type_vars<'db>(
                 // Fill the type var arguments from context
                 result_type.is_sub_type_of(i_s, &mut matcher, type_);
                 for calculated in matcher.iter_calculated_type_vars() {
-                    if let Some(type_) = &mut calculated.type_ {
-                        let has_any = match type_ {
+                    let has_any = match &calculated.type_ {
+                        BoundKind::TypeVar(
                             TypeVarBound::Invariant(t)
                             | TypeVarBound::Lower(t)
-                            | TypeVarBound::Upper(t) => t.has_any(),
-                            TypeVarBound::LowerAndUpper(t1, t2) => t1.has_any() | t2.has_any(),
-                        };
-                        if has_any {
-                            calculated.type_ = None
-                        } else {
-                            calculated.defined_by_result_context = true;
+                            | TypeVarBound::Upper(t),
+                        ) => t.has_any(),
+                        BoundKind::TypeVar(TypeVarBound::LowerAndUpper(t1, t2)) => {
+                            t1.has_any() | t2.has_any()
                         }
+                        BoundKind::TypeVarTuple(ts) => ts.iter().any(|t| t.has_any()),
+                        BoundKind::Uncalculated => continue,
+                    };
+                    if has_any {
+                        calculated.type_ = BoundKind::Uncalculated
+                    } else {
+                        calculated.defined_by_result_context = true;
                     }
                 }
             }
@@ -392,7 +414,11 @@ fn calculate_type_vars<'db>(
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
-                .map(|c| c.type_.map(|t| t.into_db_type()).unwrap_or(DbType::Never))
+                .map(|c| match c.type_ {
+                    BoundKind::TypeVar(t) => t.into_db_type(),
+                    BoundKind::TypeVarTuple(_) => todo!(),
+                    BoundKind::Uncalculated => DbType::Never,
+                })
                 .collect(),
         )
     });

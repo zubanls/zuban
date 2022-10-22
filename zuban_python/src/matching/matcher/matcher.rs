@@ -2,7 +2,9 @@ use std::rc::Rc;
 
 use super::super::{FormatData, GenericsIterator, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
-use super::type_var_matcher::{CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher};
+use super::type_var_matcher::{
+    BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher,
+};
 
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, GenericsList, RecursiveAlias, TypeVar,
@@ -125,13 +127,13 @@ impl<'a> Matcher<'a> {
         if let Ok(fetch) = fetch.try_into() {
             let tv_matcher = self.type_var_matcher.as_mut().unwrap();
             let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];
-            if calculated.type_.is_some() {
+            if calculated.calculated() {
             } else {
                 let types: Box<_> = generics2_iterator
                     .take(fetch)
                     .map(|t| t.as_db_type(i_s))
                     .collect();
-                //calculated.type_ = Some(types)
+                calculated.type_ = BoundKind::TypeVarTuple(types);
             }
             todo!()
         } else {
@@ -155,7 +157,7 @@ impl<'a> Matcher<'a> {
         if type_var_matcher.match_in_definition == type_var_usage.in_definition {
             let current =
                 &mut type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
-            if let Some(current_type) = &mut current.type_ {
+            if let BoundKind::TypeVar(current_type) = &mut current.type_ {
                 let m = current_type.merge_or_mismatch(i_s, value_type, variance);
                 return match m.bool() || !type_var.restrictions.is_empty() {
                     true => m,
@@ -167,6 +169,8 @@ impl<'a> Matcher<'a> {
                         },
                     },
                 };
+            } else {
+                debug_assert!(!current.calculated(), "{current:?}");
             }
             // Before setting the type var, we need to check if the constraints match.
             let mut mismatch_constraints = false;
@@ -174,7 +178,7 @@ impl<'a> Matcher<'a> {
                 if let Some(DbType::TypeVarLike(t2)) = value_type.maybe_db_type() {
                     if let TypeVarLike::TypeVar(t2) = t2.type_var_like.as_ref() {
                         if !t2.restrictions.is_empty() {
-                            if let Some(type_) = &current.type_ {
+                            if current.calculated() {
                                 todo!()
                             } else if t2.restrictions.iter().all(|r2| {
                                 type_var.restrictions.iter().any(|r1| {
@@ -183,8 +187,9 @@ impl<'a> Matcher<'a> {
                                         .bool()
                                 })
                             }) {
-                                current.type_ =
-                                    Some(TypeVarBound::Invariant(value_type.as_db_type(i_s)));
+                                current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
+                                    value_type.as_db_type(i_s),
+                                ));
                                 return Match::new_true();
                             } else {
                                 mismatch_constraints = true;
@@ -196,13 +201,15 @@ impl<'a> Matcher<'a> {
                     for restriction in type_var.restrictions.iter() {
                         let m = Type::new(restriction).simple_matches(i_s, value_type, variance);
                         if m.bool() {
-                            if current.type_.is_some() {
+                            if current.calculated() {
                                 // This means that any is involved and multiple restrictions
                                 // are matching. Therefore just return Any.
-                                current.type_ = Some(TypeVarBound::Invariant(DbType::Any));
+                                current.type_ =
+                                    BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
                                 return m;
                             }
-                            current.type_ = Some(TypeVarBound::Invariant(restriction.clone()));
+                            current.type_ =
+                                BoundKind::TypeVar(TypeVarBound::Invariant(restriction.clone()));
                             if !value_type.has_any(i_s) {
                                 return m;
                             }
@@ -225,7 +232,8 @@ impl<'a> Matcher<'a> {
                     similar: false,
                 };
             }
-            current.type_ = Some(TypeVarBound::new(value_type.as_db_type(i_s), variance));
+            current.type_ =
+                BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
                 Match::True { with_any: true }
             } else {
@@ -294,10 +302,10 @@ impl<'a> Matcher<'a> {
         // on mismatches this can be run.
         if type_var_matcher.match_in_definition == type_var_usage.in_definition {
             let current = &type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
-            if let Some(bound) = current.type_.as_ref() {
-                bound.format(i_s, style)
-            } else {
-                DbType::Never.format(&FormatData::with_style(db, style))
+            match &current.type_ {
+                BoundKind::TypeVar(bound) => bound.format(i_s, style),
+                BoundKind::TypeVarTuple(_) => todo!(),
+                BoundKind::Uncalculated => DbType::Never.format(&FormatData::with_style(db, style)),
             }
         } else {
             match type_var_matcher.func_or_callable {
