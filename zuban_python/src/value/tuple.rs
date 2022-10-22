@@ -73,7 +73,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 ))
             } else {
                 match &self.content.generics {
-                    Some(generics) => IteratorContent::TupleGenerics(generics.iter()),
+                    Some(generics) => IteratorContent::FixedLengthTupleGenerics(generics.iter()),
                     None => todo!(),
                 }
             }

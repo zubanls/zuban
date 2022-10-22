@@ -123,8 +123,7 @@ macro_rules! base_qualified_name {
 pub enum IteratorContent<'a> {
     Inferred(Inferred),
     ListLiteral(ListLiteral<'a>, ListOrSetElementIterator<'a>),
-    // TODO this should include the arbitrary_length
-    TupleGenerics(std::slice::Iter<'a, DbType>),
+    FixedLengthTupleGenerics(std::slice::Iter<'a, DbType>),
     Empty,
     Any,
 }
@@ -137,7 +136,7 @@ impl<'db> IteratorContent<'_> {
                 let g = list.db_type(i_s).clone();
                 Inferred::execute_db_type(i_s, g)
             }
-            Self::TupleGenerics(generics) => Inferred::execute_db_type(
+            Self::FixedLengthTupleGenerics(generics) => Inferred::execute_db_type(
                 i_s,
                 generics.fold(DbType::Never, |a, b| a.union(b.clone())),
             ),
@@ -149,7 +148,9 @@ impl<'db> IteratorContent<'_> {
     pub fn next(&mut self, i_s: &mut InferenceState) -> Option<Inferred> {
         match self {
             Self::Inferred(inferred) => Some(inferred.clone()),
-            Self::TupleGenerics(t) => t.next().map(|g| Inferred::execute_db_type(i_s, g.clone())),
+            Self::FixedLengthTupleGenerics(t) => {
+                t.next().map(|g| Inferred::execute_db_type(i_s, g.clone()))
+            }
             Self::ListLiteral(list, list_elements) => {
                 list_elements.next().map(|list_element| match list_element {
                     StarLikeExpression::NamedExpression(named_expr) => {
@@ -169,7 +170,7 @@ impl<'db> IteratorContent<'_> {
     pub fn len(&self) -> Option<usize> {
         match self {
             Self::Inferred(_) | Self::Any => None,
-            Self::TupleGenerics(t) => Some(t.len()),
+            Self::FixedLengthTupleGenerics(t) => Some(t.len()),
             Self::ListLiteral(_, iterator) => None,
             Self::Empty => todo!(),
         }
