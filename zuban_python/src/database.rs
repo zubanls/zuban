@@ -511,10 +511,6 @@ impl GenericsList {
         self.0.iter()
     }
 
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         self.0
             .iter()
