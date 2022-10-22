@@ -499,10 +499,6 @@ impl GenericsList {
         Self(parts)
     }
 
-    pub fn as_slice_ref(&self) -> &[DbType] {
-        &self.0
-    }
-
     pub fn generics_from_vec(parts: Vec<DbType>) -> Self {
         Self::new_generics(parts.into_boxed_slice())
     }
