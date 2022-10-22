@@ -5,7 +5,8 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
-    CallableContent, Database, DbType, GenericsList, TupleContent, TypeVarLike, UnionType, Variance,
+    CallableContent, Database, DbType, TupleContent, TupleTypeArguments, TypeVarLike, UnionType,
+    Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -611,10 +612,10 @@ impl<'a> Type<'a> {
             if let Some(generics2) = &t2.generics {
                 return match (t1.arbitrary_length, t2.arbitrary_length, variance) {
                     (false, false, _) | (true, true, _) => {
-                        let g = Generics::new_list(generics2);
+                        let g = Generics::TupleList(generics2, None);
                         let mut value_generics = g.iter(i_s.clone());
                         let mut matches = Match::new_true();
-                        for type_ in Generics::new_list(generics1).iter(i_s.clone()) {
+                        for type_ in Generics::TupleList(generics1, None).iter(i_s.clone()) {
                             if matcher.has_type_var_matcher() {
                                 match type_.maybe_db_type() {
                                     Some(DbType::TypeVarLike(t)) if t.is_type_var_tuple() => {
@@ -667,9 +668,9 @@ impl<'a> Type<'a> {
                 return match (t1.arbitrary_length, t2.arbitrary_length) {
                     (false, false) | (true, true) => {
                         generics1.len() == generics2.len()
-                            && Generics::new_list(generics1).overlaps(
+                            && Generics::TupleList(generics1, None).overlaps(
                                 i_s,
-                                Generics::new_list(generics2),
+                                Generics::TupleList(generics2, None),
                                 None,
                             )
                     }
@@ -828,7 +829,9 @@ impl<'a> Type<'a> {
                                         (false, true) => unreachable!(),
                                     };
                                 return DbType::Tuple(TupleContent {
-                                    generics: Some(GenericsList::generics_from_vec(tuple_generics)),
+                                    generics: Some(TupleTypeArguments::generics_from_vec(
+                                        tuple_generics,
+                                    )),
                                     arbitrary_length: t1.arbitrary_length,
                                 });
                             }

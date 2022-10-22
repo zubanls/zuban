@@ -7,7 +7,7 @@ use super::type_var_matcher::{
 };
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, GenericsList, RecursiveAlias, TypeVar,
+    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments, TypeVar,
     TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
@@ -118,8 +118,8 @@ impl<'a> Matcher<'a> {
         &mut self,
         i_s: &mut InferenceState,
         index: TypeVarIndex,
-        generics1: &GenericsList,
-        generics2: &GenericsList,
+        generics1: &TupleTypeArguments,
+        generics2: &TupleTypeArguments,
         generics2_iterator: &mut GenericsIterator,
         variance: Variance,
     ) -> Match {

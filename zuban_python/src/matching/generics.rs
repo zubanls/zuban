@@ -1,7 +1,9 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{FormatData, Match, Matcher, Type};
-use crate::database::{DbType, GenericsList, TypeVarIndex, TypeVarLike, TypeVarLikes};
+use crate::database::{
+    DbType, GenericsList, TupleTypeArguments, TypeVarIndex, TypeVarLike, TypeVarLikes,
+};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -22,6 +24,7 @@ pub enum Generics<'a> {
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
     SimpleGenericSlices(&'a PythonFile, Slices<'a>),
     List(&'a GenericsList, Option<&'a Generics<'a>>),
+    TupleList(&'a TupleTypeArguments, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
     None,
     Any,
@@ -82,6 +85,7 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
+            Self::TupleList(list, type_var_generics) => todo!(),
             Self::DbType(g) => {
                 if n.as_usize() > 0 {
                     todo!()
@@ -104,6 +108,7 @@ impl<'a> Generics<'a> {
                     GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
                 }
                 Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
+                Self::TupleList(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
                 Self::DbType(g) => GenericsIteratorItem::DbType(g),
                 Self::None | Self::Any => GenericsIteratorItem::None,
             },
@@ -142,6 +147,7 @@ impl<'a> Generics<'a> {
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics).into_db_type(i_s))
                     .collect(),
             ),
+            Self::TupleList(l, type_var_generics) => unreachable!(),
             Self::Any => GenericsList::new_generics(
                 std::iter::repeat(DbType::Any)
                     .take(type_vars.len())

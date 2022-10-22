@@ -804,7 +804,9 @@ impl DbType {
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => {
                 if let Some(generics) = &content.generics {
-                    search_in_generics(generics)
+                    for t in generics.iter() {
+                        t.search_type_vars(found_type_var);
+                    }
                 }
             }
             Self::Callable(content) => {
@@ -841,7 +843,7 @@ impl DbType {
             Self::Type(db_type) => db_type.has_any(),
             Self::Tuple(content) => {
                 if let Some(generics) = &content.generics {
-                    search_in_generics(generics)
+                    generics.iter().any(|t| t.has_any())
                 } else {
                     true
                 }
@@ -861,7 +863,7 @@ impl DbType {
     }
 
     pub fn replace_type_vars(&self, callable: &mut impl FnMut(&TypeVarUsage) -> Self) -> Self {
-        let mut remap_generics = |generics: &GenericsList| {
+        let remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
@@ -898,10 +900,14 @@ impl DbType {
             Self::TypeVarLike(t) => callable(t),
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
-                generics: content
-                    .generics
-                    .as_ref()
-                    .map(|generics| remap_generics(generics)),
+                generics: content.generics.as_ref().map(|generics| {
+                    TupleTypeArguments::new_generics(
+                        generics
+                            .iter()
+                            .map(|g| g.replace_type_vars(callable))
+                            .collect(),
+                    )
+                }),
                 arbitrary_length: content.arbitrary_length,
             }),
             Self::Callable(content) => Self::Callable(Box::new(CallableContent {
@@ -968,10 +974,14 @@ impl DbType {
                 Self::Type(Box::new(db_type.rewrite_late_bound_callables(manager)))
             }
             Self::Tuple(content) => Self::Tuple(TupleContent {
-                generics: content
-                    .generics
-                    .as_ref()
-                    .map(|generics| rewrite_generics(generics)),
+                generics: content.generics.as_ref().map(|generics| {
+                    TupleTypeArguments::new_generics(
+                        generics
+                            .iter()
+                            .map(|g| g.rewrite_late_bound_callables(manager))
+                            .collect(),
+                    )
+                }),
                 arbitrary_length: content.arbitrary_length,
             }),
             Self::Callable(content) => {
@@ -1019,6 +1029,17 @@ impl DbType {
                 )
             })
         };
+        let merge_tuple_type_args =
+            |g1: Option<TupleTypeArguments>, g2: Option<TupleTypeArguments>| {
+                g1.map(|g1| {
+                    TupleTypeArguments::new_generics(
+                        g1.into_iter()
+                            .zip(g2.unwrap().into_iter())
+                            .map(|(t1, t2)| t1.merge_matching_parts(t2))
+                            .collect(),
+                    )
+                })
+            };
         match self {
             Self::Class(link1, g1) => match other {
                 Self::Class(link2, g2) if link1 == link2 => {
@@ -1038,7 +1059,7 @@ impl DbType {
                     {
                         TupleContent {
                             arbitrary_length: c1.arbitrary_length,
-                            generics: merge_generics(c1.generics, c2.generics),
+                            generics: merge_tuple_type_args(c1.generics, c2.generics),
                         }
                     } else {
                         TupleContent::new_empty()
@@ -1091,8 +1112,63 @@ impl Overload {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct TupleTypeArguments(Box<[DbType]>);
+
+impl TupleTypeArguments {
+    pub fn new_generics(parts: Box<[DbType]>) -> Self {
+        Self(parts)
+    }
+
+    pub fn as_slice_ref(&self) -> &[DbType] {
+        &self.0
+    }
+
+    pub fn generics_from_vec(parts: Vec<DbType>) -> Self {
+        Self::new_generics(parts.into_boxed_slice())
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<DbType> {
+        self.0.iter()
+    }
+
+    pub fn len(&self) -> usize {
+        self.0.len()
+    }
+
+    pub fn nth(&self, index: TypeVarIndex) -> Option<&DbType> {
+        self.0.get(index.0 as usize)
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        self.0
+            .iter()
+            .map(|g| g.format(format_data))
+            .collect::<Vec<_>>()
+            .join(", ")
+            .into()
+    }
+}
+
+impl std::ops::Index<TypeVarIndex> for TupleTypeArguments {
+    type Output = DbType;
+
+    fn index(&self, index: TypeVarIndex) -> &DbType {
+        &self.0[index.0 as usize]
+    }
+}
+
+impl IntoIterator for TupleTypeArguments {
+    type Item = DbType;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Vec::from(self.0).into_iter()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct TupleContent {
-    pub generics: Option<GenericsList>,
+    pub generics: Option<TupleTypeArguments>,
     pub arbitrary_length: bool, // Is also homogenous
 }
 
