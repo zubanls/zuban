@@ -128,6 +128,7 @@ impl<'a> Matcher<'a> {
             let tv_matcher = self.type_var_matcher.as_mut().unwrap();
             let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];
             if calculated.calculated() {
+                todo!()
             } else {
                 let types: Box<_> = generics2_iterator
                     .take(fetch)
@@ -135,7 +136,7 @@ impl<'a> Matcher<'a> {
                     .collect();
                 calculated.type_ = BoundKind::TypeVarTuple(types);
             }
-            todo!()
+            Match::new_true()
         } else {
             // Negative numbers mean that we have non-matching tuples, but the fact they do not match
             // will be noticed in a different place.
@@ -304,7 +305,7 @@ impl<'a> Matcher<'a> {
             let current = &type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, style),
-                BoundKind::TypeVarTuple(_) => todo!(),
+                BoundKind::TypeVarTuple(_) => "TODO format typevartuple".into(),
                 BoundKind::Uncalculated => DbType::Never.format(&FormatData::with_style(db, style)),
             }
         } else {
