@@ -758,7 +758,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         todo!()
                     }
                     return TypeContent::DbType(DbType::Tuple(TupleContent {
-                        generics: Some(TupleTypeArguments::new_generics(Box::new([t]))),
+                        generics: Some(TupleTypeArguments::new(Box::new([t]))),
                         arbitrary_length: true,
                     }));
                 }
@@ -787,7 +787,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             }
         };
         TypeContent::DbType(DbType::Tuple(TupleContent {
-            generics: Some(TupleTypeArguments::new_generics(generics)),
+            generics: Some(TupleTypeArguments::new(generics)),
             arbitrary_length: false,
         }))
     }
@@ -1657,7 +1657,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             })
             .collect();
         DbType::Tuple(TupleContent {
-            generics: Some(TupleTypeArguments::new_generics(generics)),
+            generics: Some(TupleTypeArguments::new(generics)),
             arbitrary_length: false,
         })
     }

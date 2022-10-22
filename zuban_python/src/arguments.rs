@@ -328,7 +328,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                     .collect();
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
                     TupleContent {
-                        generics: Some(TupleTypeArguments::new_generics(parts)),
+                        generics: Some(TupleTypeArguments::new(parts)),
                         arbitrary_length: false,
                     },
                 ))))

@@ -901,7 +901,7 @@ impl DbType {
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
                 generics: content.generics.as_ref().map(|generics| {
-                    TupleTypeArguments::new_generics(
+                    TupleTypeArguments::new(
                         generics
                             .iter()
                             .map(|g| g.replace_type_vars(callable))
@@ -975,7 +975,7 @@ impl DbType {
             }
             Self::Tuple(content) => Self::Tuple(TupleContent {
                 generics: content.generics.as_ref().map(|generics| {
-                    TupleTypeArguments::new_generics(
+                    TupleTypeArguments::new(
                         generics
                             .iter()
                             .map(|g| g.rewrite_late_bound_callables(manager))
@@ -1032,7 +1032,7 @@ impl DbType {
         let merge_tuple_type_args =
             |g1: Option<TupleTypeArguments>, g2: Option<TupleTypeArguments>| {
                 g1.map(|g1| {
-                    TupleTypeArguments::new_generics(
+                    TupleTypeArguments::new(
                         g1.into_iter()
                             .zip(g2.unwrap().into_iter())
                             .map(|(t1, t2)| t1.merge_matching_parts(t2))
@@ -1115,16 +1115,12 @@ impl Overload {
 pub struct TupleTypeArguments(Box<[DbType]>);
 
 impl TupleTypeArguments {
-    pub fn new_generics(parts: Box<[DbType]>) -> Self {
+    pub fn new(parts: Box<[DbType]>) -> Self {
         Self(parts)
     }
 
     pub fn as_slice_ref(&self) -> &[DbType] {
         &self.0
-    }
-
-    pub fn generics_from_vec(parts: Vec<DbType>) -> Self {
-        Self::new_generics(parts.into_boxed_slice())
     }
 
     pub fn iter(&self) -> std::slice::Iter<DbType> {

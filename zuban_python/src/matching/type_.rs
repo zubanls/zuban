@@ -829,8 +829,8 @@ impl<'a> Type<'a> {
                                         (false, true) => unreachable!(),
                                     };
                                 return DbType::Tuple(TupleContent {
-                                    generics: Some(TupleTypeArguments::generics_from_vec(
-                                        tuple_generics,
+                                    generics: Some(TupleTypeArguments::new(
+                                        tuple_generics.into_boxed_slice(),
                                     )),
                                     arbitrary_length: t1.arbitrary_length,
                                 });

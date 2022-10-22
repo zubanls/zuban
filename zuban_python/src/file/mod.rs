@@ -1416,7 +1416,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             }
         }
         let content = TupleContent {
-            generics: Some(TupleTypeArguments::generics_from_vec(generics)),
+            generics: Some(TupleTypeArguments::new(generics.into_boxed_slice())),
             arbitrary_length: false,
         };
         debug!(
@@ -1631,9 +1631,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                         .into_db_type(self.i_s);
                                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                                         Box::new(DbType::Tuple(TupleContent {
-                                            generics: Some(TupleTypeArguments::new_generics(
-                                                Box::new([p]),
-                                            )),
+                                            generics: Some(TupleTypeArguments::new(Box::new([p]))),
                                             arbitrary_length: true,
                                         })),
                                     ))
