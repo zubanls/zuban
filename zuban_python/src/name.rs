@@ -17,7 +17,7 @@ pub struct TreePosition<'db> {
 }
 
 impl<'db> TreePosition<'db> {
-    pub(in crate) fn new(file: &'db dyn File, position: CodeIndex) -> Self {
+    pub(crate) fn new(file: &'db dyn File, position: CodeIndex) -> Self {
         Self { file, position }
     }
 
