@@ -492,29 +492,38 @@ impl Execution {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct GenericsList(Box<[DbType]>);
+pub enum GenericItem {
+    TypeArgument(DbType),
+    TypeVarTuple(Box<[DbType]>),
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct GenericsList(Box<[GenericItem]>);
 
 impl GenericsList {
-    pub fn new_generics(parts: Box<[DbType]>) -> Self {
+    pub fn new_generics(parts: Box<[GenericItem]>) -> Self {
         Self(parts)
     }
 
-    pub fn generics_from_vec(parts: Vec<DbType>) -> Self {
+    pub fn generics_from_vec(parts: Vec<GenericItem>) -> Self {
         Self::new_generics(parts.into_boxed_slice())
     }
 
-    pub fn nth(&self, index: TypeVarIndex) -> Option<&DbType> {
+    pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericItem> {
         self.0.get(index.0 as usize)
     }
 
-    pub fn iter(&self) -> std::slice::Iter<DbType> {
+    pub fn iter(&self) -> std::slice::Iter<GenericItem> {
         self.0.iter()
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         self.0
             .iter()
-            .map(|g| g.format(format_data))
+            .map(|g| match g {
+                GenericItem::TypeArgument(t) => t.format(format_data),
+                GenericItem::TypeVarTuple(_) => todo!(),
+            })
             .collect::<Vec<_>>()
             .join(", ")
             .into()
@@ -522,15 +531,15 @@ impl GenericsList {
 }
 
 impl std::ops::Index<TypeVarIndex> for GenericsList {
-    type Output = DbType;
+    type Output = GenericItem;
 
-    fn index(&self, index: TypeVarIndex) -> &DbType {
+    fn index(&self, index: TypeVarIndex) -> &Self::Output {
         &self.0[index.0 as usize]
     }
 }
 
 impl IntoIterator for GenericsList {
-    type Item = DbType;
+    type Item = GenericItem;
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
@@ -776,8 +785,11 @@ impl DbType {
 
     pub fn search_type_vars(&self, found_type_var: &mut impl FnMut(&TypeVarUsage)) {
         let mut search_in_generics = |generics: &GenericsList| {
-            for t in generics.iter() {
-                t.search_type_vars(found_type_var);
+            for g in generics.iter() {
+                match g {
+                    GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
+                    GenericItem::TypeVarTuple(_) => todo!(),
+                }
             }
         };
         match self {
@@ -826,7 +838,12 @@ impl DbType {
     }
 
     pub fn has_any(&self) -> bool {
-        let search_in_generics = |generics: &GenericsList| generics.iter().any(|t| t.has_any());
+        let search_in_generics = |generics: &GenericsList| {
+            generics.iter().any(|g| match g {
+                GenericItem::TypeArgument(t) => t.has_any(),
+                GenericItem::TypeVarTuple(_) => todo!(),
+            })
+        };
         match self {
             Self::Class(_, Some(generics)) => search_in_generics(generics),
             Self::Union(u) => u.iter().any(|t| t.has_any()),
@@ -854,12 +871,20 @@ impl DbType {
         }
     }
 
-    pub fn replace_type_vars(&self, callable: &mut impl FnMut(&TypeVarUsage) -> Self) -> Self {
+    pub fn replace_type_vars(
+        &self,
+        callable: &mut impl FnMut(&TypeVarUsage) -> GenericItem,
+    ) -> Self {
         let remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
-                    .map(|g| g.replace_type_vars(callable))
+                    .map(|g| match g {
+                        GenericItem::TypeArgument(t) => {
+                            GenericItem::TypeArgument(t.replace_type_vars(callable))
+                        }
+                        GenericItem::TypeVarTuple(_) => todo!(),
+                    })
                     .collect(),
             )
         };
@@ -889,7 +914,10 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::TypeVarLike(t) => callable(t),
+            Self::TypeVarLike(t) => match callable(t) {
+                GenericItem::TypeArgument(t) => t,
+                GenericItem::TypeVarTuple(_) => unreachable!(),
+            },
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
                 generics: content.generics.as_ref().map(|generics| {
@@ -931,7 +959,12 @@ impl DbType {
             GenericsList::new_generics(
                 generics
                     .iter()
-                    .map(|g| g.rewrite_late_bound_callables(manager))
+                    .map(|g| match g {
+                        GenericItem::TypeArgument(t) => {
+                            GenericItem::TypeArgument(t.rewrite_late_bound_callables(manager))
+                        }
+                        _ => g.clone(),
+                    })
                     .collect(),
             )
         };

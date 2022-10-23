@@ -8,7 +8,8 @@ use super::super::{
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, DbType, GenericsList, PointLink, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    CallableContent, DbType, GenericItem, GenericsList, PointLink, TypeVarLike, TypeVarLikes,
+    TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -103,10 +104,10 @@ impl<'a> TypeVarMatcher<'a> {
             if type_var_usage.in_definition == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
                 match &current.type_ {
-                    BoundKind::TypeVar(t) => t.clone().into_db_type(),
+                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
                     // Any is just ignored by the context later.
-                    BoundKind::Uncalculated => DbType::Any,
+                    BoundKind::Uncalculated => GenericItem::TypeArgument(DbType::Any),
                 }
             } else {
                 match self.func_or_callable {
@@ -197,13 +198,13 @@ impl<'db> CalculatedTypeArguments {
         i_s: &mut InferenceState,
         class: Option<&Class>,
         usage: &TypeVarUsage,
-    ) -> DbType {
+    ) -> GenericItem {
         if self.in_definition == usage.in_definition {
             return if let Some(fm) = &self.type_arguments {
                 fm[usage.index].clone()
             } else {
                 // TODO we are just passing the type vars again. Does this make sense?
-                DbType::TypeVarLike(usage.clone())
+                GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))
             };
         }
         if let Some(c) = class {
@@ -211,7 +212,7 @@ impl<'db> CalculatedTypeArguments {
                 return c.generics().nth(i_s, usage.index).into_db_type(i_s);
             }
         }
-        DbType::TypeVarLike(usage.clone())
+        GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))
     }
 }
 

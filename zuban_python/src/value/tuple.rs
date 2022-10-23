@@ -1,5 +1,5 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{ComplexPoint, DbType, GenericsList, TupleContent};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, TupleContent};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
@@ -42,14 +42,14 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             tuple_cls.node_ref.as_link(),
                             Some(GenericsList::new_generics(Box::new([
-                                match &self.content.generics {
+                                GenericItem::TypeArgument(match &self.content.generics {
                                     Some(generics) => match generics.as_slice_ref() {
                                         [] => DbType::Never,
                                         [t] => t.clone(),
                                         _ => i_s.db.python_state.object_db_type(),
                                     },
                                     None => DbType::Any,
-                                },
+                                }),
                             ]))),
                         ))
                     },

@@ -9,9 +9,9 @@ use std::rc::Rc;
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
-    IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike, TypeVarLikes,
-    TypeVarManager,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericItem,
+    GenericsList, IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike,
+    TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -289,7 +289,7 @@ impl<'db: 'a, 'a> Function<'a> {
                         return class.generics().nth(i_s, usage.index).into_db_type(i_s);
                     }
                 }
-                DbType::TypeVarLike(usage.clone())
+                GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))
             })
         };
         let result_type = self.result_type(i_s);

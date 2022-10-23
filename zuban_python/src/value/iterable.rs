@@ -4,7 +4,7 @@ use parsa_python_ast::{
 };
 
 use super::{Class, Instance, IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{ComplexPoint, DbType, GenericsList, Locality};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, Locality};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
@@ -38,7 +38,10 @@ impl<'a> ListLiteral<'a> {
     }
 
     pub fn db_type(&self, i_s: &mut InferenceState) -> &'a DbType {
-        &self.generic_list(i_s)[0.into()]
+        match &self.generic_list(i_s)[0.into()] {
+            GenericItem::TypeArgument(t) => t,
+            _ => unreachable!(),
+        }
     }
 
     fn generic_list(&self, i_s: &mut InferenceState) -> &'a GenericsList {
@@ -65,7 +68,9 @@ impl<'a> ListLiteral<'a> {
             reference.insert_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::Class(
                     i_s.db.python_state.builtins_point_link("list"),
-                    Some(GenericsList::new_generics(Box::new([result]))),
+                    Some(GenericsList::new_generics(Box::new([
+                        GenericItem::TypeArgument(result),
+                    ]))),
                 ))),
                 Locality::Todo,
             );
@@ -239,8 +244,8 @@ impl<'a> DictLiteral<'a> {
                 ComplexPoint::GenericClass(
                     i_s.db.python_state.builtins_point_link("list"),
                     GenericsList::new_generics(Box::new([
-                        keys.unwrap_or(DbType::Any),
-                        values.unwrap_or(DbType::Any),
+                        GenericItem::TypeArgument(keys.unwrap_or(DbType::Any)),
+                        GenericItem::TypeArgument(values.unwrap_or(DbType::Any)),
                     ])),
                 ),
                 Locality::Todo,
