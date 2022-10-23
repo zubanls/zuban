@@ -10,7 +10,7 @@ fn main() -> std::io::Result<()> {
         Some("foo\n".to_owned()),
     );
     let defs = script.infer_definition(
-        &|name| (name.kind(), name.name()),
+        &|name| (name.kind(), name.name().to_owned()),
         zuban_python::Position::Byte(1),
     );
     for (kind, name) in defs {
