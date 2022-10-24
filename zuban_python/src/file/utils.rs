@@ -113,9 +113,13 @@ fn check_list_with_context(
                 if m.bool() && found.is_none() {
                     found = Some(DbType::Class(
                         i_s.db.python_state.list().as_link(),
-                        Some(GenericsList::new_generics(Box::new([inferred
-                            .class_as_type(i_s)
-                            .try_to_resemble_context(i_s, matcher, &generic_t)]))),
+                        Some(GenericsList::new_generics(Box::new([
+                            GenericItem::TypeArgument(
+                                inferred
+                                    .class_as_type(i_s)
+                                    .try_to_resemble_context(i_s, matcher, &generic_t),
+                            ),
+                        ]))),
                     ));
                 }
             };
