@@ -1,4 +1,5 @@
 mod format_data;
+mod generic;
 mod generics;
 mod match_;
 mod matcher;
@@ -7,6 +8,7 @@ mod result_context;
 mod type_;
 
 pub use format_data::FormatData;
+pub use generic::Generic;
 pub use generics::{Generics, GenericsIterator};
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub use matcher::{

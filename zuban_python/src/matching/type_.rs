@@ -612,15 +612,13 @@ impl<'a> Type<'a> {
             if let Some(generics2) = &t2.generics {
                 return match (t1.arbitrary_length, t2.arbitrary_length, variance) {
                     (false, false, _) | (true, true, _) => {
-                        let g = Generics::TupleList(generics2, None);
-                        let mut value_generics = g.iter(i_s.clone());
+                        let mut value_generics = generics2.iter();
                         let mut matches = Match::new_true();
-                        for type_ in Generics::TupleList(generics1, None).iter(i_s.clone()) {
+                        for type1 in generics1.iter() {
                             if matcher.has_type_var_matcher() {
-                                match type_.maybe_db_type() {
-                                    Some(DbType::TypeVarLike(t)) if t.is_type_var_tuple() => {
+                                match type1 {
+                                    DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
                                         matcher.match_type_var_tuple(
-                                            i_s,
                                             t.index,
                                             generics1,
                                             generics2,
@@ -631,8 +629,13 @@ impl<'a> Type<'a> {
                                     _ => (),
                                 }
                             }
-                            if let Some(g) = value_generics.next() {
-                                matches &= type_.matches(i_s, matcher, &g, variance);
+                            if let Some(type2) = value_generics.next() {
+                                matches &= Type::new(type1).matches(
+                                    i_s,
+                                    matcher,
+                                    &Type::new(type2),
+                                    variance,
+                                );
                             } else {
                                 matches = Match::new_false();
                             }

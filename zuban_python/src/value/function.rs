@@ -286,7 +286,10 @@ impl<'db: 'a, 'a> Function<'a> {
             t.as_db_type(i_s).replace_type_vars(&mut |usage| {
                 if let Some(class) = self.class {
                     if usage.in_definition == class.node_ref.as_link() {
-                        return class.generics().nth(i_s, usage.index).into_db_type(i_s);
+                        return class
+                            .generics()
+                            .nth(i_s, usage.index)
+                            .into_generic_item(i_s);
                     }
                 }
                 GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))

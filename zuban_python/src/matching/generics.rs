@@ -1,8 +1,8 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
-use super::{FormatData, Match, Matcher, Type};
+use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    DbType, GenericsList, TupleTypeArguments, TypeVarIndex, TypeVarLike, TypeVarLikes,
+    DbType, GenericItem, GenericsList, TupleTypeArguments, TypeVarIndex, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -11,9 +11,9 @@ use crate::inference_state::InferenceState;
 macro_rules! replace_class_vars {
     ($i_s:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            None | Some(Generics::None | Generics::Any) => Type::new($g),
-            Some(type_var_generics) => Type::owned($g.replace_type_vars(&mut |t| {
-                type_var_generics.nth($i_s, t.index).into_db_type($i_s)
+            None | Some(Generics::None | Generics::Any) => Generic::new($g),
+            Some(type_var_generics) => Generic::owned($g.replace_type_vars(&mut |t| {
+                type_var_generics.nth($i_s, t.index).into_generic_item($i_s)
             })),
         }
     };
@@ -51,11 +51,11 @@ impl<'a> Generics<'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn nth<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Type<'a> {
+    pub fn nth<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Generic<'a> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
                 if n.as_usize() == 0 {
-                    file.inference(i_s).use_cached_simple_generic_type(*expr)
+                    Generic::TypeArgument(file.inference(i_s).use_cached_simple_generic_type(*expr))
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {n:?} was requested",
@@ -64,16 +64,18 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
-            Self::SimpleGenericSlices(file, slices) => slices
-                .iter()
-                .nth(n.as_usize())
-                .map(|slice_content| match slice_content {
-                    SliceContent::NamedExpression(n) => file
-                        .inference(i_s)
-                        .use_cached_simple_generic_type(n.expression()),
-                    SliceContent::Slice(s) => todo!(),
-                })
-                .unwrap_or_else(|| todo!()),
+            Self::SimpleGenericSlices(file, slices) => Generic::TypeArgument(
+                slices
+                    .iter()
+                    .nth(n.as_usize())
+                    .map(|slice_content| match slice_content {
+                        SliceContent::NamedExpression(n) => file
+                            .inference(i_s)
+                            .use_cached_simple_generic_type(n.expression()),
+                        SliceContent::Slice(s) => todo!(),
+                    })
+                    .unwrap_or_else(|| todo!()),
+            ),
             Self::List(list, type_var_generics) => {
                 if let Some(g) = list.nth(n) {
                     replace_class_vars!(i_s, g, type_var_generics)
@@ -90,9 +92,9 @@ impl<'a> Generics<'a> {
                 if n.as_usize() > 0 {
                     todo!()
                 }
-                Type::owned((*g).clone())
+                Generic::TypeArgument(Type::owned((*g).clone()))
             }
-            Self::Any => Type::new(&DbType::Any),
+            Self::Any => Generic::TypeArgument(Type::new(&DbType::Any)),
             Self::None => unreachable!("No generics given, but {n:?} was requested"),
         }
     }
@@ -108,7 +110,7 @@ impl<'a> Generics<'a> {
                     GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
                 }
                 Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
-                Self::TupleList(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
+                Self::TupleList(l, t) => GenericsIteratorItem::TupleGenericsList(l.iter(), *t),
                 Self::DbType(g) => GenericsIteratorItem::DbType(g),
                 Self::None | Self::Any => GenericsIteratorItem::None,
             },
@@ -122,19 +124,19 @@ impl<'a> Generics<'a> {
     ) -> Option<GenericsList> {
         type_vars.map(|type_vars| match self {
             Self::SimpleGenericExpression(file, expr) => {
-                GenericsList::new_generics(Box::new([file
+                GenericsList::new_generics(Box::new([GenericItem::TypeArgument(file
                     .inference(i_s)
                     .use_cached_simple_generic_type(*expr)
-                    .into_db_type(i_s)]))
+                    .into_db_type(i_s))]))
             }
             Self::SimpleGenericSlices(file, slices) => GenericsList::new_generics(
                 slices
                     .iter()
                     .map(|slice| {
                         if let SliceContent::NamedExpression(n) = slice {
-                            file.inference(i_s)
+                            GenericItem::TypeArgument(file.inference(i_s)
                                 .use_cached_simple_generic_type(n.expression())
-                                .into_db_type(i_s)
+                                .into_db_type(i_s))
                         } else {
                             todo!()
                         }
@@ -144,15 +146,15 @@ impl<'a> Generics<'a> {
             Self::DbType(g) => todo!(),
             Self::List(l, type_var_generics) => GenericsList::new_generics(
                 l.iter()
-                    .map(|c| replace_class_vars!(i_s, c, type_var_generics).into_db_type(i_s))
+                    .map(|c| replace_class_vars!(i_s, c, type_var_generics).into_generic_item(i_s))
                     .collect(),
             ),
             Self::TupleList(l, type_var_generics) => unreachable!(),
-            Self::Any => GenericsList::new_generics(
+            Self::Any => todo!()/*GenericsList::new_generics(
                 std::iter::repeat(DbType::Any)
                     .take(type_vars.len())
                     .collect(),
-            ),
+            )*/,
             Self::None => unreachable!(),
         })
     }
@@ -234,14 +236,15 @@ impl<'a, 'b> GenericsIterator<'a, 'b> {
 
 enum GenericsIteratorItem<'a> {
     SimpleGenericSliceIterator(&'a PythonFile, SliceIterator<'a>),
-    GenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'a>>),
+    GenericsList(std::slice::Iter<'a, GenericItem>, Option<&'a Generics<'a>>),
+    TupleGenericsList(std::slice::Iter<'a, DbType>, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
     None,
 }
 
 impl<'b> Iterator for GenericsIterator<'_, 'b> {
-    type Item = Type<'b>;
+    type Item = Generic<'b>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.item {
@@ -250,17 +253,17 @@ impl<'b> Iterator for GenericsIterator<'_, 'b> {
                     return None;
                 }
                 self.ended = true;
-                Some(
+                Some(Generic::TypeArgument(
                     file.inference(&mut self.i_s)
                         .use_cached_simple_generic_type(*expr),
-                )
+                ))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    Some(
+                    Some(Generic::TypeArgument(
                         file.inference(&mut self.i_s)
                             .use_cached_simple_generic_type(s.expression()),
-                    )
+                    ))
                 } else {
                     None
                 }
@@ -273,7 +276,7 @@ impl<'b> Iterator for GenericsIterator<'_, 'b> {
                     return None;
                 }
                 self.ended = true;
-                Some(Type::new(g))
+                Some(Generic::TypeArgument(Type::new(g)))
             }
             GenericsIteratorItem::None => None,
         }

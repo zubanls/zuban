@@ -116,11 +116,10 @@ impl<'a> Matcher<'a> {
 
     pub fn match_type_var_tuple(
         &mut self,
-        i_s: &mut InferenceState,
         index: TypeVarIndex,
         generics1: &TupleTypeArguments,
         generics2: &TupleTypeArguments,
-        generics2_iterator: &mut GenericsIterator,
+        generics2_iterator: &mut std::slice::Iter<'_, DbType>,
         variance: Variance,
     ) -> Match {
         let fetch = generics2.len() as isize + 1 - generics1.len() as isize;
@@ -130,10 +129,7 @@ impl<'a> Matcher<'a> {
             if calculated.calculated() {
                 todo!()
             } else {
-                let types: Box<_> = generics2_iterator
-                    .take(fetch)
-                    .map(|t| t.as_db_type(i_s))
-                    .collect();
+                let types: Box<_> = generics2_iterator.take(fetch).map(|t| t.clone()).collect();
                 calculated.type_ = BoundKind::TypeVarTuple(types);
             }
             Match::new_true()

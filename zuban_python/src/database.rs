@@ -497,6 +497,18 @@ pub enum GenericItem {
     TypeVarTuple(Box<[DbType]>),
 }
 
+impl GenericItem {
+    pub fn replace_type_vars(
+        &self,
+        callable: &mut impl FnMut(&TypeVarUsage) -> GenericItem,
+    ) -> Self {
+        match self {
+            Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_vars(callable)),
+            Self::TypeVarTuple(_) => todo!(),
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct GenericsList(Box<[GenericItem]>);
 
