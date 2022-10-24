@@ -63,14 +63,12 @@ impl<'a> ListLiteral<'a> {
                     .file
                     .inference(i_s)
                     .create_list_or_set_generics(elements),
-                None => DbType::Any, // TODO shouldn't this be Never?
+                None => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
             };
             reference.insert_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::Class(
                     i_s.db.python_state.builtins_point_link("list"),
-                    Some(GenericsList::new_generics(Box::new([
-                        GenericItem::TypeArgument(result),
-                    ]))),
+                    Some(GenericsList::new_generics(Box::new([result]))),
                 ))),
                 Locality::Todo,
             );

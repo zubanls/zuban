@@ -13,8 +13,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, LocalityLink, Point,
-    PointLink, PointType, Points, Specific, TupleContent, TupleTypeArguments,
+    ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality, LocalityLink,
+    Point, PointLink, PointType, Points, Specific, TupleContent, TupleTypeArguments,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -926,7 +926,9 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             let generic = union.class_as_db_type(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                                 self.i_s.db.python_state.list().as_link(),
-                                Some(GenericsList::new_generics(Box::new([generic]))),
+                                Some(GenericsList::new_generics(Box::new([
+                                    GenericItem::TypeArgument(generic),
+                                ]))),
                             ));
                             self.assign_targets(
                                 star_target.as_target(),
@@ -939,7 +941,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
                                 self.i_s.db.python_state.list().as_link(),
                                 Some(GenericsList::new_generics(Box::new([
-                                    value.class_as_db_type(self.i_s)
+                                    GenericItem::TypeArgument(value.class_as_db_type(self.i_s)),
                                 ]))),
                             ));
                             self.assign_targets(
@@ -1337,7 +1339,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             .file
                             .inference(self.i_s)
                             .create_list_or_set_generics(elements),
-                        None => DbType::Any, // TODO shouldn't this be Never?
+                        None => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
                     };
                     return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                         DbType::Class(
@@ -1694,10 +1696,10 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                         return class
                                             .generics()
                                             .nth(self.i_s, t.index)
-                                            .into_db_type(self.i_s);
+                                            .into_generic_item(self.i_s);
                                     }
                                 }
-                                DbType::TypeVarLike(t.clone())
+                                GenericItem::TypeArgument(DbType::TypeVarLike(t.clone()))
                             });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }

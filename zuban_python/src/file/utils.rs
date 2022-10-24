@@ -1,6 +1,6 @@
 use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 
-use crate::database::{ComplexPoint, DbType, GenericsList};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::inference_state::InferenceState;
@@ -9,7 +9,10 @@ use crate::node_ref::NodeRef;
 use crate::Inferred;
 
 impl<'db> PythonInference<'db, '_, '_, '_> {
-    pub fn create_list_or_set_generics(&mut self, elements: ListOrSetElementIterator) -> DbType {
+    pub fn create_list_or_set_generics(
+        &mut self,
+        elements: ListOrSetElementIterator,
+    ) -> GenericItem {
         let mut result = DbType::Never;
         for child in elements {
             result.union_in_place(match child {
@@ -26,7 +29,7 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                 }
             });
         }
-        result
+        GenericItem::TypeArgument(result)
     }
 
     pub fn infer_list_literal_from_context(
