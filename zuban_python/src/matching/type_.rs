@@ -670,12 +670,29 @@ impl<'a> Type<'a> {
             if let Some(generics2) = &t2.generics {
                 return match (t1.arbitrary_length, t2.arbitrary_length) {
                     (false, false) | (true, true) => {
-                        generics1.len() == generics2.len()
-                            && Generics::TupleList(generics1, None).overlaps(
-                                i_s,
-                                Generics::TupleList(generics2, None),
-                                None,
-                            )
+                        let mut value_generics = generics2.iter();
+                        let mut overlaps = true;
+                        for type1 in generics1.iter() {
+                            /*
+                            if matcher.has_type_var_matcher() {
+                                match type1 {
+                                    DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
+                                        todo!()
+                                    }
+                                    _ => (),
+                                }
+                            }
+                            */
+                            if let Some(type2) = value_generics.next() {
+                                overlaps &= Type::new(type1).overlaps(i_s, &Type::new(type2));
+                            } else {
+                                overlaps = false;
+                            }
+                        }
+                        if value_generics.next().is_some() {
+                            overlaps = false;
+                        }
+                        overlaps
                     }
                     (false, true) => {
                         let t2 = Type::new(&generics2[0.into()]);
