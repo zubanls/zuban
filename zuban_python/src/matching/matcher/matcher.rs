@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::super::{FormatData, Match, MismatchReason, Type};
+use super::super::{FormatData, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{
     BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher,
@@ -242,7 +242,10 @@ impl<'a> Matcher<'a> {
             }
             if let Some(class) = type_var_matcher.class {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
-                    let g = class.generics.nth(i_s, type_var_usage.index);
+                    let g = class
+                        .generics
+                        .nth(i_s, type_var_usage.index)
+                        .expect_type_argument();
                     return g.simple_matches(i_s, value_type, type_var.variance);
                 }
             }
@@ -254,7 +257,8 @@ impl<'a> Matcher<'a> {
                             // By definition, because the class did not match there will never be a
                             // type_var_remap that is not defined.
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g = Type::new(&type_var_remap[type_var_usage.index]);
+                            let g = Generic::new(&type_var_remap[type_var_usage.index])
+                                .expect_type_argument();
                             // The remapping of type vars needs to be checked now. In a lot of
                             // cases this is T -> T and S -> S, but it could also be T -> S and S
                             // -> List[T] or something completely arbitrary.

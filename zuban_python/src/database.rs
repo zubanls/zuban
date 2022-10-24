@@ -520,6 +520,13 @@ impl GenericItem {
             },
         }
     }
+
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        match self {
+            Self::TypeArgument(t) => t.format(format_data),
+            Self::TypeVarTuple(ts) => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -2,8 +2,8 @@ use parsa_python_ast::ParamKind;
 
 use super::super::params::{InferrableParamIterator2, Param};
 use super::super::{
-    ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, ResultContext,
-    SignatureMatch, Type,
+    ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
+    ResultContext, SignatureMatch, Type,
 };
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentKind, Arguments};
@@ -123,10 +123,16 @@ impl<'a> TypeVarMatcher<'a> {
                             let func_class = f.class.unwrap();
                             if type_var_usage.in_definition == func_class.node_ref.as_link() {
                                 let type_var_remap = func_class.type_var_remap.unwrap();
-                                let g = &type_var_remap[type_var_usage.index];
-                                self.replace_type_vars_for_nested_context(i_s, g)
+                                match &type_var_remap[type_var_usage.index] {
+                                    GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                                        self.replace_type_vars_for_nested_context(i_s, t),
+                                    ),
+                                    GenericItem::TypeVarTuple(_) => todo!(),
+                                }
                             } else {
-                                DbType::TypeVarLike(type_var_usage.clone())
+                                GenericItem::TypeArgument(DbType::TypeVarLike(
+                                    type_var_usage.clone(),
+                                ))
                             }
                         } else {
                             todo!()
@@ -331,6 +337,10 @@ fn calculate_type_vars<'db>(
                                 let mut i = 0;
                                 for g in result_class.generics().iter(i_s.clone()) {
                                     let calculated = calculating.next().unwrap();
+                                    let g = match g {
+                                        Generic::TypeArgument(g) => g,
+                                        _ => todo!("Need to restructure this"),
+                                    };
                                     if !g.is_any() {
                                         let mut bound = TypeVarBound::new(
                                             g.as_db_type(i_s),

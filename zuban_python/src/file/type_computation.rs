@@ -4,8 +4,8 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
-    GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias, Specific,
-    StringSlice, TupleContent, TupleTypeArguments, TypeAlias, TypeVarLike, TypeVarLikes,
+    GenericItem, GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias,
+    Specific, StringSlice, TupleContent, TupleTypeArguments, TypeAlias, TypeVarLike, TypeVarLikes,
     TypeVarManager, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
@@ -1016,7 +1016,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             alias
                 .replace_type_vars(false, &mut |usage| {
                     if mismatch {
-                        DbType::Any
+                        match usage.type_var_like.as_ref() {
+                            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+                            TypeVarLike::TypeVarTuple(_) => todo!(),
+                        }
                     } else {
                         generics[usage.index.as_usize()].clone()
                     }
