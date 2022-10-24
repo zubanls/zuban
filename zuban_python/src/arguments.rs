@@ -526,7 +526,10 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                     if let Some(class) = t.maybe_class(i_s.db) {
                                         if class.node_ref == i_s.db.python_state.mapping_node_ref()
                                         {
-                                            let key = class.generics().nth(i_s, 0.into());
+                                            let key = class
+                                                .generics()
+                                                .nth(i_s, 0.into())
+                                                .expect_type_argument();
                                             let s = Type::Class(i_s.db.python_state.str());
                                             if !key.is_simple_same_type(i_s, &s).bool() {
                                                 node_ref.add_typing_issue(
@@ -540,6 +543,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                                 class
                                                     .generics()
                                                     .nth(i_s, 1.into())
+                                                    .expect_type_argument()
                                                     .into_db_type(i_s),
                                             );
                                             break;

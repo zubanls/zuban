@@ -507,6 +507,19 @@ impl GenericItem {
             Self::TypeVarTuple(_) => todo!(),
         }
     }
+
+    pub fn merge_matching_parts(self, other: Self) -> Self {
+        match self {
+            Self::TypeArgument(t1) => match other {
+                Self::TypeArgument(t2) => Self::TypeArgument(t1.merge_matching_parts(t2)),
+                _ => todo!("maybe unreachable?!"),
+            },
+            Self::TypeVarTuple(ts1) => match other {
+                Self::TypeArgument(_) => todo!(),
+                Self::TypeVarTuple(_) => todo!(),
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1820,8 +1833,12 @@ impl TypeAlias {
                 self.location,
                 (!self.type_vars.is_empty()).then(|| {
                     GenericsList::new_generics(
-                        std::iter::repeat(DbType::Any)
-                            .take(self.type_vars.len())
+                        self.type_vars
+                            .iter()
+                            .map(|tv| match tv.as_ref() {
+                                TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+                                TypeVarLike::TypeVarTuple(_) => todo!(),
+                            })
                             .collect(),
                     )
                 }),
@@ -1832,8 +1849,11 @@ impl TypeAlias {
         } else {
             self.db_type
                 .replace_type_vars(&mut |t| match t.in_definition == self.location {
-                    true => DbType::Any,
-                    false => DbType::TypeVarLike(t.clone()),
+                    true => match t.type_var_like.as_ref() {
+                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+                        TypeVarLike::TypeVarTuple(_) => todo!(),
+                    },
+                    false => GenericItem::TypeArgument(DbType::TypeVarLike(t.clone())),
                 })
         }
     }
@@ -1841,7 +1861,7 @@ impl TypeAlias {
     pub fn replace_type_vars(
         &self,
         remove_recursive_wrapper: bool,
-        callable: &mut impl FnMut(&TypeVarUsage) -> DbType,
+        callable: &mut impl FnMut(&TypeVarUsage) -> GenericItem,
     ) -> Cow<DbType> {
         if self.is_recursive && !remove_recursive_wrapper {
             return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(

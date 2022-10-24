@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::super::{FormatData, GenericsIterator, Match, MismatchReason, Type};
+use super::super::{FormatData, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{
     BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher,
