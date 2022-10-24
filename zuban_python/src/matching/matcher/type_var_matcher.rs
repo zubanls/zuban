@@ -107,6 +107,7 @@ impl<'a> TypeVarMatcher<'a> {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
                     // Any is just ignored by the context later.
+                    // TODO TypeVarTuple, does this make sense?
                     BoundKind::Uncalculated => GenericItem::TypeArgument(DbType::Any),
                 }
             } else {
@@ -117,7 +118,7 @@ impl<'a> TypeVarMatcher<'a> {
                                 return class
                                     .generics
                                     .nth(i_s, type_var_usage.index)
-                                    .into_db_type(i_s);
+                                    .into_generic_item(i_s);
                             }
                             let func_class = f.class.unwrap();
                             if type_var_usage.in_definition == func_class.node_ref.as_link() {
@@ -209,7 +210,7 @@ impl<'db> CalculatedTypeArguments {
         }
         if let Some(c) = class {
             if usage.in_definition == c.node_ref.as_link() {
-                return c.generics().nth(i_s, usage.index).into_db_type(i_s);
+                return c.generics().nth(i_s, usage.index).into_generic_item(i_s);
             }
         }
         GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))
@@ -416,9 +417,10 @@ fn calculate_type_vars<'db>(
             calculated_type_vars
                 .into_iter()
                 .map(|c| match c.type_ {
-                    BoundKind::TypeVar(t) => t.into_db_type(),
+                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
-                    BoundKind::Uncalculated => DbType::Never,
+                    // TODO TypeVarTuple this feels wrong
+                    BoundKind::Uncalculated => GenericItem::TypeArgument(DbType::Never),
                 })
                 .collect(),
         )

@@ -90,6 +90,7 @@ impl<'a> Generics<'a> {
                 }
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
+            // TODO TypeVarTuple this feels wrong
             Self::Any => Generic::TypeArgument(Type::new(&DbType::Any)),
             Self::None => unreachable!("No generics given, but {n:?} was requested"),
         }
@@ -187,7 +188,7 @@ impl<'a> Generics<'a> {
                 TypeVarLike::TypeVarTuple(_) => todo!(),
                 TypeVarLike::ParamSpec(_) => todo!(),
             };
-            matches &= t1.matches(i_s, matcher, &t2, v);
+            matches &= t1.matches(i_s, matcher, t2, v);
         }
         matches
     }
@@ -206,7 +207,7 @@ impl<'a> Generics<'a> {
                 // TODO ?
             } else {
             };
-            matches &= t1.overlaps(i_s, &t2);
+            matches &= t1.overlaps(i_s, t2);
         }
         matches
     }
