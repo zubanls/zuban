@@ -5,8 +5,8 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, NewType,
-    Point, PointLink, PointType, Specific, TypeVarLike,
+    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality,
+    MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
@@ -122,7 +122,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Self { state }
     }
 
-    pub fn create_instance(class: PointLink, generics: Option<&[DbType]>) -> Self {
+    pub fn create_instance(class: PointLink, generics: Option<&[GenericItem]>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::Instance(
             class,
             generics.map(|lst| GenericsList::generics_from_vec(lst.to_vec())),

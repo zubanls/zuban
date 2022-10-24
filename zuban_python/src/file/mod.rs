@@ -1645,11 +1645,11 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                     Inferred::create_instance(
                                         self.i_s.db.python_state.builtins_point_link("dict"),
                                         Some(&[
-                                            DbType::Class(
+                                            GenericItem::TypeArgument(DbType::Class(
                                                 self.i_s.db.python_state.builtins_point_link("str"),
                                                 None,
-                                            ),
-                                            p,
+                                            )),
+                                            GenericItem::TypeArgument(p),
                                         ]),
                                     )
                                 }
