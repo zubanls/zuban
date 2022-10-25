@@ -492,10 +492,41 @@ impl Execution {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct TypeArguments(Box<[DbType]>);
+
+impl TypeArguments {
+    pub fn new(t: Box<[DbType]>) -> Self {
+        Self(t)
+    }
+
+    pub fn iter(&self) -> std::slice::Iter<DbType> {
+        self.0.iter()
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        self.0
+            .iter()
+            .map(|t| t.format(format_data))
+            .collect::<Vec<_>>()
+            .join(", TODO, ")
+            .into()
+    }
+}
+
+impl IntoIterator for TypeArguments {
+    type Item = DbType;
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        Vec::from(self.0).into_iter()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum GenericItem {
     TypeArgument(DbType),
     // For TypeVarTuple
-    TypeArguments(Box<[DbType]>),
+    TypeArguments(TypeArguments),
 }
 
 impl GenericItem {
@@ -555,12 +586,7 @@ impl GenericsList {
             .iter()
             .map(|g| match g {
                 GenericItem::TypeArgument(t) => t.format(format_data),
-                GenericItem::TypeArguments(ts) => ts
-                    .iter()
-                    .map(|t| t.format(format_data))
-                    .collect::<Vec<_>>()
-                    .join(", TODO, ")
-                    .into(),
+                GenericItem::TypeArguments(ts) => ts.format(format_data),
             })
             .collect::<Vec<_>>()
             .join(", ")
@@ -963,9 +989,7 @@ impl DbType {
                     for g in generics.iter() {
                         match g {
                             Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
-                                GenericItem::TypeArguments(ts) => {
-                                    args.extend(ts.into_vec().into_iter())
-                                }
+                                GenericItem::TypeArguments(ts) => args.extend(ts.into_iter()),
                                 _ => unreachable!(),
                             },
                             _ => args.push(g.replace_type_vars(callable)),

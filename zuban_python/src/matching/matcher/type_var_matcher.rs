@@ -8,8 +8,8 @@ use super::super::{
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, DbType, GenericItem, GenericsList, PointLink, TypeVarLike, TypeVarLikes,
-    TypeVarUsage,
+    CallableContent, DbType, GenericItem, GenericsList, PointLink, TypeArguments, TypeVarLike,
+    TypeVarLikes, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -26,7 +26,7 @@ pub enum FunctionOrCallable<'a> {
 #[derive(Debug)]
 pub enum BoundKind {
     TypeVar(TypeVarBound),
-    TypeVarTuple(Box<[DbType]>),
+    TypeVarTuple(TypeArguments),
     Uncalculated,
 }
 

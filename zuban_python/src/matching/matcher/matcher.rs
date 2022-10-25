@@ -7,8 +7,8 @@ use super::type_var_matcher::{
 };
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments, TypeVar,
-    TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments,
+    TypeArguments, TypeVar, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -129,8 +129,8 @@ impl<'a> Matcher<'a> {
             if calculated.calculated() {
                 todo!()
             } else {
-                let types: Box<_> = generics2_iterator.take(fetch).map(|t| t.clone()).collect();
-                calculated.type_ = BoundKind::TypeVarTuple(types);
+                let types: Box<_> = generics2_iterator.take(fetch).cloned().collect();
+                calculated.type_ = BoundKind::TypeVarTuple(TypeArguments::new(types));
             }
             Match::new_true()
         } else {
