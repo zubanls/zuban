@@ -7,6 +7,15 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 
+testModuleAsTypeNoCrash
+testModuleAsTypeNoCrash2
+testChangeTypeVarToModule
+testChangeClassToModule
+testChangeTypeAliasToModule
+testChangeTypeAliasToModuleUnqualified
+testUnpackNoCrashOnEmpty
+testContextForAttributeDeclaredInInit
+
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
 # Recursive Alias wrong type var inference --enable-recursive-aliases
@@ -599,6 +608,8 @@ testPep646ArrayExampleWithDType
 testPep646ArrayExampleInfer
 testPep646TypeConcatenation
 testPep646TypeVarConcatenation
+testPep646TypeVarTupleUnpacking
+testPep646TypeVarStarArgs
 testTypeVarTupleCached
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
