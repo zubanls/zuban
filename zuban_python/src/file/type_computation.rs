@@ -740,8 +740,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     // TODO isn't this already done above???
                     if generics.is_empty() {
                         backfill(self, &mut generics, expected_count);
-                        //generics.resize(expected_count, DbType::Any);
-                        todo!()
+                        // TODO TypeVarTuple what about any?
+                        generics.resize(expected_count, GenericItem::TypeArgument(DbType::Any));
                     }
                     DbType::Class(
                         class.node_ref.as_link(),

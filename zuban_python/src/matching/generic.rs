@@ -43,11 +43,29 @@ impl<'a> Generic<'a> {
         other: Self,
         variance: Variance,
     ) -> Match {
-        todo!()
+        match self {
+            Self::TypeArgument(t1) => match other {
+                Self::TypeArgument(ref t2) => t1.matches(i_s, matcher, t2, variance),
+                _ => todo!(),
+            },
+            Self::TypeVarTuple(_) => match other {
+                Self::TypeVarTuple(ref t2) => todo!(),
+                _ => todo!(),
+            },
+        }
     }
 
     pub fn overlaps(self, i_s: &mut InferenceState, other: Self) -> bool {
-        todo!()
+        match self {
+            Self::TypeArgument(t1) => match other {
+                Self::TypeArgument(ref t2) => t1.overlaps(i_s, t2),
+                _ => todo!(),
+            },
+            Self::TypeVarTuple(_) => match other {
+                Self::TypeVarTuple(ref t2) => todo!(),
+                _ => todo!(),
+            },
+        }
     }
 
     pub fn expect_type_argument(self) -> Type<'a> {

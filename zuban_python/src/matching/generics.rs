@@ -120,19 +120,22 @@ impl<'a> Generics<'a> {
     ) -> Option<GenericsList> {
         type_vars.map(|type_vars| match self {
             Self::SimpleGenericExpression(file, expr) => {
-                GenericsList::new_generics(Box::new([GenericItem::TypeArgument(file
-                    .inference(i_s)
-                    .use_cached_simple_generic_type(*expr)
-                    .into_db_type(i_s))]))
+                GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
+                    file.inference(i_s)
+                        .use_cached_simple_generic_type(*expr)
+                        .into_db_type(i_s),
+                )]))
             }
             Self::SimpleGenericSlices(file, slices) => GenericsList::new_generics(
                 slices
                     .iter()
                     .map(|slice| {
                         if let SliceContent::NamedExpression(n) = slice {
-                            GenericItem::TypeArgument(file.inference(i_s)
-                                .use_cached_simple_generic_type(n.expression())
-                                .into_db_type(i_s))
+                            GenericItem::TypeArgument(
+                                file.inference(i_s)
+                                    .use_cached_simple_generic_type(n.expression())
+                                    .into_db_type(i_s),
+                            )
                         } else {
                             todo!()
                         }
@@ -145,11 +148,12 @@ impl<'a> Generics<'a> {
                     .map(|c| replace_class_vars!(i_s, c, type_var_generics).into_generic_item(i_s))
                     .collect(),
             ),
-            Self::Any => todo!()/*GenericsList::new_generics(
-                std::iter::repeat(DbType::Any)
+            Self::Any => GenericsList::new_generics(
+                // TODO TypeVarTuple what about any?
+                std::iter::repeat(GenericItem::TypeArgument(DbType::Any))
                     .take(type_vars.len())
                     .collect(),
-            )*/,
+            ),
             Self::None => unreachable!(),
         })
     }
