@@ -588,7 +588,6 @@ testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 testInvalidUnpackTypes
 
 # TypeVarTuple
-testTypeVarTupleBasic
 testTypeVarTupleMixed
 testTypeVarTupleChaining
 testTypeVarTupleGenericClassDefn

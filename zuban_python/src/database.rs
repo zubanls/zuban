@@ -554,7 +554,12 @@ impl GenericsList {
             .iter()
             .map(|g| match g {
                 GenericItem::TypeArgument(t) => t.format(format_data),
-                GenericItem::TypeVarTuple(_) => todo!(),
+                GenericItem::TypeVarTuple(ts) => ts
+                    .iter()
+                    .map(|t| t.format(format_data))
+                    .collect::<Vec<_>>()
+                    .join(", TODO, ")
+                    .into(),
             })
             .collect::<Vec<_>>()
             .join(", ")
@@ -948,17 +953,24 @@ impl DbType {
             }),
             Self::TypeVarLike(t) => match callable(t) {
                 GenericItem::TypeArgument(t) => t,
-                GenericItem::TypeVarTuple(_) => unreachable!(),
+                GenericItem::TypeVarTuple(ts) => unreachable!(),
             },
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(TupleContent {
                 generics: content.generics.as_ref().map(|generics| {
-                    TupleTypeArguments::new(
-                        generics
-                            .iter()
-                            .map(|g| g.replace_type_vars(callable))
-                            .collect(),
-                    )
+                    let mut args = vec![];
+                    for g in generics.iter() {
+                        match g {
+                            Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
+                                GenericItem::TypeVarTuple(ts) => {
+                                    args.extend(ts.into_vec().into_iter())
+                                }
+                                _ => unreachable!(),
+                            },
+                            _ => args.push(g.replace_type_vars(callable)),
+                        }
+                    }
+                    TupleTypeArguments::new(args.into())
                 }),
                 arbitrary_length: content.arbitrary_length,
             }),

@@ -428,7 +428,7 @@ fn calculate_type_vars<'db>(
                 .into_iter()
                 .map(|c| match c.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
-                    BoundKind::TypeVarTuple(_) => todo!(),
+                    BoundKind::TypeVarTuple(ts) => GenericItem::TypeVarTuple(ts),
                     // TODO TypeVarTuple this feels wrong
                     BoundKind::Uncalculated => GenericItem::TypeArgument(DbType::Never),
                 })
