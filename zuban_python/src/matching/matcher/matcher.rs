@@ -131,8 +131,8 @@ impl<'a> Matcher<'a> {
             } else {
                 let types: Box<_> = generics2_iterator.take(fetch).cloned().collect();
                 calculated.type_ = BoundKind::TypeVarTuple(TypeArguments::new(types));
+                Match::new_true()
             }
-            Match::new_true()
         } else {
             // Negative numbers mean that we have non-matching tuples, but the fact they do not match
             // will be noticed in a different place.

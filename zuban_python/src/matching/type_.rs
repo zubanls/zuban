@@ -618,13 +618,14 @@ impl<'a> Type<'a> {
                             if matcher.has_type_var_matcher() {
                                 match type1 {
                                     DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
-                                        matcher.match_type_var_tuple(
+                                        matches &= matcher.match_type_var_tuple(
                                             t.index,
                                             generics1,
                                             generics2,
                                             &mut value_generics,
                                             variance,
                                         );
+                                        continue;
                                     }
                                     _ => (),
                                 }
