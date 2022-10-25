@@ -127,7 +127,7 @@ impl<'a> TypeVarMatcher<'a> {
                                     GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
                                         self.replace_type_vars_for_nested_context(i_s, t),
                                     ),
-                                    GenericItem::TypeVarTuple(_) => todo!(),
+                                    GenericItem::TypeArguments(_) => todo!(),
                                 }
                             } else {
                                 GenericItem::TypeArgument(DbType::TypeVarLike(
@@ -428,7 +428,7 @@ fn calculate_type_vars<'db>(
                 .into_iter()
                 .map(|c| match c.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
-                    BoundKind::TypeVarTuple(ts) => GenericItem::TypeVarTuple(ts),
+                    BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
                     // TODO TypeVarTuple this feels wrong
                     BoundKind::Uncalculated => GenericItem::TypeArgument(DbType::Never),
                 })

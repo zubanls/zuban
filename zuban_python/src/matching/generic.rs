@@ -11,14 +11,14 @@ impl<'a> Generic<'a> {
     pub fn new(g: &'a GenericItem) -> Self {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::new(t)),
-            GenericItem::TypeVarTuple(_) => todo!(),
+            GenericItem::TypeArguments(_) => todo!(),
         }
     }
 
     pub fn owned(g: GenericItem) -> Self {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::owned(t)),
-            GenericItem::TypeVarTuple(_) => todo!(),
+            GenericItem::TypeArguments(_) => todo!(),
         }
     }
 
