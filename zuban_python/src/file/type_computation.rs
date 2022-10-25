@@ -603,9 +603,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         self.is_recursive_alias = true;
                         TypeContent::DbType(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                             link,
-                            Some(GenericsList::new_generics(
-                                s.iter().map(|c| self.compute_slice_db_type(c)).collect(),
-                            )),
+                            Some(self.compute_generics(s.iter())),
                         ))))
                     }
                     TypeContent::InvalidVariable(t) => todo!(),
@@ -614,6 +612,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             }
         }
+    }
+
+    fn compute_generics(&mut self, s: SliceTypeIterator) -> GenericsList {
+        let generics = s.map(|c| GenericItem::TypeArgument(self.compute_slice_db_type(c)));
+        // TODO use type vars
+        GenericsList::generics_from_vec(generics.collect())
     }
 
     fn compute_type_get_item_on_class(
@@ -1008,9 +1012,17 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let expected_count = alias.type_vars.len();
         let mut given_count = 0;
         let mut generics = vec![];
+        for type_var in alias.type_vars.iter() {
+            match type_var.as_ref() {
+                TypeVarLike::TypeVar(_) => (),
+                _ => todo!(),
+            }
+        }
         for slice_or_simple in slice_type.iter() {
             given_count += 1;
-            generics.push(self.compute_slice_db_type(slice_or_simple))
+            generics.push(GenericItem::TypeArgument(
+                self.compute_slice_db_type(slice_or_simple),
+            ))
         }
         let mismatch = given_count != expected_count;
         if mismatch {
