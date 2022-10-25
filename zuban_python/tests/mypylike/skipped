@@ -7,14 +7,12 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 
-testModuleAsTypeNoCrash
+# "N: Perhaps you meant to use a protocol matching the module structure?"
 testModuleAsTypeNoCrash2
 testChangeTypeVarToModule
 testChangeClassToModule
 testChangeTypeAliasToModule
 testChangeTypeAliasToModuleUnqualified
-testUnpackNoCrashOnEmpty
-testContextForAttributeDeclaredInInit
 
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
@@ -628,6 +626,7 @@ testUnpackKwargsOverload
 testUnpackKwargsJoin
 testUnpackKwargsParamSpec
 testUnpackKwargsUpdateFine
+testUnpackNoCrashOnEmpty
 
 # x: typing_extensions.TypeAlias = int
 testClassLevelTypeAliasesInUnusualContexts
@@ -1152,6 +1151,9 @@ testTypeApplicationCrash
 
 # "bool" is not a valid base class
 testTestExtendPrimitives
+
+# "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
+testContextForAttributeDeclaredInInit
 
 # strict optional
 *StrictOptional*

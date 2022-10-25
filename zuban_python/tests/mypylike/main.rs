@@ -80,7 +80,6 @@ const USE_MYPY_TEST_FILES: [&str; 23] = [
     //"check-python38.test",
     //"check-python39.test",
     //"check-python310.test",
-    //"check-default-plugin.test",
     //"check-custom-plugin.test",
     "fine-grained.test",
     //"fine-grained-modules.test",
