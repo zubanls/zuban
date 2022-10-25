@@ -4,6 +4,7 @@ use crate::inference_state::InferenceState;
 
 pub enum Generic<'a> {
     TypeArgument(Type<'a>),
+    TypeVarTuple(()),
 }
 
 impl<'a> Generic<'a> {
@@ -24,12 +25,14 @@ impl<'a> Generic<'a> {
     pub fn into_generic_item(self, i_s: &mut InferenceState) -> GenericItem {
         match self {
             Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(i_s)),
+            Self::TypeVarTuple(_) => todo!(),
         }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
+            Self::TypeVarTuple(_) => todo!(),
         }
     }
 
