@@ -703,6 +703,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 GenericItem::TypeArgument(self.compute_slice_db_type(slice_content))
                             }
                             TypeVarLike::TypeVarTuple(_) => todo!(),
+                            TypeVarLike::ParamSpec(_) => todo!(),
                         })
                     }
                     DbType::Any
@@ -1042,6 +1043,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         match usage.type_var_like.as_ref() {
                             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                             TypeVarLike::TypeVarTuple(_) => todo!(),
+                            TypeVarLike::ParamSpec(_) => todo!(),
                         }
                     } else {
                         generics[usage.index.as_usize()].clone()

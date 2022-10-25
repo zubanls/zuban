@@ -60,6 +60,7 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                                                 GenericItem::TypeArgument(DbType::Any)
                                             }
                                             TypeVarLike::TypeVarTuple(_) => todo!(),
+                                            TypeVarLike::ParamSpec(_) => todo!(),
                                         }
                                     }));
                             }

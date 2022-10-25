@@ -1845,6 +1845,7 @@ impl TypeAlias {
                             .map(|tv| match tv.as_ref() {
                                 TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                                 TypeVarLike::TypeVarTuple(_) => todo!(),
+                                TypeVarLike::ParamSpec(_) => todo!(),
                             })
                             .collect(),
                     )
@@ -1859,6 +1860,7 @@ impl TypeAlias {
                     true => match t.type_var_like.as_ref() {
                         TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                         TypeVarLike::TypeVarTuple(_) => todo!(),
+                        TypeVarLike::ParamSpec(_) => todo!(),
                     },
                     false => GenericItem::TypeArgument(DbType::TypeVarLike(t.clone())),
                 })
