@@ -633,7 +633,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut iterator = slice_type.iter();
         let backfill = |inference: &mut Self, generics: &mut Vec<_>, count| {
             for slice_content in slice_type.iter().take(count) {
-                generics.push(inference.compute_slice_db_type(slice_content));
+                generics.push(GenericItem::TypeArgument(
+                    inference.compute_slice_db_type(slice_content),
+                ));
             }
         };
         if let Some(type_vars) = type_vars {
@@ -689,12 +691,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     self.as_db_type(t, slice_content.as_node_ref())
                 } else {
+                    // TODO this all feels weird, shouldn't we just call backfill in case no
+                    // generics were given? this feels like we might generate too many generics.
                     for slice_content in slice_type.iter().take(given_count) {
-                        generics.push(self.compute_slice_db_type(slice_content));
+                        generics.push(match type_var_like.as_ref() {
+                            TypeVarLike::TypeVar(_) => {
+                                GenericItem::TypeArgument(self.compute_slice_db_type(slice_content))
+                            }
+                            TypeVarLike::TypeVarTuple(_) => todo!(),
+                        })
                     }
                     DbType::Any
                 };
-                generics.push(db_type);
+                generics.push(GenericItem::TypeArgument(db_type));
             }
         }
         for slice_content in iterator {
@@ -723,9 +732,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 _ => {
                     // Need to fill the generics, because we might have been in a
                     // ClassWithoutTypeVar case.
+                    // TODO isn't this already done above???
                     if generics.is_empty() {
                         backfill(self, &mut generics, expected_count);
-                        generics.resize(expected_count, DbType::Any);
+                        //generics.resize(expected_count, DbType::Any);
+                        todo!()
                     }
                     DbType::Class(
                         class.node_ref.as_link(),
