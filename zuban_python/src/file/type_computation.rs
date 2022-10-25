@@ -406,6 +406,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         .into(),
                     ),
                 );
+                self.add_typing_issue(
+                    node_ref,
+                    IssueType::Note(Box::from(
+                        "Perhaps you meant to use a protocol matching the module structure?",
+                    )),
+                );
                 DbType::Any
             }
             TypeContent::TypeAlias(a) => {

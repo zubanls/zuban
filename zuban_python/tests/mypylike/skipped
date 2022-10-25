@@ -7,13 +7,6 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 
-# "N: Perhaps you meant to use a protocol matching the module structure?"
-testModuleAsTypeNoCrash2
-testChangeTypeVarToModule
-testChangeClassToModule
-testChangeTypeAliasToModule
-testChangeTypeAliasToModuleUnqualified
-
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
 # Recursive Alias wrong type var inference --enable-recursive-aliases
