@@ -305,7 +305,7 @@ impl<'a> Matcher<'a> {
             let current = &type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, style),
-                BoundKind::TypeVarTuple(ts) => format!("TODO format typevartuple {ts:?}").into(),
+                BoundKind::TypeVarTuple(ts) => ts.format(&FormatData::with_style(db, style)),
                 BoundKind::Uncalculated => DbType::Never.format(&FormatData::with_style(db, style)),
             }
         } else {

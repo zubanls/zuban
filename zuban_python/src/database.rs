@@ -508,7 +508,7 @@ impl TypeArguments {
             .iter()
             .map(|t| t.format(format_data))
             .collect::<Vec<_>>()
-            .join(", TODO, ")
+            .join(", ")
             .into()
     }
 }
