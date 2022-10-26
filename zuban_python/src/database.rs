@@ -492,24 +492,25 @@ impl Execution {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeArguments(Box<[DbType]>);
+pub struct TypeArguments {
+    pub arguments: TupleTypeArguments,
+    pub arbitrary_length: bool, // Implies one generic that may be repeated
+}
 
 impl TypeArguments {
     pub fn new(t: Box<[DbType]>) -> Self {
-        Self(t)
+        Self {
+            arguments: TupleTypeArguments::new(t),
+            arbitrary_length: false,
+        }
     }
 
     pub fn iter(&self) -> std::slice::Iter<DbType> {
-        self.0.iter()
+        self.arguments.iter()
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.0
-            .iter()
-            .map(|t| t.format(format_data))
-            .collect::<Vec<_>>()
-            .join(", ")
-            .into()
+        self.arguments.format(format_data)
     }
 }
 
@@ -518,7 +519,7 @@ impl IntoIterator for TypeArguments {
     type IntoIter = std::vec::IntoIter<Self::Item>;
 
     fn into_iter(self) -> Self::IntoIter {
-        Vec::from(self.0).into_iter()
+        Vec::from(self.arguments.0).into_iter()
     }
 }
 
@@ -1259,7 +1260,7 @@ impl IntoIterator for TupleTypeArguments {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleContent {
     pub generics: Option<TupleTypeArguments>,
-    pub arbitrary_length: bool, // Is also homogenous
+    pub arbitrary_length: bool, // Implies one generic that may be repeated
 }
 
 impl TupleContent {
