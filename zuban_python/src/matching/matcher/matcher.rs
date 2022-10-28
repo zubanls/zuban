@@ -120,9 +120,12 @@ impl<'a> Matcher<'a> {
         generics1: &TupleTypeArguments,
         generics2: &TupleTypeArguments,
         generics2_iterator: &mut I,
-        variance: Variance,
+        arbitrary_length: bool,
     ) -> Match {
-        let fetch = generics2.len() as isize + 1 - generics1.len() as isize;
+        let fetch = match arbitrary_length {
+            false => generics2.len() as isize + 1 - generics1.len() as isize,
+            true => 1,
+        };
         if let Ok(fetch) = fetch.try_into() {
             let tv_matcher = self.type_var_matcher.as_mut().unwrap();
             let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];

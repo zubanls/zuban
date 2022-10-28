@@ -991,7 +991,7 @@ impl DbType {
                         match g {
                             Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
                                 GenericItem::TypeArguments(ts) => args.extend(ts.into_iter()),
-                                _ => unreachable!(),
+                                x => unreachable!("{x:?}"),
                             },
                             _ => args.push(g.replace_type_vars(callable)),
                         }

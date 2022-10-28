@@ -623,7 +623,7 @@ impl<'a> Type<'a> {
                                             generics1,
                                             generics2,
                                             &mut value_generics,
-                                            variance,
+                                            t1.arbitrary_length,
                                         );
                                         continue;
                                     }
@@ -647,7 +647,41 @@ impl<'a> Type<'a> {
                         matches
                     }
                     (false, true, Variance::Covariant) | (_, _, Variance::Invariant) => {
-                        Match::new_false()
+                        let mut had_type_var_tuple = false;
+                        let mut matches = Match::new_true();
+                        for type1 in generics1.iter() {
+                            if matcher.has_type_var_matcher() {
+                                match type1 {
+                                    DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
+                                        had_type_var_tuple = true;
+                                        matches &= matcher.match_type_var_tuple(
+                                            t.index,
+                                            generics1,
+                                            generics2,
+                                            &mut generics2.iter(),
+                                            t1.arbitrary_length,
+                                        );
+                                        continue;
+                                    }
+                                    _ => {
+                                        matches &= Type::new(type1).matches(
+                                            i_s,
+                                            matcher,
+                                            &Type::new(generics2.nth(0.into()).unwrap()),
+                                            variance,
+                                        );
+                                        if !matches.bool() {
+                                            return matches;
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        if had_type_var_tuple {
+                            matches
+                        } else {
+                            Match::new_false()
+                        }
                     }
                     (true, false, Variance::Covariant) => {
                         let t1 = Type::new(&generics1[0.into()]);
