@@ -114,12 +114,12 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn match_type_var_tuple(
+    pub fn match_type_var_tuple<'x, I: Iterator<Item = &'x DbType>>(
         &mut self,
         index: TypeVarIndex,
         generics1: &TupleTypeArguments,
         generics2: &TupleTypeArguments,
-        generics2_iterator: &mut std::slice::Iter<'_, DbType>,
+        generics2_iterator: &mut I,
         variance: Variance,
     ) -> Match {
         let fetch = generics2.len() as isize + 1 - generics1.len() as isize;
