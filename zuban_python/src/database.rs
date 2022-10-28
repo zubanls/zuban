@@ -933,6 +933,13 @@ impl DbType {
         }
     }
 
+    pub fn maybe_type_var_tuple(&self) -> Option<&TypeVarUsage> {
+        match self {
+            DbType::TypeVarLike(t) if t.is_type_var_tuple() => Some(t),
+            _ => None,
+        }
+    }
+
     pub fn replace_type_vars(
         &self,
         callable: &mut impl FnMut(&TypeVarUsage) -> GenericItem,
@@ -1243,6 +1250,16 @@ impl TupleContent {
 
     pub fn new_empty() -> Self {
         Self { args: None }
+    }
+
+    pub fn has_type_var_tuple(&self) -> Option<&[DbType]> {
+        match &self.args {
+            Some(TupleTypeArguments::FixedLength(ts)) => ts
+                .iter()
+                .any(|t| t.maybe_type_var_tuple().is_some())
+                .then(|| ts.as_ref()),
+            _ => None,
+        }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

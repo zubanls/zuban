@@ -7,8 +7,8 @@ use super::type_var_matcher::{
 };
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments,
-    TypeArguments, TypeVar, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleContent,
+    TupleTypeArguments, TypeArguments, TypeVar, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -114,44 +114,61 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn match_type_var_tuple<'x, I: Iterator<Item = &'x DbType>>(
+    pub fn match_type_var_tuple(
         &mut self,
-        index: TypeVarIndex,
-        tuple1: &TupleTypeArguments,
-        tuple2: &TupleTypeArguments,
-        generics2_iterator: &mut I,
+        i_s: &mut InferenceState,
+        tuple1: &[DbType],
+        tuple2: &TupleContent,
     ) -> Match {
-        let fetch = match tuple1 {
-            TupleTypeArguments::FixedLength(ts1) => match tuple2 {
-                TupleTypeArguments::FixedLength(ts2) => ts2.len() as isize + 1 - ts1.len() as isize,
-                TupleTypeArguments::ArbitraryLength(t) => {
-                    let tv_matcher = self.type_var_matcher.as_mut().unwrap();
-                    let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];
-                    if calculated.calculated() {
+        let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+        let mut matches = Match::new_true();
+        match &tuple2.args {
+            Some(TupleTypeArguments::FixedLength(ts2)) => {
+                let mut t2_iterator = ts2.iter();
+                for t1 in tuple1.iter() {
+                    if let Some(tvt) = t1.maybe_type_var_tuple() {
+                        let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                        if calculated.calculated() {
+                            todo!()
+                        } else {
+                            let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
+                            if let Ok(fetch) = fetch.try_into() {
+                                let types: Box<_> =
+                                    t2_iterator.by_ref().take(fetch).cloned().collect();
+                                calculated.type_ =
+                                    BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
+                            } else {
+                                // Negative numbers mean that we have non-matching tuples, but the fact they do not match
+                                // will be noticed in a different place.
+                                todo!()
+                            }
+                        }
+                    } else if let Some(t2) = t2_iterator.next() {
                         todo!()
                     } else {
                         todo!()
                     }
                 }
-            },
-            TupleTypeArguments::ArbitraryLength(_) => unreachable!(),
-        };
-        if let Ok(fetch) = fetch.try_into() {
-            let tv_matcher = self.type_var_matcher.as_mut().unwrap();
-            let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];
-            if calculated.calculated() {
-                todo!()
-            } else {
-                let types: Box<_> = generics2_iterator.take(fetch).cloned().collect();
-                calculated.type_ = BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
-                Match::new_true()
             }
-        } else {
-            // Negative numbers mean that we have non-matching tuples, but the fact they do not match
-            // will be noticed in a different place.
-            todo!()
-            //Match::new_true()
-        }
+            Some(TupleTypeArguments::ArbitraryLength(t2)) => {
+                for t1 in tuple1.iter() {
+                    if let Some(tvt) = t1.maybe_type_var_tuple() {
+                        let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                        if calculated.calculated() {
+                            todo!()
+                        } else {
+                            todo!()
+                        }
+                    } else {
+                        todo!()
+                    }
+                }
+            }
+            None => {
+                todo!()
+            }
+        };
+        matches
     }
 
     fn match_or_add_type_var_in_type_var_matcher(

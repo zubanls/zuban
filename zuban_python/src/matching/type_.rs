@@ -610,25 +610,16 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         use TupleTypeArguments::*;
+        if matcher.has_type_var_matcher() {
+            if let Some(ts) = t1.has_type_var_tuple() {
+                return matcher.match_type_var_tuple(i_s, ts, t2);
+            }
+        }
         match (&t1.args, &t2.args, variance) {
             (Some(tup1_args @ FixedLength(ts1)), Some(tup2_args @ FixedLength(ts2)), _) => {
                 let mut value_generics = ts2.iter();
                 let mut matches = Match::new_true();
                 for type1 in ts1.iter() {
-                    if matcher.has_type_var_matcher() {
-                        match type1 {
-                            DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
-                                matches &= matcher.match_type_var_tuple(
-                                    t.index,
-                                    tup1_args,
-                                    tup2_args,
-                                    &mut value_generics,
-                                );
-                                continue;
-                            }
-                            _ => (),
-                        }
-                    }
                     if let Some(type2) = value_generics.next() {
                         matches &=
                             Type::new(type1).matches(i_s, matcher, &Type::new(type2), variance);
@@ -648,42 +639,7 @@ impl<'a> Type<'a> {
                 Some(tup1_args @ FixedLength(ts1)),
                 Some(tup2_args @ ArbitraryLength(t2)),
                 Variance::Covariant,
-            ) => {
-                let mut had_type_var_tuple = false;
-                let mut matches = Match::new_true();
-                for type1 in ts1.iter() {
-                    if matcher.has_type_var_matcher() {
-                        match type1 {
-                            DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
-                                had_type_var_tuple = true;
-                                matches &= matcher.match_type_var_tuple(
-                                    t.index,
-                                    tup1_args,
-                                    tup2_args,
-                                    &mut std::iter::once(t2.as_ref()),
-                                );
-                                continue;
-                            }
-                            _ => {
-                                matches &= Type::new(type1).matches(
-                                    i_s,
-                                    matcher,
-                                    &Type::new(t2),
-                                    variance,
-                                );
-                                if !matches.bool() {
-                                    return matches;
-                                }
-                            }
-                        }
-                    }
-                }
-                if had_type_var_tuple {
-                    matches
-                } else {
-                    Match::new_false()
-                }
-            }
+            ) => Match::new_false(),
             (Some(ArbitraryLength(t1)), Some(FixedLength(ts2)), Variance::Invariant) => {
                 todo!()
             }
