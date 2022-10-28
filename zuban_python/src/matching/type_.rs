@@ -617,20 +617,15 @@ impl<'a> Type<'a> {
         }
         match (&t1.args, &t2.args, variance) {
             (Some(tup1_args @ FixedLength(ts1)), Some(tup2_args @ FixedLength(ts2)), _) => {
-                let mut value_generics = ts2.iter();
-                let mut matches = Match::new_true();
-                for type1 in ts1.iter() {
-                    if let Some(type2) = value_generics.next() {
-                        matches &=
-                            Type::new(type1).matches(i_s, matcher, &Type::new(type2), variance);
-                    } else {
-                        matches = Match::new_false();
+                if ts1.len() == ts2.len() {
+                    let mut matches = Match::new_true();
+                    for (t1, t2) in ts1.iter().zip(ts2.iter()) {
+                        matches &= Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance);
                     }
+                    matches
+                } else {
+                    Match::new_false()
                 }
-                if value_generics.next().is_some() {
-                    matches = Match::new_false();
-                }
-                matches
             }
             (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2)), _) => {
                 Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
