@@ -63,10 +63,9 @@ impl PythonState {
             mypy_extensions_var_arg_func: 0,
             type_of_object: DbType::Type(Box::new(DbType::Any)), // Will be set later
             type_of_any: DbType::Type(Box::new(DbType::Any)),
-            type_of_arbitrary_tuple: DbType::Type(Box::new(DbType::Tuple(TupleContent {
-                generics: None,
-                arbitrary_length: true,
-            }))),
+            type_of_arbitrary_tuple: DbType::Type(Box::new(DbType::Tuple(
+                TupleContent::new_empty(),
+            ))),
         }
     }
 

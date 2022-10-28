@@ -493,33 +493,30 @@ impl Execution {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TypeArguments {
-    pub arguments: TupleTypeArguments,
-    pub arbitrary_length: bool, // Implies one generic that may be repeated
+    pub args: TupleTypeArguments,
 }
 
 impl TypeArguments {
-    pub fn new(t: Box<[DbType]>) -> Self {
+    pub fn new_fixed_length(args: Box<[DbType]>) -> Self {
         Self {
-            arguments: TupleTypeArguments::new(t),
-            arbitrary_length: false,
+            args: TupleTypeArguments::FixedLength(args),
         }
     }
 
-    pub fn iter(&self) -> std::slice::Iter<DbType> {
-        self.arguments.iter()
+    pub fn new_arbitrary_length(arg: DbType) -> Self {
+        Self {
+            args: TupleTypeArguments::ArbitraryLength(Box::new(arg)),
+        }
     }
 
+    pub fn has_any(&self) -> bool {
+        match &self.args {
+            TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| t.has_any()),
+            TupleTypeArguments::ArbitraryLength(t) => t.has_any(),
+        }
+    }
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.arguments.format(format_data)
-    }
-}
-
-impl IntoIterator for TypeArguments {
-    type Item = DbType;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Vec::from(self.arguments.0).into_iter()
+        self.args.format(format_data)
     }
 }
 
@@ -871,13 +868,15 @@ impl DbType {
             }
             Self::TypeVarLike(t) => found_type_var(t),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
-            Self::Tuple(content) => {
-                if let Some(generics) = &content.generics {
-                    for t in generics.iter() {
+            Self::Tuple(content) => match &content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => {
+                    for t in ts.iter() {
                         t.search_type_vars(found_type_var);
                     }
                 }
-            }
+                Some(TupleTypeArguments::ArbitraryLength(t)) => t.search_type_vars(found_type_var),
+                None => (),
+            },
             Self::Callable(content) => {
                 if let Some(params) = &content.params {
                     for param in params.iter() {
@@ -915,13 +914,11 @@ impl DbType {
             Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any()),
             Self::TypeVarLike(t) => false,
             Self::Type(db_type) => db_type.has_any(),
-            Self::Tuple(content) => {
-                if let Some(generics) = &content.generics {
-                    generics.iter().any(|t| t.has_any())
-                } else {
-                    true
-                }
-            }
+            Self::Tuple(content) => match &content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().any(|t| t.has_any()),
+                Some(TupleTypeArguments::ArbitraryLength(t)) => t.has_any(),
+                None => true,
+            },
             Self::Callable(content) => {
                 if let Some(params) = &content.params {
                     params.iter().any(|param| param.db_type.has_any())
@@ -984,21 +981,29 @@ impl DbType {
                 GenericItem::TypeArguments(ts) => unreachable!(),
             },
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
-            Self::Tuple(content) => Self::Tuple(TupleContent {
-                generics: content.generics.as_ref().map(|generics| {
-                    let mut args = vec![];
-                    for g in generics.iter() {
+            Self::Tuple(content) => Self::Tuple(match &content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => {
+                    let mut new_args = vec![];
+                    for g in ts.iter() {
                         match g {
                             Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
-                                GenericItem::TypeArguments(ts) => args.extend(ts.into_iter()),
+                                GenericItem::TypeArguments(ts) => new_args.extend(match ts.args {
+                                    TupleTypeArguments::FixedLength(ts) => {
+                                        ts.into_vec().into_iter()
+                                    }
+                                    TupleTypeArguments::ArbitraryLength(t) => todo!(),
+                                }),
                                 x => unreachable!("{x:?}"),
                             },
-                            _ => args.push(g.replace_type_vars(callable)),
+                            _ => new_args.push(g.replace_type_vars(callable)),
                         }
                     }
-                    TupleTypeArguments::new(args.into())
-                }),
-                arbitrary_length: content.arbitrary_length,
+                    TupleContent::new_fixed_length(new_args.into())
+                }
+                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                    TupleContent::new_arbitrary_length(t.replace_type_vars(callable))
+                }
+                None => TupleContent::new_empty(),
             }),
             Self::Callable(content) => Self::Callable(Box::new(CallableContent {
                 defined_at: content.defined_at,
@@ -1068,16 +1073,16 @@ impl DbType {
             Self::Type(db_type) => {
                 Self::Type(Box::new(db_type.rewrite_late_bound_callables(manager)))
             }
-            Self::Tuple(content) => Self::Tuple(TupleContent {
-                generics: content.generics.as_ref().map(|generics| {
-                    TupleTypeArguments::new(
-                        generics
-                            .iter()
-                            .map(|g| g.rewrite_late_bound_callables(manager))
-                            .collect(),
-                    )
-                }),
-                arbitrary_length: content.arbitrary_length,
+            Self::Tuple(content) => Self::Tuple(match &content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => TupleContent::new_fixed_length(
+                    ts.iter()
+                        .map(|g| g.rewrite_late_bound_callables(manager))
+                        .collect(),
+                ),
+                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                    TupleContent::new_arbitrary_length(t.rewrite_late_bound_callables(manager))
+                }
+                None => TupleContent::new_empty(),
             }),
             Self::Callable(content) => {
                 let type_vars = manager
@@ -1124,17 +1129,7 @@ impl DbType {
                 )
             })
         };
-        let merge_tuple_type_args =
-            |g1: Option<TupleTypeArguments>, g2: Option<TupleTypeArguments>| {
-                g1.map(|g1| {
-                    TupleTypeArguments::new(
-                        g1.into_iter()
-                            .zip(g2.unwrap().into_iter())
-                            .map(|(t1, t2)| t1.merge_matching_parts(t2))
-                            .collect(),
-                    )
-                })
-            };
+        use TupleTypeArguments::*;
         match self {
             Self::Class(link1, g1) => match other {
                 Self::Class(link2, g2) if link1 == link2 => {
@@ -1147,18 +1142,20 @@ impl DbType {
                 _ => Self::Any,
             },
             Self::Tuple(c1) => match other {
-                Self::Tuple(c2) => Self::Tuple({
-                    if c1.arbitrary_length == c2.arbitrary_length
-                        && c1.generics.as_ref().map(|g| g.len())
-                            == c2.generics.as_ref().map(|g| g.len())
-                    {
-                        TupleContent {
-                            arbitrary_length: c1.arbitrary_length,
-                            generics: merge_tuple_type_args(c1.generics, c2.generics),
-                        }
-                    } else {
-                        TupleContent::new_empty()
+                Self::Tuple(c2) => Self::Tuple(match (c1.args, c2.args) {
+                    (Some(FixedLength(ts1)), Some(FixedLength(ts2))) if ts1.len() == ts2.len() => {
+                        TupleContent::new_fixed_length(
+                            ts1.into_vec()
+                                .into_iter()
+                                .zip(ts2.into_vec().into_iter())
+                                .map(|(t1, t2)| t1.merge_matching_parts(t2))
+                                .collect(),
+                        )
                     }
+                    (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+                        TupleContent::new_arbitrary_length(t1.merge_matching_parts(*t2))
+                    }
+                    _ => TupleContent::new_empty(),
                 }),
                 _ => Self::Any,
             },
@@ -1207,68 +1204,45 @@ impl Overload {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TupleTypeArguments(Box<[DbType]>);
+pub enum TupleTypeArguments {
+    FixedLength(Box<[DbType]>),
+    ArbitraryLength(Box<DbType>),
+}
 
 impl TupleTypeArguments {
-    pub fn new(parts: Box<[DbType]>) -> Self {
-        Self(parts)
-    }
-
-    pub fn as_slice_ref(&self) -> &[DbType] {
-        &self.0
-    }
-
-    pub fn iter(&self) -> std::slice::Iter<DbType> {
-        self.0.iter()
-    }
-
-    pub fn len(&self) -> usize {
-        self.0.len()
-    }
-
-    pub fn nth(&self, index: TypeVarIndex) -> Option<&DbType> {
-        self.0.get(index.0 as usize)
-    }
-
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.0
-            .iter()
-            .map(|g| g.format(format_data))
-            .collect::<Vec<_>>()
-            .join(", ")
-            .into()
-    }
-}
-
-impl std::ops::Index<TypeVarIndex> for TupleTypeArguments {
-    type Output = DbType;
-
-    fn index(&self, index: TypeVarIndex) -> &DbType {
-        &self.0[index.0 as usize]
-    }
-}
-
-impl IntoIterator for TupleTypeArguments {
-    type Item = DbType;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Vec::from(self.0).into_iter()
+        match self {
+            Self::FixedLength(ts) => ts
+                .iter()
+                .map(|g| g.format(format_data))
+                .collect::<Vec<_>>()
+                .join(", ")
+                .into(),
+            Self::ArbitraryLength(t) => format!("{}, ...", t.format(format_data)).into(),
+        }
     }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleContent {
-    pub generics: Option<TupleTypeArguments>,
-    pub arbitrary_length: bool, // Implies one generic that may be repeated
+    pub args: Option<TupleTypeArguments>,
 }
 
 impl TupleContent {
-    fn new_empty() -> Self {
+    pub fn new_fixed_length(args: Box<[DbType]>) -> Self {
         Self {
-            generics: None,
-            arbitrary_length: true,
+            args: Some(TupleTypeArguments::FixedLength(args)),
         }
+    }
+
+    pub fn new_arbitrary_length(arg: DbType) -> Self {
+        Self {
+            args: Some(TupleTypeArguments::ArbitraryLength(Box::new(arg))),
+        }
+    }
+
+    pub fn new_empty() -> Self {
+        Self { args: None }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
@@ -1276,13 +1250,8 @@ impl TupleContent {
             FormatStyle::Short => "tuple",
             FormatStyle::Qualified | FormatStyle::MypyRevealType => "builtins.tuple",
         };
-        if let Some(generics) = self.generics.as_ref() {
-            let list = generics.format(format_data);
-            if self.arbitrary_length {
-                format!("{base}[{list}, ...]").into()
-            } else {
-                format!("{base}[{list}]").into()
-            }
+        if let Some(args) = self.args.as_ref() {
+            format!("{base}[{}]", args.format(format_data)).into()
         } else {
             format!("{base}[Any, ...]").into()
         }

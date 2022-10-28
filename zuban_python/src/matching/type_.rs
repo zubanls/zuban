@@ -463,29 +463,30 @@ impl<'a> Type<'a> {
     ) -> Option<MroIterator<'db, '_>> {
         match self {
             Self::Class(c) => Some(c.mro(i_s)),
-            Self::Type(t) => match t.as_ref() {
-                DbType::Class(link, generics) => {
-                    Some(Class::from_db_type(i_s.db, *link, generics).mro(i_s))
-                }
-                DbType::Tuple(tup) => Some({
-                    let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
-                    if !tup.arbitrary_length {
-                        debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
+            Self::Type(t) => {
+                match t.as_ref() {
+                    DbType::Class(link, generics) => {
+                        Some(Class::from_db_type(i_s.db, *link, generics).mro(i_s))
                     }
-                    MroIterator::new(
-                        i_s.db,
-                        Type::new(t),
-                        Some(Generics::DbType(
-                            tup.generics
-                                .as_ref()
-                                .map(|g| g.nth(0.into()).unwrap_or(&DbType::Never))
-                                .unwrap_or(&DbType::Any),
-                        )),
-                        class_infos.mro.iter(),
-                    )
-                }),
-                _ => None,
-            },
+                    DbType::Tuple(tup) => Some({
+                        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
+                        MroIterator::new(
+                            i_s.db,
+                            Type::new(t),
+                            Some(Generics::DbType(match &tup.args {
+                                Some(TupleTypeArguments::FixedLength(ts)) => {
+                                    debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
+                                    ts.get(0).unwrap_or(&DbType::Never)
+                                }
+                                Some(TupleTypeArguments::ArbitraryLength(t)) => t.as_ref(),
+                                None => &DbType::Any,
+                            })),
+                            class_infos.mro.iter(),
+                        )
+                    }),
+                    _ => None,
+                }
+            }
         }
     }
 
@@ -608,151 +609,139 @@ impl<'a> Type<'a> {
         t2: &TupleContent,
         variance: Variance,
     ) -> Match {
-        if let Some(generics1) = &t1.generics {
-            if let Some(generics2) = &t2.generics {
-                return match (t1.arbitrary_length, t2.arbitrary_length, variance) {
-                    (false, false, _) | (true, true, _) => {
-                        let mut value_generics = generics2.iter();
-                        let mut matches = Match::new_true();
-                        for type1 in generics1.iter() {
-                            if matcher.has_type_var_matcher() {
-                                match type1 {
-                                    DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
-                                        matches &= matcher.match_type_var_tuple(
-                                            t.index,
-                                            generics1,
-                                            generics2,
-                                            &mut value_generics,
-                                            t1.arbitrary_length,
-                                        );
-                                        continue;
-                                    }
-                                    _ => (),
-                                }
+        use TupleTypeArguments::*;
+        match (&t1.args, &t2.args, variance) {
+            (Some(tup1_args @ FixedLength(ts1)), Some(tup2_args @ FixedLength(ts2)), _) => {
+                let mut value_generics = ts2.iter();
+                let mut matches = Match::new_true();
+                for type1 in ts1.iter() {
+                    if matcher.has_type_var_matcher() {
+                        match type1 {
+                            DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
+                                matches &= matcher.match_type_var_tuple(
+                                    t.index,
+                                    tup1_args,
+                                    tup2_args,
+                                    &mut value_generics,
+                                );
+                                continue;
                             }
-                            if let Some(type2) = value_generics.next() {
+                            _ => (),
+                        }
+                    }
+                    if let Some(type2) = value_generics.next() {
+                        matches &=
+                            Type::new(type1).matches(i_s, matcher, &Type::new(type2), variance);
+                    } else {
+                        matches = Match::new_false();
+                    }
+                }
+                if value_generics.next().is_some() {
+                    matches = Match::new_false();
+                }
+                matches
+            }
+            (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2)), _) => {
+                Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
+            }
+            (
+                Some(tup1_args @ FixedLength(ts1)),
+                Some(tup2_args @ ArbitraryLength(t2)),
+                Variance::Covariant,
+            ) => {
+                let mut had_type_var_tuple = false;
+                let mut matches = Match::new_true();
+                for type1 in ts1.iter() {
+                    if matcher.has_type_var_matcher() {
+                        match type1 {
+                            DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
+                                had_type_var_tuple = true;
+                                matches &= matcher.match_type_var_tuple(
+                                    t.index,
+                                    tup1_args,
+                                    tup2_args,
+                                    &mut std::iter::once(t2.as_ref()),
+                                );
+                                continue;
+                            }
+                            _ => {
                                 matches &= Type::new(type1).matches(
                                     i_s,
                                     matcher,
-                                    &Type::new(type2),
+                                    &Type::new(t2),
                                     variance,
                                 );
-                            } else {
-                                matches = Match::new_false();
-                            }
-                        }
-                        if value_generics.next().is_some() {
-                            matches = Match::new_false();
-                        }
-                        matches
-                    }
-                    (false, true, Variance::Covariant) | (_, _, Variance::Invariant) => {
-                        let mut had_type_var_tuple = false;
-                        let mut matches = Match::new_true();
-                        for type1 in generics1.iter() {
-                            if matcher.has_type_var_matcher() {
-                                match type1 {
-                                    DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
-                                        had_type_var_tuple = true;
-                                        matches &= matcher.match_type_var_tuple(
-                                            t.index,
-                                            generics1,
-                                            generics2,
-                                            &mut generics2.iter(),
-                                            t1.arbitrary_length,
-                                        );
-                                        continue;
-                                    }
-                                    _ => {
-                                        matches &= Type::new(type1).matches(
-                                            i_s,
-                                            matcher,
-                                            &Type::new(generics2.nth(0.into()).unwrap()),
-                                            variance,
-                                        );
-                                        if !matches.bool() {
-                                            return matches;
-                                        }
-                                    }
+                                if !matches.bool() {
+                                    return matches;
                                 }
                             }
                         }
-                        if had_type_var_tuple {
-                            matches
-                        } else {
-                            Match::new_false()
-                        }
                     }
-                    (true, false, Variance::Covariant) => {
-                        let t1 = Type::new(&generics1[0.into()]);
-                        generics2
-                            .iter()
-                            .all(|g2| {
-                                let t2 = Type::new(g2);
-                                t1.is_super_type_of(i_s, matcher, &t2).bool()
-                            })
-                            .into()
-                    }
-                    _ => unreachable!(),
-                };
+                }
+                if had_type_var_tuple {
+                    matches
+                } else {
+                    Match::new_false()
+                }
             }
+            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2)), Variance::Invariant) => {
+                todo!()
+            }
+            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2)), Variance::Covariant) => {
+                let t1 = Type::new(t1);
+                ts2.iter()
+                    .all(|g2| {
+                        let t2 = Type::new(g2);
+                        t1.is_super_type_of(i_s, matcher, &t2).bool()
+                    })
+                    .into()
+            }
+            (Some(_), Some(_), _) => unreachable!(),
+            (None, _, _) | (_, None, _) => Match::new_true(),
         }
-        Match::new_true()
     }
 
     fn overlaps_tuple(i_s: &mut InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
-        if let Some(generics1) = &t1.generics {
-            if let Some(generics2) = &t2.generics {
-                return match (t1.arbitrary_length, t2.arbitrary_length) {
-                    (false, false) | (true, true) => {
-                        let mut value_generics = generics2.iter();
-                        let mut overlaps = true;
-                        for type1 in generics1.iter() {
-                            /*
-                            if matcher.has_type_var_matcher() {
-                                match type1 {
-                                    DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
-                                        todo!()
-                                    }
-                                    _ => (),
-                                }
+        use TupleTypeArguments::*;
+        match (&t1.args, &t2.args) {
+            (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
+                let mut value_generics = ts2.iter();
+                let mut overlaps = true;
+                for type1 in ts1.iter() {
+                    /*
+                    if matcher.has_type_var_matcher() {
+                        match type1 {
+                            DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
+                                todo!()
                             }
-                            */
-                            if let Some(type2) = value_generics.next() {
-                                overlaps &= Type::new(type1).overlaps(i_s, &Type::new(type2));
-                            } else {
-                                overlaps = false;
-                            }
+                            _ => (),
                         }
-                        if value_generics.next().is_some() {
-                            overlaps = false;
-                        }
-                        overlaps
                     }
-                    (false, true) => {
-                        let t2 = Type::new(&generics2[0.into()]);
-                        for g in generics1.iter() {
-                            let t1 = Type::new(g);
-                            if !t1.overlaps(i_s, &t2) {
-                                return false;
-                            }
-                        }
-                        true
+                    */
+                    if let Some(type2) = value_generics.next() {
+                        overlaps &= Type::new(type1).overlaps(i_s, &Type::new(type2));
+                    } else {
+                        overlaps = false;
                     }
-                    (true, false) => {
-                        let t1 = Type::new(&generics1[0.into()]);
-                        for g in generics2.iter() {
-                            let t2 = Type::new(g);
-                            if !t1.overlaps(i_s, &t2) {
-                                return false;
-                            }
-                        }
-                        true
-                    }
-                };
+                }
+                if value_generics.next().is_some() {
+                    overlaps = false;
+                }
+                overlaps
             }
+            (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+                Type::new(t1.as_ref()).overlaps(i_s, &Type::new(t2.as_ref()))
+            }
+            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
+                let t1 = Type::new(t1.as_ref());
+                ts2.iter().all(|t2| t1.overlaps(i_s, &Type::new(t2)))
+            }
+            (Some(FixedLength(ts1)), Some(ArbitraryLength(t2))) => {
+                let t2 = Type::new(t2.as_ref());
+                ts1.iter().all(|t1| Type::new(t1).overlaps(i_s, &t2))
+            }
+            _ => true,
         }
-        true
     }
 
     pub fn overlaps_class(i_s: &mut InferenceState, class1: Class, class2: Class) -> bool {
@@ -850,46 +839,49 @@ impl<'a> Type<'a> {
             }
         }
         if let Some(db_type) = t.maybe_db_type() {
+            use TupleTypeArguments::*;
             match db_type {
                 DbType::Tuple(t1) => {
                     if let Some(DbType::Tuple(t2)) = self.maybe_db_type() {
-                        if let Some(generics1) = &t1.generics {
-                            if let Some(generics2) = &t2.generics {
-                                let tuple_generics: Vec<_> =
-                                    match (t1.arbitrary_length, t2.arbitrary_length) {
-                                        (false, false) | (true, true) => generics1
-                                            .iter()
-                                            .zip(generics2.iter())
-                                            .map(|(g1, g2)| {
-                                                Type::new(g2).try_to_resemble_context(
-                                                    i_s,
-                                                    matcher,
-                                                    &Type::new(g1),
-                                                )
-                                            })
-                                            .collect(),
-                                        (true, false) => {
-                                            /*
-                                            let t1 = Type::new(&generics1[0.into()]);
-                                            generics2
-                                                .iter()
-                                                .all(|g2| {
-                                                    let t2 = Type::new(g2);
-                                                    t1.is_super_type_of(i_s, matcher, &t2).bool()
-                                                })
-                                                .into()
-                                            */
-                                            todo!()
-                                        }
-                                        (false, true) => unreachable!(),
-                                    };
-                                return DbType::Tuple(TupleContent {
-                                    generics: Some(TupleTypeArguments::new(
-                                        tuple_generics.into_boxed_slice(),
-                                    )),
-                                    arbitrary_length: t1.arbitrary_length,
-                                });
+                        match (&t1.args, &t2.args) {
+                            (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
+                                return DbType::Tuple(TupleContent::new_fixed_length(
+                                    ts1.iter()
+                                        .zip(ts2.iter())
+                                        .map(|(g1, g2)| {
+                                            Type::new(g2).try_to_resemble_context(
+                                                i_s,
+                                                matcher,
+                                                &Type::new(g1),
+                                            )
+                                        })
+                                        .collect(),
+                                ))
                             }
+                            (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+                                return DbType::Tuple(TupleContent::new_arbitrary_length(
+                                    Type::new(t1.as_ref()).try_to_resemble_context(
+                                        i_s,
+                                        matcher,
+                                        &Type::new(t2.as_ref()),
+                                    ),
+                                ))
+                            }
+                            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
+                                /*
+                                let t1 = Type::new(t1);
+                                generics2
+                                    .iter()
+                                    .all(|g2| {
+                                        let t2 = Type::new(g2);
+                                        t1.is_super_type_of(i_s, matcher, &t2).bool()
+                                    })
+                                    .into()
+                                */
+                                todo!()
+                            }
+                            (Some(FixedLength(ts1)), Some(ArbitraryLength(t2))) => unreachable!(),
+                            _ => (),
                         }
                     }
                 }

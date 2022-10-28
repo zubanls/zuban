@@ -5,8 +5,8 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     GenericItem, GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias,
-    Specific, StringSlice, TupleContent, TupleTypeArguments, TypeAlias, TypeVarLike, TypeVarLikes,
-    TypeVarManager, TypeVarUsage, UnionEntry, UnionType,
+    Specific, StringSlice, TupleContent, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager,
+    TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -430,10 +430,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.inference.i_s.db.python_state.object().as_link(),
                     None,
                 ))),
-                SpecialType::Tuple => DbType::Tuple(TupleContent {
-                    generics: None,
-                    arbitrary_length: true,
-                }),
+                SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
                 SpecialType::LiteralString => DbType::Class(
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
                     None,
@@ -779,10 +776,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
                         todo!()
                     }
-                    return TypeContent::DbType(DbType::Tuple(TupleContent {
-                        generics: Some(TupleTypeArguments::new(Box::new([t]))),
-                        arbitrary_length: true,
-                    }));
+                    return TypeContent::DbType(DbType::Tuple(TupleContent::new_arbitrary_length(
+                        t,
+                    )));
                 }
             }
             slice_type
@@ -808,10 +804,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             }
         };
-        TypeContent::DbType(DbType::Tuple(TupleContent {
-            generics: Some(TupleTypeArguments::new(generics)),
-            arbitrary_length: false,
-        }))
+        TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
     }
 
     fn compute_type_get_item_on_callable(
@@ -1690,10 +1683,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                 }
             })
             .collect();
-        DbType::Tuple(TupleContent {
-            generics: Some(TupleTypeArguments::new(generics)),
-            arbitrary_length: false,
-        })
+        DbType::Tuple(TupleContent::new_fixed_length(generics))
     }
 
     pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Inferred {

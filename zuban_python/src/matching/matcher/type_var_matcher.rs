@@ -379,7 +379,7 @@ fn calculate_type_vars<'db>(
                         BoundKind::TypeVar(TypeVarBound::LowerAndUpper(t1, t2)) => {
                             t1.has_any() | t2.has_any()
                         }
-                        BoundKind::TypeVarTuple(ts) => ts.iter().any(|t| t.has_any()),
+                        BoundKind::TypeVarTuple(ts) => ts.has_any(),
                         BoundKind::Uncalculated => continue,
                     };
                     if has_any {

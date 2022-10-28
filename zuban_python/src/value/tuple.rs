@@ -1,5 +1,7 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, TupleContent};
+use crate::database::{
+    ComplexPoint, DbType, GenericItem, GenericsList, TupleContent, TupleTypeArguments,
+};
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
@@ -42,12 +44,17 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         Inferred::new_unsaved_complex(ComplexPoint::Instance(
                             tuple_cls.node_ref.as_link(),
                             Some(GenericsList::new_generics(Box::new([
-                                GenericItem::TypeArgument(match &self.content.generics {
-                                    Some(generics) => match generics.as_slice_ref() {
-                                        [] => DbType::Never,
-                                        [t] => t.clone(),
-                                        _ => i_s.db.python_state.object_db_type(),
-                                    },
+                                GenericItem::TypeArgument(match &self.content.args {
+                                    Some(TupleTypeArguments::FixedLength(ts)) => {
+                                        match ts.as_ref() {
+                                            [] => DbType::Never,
+                                            [t] => t.clone(),
+                                            _ => i_s.db.python_state.object_db_type(),
+                                        }
+                                    }
+                                    Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                                        t.as_ref().clone()
+                                    }
                                     None => DbType::Any,
                                 }),
                             ]))),
@@ -65,20 +72,14 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
-        if let Some(generics) = self.content.generics.as_ref() {
-            if self.content.arbitrary_length {
-                IteratorContent::Inferred(Inferred::execute_db_type(
-                    i_s,
-                    generics[0.into()].clone(),
-                ))
-            } else {
-                match &self.content.generics {
-                    Some(generics) => IteratorContent::FixedLengthTupleGenerics(generics.iter()),
-                    None => todo!(),
-                }
+        match &self.content.args {
+            Some(TupleTypeArguments::FixedLength(ts)) => {
+                IteratorContent::FixedLengthTupleGenerics(ts.iter())
             }
-        } else {
-            todo!()
+            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                IteratorContent::Inferred(Inferred::execute_db_type(i_s, t.as_ref().clone()))
+            }
+            None => todo!(),
         }
     }
 
@@ -88,26 +89,23 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
 
     fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => {
-                let by_index = |i_s: &mut InferenceState, index: usize| {
-                    self.content
-                        .generics
-                        .as_ref()
-                        .and_then(|generics| {
-                            generics
-                                .nth(index.into())
-                                .map(|db_type| Inferred::execute_db_type(i_s, db_type.clone()))
-                        })
-                        .unwrap_or_else(Inferred::new_unknown)
-                };
-                if self.content.arbitrary_length {
-                    by_index(i_s, 0)
-                } else if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
-                    by_index(i_s, usize::try_from(wanted).ok().unwrap_or_else(|| todo!()))
-                } else {
-                    todo!()
+            SliceTypeContent::Simple(simple) => match &self.content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => {
+                    if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
+                        let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
+                        ts.as_ref()
+                            .get::<usize>(index.into())
+                            .map(|db_type: &DbType| Inferred::execute_db_type(i_s, db_type.clone()))
+                            .unwrap_or_else(Inferred::new_unknown)
+                    } else {
+                        todo!()
+                    }
                 }
-            }
+                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                    Inferred::execute_db_type(i_s, t.as_ref().clone())
+                }
+                _ => Inferred::new_unknown(),
+            },
             SliceTypeContent::Slice(simple) => {
                 todo!()
             }

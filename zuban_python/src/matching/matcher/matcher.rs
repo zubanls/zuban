@@ -117,14 +117,24 @@ impl<'a> Matcher<'a> {
     pub fn match_type_var_tuple<'x, I: Iterator<Item = &'x DbType>>(
         &mut self,
         index: TypeVarIndex,
-        generics1: &TupleTypeArguments,
-        generics2: &TupleTypeArguments,
+        tuple1: &TupleTypeArguments,
+        tuple2: &TupleTypeArguments,
         generics2_iterator: &mut I,
-        arbitrary_length: bool,
     ) -> Match {
-        let fetch = match arbitrary_length {
-            false => generics2.len() as isize + 1 - generics1.len() as isize,
-            true => 1,
+        let fetch = match tuple1 {
+            TupleTypeArguments::FixedLength(ts1) => match tuple2 {
+                TupleTypeArguments::FixedLength(ts2) => ts2.len() as isize + 1 - ts1.len() as isize,
+                TupleTypeArguments::ArbitraryLength(t) => {
+                    let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+                    let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];
+                    if calculated.calculated() {
+                        todo!()
+                    } else {
+                        todo!()
+                    }
+                }
+            },
+            TupleTypeArguments::ArbitraryLength(_) => unreachable!(),
         };
         if let Ok(fetch) = fetch.try_into() {
             let tv_matcher = self.type_var_matcher.as_mut().unwrap();
@@ -133,7 +143,7 @@ impl<'a> Matcher<'a> {
                 todo!()
             } else {
                 let types: Box<_> = generics2_iterator.take(fetch).cloned().collect();
-                calculated.type_ = BoundKind::TypeVarTuple(TypeArguments::new(types));
+                calculated.type_ = BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
                 Match::new_true()
             }
         } else {

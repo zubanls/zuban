@@ -28,10 +28,7 @@ impl TypingClass {
 
     pub fn as_db_type(&self) -> DbType {
         match self.specific {
-            Specific::TypingTuple => DbType::Tuple(TupleContent {
-                generics: None,
-                arbitrary_length: true,
-            }),
+            Specific::TypingTuple => DbType::Tuple(TupleContent::new_empty()),
             Specific::TypingType => DbType::Type(Box::new(DbType::Any)),
             _ => todo!("{:?}", self.specific),
         }
@@ -890,6 +887,6 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
         ))
     } else {
         todo!();
-        None
+        //None
     }
 }

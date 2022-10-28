@@ -14,7 +14,7 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality, LocalityLink,
-    Point, PointLink, PointType, Points, Specific, TupleContent, TupleTypeArguments,
+    Point, PointLink, PointType, Points, Specific, TupleContent,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -1417,10 +1417,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                 }
             }
         }
-        let content = TupleContent {
-            generics: Some(TupleTypeArguments::new(generics.into_boxed_slice())),
-            arbitrary_length: false,
-        };
+        let content = TupleContent::new_fixed_length(generics.into_boxed_slice());
         debug!(
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
@@ -1632,10 +1629,9 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                         .use_cached_annotation_type(annotation)
                                         .into_db_type(self.i_s);
                                     Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Box::new(DbType::Tuple(TupleContent {
-                                            generics: Some(TupleTypeArguments::new(Box::new([p]))),
-                                            arbitrary_length: true,
-                                        })),
+                                        Box::new(DbType::Tuple(
+                                            TupleContent::new_arbitrary_length(p),
+                                        )),
                                     ))
                                 }
                                 SimpleParamKind::DoubleStarred => {
