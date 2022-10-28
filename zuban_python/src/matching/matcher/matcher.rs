@@ -157,7 +157,9 @@ impl<'a> Matcher<'a> {
                         if calculated.calculated() {
                             todo!()
                         } else {
-                            todo!()
+                            calculated.type_ = BoundKind::TypeVarTuple(
+                                TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
+                            );
                         }
                     } else {
                         todo!()

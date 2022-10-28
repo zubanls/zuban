@@ -994,12 +994,23 @@ impl DbType {
                     for g in ts.iter() {
                         match g {
                             Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
-                                GenericItem::TypeArguments(ts) => new_args.extend(match ts.args {
-                                    TupleTypeArguments::FixedLength(ts) => {
-                                        ts.into_vec().into_iter()
-                                    }
-                                    TupleTypeArguments::ArbitraryLength(t) => todo!(),
-                                }),
+                                GenericItem::TypeArguments(new) => {
+                                    new_args.extend(match new.args {
+                                        TupleTypeArguments::FixedLength(fixed) => {
+                                            fixed.into_vec().into_iter()
+                                        }
+                                        TupleTypeArguments::ArbitraryLength(t) => match ts.len() {
+                                            1 => {
+                                                return DbType::Tuple(TupleContent {
+                                                    args: Some(
+                                                        TupleTypeArguments::ArbitraryLength(t),
+                                                    ),
+                                                })
+                                            }
+                                            _ => todo!(),
+                                        },
+                                    })
+                                }
                                 x => unreachable!("{x:?}"),
                             },
                             _ => new_args.push(g.replace_type_vars(callable)),
