@@ -612,7 +612,7 @@ impl<'a> Type<'a> {
         use TupleTypeArguments::*;
         if matcher.has_type_var_matcher() {
             if let Some(ts) = t1.has_type_var_tuple() {
-                return matcher.match_type_var_tuple(i_s, ts, t2);
+                return matcher.match_type_var_tuple(i_s, ts, t2, variance);
             }
         }
         match (&t1.args, &t2.args, variance) {

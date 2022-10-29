@@ -119,14 +119,16 @@ impl<'a> Matcher<'a> {
         i_s: &mut InferenceState,
         tuple1: &[DbType],
         tuple2: &TupleContent,
+        variance: Variance,
     ) -> Match {
-        let tv_matcher = self.type_var_matcher.as_mut().unwrap();
         let mut matches = Match::new_true();
         match &tuple2.args {
             Some(TupleTypeArguments::FixedLength(ts2)) => {
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
                     if let Some(tvt) = t1.maybe_type_var_tuple() {
+                        // TODO TypeVarTuple currently we ignore variance completely
+                        let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                         let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
                         let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
                         if let Ok(fetch) = fetch.try_into() {
@@ -148,13 +150,14 @@ impl<'a> Matcher<'a> {
                             todo!()
                         }
                     } else if let Some(t2) = t2_iterator.next() {
-                        todo!()
+                        matches &= Type::new(t1).matches(i_s, self, &Type::new(t2), variance);
                     } else {
                         todo!()
                     }
                 }
             }
             Some(TupleTypeArguments::ArbitraryLength(t2)) => {
+                let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                 for t1 in tuple1.iter() {
                     if let Some(tvt) = t1.maybe_type_var_tuple() {
                         let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
