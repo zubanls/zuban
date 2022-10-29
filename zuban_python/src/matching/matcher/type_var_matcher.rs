@@ -339,6 +339,7 @@ fn calculate_type_vars<'db>(
     };
     let mut calculated_type_vars = vec![];
     calculated_type_vars.resize_with(type_vars_len, Default::default);
+    let mut used_type_vars = type_vars;
     let matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
             class,
@@ -349,7 +350,8 @@ fn calculate_type_vars<'db>(
         None => {
             if let FunctionOrCallable::Function(function) = func_or_callable {
                 if let Some(func_class) = function.class {
-                    func_class.type_vars(i_s).map(|_| {
+                    used_type_vars = func_class.type_vars(i_s);
+                    used_type_vars.map(|_| {
                         TypeVarMatcher::new(
                             class,
                             func_or_callable,
@@ -470,7 +472,7 @@ fn calculate_type_vars<'db>(
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
-                .zip(type_vars.unwrap().iter())
+                .zip(used_type_vars.unwrap().iter())
                 .map(|(c, type_var_like)| match c.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
