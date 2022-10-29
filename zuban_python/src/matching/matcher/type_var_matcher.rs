@@ -51,22 +51,23 @@ impl CalculatedTypeVarLike {
         &mut self,
         i_s: &mut InferenceState,
         fetch: usize,
-        mut items: I,
+        items: I,
     ) {
         match &mut self.type_ {
             BoundKind::TypeVarTuple(ts) => match &mut ts.args {
                 TupleTypeArguments::FixedLength(calc_ts) => {
                     if fetch == calc_ts.len() {
-                        for (t1, t2) in calc_ts.iter_mut().zip(items.by_ref().take(fetch)) {
+                        for (t1, t2) in calc_ts.iter_mut().zip(items) {
                             *t1 = Type::new(t1).common_base_class(i_s, &Type::new(t2));
                         }
                     } else {
-                        todo!()
+                        let t = common_base_class(i_s, calc_ts.iter().chain(items.map(|x| x)));
+                        ts.args = TupleTypeArguments::ArbitraryLength(Box::new(t));
                     }
                 }
                 TupleTypeArguments::ArbitraryLength(calc_t) => {
                     let base = common_base_class(i_s, items);
-                    self.merge_arbitrary_length_type_var_tuple(i_s, &base)
+                    //self.merge_arbitrary_length_type_var_tuple(i_s, &base)
                 }
             },
             _ => unreachable!(),
