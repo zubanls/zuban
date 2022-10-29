@@ -152,11 +152,7 @@ impl<'a> TypeVarMatcher<'a> {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
                     // Any is just ignored by the context later.
-                    BoundKind::Uncalculated => match type_var_usage.type_var_like.as_ref() {
-                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-                        TypeVarLike::TypeVarTuple(_) => todo!(),
-                        TypeVarLike::ParamSpec(_) => todo!(),
-                    },
+                    BoundKind::Uncalculated => type_var_usage.type_var_like.as_any_generic_item(),
                 }
             } else {
                 match self.func_or_callable {

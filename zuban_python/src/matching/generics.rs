@@ -149,10 +149,7 @@ impl<'a> Generics<'a> {
                     .collect(),
             ),
             Self::Any => GenericsList::new_generics(
-                // TODO TypeVarTuple what about any?
-                std::iter::repeat(GenericItem::TypeArgument(DbType::Any))
-                    .take(type_vars.len())
-                    .collect(),
+                type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
             ),
             Self::None => unreachable!(),
         })

@@ -1762,6 +1762,14 @@ impl TypeVarLike {
             Self::ParamSpec(s) => todo!(),    // s.name(db),
         }
     }
+
+    pub fn as_any_generic_item(&self) -> GenericItem {
+        match self {
+            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+            TypeVarLike::TypeVarTuple(_) => todo!(),
+            TypeVarLike::ParamSpec(_) => todo!(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
