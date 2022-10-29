@@ -2,14 +2,14 @@ use parsa_python_ast::ParamKind;
 
 use super::super::params::{InferrableParamIterator2, Param};
 use super::super::{
-    ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
-    ResultContext, SignatureMatch, Type,
+    common_base_class, ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher,
+    MismatchReason, ResultContext, SignatureMatch, Type,
 };
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, DbType, GenericItem, GenericsList, PointLink, TypeArguments, TypeVarLike,
-    TypeVarLikes, TypeVarUsage,
+    CallableContent, DbType, GenericItem, GenericsList, PointLink, TupleTypeArguments,
+    TypeArguments, TypeVarLike, TypeVarLikes, TypeVarUsage,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -45,6 +45,40 @@ pub struct CalculatedTypeVarLike {
 impl CalculatedTypeVarLike {
     pub fn calculated(&self) -> bool {
         !matches!(self.type_, BoundKind::Uncalculated)
+    }
+
+    pub fn merge_fixed_length_type_var_tuple<'x, I: Iterator<Item = &'x DbType>>(
+        &mut self,
+        i_s: &mut InferenceState,
+        fetch: usize,
+        mut items: I,
+    ) {
+        match &mut self.type_ {
+            BoundKind::TypeVarTuple(ts) => match &mut ts.args {
+                TupleTypeArguments::FixedLength(calc_ts) => {
+                    if fetch == calc_ts.len() {
+                        for (t1, t2) in calc_ts.iter_mut().zip(items.by_ref().take(fetch)) {
+                            *t1 = Type::new(t1).common_base_class(i_s, &Type::new(t2));
+                        }
+                    } else {
+                        todo!()
+                    }
+                }
+                TupleTypeArguments::ArbitraryLength(calc_t) => {
+                    let base = common_base_class(i_s, items);
+                    self.merge_arbitrary_length_type_var_tuple(i_s, &base)
+                }
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn merge_arbitrary_length_type_var_tuple(
+        &mut self,
+        i_s: &mut InferenceState,
+        item: &DbType,
+    ) {
+        todo!()
     }
 }
 

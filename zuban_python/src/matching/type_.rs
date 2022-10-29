@@ -952,3 +952,18 @@ impl<'a> Type<'a> {
         }
     }
 }
+
+pub fn common_base_class<'x, I: Iterator<Item = &'x DbType>>(
+    i_s: &mut InferenceState,
+    mut ts: I,
+) -> DbType {
+    if let Some(first) = ts.next() {
+        let mut result = Cow::Borrowed(first);
+        for t in ts {
+            result = Cow::Owned(Type::Type(result).common_base_class(i_s, &Type::new(t)));
+        }
+        result.into_owned()
+    } else {
+        todo!("should probably return never")
+    }
+}

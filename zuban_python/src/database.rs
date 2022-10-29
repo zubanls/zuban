@@ -515,6 +515,7 @@ impl TypeArguments {
             TupleTypeArguments::ArbitraryLength(t) => t.has_any(),
         }
     }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         self.args.format(format_data)
     }

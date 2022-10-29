@@ -128,20 +128,24 @@ impl<'a> Matcher<'a> {
                 for t1 in tuple1.iter() {
                     if let Some(tvt) = t1.maybe_type_var_tuple() {
                         let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                        if calculated.calculated() {
-                            todo!()
-                        } else {
-                            let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
-                            if let Ok(fetch) = fetch.try_into() {
+                        let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
+                        if let Ok(fetch) = fetch.try_into() {
+                            if calculated.calculated() {
+                                calculated.merge_fixed_length_type_var_tuple(
+                                    i_s,
+                                    fetch,
+                                    &mut t2_iterator.by_ref().take(fetch),
+                                );
+                            } else {
                                 let types: Box<_> =
                                     t2_iterator.by_ref().take(fetch).cloned().collect();
                                 calculated.type_ =
                                     BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
-                            } else {
-                                // Negative numbers mean that we have non-matching tuples, but the fact they do not match
-                                // will be noticed in a different place.
-                                todo!()
                             }
+                        } else {
+                            // Negative numbers mean that we have non-matching tuples, but the fact they do not match
+                            // will be noticed in a different place.
+                            todo!()
                         }
                     } else if let Some(t2) = t2_iterator.next() {
                         todo!()
