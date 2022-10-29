@@ -727,16 +727,17 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 None => unreachable!(),
             }
         } else {
-            TypeContent::DbType(match expected_count {
-                0 => DbType::Class(class.node_ref.as_link(), None),
-                _ => {
+            TypeContent::DbType(match type_vars {
+                None => DbType::Class(class.node_ref.as_link(), None),
+                Some(type_vars) => {
                     // Need to fill the generics, because we might have been in a
-                    // ClassWithoutTypeVar case.
-                    // TODO isn't this already done above???
+                    // ClassWithoutTypeVar case where the generic count is wrong.
                     if generics.is_empty() {
-                        backfill(self, &mut generics, expected_count);
-                        // TODO TypeVarTuple what about any?
-                        generics.resize(expected_count, GenericItem::TypeArgument(DbType::Any));
+                        backfill(self, &mut generics, given_count);
+                        for missing_type_var in type_vars.iter().skip(given_count) {
+                            generics.push(missing_type_var.as_any_generic_item())
+                        }
+                        generics.truncate(expected_count);
                     }
                     DbType::Class(
                         class.node_ref.as_link(),
