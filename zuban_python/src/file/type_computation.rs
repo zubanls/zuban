@@ -647,8 +647,62 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
         if let Some(type_vars) = type_vars {
             for type_var_like in type_vars.iter() {
-                let type_var = match type_var_like.as_ref() {
-                    TypeVarLike::TypeVar(type_var) => type_var,
+                #[rustfmt::skip] // TODO Temporary
+                let generic_item = match type_var_like.as_ref() {
+                    TypeVarLike::TypeVar(type_var) => {
+                        if let Some(slice_content) = iterator.next() {
+                            let t = self.compute_slice_type(slice_content);
+                            if let Some(bound) = &type_var.bound {
+                                // Performance: This could be optimized to not create new objects all the time.
+                                let t = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                                let i_s = &mut self.inference.i_s;
+                                let actual = Type::new(&t);
+                                let expected = Type::new(bound);
+                                if !expected.is_simple_super_type_of(i_s, &actual).bool() {
+                                    slice_content.as_node_ref().add_typing_issue(
+                                        i_s.db,
+                                        IssueType::TypeVarBoundViolation {
+                                            actual: actual.format(&FormatData::new_short(i_s.db)),
+                                            executable: Box::from(class.name()),
+                                            expected: expected.format(&FormatData::new_short(i_s.db)),
+                                        },
+                                    );
+                                }
+                            } else if !type_var.restrictions.is_empty() {
+                                let t2 = self.as_db_type(t.clone(), slice_content.as_node_ref());
+                                let i_s = &mut self.inference.i_s;
+                                let t2 = Type::new(&t2);
+                                if !type_var
+                                    .restrictions
+                                    .iter()
+                                    .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
+                                {
+                                    slice_content.as_node_ref().add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidTypeVarValue {
+                                            type_var_name: Box::from(type_var.name(i_s.db)),
+                                            func: format!("{:?}", class.name()).into(),
+                                            actual: t2.format(&FormatData::new_short(i_s.db)),
+                                        },
+                                    );
+                                }
+                            }
+                            given_count += 1;
+                            if generics.is_empty() {
+                                if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
+                                    continue;
+                                } else {
+                                    backfill(self, &mut generics, given_count - 1)
+                                }
+                            }
+                            GenericItem::TypeArgument(self.as_db_type(t, slice_content.as_node_ref()))
+                        } else {
+                            if generics.is_empty() {
+                                backfill(self, &mut generics, given_count);
+                            }
+                            type_var_like.as_any_generic_item()
+                        }
+                    }
                     TypeVarLike::TypeVarTuple(_) => {
                         if generics.is_empty() {
                             backfill(self, &mut generics, given_count);
@@ -666,64 +720,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 // If not enough type arguments are given, an error is raised elsewhere.
                                 Box::new([])
                             },
-                        ));
-                        todo!()
+                        ))
                     }
                     TypeVarLike::ParamSpec(_) => todo!(),
                 };
-                let db_type = if let Some(slice_content) = iterator.next() {
-                    let t = self.compute_slice_type(slice_content);
-                    if let Some(bound) = &type_var.bound {
-                        // Performance: This could be optimized to not create new objects all the time.
-                        let t = self.as_db_type(t.clone(), slice_content.as_node_ref());
-                        let i_s = &mut self.inference.i_s;
-                        let actual = Type::new(&t);
-                        let expected = Type::new(bound);
-                        if !expected.is_simple_super_type_of(i_s, &actual).bool() {
-                            slice_content.as_node_ref().add_typing_issue(
-                                i_s.db,
-                                IssueType::TypeVarBoundViolation {
-                                    actual: actual.format(&FormatData::new_short(i_s.db)),
-                                    executable: Box::from(class.name()),
-                                    expected: expected.format(&FormatData::new_short(i_s.db)),
-                                },
-                            );
-                        }
-                    } else if !type_var.restrictions.is_empty() {
-                        let t2 = self.as_db_type(t.clone(), slice_content.as_node_ref());
-                        let i_s = &mut self.inference.i_s;
-                        let t2 = Type::new(&t2);
-                        if !type_var
-                            .restrictions
-                            .iter()
-                            .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
-                        {
-                            slice_content.as_node_ref().add_typing_issue(
-                                i_s.db,
-                                IssueType::InvalidTypeVarValue {
-                                    type_var_name: Box::from(type_var.name(i_s.db)),
-                                    func: format!("{:?}", class.name()).into(),
-                                    actual: t2.format(&FormatData::new_short(i_s.db)),
-                                },
-                            );
-                        }
-                    }
-                    given_count += 1;
-                    if generics.is_empty() {
-                        if matches!(t, TypeContent::ClassWithoutTypeVar(_)) && primary.is_some() {
-                            continue;
-                        } else {
-                            backfill(self, &mut generics, given_count - 1)
-                        }
-                    }
-                    GenericItem::TypeArgument(self.as_db_type(t, slice_content.as_node_ref()))
-                } else {
-                    if generics.is_empty() {
-                        backfill(self, &mut generics, given_count);
-                    }
-                    type_var_like.as_any_generic_item()
-                };
-                generics.push(db_type);
+                generics.push(generic_item);
             }
         }
         for slice_content in iterator {
