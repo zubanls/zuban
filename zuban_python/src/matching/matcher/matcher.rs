@@ -147,12 +147,11 @@ impl<'a> Matcher<'a> {
                         } else {
                             // Negative numbers mean that we have non-matching tuples, but the fact they do not match
                             // will be noticed in a different place.
-                            todo!()
                         }
                     } else if let Some(t2) = t2_iterator.next() {
                         matches &= Type::new(t1).matches(i_s, self, &Type::new(t2), variance);
                     } else {
-                        todo!()
+                        matches &= Match::new_false();
                     }
                 }
             }
