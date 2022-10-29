@@ -647,11 +647,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
         if let Some(type_vars) = type_vars {
             for type_var_like in type_vars.iter() {
-                let type_var = match type_var_like.as_ref() {
-                    TypeVarLike::TypeVar(type_var) => type_var,
-                    _ => todo!(), // Not sure what to do here yet
-                };
                 let db_type = if let Some(slice_content) = iterator.next() {
+                    let type_var = match type_var_like.as_ref() {
+                        TypeVarLike::TypeVar(type_var) => type_var,
+                        _ => todo!(), // Not sure what to do here yet
+                    };
                     let t = self.compute_slice_type(slice_content);
                     if let Some(bound) = &type_var.bound {
                         // Performance: This could be optimized to not create new objects all the time.
@@ -696,14 +696,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             backfill(self, &mut generics, given_count - 1)
                         }
                     }
-                    self.as_db_type(t, slice_content.as_node_ref())
+                    GenericItem::TypeArgument(self.as_db_type(t, slice_content.as_node_ref()))
                 } else {
                     if generics.is_empty() {
                         backfill(self, &mut generics, given_count);
                     }
-                    DbType::Any
+                    type_var_like.as_any_generic_item()
                 };
-                generics.push(GenericItem::TypeArgument(db_type));
+                generics.push(db_type);
             }
         }
         for slice_content in iterator {
