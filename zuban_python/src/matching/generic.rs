@@ -1,24 +1,26 @@
+use std::borrow::Cow;
+
 use super::{FormatData, Match, Matcher, Type};
-use crate::database::{GenericItem, Variance};
+use crate::database::{GenericItem, TypeArguments, Variance};
 use crate::inference_state::InferenceState;
 
 pub enum Generic<'a> {
     TypeArgument(Type<'a>),
-    TypeVarTuple(()),
+    TypeVarTuple(Cow<'a, TypeArguments>),
 }
 
 impl<'a> Generic<'a> {
     pub fn new(g: &'a GenericItem) -> Self {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::new(t)),
-            GenericItem::TypeArguments(_) => todo!(),
+            GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Borrowed(args)),
         }
     }
 
     pub fn owned(g: GenericItem) -> Self {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::owned(t)),
-            GenericItem::TypeArguments(_) => todo!(),
+            GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Owned(args)),
         }
     }
 
