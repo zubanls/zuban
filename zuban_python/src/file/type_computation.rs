@@ -698,16 +698,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     self.as_db_type(t, slice_content.as_node_ref())
                 } else {
-                    // TODO this all feels weird, shouldn't we just call backfill in case no
-                    // generics were given? this feels like we might generate too many generics.
-                    for slice_content in slice_type.iter().take(given_count) {
-                        generics.push(match type_var_like.as_ref() {
-                            TypeVarLike::TypeVar(_) => {
-                                GenericItem::TypeArgument(self.compute_slice_db_type(slice_content))
-                            }
-                            TypeVarLike::TypeVarTuple(_) => todo!(),
-                            TypeVarLike::ParamSpec(_) => todo!(),
-                        })
+                    if generics.is_empty() {
+                        backfill(self, &mut generics, given_count);
                     }
                     DbType::Any
                 };
