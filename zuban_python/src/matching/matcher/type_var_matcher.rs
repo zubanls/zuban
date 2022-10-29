@@ -426,11 +426,18 @@ fn calculate_type_vars<'db>(
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
-                .map(|c| match c.type_ {
+                .zip(type_vars.unwrap().iter())
+                .map(|(c, type_var_like)| match c.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
-                    // TODO TypeVarTuple this feels wrong
-                    BoundKind::Uncalculated => GenericItem::TypeArgument(DbType::Never),
+                    BoundKind::Uncalculated => match type_var_like.as_ref() {
+                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
+                        // TODO TypeVarTuple this feels wrong
+                        TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
+                            TypeArguments::new_fixed_length(Box::new([])),
+                        ),
+                        TypeVarLike::ParamSpec(_) => todo!(),
+                    },
                 })
                 .collect(),
         )
