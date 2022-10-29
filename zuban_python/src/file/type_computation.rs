@@ -5,8 +5,8 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     GenericItem, GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias,
-    Specific, StringSlice, TupleContent, TypeAlias, TypeVarLike, TypeVarLikes, TypeVarManager,
-    TypeVarUsage, UnionEntry, UnionType,
+    Specific, StringSlice, TupleContent, TypeAlias, TypeArguments, TypeVarLike, TypeVarLikes,
+    TypeVarManager, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -647,11 +647,31 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
         if let Some(type_vars) = type_vars {
             for type_var_like in type_vars.iter() {
+                let type_var = match type_var_like.as_ref() {
+                    TypeVarLike::TypeVar(type_var) => type_var,
+                    TypeVarLike::TypeVarTuple(_) => {
+                        if generics.is_empty() {
+                            backfill(self, &mut generics, given_count);
+                        }
+                        let fetch =
+                            slice_type.iter().count() as isize + 1 - expected_count as isize;
+                        GenericItem::TypeArguments(TypeArguments::new_fixed_length(
+                            if let Ok(fetch) = fetch.try_into() {
+                                iterator
+                                    .by_ref()
+                                    .take(fetch)
+                                    .map(|s| self.compute_slice_db_type(s))
+                                    .collect()
+                            } else {
+                                // If not enough type arguments are given, an error is raised elsewhere.
+                                Box::new([])
+                            },
+                        ));
+                        todo!()
+                    }
+                    TypeVarLike::ParamSpec(_) => todo!(),
+                };
                 let db_type = if let Some(slice_content) = iterator.next() {
-                    let type_var = match type_var_like.as_ref() {
-                        TypeVarLike::TypeVar(type_var) => type_var,
-                        _ => todo!(), // Not sure what to do here yet
-                    };
                     let t = self.compute_slice_type(slice_content);
                     if let Some(bound) = &type_var.bound {
                         // Performance: This could be optimized to not create new objects all the time.
