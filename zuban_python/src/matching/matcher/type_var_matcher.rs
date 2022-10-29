@@ -124,7 +124,17 @@ impl<'a> TypeVarMatcher<'a> {
             if t.in_definition == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index.as_usize()];
                 if !current.calculated() {
-                    current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
+                    current.type_ = match t.type_var_like.as_ref() {
+                        TypeVarLike::TypeVar(_) => {
+                            BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any))
+                        }
+                        TypeVarLike::TypeVarTuple(_) => BoundKind::TypeVarTuple(
+                            TypeArguments::new_arbitrary_length(DbType::Any),
+                        ),
+                        TypeVarLike::ParamSpec(_) => {
+                            todo!()
+                        }
+                    }
                 }
             }
         });
@@ -142,8 +152,11 @@ impl<'a> TypeVarMatcher<'a> {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
                     // Any is just ignored by the context later.
-                    // TODO TypeVarTuple, does this make sense?
-                    BoundKind::Uncalculated => GenericItem::TypeArgument(DbType::Any),
+                    BoundKind::Uncalculated => match type_var_usage.type_var_like.as_ref() {
+                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+                        TypeVarLike::TypeVarTuple(_) => todo!(),
+                        TypeVarLike::ParamSpec(_) => todo!(),
+                    },
                 }
             } else {
                 match self.func_or_callable {
@@ -467,7 +480,7 @@ fn calculate_type_vars<'db>(
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
                     BoundKind::Uncalculated => match type_var_like.as_ref() {
                         TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
-                        // TODO TypeVarTuple this feels wrong
+                        // TODO TypeVarTuple this feels wrong, should maybe be never?
                         TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
                             TypeArguments::new_fixed_length(Box::new([])),
                         ),

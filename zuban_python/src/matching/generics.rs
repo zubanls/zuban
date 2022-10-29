@@ -90,7 +90,7 @@ impl<'a> Generics<'a> {
                 }
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
-            // TODO TypeVarTuple this feels wrong
+            // TODO TypeVarTuple any feels wrong
             Self::Any => Generic::TypeArgument(Type::new(&DbType::Any)),
             Self::None => unreachable!("No generics given, but {n:?} was requested"),
         }
