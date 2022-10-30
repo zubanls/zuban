@@ -593,7 +593,6 @@ testTypeVarTupleChaining
 testTypeVarTupleGenericClassDefn
 testPep646ArrayExample
 testPep646ArrayExampleWithDType
-testPep646ArrayExampleInfer
 testPep646TypeConcatenation
 testPep646TypeVarConcatenation
 testPep646TypeVarTupleUnpacking

@@ -380,26 +380,32 @@ fn calculate_type_vars<'db>(
                         &mut |i_s, _, result_class| {
                             if result_class.node_ref == class.node_ref {
                                 let mut calculating = matcher.iter_calculated_type_vars();
-                                let mut i = 0;
-                                for g in result_class.generics().iter(i_s.clone()) {
+                                for (type_var_like, g) in type_vars
+                                    .iter()
+                                    .zip(result_class.generics().iter(i_s.clone()))
+                                {
                                     let calculated = calculating.next().unwrap();
-                                    let g = match g {
-                                        Generic::TypeArgument(g) => g,
-                                        _ => todo!("Need to restructure this"),
+                                    match g {
+                                        Generic::TypeArgument(g) => {
+                                            if !g.is_any() {
+                                                let mut bound = TypeVarBound::new(
+                                                    g.as_db_type(i_s),
+                                                    match type_var_like.as_ref() {
+                                                        TypeVarLike::TypeVar(t) => t.variance,
+                                                        _ => unreachable!(),
+                                                    },
+                                                );
+                                                bound.invert_bounds();
+                                                calculated.type_ = BoundKind::TypeVar(bound);
+                                                calculated.defined_by_result_context = true;
+                                            }
+                                        }
+                                        Generic::TypeVarTuple(ts) => {
+                                            calculated.type_ =
+                                                BoundKind::TypeVarTuple(ts.into_owned());
+                                            calculated.defined_by_result_context = true;
+                                        }
                                     };
-                                    if !g.is_any() {
-                                        let mut bound = TypeVarBound::new(
-                                            g.as_db_type(i_s),
-                                            match &type_vars[i] {
-                                                TypeVarLike::TypeVar(t) => t.variance,
-                                                _ => todo!("????"),
-                                            },
-                                        );
-                                        bound.invert_bounds();
-                                        calculated.type_ = BoundKind::TypeVar(bound);
-                                        calculated.defined_by_result_context = true;
-                                        i += 1; // TODO please test that this works for multiple type vars
-                                    }
                                 }
                                 true
                             } else {
