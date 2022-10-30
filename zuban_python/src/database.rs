@@ -1041,7 +1041,7 @@ impl DbType {
                 }),
                 result_type: content.result_type.replace_type_vars(callable),
             })),
-            Self::NewType(_) => todo!(),
+            Self::NewType(t) => Self::NewType(t.clone()),
             Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 rec.link,
                 rec.generics.as_ref().map(remap_generics),
