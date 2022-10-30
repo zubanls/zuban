@@ -1,7 +1,9 @@
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{FormatData, Generic, Match, Matcher, Type};
-use crate::database::{DbType, GenericItem, GenericsList, TypeVarIndex, TypeVarLike, TypeVarLikes};
+use crate::database::{
+    DbType, GenericItem, GenericsList, TypeVarIndex, TypeVarLike, TypeVarLikes, Variance,
+};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -186,7 +188,7 @@ impl<'a> Generics<'a> {
         {
             let v = match tv.as_ref() {
                 TypeVarLike::TypeVar(t) => t.variance,
-                TypeVarLike::TypeVarTuple(_) => todo!(),
+                TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
                 TypeVarLike::ParamSpec(_) => todo!(),
             };
             matches &= t1.matches(i_s, matcher, t2, v);

@@ -50,8 +50,15 @@ impl<'a> Generic<'a> {
                 Self::TypeArgument(ref t2) => t1.matches(i_s, matcher, t2, variance),
                 _ => todo!(),
             },
-            Self::TypeVarTuple(_) => match other {
-                Self::TypeVarTuple(ref t2) => todo!(),
+            Self::TypeVarTuple(ts1) => match other {
+                Self::TypeVarTuple(ref ts2) => {
+                    if matcher.has_type_var_matcher() {
+                        if let Some(ts) = ts1.args.has_type_var_tuple() {
+                            return matcher.match_type_var_tuple(i_s, ts, &ts2.args, variance);
+                        }
+                    }
+                    todo!()
+                }
                 _ => todo!(),
             },
         }

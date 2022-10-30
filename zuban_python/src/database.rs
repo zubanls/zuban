@@ -1229,6 +1229,16 @@ pub enum TupleTypeArguments {
 }
 
 impl TupleTypeArguments {
+    pub fn has_type_var_tuple(&self) -> Option<&[DbType]> {
+        match self {
+            Self::FixedLength(ts) => ts
+                .iter()
+                .any(|t| t.maybe_type_var_tuple().is_some())
+                .then(|| ts.as_ref()),
+            _ => None,
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::FixedLength(ts) => ts
@@ -1265,13 +1275,9 @@ impl TupleContent {
     }
 
     pub fn has_type_var_tuple(&self) -> Option<&[DbType]> {
-        match &self.args {
-            Some(TupleTypeArguments::FixedLength(ts)) => ts
-                .iter()
-                .any(|t| t.maybe_type_var_tuple().is_some())
-                .then(|| ts.as_ref()),
-            _ => None,
-        }
+        self.args
+            .as_ref()
+            .and_then(|args| args.has_type_var_tuple())
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
@@ -1625,6 +1631,7 @@ impl TypeVarManager {
             .iter()
             .any(|t| matches!(t.type_var.as_ref(), TypeVarLike::TypeVarTuple(_)))
     }
+
     pub fn into_type_vars(self) -> TypeVarLikes {
         TypeVarLikes(
             self.type_vars

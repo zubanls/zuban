@@ -7,8 +7,8 @@ use super::type_var_matcher::{
 };
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleContent,
-    TupleTypeArguments, TypeArguments, TypeVar, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments,
+    TypeArguments, TypeVar, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -118,12 +118,12 @@ impl<'a> Matcher<'a> {
         &mut self,
         i_s: &mut InferenceState,
         tuple1: &[DbType],
-        tuple2: &TupleContent,
+        tuple2: &TupleTypeArguments,
         variance: Variance,
     ) -> Match {
         let mut matches = Match::new_true();
-        match &tuple2.args {
-            Some(TupleTypeArguments::FixedLength(ts2)) => {
+        match tuple2 {
+            TupleTypeArguments::FixedLength(ts2) => {
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
                     if let Some(tvt) = t1.maybe_type_var_tuple() {
@@ -155,7 +155,7 @@ impl<'a> Matcher<'a> {
                     }
                 }
             }
-            Some(TupleTypeArguments::ArbitraryLength(t2)) => {
+            TupleTypeArguments::ArbitraryLength(t2) => {
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                 for t1 in tuple1.iter() {
                     if let Some(tvt) = t1.maybe_type_var_tuple() {
@@ -171,9 +171,6 @@ impl<'a> Matcher<'a> {
                         todo!()
                     }
                 }
-            }
-            None => {
-                todo!()
             }
         };
         matches
