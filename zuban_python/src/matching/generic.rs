@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{match_tuple_type_arguments_without_type_var_tuples, FormatData, Match, Matcher, Type};
+use super::{match_tuple_type_arguments, FormatData, Match, Matcher, Type};
 use crate::database::{GenericItem, TypeArguments, Variance};
 use crate::inference_state::InferenceState;
 
@@ -57,9 +57,7 @@ impl<'a> Generic<'a> {
                             return matcher.match_type_var_tuple(i_s, ts, &ts2.args, variance);
                         }
                     }
-                    match_tuple_type_arguments_without_type_var_tuples(
-                        i_s, matcher, &ts1.args, &ts2.args, variance,
-                    )
+                    match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
                 }
                 _ => todo!(),
             },

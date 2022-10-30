@@ -1274,12 +1274,6 @@ impl TupleContent {
         Self { args: None }
     }
 
-    pub fn has_type_var_tuple(&self) -> Option<&[DbType]> {
-        self.args
-            .as_ref()
-            .and_then(|args| args.has_type_var_tuple())
-    }
-
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let base = match format_data.style {
             FormatStyle::Short => "tuple",

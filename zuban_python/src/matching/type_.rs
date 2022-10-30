@@ -609,21 +609,11 @@ impl<'a> Type<'a> {
         t2: &TupleContent,
         variance: Variance,
     ) -> Match {
-        if matcher.has_type_var_matcher() {
-            if let Some(ts) = t1.has_type_var_tuple() {
-                return matcher.match_type_var_tuple(
-                    i_s,
-                    ts,
-                    t2.args.as_ref().unwrap_or_else(|| todo!()),
-                    variance,
-                );
-            }
-        }
         if let Some(t1_args) = &t1.args {
             if let Some(t2_args) = &t2.args {
-                return match_tuple_type_arguments_without_type_var_tuples(
-                    i_s, matcher, t1_args, t2_args, variance,
-                );
+                return match_tuple_type_arguments(i_s, matcher, t1_args, t2_args, variance);
+            } else {
+                // TODO maybe set generics to any?
             }
         }
         Match::new_true()
@@ -945,7 +935,7 @@ pub fn common_base_class<'x, I: Iterator<Item = &'x DbType>>(
     }
 }
 
-pub fn match_tuple_type_arguments_without_type_var_tuples(
+pub fn match_tuple_type_arguments(
     i_s: &mut InferenceState,
     matcher: &mut Matcher,
     t1: &TupleTypeArguments,
@@ -953,6 +943,11 @@ pub fn match_tuple_type_arguments_without_type_var_tuples(
     variance: Variance,
 ) -> Match {
     use TupleTypeArguments::*;
+    if matcher.has_type_var_matcher() {
+        if let Some(ts) = t1.has_type_var_tuple() {
+            return matcher.match_type_var_tuple(i_s, ts, t2, variance);
+        }
+    }
     match (t1, t2, variance) {
         (tup1_args @ FixedLength(ts1), tup2_args @ FixedLength(ts2), _) => {
             if ts1.len() == ts2.len() {
