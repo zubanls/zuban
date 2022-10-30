@@ -27,14 +27,14 @@ impl<'a> Generic<'a> {
     pub fn into_generic_item(self, i_s: &mut InferenceState) -> GenericItem {
         match self {
             Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(i_s)),
-            Self::TypeVarTuple(_) => todo!(),
+            Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
         }
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
-            Self::TypeVarTuple(_) => todo!(),
+            Self::TypeVarTuple(ts) => ts.format(format_data),
         }
     }
 

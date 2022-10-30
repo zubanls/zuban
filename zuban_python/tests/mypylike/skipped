@@ -591,7 +591,6 @@ testInvalidUnpackTypes
 testTypeVarTupleMixed
 testTypeVarTupleChaining
 testTypeVarTupleGenericClassDefn
-testTypeVarTupleGenericClassWithMethods
 testPep646ArrayExample
 testPep646ArrayExampleWithDType
 testPep646ArrayExampleInfer
