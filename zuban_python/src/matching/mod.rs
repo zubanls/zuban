@@ -17,4 +17,4 @@ pub use matcher::{
 };
 pub use params::{matches_params, overload_has_overlapping_params};
 pub use result_context::ResultContext;
-pub use type_::{common_base_class, Type};
+pub use type_::{common_base_class, match_tuple_type_arguments_without_type_var_tuples, Type};

@@ -609,7 +609,6 @@ impl<'a> Type<'a> {
         t2: &TupleContent,
         variance: Variance,
     ) -> Match {
-        use TupleTypeArguments::*;
         if matcher.has_type_var_matcher() {
             if let Some(ts) = t1.has_type_var_tuple() {
                 return matcher.match_type_var_tuple(
@@ -620,41 +619,14 @@ impl<'a> Type<'a> {
                 );
             }
         }
-        match (&t1.args, &t2.args, variance) {
-            (Some(tup1_args @ FixedLength(ts1)), Some(tup2_args @ FixedLength(ts2)), _) => {
-                if ts1.len() == ts2.len() {
-                    let mut matches = Match::new_true();
-                    for (t1, t2) in ts1.iter().zip(ts2.iter()) {
-                        matches &= Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance);
-                    }
-                    matches
-                } else {
-                    Match::new_false()
-                }
+        if let Some(t1_args) = &t1.args {
+            if let Some(t2_args) = &t2.args {
+                return match_tuple_type_arguments_without_type_var_tuples(
+                    i_s, matcher, t1_args, t2_args, variance,
+                );
             }
-            (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2)), _) => {
-                Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
-            }
-            (
-                Some(tup1_args @ FixedLength(ts1)),
-                Some(tup2_args @ ArbitraryLength(t2)),
-                Variance::Covariant,
-            ) => Match::new_false(),
-            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2)), Variance::Invariant) => {
-                todo!()
-            }
-            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2)), Variance::Covariant) => {
-                let t1 = Type::new(t1);
-                ts2.iter()
-                    .all(|g2| {
-                        let t2 = Type::new(g2);
-                        t1.is_super_type_of(i_s, matcher, &t2).bool()
-                    })
-                    .into()
-            }
-            (Some(_), Some(_), _) => unreachable!(),
-            (None, _, _) | (_, None, _) => Match::new_true(),
         }
+        Match::new_true()
     }
 
     fn overlaps_tuple(i_s: &mut InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
@@ -970,5 +942,47 @@ pub fn common_base_class<'x, I: Iterator<Item = &'x DbType>>(
         result.into_owned()
     } else {
         todo!("should probably return never")
+    }
+}
+
+pub fn match_tuple_type_arguments_without_type_var_tuples(
+    i_s: &mut InferenceState,
+    matcher: &mut Matcher,
+    t1: &TupleTypeArguments,
+    t2: &TupleTypeArguments,
+    variance: Variance,
+) -> Match {
+    use TupleTypeArguments::*;
+    match (t1, t2, variance) {
+        (tup1_args @ FixedLength(ts1), tup2_args @ FixedLength(ts2), _) => {
+            if ts1.len() == ts2.len() {
+                let mut matches = Match::new_true();
+                for (t1, t2) in ts1.iter().zip(ts2.iter()) {
+                    matches &= Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance);
+                }
+                matches
+            } else {
+                Match::new_false()
+            }
+        }
+        (ArbitraryLength(t1), ArbitraryLength(t2), _) => {
+            Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
+        }
+        (tup1_args @ FixedLength(ts1), tup2_args @ ArbitraryLength(t2), Variance::Covariant) => {
+            Match::new_false()
+        }
+        (ArbitraryLength(t1), FixedLength(ts2), Variance::Invariant) => {
+            todo!()
+        }
+        (ArbitraryLength(t1), FixedLength(ts2), Variance::Covariant) => {
+            let t1 = Type::new(t1);
+            ts2.iter()
+                .all(|g2| {
+                    let t2 = Type::new(g2);
+                    t1.is_super_type_of(i_s, matcher, &t2).bool()
+                })
+                .into()
+        }
+        (_, _, _) => unreachable!(),
     }
 }
