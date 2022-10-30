@@ -941,10 +941,36 @@ impl DbType {
         }
     }
 
-    pub fn replace_type_vars(
+    pub fn replace_type_vars<C: FnMut(&TypeVarUsage) -> GenericItem>(
         &self,
-        callable: &mut impl FnMut(&TypeVarUsage) -> GenericItem,
+        callable: &mut C,
     ) -> Self {
+        let remap_tuple_likes = |args: &TupleTypeArguments, callable: &mut C| match args {
+            TupleTypeArguments::FixedLength(ts) => {
+                let mut new_args = vec![];
+                for g in ts.iter() {
+                    match g {
+                        Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
+                            GenericItem::TypeArguments(new) => new_args.extend(match new.args {
+                                TupleTypeArguments::FixedLength(fixed) => {
+                                    fixed.into_vec().into_iter()
+                                }
+                                TupleTypeArguments::ArbitraryLength(t) => match ts.len() {
+                                    1 => return TupleTypeArguments::ArbitraryLength(t),
+                                    _ => todo!(),
+                                },
+                            }),
+                            x => unreachable!("{x:?}"),
+                        },
+                        _ => new_args.push(g.replace_type_vars(callable)),
+                    }
+                }
+                TupleTypeArguments::FixedLength(new_args.into())
+            }
+            TupleTypeArguments::ArbitraryLength(t) => {
+                TupleTypeArguments::ArbitraryLength(Box::new(t.replace_type_vars(callable)))
+            }
+        };
         let remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
@@ -953,7 +979,11 @@ impl DbType {
                         GenericItem::TypeArgument(t) => {
                             GenericItem::TypeArgument(t.replace_type_vars(callable))
                         }
-                        GenericItem::TypeArguments(_) => todo!(),
+                        GenericItem::TypeArguments(ts) => {
+                            GenericItem::TypeArguments(TypeArguments {
+                                args: remap_tuple_likes(&ts.args, callable),
+                            })
+                        }
                     })
                     .collect(),
             )
@@ -990,38 +1020,9 @@ impl DbType {
             },
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(match &content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => {
-                    let mut new_args = vec![];
-                    for g in ts.iter() {
-                        match g {
-                            Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
-                                GenericItem::TypeArguments(new) => {
-                                    new_args.extend(match new.args {
-                                        TupleTypeArguments::FixedLength(fixed) => {
-                                            fixed.into_vec().into_iter()
-                                        }
-                                        TupleTypeArguments::ArbitraryLength(t) => match ts.len() {
-                                            1 => {
-                                                return DbType::Tuple(TupleContent {
-                                                    args: Some(
-                                                        TupleTypeArguments::ArbitraryLength(t),
-                                                    ),
-                                                })
-                                            }
-                                            _ => todo!(),
-                                        },
-                                    })
-                                }
-                                x => unreachable!("{x:?}"),
-                            },
-                            _ => new_args.push(g.replace_type_vars(callable)),
-                        }
-                    }
-                    TupleContent::new_fixed_length(new_args.into())
-                }
-                Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                    TupleContent::new_arbitrary_length(t.replace_type_vars(callable))
-                }
+                Some(args) => TupleContent {
+                    args: Some(remap_tuple_likes(args, callable)),
+                },
                 None => TupleContent::new_empty(),
             }),
             Self::Callable(content) => Self::Callable(Box::new(CallableContent {
