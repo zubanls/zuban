@@ -105,10 +105,10 @@ impl<'a> Generics<'a> {
                 if n > 0 {
                     todo!()
                 }
+                // TODO TypeVarTuple is this correct?
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
-            // TODO TypeVarTuple any feels wrong
-            Self::Any => Generic::TypeArgument(Type::new(&DbType::Any)),
+            Self::Any => Generic::owned(type_var_like.as_any_generic_item()),
             Self::None => unreachable!("No generics given, but {:?} was requested", n),
         }
     }
