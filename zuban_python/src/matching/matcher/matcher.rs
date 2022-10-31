@@ -279,7 +279,7 @@ impl<'a> Matcher<'a> {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class
                         .generics
-                        .nth(i_s, type_var_usage.index)
+                        .nth_usage(i_s, type_var_usage)
                         .expect_type_argument();
                     return g.simple_matches(i_s, value_type, type_var.variance);
                 }
@@ -350,7 +350,7 @@ impl<'a> Matcher<'a> {
                         if class.node_ref.as_link() == type_var_usage.in_definition {
                             return class
                                 .generics
-                                .nth(i_s, type_var_usage.index)
+                                .nth_usage(i_s, type_var_usage)
                                 .format(&FormatData::with_style(db, style));
                         }
                         let func_class = f.class.unwrap();

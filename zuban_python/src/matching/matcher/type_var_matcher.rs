@@ -161,7 +161,7 @@ impl<'a> TypeVarMatcher<'a> {
                             if class.node_ref.as_link() == type_var_usage.in_definition {
                                 return class
                                     .generics
-                                    .nth(i_s, type_var_usage.index)
+                                    .nth_usage(i_s, type_var_usage)
                                     .into_generic_item(i_s);
                             }
                             let func_class = f.class.unwrap();
@@ -260,7 +260,7 @@ impl<'db> CalculatedTypeArguments {
         }
         if let Some(c) = class {
             if usage.in_definition == c.node_ref.as_link() {
-                return c.generics().nth(i_s, usage.index).into_generic_item(i_s);
+                return c.generics().nth_usage(i_s, usage).into_generic_item(i_s);
             }
         }
         GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))

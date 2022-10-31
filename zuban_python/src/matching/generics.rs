@@ -2,7 +2,7 @@ use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slice
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    DbType, GenericItem, GenericsList, TypeVarIndex, TypeVarLike, TypeVarLikes, Variance,
+    DbType, GenericItem, GenericsList, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -13,7 +13,7 @@ macro_rules! replace_class_vars {
         match $type_var_generics {
             None | Some(Generics::None | Generics::Any) => Generic::new($g),
             Some(type_var_generics) => Generic::owned($g.replace_type_vars(&mut |t| {
-                type_var_generics.nth($i_s, t.index).into_generic_item($i_s)
+                type_var_generics.nth_usage($i_s, t).into_generic_item($i_s)
             })),
         }
     };
@@ -50,15 +50,29 @@ impl<'a> Generics<'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn nth<'db: 'a>(&self, i_s: &mut InferenceState<'db, '_>, n: TypeVarIndex) -> Generic<'a> {
+    pub fn nth_usage<'db: 'a>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        usage: &TypeVarUsage,
+    ) -> Generic<'a> {
+        self.nth(i_s, usage.type_var_like.as_ref(), usage.index.as_usize())
+    }
+
+    pub fn nth<'db: 'a>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        type_var_like: &TypeVarLike,
+        n: usize,
+    ) -> Generic<'a> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
-                if n.as_usize() == 0 {
+                if n == 0 {
                     Generic::TypeArgument(file.inference(i_s).use_cached_simple_generic_type(*expr))
                 } else {
                     debug!(
-                        "Generic expr {:?} has one item, but {n:?} was requested",
+                        "Generic expr {:?} has one item, but {:?} was requested",
                         expr.short_debug(),
+                        n,
                     );
                     todo!()
                 }
@@ -66,7 +80,7 @@ impl<'a> Generics<'a> {
             Self::SimpleGenericSlices(file, slices) => Generic::TypeArgument(
                 slices
                     .iter()
-                    .nth(n.as_usize())
+                    .nth(n)
                     .map(|slice_content| match slice_content {
                         SliceContent::NamedExpression(n) => file
                             .inference(i_s)
@@ -76,25 +90,26 @@ impl<'a> Generics<'a> {
                     .unwrap_or_else(|| todo!()),
             ),
             Self::List(list, type_var_generics) => {
-                if let Some(g) = list.nth(n) {
+                if let Some(g) = list.nth(n.into()) {
                     replace_class_vars!(i_s, g, type_var_generics)
                 } else {
                     debug!(
-                        "Generic list {} given, but item {n:?} was requested",
+                        "Generic list {} given, but item {:?} was requested",
                         self.format(&FormatData::new_short(i_s.db), None),
+                        n,
                     );
                     todo!()
                 }
             }
             Self::DbType(g) => {
-                if n.as_usize() > 0 {
+                if n > 0 {
                     todo!()
                 }
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
             // TODO TypeVarTuple any feels wrong
             Self::Any => Generic::TypeArgument(Type::new(&DbType::Any)),
-            Self::None => unreachable!("No generics given, but {n:?} was requested"),
+            Self::None => unreachable!("No generics given, but {:?} was requested", n),
         }
     }
 

@@ -1691,7 +1691,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                     if class.node_ref.as_link() == t.in_definition {
                                         return dbg!(class
                                             .generics()
-                                            .nth(self.i_s, t.index)
+                                            .nth_usage(self.i_s, t)
                                             .into_generic_item(self.i_s));
                                     }
                                 }
@@ -1699,10 +1699,9 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                     TypeVarLike::TypeVar(_) => {
                                         GenericItem::TypeArgument(DbType::TypeVarLike(t.clone()))
                                     }
-                                    TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
-                                        //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
-                                        todo!(),
-                                    ),
+                                    TypeVarLike::TypeVarTuple(_) => todo!(), //GenericItem::TypeArguments(
+                                    //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
+                                    //),
                                     TypeVarLike::ParamSpec(_) => todo!(),
                                 }
                             });
