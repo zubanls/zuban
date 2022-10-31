@@ -14,7 +14,7 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality, LocalityLink,
-    Point, PointLink, PointType, Points, Specific, TupleContent,
+    Point, PointLink, PointType, Points, Specific, TupleContent, TypeVarLike,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -1689,13 +1689,22 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             .replace_type_vars(&mut |t| {
                                 if let Some(class) = self.i_s.current_class() {
                                     if class.node_ref.as_link() == t.in_definition {
-                                        return class
+                                        return dbg!(class
                                             .generics()
                                             .nth(self.i_s, t.index)
-                                            .into_generic_item(self.i_s);
+                                            .into_generic_item(self.i_s));
                                     }
                                 }
-                                GenericItem::TypeArgument(DbType::TypeVarLike(t.clone()))
+                                match t.type_var_like.as_ref() {
+                                    TypeVarLike::TypeVar(_) => {
+                                        GenericItem::TypeArgument(DbType::TypeVarLike(t.clone()))
+                                    }
+                                    TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
+                                        //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
+                                        todo!(),
+                                    ),
+                                    TypeVarLike::ParamSpec(_) => todo!(),
+                                }
                             });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }
