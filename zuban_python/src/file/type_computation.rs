@@ -806,7 +806,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_db_type(first);
-                    if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
+                    if matches!(t, DbType::TypeVar(ref t) if t.is_type_var_tuple()) {
                         todo!()
                     }
                     return TypeContent::DbType(DbType::Tuple(TupleContent::new_arbitrary_length(
@@ -820,7 +820,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.compute_slice_db_type(slice_content)
                     /*
                      * TODO TypeVarTuple
-                    if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
+                    if matches!(t, DbType::TypeVar(ref t) if t.is_type_var_tuple()) {
                         todo!()
                     }
                     */
@@ -1102,13 +1102,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             let result = self.compute_slice_type(s);
             let unpacked_type_var_tuple = matches!(
                 result,
-                TypeContent::Unpacked(DbType::TypeVarLike(ref t))
+                TypeContent::Unpacked(DbType::TypeVar(ref t))
                     if matches!(t.type_var_like.as_ref(), TypeVarLike::TypeVarTuple(_))
                     && t.in_definition == self.for_definition
             );
             if !matches!(
                 result,
-                TypeContent::DbType(DbType::TypeVarLike(usage))
+                TypeContent::DbType(DbType::TypeVar(usage))
                     if usage.in_definition == self.for_definition
             ) && !unpacked_type_var_tuple
             {
@@ -1168,7 +1168,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 self.current_callable,
                             ) {
                                 TypeVarCallbackReturn::TypeVarLike(usage) => {
-                                    Some(DbType::TypeVarLike(usage))
+                                    Some(DbType::TypeVar(usage))
                                 }
                                 TypeVarCallbackReturn::UnboundTypeVar => {
                                     let node_ref = NodeRef::new(self.inference.file, name.index());
@@ -1187,7 +1187,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             let index = self
                                 .type_var_manager
                                 .add(type_var_like.clone(), self.current_callable);
-                            DbType::TypeVarLike(TypeVarUsage {
+                            DbType::TypeVar(TypeVarUsage {
                                 type_var_like,
                                 index,
                                 in_definition: self.for_definition,

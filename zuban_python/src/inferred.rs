@@ -1181,7 +1181,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             })
             .unwrap(),
         DbType::Intersection(lst) => todo!(),
-        DbType::TypeVarLike(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
+        DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
         DbType::Tuple(content) => callable(i_s, &Tuple::new(db_type, content)),
         DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
         DbType::None => callable(i_s, &NoneInstance()),

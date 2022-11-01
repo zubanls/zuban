@@ -256,7 +256,7 @@ impl<'db: 'a, 'a> Function<'a> {
             }
         });
         if !unbound_type_vars.is_empty() {
-            if let Some(DbType::TypeVarLike(t)) = self.result_type(i_s).maybe_db_type() {
+            if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
                 if unbound_type_vars.contains(&t.type_var_like) {
                     NodeRef::new(
                         self.node_ref.file,
@@ -291,7 +291,7 @@ impl<'db: 'a, 'a> Function<'a> {
                             .into_generic_item(i_s);
                     }
                 }
-                GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))
+                GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
             })
         };
         let result_type = self.result_type(i_s);

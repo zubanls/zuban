@@ -106,7 +106,7 @@ impl<'a> Matcher<'a> {
                 TypeVarLike::ParamSpec(_) => todo!(),
             },
             None => match value_type.maybe_db_type() {
-                Some(DbType::TypeVarLike(t2)) => {
+                Some(DbType::TypeVar(t2)) => {
                     (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
                 }
                 _ => Match::new_false(),
@@ -207,7 +207,7 @@ impl<'a> Matcher<'a> {
             // Before setting the type var, we need to check if the constraints match.
             let mut mismatch_constraints = false;
             if !type_var.restrictions.is_empty() {
-                if let Some(DbType::TypeVarLike(t2)) = value_type.maybe_db_type() {
+                if let Some(DbType::TypeVar(t2)) = value_type.maybe_db_type() {
                     if let TypeVarLike::TypeVar(t2) = t2.type_var_like.as_ref() {
                         if !t2.restrictions.is_empty() {
                             if current.calculated() {
@@ -302,7 +302,7 @@ impl<'a> Matcher<'a> {
                             // Happens e.g. for testInvalidNumberOfTypeArgs
                             // class C:  # Forgot to add type params here
                             //     def __init__(self, t: T) -> None: pass
-                            if let Some(DbType::TypeVarLike(v)) = value_type.maybe_db_type() {
+                            if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
                                 if v == type_var_usage {
                                     return Match::new_true();
                                 }

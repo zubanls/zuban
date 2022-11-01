@@ -332,7 +332,7 @@ impl PythonInference<'_, '_, '_, '_> {
                             .iter()
                             .enumerate()
                             .map(|(i, t)| {
-                                GenericItem::TypeArgument(DbType::TypeVarLike(TypeVarUsage {
+                                GenericItem::TypeArgument(DbType::TypeVar(TypeVarUsage {
                                     type_var_like: t.clone(),
                                     index: i.into(),
                                     in_definition: class.node_ref.as_link(),

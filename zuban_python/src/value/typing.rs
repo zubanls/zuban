@@ -165,7 +165,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
 
     fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self.db_type {
-            DbType::TypeVarLike(t) => match t.type_var_like.as_ref() {
+            DbType::TypeVar(t) => match t.type_var_like.as_ref() {
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some(bound) = &type_var.bound {
                         TypingType::new(
@@ -215,7 +215,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
             }
             DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
                 .execute(i_s, args, result_context, on_type_error),
-            DbType::TypeVarLike(t) => match t.type_var_like.as_ref() {
+            DbType::TypeVar(t) => match t.type_var_like.as_ref() {
                 TypeVarLike::TypeVar(type_var) => {
                     if let Some(bound) = &type_var.bound {
                         TypingType::new(

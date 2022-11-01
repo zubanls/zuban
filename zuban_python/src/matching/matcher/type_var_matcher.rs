@@ -176,9 +176,7 @@ impl<'a> TypeVarMatcher<'a> {
                                     GenericItem::TypeArguments(_) => todo!(),
                                 }
                             } else {
-                                GenericItem::TypeArgument(DbType::TypeVarLike(
-                                    type_var_usage.clone(),
-                                ))
+                                GenericItem::TypeArgument(DbType::TypeVar(type_var_usage.clone()))
                             }
                         } else {
                             todo!()
@@ -257,7 +255,7 @@ impl CalculatedTypeArguments {
                 fm[usage.index].clone()
             } else {
                 // TODO we are just passing the type vars again. Does this make sense?
-                GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))
+                GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
             };
         }
         if let Some(c) = class {
@@ -265,7 +263,7 @@ impl CalculatedTypeArguments {
                 return c.generics().nth_usage(i_s, usage).into_generic_item(i_s);
             }
         }
-        GenericItem::TypeArgument(DbType::TypeVarLike(usage.clone()))
+        GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
     }
 }
 

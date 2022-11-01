@@ -69,7 +69,7 @@ impl<'a> Type<'a> {
 
     pub fn overlaps(&self, i_s: &mut InferenceState, other: &Self) -> bool {
         match other.maybe_db_type() {
-            Some(DbType::TypeVarLike(t2)) => match t2.type_var_like.as_ref() {
+            Some(DbType::TypeVar(t2)) => match t2.type_var_like.as_ref() {
                 TypeVarLike::TypeVar(t2_type_var) => {
                     return if let Some(bound) = &t2_type_var.bound {
                         self.overlaps(i_s, &Type::new(bound))
@@ -131,7 +131,7 @@ impl<'a> Type<'a> {
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
-                DbType::TypeVarLike(t1) => match t1.type_var_like.as_ref() {
+                DbType::TypeVar(t1) => match t1.type_var_like.as_ref() {
                     TypeVarLike::TypeVar(t1_type_var) => {
                         if let Some(db_t) = &t1_type_var.bound {
                             Type::new(db_t).overlaps(i_s, other)
@@ -181,7 +181,7 @@ impl<'a> Type<'a> {
                     }
                     _ => Match::new_false(),
                 },
-                DbType::TypeVarLike(t1) => {
+                DbType::TypeVar(t1) => {
                     if matcher.is_matching_reverse() {
                         Match::new_false()
                     } else {
@@ -414,7 +414,7 @@ impl<'a> Type<'a> {
                     return Match::True { with_any: true };
                 }
                 DbType::None => return Match::new_true(),
-                DbType::TypeVarLike(t2) => {
+                DbType::TypeVar(t2) => {
                     if matcher.is_matching_reverse() {
                         return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
                     }
@@ -803,7 +803,7 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                DbType::TypeVarLike(t) => {
+                DbType::TypeVar(t) => {
                     if matcher.has_type_var_matcher() {
                         let t =
                             Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type));
@@ -860,7 +860,7 @@ impl<'a> Type<'a> {
                 Some(DbType::Union(union_type)) => union_type
                     .iter()
                     .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
-                Some(db_type @ DbType::TypeVarLike(_)) => {
+                Some(db_type @ DbType::TypeVar(_)) => {
                     if matcher.has_type_var_matcher() {
                         Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type))
                             .on_any_class(i_s, matcher, callable)

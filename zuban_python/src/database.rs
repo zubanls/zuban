@@ -665,7 +665,7 @@ impl UnionType {
 
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
-            DbType::TypeVarLike(_) => 2,
+            DbType::TypeVar(_) => 2,
             DbType::None => 3,
             DbType::Any => 4,
             _ => t.type_.has_type_vars().into(),
@@ -701,7 +701,7 @@ pub enum DbType {
     Class(PointLink, Option<GenericsList>),
     Union(UnionType),
     Intersection(IntersectionType),
-    TypeVarLike(TypeVarUsage),
+    TypeVar(TypeVarUsage),
     Type(Box<DbType>),
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
@@ -811,7 +811,7 @@ impl DbType {
             .into(),
             Self::Union(union) => union.format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
-            Self::TypeVarLike(t) => format_data.format_type_var(t),
+            Self::TypeVar(t) => format_data.format_type_var(t),
             Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
@@ -867,7 +867,7 @@ impl DbType {
                     t.search_type_vars(found_type_var);
                 }
             }
-            Self::TypeVarLike(t) => found_type_var(t),
+            Self::TypeVar(t) => found_type_var(t),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => match &content.args {
                 Some(TupleTypeArguments::FixedLength(ts)) => {
@@ -913,7 +913,7 @@ impl DbType {
             Self::Class(_, Some(generics)) => search_in_generics(generics),
             Self::Union(u) => u.iter().any(|t| t.has_any()),
             Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any()),
-            Self::TypeVarLike(t) => false,
+            Self::TypeVar(t) => false,
             Self::Type(db_type) => db_type.has_any(),
             Self::Tuple(content) => match &content.args {
                 Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().any(|t| t.has_any()),
@@ -936,7 +936,7 @@ impl DbType {
 
     pub fn maybe_type_var_tuple(&self) -> Option<&TypeVarUsage> {
         match self {
-            DbType::TypeVarLike(t) if t.is_type_var_tuple() => Some(t),
+            DbType::TypeVar(t) if t.is_type_var_tuple() => Some(t),
             _ => None,
         }
     }
@@ -950,7 +950,7 @@ impl DbType {
                 let mut new_args = vec![];
                 for g in ts.iter() {
                     match g {
-                        Self::TypeVarLike(t) if t.is_type_var_tuple() => match callable(t) {
+                        Self::TypeVar(t) if t.is_type_var_tuple() => match callable(t) {
                             GenericItem::TypeArguments(new) => new_args.extend(match new.args {
                                 TupleTypeArguments::FixedLength(fixed) => {
                                     fixed.into_vec().into_iter()
@@ -1014,7 +1014,7 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::TypeVarLike(t) => match callable(t) {
+            Self::TypeVar(t) => match callable(t) {
                 GenericItem::TypeArgument(t) => t,
                 GenericItem::TypeArguments(ts) => unreachable!(),
             },
@@ -1089,7 +1089,7 @@ impl DbType {
                     .collect(),
                 format_as_overload: intersection.format_as_overload,
             }),
-            Self::TypeVarLike(t) => DbType::TypeVarLike(manager.remap_type_var(t)),
+            Self::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
             Self::Type(db_type) => {
                 Self::Type(Box::new(db_type.rewrite_late_bound_callables(manager)))
             }
@@ -1908,7 +1908,7 @@ impl TypeAlias {
                         TypeVarLike::TypeVarTuple(_) => todo!(),
                         TypeVarLike::ParamSpec(_) => todo!(),
                     },
-                    false => GenericItem::TypeArgument(DbType::TypeVarLike(t.clone())),
+                    false => GenericItem::TypeArgument(DbType::TypeVar(t.clone())),
                 })
         }
     }
