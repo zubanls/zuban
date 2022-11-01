@@ -61,6 +61,8 @@ impl CalculatedTypeVarLike {
                             *t1 = Type::new(t1).common_base_class(i_s, &Type::new(t2));
                         }
                     } else {
+                        // We use map to make an iterator with covariant lifetimes.
+                        #[allow(clippy::map_identity)]
                         let t = common_base_class(i_s, calc_ts.iter().chain(items.map(|x| x)));
                         ts.args = TupleTypeArguments::ArbitraryLength(Box::new(t));
                     }
