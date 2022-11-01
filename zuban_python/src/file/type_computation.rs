@@ -21,7 +21,7 @@ use crate::value::{Class, Function, Module, Value};
 
 pub enum TypeVarCallbackReturn {
     TypeVarLike(TypeVarUsage),
-    Invalid,
+    UnboundTypeVar,
     NotFound,
 }
 
@@ -222,7 +222,7 @@ pub(super) fn type_computation_for_variable_annotation(
         Some(_) => TypeVarCallbackReturn::NotFound,
         None => {
             node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVarLike { type_var_like });
-            TypeVarCallbackReturn::Invalid
+            TypeVarCallbackReturn::UnboundTypeVar
         }
     }
 }
@@ -1176,7 +1176,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 TypeVarCallbackReturn::TypeVarLike(usage) => {
                                     Some(DbType::TypeVarLike(usage))
                                 }
-                                TypeVarCallbackReturn::Invalid => Some(DbType::Any),
+                                TypeVarCallbackReturn::UnboundTypeVar => Some(DbType::Any),
                                 TypeVarCallbackReturn::NotFound => None,
                             }
                         })
