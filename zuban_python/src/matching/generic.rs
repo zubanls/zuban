@@ -4,6 +4,7 @@ use super::{match_tuple_type_arguments, FormatData, Match, Matcher, Type};
 use crate::database::{GenericItem, TypeArguments, Variance};
 use crate::inference_state::InferenceState;
 
+#[derive(Debug)]
 pub enum Generic<'a> {
     TypeArgument(Type<'a>),
     TypeVarTuple(Cow<'a, TypeArguments>),

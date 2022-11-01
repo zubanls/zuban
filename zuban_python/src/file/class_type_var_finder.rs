@@ -65,7 +65,7 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     }
 
     fn find_in_expr(&mut self, expr: Expression<'file>) {
-        let type_content = match expr.unpack() {
+        match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
                 self.find_in_expression_part(n);
             }

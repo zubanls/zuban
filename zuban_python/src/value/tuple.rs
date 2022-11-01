@@ -94,7 +94,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                     if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
                         let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
                         ts.as_ref()
-                            .get::<usize>(index.into())
+                            .get(index)
                             .map(|db_type: &DbType| Inferred::execute_db_type(i_s, db_type.clone()))
                             .unwrap_or_else(Inferred::new_unknown)
                     } else {

@@ -243,7 +243,7 @@ pub struct CalculatedTypeArguments {
     pub type_arguments: Option<GenericsList>,
 }
 
-impl<'db> CalculatedTypeArguments {
+impl CalculatedTypeArguments {
     pub fn lookup_type_var_usage(
         &self,
         i_s: &mut InferenceState,

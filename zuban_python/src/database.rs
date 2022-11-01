@@ -423,7 +423,7 @@ pub enum Locality {
     Todo,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct PointLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,
@@ -1115,7 +1115,7 @@ impl DbType {
                     .collect::<Box<_>>();
                 Self::Callable(Box::new(CallableContent {
                     defined_at: content.defined_at,
-                    type_vars: (!type_vars.is_empty()).then(|| TypeVarLikes(type_vars)),
+                    type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes(type_vars)),
                     params: content.params.as_ref().map(|params| {
                         params
                             .iter()
@@ -1193,7 +1193,7 @@ impl DbType {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionType {
     Function,
     Property,
@@ -1201,7 +1201,7 @@ pub enum FunctionType {
     StaticMethod,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Overload {
     pub implementing_function: Option<PointLink>,
     pub functions: Box<[PointLink]>,
@@ -1631,7 +1631,7 @@ impl TypeVarManager {
         TypeVarLikes(
             self.type_vars
                 .into_iter()
-                .filter_map(|t| t.most_outer_callable.is_none().then(|| t.type_var))
+                .filter_map(|t| t.most_outer_callable.is_none().then_some(t.type_var))
                 .collect(),
         )
     }
@@ -1687,7 +1687,7 @@ impl TypeVarManager {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
 pub enum Variance {
     Invariant = 0,
@@ -2216,7 +2216,7 @@ impl std::clone::Clone for ClassStorage {
     }
 }
 
-impl<'db> std::cmp::PartialEq for ClassStorage {
+impl std::cmp::PartialEq for ClassStorage {
     fn eq(&self, other: &Self) -> bool {
         unreachable!("Should never happen with classes")
     }

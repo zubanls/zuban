@@ -146,7 +146,7 @@ impl<'file> SliceOrSimple<'file> {
 
 pub struct SliceIterator<'file>(&'file PythonFile, ASTSliceIterator<'file>);
 
-impl<'db, 'file> Iterator for SliceIterator<'file> {
+impl<'file> Iterator for SliceIterator<'file> {
     type Item = SliceOrSimple<'file>;
 
     fn next(&mut self) -> Option<Self::Item> {

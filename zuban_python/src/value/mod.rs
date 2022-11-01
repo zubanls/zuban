@@ -35,10 +35,12 @@ pub use typing::{
     TypingClass, TypingClassVar, TypingType,
 };
 
+type OnOverloadMismatch<'a> = Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>;
+
 #[derive(Clone, Copy)]
 pub struct OnTypeError<'db, 'a> {
     pub callback: OnTypeErrorCallback<'db, 'a>,
-    pub on_overload_mismatch: Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>,
+    pub on_overload_mismatch: OnOverloadMismatch<'a>,
 }
 
 impl<'db, 'a> OnTypeError<'db, 'a> {
@@ -128,7 +130,7 @@ pub enum IteratorContent<'a> {
     Any,
 }
 
-impl<'db> IteratorContent<'_> {
+impl IteratorContent<'_> {
     pub fn infer_all(self, i_s: &mut InferenceState) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
@@ -186,7 +188,7 @@ pub enum LookupResult {
     None,
 }
 
-impl<'db> LookupResult {
+impl LookupResult {
     fn into_maybe_inferred(self) -> Option<Inferred> {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {

@@ -228,7 +228,7 @@ pub enum ValueNameIterator<T> {
     Finished,
 }
 
-impl<'db, T> Iterator for ValueNameIterator<T> {
+impl<T> Iterator for ValueNameIterator<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {

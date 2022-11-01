@@ -144,7 +144,7 @@ pub struct TypingType<'a> {
     pub db_type: &'a DbType,
 }
 
-impl<'db, 'a> TypingType<'a> {
+impl<'a> TypingType<'a> {
     pub fn new(db: &'a Database, full_db_type: Cow<'a, DbType>, db_type: &'a DbType) -> Self {
         Self {
             db,
@@ -247,7 +247,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
     }
 }
 
-impl<'db> fmt::Debug for TypingType<'_> {
+impl fmt::Debug for TypingType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypingType")
             .field(
@@ -744,7 +744,7 @@ fn maybe_type_var_tuple(
             todo!()
         }
 
-        let mut default = None;
+        let default = None;
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
@@ -758,7 +758,7 @@ fn maybe_type_var_tuple(
                             .inference(i_s)
                             .compute_type_var_constraint(node_ref.as_expression())
                         {
-                            default = Some(t);
+                            //default = Some(t);
                             todo!()
                         } else {
                             todo!()

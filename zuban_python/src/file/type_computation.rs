@@ -57,7 +57,7 @@ pub(super) enum InvalidVariableType<'a> {
     Other,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TypeComputationOrigin {
     TypeCommentOrAnnotation,
     TypeApplication,
@@ -813,14 +813,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             slice_type
                 .iter()
                 .map(|slice_content| {
-                    let t = self.compute_slice_db_type(slice_content);
+                    self.compute_slice_db_type(slice_content)
                     /*
                      * TODO TypeVarTuple
                     if matches!(t, DbType::TypeVarLike(ref t) if t.is_type_var_tuple()) {
                         todo!()
                     }
                     */
-                    t
                 })
                 .collect()
         } else {

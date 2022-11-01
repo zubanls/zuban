@@ -221,7 +221,7 @@ impl<'a> Generics<'a> {
         let mut matches = true;
         let mut type_var_iterator = type_vars.map(|t| t.iter());
         for (t1, t2) in self.iter(i_s.clone()).zip(other_generics) {
-            let xxx = if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
+            if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
                 // TODO ?
             } else {
             };
