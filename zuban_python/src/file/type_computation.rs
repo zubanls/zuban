@@ -210,7 +210,7 @@ pub(super) fn type_computation_for_variable_annotation(
     }
     if let Some(func) = i_s.current_function() {
         if let Some(type_vars) = func.type_vars(i_s) {
-            let usage = type_vars.find(type_var_like.clone(), func.node_ref.as_link());
+            let usage = type_vars.find(type_var_like, func.node_ref.as_link());
             if let Some(usage) = usage {
                 return TypeVarCallbackReturn::TypeVarLike(usage);
             }
