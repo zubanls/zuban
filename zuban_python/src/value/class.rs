@@ -12,6 +12,7 @@ use crate::database::{
 use crate::diagnostics::IssueType;
 use crate::file::{
     BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation, TypeComputationOrigin,
+    TypeVarCallbackReturn,
 };
 use crate::file_state::File;
 use crate::getitem::SliceType;
@@ -257,13 +258,13 @@ impl<'db: 'a, 'a> Class<'a> {
                                     if let Some(usage) = type_vars
                                         .find(type_var_like.clone(), self.node_ref.as_link())
                                     {
-                                        return Some(DbType::TypeVarLike(usage));
+                                        return TypeVarCallbackReturn::TypeVarLike(usage);
                                     }
                                 }
                                 if let Some(usage) =
                                     self.maybe_type_var_like_in_parent(i_s, &type_var_like)
                                 {
-                                    return Some(DbType::TypeVarLike(usage));
+                                    return TypeVarCallbackReturn::TypeVarLike(usage);
                                 }
                                 todo!("Maybe class in func");
                             }),

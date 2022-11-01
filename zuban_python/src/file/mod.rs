@@ -33,7 +33,9 @@ use crate::workspaces::DirContent;
 pub use class_type_var_finder::ClassTypeVarFinder;
 use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
-pub use type_computation::{BaseClass, TypeComputation, TypeComputationOrigin};
+pub use type_computation::{
+    BaseClass, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
+};
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);

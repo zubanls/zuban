@@ -15,7 +15,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{PythonFile, TypeComputation, TypeComputationOrigin};
+use crate::file::{PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn};
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -219,16 +219,16 @@ impl<'db: 'a, 'a> Function<'a> {
                     class
                         .type_vars(i_s)
                         .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
-                        .map(DbType::TypeVarLike)
+                        .map(TypeVarCallbackReturn::TypeVarLike)
                 })
-                .or_else(|| {
+                .unwrap_or_else(|| {
                     if in_result_type.get()
                         && manager.position(&type_var).is_none()
                         && current_callable.is_none()
                     {
                         unbound_type_vars.push(type_var);
                     }
-                    None
+                    TypeVarCallbackReturn::NotFound
                 })
         };
         let mut type_computation = TypeComputation::new(

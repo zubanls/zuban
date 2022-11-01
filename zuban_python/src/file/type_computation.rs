@@ -19,13 +19,19 @@ use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
+pub enum TypeVarCallbackReturn {
+    TypeVarLike(TypeVarUsage),
+    Invalid,
+    NotFound,
+}
+
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &mut InferenceState<'db, '_>,
     &TypeVarManager,
     Rc<TypeVarLike>,
     NodeRef,
     Option<PointLink>, // current_callable
-) -> Option<DbType>;
+) -> TypeVarCallbackReturn;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug, Clone)]
@@ -195,27 +201,30 @@ pub(super) fn type_computation_for_variable_annotation(
     type_var_like: Rc<TypeVarLike>,
     node_ref: NodeRef,
     current_callable: Option<PointLink>,
-) -> Option<DbType> {
+) -> TypeVarCallbackReturn {
     if let Some(class) = i_s.current_class() {
         if let Some(usage) = class
             .type_vars(i_s)
             .and_then(|t| t.find(type_var_like.clone(), class.node_ref.as_link()))
         {
-            return Some(DbType::TypeVarLike(usage));
+            return TypeVarCallbackReturn::TypeVarLike(usage);
         }
     }
     if let Some(func) = i_s.current_function() {
         if let Some(type_vars) = func.type_vars(i_s) {
             let usage = type_vars.find(type_var_like.clone(), func.node_ref.as_link());
             if let Some(usage) = usage {
-                return Some(DbType::TypeVarLike(usage));
+                return TypeVarCallbackReturn::TypeVarLike(usage);
             }
         }
     }
-    current_callable.is_none().then(|| {
-        node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVarLike { type_var_like });
-        DbType::Any
-    })
+    match current_callable {
+        Some(_) => TypeVarCallbackReturn::NotFound,
+        None => {
+            node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVarLike { type_var_like });
+            TypeVarCallbackReturn::Invalid
+        }
+    }
 }
 
 pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
@@ -1157,13 +1166,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.type_var_callback
                         .as_mut()
                         .and_then(|callback| {
-                            callback(
+                            match callback(
                                 self.inference.i_s,
                                 &self.type_var_manager,
                                 type_var_like.clone(),
                                 NodeRef::new(self.inference.file, name.index()),
                                 self.current_callable,
-                            )
+                            ) {
+                                TypeVarCallbackReturn::TypeVarLike(usage) => {
+                                    Some(DbType::TypeVarLike(usage))
+                                }
+                                TypeVarCallbackReturn::Invalid => Some(DbType::Any),
+                                TypeVarCallbackReturn::NotFound => None,
+                            }
                         })
                         .unwrap_or_else(|| {
                             let index = self
@@ -1543,11 +1558,11 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                     // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
                     // generally how type aliases work.
                     let index = type_var_manager.add(type_var_like.clone(), None);
-                    Some(DbType::TypeVarLike(TypeVarUsage {
+                    TypeVarCallbackReturn::TypeVarLike(TypeVarUsage {
                         type_var_like,
                         index,
                         in_definition,
-                    }))
+                    })
                 };
                 let p = file.points.get(expr.index());
                 let mut comp = TypeComputation::new(
