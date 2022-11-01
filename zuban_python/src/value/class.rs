@@ -253,7 +253,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, _: &_, type_var_like: Rc<TypeVarLike>, _, _| {
+                            Some(&mut |i_s, _: &_, type_var_like: Rc<TypeVarLike>, _| {
                                 if let Some(type_vars) = type_vars {
                                     if let Some(usage) = type_vars
                                         .find(type_var_like.clone(), self.node_ref.as_link())

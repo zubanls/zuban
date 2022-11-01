@@ -29,7 +29,6 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &mut InferenceState<'db, '_>,
     &TypeVarManager,
     Rc<TypeVarLike>,
-    NodeRef,
     Option<PointLink>, // current_callable
 ) -> TypeVarCallbackReturn;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
@@ -199,7 +198,6 @@ pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     manager: &TypeVarManager,
     type_var_like: Rc<TypeVarLike>,
-    node_ref: NodeRef,
     current_callable: Option<PointLink>,
 ) -> TypeVarCallbackReturn {
     if let Some(class) = i_s.current_class() {
@@ -1167,7 +1165,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 self.inference.i_s,
                                 &self.type_var_manager,
                                 type_var_like.clone(),
-                                NodeRef::new(self.inference.file, name.index()),
                                 self.current_callable,
                             ) {
                                 TypeVarCallbackReturn::TypeVarLike(usage) => {
@@ -1553,23 +1550,20 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
             } else {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let mut type_var_manager = TypeVarManager::default();
-                let mut type_var_callback = |_: &mut InferenceState,
-                                             _: &_,
-                                             type_var_like: Rc<TypeVarLike>,
-                                             _: NodeRef,
-                                             _| {
-                    // Here we avoid all late bound type var calculation for callable, which is how
-                    // mypy works. The default behavior without a type_var_callback would be to
-                    // just calculate all late bound type vars, but that would mean that something
-                    // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
-                    // generally how type aliases work.
-                    let index = type_var_manager.add(type_var_like.clone(), None);
-                    TypeVarCallbackReturn::TypeVarLike(TypeVarUsage {
-                        type_var_like,
-                        index,
-                        in_definition,
-                    })
-                };
+                let mut type_var_callback =
+                    |_: &mut InferenceState, _: &_, type_var_like: Rc<TypeVarLike>, _| {
+                        // Here we avoid all late bound type var calculation for callable, which is how
+                        // mypy works. The default behavior without a type_var_callback would be to
+                        // just calculate all late bound type vars, but that would mean that something
+                        // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
+                        // generally how type aliases work.
+                        let index = type_var_manager.add(type_var_like.clone(), None);
+                        TypeVarCallbackReturn::TypeVarLike(TypeVarUsage {
+                            type_var_like,
+                            index,
+                            in_definition,
+                        })
+                    };
                 let p = file.points.get(expr.index());
                 let mut comp = TypeComputation::new(
                     self,
@@ -1758,8 +1752,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
-        let mut on_type_var =
-            |_: &mut InferenceState, _: &_, type_var, _: NodeRef, current_callable| todo!();
+        let mut on_type_var = |_: &mut InferenceState, _: &_, type_var, current_callable| todo!();
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(
             self,

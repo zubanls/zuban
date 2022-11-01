@@ -212,7 +212,6 @@ impl<'db: 'a, 'a> Function<'a> {
         let mut on_type_var = |i_s: &mut InferenceState,
                                manager: &TypeVarManager,
                                type_var: Rc<TypeVarLike>,
-                               node_ref: NodeRef,
                                current_callable: Option<_>| {
             self.class
                 .and_then(|class| {
