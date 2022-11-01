@@ -220,10 +220,7 @@ pub(super) fn type_computation_for_variable_annotation(
     }
     match current_callable {
         Some(_) => TypeVarCallbackReturn::NotFound,
-        None => {
-            node_ref.add_typing_issue(i_s.db, IssueType::UnboundTypeVarLike { type_var_like });
-            TypeVarCallbackReturn::UnboundTypeVar
-        }
+        None => TypeVarCallbackReturn::UnboundTypeVar,
     }
 }
 
@@ -1176,7 +1173,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 TypeVarCallbackReturn::TypeVarLike(usage) => {
                                     Some(DbType::TypeVarLike(usage))
                                 }
-                                TypeVarCallbackReturn::UnboundTypeVar => Some(DbType::Any),
+                                TypeVarCallbackReturn::UnboundTypeVar => {
+                                    let node_ref = NodeRef::new(self.inference.file, name.index());
+                                    node_ref.add_typing_issue(
+                                        self.inference.i_s.db,
+                                        IssueType::UnboundTypeVarLike {
+                                            type_var_like: type_var_like.clone(),
+                                        },
+                                    );
+                                    Some(DbType::Any)
+                                }
                                 TypeVarCallbackReturn::NotFound => None,
                             }
                         })
