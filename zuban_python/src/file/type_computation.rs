@@ -28,7 +28,7 @@ pub enum TypeVarCallbackReturn {
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &mut InferenceState<'db, '_>,
     &TypeVarManager,
-    Rc<TypeVarLike>,
+    TypeVarLike,
     Option<PointLink>, // current_callable
 ) -> TypeVarCallbackReturn;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;

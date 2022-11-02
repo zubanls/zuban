@@ -470,7 +470,7 @@ pub enum ComplexPoint {
     TypeInstance(Box<DbType>),
 
     // Relevant for types only (not inference)
-    TypeVarLike(Rc<TypeVarLike>),
+    TypeVarLike(TypeVarLike),
     TypeAlias(Box<TypeAlias>),
 }
 
@@ -497,7 +497,7 @@ pub struct TypeArguments {
 }
 
 impl TypeArguments {
-    pub fn new_fixed_length(args: Box<[DbType]>) -> Self {
+    pub fn new_fixed_length(args: Box<[TypeOrTypeVarTuple]>) -> Self {
         Self {
             args: TupleTypeArguments::FixedLength(args),
         }
@@ -506,13 +506,6 @@ impl TypeArguments {
     pub fn new_arbitrary_length(arg: DbType) -> Self {
         Self {
             args: TupleTypeArguments::ArbitraryLength(Box::new(arg)),
-        }
-    }
-
-    pub fn has_any(&self) -> bool {
-        match &self.args {
-            TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| t.has_any()),
-            TupleTypeArguments::ArbitraryLength(t) => t.has_any(),
         }
     }
 
@@ -531,7 +524,7 @@ pub enum GenericItem {
 impl GenericItem {
     pub fn replace_type_vars(
         &self,
-        callable: &mut impl FnMut(&TypeVarUsage) -> GenericItem,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Self {
         match self {
             Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_vars(callable)),
@@ -846,7 +839,7 @@ impl DbType {
         }
     }
 
-    pub fn search_type_vars(&self, found_type_var: &mut impl FnMut(&TypeVarUsage)) {
+    pub fn search_type_vars(&self, found_type_var: &mut impl FnMut(TypeVarLikeUsage)) {
         let mut search_in_generics = |generics: &GenericsList| {
             for g in generics.iter() {
                 match g {
@@ -867,12 +860,17 @@ impl DbType {
                     t.search_type_vars(found_type_var);
                 }
             }
-            Self::TypeVar(t) => found_type_var(t),
+            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(t)),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => match &content.args {
                 Some(TupleTypeArguments::FixedLength(ts)) => {
                     for t in ts.iter() {
-                        t.search_type_vars(found_type_var);
+                        match t {
+                            TypeOrTypeVarTuple::Type(t) => t.search_type_vars(found_type_var),
+                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                                found_type_var(TypeVarLikeUsage::TypeVarTuple(t))
+                            }
+                        }
                     }
                 }
                 Some(TupleTypeArguments::ArbitraryLength(t)) => t.search_type_vars(found_type_var),
@@ -915,11 +913,7 @@ impl DbType {
             Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any()),
             Self::TypeVar(t) => false,
             Self::Type(db_type) => db_type.has_any(),
-            Self::Tuple(content) => match &content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().any(|t| t.has_any()),
-                Some(TupleTypeArguments::ArbitraryLength(t)) => t.has_any(),
-                None => true,
-            },
+            Self::Tuple(content) => content.args.map(|args| args.has_any()).unwrap_or(true),
             Self::Callable(content) => {
                 if let Some(params) = &content.params {
                     params.iter().any(|param| param.db_type.has_any())
@@ -934,14 +928,7 @@ impl DbType {
         }
     }
 
-    pub fn maybe_type_var_tuple(&self) -> Option<&TypeVarUsage> {
-        match self {
-            DbType::TypeVar(t) if t.is_type_var_tuple() => Some(t),
-            _ => None,
-        }
-    }
-
-    pub fn replace_type_vars<C: FnMut(&TypeVarUsage) -> GenericItem>(
+    pub fn replace_type_vars<C: FnMut(TypeVarLikeUsage) -> GenericItem>(
         &self,
         callable: &mut C,
     ) -> Self {
@@ -949,20 +936,28 @@ impl DbType {
             TupleTypeArguments::FixedLength(ts) => {
                 let mut new_args = vec![];
                 for g in ts.iter() {
+                    //callable(TypeVarLikeUsage::TypeVar(t))
                     match g {
-                        Self::TypeVar(t) if t.is_type_var_tuple() => match callable(t) {
-                            GenericItem::TypeArguments(new) => new_args.extend(match new.args {
-                                TupleTypeArguments::FixedLength(fixed) => {
-                                    fixed.into_vec().into_iter()
+                        TypeOrTypeVarTuple::Type(t) => {
+                            new_args.push(TypeOrTypeVarTuple::Type(t.replace_type_vars(callable)))
+                        }
+                        TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                            match callable(TypeVarLikeUsage::TypeVarTuple(t)) {
+                                GenericItem::TypeArguments(new) => {
+                                    new_args.extend(match new.args {
+                                        TupleTypeArguments::FixedLength(fixed) => {
+                                            fixed.into_vec().into_iter()
+                                        }
+                                        TupleTypeArguments::ArbitraryLength(t) => match ts.len() {
+                                            // TODO this might be wrong with different data types??
+                                            1 => return TupleTypeArguments::ArbitraryLength(t),
+                                            _ => todo!(),
+                                        },
+                                    })
                                 }
-                                TupleTypeArguments::ArbitraryLength(t) => match ts.len() {
-                                    1 => return TupleTypeArguments::ArbitraryLength(t),
-                                    _ => todo!(),
-                                },
-                            }),
-                            x => unreachable!("{x:?}"),
-                        },
-                        _ => new_args.push(g.replace_type_vars(callable)),
+                                x => unreachable!("{x:?}"),
+                            }
+                        }
                     }
                 }
                 TupleTypeArguments::FixedLength(new_args.into())
@@ -1014,7 +1009,7 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::TypeVar(t) => match callable(t) {
+            Self::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(t)) {
                 GenericItem::TypeArgument(t) => t,
                 GenericItem::TypeArguments(ts) => unreachable!(),
             },
@@ -1096,7 +1091,14 @@ impl DbType {
             Self::Tuple(content) => Self::Tuple(match &content.args {
                 Some(TupleTypeArguments::FixedLength(ts)) => TupleContent::new_fixed_length(
                     ts.iter()
-                        .map(|g| g.rewrite_late_bound_callables(manager))
+                        .map(|g| match g {
+                            TypeOrTypeVarTuple::Type(t) => {
+                                TypeOrTypeVarTuple::Type(t.rewrite_late_bound_callables(manager))
+                            }
+                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                                TypeOrTypeVarTuple::TypeVarTuple(manager.remap_type_var_tuple(t))
+                            }
+                        })
                         .collect(),
                 ),
                 Some(TupleTypeArguments::ArbitraryLength(t)) => {
@@ -1110,7 +1112,7 @@ impl DbType {
                     .iter()
                     .filter_map(|t| {
                         (t.most_outer_callable == Some(content.defined_at))
-                            .then(|| t.type_var.clone())
+                            .then(|| t.type_var_like.clone())
                     })
                     .collect::<Box<_>>();
                 Self::Callable(Box::new(CallableContent {
@@ -1168,7 +1170,16 @@ impl DbType {
                             ts1.into_vec()
                                 .into_iter()
                                 .zip(ts2.into_vec().into_iter())
-                                .map(|(t1, t2)| t1.merge_matching_parts(t2))
+                                .map(|(t1, t2)| match (t1, t2) {
+                                    (
+                                        TypeOrTypeVarTuple::Type(t1),
+                                        TypeOrTypeVarTuple::Type(t2),
+                                    ) => TypeOrTypeVarTuple::Type(t1.merge_matching_parts(t2)),
+                                    _ => match t1 == t2 {
+                                        true => t1.clone(),
+                                        false => todo!(),
+                                    },
+                                })
                                 .collect(),
                         )
                     }
@@ -1224,19 +1235,44 @@ impl Overload {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum TypeOrTypeVarTuple {
+    Type(DbType),
+    TypeVarTuple(TypeVarTupleUsage),
+}
+
+impl TypeOrTypeVarTuple {
+    fn format(&self, format_data: &FormatData) -> Box<str> {
+        match self {
+            Self::Type(t) => t.format(format_data),
+            Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(format_data.db)).into(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub enum TupleTypeArguments {
-    FixedLength(Box<[DbType]>),
+    FixedLength(Box<[TypeOrTypeVarTuple]>),
     ArbitraryLength(Box<DbType>),
 }
 
 impl TupleTypeArguments {
-    pub fn has_type_var_tuple(&self) -> Option<&[DbType]> {
+    pub fn has_type_var_tuple(&self) -> Option<&[TypeOrTypeVarTuple]> {
         match self {
             Self::FixedLength(ts) => ts
                 .iter()
-                .any(|t| t.maybe_type_var_tuple().is_some())
+                .any(|t| matches!(t, TypeOrTypeVarTuple::TypeVarTuple(_)))
                 .then(|| ts.as_ref()),
             _ => None,
+        }
+    }
+
+    pub fn has_any(&self) -> bool {
+        match self {
+            Self::FixedLength(ts) => ts.iter().any(|t| match t {
+                TypeOrTypeVarTuple::Type(t) => t.has_any(),
+                TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+            }),
+            Self::ArbitraryLength(t) => t.has_any(),
         }
     }
 
@@ -1259,7 +1295,7 @@ pub struct TupleContent {
 }
 
 impl TupleContent {
-    pub fn new_fixed_length(args: Box<[DbType]>) -> Self {
+    pub fn new_fixed_length(args: Box<[TypeOrTypeVarTuple]>) -> Self {
         Self {
             args: Some(TupleTypeArguments::FixedLength(args)),
         }
@@ -1393,7 +1429,7 @@ impl CallableContent {
                     format!(
                         " [{}]",
                         t.iter()
-                            .map(|t| match t.as_ref() {
+                            .map(|t| match t {
                                 TypeVarLike::TypeVar(t) => {
                                     let mut name = t.name(format_data.db).to_owned();
                                     if let Some(bound) = &t.bound {
@@ -1508,7 +1544,7 @@ impl RecursiveAlias {
                     .replace_type_vars(true, &mut |t| {
                         self.generics
                             .as_ref()
-                            .map(|g| g.nth(t.index).unwrap().clone())
+                            .map(|g| g.nth(t.index()).unwrap().clone())
                             .unwrap()
                     })
                     .into_owned()
@@ -1525,7 +1561,7 @@ impl std::cmp::PartialEq for RecursiveAlias {
 
 #[derive(Debug)]
 struct UnresolvedTypeVarLike {
-    type_var: Rc<TypeVarLike>,
+    type_var_like: TypeVarLike,
     most_outer_callable: Option<PointLink>,
 }
 
@@ -1571,15 +1607,15 @@ impl TypeVarManager {
     pub fn position(&self, type_var: &TypeVarLike) -> Option<usize> {
         self.type_vars
             .iter()
-            .position(|t| t.type_var.as_ref() == type_var)
+            .position(|t| &t.type_var_like == type_var)
     }
 
     pub fn add(
         &mut self,
-        type_var: Rc<TypeVarLike>,
+        type_var_like: TypeVarLike,
         in_callable: Option<PointLink>,
     ) -> TypeVarIndex {
-        if let Some(index) = self.position(type_var.as_ref()) {
+        if let Some(index) = self.position(&type_var_like) {
             self.type_vars[index].most_outer_callable = self.calculate_most_outer_callable(
                 self.type_vars[index].most_outer_callable,
                 in_callable,
@@ -1587,7 +1623,7 @@ impl TypeVarManager {
             index.into()
         } else {
             self.type_vars.push(UnresolvedTypeVarLike {
-                type_var,
+                type_var_like,
                 most_outer_callable: in_callable,
             });
             (self.type_vars.len() - 1).into()
@@ -1603,14 +1639,6 @@ impl TypeVarManager {
         self.type_vars.insert(force_index.as_usize(), removed);
     }
 
-    pub fn lookup_for_remap(&self, tv: &TypeVarUsage) -> TypeVarUsage {
-        TypeVarUsage {
-            type_var_like: tv.type_var_like.clone(),
-            index: self.position(&tv.type_var_like).unwrap().into(),
-            in_definition: tv.in_definition,
-        }
-    }
-
     pub fn has_late_bound_type_vars(&self) -> bool {
         self.type_vars
             .iter()
@@ -1624,14 +1652,14 @@ impl TypeVarManager {
     pub fn has_type_var_tuples(&self) -> bool {
         self.type_vars
             .iter()
-            .any(|t| matches!(t.type_var.as_ref(), TypeVarLike::TypeVarTuple(_)))
+            .any(|t| matches!(t.type_var_like, TypeVarLike::TypeVarTuple(_)))
     }
 
     pub fn into_type_vars(self) -> TypeVarLikes {
         TypeVarLikes(
             self.type_vars
                 .into_iter()
-                .filter_map(|t| t.most_outer_callable.is_none().then_some(t.type_var))
+                .filter_map(|t| t.most_outer_callable.is_none().then_some(t.type_var_like))
                 .collect(),
         )
     }
@@ -1665,25 +1693,34 @@ impl TypeVarManager {
         let mut index = 0;
         let mut in_definition = None;
         for t in self.type_vars.iter().rev() {
-            if t.type_var == usage.type_var_like {
-                if t.most_outer_callable.is_some() {
-                    in_definition = t.most_outer_callable;
-                } else {
-                    return usage.clone();
+            match t.type_var_like {
+                TypeVarLike::TypeVar(type_var) if type_var == usage.type_var => {
+                    if t.most_outer_callable.is_some() {
+                        in_definition = t.most_outer_callable;
+                    } else {
+                        return usage.clone();
+                    }
                 }
-            } else if in_definition == t.most_outer_callable {
-                index += 1;
+                _ => {
+                    if in_definition == t.most_outer_callable {
+                        index += 1;
+                    }
+                }
             }
         }
         if let Some(in_definition) = in_definition {
             TypeVarUsage {
-                type_var_like: usage.type_var_like.clone(),
+                type_var: usage.type_var.clone(),
                 in_definition,
                 index: index.into(),
             }
         } else {
             usage.clone()
         }
+    }
+
+    fn remap_type_var_tuple(&self, usage: &TypeVarTupleUsage) -> TypeVarTupleUsage {
+        todo!()
     }
 }
 
@@ -1706,10 +1743,10 @@ impl Variance {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeVarLikes(Box<[Rc<TypeVarLike>]>);
+pub struct TypeVarLikes(Box<[TypeVarLike]>);
 
 impl TypeVarLikes {
-    pub fn from_vec(vec: Vec<Rc<TypeVarLike>>) -> Self {
+    pub fn from_vec(vec: Vec<TypeVarLike>) -> Self {
         Self(vec.into_boxed_slice())
     }
 
@@ -1723,7 +1760,7 @@ impl TypeVarLikes {
 
     pub fn find(
         &self,
-        type_var_like: Rc<TypeVarLike>,
+        type_var_like: TypeVarLike,
         in_definition: PointLink,
     ) -> Option<TypeVarUsage> {
         self.0
@@ -1736,7 +1773,7 @@ impl TypeVarLikes {
             })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &Rc<TypeVarLike>> {
+    pub fn iter(&self) -> impl Iterator<Item = &TypeVarLike> {
         self.0.iter()
     }
 }
@@ -1751,9 +1788,9 @@ impl std::ops::Index<usize> for TypeVarLikes {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeVarLike {
-    TypeVar(TypeVar),
-    TypeVarTuple(TypeVarTuple),
-    ParamSpec(ParamSpec),
+    TypeVar(Rc<TypeVar>),
+    TypeVarTuple(Rc<TypeVarTuple>),
+    ParamSpec(Rc<ParamSpec>),
 }
 
 impl TypeVarLike {
@@ -1841,14 +1878,37 @@ impl PartialEq for ParamSpec {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeVarUsage {
-    pub type_var_like: Rc<TypeVarLike>,
+    pub type_var: Rc<TypeVar>,
     pub index: TypeVarIndex,
     pub in_definition: PointLink,
 }
 
-impl TypeVarUsage {
-    pub fn is_type_var_tuple(&self) -> bool {
-        matches!(self.type_var_like.as_ref(), TypeVarLike::TypeVarTuple(_))
+#[derive(Debug, PartialEq, Clone)]
+pub struct TypeVarTupleUsage {
+    pub type_var_tuple: Rc<TypeVarTuple>,
+    pub index: TypeVarIndex,
+    pub in_definition: PointLink,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub enum TypeVarLikeUsage<'a> {
+    TypeVar(&'a TypeVarUsage),
+    TypeVarTuple(&'a TypeVarTupleUsage),
+}
+
+impl<'a> TypeVarLikeUsage<'a> {
+    fn in_definition(&self) -> PointLink {
+        match self {
+            Self::TypeVar(t) => t.in_definition,
+            Self::TypeVarTuple(t) => t.in_definition,
+        }
+    }
+
+    fn index(&self) -> TypeVarIndex {
+        match self {
+            Self::TypeVar(t) => t.index,
+            Self::TypeVarTuple(t) => t.index,
+        }
     }
 }
 
@@ -1888,7 +1948,7 @@ impl TypeAlias {
                     GenericsList::new_generics(
                         self.type_vars
                             .iter()
-                            .map(|tv| match tv.as_ref() {
+                            .map(|tv| match tv {
                                 TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                                 TypeVarLike::TypeVarTuple(_) => todo!(),
                                 TypeVarLike::ParamSpec(_) => todo!(),
@@ -1902,13 +1962,17 @@ impl TypeAlias {
             self.db_type.as_ref().clone()
         } else {
             self.db_type
-                .replace_type_vars(&mut |t| match t.in_definition == self.location {
-                    true => match t.type_var_like.as_ref() {
-                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-                        TypeVarLike::TypeVarTuple(_) => todo!(),
-                        TypeVarLike::ParamSpec(_) => todo!(),
+                .replace_type_vars(&mut |t| match t.in_definition() == self.location {
+                    true => match t {
+                        TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+                        TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
                     },
-                    false => GenericItem::TypeArgument(DbType::TypeVar(t.clone())),
+                    false => match t {
+                        TypeVarLikeUsage::TypeVar(t) => {
+                            GenericItem::TypeArgument(DbType::TypeVar(t.clone()))
+                        }
+                        TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
+                    },
                 })
         }
     }
@@ -1916,7 +1980,7 @@ impl TypeAlias {
     pub fn replace_type_vars(
         &self,
         remove_recursive_wrapper: bool,
-        callable: &mut impl FnMut(&TypeVarUsage) -> GenericItem,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Cow<DbType> {
         if self.is_recursive && !remove_recursive_wrapper {
             return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
@@ -1926,12 +1990,15 @@ impl TypeAlias {
                         self.type_vars
                             .iter()
                             .enumerate()
-                            .map(|(i, type_var)| {
-                                callable(&TypeVarUsage {
-                                    type_var_like: type_var.clone(),
-                                    index: i.into(),
-                                    in_definition: self.location,
-                                })
+                            .map(|(i, type_var_like)| match type_var_like {
+                                TypeVarLike::TypeVar(type_var) => {
+                                    callable(TypeVarLikeUsage::TypeVar(&TypeVarUsage {
+                                        type_var: type_var.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    }))
+                                }
+                                _ => todo!(),
                             })
                             .collect(),
                     )
