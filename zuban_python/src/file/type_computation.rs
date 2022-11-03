@@ -450,7 +450,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
-            TypeContent::Unpacked(t) => todo!(),
+            TypeContent::Unpacked(t) => DbType::Any, // TODO Should probably raise an error?
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
@@ -499,7 +499,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     }
 
     fn compute_slice_type_or_type_var_tuple(&mut self, slice: SliceOrSimple) -> TypeOrTypeVarTuple {
-        match self.compute_slice_type(slice) {
+        let t = self.compute_slice_type(slice);
+        self.convert_slice_type_or_type_var_tuple(t, slice)
+    }
+
+    fn convert_slice_type_or_type_var_tuple(
+        &mut self,
+        t: TypeContent,
+        slice: SliceOrSimple,
+    ) -> TypeOrTypeVarTuple {
+        match t {
             TypeContent::Unpacked(x @ TypeOrTypeVarTuple::TypeVarTuple(_)) => x,
             TypeContent::Unpacked(TypeOrTypeVarTuple::Type(_)) => todo!(),
             t => TypeOrTypeVarTuple::Type(self.as_db_type(t, slice.as_node_ref())),
@@ -843,7 +852,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
                     Box::new([])
                 }
-                _ => Box::new([self.compute_slice_type_or_type_var_tuple(first)]),
+                _ => Box::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
             }
         };
         TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
@@ -1179,9 +1188,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             )) => Some(TypeContent::DbType(DbType::TypeVar(usage.into_owned()))),
                             TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(
                                 usage,
-                            )) => {
-                                todo!()
-                            }
+                            )) => Some(TypeContent::TypeVarTuple(usage.into_owned())),
                             TypeVarCallbackReturn::UnboundTypeVar => {
                                 let node_ref = NodeRef::new(self.inference.file, name.index());
                                 node_ref.add_typing_issue(
