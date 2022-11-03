@@ -191,7 +191,7 @@ impl<'a> TypeVarMatcher<'a> {
                             if class.node_ref.as_link() == type_var_like_usage.in_definition() {
                                 return class
                                     .generics
-                                    .nth_usage(i_s, type_var_like_usage)
+                                    .nth_usage(i_s, &type_var_like_usage)
                                     .into_generic_item(i_s);
                             }
                             let func_class = f.class.unwrap();
@@ -297,7 +297,7 @@ impl CalculatedTypeArguments {
         }
         if let Some(c) = class {
             if usage.in_definition() == c.node_ref.as_link() {
-                return c.generics().nth_usage(i_s, usage).into_generic_item(i_s);
+                return c.generics().nth_usage(i_s, &usage).into_generic_item(i_s);
             }
         }
         match usage {

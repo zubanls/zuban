@@ -396,7 +396,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        let type_var = self.type_var_usage.type_var;
+        let type_var = &self.type_var_usage.type_var;
         if !type_var.restrictions.is_empty() {
             debug!("TODO type var values");
             /*

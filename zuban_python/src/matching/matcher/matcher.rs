@@ -304,7 +304,7 @@ impl<'a> Matcher<'a> {
                         .generics
                         .nth_usage(
                             i_s,
-                            TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
+                            &TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
                         )
                         .expect_type_argument();
                     return g.simple_matches(i_s, value_type, type_var.variance);
@@ -378,7 +378,7 @@ impl<'a> Matcher<'a> {
                                 .generics
                                 .nth_usage(
                                     i_s,
-                                    TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
+                                    &TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
                                 )
                                 .format(&FormatData::with_style(db, style));
                         }

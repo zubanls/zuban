@@ -1100,7 +1100,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         for (i, s) in slice_type.iter().enumerate() {
             let result = self.compute_slice_type(s);
             let unpacked_type_var_tuple = matches!(
-                result,
+                &result,
                 TypeContent::Unpacked(TypeOrTypeVarTuple::TypeVarTuple(t))
                     if t.in_definition == self.for_definition
             );

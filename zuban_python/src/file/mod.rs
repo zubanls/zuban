@@ -1692,10 +1692,10 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             .replace_type_vars(&mut |t| {
                                 if let Some(class) = self.i_s.current_class() {
                                     if class.node_ref.as_link() == t.in_definition() {
-                                        return dbg!(class
+                                        return class
                                             .generics()
-                                            .nth_usage(self.i_s, t)
-                                            .into_generic_item(self.i_s));
+                                            .nth_usage(self.i_s, &t)
+                                            .into_generic_item(self.i_s);
                                     }
                                 }
                                 match t {

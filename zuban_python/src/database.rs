@@ -913,7 +913,11 @@ impl DbType {
             Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any()),
             Self::TypeVar(t) => false,
             Self::Type(db_type) => db_type.has_any(),
-            Self::Tuple(content) => content.args.map(|args| args.has_any()).unwrap_or(true),
+            Self::Tuple(content) => content
+                .args
+                .as_ref()
+                .map(|args| args.has_any())
+                .unwrap_or(true),
             Self::Callable(content) => {
                 if let Some(params) = &content.params {
                     params.iter().any(|param| param.db_type.has_any())
@@ -1175,7 +1179,7 @@ impl DbType {
                                         TypeOrTypeVarTuple::Type(t1),
                                         TypeOrTypeVarTuple::Type(t2),
                                     ) => TypeOrTypeVarTuple::Type(t1.merge_matching_parts(t2)),
-                                    _ => match t1 == t2 {
+                                    (t1, t2) => match t1 == t2 {
                                         true => t1.clone(),
                                         false => todo!(),
                                     },
@@ -1702,8 +1706,8 @@ impl TypeVarManager {
         let mut index = 0;
         let mut in_definition = None;
         for t in self.type_vars.iter().rev() {
-            match t.type_var_like {
-                TypeVarLike::TypeVar(type_var) if type_var == usage.type_var => {
+            match &t.type_var_like {
+                TypeVarLike::TypeVar(type_var) if type_var.as_ref() == usage.type_var.as_ref() => {
                     if t.most_outer_callable.is_some() {
                         in_definition = t.most_outer_callable;
                     } else {
@@ -1790,6 +1794,7 @@ impl TypeVarLikes {
                         in_definition,
                     }))
                 }
+                TypeVarLike::ParamSpec(type_var) => todo!(),
             })
     }
 

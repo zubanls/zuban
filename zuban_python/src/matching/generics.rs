@@ -13,7 +13,9 @@ macro_rules! replace_class_vars {
         match $type_var_generics {
             None | Some(Generics::None | Generics::Any) => Generic::new($g),
             Some(type_var_generics) => Generic::owned($g.replace_type_vars(&mut |t| {
-                type_var_generics.nth_usage($i_s, t).into_generic_item($i_s)
+                type_var_generics
+                    .nth_usage($i_s, &t)
+                    .into_generic_item($i_s)
             })),
         }
     };
@@ -53,15 +55,15 @@ impl<'a> Generics<'a> {
     pub fn nth_usage<'db: 'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        usage: TypeVarLikeUsage,
+        usage: &TypeVarLikeUsage,
     ) -> Generic<'a> {
-        self.nth(i_s, usage.as_type_var_like(), usage.index().as_usize())
+        self.nth(i_s, &usage.as_type_var_like(), usage.index().as_usize())
     }
 
     pub fn nth<'db: 'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        type_var_like: TypeVarLike,
+        type_var_like: &TypeVarLike,
         n: usize,
     ) -> Generic<'a> {
         match self {

@@ -286,7 +286,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     if usage.in_definition() == class.node_ref.as_link() {
                         return class
                             .generics()
-                            .nth_usage(i_s, usage)
+                            .nth_usage(i_s, &usage)
                             .into_generic_item(i_s);
                     }
                 }
