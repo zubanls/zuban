@@ -860,7 +860,7 @@ impl DbType {
                     t.search_type_vars(found_type_var);
                 }
             }
-            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(t)),
+            Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
             Self::Type(db_type) => db_type.search_type_vars(found_type_var),
             Self::Tuple(content) => match &content.args {
                 Some(TupleTypeArguments::FixedLength(ts)) => {
@@ -868,7 +868,7 @@ impl DbType {
                         match t {
                             TypeOrTypeVarTuple::Type(t) => t.search_type_vars(found_type_var),
                             TypeOrTypeVarTuple::TypeVarTuple(t) => {
-                                found_type_var(TypeVarLikeUsage::TypeVarTuple(t))
+                                found_type_var(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
                             }
                         }
                     }
@@ -942,7 +942,7 @@ impl DbType {
                             new_args.push(TypeOrTypeVarTuple::Type(t.replace_type_vars(callable)))
                         }
                         TypeOrTypeVarTuple::TypeVarTuple(t) => {
-                            match callable(TypeVarLikeUsage::TypeVarTuple(t)) {
+                            match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
                                 GenericItem::TypeArguments(new) => {
                                     new_args.extend(match new.args {
                                         TupleTypeArguments::FixedLength(fixed) => {
@@ -1009,7 +1009,7 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(t)) {
+            Self::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))) {
                 GenericItem::TypeArgument(t) => t,
                 GenericItem::TypeArguments(ts) => unreachable!(),
             },
@@ -1771,14 +1771,25 @@ impl TypeVarLikes {
         &self,
         type_var_like: TypeVarLike,
         in_definition: PointLink,
-    ) -> Option<TypeVarUsage> {
+    ) -> Option<TypeVarLikeUsage<'static>> {
         self.0
             .iter()
             .position(|t| t == &type_var_like)
-            .map(|index| TypeVarUsage {
-                type_var_like,
-                index: index.into(),
-                in_definition,
+            .map(|index| match type_var_like {
+                TypeVarLike::TypeVar(type_var) => {
+                    TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
+                        type_var,
+                        index: index.into(),
+                        in_definition,
+                    }))
+                }
+                TypeVarLike::TypeVarTuple(type_var_tuple) => {
+                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
+                        type_var_tuple,
+                        index: index.into(),
+                        in_definition,
+                    }))
+                }
             })
     }
 
@@ -1808,6 +1819,28 @@ impl TypeVarLike {
             Self::TypeVar(t) => t.name(db),
             Self::TypeVarTuple(t) => todo!(), //t.name(db),
             Self::ParamSpec(s) => todo!(),    // s.name(db),
+        }
+    }
+
+    pub fn as_type_var_like_usage(
+        &self,
+        index: TypeVarIndex,
+        in_definition: PointLink,
+    ) -> TypeVarLikeUsage<'static> {
+        match self {
+            Self::TypeVar(type_var) => TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
+                type_var: type_var.clone(),
+                index,
+                in_definition,
+            })),
+            Self::TypeVarTuple(t) => {
+                TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
+                    type_var_tuple: t.clone(),
+                    index,
+                    in_definition,
+                }))
+            }
+            Self::ParamSpec(s) => todo!(),
         }
     }
 
@@ -1901,8 +1934,8 @@ pub struct TypeVarTupleUsage {
 
 #[derive(Debug, PartialEq, Clone)]
 pub enum TypeVarLikeUsage<'a> {
-    TypeVar(&'a TypeVarUsage),
-    TypeVarTuple(&'a TypeVarTupleUsage),
+    TypeVar(Cow<'a, TypeVarUsage>),
+    TypeVarTuple(Cow<'a, TypeVarTupleUsage>),
 }
 
 impl<'a> TypeVarLikeUsage<'a> {
@@ -1985,7 +2018,7 @@ impl TypeAlias {
                     },
                     false => match t {
                         TypeVarLikeUsage::TypeVar(t) => {
-                            GenericItem::TypeArgument(DbType::TypeVar(t.clone()))
+                            GenericItem::TypeArgument(DbType::TypeVar(t.into_owned()))
                         }
                         TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
                     },
@@ -2008,11 +2041,11 @@ impl TypeAlias {
                             .enumerate()
                             .map(|(i, type_var_like)| match type_var_like {
                                 TypeVarLike::TypeVar(type_var) => {
-                                    callable(TypeVarLikeUsage::TypeVar(&TypeVarUsage {
+                                    callable(TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
                                         type_var: type_var.clone(),
                                         index: i.into(),
                                         in_definition: self.location,
-                                    }))
+                                    })))
                                 }
                                 _ => todo!(),
                             })

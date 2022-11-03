@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::super::{FormatData, Generic, Match, MismatchReason, Type};
@@ -301,7 +302,10 @@ impl<'a> Matcher<'a> {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class
                         .generics
-                        .nth_usage(i_s, TypeVarLikeUsage::TypeVar(type_var_usage))
+                        .nth_usage(
+                            i_s,
+                            TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
+                        )
                         .expect_type_argument();
                     return g.simple_matches(i_s, value_type, type_var.variance);
                 }
@@ -372,7 +376,10 @@ impl<'a> Matcher<'a> {
                         if class.node_ref.as_link() == type_var_usage.in_definition {
                             return class
                                 .generics
-                                .nth_usage(i_s, TypeVarLikeUsage::TypeVar(type_var_usage))
+                                .nth_usage(
+                                    i_s,
+                                    TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
+                                )
                                 .format(&FormatData::with_style(db, style));
                         }
                         let func_class = f.class.unwrap();

@@ -1699,9 +1699,9 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                     }
                                 }
                                 match t {
-                                    TypeVarLikeUsage::TypeVar(usage) => {
-                                        GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
-                                    }
+                                    TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArgument(
+                                        DbType::TypeVar(usage.into_owned()),
+                                    ),
                                     TypeVarLikeUsage::TypeVarTuple(_) => todo!(), //GenericItem::TypeArguments(
                                                                                   //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
                                                                                   //),

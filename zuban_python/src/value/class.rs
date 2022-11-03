@@ -6,7 +6,8 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, PointType, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    MroIndex, ParentScope, Point, PointLink, PointType, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -180,7 +181,7 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         type_var: &TypeVarLike,
-    ) -> Option<TypeVarUsage> {
+    ) -> Option<TypeVarLikeUsage> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {

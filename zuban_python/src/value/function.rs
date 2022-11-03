@@ -292,7 +292,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 }
                 match usage {
                     TypeVarLikeUsage::TypeVar(usage) => {
-                        GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
+                        GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
                     }
                     _ => todo!(),
                 }

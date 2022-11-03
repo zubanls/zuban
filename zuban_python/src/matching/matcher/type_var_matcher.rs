@@ -206,9 +206,9 @@ impl<'a> TypeVarMatcher<'a> {
                                 }
                             } else {
                                 match type_var_like_usage {
-                                    TypeVarLikeUsage::TypeVar(usage) => {
-                                        GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
-                                    }
+                                    TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArgument(
+                                        DbType::TypeVar(usage.into_owned()),
+                                    ),
                                     TypeVarLikeUsage::TypeVarTuple(usage) => {
                                         todo!()
                                     }

@@ -21,7 +21,7 @@ use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
 pub enum TypeVarCallbackReturn {
-    TypeVarLike(TypeVarUsage),
+    TypeVarLike(TypeVarLikeUsage<'static>),
     UnboundTypeVar,
     NotFound,
 }
@@ -1165,8 +1165,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 type_var_like.clone(),
                                 self.current_callable,
                             ) {
-                                TypeVarCallbackReturn::TypeVarLike(usage) => {
-                                    Some(DbType::TypeVar(usage))
+                                TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(
+                                    usage,
+                                )) => Some(DbType::TypeVar(usage.into_owned())),
+                                TypeVarCallbackReturn::TypeVarLike(
+                                    TypeVarLikeUsage::TypeVarTuple(usage),
+                                ) => {
+                                    todo!()
                                 }
                                 TypeVarCallbackReturn::UnboundTypeVar => {
                                     let node_ref = NodeRef::new(self.inference.file, name.index());
@@ -1560,11 +1565,9 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                         // like `Foo = Callable[[T], T]` could not be used like `Foo[int]`, which is
                         // generally how type aliases work.
                         let index = type_var_manager.add(type_var_like.clone(), None);
-                        TypeVarCallbackReturn::TypeVarLike(TypeVarUsage {
-                            type_var_like,
-                            index,
-                            in_definition,
-                        })
+                        TypeVarCallbackReturn::TypeVarLike(
+                            type_var_like.as_type_var_like_usage(index, in_definition),
+                        )
                     };
                 let p = file.points.get(expr.index());
                 let mut comp = TypeComputation::new(
@@ -1710,7 +1713,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                     StarLikeExpression::StarNamedExpression(x) => todo!("{x:?}"),
                     StarLikeExpression::StarExpression(x) => todo!("{x:?}"),
                 };
-                if let Some(tuple) = expr.maybe_tuple() {
+                TypeOrTypeVarTuple::Type(if let Some(tuple) = expr.maybe_tuple() {
                     self.calc_type_comment_tuple(assignment_node_ref, tuple.iter())
                 } else {
                     let expr_node_ref = NodeRef::new(self.file, expr.index());
@@ -1728,7 +1731,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                     });
                     debug_assert!(type_vars.is_empty());
                     db_type
-                }
+                })
             })
             .collect();
         DbType::Tuple(TupleContent::new_fixed_length(generics))
