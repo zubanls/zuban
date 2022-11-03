@@ -1,6 +1,7 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{
     ComplexPoint, DbType, GenericItem, GenericsList, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -48,7 +49,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                                     Some(TupleTypeArguments::FixedLength(ts)) => {
                                         match ts.as_ref() {
                                             [] => DbType::Never,
-                                            [t] => t.clone(),
+                                            [TypeOrTypeVarTuple::Type(t)] => t.clone(),
                                             _ => i_s.db.python_state.object_db_type(),
                                         }
                                     }
@@ -73,8 +74,12 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
 
     fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
         match &self.content.args {
-            Some(TupleTypeArguments::FixedLength(ts)) => {
-                IteratorContent::FixedLengthTupleGenerics(ts.iter())
+            Some(args @ TupleTypeArguments::FixedLength(ts)) => {
+                if args.has_type_var_tuple().is_some() {
+                    todo!()
+                } else {
+                    IteratorContent::FixedLengthTupleGenerics(ts.iter())
+                }
             }
             Some(TupleTypeArguments::ArbitraryLength(t)) => {
                 IteratorContent::Inferred(Inferred::execute_db_type(i_s, t.as_ref().clone()))
@@ -90,13 +95,22 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => match &self.content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => {
+                Some(args @ TupleTypeArguments::FixedLength(ts)) => {
                     if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
-                        let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
-                        ts.as_ref()
-                            .get(index)
-                            .map(|db_type: &DbType| Inferred::execute_db_type(i_s, db_type.clone()))
-                            .unwrap_or_else(Inferred::new_unknown)
+                        if args.has_type_var_tuple().is_some() {
+                            todo!()
+                        } else {
+                            let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
+                            ts.as_ref()
+                                .get(index)
+                                .map(|t| match t {
+                                    TypeOrTypeVarTuple::Type(t) => {
+                                        Inferred::execute_db_type(i_s, t.clone())
+                                    }
+                                    TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
+                                })
+                                .unwrap_or_else(Inferred::new_unknown)
+                        }
                     } else {
                         todo!()
                     }
