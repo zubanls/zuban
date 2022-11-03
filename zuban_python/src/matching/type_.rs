@@ -471,7 +471,7 @@ impl<'a> Type<'a> {
                                     match ts.get(0) {
                                         Some(TypeOrTypeVarTuple::Type(t)) => t,
                                         Some(TypeOrTypeVarTuple::TypeVarTuple(_)) => {
-                                            todo!()
+                                            &DbType::Never // TODO ?!
                                         }
                                         None => &DbType::Never,
                                     }
@@ -962,7 +962,11 @@ pub fn match_tuple_type_arguments(
                             matches &=
                                 Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance);
                         }
-                        _ => todo!(),
+                        (
+                            TypeOrTypeVarTuple::TypeVarTuple(t1),
+                            TypeOrTypeVarTuple::TypeVarTuple(t2),
+                        ) => matches &= (t1 == t2).into(),
+                        _ => todo!("{t1:?} {t2:?}"),
                     }
                 }
                 matches
