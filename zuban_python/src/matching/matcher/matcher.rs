@@ -8,9 +8,8 @@ use super::type_var_matcher::{
 };
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments,
-    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
-    Variance,
+    CallableContent, DbType, RecursiveAlias, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
+    TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -354,20 +353,19 @@ impl<'a> Matcher<'a> {
 
     pub fn format_in_type_var_matcher(
         &self,
-        db: &Database,
         type_var_usage: &TypeVarUsage,
-        style: FormatStyle,
+        format_data: &FormatData,
     ) -> Box<str> {
         let type_var_matcher = self.type_var_matcher.as_ref().unwrap();
-        let i_s = &mut InferenceState::new(db);
+        let i_s = &mut InferenceState::new(format_data.db);
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
         if type_var_matcher.match_in_definition == type_var_usage.in_definition {
             let current = &type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
             match &current.type_ {
-                BoundKind::TypeVar(bound) => bound.format(i_s, style),
-                BoundKind::TypeVarTuple(ts) => ts.format(&FormatData::with_style(db, style)),
-                BoundKind::Uncalculated => DbType::Never.format(&FormatData::with_style(db, style)),
+                BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
+                BoundKind::TypeVarTuple(ts) => ts.format(format_data),
+                BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {
             match type_var_matcher.func_or_callable {
@@ -380,15 +378,14 @@ impl<'a> Matcher<'a> {
                                     i_s,
                                     &TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
                                 )
-                                .format(&FormatData::with_style(db, style));
+                                .format(format_data);
                         }
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            type_var_remap[type_var_usage.index]
-                                .format(&FormatData::with_matcher_and_style(db, self, style))
+                            type_var_remap[type_var_usage.index].format(format_data)
                         } else {
-                            type_var_usage.type_var.name(db).into()
+                            type_var_usage.type_var.name(format_data.db).into()
                         }
                     } else {
                         todo!("Probably nested generic functions???")
