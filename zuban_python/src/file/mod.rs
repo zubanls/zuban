@@ -14,7 +14,8 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality, LocalityLink,
-    Point, PointLink, PointType, Points, Specific, TupleContent, TypeVarLike,
+    Point, PointLink, PointType, Points, Specific, TupleContent, TypeOrTypeVarTuple,
+    TypeVarLikeUsage,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
@@ -1395,12 +1396,12 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
         let mut generics = vec![];
         for e in iterator {
             match e {
-                StarLikeExpression::NamedExpression(e) => {
-                    generics.push(self.infer_named_expression(e).class_as_db_type(self.i_s))
-                }
-                StarLikeExpression::Expression(e) => {
-                    generics.push(self.infer_expression(e).class_as_db_type(self.i_s))
-                }
+                StarLikeExpression::NamedExpression(e) => generics.push(TypeOrTypeVarTuple::Type(
+                    self.infer_named_expression(e).class_as_db_type(self.i_s),
+                )),
+                StarLikeExpression::Expression(e) => generics.push(TypeOrTypeVarTuple::Type(
+                    self.infer_expression(e).class_as_db_type(self.i_s),
+                )),
                 StarLikeExpression::StarNamedExpression(e) => {
                     let inferred = self
                         .infer_expression_part(e.expression_part(), &mut ResultContext::Unknown);
@@ -1408,7 +1409,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                         inferred.save_and_iter(self.i_s, NodeRef::new(self.file, e.index()));
                     if iterator.len().is_some() {
                         while let Some(inf) = iterator.next(self.i_s) {
-                            generics.push(inf.class_as_db_type(self.i_s))
+                            generics.push(TypeOrTypeVarTuple::Type(inf.class_as_db_type(self.i_s)))
                         }
                     } else {
                         todo!()
@@ -1690,21 +1691,20 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                             .use_db_type_of_annotation(node_index)
                             .replace_type_vars(&mut |t| {
                                 if let Some(class) = self.i_s.current_class() {
-                                    if class.node_ref.as_link() == t.in_definition {
+                                    if class.node_ref.as_link() == t.in_definition() {
                                         return dbg!(class
                                             .generics()
                                             .nth_usage(self.i_s, t)
                                             .into_generic_item(self.i_s));
                                     }
                                 }
-                                match t.type_var_like.as_ref() {
-                                    TypeVarLike::TypeVar(_) => {
-                                        GenericItem::TypeArgument(DbType::TypeVar(t.clone()))
+                                match t {
+                                    TypeVarLikeUsage::TypeVar(usage) => {
+                                        GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
                                     }
-                                    TypeVarLike::TypeVarTuple(_) => todo!(), //GenericItem::TypeArguments(
-                                    //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
-                                    //),
-                                    TypeVarLike::ParamSpec(_) => todo!(),
+                                    TypeVarLikeUsage::TypeVarTuple(_) => todo!(), //GenericItem::TypeArguments(
+                                                                                  //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
+                                                                                  //),
                                 }
                             });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))

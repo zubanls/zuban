@@ -4,14 +4,13 @@ use parsa_python_ast::{
 };
 use std::cell::Cell;
 use std::fmt;
-use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericItem,
     GenericsList, IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike,
-    TypeVarLikes, TypeVarManager,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -211,7 +210,7 @@ impl<'db: 'a, 'a> Function<'a> {
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &mut InferenceState,
                                manager: &TypeVarManager,
-                               type_var: Rc<TypeVarLike>,
+                               type_var: TypeVarLike,
                                current_callable: Option<_>| {
             self.class
                 .and_then(|class| {
@@ -257,7 +256,7 @@ impl<'db: 'a, 'a> Function<'a> {
         });
         if !unbound_type_vars.is_empty() {
             if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
-                if unbound_type_vars.contains(&t.type_var_like) {
+                if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     NodeRef::new(
                         self.node_ref.file,
                         func_node.return_annotation().unwrap().expression().index(),
@@ -284,14 +283,19 @@ impl<'db: 'a, 'a> Function<'a> {
         let as_db_type = |i_s: &mut _, t: Type| {
             t.as_db_type(i_s).replace_type_vars(&mut |usage| {
                 if let Some(class) = self.class {
-                    if usage.in_definition == class.node_ref.as_link() {
+                    if usage.in_definition() == class.node_ref.as_link() {
                         return class
                             .generics()
                             .nth_usage(i_s, usage)
                             .into_generic_item(i_s);
                     }
                 }
-                GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
+                match usage {
+                    TypeVarLikeUsage::TypeVar(usage) => {
+                        GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
+                    }
+                    _ => todo!(),
+                }
             })
         };
         let result_type = self.result_type(i_s);
@@ -475,7 +479,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 "[{}] ",
                 type_vars
                     .iter()
-                    .map(|t| match t.as_ref() {
+                    .map(|t| match t {
                         TypeVarLike::TypeVar(t) => {
                             let mut s = t.name(i_s.db).to_owned();
                             if let Some(bound) = &t.bound {

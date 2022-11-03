@@ -1,6 +1,6 @@
 use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 
-use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, TypeVarLike};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, TypeVarLikeUsage};
 use crate::diagnostics::IssueType;
 use crate::file::{PythonFile, PythonInference};
 use crate::inference_state::InferenceState;
@@ -48,7 +48,7 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                             let type_vars = list_cls.type_vars(i_s).unwrap();
                             let generic_t = list_cls
                                 .generics()
-                                .nth(i_s, &type_vars[0], 0)
+                                .nth(i_s, type_vars[0], 0)
                                 .expect_type_argument();
                             found = check_list_with_context(i_s, matcher, generic_t, file, list);
                             if found.is_none() {
@@ -56,12 +56,11 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                                 // the given and expected result context as a type.
                                 found =
                                     Some(list_cls.as_db_type(i_s).replace_type_vars(&mut |tv| {
-                                        match tv.type_var_like.as_ref() {
-                                            TypeVarLike::TypeVar(_) => {
+                                        match tv {
+                                            TypeVarLikeUsage::TypeVar(_) => {
                                                 GenericItem::TypeArgument(DbType::Any)
                                             }
-                                            TypeVarLike::TypeVarTuple(_) => todo!(),
-                                            TypeVarLike::ParamSpec(_) => todo!(),
+                                            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
                                         }
                                     }));
                             }

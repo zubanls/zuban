@@ -103,6 +103,6 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
                 return matcher.format_in_type_var_matcher(self.db, type_var_usage, self.style);
             }
         }
-        Box::from(type_var_usage.type_var_like.name(self.db))
+        Box::from(type_var_usage.type_var.name(self.db))
     }
 }

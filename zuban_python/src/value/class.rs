@@ -1,5 +1,4 @@
 use std::fmt;
-use std::rc::Rc;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
@@ -180,7 +179,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn maybe_type_var_like_in_parent(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        type_var: &Rc<TypeVarLike>,
+        type_var: &TypeVarLike,
     ) -> Option<TypeVarUsage> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
@@ -253,7 +252,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, _: &_, type_var_like: Rc<TypeVarLike>, _| {
+                            Some(&mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
                                 if let Some(type_vars) = type_vars {
                                     if let Some(usage) = type_vars
                                         .find(type_var_like.clone(), self.node_ref.as_link())
@@ -305,7 +304,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     } else {
                                         for base in class.class_infos(&mut i_s).mro.iter() {
                                             mro.push(base.replace_type_vars(&mut |t| {
-                                                mro[mro_index].expect_class_generics()[t.index]
+                                                mro[mro_index].expect_class_generics()[t.index()]
                                                     .clone()
                                             }));
                                         }

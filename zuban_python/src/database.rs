@@ -1241,6 +1241,15 @@ pub enum TypeOrTypeVarTuple {
 }
 
 impl TypeOrTypeVarTuple {
+    fn as_db_type(&self) -> DbType {
+        match self {
+            Self::Type(t) => t.clone(),
+            Self::TypeVarTuple(t) => DbType::Tuple(TupleContent::new_fixed_length(Box::new([
+                TypeOrTypeVarTuple::TypeVarTuple(t.clone()),
+            ]))),
+        }
+    }
+
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Type(t) => t.format(format_data),
@@ -1897,17 +1906,24 @@ pub enum TypeVarLikeUsage<'a> {
 }
 
 impl<'a> TypeVarLikeUsage<'a> {
-    fn in_definition(&self) -> PointLink {
+    pub fn in_definition(&self) -> PointLink {
         match self {
             Self::TypeVar(t) => t.in_definition,
             Self::TypeVarTuple(t) => t.in_definition,
         }
     }
 
-    fn index(&self) -> TypeVarIndex {
+    pub fn index(&self) -> TypeVarIndex {
         match self {
             Self::TypeVar(t) => t.index,
             Self::TypeVarTuple(t) => t.index,
+        }
+    }
+
+    pub fn as_type_var_like(&self) -> TypeVarLike {
+        match self {
+            Self::TypeVar(t) => TypeVarLike::TypeVar(t.type_var.clone()),
+            Self::TypeVarTuple(t) => TypeVarLike::TypeVarTuple(t.type_var_tuple.clone()),
         }
     }
 }

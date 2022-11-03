@@ -8,7 +8,8 @@ use super::type_var_matcher::{
 
 use crate::database::{
     CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments,
-    TypeArguments, TypeVar, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
+    Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -98,13 +99,13 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         match self.type_var_matcher.as_mut() {
-            Some(matcher) => match t1.type_var_like.as_ref() {
-                TypeVarLike::TypeVar(type_var) => self.match_or_add_type_var_in_type_var_matcher(
-                    i_s, t1, type_var, value_type, variance,
-                ),
-                TypeVarLike::TypeVarTuple(_) => todo!(),
-                TypeVarLike::ParamSpec(_) => todo!(),
-            },
+            Some(matcher) => self.match_or_add_type_var_in_type_var_matcher(
+                i_s,
+                t1,
+                t1.type_var.as_ref(),
+                value_type,
+                variance,
+            ),
             None => match value_type.maybe_db_type() {
                 Some(DbType::TypeVar(t2)) => {
                     (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
@@ -117,7 +118,7 @@ impl<'a> Matcher<'a> {
     pub fn match_type_var_tuple(
         &mut self,
         i_s: &mut InferenceState,
-        tuple1: &[DbType],
+        tuple1: &[TypeOrTypeVarTuple],
         tuple2: &TupleTypeArguments,
         variance: Variance,
     ) -> Match {
@@ -126,49 +127,72 @@ impl<'a> Matcher<'a> {
             TupleTypeArguments::FixedLength(ts2) => {
                 let mut t2_iterator = ts2.iter();
                 for t1 in tuple1.iter() {
-                    if let Some(tvt) = t1.maybe_type_var_tuple() {
-                        // TODO TypeVarTuple currently we ignore variance completely
-                        let tv_matcher = self.type_var_matcher.as_mut().unwrap();
-                        let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                        let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
-                        if let Ok(fetch) = fetch.try_into() {
-                            if calculated.calculated() {
-                                calculated.merge_fixed_length_type_var_tuple(
-                                    i_s,
-                                    fetch,
-                                    &mut t2_iterator.by_ref().take(fetch),
-                                );
+                    match t1 {
+                        TypeOrTypeVarTuple::Type(t1) => {
+                            if let Some(t2) = t2_iterator.next() {
+                                match t2 {
+                                    TypeOrTypeVarTuple::Type(t2) => {
+                                        matches &= Type::new(t1).matches(
+                                            i_s,
+                                            self,
+                                            &Type::new(t2),
+                                            variance,
+                                        );
+                                    }
+                                    TypeOrTypeVarTuple::TypeVarTuple(_) => {
+                                        return Match::new_false();
+                                    }
+                                }
                             } else {
-                                let types: Box<_> =
-                                    t2_iterator.by_ref().take(fetch).cloned().collect();
-                                calculated.type_ =
-                                    BoundKind::TypeVarTuple(TypeArguments::new_fixed_length(types));
+                                matches &= Match::new_false();
                             }
-                        } else {
-                            // Negative numbers mean that we have non-matching tuples, but the fact they do not match
-                            // will be noticed in a different place.
                         }
-                    } else if let Some(t2) = t2_iterator.next() {
-                        matches &= Type::new(t1).matches(i_s, self, &Type::new(t2), variance);
-                    } else {
-                        matches &= Match::new_false();
+                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => {
+                            // TODO TypeVarTuple currently we ignore variance completely
+                            let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+                            let calculated =
+                                &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                            let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
+                            if let Ok(fetch) = fetch.try_into() {
+                                if calculated.calculated() {
+                                    calculated.merge_fixed_length_type_var_tuple(
+                                        i_s,
+                                        fetch,
+                                        &mut t2_iterator.by_ref().take(fetch),
+                                    );
+                                } else {
+                                    let types: Box<_> =
+                                        t2_iterator.by_ref().take(fetch).cloned().collect();
+                                    calculated.type_ = BoundKind::TypeVarTuple(
+                                        TypeArguments::new_fixed_length(types),
+                                    );
+                                }
+                            } else {
+                                // Negative numbers mean that we have non-matching tuples, but the fact they do not match
+                                // will be noticed in a different place.
+                            }
+                        }
                     }
                 }
             }
             TupleTypeArguments::ArbitraryLength(t2) => {
                 let tv_matcher = self.type_var_matcher.as_mut().unwrap();
                 for t1 in tuple1.iter() {
-                    if let Some(tvt) = t1.maybe_type_var_tuple() {
-                        let calculated = &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
-                        if calculated.calculated() {
+                    match t1 {
+                        TypeOrTypeVarTuple::Type(t1) => {
                             todo!()
-                        } else {
-                            calculated.type_ = BoundKind::TypeVarTuple(
-                                TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
-                            );
                         }
-                    } else {
-                        todo!()
+                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => {
+                            let calculated =
+                                &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                            if calculated.calculated() {
+                                todo!()
+                            } else {
+                                calculated.type_ = BoundKind::TypeVarTuple(
+                                    TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
+                                );
+                            }
+                        }
                     }
                 }
             }
@@ -185,7 +209,7 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         let type_var_matcher = self.type_var_matcher.as_mut().unwrap();
-        let type_var_like = &type_var_usage.type_var_like;
+        let type_var_like = &type_var_usage.type_var;
         if type_var_matcher.match_in_definition == type_var_usage.in_definition {
             let current =
                 &mut type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
@@ -208,24 +232,22 @@ impl<'a> Matcher<'a> {
             let mut mismatch_constraints = false;
             if !type_var.restrictions.is_empty() {
                 if let Some(DbType::TypeVar(t2)) = value_type.maybe_db_type() {
-                    if let TypeVarLike::TypeVar(t2) = t2.type_var_like.as_ref() {
-                        if !t2.restrictions.is_empty() {
-                            if current.calculated() {
-                                todo!()
-                            } else if t2.restrictions.iter().all(|r2| {
-                                type_var.restrictions.iter().any(|r1| {
-                                    Type::new(r1)
-                                        .is_simple_super_type_of(i_s, &Type::new(r2))
-                                        .bool()
-                                })
-                            }) {
-                                current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
-                                    value_type.as_db_type(i_s),
-                                ));
-                                return Match::new_true();
-                            } else {
-                                mismatch_constraints = true;
-                            }
+                    if !t2.type_var.restrictions.is_empty() {
+                        if current.calculated() {
+                            todo!()
+                        } else if t2.type_var.restrictions.iter().all(|r2| {
+                            type_var.restrictions.iter().any(|r1| {
+                                Type::new(r1)
+                                    .is_simple_super_type_of(i_s, &Type::new(r2))
+                                    .bool()
+                            })
+                        }) {
+                            current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
+                                value_type.as_db_type(i_s),
+                            ));
+                            return Match::new_true();
+                        } else {
+                            mismatch_constraints = true;
                         }
                     }
                 }
@@ -259,7 +281,7 @@ impl<'a> Matcher<'a> {
                 return Match::False {
                     reason: MismatchReason::ConstraintMismatch {
                         expected: value_type.as_db_type(i_s),
-                        type_var: type_var_usage.type_var_like.clone(),
+                        type_var: type_var_usage.type_var.clone(),
                     },
                     similar: false,
                 };
@@ -279,7 +301,7 @@ impl<'a> Matcher<'a> {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class
                         .generics
-                        .nth_usage(i_s, type_var_usage)
+                        .nth_usage(i_s, TypeVarLikeUsage::TypeVar(type_var_usage))
                         .expect_type_argument();
                     return g.simple_matches(i_s, value_type, type_var.variance);
                 }
@@ -350,7 +372,7 @@ impl<'a> Matcher<'a> {
                         if class.node_ref.as_link() == type_var_usage.in_definition {
                             return class
                                 .generics
-                                .nth_usage(i_s, type_var_usage)
+                                .nth_usage(i_s, TypeVarLikeUsage::TypeVar(type_var_usage))
                                 .format(&FormatData::with_style(db, style));
                         }
                         let func_class = f.class.unwrap();
@@ -359,7 +381,7 @@ impl<'a> Matcher<'a> {
                             type_var_remap[type_var_usage.index]
                                 .format(&FormatData::with_matcher_and_style(db, self, style))
                         } else {
-                            type_var_usage.type_var_like.name(db).into()
+                            type_var_usage.type_var.name(db).into()
                         }
                     } else {
                         todo!("Probably nested generic functions???")

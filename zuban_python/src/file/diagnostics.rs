@@ -3,7 +3,7 @@ use parsa_python_ast::*;
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
     ComplexPoint, DbType, GenericItem, GenericsList, Locality, Point, PointType, Specific,
-    TypeVarUsage, Variance,
+    TypeVarLike, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -331,12 +331,16 @@ impl PythonInference<'_, '_, '_, '_> {
                         type_vars
                             .iter()
                             .enumerate()
-                            .map(|(i, t)| {
-                                GenericItem::TypeArgument(DbType::TypeVar(TypeVarUsage {
-                                    type_var_like: t.clone(),
-                                    index: i.into(),
-                                    in_definition: class.node_ref.as_link(),
-                                }))
+                            .map(|(i, t)| match t {
+                                TypeVarLike::TypeVar(type_var) => {
+                                    GenericItem::TypeArgument(DbType::TypeVar(TypeVarUsage {
+                                        type_var: type_var.clone(),
+                                        index: i.into(),
+                                        in_definition: class.node_ref.as_link(),
+                                    }))
+                                }
+                                TypeVarLike::TypeVarTuple(_) => todo!(),
+                                TypeVarLike::ParamSpec(_) => todo!(),
                             })
                             .collect(),
                     )

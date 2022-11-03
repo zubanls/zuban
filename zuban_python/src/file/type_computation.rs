@@ -5,8 +5,9 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
     GenericItem, GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias,
-    Specific, StringSlice, TupleContent, TypeAlias, TypeArguments, TypeVar, TypeVarLike,
-    TypeVarLikes, TypeVarManager, TypeVarUsage, UnionEntry, UnionType,
+    Specific, StringSlice, TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarUsage, UnionEntry,
+    UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -150,7 +151,7 @@ enum TypeContent<'db, 'a> {
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Class(Inferred),
-    TypeVarLike(Rc<TypeVarLike>),
+    TypeVarLike(TypeVarLike),
     TypeAlias(&'db TypeAlias),
     NewType(NewType),
     SpecialType(SpecialType),
@@ -197,7 +198,7 @@ macro_rules! compute_type_application {
 pub(super) fn type_computation_for_variable_annotation(
     i_s: &mut InferenceState,
     manager: &TypeVarManager,
-    type_var_like: Rc<TypeVarLike>,
+    type_var_like: TypeVarLike,
     current_callable: Option<PointLink>,
 ) -> TypeVarCallbackReturn {
     if let Some(class) = i_s.current_class() {
@@ -495,6 +496,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         self.as_db_type(t, slice.as_node_ref())
     }
 
+    fn compute_slice_type_or_type_var_tuple(&mut self, slice: SliceOrSimple) -> TypeOrTypeVarTuple {
+        // TODO implement this properly
+        TypeOrTypeVarTuple::Type(self.compute_slice_db_type(slice))
+    }
+
     fn compute_type_expression_part(&mut self, node: ExpressionPart<'x>) -> TypeContent<'db, 'x> {
         match node {
             ExpressionPart::Atom(atom) => self.compute_type_atom(atom),
@@ -696,7 +702,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
         if let Some(type_vars) = type_vars {
             for type_var_like in type_vars.iter() {
-                let generic_item = match type_var_like.as_ref() {
+                let generic_item = match type_var_like {
                     TypeVarLike::TypeVar(type_var) => {
                         if let Some(slice_content) = iterator.next() {
                             let t = self.compute_slice_type(slice_content);
@@ -733,7 +739,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 iterator
                                     .by_ref()
                                     .take(fetch)
-                                    .map(|s| self.compute_slice_db_type(s))
+                                    .map(|s| self.compute_slice_type_or_type_var_tuple(s))
                                     .collect()
                             } else {
                                 // If not enough type arguments are given, an error is raised elsewhere.
@@ -806,9 +812,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_db_type(first);
-                    if matches!(t, DbType::TypeVar(ref t) if t.is_type_var_tuple()) {
-                        todo!()
-                    }
                     return TypeContent::DbType(DbType::Tuple(TupleContent::new_arbitrary_length(
                         t,
                     )));
@@ -817,7 +820,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             slice_type
                 .iter()
                 .map(|slice_content| {
-                    self.compute_slice_db_type(slice_content)
+                    self.compute_slice_type_or_type_var_tuple(slice_content)
                     /*
                      * TODO TypeVarTuple
                     if matches!(t, DbType::TypeVar(ref t) if t.is_type_var_tuple()) {
@@ -833,10 +836,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
                     Box::new([])
                 }
-                _ => {
-                    let t = self.as_db_type(t, first.as_node_ref());
-                    Box::new([t])
-                }
+                _ => Box::new([self.compute_slice_type_or_type_var_tuple(first)]),
             }
         };
         TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
@@ -1047,8 +1047,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let expected_count = alias.type_vars.len();
         let mut given_count = 0;
         let mut generics = vec![];
-        for type_var in alias.type_vars.iter() {
-            match type_var.as_ref() {
+        for type_var_like in alias.type_vars.iter() {
+            match type_var_like {
                 TypeVarLike::TypeVar(_) => (),
                 _ => todo!(),
             }
@@ -1074,13 +1074,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             alias
                 .replace_type_vars(false, &mut |usage| {
                     if mismatch {
-                        match usage.type_var_like.as_ref() {
-                            TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-                            TypeVarLike::TypeVarTuple(_) => todo!(),
-                            TypeVarLike::ParamSpec(_) => todo!(),
+                        match usage {
+                            TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
+                            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
                         }
                     } else {
-                        generics[usage.index.as_usize()].clone()
+                        generics[usage.index().as_usize()].clone()
                     }
                 })
                 .into_owned(),
@@ -1187,11 +1186,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             let index = self
                                 .type_var_manager
                                 .add(type_var_like.clone(), self.current_callable);
-                            DbType::TypeVar(TypeVarUsage {
-                                type_var_like,
-                                index,
-                                in_definition: self.for_definition,
-                            })
+                            match type_var_like {
+                                TypeVarLike::TypeVar(type_var) => DbType::TypeVar(TypeVarUsage {
+                                    type_var,
+                                    index,
+                                    in_definition: self.for_definition,
+                                }),
+                                TypeVarLike::TypeVarTuple(_) => todo!(),
+                                TypeVarLike::ParamSpec(_) => todo!(),
+                            }
                         })
                 })
             }
@@ -1551,7 +1554,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let mut type_var_manager = TypeVarManager::default();
                 let mut type_var_callback =
-                    |_: &mut InferenceState, _: &_, type_var_like: Rc<TypeVarLike>, _| {
+                    |_: &mut InferenceState, _: &_, type_var_like: TypeVarLike, _| {
                         // Here we avoid all late bound type var calculation for callable, which is how
                         // mypy works. The default behavior without a type_var_callback would be to
                         // just calculate all late bound type vars, but that would mean that something

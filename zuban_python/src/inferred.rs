@@ -1,7 +1,6 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::fmt;
-use std::rc::Rc;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
@@ -278,10 +277,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.internal_run(i_s, callable, &|_, i1, i2| (), &mut |i_s| on_missing())
     }
 
-    pub fn maybe_type_var_like(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Rc<TypeVarLike>> {
+    pub fn maybe_type_var_like(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVarLike> {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::TypeVarLike(t)) = node_ref.complex() {

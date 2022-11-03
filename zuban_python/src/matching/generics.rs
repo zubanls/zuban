@@ -2,7 +2,7 @@ use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slice
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    DbType, GenericItem, GenericsList, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+    DbType, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -53,15 +53,15 @@ impl<'a> Generics<'a> {
     pub fn nth_usage<'db: 'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        usage: &TypeVarUsage,
+        usage: TypeVarLikeUsage,
     ) -> Generic<'a> {
-        self.nth(i_s, usage.type_var_like.as_ref(), usage.index.as_usize())
+        self.nth(i_s, usage.as_type_var_like(), usage.index().as_usize())
     }
 
     pub fn nth<'db: 'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        type_var_like: &TypeVarLike,
+        type_var_like: TypeVarLike,
         n: usize,
     ) -> Generic<'a> {
         match self {
@@ -201,7 +201,7 @@ impl<'a> Generics<'a> {
             .zip(value_generics)
             .zip(type_vars.iter())
         {
-            let v = match tv.as_ref() {
+            let v = match tv {
                 TypeVarLike::TypeVar(t) => t.variance,
                 TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
                 TypeVarLike::ParamSpec(_) => todo!(),
