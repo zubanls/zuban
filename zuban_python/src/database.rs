@@ -1259,7 +1259,9 @@ impl TypeOrTypeVarTuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Type(t) => t.format(format_data),
-            Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(format_data.db)).into(),
+            Self::TypeVarTuple(t) => {
+                format_data.format_type_var_like(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
+            }
         }
     }
 }
@@ -1970,7 +1972,7 @@ impl<'a> TypeVarLikeUsage<'a> {
     pub fn format_name(&self, db: &Database, style: FormatStyle) -> Box<str> {
         match self {
             TypeVarLikeUsage::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
-            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
+            TypeVarLikeUsage::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
         }
     }
 }
