@@ -132,25 +132,11 @@ impl PythonState {
             _ => unreachable!(),
         }
 
-        typing_changes(s.typing(), s.builtins(), s.collections());
-
-        // TODO this is completely wrong, but for now it's good enough
-        setup_type_alias(s.typing_extensions(), "SupportsIndex", s.builtins(), "int");
-        set_typing_inference(
+        typing_changes(
+            s.typing(),
+            s.builtins(),
+            s.collections(),
             s.typing_extensions(),
-            "LiteralString",
-            Specific::TypingLiteralString,
-        );
-        set_typing_inference(s.typing_extensions(), "Unpack", Specific::TypingUnpack);
-        set_typing_inference(
-            s.typing_extensions(),
-            "ParamSpec",
-            Specific::TypingParamSpecClass,
-        );
-        set_typing_inference(
-            s.typing_extensions(),
-            "TypeVarTuple",
-            Specific::TypingTypeVarTupleClass,
         );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
@@ -308,7 +294,12 @@ impl PythonState {
     }
 }
 
-fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &PythonFile) {
+fn typing_changes(
+    typing: &PythonFile,
+    builtins: &PythonFile,
+    collections: &PythonFile,
+    typing_extensions: &PythonFile,
+) {
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
     set_typing_inference(typing, "ClassVar", Specific::TypingClassVar);
@@ -341,6 +332,14 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     setup_type_alias(typing, "DefaultDict", collections, "defaultdict");
     setup_type_alias(typing, "Deque", collections, "deque");
     setup_type_alias(typing, "OrderedDict", collections, "OrderedDict");
+
+    let t = typing_extensions;
+    // TODO this is completely wrong, but for now it's good enough
+    setup_type_alias(t, "SupportsIndex", builtins, "int");
+    set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
+    set_typing_inference(t, "Unpack", Specific::TypingUnpack);
+    set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
+    set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
