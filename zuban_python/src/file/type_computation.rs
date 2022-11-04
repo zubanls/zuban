@@ -48,6 +48,7 @@ pub(super) enum SpecialType {
     Tuple,
     LiteralString,
     Unpack,
+    Concatenate,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -451,7 +452,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
-            TypeContent::ParamSpec(_) => todo!(),
+            TypeContent::ParamSpec(_) => {
+                self.add_typing_issue(
+                    node_ref,
+                    IssueType::InvalidType(Box::from("TODO babedibupi")),
+                );
+                DbType::Any
+            }
             TypeContent::Unpacked(t) => DbType::Any, // TODO Should probably raise an error?
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
@@ -629,6 +636,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::CallableParam(_) => todo!(),
                         SpecialType::LiteralString => todo!(),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
+                        SpecialType::Concatenate => todo!(),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -1229,7 +1237,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                     in_definition: self.for_definition,
                                 })
                             }
-                            TypeVarLike::ParamSpec(_) => todo!(),
+                            TypeVarLike::ParamSpec(param_spec) => {
+                                TypeContent::ParamSpec(ParamSpecUsage {
+                                    param_spec,
+                                    index,
+                                    in_definition: self.for_definition,
+                                })
+                            }
                         }
                     })
             }
@@ -1849,6 +1863,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingCallable => SpecialType::Callable,
                 Specific::TypingLiteralString => SpecialType::LiteralString,
                 Specific::TypingUnpack => SpecialType::Unpack,
+                Specific::TypingConcatenateClass => SpecialType::Concatenate,
                 _ => unreachable!(),
             })
         }

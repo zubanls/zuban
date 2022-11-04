@@ -303,7 +303,8 @@ impl<'db> Diagnostic<'db> {
                     format!("TypeVarTuple {name:?} is unbound")
                 }
                 TypeVarLike::ParamSpec(param_spec) => {
-                    todo!()
+                    let name = param_spec.name(self.db);
+                    format!("ParamSpec {name:?} is unbound")
                 }
             }
             IssueType::IncompleteGenericOrProtocolTypeVars =>
