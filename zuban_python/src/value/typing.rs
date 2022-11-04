@@ -5,8 +5,8 @@ use std::rc::Rc;
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, NewType, PointLink, Specific, TupleContent,
-    TypeVar, TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
+    ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific,
+    TupleContent, TypeVar, TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -872,7 +872,6 @@ fn maybe_param_spec(
             todo!()
         }
 
-        let default = None;
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
@@ -891,7 +890,6 @@ fn maybe_param_spec(
                             .inference(i_s)
                             .compute_type_var_constraint(node_ref.as_expression())
                         {
-                            //default = Some(t);
                             todo!()
                         } else {
                             todo!()
@@ -911,12 +909,11 @@ fn maybe_param_spec(
                 ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
             }
         }
-        return Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
+        return Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {
             name_string: PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
-            default,
         })));
     } else {
         args.as_node_ref().add_typing_issue(
