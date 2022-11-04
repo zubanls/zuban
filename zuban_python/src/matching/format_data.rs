@@ -1,5 +1,5 @@
 use super::Matcher;
-use crate::database::{Database, FormatStyle, RecursiveAlias, TypeVarUsage};
+use crate::database::{Database, FormatStyle, RecursiveAlias, TypeVarLikeUsage};
 
 struct DisplayedRecursive<'a> {
     current: &'a RecursiveAlias,
@@ -97,12 +97,12 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         self.verbose = true;
     }
 
-    pub fn format_type_var(&self, type_var_usage: &TypeVarUsage) -> Box<str> {
+    pub fn format_type_var_like(&self, type_var_usage: &TypeVarLikeUsage) -> Box<str> {
         if let Some(matcher) = self.matcher {
             if matcher.has_type_var_matcher() {
                 return matcher.format_in_type_var_matcher(type_var_usage, self);
             }
         }
-        Box::from(type_var_usage.type_var.name(self.db))
+        Box::from(type_var_usage.format_name(self.db, self.style))
     }
 }

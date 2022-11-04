@@ -804,7 +804,9 @@ impl DbType {
             .into(),
             Self::Union(union) => union.format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
-            Self::TypeVar(t) => format_data.format_type_var(t),
+            Self::TypeVar(t) => {
+                format_data.format_type_var_like(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)))
+            }
             Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
@@ -1962,6 +1964,13 @@ impl<'a> TypeVarLikeUsage<'a> {
         match self {
             Self::TypeVar(t) => TypeVarLike::TypeVar(t.type_var.clone()),
             Self::TypeVarTuple(t) => TypeVarLike::TypeVarTuple(t.type_var_tuple.clone()),
+        }
+    }
+
+    pub fn format_name(&self, db: &Database, style: FormatStyle) -> Box<str> {
+        match self {
+            TypeVarLikeUsage::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
+            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
         }
     }
 }
