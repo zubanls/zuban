@@ -139,7 +139,7 @@ struct DFATransition {
     to: *mut DFAState,
 }
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum StackMode {
     PositivePeek,
     Alternative(*const Plan),

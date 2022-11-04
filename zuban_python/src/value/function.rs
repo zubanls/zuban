@@ -4,18 +4,17 @@ use parsa_python_ast::{
 };
 use std::cell::Cell;
 use std::fmt;
-use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericsList,
-    IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike, TypeVarLikes,
-    TypeVarManager,
+    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericItem,
+    GenericsList, IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{PythonFile, TypeComputation, TypeComputationOrigin};
+use crate::file::{PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn};
 use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -211,24 +210,23 @@ impl<'db: 'a, 'a> Function<'a> {
         let mut unbound_type_vars = vec![];
         let mut on_type_var = |i_s: &mut InferenceState,
                                manager: &TypeVarManager,
-                               type_var: Rc<TypeVarLike>,
-                               node_ref: NodeRef,
+                               type_var: TypeVarLike,
                                current_callable: Option<_>| {
             self.class
                 .and_then(|class| {
                     class
                         .type_vars(i_s)
                         .and_then(|t| t.find(type_var.clone(), class.node_ref.as_link()))
-                        .map(DbType::TypeVarLike)
+                        .map(TypeVarCallbackReturn::TypeVarLike)
                 })
-                .or_else(|| {
+                .unwrap_or_else(|| {
                     if in_result_type.get()
                         && manager.position(&type_var).is_none()
                         && current_callable.is_none()
                     {
                         unbound_type_vars.push(type_var);
                     }
-                    None
+                    TypeVarCallbackReturn::NotFound
                 })
         };
         let mut type_computation = TypeComputation::new(
@@ -257,8 +255,8 @@ impl<'db: 'a, 'a> Function<'a> {
             }
         });
         if !unbound_type_vars.is_empty() {
-            if let Some(DbType::TypeVarLike(t)) = self.result_type(i_s).maybe_db_type() {
-                if unbound_type_vars.contains(&t.type_var_like) {
+            if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
+                if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     NodeRef::new(
                         self.node_ref.file,
                         func_node.return_annotation().unwrap().expression().index(),
@@ -285,11 +283,19 @@ impl<'db: 'a, 'a> Function<'a> {
         let as_db_type = |i_s: &mut _, t: Type| {
             t.as_db_type(i_s).replace_type_vars(&mut |usage| {
                 if let Some(class) = self.class {
-                    if usage.in_definition == class.node_ref.as_link() {
-                        return class.generics().nth(i_s, usage.index).into_db_type(i_s);
+                    if usage.in_definition() == class.node_ref.as_link() {
+                        return class
+                            .generics()
+                            .nth_usage(i_s, &usage)
+                            .into_generic_item(i_s);
                     }
                 }
-                DbType::TypeVarLike(usage.clone())
+                match usage {
+                    TypeVarLikeUsage::TypeVar(usage) => {
+                        GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
+                    }
+                    _ => todo!(),
+                }
             })
         };
         let result_type = self.result_type(i_s);
@@ -473,7 +479,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 "[{}] ",
                 type_vars
                     .iter()
-                    .map(|t| match t.as_ref() {
+                    .map(|t| match t {
                         TypeVarLike::TypeVar(t) => {
                             let mut s = t.name(i_s.db).to_owned();
                             if let Some(bound) = &t.bound {

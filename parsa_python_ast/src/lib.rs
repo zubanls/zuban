@@ -1692,7 +1692,7 @@ impl<'db> Param<'db> {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, PartialOrd)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd)]
 pub enum ParamKind {
     PositionalOnly,
     PositionalOrKeyword,
@@ -2202,7 +2202,7 @@ impl<'db> Operation<'db> {
 impl<'db> AugAssign<'db> {
     pub fn magic_methods(&self) -> (&'static str, &'static str, &'static str) {
         let code = self.node.as_code();
-        match code.as_bytes().get(0).unwrap() {
+        match code.as_bytes().first().unwrap() {
             b'+' => ("__iadd__", "__add__", "__radd__"),
             b'-' => ("__isub__", "__sub__", "__rsub__"),
             b'*' => {

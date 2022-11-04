@@ -28,10 +28,7 @@ impl TypingClass {
 
     pub fn as_db_type(&self) -> DbType {
         match self.specific {
-            Specific::TypingTuple => DbType::Tuple(TupleContent {
-                generics: None,
-                arbitrary_length: true,
-            }),
+            Specific::TypingTuple => DbType::Tuple(TupleContent::new_empty()),
             Specific::TypingType => DbType::Type(Box::new(DbType::Any)),
             _ => todo!("{:?}", self.specific),
         }
@@ -147,7 +144,7 @@ pub struct TypingType<'a> {
     pub db_type: &'a DbType,
 }
 
-impl<'db, 'a> TypingType<'a> {
+impl<'a> TypingType<'a> {
     pub fn new(db: &'a Database, full_db_type: Cow<'a, DbType>, db_type: &'a DbType) -> Self {
         Self {
             db,
@@ -168,21 +165,18 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
 
     fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self.db_type {
-            DbType::TypeVarLike(t) => match t.type_var_like.as_ref() {
-                TypeVarLike::TypeVar(type_var) => {
-                    if let Some(bound) = &type_var.bound {
-                        TypingType::new(
-                            self.db,
-                            Cow::Owned(DbType::Type(Box::new(bound.clone()))),
-                            bound,
-                        )
-                        .lookup_internal(i_s, name)
-                    } else {
-                        todo!("{type_var:?}")
-                    }
+            DbType::TypeVar(t) => {
+                if let Some(bound) = &t.type_var.bound {
+                    TypingType::new(
+                        self.db,
+                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                        bound,
+                    )
+                    .lookup_internal(i_s, name)
+                } else {
+                    todo!("{t:?}")
                 }
-                _ => todo!("is this even reachable for paramspec and typevartuple?"),
-            },
+            }
             DbType::Class(link, generics_list) => {
                 Class::from_db_type(i_s.db, *link, generics_list).lookup_internal(i_s, name)
             }
@@ -218,21 +212,18 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
             }
             DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
                 .execute(i_s, args, result_context, on_type_error),
-            DbType::TypeVarLike(t) => match t.type_var_like.as_ref() {
-                TypeVarLike::TypeVar(type_var) => {
-                    if let Some(bound) = &type_var.bound {
-                        TypingType::new(
-                            self.db,
-                            Cow::Owned(DbType::Type(Box::new(bound.clone()))),
-                            bound,
-                        )
-                        .execute(i_s, args, result_context, on_type_error)
-                    } else {
-                        todo!("{t:?}")
-                    }
+            DbType::TypeVar(t) => {
+                if let Some(bound) = &t.type_var.bound {
+                    TypingType::new(
+                        self.db,
+                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                        bound,
+                    )
+                    .execute(i_s, args, result_context, on_type_error)
+                } else {
+                    todo!("{t:?}")
                 }
-                _ => todo!("probably unreachable"),
-            },
+            }
             DbType::NewType(n) => {
                 let mut iterator = args.iter_arguments();
                 if let Some(first) = iterator.next() {
@@ -250,7 +241,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
     }
 }
 
-impl<'db> fmt::Debug for TypingType<'_> {
+impl fmt::Debug for TypingType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypingType")
             .field(
@@ -401,17 +392,11 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
     }
 
     fn name(&self) -> &'a str {
-        match self.type_var_usage.type_var_like.as_ref() {
-            TypeVarLike::TypeVar(type_var) => type_var.name(self.db),
-            _ => todo!(),
-        }
+        self.type_var_usage.type_var.name(self.db)
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        let type_var = match self.type_var_usage.type_var_like.as_ref() {
-            TypeVarLike::TypeVar(type_var) => type_var,
-            _ => todo!(),
-        };
+        let type_var = &self.type_var_usage.type_var;
         if !type_var.restrictions.is_empty() {
             debug!("TODO type var values");
             /*
@@ -604,7 +589,7 @@ fn maybe_type_var(
                 .add_typing_issue(i_s.db, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
-        return Some(TypeVarLike::TypeVar(TypeVar {
+        return Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
             name_string: PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
@@ -621,7 +606,7 @@ fn maybe_type_var(
                     return None;
                 }
             },
-        }));
+        })));
     } else {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -654,7 +639,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(t) = maybe_type_var(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(Rc::new(t)))
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
             Inferred::new_unknown()
         }
@@ -689,7 +674,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(Rc::new(t)))
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
         } else {
             Inferred::new_unknown()
         }
@@ -747,7 +732,7 @@ fn maybe_type_var_tuple(
             todo!()
         }
 
-        let mut default = None;
+        let default = None;
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
@@ -761,7 +746,7 @@ fn maybe_type_var_tuple(
                             .inference(i_s)
                             .compute_type_var_constraint(node_ref.as_expression())
                         {
-                            default = Some(t);
+                            //default = Some(t);
                             todo!()
                         } else {
                             todo!()
@@ -782,13 +767,13 @@ fn maybe_type_var_tuple(
                 ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
             }
         }
-        return Some(TypeVarLike::TypeVarTuple(TypeVarTuple {
+        return Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
             name_string: PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
             default,
-        }));
+        })));
     } else {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -890,6 +875,6 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
         ))
     } else {
         todo!();
-        None
+        //None
     }
 }

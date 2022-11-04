@@ -588,17 +588,13 @@ testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 testInvalidUnpackTypes
 
 # TypeVarTuple
-testTypeVarTupleBasic
 testTypeVarTupleMixed
 testTypeVarTupleChaining
 testTypeVarTupleGenericClassDefn
-testTypeVarTupleGenericClassWithFunctions
-testTypeVarTupleGenericClassWithMethods
 testPep646ArrayExample
 testPep646ArrayExampleWithDType
-testPep646ArrayExampleInfer
-testPep646TypeConcatenation
-testPep646TypeVarConcatenation
+testPep646TypeVarTupleUnpacking
+testPep646TypeVarStarArgs
 testTypeVarTupleCached
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
@@ -617,6 +613,7 @@ testUnpackKwargsOverload
 testUnpackKwargsJoin
 testUnpackKwargsParamSpec
 testUnpackKwargsUpdateFine
+testUnpackNoCrashOnEmpty
 
 # x: typing_extensions.TypeAlias = int
 testClassLevelTypeAliasesInUnusualContexts
@@ -1141,6 +1138,9 @@ testTypeApplicationCrash
 
 # "bool" is not a valid base class
 testTestExtendPrimitives
+
+# "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
+testContextForAttributeDeclaredInInit
 
 # strict optional
 *StrictOptional*

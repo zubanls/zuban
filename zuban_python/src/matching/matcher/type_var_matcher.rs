@@ -1,14 +1,17 @@
+use std::borrow::Cow;
+
 use parsa_python_ast::ParamKind;
 
 use super::super::params::{InferrableParamIterator2, Param};
 use super::super::{
-    ArgumentIndexWithParam, FormatData, Generics, Match, Matcher, MismatchReason, ResultContext,
-    SignatureMatch, Type,
+    ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
+    ResultContext, SignatureMatch, Type,
 };
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, DbType, GenericsList, PointLink, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    CallableContent, DbType, GenericItem, GenericsList, PointLink, TupleTypeArguments,
+    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -25,7 +28,7 @@ pub enum FunctionOrCallable<'a> {
 #[derive(Debug)]
 pub enum BoundKind {
     TypeVar(TypeVarBound),
-    TypeVarTuple(Box<[DbType]>),
+    TypeVarTuple(TypeArguments),
     Uncalculated,
 }
 
@@ -41,9 +44,73 @@ pub struct CalculatedTypeVarLike {
     pub(super) defined_by_result_context: bool,
 }
 
+fn common_base_class<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
+    i_s: &mut InferenceState,
+    mut ts: I,
+) -> DbType {
+    if let Some(first) = ts.next() {
+        let mut result = match first {
+            TypeOrTypeVarTuple::Type(t) => Cow::Borrowed(t),
+            TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
+        };
+        for t in ts {
+            let t = match t {
+                TypeOrTypeVarTuple::Type(t) => t,
+                TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
+            };
+            result = Cow::Owned(Type::Type(result).common_base_class(i_s, &Type::new(t)));
+        }
+        result.into_owned()
+    } else {
+        todo!("should probably return never")
+    }
+}
+
 impl CalculatedTypeVarLike {
     pub fn calculated(&self) -> bool {
         !matches!(self.type_, BoundKind::Uncalculated)
+    }
+
+    pub fn merge_fixed_length_type_var_tuple<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
+        &mut self,
+        i_s: &mut InferenceState,
+        fetch: usize,
+        items: I,
+    ) {
+        match &mut self.type_ {
+            BoundKind::TypeVarTuple(ts) => match &mut ts.args {
+                TupleTypeArguments::FixedLength(calc_ts) => {
+                    if fetch == calc_ts.len() {
+                        for (t1, t2) in calc_ts.iter_mut().zip(items) {
+                            match (t1, t2) {
+                                (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
+                                    *t1 = Type::new(t1).common_base_class(i_s, &Type::new(t2));
+                                }
+                                _ => todo!(),
+                            }
+                        }
+                    } else {
+                        // We use map to make an iterator with covariant lifetimes.
+                        #[allow(clippy::map_identity)]
+                        let t = common_base_class(i_s, calc_ts.iter().chain(items.map(|x| x)));
+                        ts.args = TupleTypeArguments::ArbitraryLength(Box::new(t));
+                    }
+                }
+                TupleTypeArguments::ArbitraryLength(calc_t) => {
+                    let base = common_base_class(i_s, items);
+                    //self.merge_arbitrary_length_type_var_tuple(i_s, &base)
+                }
+            },
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn merge_arbitrary_length_type_var_tuple(
+        &mut self,
+        i_s: &mut InferenceState,
+        item: &DbType,
+    ) {
+        todo!()
     }
 }
 
@@ -85,10 +152,17 @@ impl<'a> TypeVarMatcher<'a> {
 
     pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
         type_.search_type_vars(&mut |t| {
-            if t.in_definition == self.match_in_definition {
-                let current = &mut self.calculated_type_vars[t.index.as_usize()];
+            if t.in_definition() == self.match_in_definition {
+                let current = &mut self.calculated_type_vars[t.index().as_usize()];
                 if !current.calculated() {
-                    current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
+                    current.type_ = match t {
+                        TypeVarLikeUsage::TypeVar(_) => {
+                            BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any))
+                        }
+                        TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
+                            TypeArguments::new_arbitrary_length(DbType::Any),
+                        ),
+                    }
                 }
             }
         });
@@ -99,32 +173,46 @@ impl<'a> TypeVarMatcher<'a> {
         i_s: &mut InferenceState,
         t: &DbType,
     ) -> DbType {
-        t.replace_type_vars(&mut |type_var_usage| {
-            if type_var_usage.in_definition == self.match_in_definition {
-                let current = &self.calculated_type_vars[type_var_usage.index.as_usize()];
+        t.replace_type_vars(&mut |type_var_like_usage| {
+            if type_var_like_usage.in_definition() == self.match_in_definition {
+                let current = &self.calculated_type_vars[type_var_like_usage.index().as_usize()];
                 match &current.type_ {
-                    BoundKind::TypeVar(t) => t.clone().into_db_type(),
+                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
                     // Any is just ignored by the context later.
-                    BoundKind::Uncalculated => DbType::Any,
+                    BoundKind::Uncalculated => {
+                        type_var_like_usage.as_type_var_like().as_any_generic_item()
+                    }
                 }
             } else {
                 match self.func_or_callable {
                     FunctionOrCallable::Function(f) => {
                         if let Some(class) = self.class {
-                            if class.node_ref.as_link() == type_var_usage.in_definition {
+                            if class.node_ref.as_link() == type_var_like_usage.in_definition() {
                                 return class
                                     .generics
-                                    .nth(i_s, type_var_usage.index)
-                                    .into_db_type(i_s);
+                                    .nth_usage(i_s, &type_var_like_usage)
+                                    .into_generic_item(i_s);
                             }
                             let func_class = f.class.unwrap();
-                            if type_var_usage.in_definition == func_class.node_ref.as_link() {
+                            if type_var_like_usage.in_definition() == func_class.node_ref.as_link()
+                            {
                                 let type_var_remap = func_class.type_var_remap.unwrap();
-                                let g = &type_var_remap[type_var_usage.index];
-                                self.replace_type_vars_for_nested_context(i_s, g)
+                                match &type_var_remap[type_var_like_usage.index()] {
+                                    GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                                        self.replace_type_vars_for_nested_context(i_s, t),
+                                    ),
+                                    GenericItem::TypeArguments(_) => todo!(),
+                                }
                             } else {
-                                DbType::TypeVarLike(type_var_usage.clone())
+                                match type_var_like_usage {
+                                    TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArgument(
+                                        DbType::TypeVar(usage.into_owned()),
+                                    ),
+                                    TypeVarLikeUsage::TypeVarTuple(usage) => {
+                                        todo!()
+                                    }
+                                }
                             }
                         } else {
                             todo!()
@@ -191,27 +279,35 @@ pub struct CalculatedTypeArguments {
     pub type_arguments: Option<GenericsList>,
 }
 
-impl<'db> CalculatedTypeArguments {
+impl CalculatedTypeArguments {
     pub fn lookup_type_var_usage(
         &self,
         i_s: &mut InferenceState,
         class: Option<&Class>,
-        usage: &TypeVarUsage,
-    ) -> DbType {
-        if self.in_definition == usage.in_definition {
+        usage: TypeVarLikeUsage,
+    ) -> GenericItem {
+        if self.in_definition == usage.in_definition() {
             return if let Some(fm) = &self.type_arguments {
-                fm[usage.index].clone()
+                fm[usage.index()].clone()
             } else {
                 // TODO we are just passing the type vars again. Does this make sense?
-                DbType::TypeVarLike(usage.clone())
+                // GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
+                todo!()
             };
         }
         if let Some(c) = class {
-            if usage.in_definition == c.node_ref.as_link() {
-                return c.generics().nth(i_s, usage.index).into_db_type(i_s);
+            if usage.in_definition() == c.node_ref.as_link() {
+                return c.generics().nth_usage(i_s, &usage).into_generic_item(i_s);
             }
         }
-        DbType::TypeVarLike(usage.clone())
+        match usage {
+            TypeVarLikeUsage::TypeVar(type_var_usage) => {
+                GenericItem::TypeArgument(DbType::TypeVar((*type_var_usage).clone()))
+            }
+            TypeVarLikeUsage::TypeVarTuple(type_var_tuple_usage) => {
+                todo!()
+            }
+        }
     }
 }
 
@@ -287,6 +383,7 @@ fn calculate_type_vars<'db>(
     };
     let mut calculated_type_vars = vec![];
     calculated_type_vars.resize_with(type_vars_len, Default::default);
+    let mut used_type_vars = type_vars;
     let matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
             class,
@@ -297,7 +394,8 @@ fn calculate_type_vars<'db>(
         None => {
             if let FunctionOrCallable::Function(function) = func_or_callable {
                 if let Some(func_class) = function.class {
-                    func_class.type_vars(i_s).map(|_| {
+                    used_type_vars = func_class.type_vars(i_s);
+                    used_type_vars.map(|_| {
                         TypeVarMatcher::new(
                             class,
                             func_or_callable,
@@ -326,22 +424,32 @@ fn calculate_type_vars<'db>(
                         &mut |i_s, _, result_class| {
                             if result_class.node_ref == class.node_ref {
                                 let mut calculating = matcher.iter_calculated_type_vars();
-                                let mut i = 0;
-                                for g in result_class.generics().iter(i_s.clone()) {
+                                for (type_var_like, g) in type_vars
+                                    .iter()
+                                    .zip(result_class.generics().iter(i_s.clone()))
+                                {
                                     let calculated = calculating.next().unwrap();
-                                    if !g.is_any() {
-                                        let mut bound = TypeVarBound::new(
-                                            g.as_db_type(i_s),
-                                            match &type_vars[i] {
-                                                TypeVarLike::TypeVar(t) => t.variance,
-                                                _ => todo!("????"),
-                                            },
-                                        );
-                                        bound.invert_bounds();
-                                        calculated.type_ = BoundKind::TypeVar(bound);
-                                        calculated.defined_by_result_context = true;
-                                        i += 1; // TODO please test that this works for multiple type vars
-                                    }
+                                    match g {
+                                        Generic::TypeArgument(g) => {
+                                            if !g.is_any() {
+                                                let mut bound = TypeVarBound::new(
+                                                    g.as_db_type(i_s),
+                                                    match type_var_like {
+                                                        TypeVarLike::TypeVar(t) => t.variance,
+                                                        _ => unreachable!(),
+                                                    },
+                                                );
+                                                bound.invert_bounds();
+                                                calculated.type_ = BoundKind::TypeVar(bound);
+                                                calculated.defined_by_result_context = true;
+                                            }
+                                        }
+                                        Generic::TypeVarTuple(ts) => {
+                                            calculated.type_ =
+                                                BoundKind::TypeVarTuple(ts.into_owned());
+                                            calculated.defined_by_result_context = true;
+                                        }
+                                    };
                                 }
                                 true
                             } else {
@@ -367,7 +475,7 @@ fn calculate_type_vars<'db>(
                         BoundKind::TypeVar(TypeVarBound::LowerAndUpper(t1, t2)) => {
                             t1.has_any() | t2.has_any()
                         }
-                        BoundKind::TypeVarTuple(ts) => ts.iter().any(|t| t.has_any()),
+                        BoundKind::TypeVarTuple(ts) => ts.args.has_any(),
                         BoundKind::Uncalculated => continue,
                     };
                     if has_any {
@@ -414,10 +522,18 @@ fn calculate_type_vars<'db>(
         GenericsList::new_generics(
             calculated_type_vars
                 .into_iter()
-                .map(|c| match c.type_ {
-                    BoundKind::TypeVar(t) => t.into_db_type(),
-                    BoundKind::TypeVarTuple(_) => todo!(),
-                    BoundKind::Uncalculated => DbType::Never,
+                .zip(used_type_vars.unwrap().iter())
+                .map(|(c, type_var_like)| match c.type_ {
+                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
+                    BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
+                    BoundKind::Uncalculated => match type_var_like {
+                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
+                        // TODO TypeVarTuple this feels wrong, should maybe be never?
+                        TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
+                            TypeArguments::new_fixed_length(Box::new([])),
+                        ),
+                        TypeVarLike::ParamSpec(_) => todo!(),
+                    },
                 })
                 .collect(),
         )
@@ -520,10 +636,6 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                                 }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
                                     if should_generate_errors {
-                                        let type_var = match type_var.as_ref() {
-                                            TypeVarLike::TypeVar(type_var) => type_var,
-                                            _ => unreachable!(),
-                                        };
                                         node_ref.add_typing_issue(
                                             i_s.db,
                                             IssueType::InvalidTypeVarValue {

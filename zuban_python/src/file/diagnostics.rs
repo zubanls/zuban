@@ -2,8 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    ComplexPoint, DbType, GenericsList, Locality, Point, PointType, Specific, TypeVarUsage,
-    Variance,
+    ComplexPoint, DbType, GenericItem, GenericsList, Locality, Point, PointType, Specific,
+    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarTupleUsage, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -331,12 +331,26 @@ impl PythonInference<'_, '_, '_, '_> {
                         type_vars
                             .iter()
                             .enumerate()
-                            .map(|(i, t)| {
-                                DbType::TypeVarLike(TypeVarUsage {
-                                    type_var_like: t.clone(),
-                                    index: i.into(),
-                                    in_definition: class.node_ref.as_link(),
-                                })
+                            .map(|(i, t)| match t {
+                                TypeVarLike::TypeVar(type_var) => {
+                                    GenericItem::TypeArgument(DbType::TypeVar(TypeVarUsage {
+                                        type_var: type_var.clone(),
+                                        index: i.into(),
+                                        in_definition: class.node_ref.as_link(),
+                                    }))
+                                }
+                                TypeVarLike::TypeVarTuple(type_var_tuple) => {
+                                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(
+                                        Box::new([TypeOrTypeVarTuple::TypeVarTuple(
+                                            TypeVarTupleUsage {
+                                                type_var_tuple: type_var_tuple.clone(),
+                                                index: i.into(),
+                                                in_definition: class.node_ref.as_link(),
+                                            },
+                                        )]),
+                                    ))
+                                }
+                                TypeVarLike::ParamSpec(_) => todo!(),
                             })
                             .collect(),
                     )

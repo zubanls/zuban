@@ -1,5 +1,4 @@
 use std::fmt;
-use std::rc::Rc;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
@@ -7,11 +6,13 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, PointType, TypeVarLike, TypeVarLikes, TypeVarUsage,
+    MroIndex, ParentScope, Point, PointLink, PointType, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
     BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation, TypeComputationOrigin,
+    TypeVarCallbackReturn,
 };
 use crate::file_state::File;
 use crate::getitem::SliceType;
@@ -179,8 +180,8 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn maybe_type_var_like_in_parent(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        type_var: &Rc<TypeVarLike>,
-    ) -> Option<TypeVarUsage> {
+        type_var: &TypeVarLike,
+    ) -> Option<TypeVarLikeUsage<'static>> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {
@@ -252,18 +253,18 @@ impl<'db: 'a, 'a> Class<'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, _: &_, type_var_like: Rc<TypeVarLike>, _, _| {
+                            Some(&mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
                                 if let Some(type_vars) = type_vars {
                                     if let Some(usage) = type_vars
                                         .find(type_var_like.clone(), self.node_ref.as_link())
                                     {
-                                        return Some(DbType::TypeVarLike(usage));
+                                        return TypeVarCallbackReturn::TypeVarLike(usage);
                                     }
                                 }
                                 if let Some(usage) =
                                     self.maybe_type_var_like_in_parent(i_s, &type_var_like)
                                 {
-                                    return Some(DbType::TypeVarLike(usage));
+                                    return TypeVarCallbackReturn::TypeVarLike(usage);
                                 }
                                 todo!("Maybe class in func");
                             }),
@@ -304,7 +305,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     } else {
                                         for base in class.class_infos(&mut i_s).mro.iter() {
                                             mro.push(base.replace_type_vars(&mut |t| {
-                                                mro[mro_index].expect_class_generics()[t.index]
+                                                mro[mro_index].expect_class_generics()[t.index()]
                                                     .clone()
                                             }));
                                         }

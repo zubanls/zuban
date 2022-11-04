@@ -13,7 +13,7 @@ mod typing;
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::Arguments;
-use crate::database::{Database, DbType, FileIndex, PointLink};
+use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -35,10 +35,12 @@ pub use typing::{
     TypingClass, TypingClassVar, TypingType,
 };
 
+type OnOverloadMismatch<'a> = Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>;
+
 #[derive(Clone, Copy)]
 pub struct OnTypeError<'db, 'a> {
     pub callback: OnTypeErrorCallback<'db, 'a>,
-    pub on_overload_mismatch: Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>,
+    pub on_overload_mismatch: OnOverloadMismatch<'a>,
 }
 
 impl<'db, 'a> OnTypeError<'db, 'a> {
@@ -123,12 +125,13 @@ macro_rules! base_qualified_name {
 pub enum IteratorContent<'a> {
     Inferred(Inferred),
     ListLiteral(ListLiteral<'a>, ListOrSetElementIterator<'a>),
-    FixedLengthTupleGenerics(std::slice::Iter<'a, DbType>),
+    // The code before makes sure that no type var tuples are passed.
+    FixedLengthTupleGenerics(std::slice::Iter<'a, TypeOrTypeVarTuple>),
     Empty,
     Any,
 }
 
-impl<'db> IteratorContent<'_> {
+impl IteratorContent<'_> {
     pub fn infer_all(self, i_s: &mut InferenceState) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
@@ -138,7 +141,12 @@ impl<'db> IteratorContent<'_> {
             }
             Self::FixedLengthTupleGenerics(generics) => Inferred::execute_db_type(
                 i_s,
-                generics.fold(DbType::Never, |a, b| a.union(b.clone())),
+                generics.fold(DbType::Never, |a, b| {
+                    a.union(match b {
+                        TypeOrTypeVarTuple::Type(b) => b.clone(),
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                    })
+                }),
             ),
             Self::Empty => todo!(),
             Self::Any => Inferred::new_any(),
@@ -148,9 +156,15 @@ impl<'db> IteratorContent<'_> {
     pub fn next(&mut self, i_s: &mut InferenceState) -> Option<Inferred> {
         match self {
             Self::Inferred(inferred) => Some(inferred.clone()),
-            Self::FixedLengthTupleGenerics(t) => {
-                t.next().map(|g| Inferred::execute_db_type(i_s, g.clone()))
-            }
+            Self::FixedLengthTupleGenerics(t) => t.next().map(|t| {
+                Inferred::execute_db_type(
+                    i_s,
+                    match t {
+                        TypeOrTypeVarTuple::Type(t) => t.clone(),
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                    },
+                )
+            }),
             Self::ListLiteral(list, list_elements) => {
                 list_elements.next().map(|list_element| match list_element {
                     StarLikeExpression::NamedExpression(named_expr) => {
@@ -186,7 +200,7 @@ pub enum LookupResult {
     None,
 }
 
-impl<'db> LookupResult {
+impl LookupResult {
     fn into_maybe_inferred(self) -> Option<Inferred> {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {

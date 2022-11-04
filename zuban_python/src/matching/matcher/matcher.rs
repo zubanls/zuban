@@ -1,14 +1,15 @@
+use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::super::{FormatData, GenericsIterator, Match, MismatchReason, Type};
+use super::super::{FormatData, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{
     BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher,
 };
 
 use crate::database::{
-    CallableContent, Database, DbType, FormatStyle, RecursiveAlias, TupleTypeArguments, TypeVar,
-    TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, DbType, RecursiveAlias, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
+    TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -98,15 +99,15 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         match self.type_var_matcher.as_mut() {
-            Some(matcher) => match t1.type_var_like.as_ref() {
-                TypeVarLike::TypeVar(type_var) => self.match_or_add_type_var_in_type_var_matcher(
-                    i_s, t1, type_var, value_type, variance,
-                ),
-                TypeVarLike::TypeVarTuple(_) => todo!(),
-                TypeVarLike::ParamSpec(_) => todo!(),
-            },
+            Some(matcher) => self.match_or_add_type_var_in_type_var_matcher(
+                i_s,
+                t1,
+                t1.type_var.as_ref(),
+                value_type,
+                variance,
+            ),
             None => match value_type.maybe_db_type() {
-                Some(DbType::TypeVarLike(t2)) => {
+                Some(DbType::TypeVar(t2)) => {
                     (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
                 }
                 _ => Match::new_false(),
@@ -117,32 +118,86 @@ impl<'a> Matcher<'a> {
     pub fn match_type_var_tuple(
         &mut self,
         i_s: &mut InferenceState,
-        index: TypeVarIndex,
-        generics1: &TupleTypeArguments,
-        generics2: &TupleTypeArguments,
-        generics2_iterator: &mut GenericsIterator,
+        tuple1: &[TypeOrTypeVarTuple],
+        tuple2: &TupleTypeArguments,
         variance: Variance,
     ) -> Match {
-        let fetch = generics2.len() as isize + 1 - generics1.len() as isize;
-        if let Ok(fetch) = fetch.try_into() {
-            let tv_matcher = self.type_var_matcher.as_mut().unwrap();
-            let calculated = &mut tv_matcher.calculated_type_vars[index.as_usize()];
-            if calculated.calculated() {
-                todo!()
-            } else {
-                let types: Box<_> = generics2_iterator
-                    .take(fetch)
-                    .map(|t| t.as_db_type(i_s))
-                    .collect();
-                calculated.type_ = BoundKind::TypeVarTuple(types);
+        let mut matches = Match::new_true();
+        match tuple2 {
+            TupleTypeArguments::FixedLength(ts2) => {
+                let mut t2_iterator = ts2.iter();
+                for t1 in tuple1.iter() {
+                    match t1 {
+                        TypeOrTypeVarTuple::Type(t1) => {
+                            if let Some(t2) = t2_iterator.next() {
+                                match t2 {
+                                    TypeOrTypeVarTuple::Type(t2) => {
+                                        matches &= Type::new(t1).matches(
+                                            i_s,
+                                            self,
+                                            &Type::new(t2),
+                                            variance,
+                                        );
+                                    }
+                                    TypeOrTypeVarTuple::TypeVarTuple(_) => {
+                                        return Match::new_false();
+                                    }
+                                }
+                            } else {
+                                matches &= Match::new_false();
+                            }
+                        }
+                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => {
+                            // TODO TypeVarTuple currently we ignore variance completely
+                            let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+                            let calculated =
+                                &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                            let fetch = ts2.len() as isize + 1 - tuple1.len() as isize;
+                            if let Ok(fetch) = fetch.try_into() {
+                                if calculated.calculated() {
+                                    calculated.merge_fixed_length_type_var_tuple(
+                                        i_s,
+                                        fetch,
+                                        &mut t2_iterator.by_ref().take(fetch),
+                                    );
+                                } else {
+                                    let types: Box<_> =
+                                        t2_iterator.by_ref().take(fetch).cloned().collect();
+                                    calculated.type_ = BoundKind::TypeVarTuple(
+                                        TypeArguments::new_fixed_length(types),
+                                    );
+                                }
+                            } else {
+                                // Negative numbers mean that we have non-matching tuples, but the fact they do not match
+                                // will be noticed in a different place.
+                            }
+                        }
+                    }
+                }
             }
-            Match::new_true()
-        } else {
-            // Negative numbers mean that we have non-matching tuples, but the fact they do not match
-            // will be noticed in a different place.
-            todo!()
-            //Match::new_true()
-        }
+            TupleTypeArguments::ArbitraryLength(t2) => {
+                let tv_matcher = self.type_var_matcher.as_mut().unwrap();
+                for t1 in tuple1.iter() {
+                    match t1 {
+                        TypeOrTypeVarTuple::Type(t1) => {
+                            todo!()
+                        }
+                        TypeOrTypeVarTuple::TypeVarTuple(tvt) => {
+                            let calculated =
+                                &mut tv_matcher.calculated_type_vars[tvt.index.as_usize()];
+                            if calculated.calculated() {
+                                todo!()
+                            } else {
+                                calculated.type_ = BoundKind::TypeVarTuple(
+                                    TypeArguments::new_arbitrary_length(t2.as_ref().clone()),
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        };
+        matches
     }
 
     fn match_or_add_type_var_in_type_var_matcher(
@@ -154,7 +209,7 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         let type_var_matcher = self.type_var_matcher.as_mut().unwrap();
-        let type_var_like = &type_var_usage.type_var_like;
+        let type_var_like = &type_var_usage.type_var;
         if type_var_matcher.match_in_definition == type_var_usage.in_definition {
             let current =
                 &mut type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
@@ -176,25 +231,23 @@ impl<'a> Matcher<'a> {
             // Before setting the type var, we need to check if the constraints match.
             let mut mismatch_constraints = false;
             if !type_var.restrictions.is_empty() {
-                if let Some(DbType::TypeVarLike(t2)) = value_type.maybe_db_type() {
-                    if let TypeVarLike::TypeVar(t2) = t2.type_var_like.as_ref() {
-                        if !t2.restrictions.is_empty() {
-                            if current.calculated() {
-                                todo!()
-                            } else if t2.restrictions.iter().all(|r2| {
-                                type_var.restrictions.iter().any(|r1| {
-                                    Type::new(r1)
-                                        .is_simple_super_type_of(i_s, &Type::new(r2))
-                                        .bool()
-                                })
-                            }) {
-                                current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
-                                    value_type.as_db_type(i_s),
-                                ));
-                                return Match::new_true();
-                            } else {
-                                mismatch_constraints = true;
-                            }
+                if let Some(DbType::TypeVar(t2)) = value_type.maybe_db_type() {
+                    if !t2.type_var.restrictions.is_empty() {
+                        if current.calculated() {
+                            todo!()
+                        } else if t2.type_var.restrictions.iter().all(|r2| {
+                            type_var.restrictions.iter().any(|r1| {
+                                Type::new(r1)
+                                    .is_simple_super_type_of(i_s, &Type::new(r2))
+                                    .bool()
+                            })
+                        }) {
+                            current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
+                                value_type.as_db_type(i_s),
+                            ));
+                            return Match::new_true();
+                        } else {
+                            mismatch_constraints = true;
                         }
                     }
                 }
@@ -228,7 +281,7 @@ impl<'a> Matcher<'a> {
                 return Match::False {
                     reason: MismatchReason::ConstraintMismatch {
                         expected: value_type.as_db_type(i_s),
-                        type_var: type_var_usage.type_var_like.clone(),
+                        type_var: type_var_usage.type_var.clone(),
                     },
                     similar: false,
                 };
@@ -246,7 +299,13 @@ impl<'a> Matcher<'a> {
             }
             if let Some(class) = type_var_matcher.class {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
-                    let g = class.generics.nth(i_s, type_var_usage.index);
+                    let g = class
+                        .generics
+                        .nth_usage(
+                            i_s,
+                            &TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
+                        )
+                        .expect_type_argument();
                     return g.simple_matches(i_s, value_type, type_var.variance);
                 }
             }
@@ -258,7 +317,8 @@ impl<'a> Matcher<'a> {
                             // By definition, because the class did not match there will never be a
                             // type_var_remap that is not defined.
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g = Type::new(&type_var_remap[type_var_usage.index]);
+                            let g = Generic::new(&type_var_remap[type_var_usage.index])
+                                .expect_type_argument();
                             // The remapping of type vars needs to be checked now. In a lot of
                             // cases this is T -> T and S -> S, but it could also be T -> S and S
                             // -> List[T] or something completely arbitrary.
@@ -267,7 +327,7 @@ impl<'a> Matcher<'a> {
                             // Happens e.g. for testInvalidNumberOfTypeArgs
                             // class C:  # Forgot to add type params here
                             //     def __init__(self, t: T) -> None: pass
-                            if let Some(DbType::TypeVarLike(v)) = value_type.maybe_db_type() {
+                            if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
                                 if v == type_var_usage {
                                     return Match::new_true();
                                 }
@@ -293,20 +353,19 @@ impl<'a> Matcher<'a> {
 
     pub fn format_in_type_var_matcher(
         &self,
-        db: &Database,
         type_var_usage: &TypeVarUsage,
-        style: FormatStyle,
+        format_data: &FormatData,
     ) -> Box<str> {
         let type_var_matcher = self.type_var_matcher.as_ref().unwrap();
-        let i_s = &mut InferenceState::new(db);
+        let i_s = &mut InferenceState::new(format_data.db);
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
         if type_var_matcher.match_in_definition == type_var_usage.in_definition {
             let current = &type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
             match &current.type_ {
-                BoundKind::TypeVar(bound) => bound.format(i_s, style),
-                BoundKind::TypeVarTuple(_) => "TODO format typevartuple".into(),
-                BoundKind::Uncalculated => DbType::Never.format(&FormatData::with_style(db, style)),
+                BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
+                BoundKind::TypeVarTuple(ts) => ts.format(format_data),
+                BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {
             match type_var_matcher.func_or_callable {
@@ -315,16 +374,18 @@ impl<'a> Matcher<'a> {
                         if class.node_ref.as_link() == type_var_usage.in_definition {
                             return class
                                 .generics
-                                .nth(i_s, type_var_usage.index)
-                                .format(&FormatData::with_style(db, style));
+                                .nth_usage(
+                                    i_s,
+                                    &TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
+                                )
+                                .format(format_data);
                         }
                         let func_class = f.class.unwrap();
                         if type_var_usage.in_definition == func_class.node_ref.as_link() {
                             let type_var_remap = func_class.type_var_remap.unwrap();
-                            type_var_remap[type_var_usage.index]
-                                .format(&FormatData::with_matcher_and_style(db, self, style))
+                            type_var_remap[type_var_usage.index].format(format_data)
                         } else {
-                            type_var_usage.type_var_like.name(db).into()
+                            type_var_usage.type_var.name(format_data.db).into()
                         }
                     } else {
                         todo!("Probably nested generic functions???")

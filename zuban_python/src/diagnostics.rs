@@ -43,7 +43,7 @@ pub(crate) enum IssueType {
     EnsureSingleGenericOrProtocol,
 
     DuplicateTypeVar,
-    UnboundTypeVarLike { type_var_like: std::rc::Rc<TypeVarLike> },
+    UnboundTypeVarLike { type_var_like: TypeVarLike },
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
     TypeVarBoundViolation { actual: Box<str>, executable: Box<str>, expected: Box<str> },
@@ -288,7 +288,7 @@ impl<'db> Diagnostic<'db> {
 
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
-            IssueType::UnboundTypeVarLike{type_var_like} => match type_var_like.as_ref() {
+            IssueType::UnboundTypeVarLike{type_var_like} => match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     let qualified = type_var.qualified_name(self.db);
                     let name = type_var.name(self.db);

@@ -1,12 +1,11 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::fmt;
-use std::rc::Rc;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericsList, Locality, MroIndex, NewType,
-    Point, PointLink, PointType, Specific, TypeVarLike,
+    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality,
+    MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
@@ -122,7 +121,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Self { state }
     }
 
-    pub fn create_instance(class: PointLink, generics: Option<&[DbType]>) -> Self {
+    pub fn create_instance(class: PointLink, generics: Option<&[GenericItem]>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::Instance(
             class,
             generics.map(|lst| GenericsList::generics_from_vec(lst.to_vec())),
@@ -278,10 +277,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.internal_run(i_s, callable, &|_, i1, i2| (), &mut |i_s| on_missing())
     }
 
-    pub fn maybe_type_var_like(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Rc<TypeVarLike>> {
+    pub fn maybe_type_var_like(&self, i_s: &mut InferenceState<'db, '_>) -> Option<TypeVarLike> {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::TypeVarLike(t)) = node_ref.complex() {
@@ -1181,7 +1177,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             })
             .unwrap(),
         DbType::Intersection(lst) => todo!(),
-        DbType::TypeVarLike(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
+        DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
         DbType::Tuple(content) => callable(i_s, &Tuple::new(db_type, content)),
         DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
         DbType::None => callable(i_s, &NoneInstance()),

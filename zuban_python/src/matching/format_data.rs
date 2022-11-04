@@ -100,9 +100,9 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
     pub fn format_type_var(&self, type_var_usage: &TypeVarUsage) -> Box<str> {
         if let Some(matcher) = self.matcher {
             if matcher.has_type_var_matcher() {
-                return matcher.format_in_type_var_matcher(self.db, type_var_usage, self.style);
+                return matcher.format_in_type_var_matcher(type_var_usage, self);
             }
         }
-        Box::from(type_var_usage.type_var_like.name(self.db))
+        Box::from(type_var_usage.type_var.name(self.db))
     }
 }

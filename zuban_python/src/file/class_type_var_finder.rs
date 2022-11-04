@@ -65,7 +65,7 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     }
 
     fn find_in_expr(&mut self, expr: Expression<'file>) {
-        let type_content = match expr.unpack() {
+        match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
                 self.find_in_expression_part(n);
             }
@@ -185,7 +185,7 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
                     .maybe_type_var_like_in_parent(self.inference.i_s, &type_var_like)
                     .is_none()
                 {
-                    if let TypeVarLike::TypeVarTuple(t) = type_var_like.as_ref() {
+                    if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
                         if self.type_var_manager.has_type_var_tuples() {
                             NodeRef::new(self.inference.file, name.index()).add_typing_issue(
                                 self.inference.i_s.db,
