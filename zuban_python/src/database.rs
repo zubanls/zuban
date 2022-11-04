@@ -383,6 +383,7 @@ pub enum Specific {
     TypingNewType,
     TypingTypeVarClass,
     TypingTypeVarTupleClass,
+    TypingParamSpecClass,
     TypingLiteralString,
     TypingUnpack,
 

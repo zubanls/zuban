@@ -786,6 +786,144 @@ fn maybe_type_var_tuple(
 }
 
 #[derive(Debug)]
+pub struct ParamSpecClass();
+
+impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &str {
+        "ParamSpec"
+    }
+
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+        LookupResult::None
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(t) = maybe_param_spec(i_s, args, result_context) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
+    }
+}
+
+fn maybe_param_spec(
+    i_s: &mut InferenceState,
+    args: &dyn Arguments,
+    result_context: &ResultContext,
+) -> Option<TypeVarLike> {
+    if !matches!(result_context, ResultContext::Unknown) {
+        args.as_node_ref()
+            .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
+        return None;
+    }
+    let mut iterator = args.iter_arguments();
+    if let Some(first_arg) = iterator.next() {
+        let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
+            node_ref
+                .as_named_expression()
+                .maybe_single_string_literal()
+                .map(|py_string| (node_ref, py_string))
+        } else {
+            None
+        };
+        let (name_node, py_string) = match result {
+            Some(result) => result,
+            None => {
+                first_arg.as_node_ref().add_typing_issue(
+                    i_s.db,
+                    IssueType::TypeVarLikeFirstArgMustBeString {
+                        class_name: "ParamSpec",
+                    },
+                );
+                return None;
+            }
+        };
+        if let Some(name) = py_string.in_simple_assignment() {
+            if name.as_code() != py_string.content() {
+                name_node.add_typing_issue(
+                    i_s.db,
+                    IssueType::NameMismatch {
+                        class_name: "ParamSpec",
+                        string_name: Box::from(py_string.content()),
+                        variable_name: Box::from(name.as_code()),
+                    },
+                );
+            }
+        } else {
+            todo!()
+        }
+
+        let default = None;
+        for arg in iterator {
+            match arg.kind {
+                ArgumentKind::Positional { node_ref, .. } => {
+                    /*
+                    node_ref.add_typing_issue(i_s.db, IssueType::TypeVarTupleTooManyArguments);
+                    return None;
+                    */
+                    todo!()
+                }
+                ArgumentKind::Keyword { key, node_ref, .. } => match key {
+                    "default" => {
+                        if let Some(t) = node_ref
+                            .file
+                            .inference(i_s)
+                            .compute_type_var_constraint(node_ref.as_expression())
+                        {
+                            //default = Some(t);
+                            todo!()
+                        } else {
+                            todo!()
+                        }
+                    }
+                    _ => {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::UnexpectedArgument {
+                                class_name: "TypeVarTuple",
+                                argument_name: Box::from(key),
+                            },
+                        );
+                        return None;
+                    }
+                },
+                ArgumentKind::Inferred { .. } => unreachable!(),
+                ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
+            }
+        }
+        return Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
+            name_string: PointLink {
+                file: name_node.file_index(),
+                node_index: py_string.index(),
+            },
+            default,
+        })));
+    } else {
+        args.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::TypeVarLikeTooFewArguments {
+                class_name: "TypeVarTuple",
+            },
+        );
+    }
+    None
+}
+
+#[derive(Debug)]
 pub struct NewTypeClass();
 
 impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {

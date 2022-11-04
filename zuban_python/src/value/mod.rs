@@ -31,8 +31,8 @@ pub use none::NoneInstance;
 pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
-    NewTypeClass, RevealTypeFunction, TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingCast,
-    TypingClass, TypingClassVar, TypingType,
+    NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarInstance,
+    TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType,
 };
 
 type OnOverloadMismatch<'a> = Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>;

@@ -144,6 +144,11 @@ impl PythonState {
         set_typing_inference(s.typing_extensions(), "Unpack", Specific::TypingUnpack);
         set_typing_inference(
             s.typing_extensions(),
+            "ParamSpec",
+            Specific::TypingParamSpecClass,
+        );
+        set_typing_inference(
+            s.typing_extensions(),
             "TypeVarTuple",
             Specific::TypingTypeVarTupleClass,
         );
@@ -316,6 +321,7 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "NewType", Specific::TypingNewType);
     set_typing_inference(typing, "TypeVar", Specific::TypingTypeVarClass);
     set_typing_inference(typing, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
+    set_typing_inference(typing, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
 
@@ -347,6 +353,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "TypeVar",
         "TypeVarTuple",
         "LiteralString",
+        "ParamSpec",
         "Unpack",
     ]
     .contains(&name)

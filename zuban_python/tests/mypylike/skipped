@@ -105,7 +105,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testParamSpec
 testOverloadingWithParamSpec
 testParamSpecCached
 testBoundGenericMethodParamSpecFine
