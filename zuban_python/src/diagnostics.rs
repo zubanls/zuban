@@ -54,7 +54,7 @@ pub(crate) enum IssueType {
     TypeVarOnlySingleRestriction,
     UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
     TypeVarLikeTooFewArguments { class_name: &'static str },
-    TypeVarLikeFirstArgMustBeString{class_name: &'static str},
+    TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
     NameMismatch {
@@ -64,7 +64,7 @@ pub(crate) enum IssueType {
     },
     TypeVarInReturnButNotArgument,
     UnexpectedTypeForTypeVar,
-    TypeVarTupleTooManyArguments,
+    TypeVarLikeTooManyArguments { class_name: &'static str },
     MultipleTypeVarTuplesInClassDef,
 
     BaseExceptionExpected,
@@ -340,8 +340,8 @@ impl<'db> Diagnostic<'db> {
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_owned(),
             IssueType::UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_owned(),
-            IssueType::TypeVarTupleTooManyArguments =>
-                "Only the first argument to TypeVarTuple has defined semantics".to_owned(),
+            IssueType::TypeVarLikeTooManyArguments{class_name} => format!(
+                "Only the first argument to {class_name} has defined semantics"),
             IssueType::MultipleTypeVarTuplesInClassDef =>
                 "Can only use one type var tuple in a class def".to_owned(),
 

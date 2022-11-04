@@ -109,7 +109,6 @@ testOverloadingWithParamSpec
 testParamSpecCached
 testBoundGenericMethodParamSpecFine
 # Also param spec
-testInvalidParamSpecDefinitions
 testInvalidParamSpecType
 testNonStrictParamSpecConcatenateNamedArgs
 testCallablesAsParameters

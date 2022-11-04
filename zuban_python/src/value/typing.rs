@@ -736,7 +736,12 @@ fn maybe_type_var_tuple(
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
-                    node_ref.add_typing_issue(i_s.db, IssueType::TypeVarTupleTooManyArguments);
+                    node_ref.add_typing_issue(
+                        i_s.db,
+                        IssueType::TypeVarLikeTooManyArguments {
+                            class_name: "TypeVarTuple",
+                        },
+                    );
                     return None;
                 }
                 ArgumentKind::Keyword { key, node_ref, .. } => match key {
@@ -871,11 +876,13 @@ fn maybe_param_spec(
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
-                    /*
-                    node_ref.add_typing_issue(i_s.db, IssueType::TypeVarTupleTooManyArguments);
+                    node_ref.add_typing_issue(
+                        i_s.db,
+                        IssueType::TypeVarLikeTooManyArguments {
+                            class_name: "ParamSpec",
+                        },
+                    );
                     return None;
-                    */
-                    todo!()
                 }
                 ArgumentKind::Keyword { key, node_ref, .. } => match key {
                     "default" => {
@@ -893,9 +900,8 @@ fn maybe_param_spec(
                     _ => {
                         node_ref.add_typing_issue(
                             i_s.db,
-                            IssueType::UnexpectedArgument {
-                                class_name: "TypeVarTuple",
-                                argument_name: Box::from(key),
+                            IssueType::TypeVarLikeTooManyArguments {
+                                class_name: "ParamSpec",
                             },
                         );
                         return None;
@@ -916,7 +922,7 @@ fn maybe_param_spec(
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::TypeVarLikeTooFewArguments {
-                class_name: "TypeVarTuple",
+                class_name: "ParamSpec",
             },
         );
     }
