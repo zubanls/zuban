@@ -4,10 +4,10 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
-    GenericItem, GenericsList, Locality, NewType, Point, PointLink, PointType, RecursiveAlias,
-    Specific, StringSlice, TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage,
-    UnionEntry, UnionType,
+    GenericItem, GenericsList, Locality, NewType, ParamSpecUsage, Point, PointLink, PointType,
+    RecursiveAlias, Specific, StringSlice, TupleContent, TypeAlias, TypeArguments,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -145,6 +145,7 @@ enum TypeContent<'db, 'a> {
     RecursiveAlias(PointLink),
     InvalidVariable(InvalidVariableType<'a>),
     TypeVarTuple(TypeVarTupleUsage),
+    ParamSpec(ParamSpecUsage),
     Unpacked(TypeOrTypeVarTuple),
     Unknown,
 }
@@ -450,6 +451,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
+            TypeContent::ParamSpec(_) => todo!(),
             TypeContent::Unpacked(t) => DbType::Any, // TODO Should probably raise an error?
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
@@ -580,6 +582,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
                     TypeContent::SpecialType(m) => todo!(),
                     TypeContent::TypeVarTuple(_) => todo!(),
+                    TypeContent::ParamSpec(_) => todo!(),
                     TypeContent::Unpacked(_) => todo!(),
                     TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
                     TypeContent::Unknown => TypeContent::Unknown,
@@ -636,6 +639,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     TypeContent::InvalidVariable(t) => todo!(),
                     TypeContent::TypeVarTuple(_) => todo!(),
+                    TypeContent::ParamSpec(_) => todo!(),
                     TypeContent::Unpacked(_) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
@@ -1192,7 +1196,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             )) => Some(TypeContent::TypeVarTuple(usage.into_owned())),
                             TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::ParamSpec(
                                 usage,
-                            )) => todo!(),
+                            )) => Some(TypeContent::ParamSpec(usage.into_owned())),
                             TypeVarCallbackReturn::UnboundTypeVar => {
                                 let node_ref = NodeRef::new(self.inference.file, name.index());
                                 node_ref.add_typing_issue(
