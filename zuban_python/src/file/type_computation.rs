@@ -452,10 +452,20 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
-            TypeContent::ParamSpec(_) => {
+            TypeContent::ParamSpec(p) => {
                 self.add_typing_issue(
                     node_ref,
-                    IssueType::InvalidType(Box::from("TODO babedibupi")),
+                    IssueType::InvalidType(
+                        format!(
+                            "Invalid location for ParamSpec \"{}\"",
+                            p.param_spec.name(self.inference.i_s.db),
+                        )
+                        .into(),
+                    ),
+                );
+                self.add_typing_issue(
+                    node_ref,
+                    IssueType::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
                 );
                 DbType::Any
             }
