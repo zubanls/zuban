@@ -312,6 +312,7 @@ fn typing_changes(
     set_typing_inference(typing, "NewType", Specific::TypingNewType);
     set_typing_inference(typing, "TypeVar", Specific::TypingTypeVarClass);
     set_typing_inference(typing, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
+    set_typing_inference(typing, "Concatenate", Specific::TypingConcatenateClass);
     set_typing_inference(typing, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
@@ -340,6 +341,7 @@ fn typing_changes(
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
+    set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
