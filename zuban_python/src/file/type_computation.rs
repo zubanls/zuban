@@ -1093,6 +1093,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         match usage {
                             TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                             TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
+                            TypeVarLikeUsage::ParamSpec(_) => todo!(),
                         }
                     } else {
                         generics[usage.index().as_usize()].clone()
@@ -1189,6 +1190,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(
                                 usage,
                             )) => Some(TypeContent::TypeVarTuple(usage.into_owned())),
+                            TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::ParamSpec(
+                                usage,
+                            )) => todo!(),
                             TypeVarCallbackReturn::UnboundTypeVar => {
                                 let node_ref = NodeRef::new(self.inference.file, name.index());
                                 node_ref.add_typing_issue(

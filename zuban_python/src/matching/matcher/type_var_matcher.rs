@@ -162,6 +162,7 @@ impl<'a> TypeVarMatcher<'a> {
                         TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
                             TypeArguments::new_arbitrary_length(DbType::Any),
                         ),
+                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
                     }
                 }
             }
@@ -212,6 +213,7 @@ impl<'a> TypeVarMatcher<'a> {
                                     TypeVarLikeUsage::TypeVarTuple(usage) => {
                                         todo!()
                                     }
+                                    TypeVarLikeUsage::ParamSpec(_) => todo!(),
                                 }
                             }
                         } else {
@@ -307,6 +309,7 @@ impl CalculatedTypeArguments {
             TypeVarLikeUsage::TypeVarTuple(type_var_tuple_usage) => {
                 todo!()
             }
+            TypeVarLikeUsage::ParamSpec(_) => todo!(),
         }
     }
 }

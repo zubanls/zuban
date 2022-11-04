@@ -1703,8 +1703,9 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                                         DbType::TypeVar(usage.into_owned()),
                                     ),
                                     TypeVarLikeUsage::TypeVarTuple(_) => todo!(), //GenericItem::TypeArguments(
-                                                                                  //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
-                                                                                  //),
+                                    //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
+                                    //),
+                                    TypeVarLikeUsage::ParamSpec(_) => todo!(),
                                 }
                             });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))

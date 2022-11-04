@@ -1799,7 +1799,13 @@ impl TypeVarLikes {
                         in_definition,
                     }))
                 }
-                TypeVarLike::ParamSpec(type_var) => todo!(),
+                TypeVarLike::ParamSpec(param_spec) => {
+                    TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage {
+                        param_spec,
+                        index: index.into(),
+                        in_definition,
+                    }))
+                }
             })
     }
 
@@ -1922,6 +1928,15 @@ pub struct ParamSpec {
     pub name_string: PointLink,
 }
 
+impl ParamSpec {
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        NodeRef::from_link(db, self.name_string)
+            .maybe_str()
+            .unwrap()
+            .content()
+    }
+}
+
 impl PartialEq for ParamSpec {
     fn eq(&self, other: &Self) -> bool {
         self.name_string == other.name_string
@@ -1943,9 +1958,17 @@ pub struct TypeVarTupleUsage {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct ParamSpecUsage {
+    pub param_spec: Rc<ParamSpec>,
+    pub index: TypeVarIndex,
+    pub in_definition: PointLink,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub enum TypeVarLikeUsage<'a> {
     TypeVar(Cow<'a, TypeVarUsage>),
     TypeVarTuple(Cow<'a, TypeVarTupleUsage>),
+    ParamSpec(Cow<'a, ParamSpecUsage>),
 }
 
 impl<'a> TypeVarLikeUsage<'a> {
@@ -1953,6 +1976,7 @@ impl<'a> TypeVarLikeUsage<'a> {
         match self {
             Self::TypeVar(t) => t.in_definition,
             Self::TypeVarTuple(t) => t.in_definition,
+            Self::ParamSpec(p) => p.in_definition,
         }
     }
 
@@ -1960,6 +1984,7 @@ impl<'a> TypeVarLikeUsage<'a> {
         match self {
             Self::TypeVar(t) => t.index,
             Self::TypeVarTuple(t) => t.index,
+            Self::ParamSpec(p) => p.index,
         }
     }
 
@@ -1967,13 +1992,15 @@ impl<'a> TypeVarLikeUsage<'a> {
         match self {
             Self::TypeVar(t) => TypeVarLike::TypeVar(t.type_var.clone()),
             Self::TypeVarTuple(t) => TypeVarLike::TypeVarTuple(t.type_var_tuple.clone()),
+            Self::ParamSpec(p) => TypeVarLike::ParamSpec(p.param_spec.clone()),
         }
     }
 
     pub fn format_name(&self, db: &Database, style: FormatStyle) -> Box<str> {
         match self {
-            TypeVarLikeUsage::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
-            TypeVarLikeUsage::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
+            Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
+            Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
+            Self::ParamSpec(p) => p.param_spec.name(db).into(),
         }
     }
 }
@@ -2032,12 +2059,14 @@ impl TypeAlias {
                     true => match t {
                         TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                         TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
+                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
                     },
                     false => match t {
                         TypeVarLikeUsage::TypeVar(t) => {
                             GenericItem::TypeArgument(DbType::TypeVar(t.into_owned()))
                         }
                         TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
+                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
                     },
                 })
         }
