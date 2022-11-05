@@ -331,6 +331,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 BaseClass::DbType(DbType::Type(Box::new(DbType::Any)))
             }
             TypeContent::Unknown => BaseClass::Invalid,
+            TypeContent::ParamSpec(_) => {
+                self.add_typing_issue_for_index(expr.index(), IssueType::InvalidBaseClass);
+                BaseClass::Invalid
+            }
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
