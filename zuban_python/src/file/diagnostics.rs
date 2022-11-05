@@ -2,8 +2,9 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    ComplexPoint, DbType, GenericItem, GenericsList, Locality, Point, PointType, Specific,
-    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarTupleUsage, TypeVarUsage, Variance,
+    CallableParams, ComplexPoint, DbType, GenericItem, GenericsList, Locality, ParamSpecUsage,
+    Point, PointType, Specific, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarTupleUsage,
+    TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -350,7 +351,16 @@ impl PythonInference<'_, '_, '_, '_> {
                                         )]),
                                     ))
                                 }
-                                TypeVarLike::ParamSpec(_) => todo!(),
+                                TypeVarLike::ParamSpec(param_spec) => {
+                                    GenericItem::CallableParams(CallableParams::WithParamSpec(
+                                        Box::new([]),
+                                        ParamSpecUsage {
+                                            param_spec: param_spec.clone(),
+                                            index: i.into(),
+                                            in_definition: class.node_ref.as_link(),
+                                        },
+                                    ))
+                                }
                             })
                             .collect(),
                     )
