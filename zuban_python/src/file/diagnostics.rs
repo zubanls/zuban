@@ -228,8 +228,8 @@ impl PythonInference<'_, '_, '_, '_> {
                     if !matches_simple_params(
                         self.i_s,
                         &mut matcher,
-                        f1.param_iterator(),
-                        implementation.param_iterator(),
+                        f1.iter_params(),
+                        implementation.iter_params(),
                         Variance::Contravariant,
                     )
                     .bool()
@@ -255,8 +255,8 @@ impl PythonInference<'_, '_, '_, '_> {
                         matches_simple_params(
                             self.i_s,
                             &mut matcher,
-                            f2.param_iterator(),
-                            f1.param_iterator(),
+                            f2.iter_params(),
+                            f1.iter_params(),
                             Variance::Contravariant
                         ),
                         Match::True { with_any: false }

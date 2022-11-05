@@ -329,10 +329,6 @@ impl<'db: 'a, 'a> Function<'a> {
         })
     }
 
-    pub fn param_iterator(&self) -> Option<impl Iterator<Item = FunctionParam>> {
-        Some(self.iter_params())
-    }
-
     pub(super) fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,

@@ -33,18 +33,12 @@ pub fn matches_params(
                 matches_simple_params(
                     i_s,
                     matcher,
-                    Some(params1.iter()),
-                    Some(params2.iter().skip(1)),
+                    params1.iter(),
+                    params2.iter().skip(1),
                     variance,
                 )
             } else {
-                matches_simple_params(
-                    i_s,
-                    matcher,
-                    Some(params1.iter()),
-                    Some(params2.iter()),
-                    variance,
-                )
+                matches_simple_params(i_s, matcher, params1.iter(), params2.iter(), variance)
             }
         }
         (CallableParams::WithParamSpec(_, _), CallableParams::WithParamSpec(_, _)) => todo!(),
@@ -56,8 +50,8 @@ pub fn matches_params(
 pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    params1: Option<impl Iterator<Item = P1>>,
-    params2: Option<impl Iterator<Item = P2>>,
+    mut params1: impl Iterator<Item = P1>,
+    params2: impl Iterator<Item = P2>,
     variance: Variance,
 ) -> Match {
     fn check_annotation<'db: 'x, 'x>(
@@ -74,144 +68,130 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         }
         Match::new_true()
     }
-    if let Some(mut params1) = params1 {
-        if let Some(params2) = params2 {
-            let mut params2 = Peekable::new(params2);
-            let mut matches = Match::new_true();
-            let mut unused_keyword_params: Vec<P2> = vec![];
+    let mut params2 = Peekable::new(params2);
+    let mut matches = Match::new_true();
+    let mut unused_keyword_params: Vec<P2> = vec![];
 
-            for param1 in params1.by_ref() {
-                if let Some(mut param2) = params2
-                    .peek()
-                    .or_else(|| unused_keyword_params.get(0))
-                    .copied()
-                {
-                    let pt1 = param1.kind(i_s.db);
-                    let pt2 = param2.kind(i_s.db);
-                    let matches_kind = match pt1 {
-                        ParamKind::PositionalOnly => match pt2 {
-                            ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => true,
-                            ParamKind::Starred => {
-                                let m = check_annotation(i_s, matcher, param1, param2, variance);
-                                if !m.bool() {
-                                    return m;
-                                }
-                                true
-                            }
-                            _ => false,
-                        },
-                        ParamKind::PositionalOrKeyword => {
-                            if pt2 == ParamKind::Starred {
-                                params2.next();
-                                let maybe_kwargs = params2.next();
-                                if let Some(maybe_kwargs) = maybe_kwargs {
-                                    if maybe_kwargs.kind(i_s.db) != ParamKind::DoubleStarred
-                                        || !check_annotation(
-                                            i_s,
-                                            matcher,
-                                            param2,
-                                            maybe_kwargs,
-                                            Variance::Invariant,
-                                        )
-                                        .bool()
-                                    {
-                                        return Match::new_false();
-                                    }
-                                    for param1 in params1 {
-                                        // Since this is a *args, **kwargs signature we just check
-                                        // that all annotations are matching.
-                                        matches &= check_annotation(
-                                            i_s, matcher, param1, param2, variance,
-                                        );
-                                        matches &= check_annotation(
-                                            i_s,
-                                            matcher,
-                                            param1,
-                                            maybe_kwargs,
-                                            variance,
-                                        );
-                                    }
-                                    return matches;
-                                } else {
-                                    return Match::new_false();
-                                }
-                            }
-                            pt1 == pt2 && param1.name(i_s.db) == param2.name(i_s.db)
+    for param1 in params1.by_ref() {
+        if let Some(mut param2) = params2
+            .peek()
+            .or_else(|| unused_keyword_params.get(0))
+            .copied()
+        {
+            let pt1 = param1.kind(i_s.db);
+            let pt2 = param2.kind(i_s.db);
+            let matches_kind = match pt1 {
+                ParamKind::PositionalOnly => match pt2 {
+                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => true,
+                    ParamKind::Starred => {
+                        let m = check_annotation(i_s, matcher, param1, param2, variance);
+                        if !m.bool() {
+                            return m;
                         }
-                        ParamKind::KeywordOnly => match pt2 {
-                            ParamKind::KeywordOnly | ParamKind::PositionalOrKeyword => {
-                                let mut found = false;
-                                for (i, p2) in unused_keyword_params.iter().enumerate() {
-                                    if param1.name(i_s.db) == p2.name(i_s.db) {
-                                        param2 = unused_keyword_params.remove(i);
-                                        found = true;
-                                        break;
-                                    }
-                                }
-                                if !found {
-                                    while match params2.peek() {
-                                        Some(p2) => {
-                                            matches!(
-                                                p2.kind(i_s.db),
-                                                ParamKind::KeywordOnly
-                                                    | ParamKind::PositionalOrKeyword
-                                            )
-                                        }
-                                        None => false,
-                                    } {
-                                        param2 = *params2.peek().unwrap();
-                                        if param1.name(i_s.db) == param2.name(i_s.db) {
-                                            found = true;
-                                            break;
-                                        } else {
-                                            params2.next();
-                                            unused_keyword_params.push(param2);
-                                        }
-                                    }
-                                    if !found {
-                                        return Match::new_false();
-                                    }
-                                }
-                                true
-                            }
-                            ParamKind::DoubleStarred => {
-                                let m = check_annotation(i_s, matcher, param1, param2, variance);
-                                if !m.bool() {
-                                    return m;
-                                }
-                                continue;
-                            }
-                            _ => false,
-                        },
-                        ParamKind::Starred | ParamKind::DoubleStarred => pt1 == pt2,
-                    };
-                    params2.next();
-                    if !matches_kind || param1.has_default() && !param2.has_default() {
-                        return Match::new_false();
+                        true
                     }
-                    matches &= check_annotation(i_s, matcher, param1, param2, variance)
-                } else {
-                    return Match::new_false();
+                    _ => false,
+                },
+                ParamKind::PositionalOrKeyword => {
+                    if pt2 == ParamKind::Starred {
+                        params2.next();
+                        let maybe_kwargs = params2.next();
+                        if let Some(maybe_kwargs) = maybe_kwargs {
+                            if maybe_kwargs.kind(i_s.db) != ParamKind::DoubleStarred
+                                || !check_annotation(
+                                    i_s,
+                                    matcher,
+                                    param2,
+                                    maybe_kwargs,
+                                    Variance::Invariant,
+                                )
+                                .bool()
+                            {
+                                return Match::new_false();
+                            }
+                            for param1 in params1 {
+                                // Since this is a *args, **kwargs signature we just check
+                                // that all annotations are matching.
+                                matches &= check_annotation(i_s, matcher, param1, param2, variance);
+                                matches &=
+                                    check_annotation(i_s, matcher, param1, maybe_kwargs, variance);
+                            }
+                            return matches;
+                        } else {
+                            return Match::new_false();
+                        }
+                    }
+                    pt1 == pt2 && param1.name(i_s.db) == param2.name(i_s.db)
                 }
-            }
-            if !unused_keyword_params.is_empty() {
+                ParamKind::KeywordOnly => match pt2 {
+                    ParamKind::KeywordOnly | ParamKind::PositionalOrKeyword => {
+                        let mut found = false;
+                        for (i, p2) in unused_keyword_params.iter().enumerate() {
+                            if param1.name(i_s.db) == p2.name(i_s.db) {
+                                param2 = unused_keyword_params.remove(i);
+                                found = true;
+                                break;
+                            }
+                        }
+                        if !found {
+                            while match params2.peek() {
+                                Some(p2) => {
+                                    matches!(
+                                        p2.kind(i_s.db),
+                                        ParamKind::KeywordOnly | ParamKind::PositionalOrKeyword
+                                    )
+                                }
+                                None => false,
+                            } {
+                                param2 = *params2.peek().unwrap();
+                                if param1.name(i_s.db) == param2.name(i_s.db) {
+                                    found = true;
+                                    break;
+                                } else {
+                                    params2.next();
+                                    unused_keyword_params.push(param2);
+                                }
+                            }
+                            if !found {
+                                return Match::new_false();
+                            }
+                        }
+                        true
+                    }
+                    ParamKind::DoubleStarred => {
+                        let m = check_annotation(i_s, matcher, param1, param2, variance);
+                        if !m.bool() {
+                            return m;
+                        }
+                        continue;
+                    }
+                    _ => false,
+                },
+                ParamKind::Starred | ParamKind::DoubleStarred => pt1 == pt2,
+            };
+            params2.next();
+            if !matches_kind || param1.has_default() && !param2.has_default() {
                 return Match::new_false();
             }
-            for param2 in params2 {
-                if !param2.has_default()
-                    && !matches!(
-                        param2.kind(i_s.db),
-                        ParamKind::Starred | ParamKind::DoubleStarred
-                    )
-                {
-                    return Match::new_false();
-                }
-            }
-            return matches;
+            matches &= check_annotation(i_s, matcher, param1, param2, variance)
+        } else {
+            return Match::new_false();
         }
     }
-    // If there are no params, it means that anything is accepted, i.e. *args, **kwargs
-    Match::new_true()
+    if !unused_keyword_params.is_empty() {
+        return Match::new_false();
+    }
+    for param2 in params2 {
+        if !param2.has_default()
+            && !matches!(
+                param2.kind(i_s.db),
+                ParamKind::Starred | ParamKind::DoubleStarred
+            )
+        {
+            return Match::new_false();
+        }
+    }
+    matches
 }
 
 pub fn has_overlapping_params<'db>(
