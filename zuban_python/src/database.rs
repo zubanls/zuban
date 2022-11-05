@@ -2092,7 +2092,10 @@ impl<'a> TypeVarLikeUsage<'a> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
             Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
-            Self::ParamSpec(p) => p.param_spec.name(db).into(),
+            Self::ParamSpec(p) => {
+                let name = p.param_spec.name(db);
+                format!("*{name}.args, **{name}.kwargs").into()
+            }
         }
     }
 }
