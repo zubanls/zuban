@@ -354,6 +354,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "TypeVar",
         "TypeVarTuple",
         "LiteralString",
+        "Concatenate",
         "ParamSpec",
         "Unpack",
     ]
