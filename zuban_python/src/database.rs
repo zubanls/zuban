@@ -1147,7 +1147,15 @@ impl DbType {
                                 .collect(),
                         ),
                         CallableParams::Any => CallableParams::Any,
-                        CallableParams::WithParamSpec(_, _) => todo!(),
+                        CallableParams::WithParamSpec(types, param_spec) => {
+                            CallableParams::WithParamSpec(
+                                types
+                                    .iter()
+                                    .map(|t| t.rewrite_late_bound_callables(manager))
+                                    .collect(),
+                                manager.remap_param_spec(param_spec),
+                            )
+                        }
                     },
                     result_type: content.result_type.rewrite_late_bound_callables(manager),
                 }))
@@ -1724,30 +1732,45 @@ impl TypeVarManager {
         None
     }
 
-    fn remap_type_var(&self, usage: &TypeVarUsage) -> TypeVarUsage {
+    fn remap_internal(&self, usage: &TypeVarLikeUsage) -> Option<(TypeVarIndex, PointLink)> {
         let mut index = 0;
         let mut in_definition = None;
         for t in self.type_vars.iter().rev() {
-            match &t.type_var_like {
-                TypeVarLike::TypeVar(type_var) if type_var.as_ref() == usage.type_var.as_ref() => {
-                    if t.most_outer_callable.is_some() {
-                        in_definition = t.most_outer_callable;
-                    } else {
-                        return usage.clone();
-                    }
+            let matched = match &t.type_var_like {
+                TypeVarLike::TypeVar(type_var) => match usage {
+                    TypeVarLikeUsage::TypeVar(u) => type_var.as_ref() == u.type_var.as_ref(),
+                    _ => unreachable!(),
+                },
+                TypeVarLike::TypeVarTuple(t) => match usage {
+                    TypeVarLikeUsage::TypeVarTuple(u) => t.as_ref() == u.type_var_tuple.as_ref(),
+                    _ => unreachable!(),
+                },
+                TypeVarLike::ParamSpec(p) => match usage {
+                    TypeVarLikeUsage::ParamSpec(u) => p.as_ref() == u.param_spec.as_ref(),
+                    _ => unreachable!(),
+                },
+            };
+            if matched {
+                if t.most_outer_callable.is_some() {
+                    in_definition = t.most_outer_callable;
+                } else {
+                    return None;
                 }
-                _ => {
-                    if in_definition == t.most_outer_callable {
-                        index += 1;
-                    }
-                }
+            } else if in_definition == t.most_outer_callable {
+                index += 1;
             }
         }
-        if let Some(in_definition) = in_definition {
+        in_definition.map(|d| (index.into(), d))
+    }
+
+    fn remap_type_var(&self, usage: &TypeVarUsage) -> TypeVarUsage {
+        if let Some((index, in_definition)) =
+            self.remap_internal(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(usage)))
+        {
             TypeVarUsage {
                 type_var: usage.type_var.clone(),
                 in_definition,
-                index: index.into(),
+                index,
             }
         } else {
             usage.clone()
@@ -1756,6 +1779,20 @@ impl TypeVarManager {
 
     fn remap_type_var_tuple(&self, usage: &TypeVarTupleUsage) -> TypeVarTupleUsage {
         todo!()
+    }
+
+    fn remap_param_spec(&self, usage: &ParamSpecUsage) -> ParamSpecUsage {
+        if let Some((index, in_definition)) =
+            self.remap_internal(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+        {
+            ParamSpecUsage {
+                param_spec: usage.param_spec.clone(),
+                in_definition,
+                index,
+            }
+        } else {
+            usage.clone()
+        }
     }
 }
 
