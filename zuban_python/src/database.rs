@@ -2088,7 +2088,7 @@ impl<'a> TypeVarLikeUsage<'a> {
         }
     }
 
-    pub fn format_name(&self, db: &Database, style: FormatStyle) -> Box<str> {
+    pub fn format_without_matcher(&self, db: &Database, style: FormatStyle) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
             Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),

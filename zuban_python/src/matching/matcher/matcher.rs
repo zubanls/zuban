@@ -379,7 +379,7 @@ impl<'a> Matcher<'a> {
                             let type_var_remap = func_class.type_var_remap.unwrap();
                             type_var_remap[usage.index()].format(format_data)
                         } else {
-                            usage.format_name(format_data.db, format_data.style)
+                            usage.format_without_matcher(format_data.db, format_data.style)
                         }
                     } else {
                         todo!("Probably nested generic functions???")

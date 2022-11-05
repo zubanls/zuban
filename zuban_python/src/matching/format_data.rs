@@ -103,6 +103,6 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
                 return matcher.format_in_type_var_matcher(type_var_usage, self);
             }
         }
-        type_var_usage.format_name(self.db, self.style)
+        type_var_usage.format_without_matcher(self.db, self.style)
     }
 }
