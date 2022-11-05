@@ -8,7 +8,7 @@ use super::type_var_matcher::{
 };
 
 use crate::database::{
-    CallableContent, CallableParam, DbType, ParamSpecUsage, RecursiveAlias, TupleTypeArguments,
+    CallableContent, CallableParams, DbType, ParamSpecUsage, RecursiveAlias, TupleTypeArguments,
     TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
     Variance,
 };
@@ -357,9 +357,15 @@ impl<'a> Matcher<'a> {
         i_s: &mut InferenceState,
         pre_param_spec_types: &[DbType],
         p1: &ParamSpecUsage,
-        params2: &[CallableParam],
+        params2: &CallableParams,
     ) -> Match {
-        todo!()
+        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+            return Match::new_false()
+        };
+        if pre_param_spec_types.len() > 0 {
+            todo!()
+        }
+        tv_matcher.calculated_type_vars[p1.index.as_usize()].merge_param_spec(i_s, params2)
     }
 
     pub fn format_in_type_var_matcher(
@@ -376,6 +382,7 @@ impl<'a> Matcher<'a> {
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
                 BoundKind::TypeVarTuple(ts) => ts.format(format_data),
+                BoundKind::CallableParams(params) => todo!(),
                 BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {

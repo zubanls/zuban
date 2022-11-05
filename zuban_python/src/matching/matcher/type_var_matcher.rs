@@ -30,6 +30,7 @@ pub enum FunctionOrCallable<'a> {
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArguments),
+    CallableParams(CallableParams),
     Uncalculated,
 }
 
@@ -113,6 +114,17 @@ impl CalculatedTypeVarLike {
     ) {
         todo!()
     }
+
+    pub fn merge_param_spec(&mut self, i_s: &mut InferenceState, params: &CallableParams) -> Match {
+        match &mut self.type_ {
+            BoundKind::CallableParams(_) => todo!(),
+            BoundKind::Uncalculated => {
+                self.type_ = BoundKind::CallableParams(params.clone());
+                Match::new_true()
+            }
+            _ => unreachable!(),
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -181,6 +193,7 @@ impl<'a> TypeVarMatcher<'a> {
                 match &current.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
+                    BoundKind::CallableParams(params) => todo!(),
                     // Any is just ignored by the context later.
                     BoundKind::Uncalculated => {
                         type_var_like_usage.as_type_var_like().as_any_generic_item()
@@ -482,6 +495,7 @@ fn calculate_type_vars<'db>(
                             t1.has_any() | t2.has_any()
                         }
                         BoundKind::TypeVarTuple(ts) => ts.args.has_any(),
+                        BoundKind::CallableParams(params) => todo!(),
                         BoundKind::Uncalculated => continue,
                     };
                     if has_any {
@@ -530,6 +544,7 @@ fn calculate_type_vars<'db>(
                 .map(|(c, type_var_like)| match c.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
+                    BoundKind::CallableParams(params) => GenericItem::CallableParams(params),
                     BoundKind::Uncalculated => match type_var_like {
                         TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
                         // TODO TypeVarTuple this feels wrong, should maybe be never?
