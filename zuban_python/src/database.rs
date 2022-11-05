@@ -1060,16 +1060,21 @@ impl DbType {
                     ),
                     CallableParams::Any => CallableParams::Any,
                     CallableParams::WithParamSpec(types, param_spec) => {
-                        let types = types
+                        let mut types: Vec<DbType> = types
                             .iter()
                             .map(|t| t.replace_type_vars(callable))
                             .collect();
-                        let param_spec = match callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(
-                            param_spec,
-                        ))) {
+                        match callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) {
+                            GenericItem::CallableParams(p) => match p {
+                                CallableParams::Simple(params) => todo!(),
+                                CallableParams::Any => CallableParams::Any,
+                                CallableParams::WithParamSpec(new_types, p) => {
+                                    types.extend(new_types.into_vec());
+                                    CallableParams::WithParamSpec(types.into(), p)
+                                }
+                            },
                             _ => unreachable!(),
-                        };
-                        CallableParams::WithParamSpec(types, param_spec)
+                        }
                     }
                 },
                 result_type: content.result_type.replace_type_vars(callable),
@@ -1471,7 +1476,18 @@ impl CallableContent {
                     .collect::<Vec<_>>(),
             ),
             CallableParams::Any => None,
-            CallableParams::WithParamSpec(_, _) => todo!(),
+            CallableParams::WithParamSpec(types, param_spec_usage) => {
+                let p = format_data.format_type_var_like(&TypeVarLikeUsage::ParamSpec(
+                    Cow::Borrowed(param_spec_usage),
+                ));
+                Some(
+                    types
+                        .iter()
+                        .map(|t| t.format(format_data))
+                        .chain(std::iter::once(p))
+                        .collect(),
+                )
+            }
         };
         let result = self.result_type.format(format_data);
         match format_data.style {
@@ -1504,7 +1520,7 @@ impl CallableContent {
                                     name
                                 }
                                 TypeVarLike::TypeVarTuple(_) => todo!(),
-                                TypeVarLike::ParamSpec(_) => todo!(),
+                                TypeVarLike::ParamSpec(p) => p.name(format_data.db).to_owned(),
                             })
                             .collect::<Vec<_>>()
                             .join(", ")

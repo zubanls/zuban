@@ -294,7 +294,10 @@ impl<'db: 'a, 'a> Function<'a> {
                     TypeVarLikeUsage::TypeVar(usage) => {
                         GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
                     }
-                    _ => todo!("{usage:?}"),
+                    TypeVarLikeUsage::TypeVarTuple(usage) => todo!("{usage:?}"),
+                    TypeVarLikeUsage::ParamSpec(param_spec) => GenericItem::CallableParams(
+                        CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
+                    ),
                 }
             })
         };
