@@ -891,10 +891,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         });
         let old = std::mem::replace(&mut self.current_callable, Some(defined_at));
 
-        let mut params = Some(vec![]);
         let db = self.inference.i_s.db;
         let add_param = |slf: &mut Self,
-                         params: &mut Option<Vec<CallableParam>>,
+                         params: &mut Vec<CallableParam>,
                          element: StarLikeExpression| {
             if let StarLikeExpression::NamedExpression(n) = element {
                 let t = slf.compute_type(n.expression());
@@ -908,7 +907,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         db_type: slf.as_db_type(t, NodeRef::new(slf.inference.file, n.index())),
                     }
                 };
-                if let Some(previous) = params.as_ref().unwrap().last() {
+                if let Some(previous) = params.last() {
                     let prev_kind = previous.param_kind;
                     let msg = match p.param_kind {
                         ParamKind::PositionalOnly if p.param_kind < prev_kind || previous.has_default && !p.has_default => Some(
@@ -948,7 +947,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
                     if let Some(param_name) = p.name {
                         let param_name = param_name.as_str(slf.inference.i_s.db);
-                        for other in params.as_ref().unwrap() {
+                        for other in params.iter() {
                             if let Some(other_name) = other.name {
                                 let other_name = other_name.as_str(slf.inference.i_s.db);
                                 if param_name == other_name {
@@ -967,7 +966,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         }
                     }
                 }
-                params.as_mut().unwrap().push(p);
+                params.push(p);
             } else {
                 todo!()
             }
@@ -975,32 +974,36 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
-            let param_node = iterator.next().map(|slice_content| match slice_content {
+            let params = match iterator.next().unwrap() {
                 SliceOrSimple::Simple(n) => {
                     if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
                         n.named_expr.expression().unpack()
                     {
                         match atom.unpack() {
                             AtomContent::List(list) => {
+                                let mut params = vec![];
                                 if let Some(iterator) = list.unpack() {
                                     for i in iterator {
                                         add_param(self, &mut params, i)
                                     }
                                 }
+                                CallableParams::Simple(params.into_boxed_slice())
                             }
-                            AtomContent::Ellipsis => params = None,
+                            AtomContent::Ellipsis => CallableParams::Any,
                             _ => {
                                 self.add_typing_issue(
                                     n.as_node_ref(),
                                     IssueType::InvalidCallableParams,
                                 );
-                                params = None
+                                CallableParams::Any
                             }
                         }
+                    } else {
+                        todo!()
                     }
                 }
                 SliceOrSimple::Slice(s) => todo!(),
-            });
+            };
             let result_type = iterator
                 .next()
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
@@ -1008,10 +1011,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             CallableContent {
                 defined_at,
                 type_vars: None,
-                params: match params {
-                    Some(p) => CallableParams::Simple(p.into_boxed_slice()),
-                    None => CallableParams::Any,
-                },
+                params,
                 result_type,
             }
         } else {
