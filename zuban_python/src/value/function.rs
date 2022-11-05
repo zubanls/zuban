@@ -294,7 +294,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     TypeVarLikeUsage::TypeVar(usage) => {
                         GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
                     }
-                    _ => todo!(),
+                    _ => todo!("{usage:?}"),
                 }
             })
         };

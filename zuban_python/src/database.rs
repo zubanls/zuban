@@ -1048,7 +1048,18 @@ impl DbType {
                             .collect(),
                     ),
                     CallableParams::Any => CallableParams::Any,
-                    CallableParams::WithParamSpec(_, _) => todo!(),
+                    CallableParams::WithParamSpec(types, param_spec) => {
+                        let types = types
+                            .iter()
+                            .map(|t| t.replace_type_vars(callable))
+                            .collect();
+                        let param_spec = match callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(
+                            param_spec,
+                        ))) {
+                            _ => unreachable!(),
+                        };
+                        CallableParams::WithParamSpec(types, param_spec)
+                    }
                 },
                 result_type: content.result_type.replace_type_vars(callable),
             })),
