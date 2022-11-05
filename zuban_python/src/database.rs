@@ -585,7 +585,7 @@ impl GenericsList {
             .map(|g| match g {
                 GenericItem::TypeArgument(t) => t.format(format_data),
                 GenericItem::TypeArguments(ts) => ts.format(format_data),
-                GenericItem::CallableParams(params) => todo!(), // params.format(format_data),
+                GenericItem::CallableParams(params) => Box::from("TODO format params"),
             })
             .collect::<Vec<_>>()
             .join(", ")
@@ -1060,20 +1060,24 @@ impl DbType {
                     ),
                     CallableParams::Any => CallableParams::Any,
                     CallableParams::WithParamSpec(types, param_spec) => {
-                        let mut types: Vec<DbType> = types
-                            .iter()
-                            .map(|t| t.replace_type_vars(callable))
-                            .collect();
-                        match callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) {
-                            GenericItem::CallableParams(p) => match p {
+                        let GenericItem::CallableParams(new_params) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
+                            unreachable!()
+                        };
+                        if types.is_empty() {
+                            new_params
+                        } else {
+                            let mut types: Vec<DbType> = types
+                                .iter()
+                                .map(|t| t.replace_type_vars(callable))
+                                .collect();
+                            match new_params {
                                 CallableParams::Simple(params) => todo!(),
-                                CallableParams::Any => CallableParams::Any,
+                                CallableParams::Any => todo!(),
                                 CallableParams::WithParamSpec(new_types, p) => {
                                     types.extend(new_types.into_vec());
                                     CallableParams::WithParamSpec(types.into(), p)
                                 }
-                            },
-                            _ => unreachable!(),
+                            }
                         }
                     }
                 },
