@@ -208,7 +208,7 @@ impl<'a> Generics<'a> {
                 TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
                 TypeVarLike::ParamSpec(_) => todo!(),
             };
-            matches &= t1.matches(i_s, matcher, t2, v);
+            matches &= t1.matches(i_s, matcher, &t2, v);
         }
         matches
     }

@@ -129,6 +129,7 @@ impl<'a> Matcher<'a> {
         tuple2: &TupleTypeArguments,
         variance: Variance,
     ) -> Match {
+        debug_assert!(!self.is_matching_reverse());
         let mut matches = Match::new_true();
         match tuple2 {
             TupleTypeArguments::FixedLength(ts2) => {

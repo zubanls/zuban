@@ -48,9 +48,13 @@ impl<'a> Generic<'a> {
         &self,
         i_s: &mut InferenceState,
         matcher: &mut Matcher,
-        other: Self,
+        other: &Self,
         variance: Variance,
     ) -> Match {
+        if matcher.is_matching_reverse() {
+            return matcher
+                .match_reverse(|matcher| other.matches(i_s, matcher, self, variance.invert()));
+        }
         match self {
             Self::TypeArgument(t1) => match other {
                 Self::TypeArgument(ref t2) => t1.matches(i_s, matcher, t2, variance),

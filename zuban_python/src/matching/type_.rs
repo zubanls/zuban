@@ -945,6 +945,11 @@ pub fn match_tuple_type_arguments(
     t2: &TupleTypeArguments,
     variance: Variance,
 ) -> Match {
+    if matcher.is_matching_reverse() {
+        return matcher.match_reverse(|matcher| {
+            match_tuple_type_arguments(i_s, matcher, t2, t1, variance.invert())
+        });
+    }
     use TupleTypeArguments::*;
     if matcher.has_type_var_matcher() {
         if let Some(ts) = t1.has_type_var_tuple() {
