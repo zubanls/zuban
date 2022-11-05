@@ -8,8 +8,9 @@ use super::type_var_matcher::{
 };
 
 use crate::database::{
-    CallableContent, DbType, RecursiveAlias, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
-    TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, CallableParam, DbType, ParamSpecUsage, RecursiveAlias, TupleTypeArguments,
+    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
+    Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::value::Function;
@@ -349,6 +350,16 @@ impl<'a> Matcher<'a> {
                 FunctionOrCallable::Callable(c) => todo!(),
             }
         }
+    }
+
+    pub fn match_or_add_param_spec(
+        &mut self,
+        i_s: &mut InferenceState,
+        pre_param_spec_types: &[DbType],
+        p1: &ParamSpecUsage,
+        params2: &[CallableParam],
+    ) -> Match {
+        todo!()
     }
 
     pub fn format_in_type_var_matcher(

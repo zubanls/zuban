@@ -27,8 +27,13 @@ pub fn matches_params(
     variance: Variance,
     skip_first_of_params2: bool,
 ) -> Match {
+    if matcher.is_matching_reverse() {
+        todo!()
+    }
+
+    use CallableParams::*;
     match (params1, params2) {
-        (CallableParams::Simple(params1), CallableParams::Simple(params2)) => {
+        (Simple(params1), Simple(params2)) => {
             if skip_first_of_params2 {
                 matches_simple_params(
                     i_s,
@@ -41,9 +46,14 @@ pub fn matches_params(
                 matches_simple_params(i_s, matcher, params1.iter(), params2.iter(), variance)
             }
         }
-        (CallableParams::WithParamSpec(_, _), CallableParams::WithParamSpec(_, _)) => todo!(),
-        (CallableParams::Any, _) | (_, CallableParams::Any) => Match::new_true(),
-        _ => todo!(),
+        (WithParamSpec(_, _), WithParamSpec(_, _)) => todo!(),
+        (Any, _) | (_, Any) => Match::new_true(),
+        (WithParamSpec(types, param_spec), Simple(params2)) => {
+            matcher.match_or_add_param_spec(i_s, types, param_spec, params2)
+        }
+        (Simple(_), WithParamSpec(..)) => {
+            todo!()
+        }
     }
 }
 

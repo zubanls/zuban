@@ -125,7 +125,6 @@ testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
 
 testParamSpecContextManagerLike
-testParamSpecSimpleFunction
 testParamSpecSimpleClass
 testParamSpecClassWithPrefixArgument
 testParamSpecDecorator
