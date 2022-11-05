@@ -3,6 +3,7 @@ use parsa_python_ast::ParamKind;
 use super::{Match, Matcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{CallableParam, CallableParams, Database, DbType, PointLink, Variance};
+use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::utils::Peekable;
@@ -28,7 +29,8 @@ pub fn matches_params(
     skip_first_of_params2: bool,
 ) -> Match {
     if matcher.is_matching_reverse() {
-        todo!()
+        debug!("TODO should probably be the line below");
+        //return matcher.match_reverse(|matcher| matches_params(i_s, matcher, params2, params1, variance.invert(), skip_first_of_params2))
     }
 
     use CallableParams::*;

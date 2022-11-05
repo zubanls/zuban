@@ -365,6 +365,7 @@ impl<'a> Matcher<'a> {
         p1: &ParamSpecUsage,
         params2: &CallableParams,
     ) -> Match {
+        debug_assert!(!self.is_matching_reverse());
         let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
             return Match::new_false()
         };
