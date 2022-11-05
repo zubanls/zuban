@@ -5,8 +5,8 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
-    CallableContent, Database, DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
-    UnionType, Variance,
+    CallableContent, CallableParams, Database, DbType, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -201,16 +201,17 @@ impl<'a> Type<'a> {
                                         ) & matches_params(
                                             i_s,
                                             matcher,
-                                            c1.params.as_ref().map(|p| p.iter()),
-                                            c2.params.as_ref().map(|p| p.iter().skip(1)),
+                                            &c1.params,
+                                            &c2.params,
                                             Variance::Contravariant,
+                                            true,
                                         );
                                     }
                                 }
                                 Match::new_false()
                             }
                             _ => {
-                                if c1.params.is_none() {
+                                if matches!(&c1.params, CallableParams::Any) {
                                     Type::new(&c1.result_type).is_super_type_of(
                                         i_s,
                                         matcher,
@@ -594,9 +595,10 @@ impl<'a> Type<'a> {
             & matches_params(
                 i_s,
                 matcher,
-                c1.params.as_ref().map(|params| params.iter()),
-                c2.params.as_ref().map(|params| params.iter()),
+                &c1.params,
+                &c2.params,
                 Variance::Contravariant,
+                false,
             )
     }
 

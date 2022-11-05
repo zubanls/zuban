@@ -10,7 +10,7 @@ use crate::diagnostics::IssueType;
 use crate::file::PythonInference;
 use crate::inferred::Inferred;
 use crate::matching::{
-    matches_params, overload_has_overlapping_params, Generics, Match, Matcher, ResultContext,
+    matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
@@ -225,7 +225,7 @@ impl PythonInference<'_, '_, '_, '_> {
                         );
                     }
 
-                    if !matches_params(
+                    if !matches_simple_params(
                         self.i_s,
                         &mut matcher,
                         f1.param_iterator(),
@@ -252,7 +252,7 @@ impl PythonInference<'_, '_, '_, '_> {
                         &mut calculated_type_vars,
                     );
                     if matches!(
-                        matches_params(
+                        matches_simple_params(
                             self.i_s,
                             &mut matcher,
                             f2.param_iterator(),

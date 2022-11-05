@@ -10,8 +10,9 @@ use super::super::{
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, DbType, GenericItem, GenericsList, PointLink, TupleTypeArguments,
-    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParams, DbType, GenericItem, GenericsList, PointLink,
+    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -505,21 +506,19 @@ fn calculate_type_vars<'db>(
                 function.iter_args_with_params(i_s.db, args, skip_first_param),
             )
         }
-        FunctionOrCallable::Callable(callable) => {
-            if let Some(params) = &callable.params {
-                calculate_type_vars_for_params(
-                    i_s,
-                    &mut matcher,
-                    None,
-                    None,
-                    args,
-                    on_type_error,
-                    InferrableParamIterator2::new(i_s.db, params.iter(), args),
-                )
-            } else {
-                SignatureMatch::True
-            }
-        }
+        FunctionOrCallable::Callable(callable) => match &callable.params {
+            CallableParams::Simple(params) => calculate_type_vars_for_params(
+                i_s,
+                &mut matcher,
+                None,
+                None,
+                args,
+                on_type_error,
+                InferrableParamIterator2::new(i_s.db, params.iter(), args),
+            ),
+            CallableParams::Any => SignatureMatch::True,
+            CallableParams::WithParamSpec(_, _) => todo!(),
+        },
     };
     let type_arguments = matcher.has_type_var_matcher().then(|| {
         GenericsList::new_generics(

@@ -3,9 +3,9 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use crate::database::{
-    CallableContent, CallableParam, CallableWithParent, ComplexPoint, Database, DbType,
-    GenericItem, GenericsList, Locality, NewType, ParamSpecUsage, Point, PointLink, PointType,
-    RecursiveAlias, Specific, StringSlice, TupleContent, TypeAlias, TypeArguments,
+    CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
+    DbType, GenericItem, GenericsList, Locality, NewType, ParamSpecUsage, Point, PointLink,
+    PointType, RecursiveAlias, Specific, StringSlice, TupleContent, TypeAlias, TypeArguments,
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
     TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
@@ -430,7 +430,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 SpecialType::Callable => DbType::Callable(Box::new(CallableContent {
                     defined_at: node_ref.as_link(),
                     type_vars: None,
-                    params: None,
+                    params: CallableParams::Any,
                     result_type: DbType::Any,
                 })),
                 SpecialType::Any => DbType::Any,
@@ -1008,7 +1008,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             CallableContent {
                 defined_at,
                 type_vars: None,
-                params: params.map(|p| p.into_boxed_slice()),
+                params: match params {
+                    Some(p) => CallableParams::Simple(p.into_boxed_slice()),
+                    None => CallableParams::Any,
+                },
                 result_type,
             }
         } else {
@@ -1016,7 +1019,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             CallableContent {
                 defined_at,
                 type_vars: None,
-                params: None,
+                params: CallableParams::Any,
                 result_type: DbType::Any,
             }
         };

@@ -125,6 +125,7 @@ testPropagatedAnyConstraintsAreOK
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
 
+testParamSpecLocations
 testParamSpecContextManagerLike
 testParamSpecRevealType
 testParamSpecSimpleFunction

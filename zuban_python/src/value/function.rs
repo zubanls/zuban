@@ -8,9 +8,9 @@ use std::fmt;
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericItem,
-    GenericsList, IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType, Execution,
+    GenericItem, GenericsList, IntersectionType, Locality, Overload, Point, PointLink, StringSlice,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -301,7 +301,7 @@ impl<'db: 'a, 'a> Function<'a> {
         let result_type = self.result_type(i_s);
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
-            params: Some(
+            params: CallableParams::Simple(
                 params
                     .map(|p| CallableParam {
                         db_type: p

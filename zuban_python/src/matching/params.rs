@@ -19,7 +19,41 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn kind(&self, db: &Database) -> ParamKind;
 }
 
-pub fn matches_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
+pub fn matches_params(
+    i_s: &mut InferenceState,
+    matcher: &mut Matcher,
+    params1: &CallableParams,
+    params2: &CallableParams,
+    variance: Variance,
+    skip_first_of_params2: bool,
+) -> Match {
+    match (params1, params2) {
+        (CallableParams::Simple(params1), CallableParams::Simple(params2)) => {
+            if skip_first_of_params2 {
+                matches_simple_params(
+                    i_s,
+                    matcher,
+                    Some(params1.iter()),
+                    Some(params2.iter().skip(1)),
+                    variance,
+                )
+            } else {
+                matches_simple_params(
+                    i_s,
+                    matcher,
+                    Some(params1.iter()),
+                    Some(params2.iter()),
+                    variance,
+                )
+            }
+        }
+        (CallableParams::WithParamSpec(_, _), CallableParams::WithParamSpec(_, _)) => todo!(),
+        (CallableParams::Any, _) | (_, CallableParams::Any) => Match::new_true(),
+        _ => todo!(),
+    }
+}
+
+pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     params1: Option<impl Iterator<Item = P1>>,
@@ -185,12 +219,14 @@ pub fn has_overlapping_params<'db>(
     params1: &CallableParams,
     params2: &CallableParams,
 ) -> bool {
-    if let Some(params1) = params1 {
-        if let Some(params2) = params2 {
-            return overload_has_overlapping_params(i_s, params1.iter(), params2.iter());
+    match (params1, params2) {
+        (CallableParams::Simple(params1), CallableParams::Simple(params2)) => {
+            overload_has_overlapping_params(i_s, params1.iter(), params2.iter())
         }
+        (CallableParams::WithParamSpec(_, _), CallableParams::WithParamSpec(_, _)) => todo!(),
+        (CallableParams::Any, _) | (_, CallableParams::Any) => todo!(),
+        _ => todo!(),
     }
-    todo!()
 }
 
 pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(

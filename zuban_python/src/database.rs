@@ -22,8 +22,6 @@ use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 
-pub type CallableParams = Option<Box<[CallableParam]>>;
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -881,10 +879,14 @@ impl DbType {
                 None => (),
             },
             Self::Callable(content) => {
-                if let Some(params) = &content.params {
-                    for param in params.iter() {
-                        param.db_type.search_type_vars(found_type_var)
+                match &content.params {
+                    CallableParams::Simple(params) => {
+                        for param in params.iter() {
+                            param.db_type.search_type_vars(found_type_var)
+                        }
                     }
+                    CallableParams::Any => (),
+                    CallableParams::WithParamSpec(_, _) => todo!(),
                 }
                 content.result_type.search_type_vars(found_type_var)
             }
@@ -922,13 +924,15 @@ impl DbType {
                 .as_ref()
                 .map(|args| args.has_any())
                 .unwrap_or(true),
-            Self::Callable(content) => {
-                if let Some(params) = &content.params {
+            Self::Callable(content) => match &content.params {
+                CallableParams::Simple(params) => {
                     params.iter().any(|param| param.db_type.has_any())
-                } else {
-                    true
                 }
-            }
+                CallableParams::Any => true,
+                CallableParams::WithParamSpec(types, param_spec) => {
+                    todo!()
+                }
+            },
             Self::Class(_, None) | Self::None | Self::Never => false,
             Self::Any => true,
             Self::NewType(_) => todo!(),
@@ -1031,17 +1035,21 @@ impl DbType {
             Self::Callable(content) => Self::Callable(Box::new(CallableContent {
                 defined_at: content.defined_at,
                 type_vars: content.type_vars.clone(), // TODO should this change as well?
-                params: content.params.as_ref().map(|params| {
-                    params
-                        .iter()
-                        .map(|p| CallableParam {
-                            param_kind: p.param_kind,
-                            has_default: p.has_default,
-                            name: p.name,
-                            db_type: p.db_type.replace_type_vars(callable),
-                        })
-                        .collect()
-                }),
+                params: match &content.params {
+                    CallableParams::Simple(params) => CallableParams::Simple(
+                        params
+                            .iter()
+                            .map(|p| CallableParam {
+                                param_kind: p.param_kind,
+                                has_default: p.has_default,
+                                name: p.name,
+                                db_type: p.db_type.replace_type_vars(callable),
+                            })
+                            .collect(),
+                    ),
+                    CallableParams::Any => CallableParams::Any,
+                    CallableParams::WithParamSpec(_, _) => todo!(),
+                },
                 result_type: content.result_type.replace_type_vars(callable),
             })),
             Self::NewType(t) => Self::NewType(t.clone()),
@@ -1126,17 +1134,21 @@ impl DbType {
                 Self::Callable(Box::new(CallableContent {
                     defined_at: content.defined_at,
                     type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes(type_vars)),
-                    params: content.params.as_ref().map(|params| {
-                        params
-                            .iter()
-                            .map(|p| CallableParam {
-                                param_kind: p.param_kind,
-                                has_default: p.has_default,
-                                name: p.name,
-                                db_type: p.db_type.rewrite_late_bound_callables(manager),
-                            })
-                            .collect()
-                    }),
+                    params: match &content.params {
+                        CallableParams::Simple(params) => CallableParams::Simple(
+                            params
+                                .iter()
+                                .map(|p| CallableParam {
+                                    param_kind: p.param_kind,
+                                    has_default: p.has_default,
+                                    name: p.name,
+                                    db_type: p.db_type.rewrite_late_bound_callables(manager),
+                                })
+                                .collect(),
+                        ),
+                        CallableParams::Any => CallableParams::Any,
+                        CallableParams::WithParamSpec(_, _) => todo!(),
+                    },
                     result_type: content.result_type.rewrite_late_bound_callables(manager),
                 }))
             }
@@ -1202,7 +1214,7 @@ impl DbType {
                 Self::Callable(content2) => Self::Callable(Box::new(CallableContent {
                     defined_at: content1.defined_at,
                     type_vars: None,
-                    params: None,
+                    params: CallableParams::Any,
                     result_type: Self::Any,
                 })),
                 _ => Self::Any,
@@ -1421,20 +1433,24 @@ pub struct CallableContent {
 
 impl CallableContent {
     pub fn format(&self, format_data: &FormatData) -> String {
-        let mut params = self.params.as_ref().map(|params| {
-            params
-                .iter()
-                .map(|p| p.format(format_data))
-                .collect::<Vec<_>>()
-        });
+        let mut params = match &self.params {
+            CallableParams::Simple(params) => Some(
+                params
+                    .iter()
+                    .map(|p| p.format(format_data))
+                    .collect::<Vec<_>>(),
+            ),
+            CallableParams::Any => None,
+            CallableParams::WithParamSpec(_, _) => todo!(),
+        };
         let result = self.result_type.format(format_data);
         match format_data.style {
             FormatStyle::MypyRevealType => {
-                if let Some(params) = params.as_mut() {
-                    for (i, p) in self.params.as_ref().unwrap().iter().enumerate() {
+                if let CallableParams::Simple(callable_params) = &self.params {
+                    for (i, p) in callable_params.iter().enumerate() {
                         match p.param_kind {
                             ParamKind::KeywordOnly => {
-                                params.insert(i, Box::from("*"));
+                                params.as_mut().unwrap().insert(i, Box::from("*"));
                                 break;
                             }
                             ParamKind::Starred => break,
@@ -2004,6 +2020,13 @@ impl<'a> TypeVarLikeUsage<'a> {
             Self::ParamSpec(p) => p.param_spec.name(db).into(),
         }
     }
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum CallableParams {
+    Simple(Box<[CallableParam]>),
+    WithParamSpec(Box<[DbType]>, Rc<ParamSpec>),
+    Any,
 }
 
 #[derive(Debug, PartialEq, Clone)]
