@@ -1,13 +1,14 @@
 use std::borrow::Cow;
 
 use super::{match_tuple_type_arguments, FormatData, Match, Matcher, Type};
-use crate::database::{GenericItem, TypeArguments, Variance};
+use crate::database::{CallableParams, GenericItem, TypeArguments, Variance};
 use crate::inference_state::InferenceState;
 
 #[derive(Debug)]
 pub enum Generic<'a> {
     TypeArgument(Type<'a>),
     TypeVarTuple(Cow<'a, TypeArguments>),
+    CallableParams(Cow<'a, CallableParams>),
 }
 
 impl<'a> Generic<'a> {
@@ -15,6 +16,7 @@ impl<'a> Generic<'a> {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::new(t)),
             GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Borrowed(args)),
+            GenericItem::CallableParams(params) => Self::CallableParams(Cow::Borrowed(params)),
         }
     }
 
@@ -22,6 +24,7 @@ impl<'a> Generic<'a> {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::owned(t)),
             GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Owned(args)),
+            GenericItem::CallableParams(params) => Self::CallableParams(Cow::Owned(params)),
         }
     }
 
@@ -29,6 +32,7 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(i_s)),
             Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
+            Self::CallableParams(params) => todo!(),
         }
     }
 
@@ -36,6 +40,7 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
+            Self::CallableParams(params) => todo!(),
         }
     }
 
@@ -62,6 +67,7 @@ impl<'a> Generic<'a> {
                 }
                 _ => todo!(),
             },
+            Self::CallableParams(params) => todo!(),
         }
     }
 
@@ -75,6 +81,7 @@ impl<'a> Generic<'a> {
                 Self::TypeVarTuple(ref t2) => todo!(),
                 _ => todo!(),
             },
+            Self::CallableParams(params) => todo!(),
         }
     }
 

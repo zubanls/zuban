@@ -519,6 +519,8 @@ pub enum GenericItem {
     TypeArgument(DbType),
     // For TypeVarTuple
     TypeArguments(TypeArguments),
+    // For ParamSpec
+    CallableParams(CallableParams),
 }
 
 impl GenericItem {
@@ -529,6 +531,7 @@ impl GenericItem {
         match self {
             Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_vars(callable)),
             Self::TypeArguments(_) => todo!(),
+            Self::CallableParams(_) => todo!(),
         }
     }
 
@@ -541,7 +544,9 @@ impl GenericItem {
             Self::TypeArguments(ts1) => match other {
                 Self::TypeArgument(_) => todo!(),
                 Self::TypeArguments(_) => todo!(),
+                Self::CallableParams(_) => todo!(),
             },
+            Self::CallableParams(params) => todo!(),
         }
     }
 
@@ -549,6 +554,7 @@ impl GenericItem {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
             Self::TypeArguments(ts) => todo!(),
+            Self::CallableParams(_) => todo!(),
         }
     }
 }
@@ -579,6 +585,7 @@ impl GenericsList {
             .map(|g| match g {
                 GenericItem::TypeArgument(t) => t.format(format_data),
                 GenericItem::TypeArguments(ts) => ts.format(format_data),
+                GenericItem::CallableParams(params) => todo!(), // params.format(format_data),
             })
             .collect::<Vec<_>>()
             .join(", ")
@@ -847,6 +854,7 @@ impl DbType {
                 match g {
                     GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
                     GenericItem::TypeArguments(_) => todo!(),
+                    GenericItem::CallableParams(params) => todo!(),
                 }
             }
         };
@@ -911,6 +919,7 @@ impl DbType {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.has_any(),
                 GenericItem::TypeArguments(_) => todo!(),
+                GenericItem::CallableParams(params) => todo!(),
             })
         };
         match self {
@@ -991,6 +1000,7 @@ impl DbType {
                                 args: remap_tuple_likes(&ts.args, callable),
                             })
                         }
+                        GenericItem::CallableParams(params) => todo!(),
                     })
                     .collect(),
             )
@@ -1024,6 +1034,7 @@ impl DbType {
             Self::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))) {
                 GenericItem::TypeArgument(t) => t,
                 GenericItem::TypeArguments(ts) => unreachable!(),
+                GenericItem::CallableParams(params) => todo!(),
             },
             Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(match &content.args {

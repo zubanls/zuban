@@ -205,6 +205,7 @@ impl<'a> TypeVarMatcher<'a> {
                                         self.replace_type_vars_for_nested_context(i_s, t),
                                     ),
                                     GenericItem::TypeArguments(_) => todo!(),
+                                    GenericItem::CallableParams(_) => todo!(),
                                 }
                             } else {
                                 match type_var_like_usage {
@@ -453,6 +454,7 @@ fn calculate_type_vars<'db>(
                                                 BoundKind::TypeVarTuple(ts.into_owned());
                                             calculated.defined_by_result_context = true;
                                         }
+                                        Generic::CallableParams(_) => todo!(),
                                     };
                                 }
                                 true
