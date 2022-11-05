@@ -86,9 +86,15 @@ impl<'a> Matcher<'a> {
             .unwrap_or(false)
     }
 
-    pub fn match_reverse(&mut self) {
+    pub fn match_reverse<T, C: FnOnce(&mut Self) -> T>(&mut self, callable: C) -> T {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
             matcher.match_reverse = !matcher.match_reverse;
+            let result = callable(self);
+            let matcher = self.type_var_matcher.as_mut().unwrap();
+            matcher.match_reverse = !matcher.match_reverse;
+            result
+        } else {
+            callable(self)
         }
     }
 

@@ -297,10 +297,7 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
-        matcher.match_reverse();
-        let result = value_type.is_super_type_of(i_s, matcher, self);
-        matcher.match_reverse();
-        result
+        matcher.match_reverse(|matcher| value_type.is_super_type_of(i_s, matcher, self))
     }
 
     pub fn is_simple_sub_type_of(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
