@@ -975,7 +975,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             let params = match iterator.next().unwrap() {
-                SliceOrSimple::Simple(n) => {
+                first @ SliceOrSimple::Simple(n) => {
                     if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
                         n.named_expr.expression().unpack()
                     {
@@ -990,13 +990,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 CallableParams::Simple(params.into_boxed_slice())
                             }
                             AtomContent::Ellipsis => CallableParams::Any,
-                            _ => {
-                                self.add_typing_issue(
-                                    n.as_node_ref(),
-                                    IssueType::InvalidCallableParams,
-                                );
-                                CallableParams::Any
-                            }
+                            _ => match self.compute_slice_type(first) {
+                                TypeContent::ParamSpec(p) => {
+                                    CallableParams::WithParamSpec(Box::new([]), p)
+                                }
+                                _ => {
+                                    self.add_typing_issue(
+                                        n.as_node_ref(),
+                                        IssueType::InvalidCallableParams,
+                                    );
+                                    CallableParams::Any
+                                }
+                            },
                         }
                     } else {
                         todo!()

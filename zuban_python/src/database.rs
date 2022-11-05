@@ -2025,7 +2025,7 @@ impl<'a> TypeVarLikeUsage<'a> {
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallableParams {
     Simple(Box<[CallableParam]>),
-    WithParamSpec(Box<[DbType]>, Rc<ParamSpec>),
+    WithParamSpec(Box<[DbType]>, ParamSpecUsage),
     Any,
 }
 
