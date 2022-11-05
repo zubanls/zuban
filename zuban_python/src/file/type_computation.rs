@@ -148,6 +148,7 @@ enum TypeContent<'db, 'a> {
     TypeVarTuple(TypeVarTupleUsage),
     ParamSpec(ParamSpecUsage),
     Unpacked(TypeOrTypeVarTuple),
+    Concatenate(CallableParams),
     Unknown,
 }
 
@@ -470,6 +471,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 DbType::Any
             }
             TypeContent::Unpacked(t) => DbType::Any, // TODO Should probably raise an error?
+            TypeContent::Concatenate(_) => {
+                self.add_typing_issue(
+                    node_ref,
+                    IssueType::InvalidType(Box::from("Invalid location for Concatenate")),
+                );
+                self.add_typing_issue(
+                    node_ref,
+                    IssueType::Note(Box::from(
+                        "You can use Concatenate as the first argument to Callable",
+                    )),
+                );
+                DbType::Any
+            }
             // TODO here we would need to check if the generics are actually valid.
             TypeContent::RecursiveAlias(link) => {
                 self.is_recursive_alias = true;
@@ -601,6 +615,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     TypeContent::TypeVarTuple(_) => todo!(),
                     TypeContent::ParamSpec(_) => todo!(),
                     TypeContent::Unpacked(_) => todo!(),
+                    TypeContent::Concatenate(_) => todo!(),
                     TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
@@ -646,7 +661,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::CallableParam(_) => todo!(),
                         SpecialType::LiteralString => todo!(),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
-                        SpecialType::Concatenate => todo!(),
+                        SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -659,6 +674,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     TypeContent::TypeVarTuple(_) => todo!(),
                     TypeContent::ParamSpec(_) => todo!(),
                     TypeContent::Unpacked(_) => todo!(),
+                    TypeContent::Concatenate(_) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
@@ -1144,6 +1160,24 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         } else {
             todo!()
         }
+    }
+
+    fn compute_type_get_item_on_concatenate(
+        &mut self,
+        slice_type: SliceType,
+    ) -> TypeContent<'db, 'db> {
+        let count = slice_type.iter().count();
+        let mut iterator = slice_type.iter();
+        let types = iterator
+            .by_ref()
+            .take(count - 1)
+            .map(|s| self.compute_slice_db_type(s))
+            .collect();
+        let param_spec = match self.compute_slice_type(iterator.next().unwrap()) {
+            TypeContent::ParamSpec(p) => p,
+            _ => todo!(),
+        };
+        TypeContent::Concatenate(CallableParams::WithParamSpec(types, param_spec))
     }
 
     fn expect_type_var_args(&mut self, slice_type: SliceType, class: &'static str) {
