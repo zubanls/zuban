@@ -26,6 +26,9 @@ pub enum TypeVarCallbackReturn {
     NotFound,
 }
 
+type MapAnnotationTypeCallback<'a> =
+    Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> DbType>;
+
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     &mut InferenceState<'db, '_>,
     &TypeVarManager,
@@ -349,14 +352,88 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     }
 
     pub fn compute_annotation(&mut self, annotation: Annotation) {
-        self.cache_annotation_internal(annotation.index(), annotation.expression());
+        let expr = annotation.expression();
+        match annotation.simple_param_kind() {
+            Some(SimpleParamKind::Normal) | None => {
+                self.cache_annotation_internal(annotation.index(), expr, None)
+            }
+            Some(SimpleParamKind::Starred) => self.cache_annotation_internal(
+                annotation.index(),
+                expr,
+                Some(&|slf, t| {
+                    DbType::Tuple(TupleContent::new_arbitrary_length(
+                        slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())),
+                    ))
+                }),
+            ),
+            Some(SimpleParamKind::DoubleStarred) => self.cache_annotation_internal(
+                annotation.index(),
+                expr,
+                Some(&|slf, t| {
+                    let v = slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index()));
+                    DbType::Class(
+                        self.inference
+                            .i_s
+                            .db
+                            .python_state
+                            .builtins_point_link("dict"),
+                        Some(GenericsList::new_generics(Box::new([
+                            GenericItem::TypeArgument(DbType::Class(
+                                self.inference
+                                    .i_s
+                                    .db
+                                    .python_state
+                                    .builtins_point_link("str"),
+                                None,
+                            )),
+                            GenericItem::TypeArgument(v),
+                        ]))),
+                    )
+                }),
+            ),
+        };
+        /*
+                            match name_def.name().simple_param_kind() {
+                                SimpleParamKind::Normal =>
+                                SimpleParamKind::Starred => {
+                                    let p = self
+                                        .use_cached_annotation_type(annotation)
+                                        .into_db_type(self.i_s);
+                                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                                        Box::new(DbType::Tuple(
+                                            TupleContent::new_arbitrary_length(p),
+                                        )),
+                                    ))
+                                }
+                                SimpleParamKind::DoubleStarred => {
+                                    let p = self
+                                        .use_cached_annotation_type(annotation)
+                                        .into_db_type(self.i_s);
+                                    Inferred::create_instance(
+                                        self.i_s.db.python_state.builtins_point_link("dict"),
+                                        Some(&[
+                                            GenericItem::TypeArgument(DbType::Class(
+                                                self.i_s.db.python_state.builtins_point_link("str"),
+                                                None,
+                                            )),
+                                            GenericItem::TypeArgument(p),
+                                        ]),
+                                    )
+                                }
+                            }
+        */
     }
 
     pub fn compute_return_annotation(&mut self, annotation: ReturnAnnotation) {
-        self.cache_annotation_internal(annotation.index(), annotation.expression());
+        self.cache_annotation_internal(annotation.index(), annotation.expression(), None);
     }
 
-    fn cache_annotation_internal(&mut self, annotation_index: NodeIndex, expr: Expression) {
+    fn cache_annotation_internal(
+        &mut self,
+        annotation_index: NodeIndex,
+        expr: Expression,
+        map_type_callback: MapAnnotationTypeCallback,
+    ) {
         let point = self.inference.file.points.get(annotation_index);
         if point.calculated() {
             return;
@@ -369,32 +446,42 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
         let type_ = self.compute_type(expr);
 
-        let db_type = match type_ {
-            TypeContent::ClassWithoutTypeVar(i) => {
-                debug_assert!(self.inference.file.points.get(expr.index()).calculated());
-                self.inference.file.points.set(
-                    annotation_index,
-                    Point::new_simple_specific(Specific::AnnotationClassInstance, Locality::Todo),
-                );
-                return;
-            }
-            TypeContent::DbType(d) => {
-                if self.has_type_vars {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                        .save_redirect(self.inference.i_s.db, self.inference.file, expr.index());
+        let db_type = match map_type_callback {
+            Some(map_type_callback) => map_type_callback(self, type_),
+            None => match type_ {
+                TypeContent::ClassWithoutTypeVar(i) => {
+                    debug_assert!(self.inference.file.points.get(expr.index()).calculated());
                     self.inference.file.points.set(
                         annotation_index,
                         Point::new_simple_specific(
-                            Specific::AnnotationWithTypeVars,
+                            Specific::AnnotationClassInstance,
                             Locality::Todo,
                         ),
                     );
                     return;
-                } else {
-                    d
                 }
-            }
-            _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
+                TypeContent::DbType(d) => {
+                    if self.has_type_vars {
+                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
+                            .save_redirect(
+                                self.inference.i_s.db,
+                                self.inference.file,
+                                expr.index(),
+                            );
+                        self.inference.file.points.set(
+                            annotation_index,
+                            Point::new_simple_specific(
+                                Specific::AnnotationWithTypeVars,
+                                Locality::Todo,
+                            ),
+                        );
+                        return;
+                    } else {
+                        d
+                    }
+                }
+                _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
+            },
         };
         let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
         unsaved.save_redirect(self.inference.i_s.db, self.inference.file, annotation_index);
@@ -1763,7 +1850,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
                             Some(&mut x),
                             TypeComputationOrigin::TypeCommentOrAnnotation,
                         );
-                        comp.cache_annotation_internal(index, expr);
+                        comp.cache_annotation_internal(index, expr, None);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
                             inf.recalculate_annotation_type_vars(index, recalculate_type_vars);
                         });

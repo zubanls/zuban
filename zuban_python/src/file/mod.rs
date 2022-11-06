@@ -1625,34 +1625,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
                         }
 
                         if let Some(annotation) = name_def.maybe_param_annotation() {
-                            match name_def.name().simple_param_kind() {
-                                SimpleParamKind::Normal => self.use_cached_annotation(annotation),
-                                SimpleParamKind::Starred => {
-                                    let p = self
-                                        .use_cached_annotation_type(annotation)
-                                        .into_db_type(self.i_s);
-                                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Box::new(DbType::Tuple(
-                                            TupleContent::new_arbitrary_length(p),
-                                        )),
-                                    ))
-                                }
-                                SimpleParamKind::DoubleStarred => {
-                                    let p = self
-                                        .use_cached_annotation_type(annotation)
-                                        .into_db_type(self.i_s);
-                                    Inferred::create_instance(
-                                        self.i_s.db.python_state.builtins_point_link("dict"),
-                                        Some(&[
-                                            GenericItem::TypeArgument(DbType::Class(
-                                                self.i_s.db.python_state.builtins_point_link("str"),
-                                                None,
-                                            )),
-                                            GenericItem::TypeArgument(p),
-                                        ]),
-                                    )
-                                }
-                            }
+                            self.use_cached_annotation(annotation)
                         } else if let Some((function, args)) = self.i_s.current_execution() {
                             function
                                 .infer_param(self.i_s, node_index, args)

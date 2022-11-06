@@ -400,21 +400,6 @@ impl<'db> Name<'db> {
             NameParent::Other
         }
     }
-
-    pub fn simple_param_kind(&self) -> SimpleParamKind {
-        let param = self.node.parent().unwrap().parent().unwrap();
-        if param.is_type(Nonterminal(starred_param))
-            || param.is_type(Nonterminal(lambda_starred_param))
-        {
-            SimpleParamKind::Starred
-        } else if param.is_type(Nonterminal(double_starred_param))
-            || param.is_type(Nonterminal(lambda_double_starred_param))
-        {
-            SimpleParamKind::DoubleStarred
-        } else {
-            SimpleParamKind::Normal
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -1710,6 +1695,23 @@ pub enum SimpleParamKind {
 impl<'db> Annotation<'db> {
     pub fn expression(&self) -> Expression<'db> {
         Expression::new(self.node.nth_child(1))
+    }
+
+    pub fn simple_param_kind(&self) -> Option<SimpleParamKind> {
+        let maybe_param = self.node.parent().unwrap();
+        if maybe_param.is_type(Nonterminal(starred_param))
+            || maybe_param.is_type(Nonterminal(lambda_starred_param))
+        {
+            Some(SimpleParamKind::Starred)
+        } else if maybe_param.is_type(Nonterminal(double_starred_param))
+            || maybe_param.is_type(Nonterminal(lambda_double_starred_param))
+        {
+            Some(SimpleParamKind::DoubleStarred)
+        } else if maybe_param.is_type(Nonterminal(assignment)) {
+            None
+        } else {
+            Some(SimpleParamKind::Normal)
+        }
     }
 }
 
