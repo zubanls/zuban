@@ -890,7 +890,15 @@ impl DbType {
                 match &content.params {
                     CallableParams::Simple(params) => {
                         for param in params.iter() {
-                            param.db_type.search_type_vars(found_type_var)
+                            match &param.param_specific {
+                                ParamSpecific::PositionalOnly(t)
+                                | ParamSpecific::PositionalOrKeyword(t)
+                                | ParamSpecific::KeywordOnly(t)
+                                | ParamSpecific::Starred(StarredParamSpecific::Type(t))
+                                | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(
+                                    t,
+                                )) => t.search_type_vars(found_type_var),
+                            }
                         }
                     }
                     CallableParams::Any => (),
@@ -935,7 +943,15 @@ impl DbType {
                 .unwrap_or(true),
             Self::Callable(content) => match &content.params {
                 CallableParams::Simple(params) => {
-                    params.iter().any(|param| param.db_type.has_any())
+                    params.iter().any(|param| match &param.param_specific {
+                        ParamSpecific::PositionalOnly(t)
+                        | ParamSpecific::PositionalOrKeyword(t)
+                        | ParamSpecific::KeywordOnly(t)
+                        | ParamSpecific::Starred(StarredParamSpecific::Type(t))
+                        | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(t)) => {
+                            t.has_any()
+                        }
+                    })
                 }
                 CallableParams::Any => true,
                 CallableParams::WithParamSpec(types, param_spec) => {
@@ -1051,10 +1067,37 @@ impl DbType {
                         params
                             .iter()
                             .map(|p| CallableParam {
-                                param_kind: p.param_kind,
+                                param_specific: match &p.param_specific {
+                                    ParamSpecific::PositionalOnly(t) => {
+                                        ParamSpecific::PositionalOnly(t.replace_type_vars(callable))
+                                    }
+                                    ParamSpecific::PositionalOrKeyword(t) => {
+                                        ParamSpecific::PositionalOrKeyword(
+                                            t.replace_type_vars(callable),
+                                        )
+                                    }
+                                    ParamSpecific::KeywordOnly(t) => {
+                                        ParamSpecific::KeywordOnly(t.replace_type_vars(callable))
+                                    }
+                                    ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
+                                        StarredParamSpecific::Type(t) => {
+                                            StarredParamSpecific::Type(
+                                                t.replace_type_vars(callable),
+                                            )
+                                        }
+                                    }),
+                                    ParamSpecific::DoubleStarred(d) => {
+                                        ParamSpecific::DoubleStarred(match d {
+                                            DoubleStarredParamSpecific::Type(t) => {
+                                                DoubleStarredParamSpecific::Type(
+                                                    t.replace_type_vars(callable),
+                                                )
+                                            }
+                                        })
+                                    }
+                                },
                                 has_default: p.has_default,
                                 name: p.name,
-                                db_type: p.db_type.replace_type_vars(callable),
                             })
                             .collect(),
                     ),
@@ -1170,10 +1213,43 @@ impl DbType {
                             params
                                 .iter()
                                 .map(|p| CallableParam {
-                                    param_kind: p.param_kind,
+                                    param_specific: match &p.param_specific {
+                                        ParamSpecific::PositionalOnly(t) => {
+                                            ParamSpecific::PositionalOnly(
+                                                t.rewrite_late_bound_callables(manager),
+                                            )
+                                        }
+                                        ParamSpecific::PositionalOrKeyword(t) => {
+                                            ParamSpecific::PositionalOrKeyword(
+                                                t.rewrite_late_bound_callables(manager),
+                                            )
+                                        }
+                                        ParamSpecific::KeywordOnly(t) => {
+                                            ParamSpecific::KeywordOnly(
+                                                t.rewrite_late_bound_callables(manager),
+                                            )
+                                        }
+                                        ParamSpecific::Starred(s) => {
+                                            ParamSpecific::Starred(match s {
+                                                StarredParamSpecific::Type(t) => {
+                                                    StarredParamSpecific::Type(
+                                                        t.rewrite_late_bound_callables(manager),
+                                                    )
+                                                }
+                                            })
+                                        }
+                                        ParamSpecific::DoubleStarred(d) => {
+                                            ParamSpecific::DoubleStarred(match d {
+                                                DoubleStarredParamSpecific::Type(t) => {
+                                                    DoubleStarredParamSpecific::Type(
+                                                        t.rewrite_late_bound_callables(manager),
+                                                    )
+                                                }
+                                            })
+                                        }
+                                    },
                                     has_default: p.has_default,
                                     name: p.name,
-                                    db_type: p.db_type.rewrite_late_bound_callables(manager),
                                 })
                                 .collect(),
                         ),
@@ -1394,63 +1470,106 @@ impl TupleContent {
     }
 }
 
-pub enum StarredParamType {
+#[derive(Debug, Clone, PartialEq)]
+pub enum StarredParamSpecific {
     Type(DbType),
-    ParamSpecArgs(ParamSpecUsage),
+    //ParamSpecArgs(ParamSpecUsage),
 }
 
-pub enum DoubleStarredParamType {
+#[derive(Debug, Clone, PartialEq)]
+pub enum DoubleStarredParamSpecific {
     Type(DbType),
-    ParamSpecKwargs(ParamSpecUsage),
+    //ParamSpecKwargs(ParamSpecUsage),
 }
 
+#[derive(Debug, Clone, PartialEq)]
 pub enum ParamSpecific {
     PositionalOnly(DbType),
     PositionalOrKeyword(DbType),
     KeywordOnly(DbType),
-    Starred(StarredParamType),
-    DoubleStarred(DoubleStarredParamType),
+    Starred(StarredParamSpecific),
+    DoubleStarred(DoubleStarredParamSpecific),
+}
+
+impl ParamSpecific {
+    pub fn param_kind(&self) -> ParamKind {
+        match self {
+            Self::PositionalOnly(_) => ParamKind::PositionalOnly,
+            Self::PositionalOrKeyword(_) => ParamKind::PositionalOrKeyword,
+            Self::KeywordOnly(_) => ParamKind::KeywordOnly,
+            Self::Starred(_) => ParamKind::Starred,
+            Self::DoubleStarred(_) => ParamKind::DoubleStarred,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
-    pub param_kind: ParamKind,
+    pub param_specific: ParamSpecific,
     pub name: Option<StringSlice>,
     pub has_default: bool,
-    pub db_type: DbType,
 }
 
 impl CallableParam {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if self.param_kind != ParamKind::PositionalOnly || format_data.verbose && self.has_default {
-            let t = self.db_type.format(format_data);
-            if self.param_kind == ParamKind::Starred {
-                return format!("VarArg({t})").into();
-            } else if self.param_kind == ParamKind::DoubleStarred {
-                return format!("KwArg({t})").into();
+        if !matches!(self.param_specific, ParamSpecific::PositionalOnly(_))
+            || format_data.verbose && self.has_default
+        {
+            if let ParamSpecific::Starred(t) = &self.param_specific {
+                return format!(
+                    "VarArg({})",
+                    match t {
+                        StarredParamSpecific::Type(t) => t.format(format_data),
+                    }
+                )
+                .into();
+            } else if let ParamSpecific::DoubleStarred(t) = &self.param_specific {
+                return format!(
+                    "KwArg({})",
+                    match t {
+                        DoubleStarredParamSpecific::Type(t) => t.format(format_data),
+                    }
+                )
+                .into();
             } else if let Some(name) = self.name {
                 match format_data.style {
                     FormatStyle::MypyRevealType => {
-                        let mut string = match self.param_kind {
-                            ParamKind::PositionalOnly
-                            | ParamKind::PositionalOrKeyword
-                            | ParamKind::KeywordOnly => {
-                                format!("{}: ", name.as_str(format_data.db))
+                        let mut string = match &self.param_specific {
+                            ParamSpecific::PositionalOnly(t)
+                            | ParamSpecific::PositionalOrKeyword(t)
+                            | ParamSpecific::KeywordOnly(t) => {
+                                format!(
+                                    "{}: {}",
+                                    name.as_str(format_data.db),
+                                    t.format(format_data),
+                                )
                             }
-                            ParamKind::Starred => format!("*{}: ", name.as_str(format_data.db)),
-                            ParamKind::DoubleStarred => {
-                                format!("*{}: ", name.as_str(format_data.db))
-                            }
+                            // TODO these two cases are probably unreachable
+                            ParamSpecific::Starred(s) => format!(
+                                "*{}: {}",
+                                name.as_str(format_data.db),
+                                match s {
+                                    StarredParamSpecific::Type(t) => t.format(format_data),
+                                }
+                            ),
+                            ParamSpecific::DoubleStarred(d) => format!(
+                                "**{}: {}",
+                                name.as_str(format_data.db),
+                                match d {
+                                    DoubleStarredParamSpecific::Type(t) => t.format(format_data),
+                                }
+                            ),
                         };
-                        string += &t;
                         if self.has_default {
                             string += " =";
                         }
                         return string.into();
                     }
                     _ => {
-                        return match self.param_kind {
-                            ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => {
+                        return match &self.param_specific {
+                            ParamSpecific::PositionalOnly(t)
+                            | ParamSpecific::PositionalOrKeyword(t) => {
+                                let t = t.format(format_data);
                                 if !format_data.verbose {
                                     return t;
                                 }
@@ -1460,23 +1579,39 @@ impl CallableParam {
                                     format!("Arg({t}, '{}')", name.as_str(format_data.db))
                                 }
                             }
-                            ParamKind::KeywordOnly => {
+                            ParamSpecific::KeywordOnly(t) => {
                                 if self.has_default {
                                     todo!()
                                 } else {
-                                    format!("NamedArg({t}, '{}')", name.as_str(format_data.db))
+                                    format!(
+                                        "NamedArg({}, '{}')",
+                                        t.format(format_data),
+                                        name.as_str(format_data.db)
+                                    )
                                 }
                             }
-                            ParamKind::Starred | ParamKind::DoubleStarred => unreachable!(),
+                            ParamSpecific::Starred(_) | ParamSpecific::DoubleStarred(_) => {
+                                unreachable!()
+                            }
                         }
                         .into();
                     }
                 }
             } else if self.has_default {
-                return format!("DefaultArg({t})").into();
+                return match &self.param_specific {
+                    ParamSpecific::PositionalOnly(t)
+                    | ParamSpecific::PositionalOrKeyword(t)
+                    | ParamSpecific::KeywordOnly(t) => {
+                        format!("DefaultArg({})", t.format(format_data)).into()
+                    }
+                    _ => unreachable!(),
+                };
             }
         }
-        self.db_type.format(format_data)
+        match &self.param_specific {
+            ParamSpecific::PositionalOnly(t) => t.format(format_data),
+            _ => unreachable!(),
+        }
     }
 }
 
@@ -1516,12 +1651,12 @@ impl CallableContent {
             FormatStyle::MypyRevealType => {
                 if let CallableParams::Simple(callable_params) = &self.params {
                     for (i, p) in callable_params.iter().enumerate() {
-                        match p.param_kind {
-                            ParamKind::KeywordOnly => {
+                        match p.param_specific {
+                            ParamSpecific::KeywordOnly(_) => {
                                 params.as_mut().unwrap().insert(i, Box::from("*"));
                                 break;
                             }
-                            ParamKind::Starred => break,
+                            ParamSpecific::Starred(_) => break,
                             _ => (),
                         }
                     }

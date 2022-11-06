@@ -8,9 +8,10 @@ use std::fmt;
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType, Execution,
-    GenericItem, GenericsList, IntersectionType, Locality, Overload, Point, PointLink, StringSlice,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
+    DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
+    Overload, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -302,21 +303,38 @@ impl<'db: 'a, 'a> Function<'a> {
             })
         };
         let result_type = self.result_type(i_s);
+        let annotation_to_type = |i_s: &mut _, p: FunctionParam| {
+            p.annotation_type(i_s)
+                .map(|t| as_db_type(i_s, t))
+                .unwrap_or(DbType::Any)
+        };
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
             params: CallableParams::Simple(
                 params
                     .map(|p| CallableParam {
-                        db_type: p
-                            .annotation_type(i_s)
-                            .map(|t| as_db_type(i_s, t))
-                            .unwrap_or(DbType::Any),
+                        param_specific: match p.kind(i_s.db) {
+                            ParamKind::PositionalOnly => {
+                                ParamSpecific::PositionalOnly(annotation_to_type(i_s, p))
+                            }
+                            ParamKind::PositionalOrKeyword => {
+                                ParamSpecific::PositionalOrKeyword(annotation_to_type(i_s, p))
+                            }
+                            ParamKind::KeywordOnly => {
+                                ParamSpecific::KeywordOnly(annotation_to_type(i_s, p))
+                            }
+                            ParamKind::Starred => ParamSpecific::Starred(
+                                StarredParamSpecific::Type(annotation_to_type(i_s, p)),
+                            ),
+                            ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
+                                DoubleStarredParamSpecific::Type(annotation_to_type(i_s, p)),
+                            ),
+                        },
                         has_default: p.has_default(),
                         name: Some({
                             let n = p.param.name_definition();
                             StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
                         }),
-                        param_kind: p.kind(i_s.db),
                     })
                     .collect(),
             ),

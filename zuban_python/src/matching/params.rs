@@ -2,7 +2,10 @@ use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments};
-use crate::database::{CallableParam, CallableParams, Database, DbType, PointLink, Variance};
+use crate::database::{
+    CallableParam, CallableParams, Database, DbType, DoubleStarredParamSpecific, ParamSpecific,
+    PointLink, StarredParamSpecific, Variance,
+};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
@@ -372,11 +375,19 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 
     fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
-        Some(Type::new(&self.db_type))
+        match &self.param_specific {
+            ParamSpecific::PositionalOnly(t)
+            | ParamSpecific::PositionalOrKeyword(t)
+            | ParamSpecific::KeywordOnly(t)
+            | ParamSpecific::Starred(StarredParamSpecific::Type(t))
+            | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(t)) => {
+                Some(Type::new(t))
+            }
+        }
     }
 
     fn kind(&self, db: &Database) -> ParamKind {
-        self.param_kind
+        self.param_specific.param_kind()
     }
 }
 

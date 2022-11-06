@@ -4,10 +4,11 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
-    DbType, GenericItem, GenericsList, Locality, NewType, ParamSpecUsage, Point, PointLink,
-    PointType, RecursiveAlias, Specific, StringSlice, TupleContent, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, NewType,
+    ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias, Specific,
+    StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple,
+    TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
+    TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -961,22 +962,24 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     p
                 } else {
                     CallableParam {
-                        param_kind: ParamKind::PositionalOnly,
+                        param_specific: ParamSpecific::PositionalOnly(
+                            slf.as_db_type(t, NodeRef::new(slf.inference.file, n.index())),
+                        ),
                         has_default: false,
                         name: None,
-                        db_type: slf.as_db_type(t, NodeRef::new(slf.inference.file, n.index())),
                     }
                 };
                 if let Some(previous) = params.last() {
-                    let prev_kind = previous.param_kind;
-                    let msg = match p.param_kind {
-                        ParamKind::PositionalOnly if p.param_kind < prev_kind || previous.has_default && !p.has_default => Some(
+                    let prev_kind = previous.param_specific.param_kind();
+                    let current_kind = p.param_specific.param_kind();
+                    let msg = match current_kind {
+                        ParamKind::PositionalOnly if current_kind < prev_kind || previous.has_default && !p.has_default => Some(
                             "Required positional args may not appear after default, named or var args",
                         ),
                         ParamKind::PositionalOrKeyword => {
                             if previous.has_default && !p.has_default {
                                 Some("Required positional args may not appear after default, named or var args")
-                            } else if p.param_kind < prev_kind {
+                            } else if current_kind < prev_kind {
                                 if p.has_default {
                                     Some("Positional default args may not appear after named or var args")
                                 } else {
@@ -986,13 +989,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 None
                             }
                         }
-                        ParamKind::Starred if p.param_kind <= prev_kind => Some(
+                        ParamKind::Starred if current_kind <= prev_kind => Some(
                             "Var args may not appear after named or var args",
                         ),
-                        ParamKind::KeywordOnly if p.param_kind <= prev_kind => Some(
+                        ParamKind::KeywordOnly if current_kind <= prev_kind => Some(
                             "A **kwargs argument must be the last argument"
                         ),
-                        ParamKind::DoubleStarred if p.param_kind == prev_kind => Some(
+                        ParamKind::DoubleStarred if current_kind == prev_kind => Some(
                             "You may only have one **kwargs argument"
                         ),
                         _ => None,
@@ -1440,17 +1443,24 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
         let db_type = db_type.unwrap_or(DbType::Any);
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
-            db_type: match param_kind {
-                ParamKind::Starred => wrap_starred(db_type),
-                ParamKind::DoubleStarred => wrap_double_starred(self.inference.i_s.db, db_type),
-                _ => db_type,
+            param_specific: match param_kind {
+                ParamKind::PositionalOnly => ParamSpecific::PositionalOnly(db_type),
+                ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(db_type),
+                ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(db_type),
+                ParamKind::Starred => {
+                    ParamSpecific::Starred(StarredParamSpecific::Type(wrap_starred(db_type)))
+                }
+                ParamKind::DoubleStarred => {
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(
+                        wrap_double_starred(self.inference.i_s.db, db_type),
+                    ))
+                }
             },
             name,
             has_default: matches!(
                 specific,
                 Specific::MypyExtensionsDefaultArg | Specific::MypyExtensionsDefaultNamedArg
             ),
-            param_kind,
         }))
     }
 
