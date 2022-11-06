@@ -1394,6 +1394,24 @@ impl TupleContent {
     }
 }
 
+pub enum StarredParamType {
+    Type(DbType),
+    ParamSpecArgs(ParamSpecUsage),
+}
+
+pub enum DoubleStarredParamType {
+    Type(DbType),
+    ParamSpecKwargs(ParamSpecUsage),
+}
+
+pub enum ParamSpecific {
+    PositionalOnly(DbType),
+    PositionalOrKeyword(DbType),
+    KeywordOnly(DbType),
+    Starred(StarredParamType),
+    DoubleStarred(DoubleStarredParamType),
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableParam {
     pub param_kind: ParamKind,
