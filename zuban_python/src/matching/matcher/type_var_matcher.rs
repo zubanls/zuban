@@ -602,6 +602,27 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         }
         if let Some(ref argument) = p.argument {
             if let Some(annotation_type) = p.param.annotation_type(i_s) {
+                let annotation_type = match p.param.kind(i_s.db) {
+                    ParamKind::Starred => {
+                        let DbType::Tuple(t) = annotation_type.maybe_db_type().unwrap() else {
+                            unreachable!()
+                        };
+                        match t.args.as_ref().unwrap() {
+                            TupleTypeArguments::FixedLength(..) => todo!(),
+                            TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
+                        }
+                    }
+                    ParamKind::DoubleStarred => {
+                        let DbType::Class(_, Some(generics)) = annotation_type.maybe_db_type().unwrap() else {
+                            unreachable!()
+                        };
+                        let GenericItem::TypeArgument(t) = &generics[1.into()] else {
+                            unreachable!();
+                        };
+                        Type::new(t)
+                    }
+                    _ => annotation_type,
+                };
                 let value = if matcher.has_type_var_matcher() {
                     argument.infer(
                         i_s,

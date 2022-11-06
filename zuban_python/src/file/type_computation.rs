@@ -361,67 +361,20 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 annotation.index(),
                 expr,
                 Some(&|slf, t| {
-                    DbType::Tuple(TupleContent::new_arbitrary_length(
-                        slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())),
-                    ))
+                    wrap_starred(slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
                 }),
             ),
             Some(SimpleParamKind::DoubleStarred) => self.cache_annotation_internal(
                 annotation.index(),
                 expr,
                 Some(&|slf, t| {
-                    let v = slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index()));
-                    DbType::Class(
-                        self.inference
-                            .i_s
-                            .db
-                            .python_state
-                            .builtins_point_link("dict"),
-                        Some(GenericsList::new_generics(Box::new([
-                            GenericItem::TypeArgument(DbType::Class(
-                                self.inference
-                                    .i_s
-                                    .db
-                                    .python_state
-                                    .builtins_point_link("str"),
-                                None,
-                            )),
-                            GenericItem::TypeArgument(v),
-                        ]))),
+                    wrap_double_starred(
+                        self.inference.i_s.db,
+                        slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())),
                     )
                 }),
             ),
         };
-        /*
-                            match name_def.name().simple_param_kind() {
-                                SimpleParamKind::Normal =>
-                                SimpleParamKind::Starred => {
-                                    let p = self
-                                        .use_cached_annotation_type(annotation)
-                                        .into_db_type(self.i_s);
-                                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                        Box::new(DbType::Tuple(
-                                            TupleContent::new_arbitrary_length(p),
-                                        )),
-                                    ))
-                                }
-                                SimpleParamKind::DoubleStarred => {
-                                    let p = self
-                                        .use_cached_annotation_type(annotation)
-                                        .into_db_type(self.i_s);
-                                    Inferred::create_instance(
-                                        self.i_s.db.python_state.builtins_point_link("dict"),
-                                        Some(&[
-                                            GenericItem::TypeArgument(DbType::Class(
-                                                self.i_s.db.python_state.builtins_point_link("str"),
-                                                None,
-                                            )),
-                                            GenericItem::TypeArgument(p),
-                                        ]),
-                                    )
-                                }
-                            }
-        */
     }
 
     pub fn compute_return_annotation(&mut self, annotation: ReturnAnnotation) {
@@ -1485,8 +1438,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             Specific::MypyExtensionsKwArg => ParamKind::DoubleStarred,
             _ => unreachable!(),
         };
+        let db_type = db_type.unwrap_or(DbType::Any);
         TypeContent::SpecialType(SpecialType::CallableParam(CallableParam {
-            db_type: db_type.unwrap_or(DbType::Any),
+            db_type: match param_kind {
+                ParamKind::Starred => wrap_starred(db_type),
+                ParamKind::DoubleStarred => wrap_double_starred(self.inference.i_s.db, db_type),
+                _ => db_type,
+            },
             name,
             has_default: matches!(
                 specific,
@@ -2119,4 +2077,21 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
         },
     );
     cache_name_on_class(cls, file, name)
+}
+
+fn wrap_starred(t: DbType) -> DbType {
+    DbType::Tuple(TupleContent::new_arbitrary_length(t))
+}
+
+fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
+    DbType::Class(
+        db.python_state.builtins_point_link("dict"),
+        Some(GenericsList::new_generics(Box::new([
+            GenericItem::TypeArgument(DbType::Class(
+                db.python_state.builtins_point_link("str"),
+                None,
+            )),
+            GenericItem::TypeArgument(t),
+        ]))),
+    )
 }
