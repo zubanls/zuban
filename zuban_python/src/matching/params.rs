@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
@@ -580,4 +582,20 @@ impl<'db, 'a, P> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a, P> {
     fn human_readable_argument_index(&self) -> String {
         self.argument.as_ref().unwrap().human_readable_index()
     }
+}
+
+pub enum WrappedParamSpecific<'a> {
+    PositionalOnly(Type<'a>),
+    PositionalOrKeyword(Type<'a>),
+    KeywordOnly(Type<'a>),
+    Starred(WrappedStarredParamSpecific<'a>),
+    DoubleStarred(WrappedDoubleStarredParamSpecific<'a>),
+}
+
+pub enum WrappedStarredParamSpecific<'a> {
+    Type(Type<'a>),
+}
+
+pub enum WrappedDoubleStarredParamSpecific<'a> {
+    Type(Type<'a>),
 }
