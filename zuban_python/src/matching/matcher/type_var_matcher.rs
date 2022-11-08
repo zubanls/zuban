@@ -2,7 +2,9 @@ use std::borrow::Cow;
 
 use parsa_python_ast::ParamKind;
 
-use super::super::params::{InferrableParamIterator2, Param};
+use super::super::params::{
+    InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
+};
 use super::super::{
     ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
     ResultContext, SignatureMatch, Type,
@@ -601,115 +603,127 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
             continue;
         }
         if let Some(ref argument) = p.argument {
-            if let Some(annotation_type) = p.param.annotation_type(i_s) {
-                let annotation_type = match p.param.kind(i_s.db) {
-                    ParamKind::Starred => {
-                        let DbType::Tuple(t) = annotation_type.maybe_db_type().unwrap() else {
-                            unreachable!()
-                        };
-                        match t.args.as_ref().unwrap() {
-                            TupleTypeArguments::FixedLength(..) => todo!(),
-                            TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
-                        }
-                    }
-                    ParamKind::DoubleStarred => {
-                        let DbType::Class(_, Some(generics)) = annotation_type.maybe_db_type().unwrap() else {
-                            unreachable!()
-                        };
-                        let GenericItem::TypeArgument(t) = &generics[1.into()] else {
-                            unreachable!();
-                        };
-                        Type::new(t)
-                    }
-                    _ => annotation_type,
-                };
-                let value = if matcher.has_type_var_matcher() {
-                    argument.infer(
-                        i_s,
-                        &mut ResultContext::WithMatcher {
-                            type_: &annotation_type,
-                            matcher,
-                        },
-                    )
-                } else {
-                    argument.infer(i_s, &mut ResultContext::Known(&annotation_type))
-                };
-                let m = annotation_type.error_if_not_matches_with_matcher(
-                    i_s,
-                    matcher,
-                    &value,
-                    on_type_error.as_ref().map(|on_type_error| {
-                        |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
-                            let node_ref = argument.as_node_ref();
-                            if let Some(starred) = node_ref.maybe_starred_expression() {
-                                t1 = format!(
-                                    "*{}",
-                                    node_ref.file.inference(i_s).infer_expression(starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                                ).into()
-                            } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
-                                t1 = format!(
-                                    "**{}",
-                                    node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                                ).into()
-                            }
-                            match reason {
-                                MismatchReason::None => (on_type_error.callback)(
-                                    i_s,
-                                    node_ref,
-                                    class,
-                                    function,
-                                    &p,
-                                    t1,
-                                    t2,
-                                ),
-                                MismatchReason::CannotInferTypeArgument(index) => {
-                                    node_ref.add_typing_issue(
-                                        i_s.db,
-                                        IssueType::CannotInferTypeArgument {
-                                            index: *index,
-                                            callable: match function {
-                                                Some(f) => f.diagnostic_string(class),
-                                                None => Box::from("Callable"),
-                                            },
-                                        },
-                                    );
-                                }
-                                MismatchReason::ConstraintMismatch { expected, type_var } => {
-                                    if should_generate_errors {
-                                        node_ref.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::InvalidTypeVarValue {
-                                                type_var_name: Box::from(type_var.name(i_s.db)),
-                                                func: match function {
-                                                    Some(f) => f.diagnostic_string(class),
-                                                    None => Box::from("function"),
-                                                },
-                                                actual: expected.format(&FormatData::new_short(i_s.db)),
-                                            },
-                                        );
-                                    } else {
-                                        debug!(
-                                            "TODO this is wrong, because this might also be Match::False{{similar: true}}"
-                                        );
-                                    }
-                                }
-                            }
-                        }
-                    }),
-                );
-                if matches!(m, Match::True { with_any: true }) {
-                    if let Some(param_annotation_link) = p.param.func_annotation_link() {
-                        // This is never reached when matching callables
-                        if let Some(argument) = p.argument {
-                            argument_indices_with_any.push(ArgumentIndexWithParam {
-                                argument_index: argument.index,
-                                param_annotation_link,
-                            })
-                        }
+            let specific = p.param.specific(i_s);
+            let annotation_type = match &specific {
+                WrappedParamSpecific::PositionalOnly(t)
+                | WrappedParamSpecific::PositionalOrKeyword(t)
+                | WrappedParamSpecific::KeywordOnly(t) => match t {
+                    Some(t) => t,
+                    None => continue,
+                },
+                WrappedParamSpecific::Starred(WrappedStarred::Type(t)) => {
+                    let t = match t {
+                        Some(t) => t,
+                        None => continue,
+                    };
+                    let DbType::Tuple(t) = t.maybe_db_type().unwrap() else {
+                        unreachable!()
+                    };
+                    match t.args.as_ref().unwrap() {
+                        TupleTypeArguments::FixedLength(..) => todo!(),
+                        TupleTypeArguments::ArbitraryLength(t) => &Type::new(t),
                     }
                 }
-                matches &= m
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t)) => {
+                    let t = match t {
+                        Some(t) => t,
+                        None => continue,
+                    };
+                    let DbType::Class(_, Some(generics)) = t.maybe_db_type().unwrap() else {
+                        unreachable!()
+                    };
+                    let GenericItem::TypeArgument(t) = &generics[1.into()] else {
+                        unreachable!();
+                    };
+                    &Type::new(t)
+                }
+            };
+            let value = if matcher.has_type_var_matcher() {
+                argument.infer(
+                    i_s,
+                    &mut ResultContext::WithMatcher {
+                        type_: &annotation_type,
+                        matcher,
+                    },
+                )
+            } else {
+                argument.infer(i_s, &mut ResultContext::Known(&annotation_type))
+            };
+            let m = annotation_type.error_if_not_matches_with_matcher(
+                i_s,
+                matcher,
+                &value,
+                on_type_error.as_ref().map(|on_type_error| {
+                    |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
+                        let node_ref = argument.as_node_ref();
+                        if let Some(starred) = node_ref.maybe_starred_expression() {
+                            t1 = format!(
+                                "*{}",
+                                node_ref.file.inference(i_s).infer_expression(starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
+                            ).into()
+                        } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
+                            t1 = format!(
+                                "**{}",
+                                node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
+                            ).into()
+                        }
+                        match reason {
+                            MismatchReason::None => (on_type_error.callback)(
+                                i_s,
+                                node_ref,
+                                class,
+                                function,
+                                &p,
+                                t1,
+                                t2,
+                            ),
+                            MismatchReason::CannotInferTypeArgument(index) => {
+                                node_ref.add_typing_issue(
+                                    i_s.db,
+                                    IssueType::CannotInferTypeArgument {
+                                        index: *index,
+                                        callable: match function {
+                                            Some(f) => f.diagnostic_string(class),
+                                            None => Box::from("Callable"),
+                                        },
+                                    },
+                                );
+                            }
+                            MismatchReason::ConstraintMismatch { expected, type_var } => {
+                                if should_generate_errors {
+                                    node_ref.add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidTypeVarValue {
+                                            type_var_name: Box::from(type_var.name(i_s.db)),
+                                            func: match function {
+                                                Some(f) => f.diagnostic_string(class),
+                                                None => Box::from("function"),
+                                            },
+                                            actual: expected.format(&FormatData::new_short(i_s.db)),
+                                        },
+                                    );
+                                } else {
+                                    debug!(
+                                        "TODO this is wrong, because this might also be Match::False{{similar: true}}"
+                                    );
+                                }
+                            }
+                        }
+                    }
+                }),
+            );
+            if matches!(m, Match::True { with_any: true }) {
+                if let Some(param_annotation_link) = p.param.func_annotation_link() {
+                    // This is never reached when matching callables
+                    if let Some(argument) = p.argument {
+                        argument_indices_with_any.push(ArgumentIndexWithParam {
+                            argument_index: argument.index,
+                            param_annotation_link,
+                        })
+                    }
+                }
             }
+            matches &= m
         }
     }
     let add_keyword_argument_issue = |reference: NodeRef, name| {

@@ -601,8 +601,10 @@ pub struct FunctionParam<'x> {
 
 impl FunctionParam<'_> {
     fn as_param_specific(&self, i_s: &mut InferenceState) -> ParamSpecific {
-        let as_db_type = |t: Option<Type>| t.map(|t| t.into_db_type(i_s)).unwrap_or(DbType::Any);
-        match self.specific(i_s) {
+        let specific = self.specific(i_s);
+        let mut as_db_type =
+            |t: Option<Type>| t.map(|t| t.into_db_type(i_s)).unwrap_or(DbType::Any);
+        match specific {
             WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_db_type(t)),
             WrappedParamSpecific::PositionalOrKeyword(t) => {
                 ParamSpecific::PositionalOrKeyword(as_db_type(t))

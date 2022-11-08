@@ -69,7 +69,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     params2: impl Iterator<Item = P2>,
     variance: Variance,
 ) -> Match {
-    let match_with_variance = |i_s, a: Option<Type>, b: Option<Type>, variance| {
+    let match_with_variance = |i_s, matcher, a: Option<Type>, b: Option<Type>, variance| {
         if let Some(a) = a.as_ref() {
             if let Some(b) = b.as_ref() {
                 return a.matches(i_s, matcher, b, variance);
@@ -78,7 +78,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         Match::new_true()
     };
 
-    let match_ = |i_s, a, b| match_with_variance(i_s, a, b, variance);
+    let match_ = |i_s, matcher, a, b| match_with_variance(i_s, matcher, a, b, variance);
 
     let mut params2 = Peekable::new(params2);
     let mut unused_keyword_params: Vec<P2> = vec![];
@@ -95,7 +95,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             let matches_kind = match param1.specific(i_s) {
                 WrappedParamSpecific::PositionalOnly(t1) => match param2.specific(i_s) {
                     WrappedParamSpecific::PositionalOnly(t2)
-                    | WrappedParamSpecific::PositionalOrKeyword(t2) => match_(i_s, t1, t2),
+                    | WrappedParamSpecific::PositionalOrKeyword(t2) => match_(i_s, matcher, t1, t2),
                     WrappedParamSpecific::Starred(s) => match s {
                         WrappedStarred::Type(t2) => todo!(),
                     },
@@ -106,7 +106,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         if param1.name(i_s.db) != param2.name(i_s.db) {
                             return Match::new_false();
                         }
-                        match_(i_s, t1, t2)
+                        match_(i_s, matcher, t1, t2)
                     }
                     WrappedParamSpecific::Starred(WrappedStarred::Type(s2)) => {
                         params2.next();
@@ -114,8 +114,9 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             Some(WrappedParamSpecific::DoubleStarred(
                                 WrappedDoubleStarred::Type(d2),
                             )) => {
-                                let mut m = match_with_variance(i_s, s2, d2, Variance::Invariant);
-                                m &= match_(i_s, t1, s2);
+                                let mut m =
+                                    match_with_variance(i_s, matcher, s2, d2, Variance::Invariant);
+                                m &= match_(i_s, matcher, t1, s2);
                                 for param1 in params1 {
                                     match param1.specific(i_s) {
                                         WrappedParamSpecific::PositionalOnly(t1)
@@ -128,12 +129,12 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                             // Since this is a *args, **kwargs signature we
                                             // just check that all annotations are matching.
                                             // TODO do we need to check both?
-                                            m &= match_(i_s, t1, d2);
-                                            m &= match_(i_s, t1, s2);
+                                            m &= match_(i_s, matcher, t1, d2);
+                                            m &= match_(i_s, matcher, t1, s2);
                                         }
                                     }
                                 }
-                                m
+                                return m;
                             }
                             _ => Match::new_false(),
                         }
@@ -152,7 +153,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             }
                         }
                         if found {
-                            match_(i_s, t1, t2)
+                            match_(i_s, matcher, t1, t2)
                         } else {
                             while match params2.peek() {
                                 Some(p2) => {
@@ -168,7 +169,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                     match param2.specific(i_s) {
                                         WrappedParamSpecific::PositionalOrKeyword(t2)
                                         | WrappedParamSpecific::KeywordOnly(t2) => {
-                                            let m = match_(i_s, t1, t2);
+                                            let m = match_(i_s, matcher, t1, t2);
                                             if !m.bool() {
                                                 return m;
                                             }
@@ -189,7 +190,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         }
                     }
                     WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t2)) => {
-                        let m = match_(i_s, t1, t2);
+                        let m = match_(i_s, matcher, t1, t2);
                         if !m.bool() {
                             return m;
                         }
@@ -199,14 +200,16 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 },
                 WrappedParamSpecific::Starred(s1) => match param2.specific(i_s) {
                     WrappedParamSpecific::Starred(s2) => match (s1, s2) {
-                        (WrappedStarred::Type(t1), WrappedStarred::Type(t2)) => match_(i_s, t1, t2),
+                        (WrappedStarred::Type(t1), WrappedStarred::Type(t2)) => {
+                            match_(i_s, matcher, t1, t2)
+                        }
                     },
                     _ => Match::new_false(),
                 },
                 WrappedParamSpecific::DoubleStarred(d1) => match param2.specific(i_s) {
                     WrappedParamSpecific::DoubleStarred(d2) => match (d1, d2) {
                         (WrappedDoubleStarred::Type(t1), WrappedDoubleStarred::Type(t2)) => {
-                            match_(i_s, t1, t2)
+                            match_(i_s, matcher, t1, t2)
                         }
                     },
                     _ => Match::new_false(),
@@ -256,9 +259,16 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
-    let check_type = |i_s: &mut _, param1: P1, param2: P2| {
-        if let Some(t1) = param1.annotation_type(i_s) {
-            if let Some(t2) = param2.annotation_type(i_s) {
+    let to_type = |i_s: &mut _, p2: P2| match p2.specific(i_s) {
+        WrappedParamSpecific::PositionalOnly(t2)
+        | WrappedParamSpecific::PositionalOrKeyword(t2)
+        | WrappedParamSpecific::KeywordOnly(t2)
+        | WrappedParamSpecific::Starred(WrappedStarred::Type(t2))
+        | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t2)) => t2,
+    };
+    let check_type = |i_s: &mut _, t1: Option<&Type>, p2: P2| {
+        if let Some(t1) = t1 {
+            if let Some(t2) = to_type(i_s, p2) {
                 return t1.overlaps(i_s, &t2);
             }
         }
@@ -273,7 +283,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
             if has_default {
                 // TODO it's weird that we are creating a new InferenceState, because of borrowing
                 // issues in this closure
-                if let Some(t) = p.annotation_type(&mut InferenceState::new(db)) {
+                if let Some(t) = to_type(&mut InferenceState::new(db), *p) {
                     if matches!(t.maybe_db_type(), Some(DbType::Any)) {
                         had_any_fallback_with_default = true;
                     }
@@ -284,10 +294,11 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
         .peekable();
     let mut unused_keyword_params: Vec<P2> = vec![];
     for param1 in params1.filter(|p| !p.has_default()) {
-        match param1.kind(db) {
-            ParamKind::PositionalOrKeyword | ParamKind::PositionalOnly => {
+        match param1.specific(i_s) {
+            WrappedParamSpecific::PositionalOrKeyword(t1)
+            | WrappedParamSpecific::PositionalOnly(t1) => {
                 if let Some(param2) = params2.peek() {
-                    if !check_type(i_s, param1, *param2) {
+                    if !check_type(i_s, t1.as_ref(), *param2) {
                         return false;
                     }
                     match param2.kind(db) {
@@ -304,7 +315,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
                     return false;
                 }
             }
-            ParamKind::KeywordOnly => {
+            WrappedParamSpecific::KeywordOnly(t1) => {
                 if let Some(param2) = params2.peek() {
                     if param2.kind(db) == ParamKind::Starred {
                         params2.next();
@@ -349,14 +360,14 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
                         ParamKind::DoubleStarred => (),
                         _ => return false,
                     }
-                    if !check_type(i_s, param1, param2) {
+                    if !check_type(i_s, t1.as_ref(), param2) {
                         return false;
                     }
                 } else {
                     return false;
                 }
             }
-            ParamKind::Starred => {
+            WrappedParamSpecific::Starred(WrappedStarred::Type(t1)) => {
                 while match params2.peek() {
                     Some(p) => !matches!(
                         p.kind(db),
@@ -365,15 +376,15 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
                     None => false,
                 } {
                     if let Some(param2) = params2.next() {
-                        if !check_type(i_s, param1, param2) {
+                        if !check_type(i_s, t1.as_ref(), param2) {
                             return false;
                         }
                     }
                 }
             }
-            ParamKind::DoubleStarred => {
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t1)) => {
                 for param2 in params2 {
-                    if !check_type(i_s, param1, param2) {
+                    if !check_type(i_s, t1.as_ref(), param2) {
                         return false;
                     }
                 }
