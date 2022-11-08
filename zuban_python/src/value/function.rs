@@ -305,33 +305,12 @@ impl<'db: 'a, 'a> Function<'a> {
             })
         };
         let result_type = self.result_type(i_s);
-        let annotation_to_type = |i_s: &mut _, p: FunctionParam| {
-            p.annotation_type(i_s)
-                .map(|t| as_db_type(i_s, t))
-                .unwrap_or(DbType::Any)
-        };
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
             params: CallableParams::Simple(
                 params
                     .map(|p| CallableParam {
-                        param_specific: match p.kind(i_s.db) {
-                            ParamKind::PositionalOnly => {
-                                ParamSpecific::PositionalOnly(annotation_to_type(i_s, p))
-                            }
-                            ParamKind::PositionalOrKeyword => {
-                                ParamSpecific::PositionalOrKeyword(annotation_to_type(i_s, p))
-                            }
-                            ParamKind::KeywordOnly => {
-                                ParamSpecific::KeywordOnly(annotation_to_type(i_s, p))
-                            }
-                            ParamKind::Starred => ParamSpecific::Starred(
-                                StarredParamSpecific::Type(annotation_to_type(i_s, p)),
-                            ),
-                            ParamKind::DoubleStarred => ParamSpecific::DoubleStarred(
-                                DoubleStarredParamSpecific::Type(annotation_to_type(i_s, p)),
-                            ),
-                        },
+                        param_specific: p.as_param_specific(i_s),
                         has_default: p.has_default(),
                         name: Some({
                             let n = p.param.name_definition();
@@ -448,9 +427,15 @@ impl<'db: 'a, 'a> Function<'a> {
             .iter_params()
             .enumerate()
             .map(|(i, p)| {
-                let annotation_str = p
-                    .annotation_type(i_s)
-                    .map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())));
+                let annotation_str = match p.specific(i_s) {
+                    WrappedParamSpecific::PositionalOnly(t)
+                    | WrappedParamSpecific::PositionalOrKeyword(t)
+                    | WrappedParamSpecific::KeywordOnly(t)
+                    | WrappedParamSpecific::Starred(WrappedStarred::Type(t))
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t)) => {
+                        t.map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())))
+                    }
+                };
                 let current_kind = p.kind(i_s.db);
                 let stars = match current_kind {
                     ParamKind::Starred => "*",
@@ -612,6 +597,25 @@ impl<'a> Iterator for ReturnOrYieldIterator<'a> {
 pub struct FunctionParam<'x> {
     file: &'x PythonFile,
     param: ASTParam<'x>,
+}
+
+impl FunctionParam<'_> {
+    fn as_param_specific(&self, i_s: &mut InferenceState) -> ParamSpecific {
+        let as_db_type = |t: Option<Type>| t.map(|t| t.into_db_type(i_s)).unwrap_or(DbType::Any);
+        match self.specific(i_s) {
+            WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_db_type(t)),
+            WrappedParamSpecific::PositionalOrKeyword(t) => {
+                ParamSpecific::PositionalOrKeyword(as_db_type(t))
+            }
+            WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_db_type(t)),
+            WrappedParamSpecific::Starred(WrappedStarred::Type(t)) => {
+                ParamSpecific::Starred(StarredParamSpecific::Type(as_db_type(t)))
+            }
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t)) => {
+                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(as_db_type(t)))
+            }
+        }
+    }
 }
 
 impl<'x> Param<'x> for FunctionParam<'x> {
