@@ -20,7 +20,10 @@ use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::params::{InferrableParamIterator2, Param};
+use crate::matching::params::{
+    InferrableParamIterator2, Param, WrappedDoubleStarredParamSpecific, WrappedParamSpecific,
+    WrappedStarredParamSpecific,
+};
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
     ArgumentIndexWithParam, FormatData, Generics, Matcher, ResultContext, SignatureMatch, Type,
@@ -621,12 +624,25 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         Some(self.param.name_definition().as_code())
     }
 
-    fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
-        self.param.annotation().map(|annotation| {
+    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x> {
+        let t = self.param.annotation().map(|annotation| {
             self.file
                 .inference(i_s)
                 .use_cached_annotation_type(annotation)
-        })
+        });
+        match self.kind(i_s.db) {
+            ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
+            ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
+            ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
+            ParamKind::Starred => WrappedParamSpecific::Starred(match t {
+                Some(t) => WrappedStarredParamSpecific::Type(t),
+                None => WrappedStarredParamSpecific::NoAnnotation,
+            }),
+            ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(match t {
+                Some(t) => WrappedDoubleStarredParamSpecific::Type(t),
+                None => WrappedDoubleStarredParamSpecific::NoAnnotation,
+            }),
+        }
     }
 
     fn func_annotation_link(&self) -> Option<PointLink> {

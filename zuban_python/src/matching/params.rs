@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
@@ -17,12 +15,12 @@ use crate::value::ParamWithArgument;
 pub trait Param<'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
     fn name(&self, db: &'x Database) -> Option<&str>;
-    fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>>;
+    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x>;
+    fn kind(&self, db: &Database) -> ParamKind;
     fn func_annotation_link(&self) -> Option<PointLink> {
         // Can be None for Callable
         None
     }
-    fn kind(&self, db: &Database) -> ParamKind;
 }
 
 pub fn matches_params(
@@ -85,6 +83,14 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
         }
         Match::new_true()
     }
+    let match_ = |i_s, a: Option<Type>, b: Option<Type>| {
+        if let Some(a) = a.as_ref() {
+            if let Some(b) = b.as_ref() {
+                return a.matches(i_s, matcher, b, variance);
+            }
+        }
+        Match::new_true()
+    };
     let mut params2 = Peekable::new(params2);
     let mut matches = Match::new_true();
     let mut unused_keyword_params: Vec<P2> = vec![];
@@ -95,12 +101,15 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             .or_else(|| unused_keyword_params.get(0))
             .copied()
         {
-            let pt1 = param1.kind(i_s.db);
-            let pt2 = param2.kind(i_s.db);
-            let matches_kind = match pt1 {
-                ParamKind::PositionalOnly => match pt2 {
-                    ParamKind::PositionalOnly | ParamKind::PositionalOrKeyword => true,
-                    ParamKind::Starred => {
+            if param1.has_default() && !param2.has_default() {
+                return Match::new_false()
+            }
+            let matches_kind = match param1.specific(i_s) {
+                WrappedParamSpecific::PositionalOnly(t1) => match param2.specific(i_s) {
+                    WrappedParamSpecific::PositionalOnly(t2)
+                        | WrappedParamSpecific::PositionalOrKeyword(t2) => match_(i_s, t1, t2),
+                    WrappedParamSpecific::Starred( => {
+                        match_(i_s, 
                         let m = check_annotation(i_s, matcher, param1, param2, variance);
                         if !m.bool() {
                             return m;
@@ -109,7 +118,8 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                     _ => false,
                 },
-                ParamKind::PositionalOrKeyword => {
+                /*
+                WrappedParamSpecific::PositionalOrKeyword => {
                     if pt2 == ParamKind::Starred {
                         params2.next();
                         let maybe_kwargs = params2.next();
@@ -140,7 +150,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                     pt1 == pt2 && param1.name(i_s.db) == param2.name(i_s.db)
                 }
-                ParamKind::KeywordOnly => match pt2 {
+                WrappedParamSpecific::KeywordOnly => match pt2 {
                     ParamKind::KeywordOnly | ParamKind::PositionalOrKeyword => {
                         let mut found = false;
                         for (i, p2) in unused_keyword_params.iter().enumerate() {
@@ -184,10 +194,11 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                     _ => false,
                 },
-                ParamKind::Starred | ParamKind::DoubleStarred => pt1 == pt2,
+                WrappedParamSpecific::Starred | WrappedParamSpecific::DoubleStarred => pt1 == pt2,
+                */
             };
             params2.next();
-            if !matches_kind || param1.has_default() && !param2.has_default() {
+            if !matches_kind {
                 return Match::new_false();
             }
             matches &= check_annotation(i_s, matcher, param1, param2, variance)
@@ -376,15 +387,17 @@ impl<'x> Param<'x> for &'x CallableParam {
         self.name.map(|n| n.as_str(db))
     }
 
-    fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
+    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x> {
         match &self.param_specific {
-            ParamSpecific::PositionalOnly(t)
-            | ParamSpecific::PositionalOrKeyword(t)
-            | ParamSpecific::KeywordOnly(t)
-            | ParamSpecific::Starred(StarredParamSpecific::Type(t))
-            | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(t)) => {
-                Some(Type::new(t))
-            }
+            ParamSpecific::PositionalOnly(t) => WrappedParamSpecific::PositionalOnly(Some(Type::new(t))),
+            ParamSpecific::PositionalOrKeyword(t) => WrappedParamSpecific::PositionalOrKeyword(Some(Type::new(t))),
+            ParamSpecific::KeywordOnly(t) => WrappedParamSpecific::KeywordOnly(Some(Type::new(t))),
+            ParamSpecific::Starred(s) => WrappedParamSpecific::Starred(match s {
+                StarredParamSpecific::Type(t) => WrappedStarredParamSpecific::Type(Type::new(t)),
+            }),
+            ParamSpecific::DoubleStarred(s) => WrappedParamSpecific::DoubleStarred(match s {
+                DoubleStarredParamSpecific::Type(t) => WrappedDoubleStarredParamSpecific::Type(Type::new(t)),
+            }),
         }
     }
 
@@ -585,17 +598,19 @@ impl<'db, 'a, P> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a, P> {
 }
 
 pub enum WrappedParamSpecific<'a> {
-    PositionalOnly(Type<'a>),
-    PositionalOrKeyword(Type<'a>),
-    KeywordOnly(Type<'a>),
+    PositionalOnly(Option<Type<'a>>),
+    PositionalOrKeyword(Option<Type<'a>>),
+    KeywordOnly(Option<Type<'a>>),
     Starred(WrappedStarredParamSpecific<'a>),
     DoubleStarred(WrappedDoubleStarredParamSpecific<'a>),
 }
 
 pub enum WrappedStarredParamSpecific<'a> {
+    NoAnnotation,
     Type(Type<'a>),
 }
 
 pub enum WrappedDoubleStarredParamSpecific<'a> {
+    NoAnnotation,
     Type(Type<'a>),
 }
