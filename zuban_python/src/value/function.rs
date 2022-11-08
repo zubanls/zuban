@@ -21,8 +21,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{
-    InferrableParamIterator2, Param, WrappedDoubleStarredParamSpecific, WrappedParamSpecific,
-    WrappedStarredParamSpecific,
+    InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
 };
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
@@ -634,14 +633,10 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
-            ParamKind::Starred => WrappedParamSpecific::Starred(match t {
-                Some(t) => WrappedStarredParamSpecific::Type(t),
-                None => WrappedStarredParamSpecific::NoAnnotation,
-            }),
-            ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(match t {
-                Some(t) => WrappedDoubleStarredParamSpecific::Type(t),
-                None => WrappedDoubleStarredParamSpecific::NoAnnotation,
-            }),
+            ParamKind::Starred => WrappedParamSpecific::Starred(WrappedStarred::Type(t)),
+            ParamKind::DoubleStarred => {
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t))
+            }
         }
     }
 
