@@ -604,6 +604,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         }
         if let Some(ref argument) = p.argument {
             let specific = p.param.specific(i_s);
+            let tmp_type;
             let annotation_type = match &specific {
                 WrappedParamSpecific::PositionalOnly(t)
                 | WrappedParamSpecific::PositionalOrKeyword(t)
@@ -621,7 +622,10 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                     };
                     match t.args.as_ref().unwrap() {
                         TupleTypeArguments::FixedLength(..) => todo!(),
-                        TupleTypeArguments::ArbitraryLength(t) => &Type::new(t),
+                        TupleTypeArguments::ArbitraryLength(t) => {
+                            tmp_type = Type::new(t);
+                            &tmp_type
+                        }
                     }
                 }
                 WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t)) => {
@@ -635,19 +639,20 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                     let GenericItem::TypeArgument(t) = &generics[1.into()] else {
                         unreachable!();
                     };
-                    &Type::new(t)
+                    tmp_type = Type::new(t);
+                    &tmp_type
                 }
             };
             let value = if matcher.has_type_var_matcher() {
                 argument.infer(
                     i_s,
                     &mut ResultContext::WithMatcher {
-                        type_: &annotation_type,
+                        type_: annotation_type,
                         matcher,
                     },
                 )
             } else {
-                argument.infer(i_s, &mut ResultContext::Known(&annotation_type))
+                argument.infer(i_s, &mut ResultContext::Known(annotation_type))
             };
             let m = annotation_type.error_if_not_matches_with_matcher(
                 i_s,

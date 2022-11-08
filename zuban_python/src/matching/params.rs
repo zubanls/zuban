@@ -69,16 +69,19 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     params2: impl Iterator<Item = P2>,
     variance: Variance,
 ) -> Match {
-    let match_with_variance = |i_s, matcher, a: Option<Type>, b: Option<Type>, variance| {
-        if let Some(a) = a.as_ref() {
-            if let Some(b) = b.as_ref() {
-                return a.matches(i_s, matcher, b, variance);
+    let match_with_variance =
+        |i_s: &mut _, matcher: &mut _, a: &Option<Type>, b: &Option<Type>, variance| {
+            if let Some(a) = a {
+                if let Some(b) = b {
+                    return a.matches(i_s, matcher, b, variance);
+                }
             }
-        }
-        Match::new_true()
-    };
+            Match::new_true()
+        };
 
-    let match_ = |i_s, matcher, a, b| match_with_variance(i_s, matcher, a, b, variance);
+    let match_ = |i_s: &mut _, matcher: &mut _, a: &Option<Type>, b: &Option<Type>| {
+        match_with_variance(i_s, matcher, a, b, variance)
+    };
 
     let mut params2 = Peekable::new(params2);
     let mut unused_keyword_params: Vec<P2> = vec![];
@@ -92,8 +95,10 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             if param1.has_default() && !param2.has_default() {
                 return Match::new_false();
             }
-            let matches_kind = match param1.specific(i_s) {
-                WrappedParamSpecific::PositionalOnly(t1) => match param2.specific(i_s) {
+            let specific1 = param1.specific(i_s);
+            let specific2 = param2.specific(i_s);
+            let matches_kind = match &specific1 {
+                WrappedParamSpecific::PositionalOnly(t1) => match &specific2 {
                     WrappedParamSpecific::PositionalOnly(t2)
                     | WrappedParamSpecific::PositionalOrKeyword(t2) => match_(i_s, matcher, t1, t2),
                     WrappedParamSpecific::Starred(s) => match s {
@@ -101,7 +106,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     },
                     _ => Match::new_false(),
                 },
-                WrappedParamSpecific::PositionalOrKeyword(t1) => match param2.specific(i_s) {
+                WrappedParamSpecific::PositionalOrKeyword(t1) => match &specific2 {
                     WrappedParamSpecific::PositionalOrKeyword(t2) => {
                         if param1.name(i_s.db) != param2.name(i_s.db) {
                             return Match::new_false();
@@ -112,13 +117,13 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         params2.next();
                         match params2.next().map(|p| p.specific(i_s)) {
                             Some(WrappedParamSpecific::DoubleStarred(
-                                WrappedDoubleStarred::Type(d2),
+                                WrappedDoubleStarred::Type(ref d2),
                             )) => {
                                 let mut m =
                                     match_with_variance(i_s, matcher, s2, d2, Variance::Invariant);
                                 m &= match_(i_s, matcher, t1, s2);
                                 for param1 in params1 {
-                                    match param1.specific(i_s) {
+                                    match &param1.specific(i_s) {
                                         WrappedParamSpecific::PositionalOnly(t1)
                                         | WrappedParamSpecific::PositionalOrKeyword(t1)
                                         | WrappedParamSpecific::KeywordOnly(t1)
@@ -141,7 +146,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                     _ => Match::new_false(),
                 },
-                WrappedParamSpecific::KeywordOnly(t1) => match param2.specific(i_s) {
+                WrappedParamSpecific::KeywordOnly(t1) => match &specific2 {
                     WrappedParamSpecific::KeywordOnly(t2)
                     | WrappedParamSpecific::PositionalOrKeyword(t2) => {
                         let mut found = false;
@@ -166,7 +171,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             } {
                                 param2 = *params2.peek().unwrap();
                                 if param1.name(i_s.db) == param2.name(i_s.db) {
-                                    match param2.specific(i_s) {
+                                    match &param2.specific(i_s) {
                                         WrappedParamSpecific::PositionalOrKeyword(t2)
                                         | WrappedParamSpecific::KeywordOnly(t2) => {
                                             let m = match_(i_s, matcher, t1, t2);
@@ -198,7 +203,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                     _ => Match::new_false(),
                 },
-                WrappedParamSpecific::Starred(s1) => match param2.specific(i_s) {
+                WrappedParamSpecific::Starred(s1) => match &specific2 {
                     WrappedParamSpecific::Starred(s2) => match (s1, s2) {
                         (WrappedStarred::Type(t1), WrappedStarred::Type(t2)) => {
                             match_(i_s, matcher, t1, t2)
@@ -206,7 +211,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     },
                     _ => Match::new_false(),
                 },
-                WrappedParamSpecific::DoubleStarred(d1) => match param2.specific(i_s) {
+                WrappedParamSpecific::DoubleStarred(d1) => match &specific2 {
                     WrappedParamSpecific::DoubleStarred(d2) => match (d1, d2) {
                         (WrappedDoubleStarred::Type(t1), WrappedDoubleStarred::Type(t2)) => {
                             match_(i_s, matcher, t1, t2)
