@@ -432,7 +432,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     | WrappedParamSpecific::PositionalOrKeyword(t)
                     | WrappedParamSpecific::KeywordOnly(t)
                     | WrappedParamSpecific::Starred(WrappedStarred::Type(t))
-                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t)) => {
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
                         t.map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())))
                     }
                 };
@@ -613,8 +613,8 @@ impl FunctionParam<'_> {
             WrappedParamSpecific::Starred(WrappedStarred::Type(t)) => {
                 ParamSpecific::Starred(StarredParamSpecific::Type(as_db_type(t)))
             }
-            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t)) => {
-                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(as_db_type(t)))
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_db_type(t)))
             }
         }
     }
@@ -640,9 +640,15 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
             ParamKind::Starred => WrappedParamSpecific::Starred(WrappedStarred::Type(t)),
-            ParamKind::DoubleStarred => {
-                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t))
-            }
+            ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t.map(|t| {
+                let DbType::Class(_, Some(generics)) = t.maybe_borrowed_db_type().unwrap() else {
+                    unreachable!()
+                };
+                let GenericItem::TypeArgument(t) = &generics[1.into()] else {
+                    unreachable!();
+                };
+                Type::new(t)
+            })))
         }
     }
 

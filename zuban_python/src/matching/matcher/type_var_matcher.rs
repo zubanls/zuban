@@ -608,10 +608,13 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
             let annotation_type = match &specific {
                 WrappedParamSpecific::PositionalOnly(t)
                 | WrappedParamSpecific::PositionalOrKeyword(t)
-                | WrappedParamSpecific::KeywordOnly(t) => match t {
-                    Some(t) => t,
-                    None => continue,
-                },
+                | WrappedParamSpecific::KeywordOnly(t)
+                | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                    match t {
+                        Some(t) => t,
+                        None => continue,
+                    }
+                }
                 WrappedParamSpecific::Starred(WrappedStarred::Type(t)) => {
                     let t = match t {
                         Some(t) => t,
@@ -627,20 +630,6 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                             &tmp_type
                         }
                     }
-                }
-                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t)) => {
-                    let t = match t {
-                        Some(t) => t,
-                        None => continue,
-                    };
-                    let DbType::Class(_, Some(generics)) = t.maybe_db_type().unwrap() else {
-                        unreachable!()
-                    };
-                    let GenericItem::TypeArgument(t) = &generics[1.into()] else {
-                        unreachable!();
-                    };
-                    tmp_type = Type::new(t);
-                    &tmp_type
                 }
             };
             let value = if matcher.has_type_var_matcher() {

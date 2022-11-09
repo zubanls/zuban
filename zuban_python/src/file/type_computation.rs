@@ -1451,9 +1451,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     ParamSpecific::Starred(StarredParamSpecific::Type(wrap_starred(db_type)))
                 }
                 ParamKind::DoubleStarred => {
-                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::Type(
-                        wrap_double_starred(self.inference.i_s.db, db_type),
-                    ))
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(db_type))
                 }
             },
             name,

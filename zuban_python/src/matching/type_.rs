@@ -67,6 +67,13 @@ impl<'a> Type<'a> {
         }
     }
 
+    pub fn maybe_borrowed_db_type(&self) -> Option<&'a DbType> {
+        match self {
+            Self::Type(Cow::Borrowed(t)) => Some(t),
+            _ => None,
+        }
+    }
+
     pub fn overlaps(&self, i_s: &mut InferenceState, other: &Self) -> bool {
         match other.maybe_db_type() {
             Some(DbType::TypeVar(t2_usage)) => {
