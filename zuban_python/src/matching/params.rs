@@ -152,14 +152,21 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         let mut found = false;
                         for (i, p2) in unused_keyword_params.iter().enumerate() {
                             if param1.name(i_s.db) == p2.name(i_s.db) {
-                                param2 = unused_keyword_params.remove(i);
+                                match unused_keyword_params.remove(i).specific(i_s) {
+                                    WrappedParamSpecific::KeywordOnly(t2)
+                                    | WrappedParamSpecific::PositionalOrKeyword(t2) => {
+                                        let m = match_(i_s, matcher, t1, &t2);
+                                        if !m.bool() {
+                                            return m;
+                                        }
+                                    }
+                                    _ => unreachable!(),
+                                }
                                 found = true;
                                 break;
                             }
                         }
-                        if found {
-                            match_(i_s, matcher, t1, t2)
-                        } else {
+                        if !found {
                             while match params2.peek() {
                                 Some(p2) => {
                                     matches!(
@@ -193,6 +200,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             }
                             todo!();
                         }
+                        Match::new_true()
                     }
                     WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t2)) => {
                         let m = match_(i_s, matcher, t1, t2);
