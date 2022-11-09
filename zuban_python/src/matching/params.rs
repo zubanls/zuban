@@ -195,7 +195,6 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             if !found {
                                 return Match::new_false();
                             }
-                            todo!();
                         }
                     }
                     WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t2)) => {

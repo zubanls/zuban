@@ -8,6 +8,8 @@ testCallableTooManyVarArg
 testCallableKindsOrdering
 
 testGenericTypeAliasesTuple
+testParamSpecLocations
+testParamSpecRevealType
 
 testSubtypingFunctionsArgsKwargs
 testCallableTypeAnalysis
