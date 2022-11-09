@@ -105,7 +105,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     WrappedParamSpecific::Starred(s) => match s {
-                        WrappedStarred::Type(t2) => todo!(),
+                        WrappedStarred::ArbitraryLength(t2) => todo!(),
                     },
                     _ => return Match::new_false(),
                 },
@@ -116,7 +116,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         }
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    WrappedParamSpecific::Starred(WrappedStarred::Type(s2)) => {
+                    WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(s2)) => {
                         params2.next();
                         match params2.next().map(|p| p.specific(i_s)) {
                             Some(WrappedParamSpecific::DoubleStarred(
@@ -130,7 +130,9 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                         WrappedParamSpecific::PositionalOnly(t1)
                                         | WrappedParamSpecific::PositionalOrKeyword(t1)
                                         | WrappedParamSpecific::KeywordOnly(t1)
-                                        | WrappedParamSpecific::Starred(WrappedStarred::Type(t1))
+                                        | WrappedParamSpecific::Starred(
+                                            WrappedStarred::ArbitraryLength(t1),
+                                        )
                                         | WrappedParamSpecific::DoubleStarred(
                                             WrappedDoubleStarred::ValueType(t1),
                                         ) => {
@@ -205,9 +207,10 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                 },
                 WrappedParamSpecific::Starred(s1) => match &specific2 {
                     WrappedParamSpecific::Starred(s2) => match (s1, s2) {
-                        (WrappedStarred::Type(t1), WrappedStarred::Type(t2)) => {
-                            matches &= match_(i_s, matcher, t1, t2)
-                        }
+                        (
+                            WrappedStarred::ArbitraryLength(t1),
+                            WrappedStarred::ArbitraryLength(t2),
+                        ) => matches &= match_(i_s, matcher, t1, t2),
                     },
                     _ => return Match::new_false(),
                 },
@@ -266,7 +269,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
         WrappedParamSpecific::PositionalOnly(t2)
         | WrappedParamSpecific::PositionalOrKeyword(t2)
         | WrappedParamSpecific::KeywordOnly(t2)
-        | WrappedParamSpecific::Starred(WrappedStarred::Type(t2))
+        | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t2))
         | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t2)) => t2,
     };
     let check_type = |i_s: &mut _, t1: Option<&Type>, p2: P2| {
@@ -370,7 +373,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
                     return false;
                 }
             }
-            WrappedParamSpecific::Starred(WrappedStarred::Type(t1)) => {
+            WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t1)) => {
                 while match params2.peek() {
                     Some(p) => !matches!(
                         p.kind(db),
@@ -425,7 +428,9 @@ impl<'x> Param<'x> for &'x CallableParam {
             }
             ParamSpecific::KeywordOnly(t) => WrappedParamSpecific::KeywordOnly(Some(Type::new(t))),
             ParamSpecific::Starred(s) => WrappedParamSpecific::Starred(match s {
-                StarredParamSpecific::Type(t) => WrappedStarred::Type(Some(Type::new(t))),
+                StarredParamSpecific::ArbitraryLength(t) => {
+                    WrappedStarred::ArbitraryLength(Some(Type::new(t)))
+                }
             }),
             ParamSpecific::DoubleStarred(s) => WrappedParamSpecific::DoubleStarred(match s {
                 DoubleStarredParamSpecific::ValueType(t) => {
@@ -640,7 +645,7 @@ pub enum WrappedParamSpecific<'a> {
 }
 
 pub enum WrappedStarred<'a> {
-    Type(Option<Type<'a>>),
+    ArbitraryLength(Option<Type<'a>>),
 }
 
 pub enum WrappedDoubleStarred<'a> {

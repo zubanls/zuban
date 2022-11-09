@@ -10,8 +10,8 @@ use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, Simp
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    Overload, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
+    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -431,7 +431,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     WrappedParamSpecific::PositionalOnly(t)
                     | WrappedParamSpecific::PositionalOrKeyword(t)
                     | WrappedParamSpecific::KeywordOnly(t)
-                    | WrappedParamSpecific::Starred(WrappedStarred::Type(t))
+                    | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
                     | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
                         t.map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())))
                     }
@@ -610,8 +610,8 @@ impl FunctionParam<'_> {
                 ParamSpecific::PositionalOrKeyword(as_db_type(t))
             }
             WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_db_type(t)),
-            WrappedParamSpecific::Starred(WrappedStarred::Type(t)) => {
-                ParamSpecific::Starred(StarredParamSpecific::Type(as_db_type(t)))
+            WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t)) => {
+                ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_db_type(t)))
             }
             WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
                 ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_db_type(t)))
@@ -639,7 +639,15 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
-            ParamKind::Starred => WrappedParamSpecific::Starred(WrappedStarred::Type(t)),
+            ParamKind::Starred => WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t.map(|t| {
+                let DbType::Tuple(t) = t.maybe_borrowed_db_type().unwrap() else {
+                    unreachable!()
+                };
+                match t.args.as_ref().unwrap() {
+                    TupleTypeArguments::FixedLength(..) => todo!(),
+                    TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
+                }
+            }))),
             ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t.map(|t| {
                 let DbType::Class(_, Some(generics)) = t.maybe_borrowed_db_type().unwrap() else {
                     unreachable!()

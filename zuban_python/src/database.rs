@@ -894,7 +894,9 @@ impl DbType {
                                 ParamSpecific::PositionalOnly(t)
                                 | ParamSpecific::PositionalOrKeyword(t)
                                 | ParamSpecific::KeywordOnly(t)
-                                | ParamSpecific::Starred(StarredParamSpecific::Type(t))
+                                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(
+                                    t,
+                                ))
                                 | ParamSpecific::DoubleStarred(
                                     DoubleStarredParamSpecific::ValueType(t),
                                 ) => t.search_type_vars(found_type_var),
@@ -948,7 +950,7 @@ impl DbType {
                             ParamSpecific::PositionalOnly(t)
                             | ParamSpecific::PositionalOrKeyword(t)
                             | ParamSpecific::KeywordOnly(t)
-                            | ParamSpecific::Starred(StarredParamSpecific::Type(t))
+                            | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
                             | ParamSpecific::DoubleStarred(
                                 DoubleStarredParamSpecific::ValueType(t),
                             ) => t.has_any(),
@@ -1082,8 +1084,8 @@ impl DbType {
                                         ParamSpecific::KeywordOnly(t.replace_type_vars(callable))
                                     }
                                     ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
-                                        StarredParamSpecific::Type(t) => {
-                                            StarredParamSpecific::Type(
+                                        StarredParamSpecific::ArbitraryLength(t) => {
+                                            StarredParamSpecific::ArbitraryLength(
                                                 t.replace_type_vars(callable),
                                             )
                                         }
@@ -1233,8 +1235,8 @@ impl DbType {
                                         }
                                         ParamSpecific::Starred(s) => {
                                             ParamSpecific::Starred(match s {
-                                                StarredParamSpecific::Type(t) => {
-                                                    StarredParamSpecific::Type(
+                                                StarredParamSpecific::ArbitraryLength(t) => {
+                                                    StarredParamSpecific::ArbitraryLength(
                                                         t.rewrite_late_bound_callables(manager),
                                                     )
                                                 }
@@ -1474,7 +1476,7 @@ impl TupleContent {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum StarredParamSpecific {
-    Type(DbType),
+    ArbitraryLength(DbType),
     //ParamSpecArgs(ParamSpecUsage),
 }
 
@@ -1521,7 +1523,7 @@ impl CallableParam {
                 return format!(
                     "VarArg({})",
                     match t {
-                        StarredParamSpecific::Type(t) => t.format(format_data),
+                        StarredParamSpecific::ArbitraryLength(t) => t.format(format_data),
                     }
                 )
                 .into();
@@ -1551,7 +1553,8 @@ impl CallableParam {
                                 "*{}: {}",
                                 name.as_str(format_data.db),
                                 match s {
-                                    StarredParamSpecific::Type(t) => t.format(format_data),
+                                    StarredParamSpecific::ArbitraryLength(t) =>
+                                        t.format(format_data),
                                 }
                             ),
                             ParamSpecific::DoubleStarred(d) => format!(

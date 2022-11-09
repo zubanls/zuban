@@ -604,31 +604,15 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         }
         if let Some(ref argument) = p.argument {
             let specific = p.param.specific(i_s);
-            let tmp_type;
             let annotation_type = match &specific {
                 WrappedParamSpecific::PositionalOnly(t)
                 | WrappedParamSpecific::PositionalOrKeyword(t)
                 | WrappedParamSpecific::KeywordOnly(t)
+                | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
                 | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
                     match t {
                         Some(t) => t,
                         None => continue,
-                    }
-                }
-                WrappedParamSpecific::Starred(WrappedStarred::Type(t)) => {
-                    let t = match t {
-                        Some(t) => t,
-                        None => continue,
-                    };
-                    let DbType::Tuple(t) = t.maybe_db_type().unwrap() else {
-                        unreachable!()
-                    };
-                    match t.args.as_ref().unwrap() {
-                        TupleTypeArguments::FixedLength(..) => todo!(),
-                        TupleTypeArguments::ArbitraryLength(t) => {
-                            tmp_type = Type::new(t);
-                            &tmp_type
-                        }
                     }
                 }
             };

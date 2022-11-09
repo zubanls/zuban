@@ -1448,7 +1448,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 ParamKind::PositionalOrKeyword => ParamSpecific::PositionalOrKeyword(db_type),
                 ParamKind::KeywordOnly => ParamSpecific::KeywordOnly(db_type),
                 ParamKind::Starred => {
-                    ParamSpecific::Starred(StarredParamSpecific::Type(wrap_starred(db_type)))
+                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(db_type))
                 }
                 ParamKind::DoubleStarred => {
                     ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(db_type))
