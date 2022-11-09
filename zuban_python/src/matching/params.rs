@@ -105,7 +105,9 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         matches &= match_(i_s, matcher, t1, t2)
                     }
                     WrappedParamSpecific::Starred(s) => match s {
-                        WrappedStarred::ArbitraryLength(t2) => todo!(),
+                        WrappedStarred::ArbitraryLength(t2) => {
+                            matches &= match_(i_s, matcher, t1, t2)
+                        }
                     },
                     _ => return Match::new_false(),
                 },
