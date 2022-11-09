@@ -200,9 +200,6 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                     WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::Type(t2)) => {
                         matches &= match_(i_s, matcher, t1, t2);
-                        if !matches.bool() {
-                            return matches;
-                        }
                         continue;
                     }
                     _ => return Match::new_false(),
@@ -224,9 +221,6 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     _ => return Match::new_false(),
                 },
             };
-            if !matches.bool() {
-                return matches;
-            }
             params2.next();
         } else {
             return Match::new_false();
