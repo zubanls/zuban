@@ -7,8 +7,6 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 
-testGenericTypeAliasesTuple
-
 testSubtypingFunctionsArgsKwargs
 testCallableTypeAnalysis
 testVarArgsFunctionSubtyping
