@@ -11,8 +11,8 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
+use crate::file::File;
 use crate::file::{PythonFile, PythonInference};
-use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;

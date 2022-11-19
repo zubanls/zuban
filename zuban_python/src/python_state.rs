@@ -4,8 +4,8 @@ use std::ptr::null;
 use crate::database::{
     ComplexPoint, Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
 };
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, OverloadedFunction};

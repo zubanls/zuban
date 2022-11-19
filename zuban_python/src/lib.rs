@@ -7,7 +7,6 @@ mod arguments;
 mod database;
 mod diagnostics;
 mod file;
-mod file_state;
 mod getitem;
 mod imports;
 mod inference_state;
@@ -23,7 +22,7 @@ mod workspaces;
 
 use database::{Database, FileIndex};
 pub use diagnostics::DiagnosticConfig;
-use file_state::{Leaf, PythonFileLoader};
+use file::Leaf;
 use inference_state::InferenceState;
 use inferred::Inferred;
 use name::{Names, ValueName};
@@ -36,7 +35,7 @@ pub struct Project {
 
 impl Project {
     pub fn new(path: String, strict_optional: bool) -> Self {
-        let loaders = Box::new([Box::new(PythonFileLoader::default()) as Box<_>]);
+        let loaders = Box::new([Box::new(file::PythonFileLoader::default()) as Box<_>]);
         // TODO use a real sys path
         let sys_path = vec![
             "../typeshed/stdlib".to_owned(),
@@ -154,7 +153,7 @@ impl<'a> Script<'a> {
         }
     }
 
-    fn file(&self) -> &dyn file_state::File {
+    fn file(&self) -> &dyn file::File {
         self.project.db.loaded_file(self.file_index)
     }
 

@@ -5,8 +5,8 @@ use crate::database::{
     Locality, Point, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager,
 };
 use crate::diagnostics::IssueType;
+use crate::file::file_state::File;
 use crate::file::{PythonFile, PythonInference};
-use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;

@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use crate::database::{Database, FileIndex};
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::workspaces::{DirContent, DirOrFile};
 
 pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<FileIndex> {

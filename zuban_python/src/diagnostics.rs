@@ -1,8 +1,8 @@
 use parsa_python_ast::{CodeIndex, NodeIndex};
 
 use crate::database::{Database, TypeVarIndex, TypeVarLike};
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::name::TreePosition;
 use crate::node_ref::NodeRef;
 

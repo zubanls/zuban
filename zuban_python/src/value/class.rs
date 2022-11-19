@@ -10,11 +10,11 @@ use crate::database::{
     TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
+use crate::file::File;
 use crate::file::{
     BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
-use crate::file_state::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};

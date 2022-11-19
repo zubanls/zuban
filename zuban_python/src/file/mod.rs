@@ -1,5 +1,6 @@
 mod class_type_var_finder;
 mod diagnostics;
+mod file_state;
 mod name_binder;
 mod type_computation;
 mod utils;
@@ -19,7 +20,6 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue, IssueType};
-use crate::file_state::{File, Leaf};
 use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
@@ -33,6 +33,10 @@ use crate::value::{Class, Function, LookupResult, Module, OnTypeError, ParamWith
 use crate::workspaces::DirContent;
 use crate::PythonProject;
 pub use class_type_var_finder::ClassTypeVarFinder;
+pub use file_state::{
+    File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, Leaf, PythonFileLoader,
+    Vfs,
+};
 use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
 pub use type_computation::{

@@ -11,7 +11,7 @@ use once_cell::unsync::OnceCell;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
 use crate::file::PythonFile;
-use crate::file_state::{
+use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
