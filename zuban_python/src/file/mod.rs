@@ -31,6 +31,7 @@ use crate::node_ref::NodeRef;
 use crate::utils::{debug_indent, InsertOnlyVec, SymbolTable};
 use crate::value::{Class, Function, LookupResult, Module, OnTypeError, ParamWithArgument, Value};
 use crate::workspaces::DirContent;
+use crate::PythonProject;
 pub use class_type_var_finder::ClassTypeVarFinder;
 use name_binder::NameBinder;
 use type_computation::type_computation_for_variable_annotation;
@@ -67,12 +68,12 @@ impl ComplexValues {
 }
 
 impl File for PythonFile {
-    fn ensure_initialized(&self) {
+    fn ensure_initialized(&self, project: &PythonProject) {
         if self.points.get(0).calculated() {
             // It was already done.
             return;
         }
-        self.with_global_binder(|binder| binder.index_file(self.tree.root()));
+        self.with_global_binder(project, |binder| binder.index_file(self.tree.root()));
 
         self.points.set(0, Point::new_node_analysis(Locality::File));
     }
@@ -234,9 +235,13 @@ impl<'db> PythonFile {
         }
     }
 
-    fn with_global_binder(&'db self, func: impl FnOnce(&mut NameBinder<'db, 'db>)) {
+    fn with_global_binder(
+        &'db self,
+        project: &PythonProject,
+        func: impl FnOnce(&mut NameBinder<'db, 'db>),
+    ) {
         NameBinder::with_global_binder(
-            true,
+            project.mypy_compatible,
             &self.tree,
             &self.symbol_table,
             &self.points,

@@ -2157,7 +2157,7 @@ impl Database {
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
         let f = self.file_state(index).file(&*self.vfs).unwrap();
-        f.ensure_initialized();
+        f.ensure_initialized(&self.python_state.project);
         f
     }
 
