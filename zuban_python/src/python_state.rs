@@ -12,8 +12,7 @@ use crate::value::{Class, OverloadedFunction};
 use crate::PythonProject;
 
 pub struct PythonState {
-    project: PythonProject,
-    pub mypy_compatible: bool,
+    pub project: PythonProject,
 
     builtins: *const PythonFile,
     typing: *const PythonFile,
@@ -44,7 +43,6 @@ impl PythonState {
     pub fn reserve(project: PythonProject) -> Self {
         Self {
             project,
-            mypy_compatible: true,
             builtins: null(),
             typing: null(),
             collections: null(),

@@ -53,6 +53,7 @@ impl Project {
                 path,
                 sys_path,
                 strict_optional,
+                mypy_compatible: true,
                 is_django: false,
             },
         );
@@ -106,6 +107,7 @@ pub struct PythonProject {
     path: String,
     sys_path: Vec<String>,
     strict_optional: bool,
+    mypy_compatible: bool,
     is_django: bool,
 }
 

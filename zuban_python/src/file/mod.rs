@@ -1336,7 +1336,7 @@ impl<'db, 'file, 'i_s, 'b> PythonInference<'db, 'file, 'i_s, 'b> {
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
                     return result.save_redirect(self.i_s.db, self.file, atom.index());
-                } else if self.i_s.db.python_state.mypy_compatible {
+                } else if self.i_s.db.python_state.project.mypy_compatible {
                     let result = match list.unpack() {
                         Some(elements) => self
                             .file

@@ -621,7 +621,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     fn kind(&self, db: &Database) -> ParamKind {
         let mut t = self.param.type_();
         if t == ParamKind::PositionalOrKeyword
-            && db.python_state.mypy_compatible
+            && db.python_state.project.mypy_compatible
             && self.param.name_definition().as_code().starts_with("__")
             && !self.param.name_definition().as_code().ends_with("__")
         {
