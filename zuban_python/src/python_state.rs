@@ -9,8 +9,10 @@ use crate::file_state::File;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, OverloadedFunction};
+use crate::PythonProject;
 
 pub struct PythonState {
+    project: PythonProject,
     pub mypy_compatible: bool,
 
     builtins: *const PythonFile,
@@ -39,8 +41,9 @@ pub struct PythonState {
 }
 
 impl PythonState {
-    pub fn reserve() -> Self {
+    pub fn reserve(project: PythonProject) -> Self {
         Self {
+            project,
             mypy_compatible: true,
             builtins: null(),
             typing: null(),

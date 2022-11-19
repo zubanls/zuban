@@ -142,12 +142,21 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, project: &mut zuban_python::Project) {
+    fn run(
+        &self,
+        default_project: &mut zuban_python::Project,
+        strict_optional_project: &mut zuban_python::Project,
+    ) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = zuban_python::DiagnosticConfig::default();
 
         if steps.flags.contains(&"--ignore-missing-imports") {
             diagnostics_config.ignore_missing_imports = true;
+        }
+        let mut project = default_project;
+        if steps.flags.contains(&"--strict-optional") {
+            diagnostics_config.ignore_missing_imports = true;
+            project = strict_optional_project;
         }
 
         if steps
@@ -466,7 +475,8 @@ fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
 
-    let mut project = zuban_python::Project::new(BASE_PATH.to_owned());
+    let mut default_project = zuban_python::Project::new(BASE_PATH.to_owned(), false);
+    let mut strict_optional_project = zuban_python::Project::new(BASE_PATH.to_owned(), true);
 
     let skipped = skipped();
 
@@ -489,7 +499,7 @@ fn main() {
                 println!("Skipped: {}", case.name);
                 continue;
             }
-            case.run(&mut project);
+            case.run(&mut default_project, &mut strict_optional_project);
             ran_count += 1;
         }
     }
