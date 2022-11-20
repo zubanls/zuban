@@ -6,6 +6,8 @@ use std::time::Instant;
 
 use regex::{Captures, Regex, Replacer};
 
+use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
+
 const USE_MYPY_TEST_FILES: [&str; 23] = [
     "check-generics.test",
     "check-generic-alias.test",
@@ -142,13 +144,9 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(
-        &self,
-        default_project: &mut zuban_python::Project,
-        strict_optional_project: &mut zuban_python::Project,
-    ) {
+    fn run(&self, default_project: &mut Project, strict_optional_project: &mut Project) {
         let steps = self.calculate_steps();
-        let mut diagnostics_config = zuban_python::DiagnosticConfig::default();
+        let mut diagnostics_config = DiagnosticConfig::default();
 
         if steps.flags.contains(&"--ignore-missing-imports") {
             diagnostics_config.ignore_missing_imports = true;
@@ -329,7 +327,7 @@ fn replace_annoyances(s: String) -> String {
     s.replace("builtins.", "")
 }
 
-fn wanted_output(project: &mut zuban_python::Project, step: &Step) -> Vec<String> {
+fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
     let mut wanted = step
         .out
         .trim()
@@ -475,8 +473,16 @@ fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
 
-    let mut default_project = zuban_python::Project::new(BASE_PATH.to_owned(), false);
-    let mut strict_optional_project = zuban_python::Project::new(BASE_PATH.to_owned(), true);
+    let mut default_project = Project::new(ProjectOptions {
+        path: BASE_PATH.to_owned(),
+        implicit_optional: false,
+        strict_optional: false,
+    });
+    let mut strict_optional_project = Project::new(ProjectOptions {
+        path: BASE_PATH.to_owned(),
+        implicit_optional: false,
+        strict_optional: true,
+    });
 
     let skipped = skipped();
 

@@ -33,8 +33,14 @@ pub struct Project {
     db: Database,
 }
 
+pub struct ProjectOptions {
+    pub path: String,
+    pub strict_optional: bool,
+    pub implicit_optional: bool,
+}
+
 impl Project {
-    pub fn new(path: String, strict_optional: bool) -> Self {
+    pub fn new(options: ProjectOptions) -> Self {
         let loaders = Box::new([Box::new(file::PythonFileLoader::default()) as Box<_>]);
         // TODO use a real sys path
         let sys_path = vec![
@@ -49,9 +55,10 @@ impl Project {
         let db = Database::new(
             loaders,
             PythonProject {
-                path,
+                path: options.path,
                 sys_path,
-                strict_optional,
+                strict_optional: options.strict_optional,
+                implicit_optional: options.implicit_optional,
                 mypy_compatible: true,
                 is_django: false,
             },
@@ -106,6 +113,7 @@ pub struct PythonProject {
     path: String,
     sys_path: Vec<String>,
     strict_optional: bool,
+    implicit_optional: bool,
     mypy_compatible: bool,
     is_django: bool,
 }
