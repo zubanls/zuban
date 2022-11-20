@@ -1143,6 +1143,10 @@ testTestExtendPrimitives
 testContextForAttributeDeclaredInInit
 
 # strict optional
+testNoComplainInferredNoneStrict
+testOptionalTypeVarAgainstOptional
+testImplicitOptionalRefresh1
+
 testNoStrictOptionalModule
 testNoStrictOptionalFunction
 testNoStrictOptionalMethod
