@@ -144,18 +144,21 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, default_project: &mut Project, strict_optional_project: &mut Project) {
+    fn run(&self, projects: &mut HashMap<BaseConfig, Project>) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
         if steps.flags.contains(&"--ignore-missing-imports") {
             diagnostics_config.ignore_missing_imports = true;
         }
-        let mut project = default_project;
+        let mut config = BaseConfig::default();
         if steps.flags.contains(&"--strict-optional") {
-            diagnostics_config.ignore_missing_imports = true;
-            project = strict_optional_project;
+            config.strict_optional = true;
         }
+        if steps.flags.contains(&"--implicit-optional") {
+            config.implicit_optional = true;
+        }
+        let project = projects.get_mut(&config).unwrap();
 
         if steps
             .flags
@@ -469,20 +472,44 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
     filters
 }
 
+#[derive(PartialEq, Eq, Hash, Default, Copy, Clone)]
+struct BaseConfig {
+    strict_optional: bool,
+    implicit_optional: bool,
+}
+
 fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
 
-    let mut default_project = Project::new(ProjectOptions {
-        path: BASE_PATH.to_owned(),
-        implicit_optional: false,
-        strict_optional: false,
-    });
-    let mut strict_optional_project = Project::new(ProjectOptions {
-        path: BASE_PATH.to_owned(),
-        implicit_optional: false,
-        strict_optional: true,
-    });
+    let mut projects = HashMap::new();
+    for config in [
+        BaseConfig {
+            strict_optional: false,
+            implicit_optional: false,
+        },
+        BaseConfig {
+            strict_optional: false,
+            implicit_optional: true,
+        },
+        BaseConfig {
+            strict_optional: true,
+            implicit_optional: false,
+        },
+        BaseConfig {
+            strict_optional: true,
+            implicit_optional: true,
+        },
+    ] {
+        projects.insert(
+            config,
+            Project::new(ProjectOptions {
+                path: BASE_PATH.to_owned(),
+                implicit_optional: config.implicit_optional,
+                strict_optional: config.strict_optional,
+            }),
+        );
+    }
 
     let skipped = skipped();
 
@@ -505,7 +532,7 @@ fn main() {
                 println!("Skipped: {}", case.name);
                 continue;
             }
-            case.run(&mut default_project, &mut strict_optional_project);
+            case.run(&mut projects);
             ran_count += 1;
         }
     }
