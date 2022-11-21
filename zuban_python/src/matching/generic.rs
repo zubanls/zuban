@@ -32,7 +32,7 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(i_s)),
             Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
-            Self::CallableParams(params) => todo!(),
+            Self::CallableParams(params) => GenericItem::CallableParams(params.into_owned()),
         }
     }
 
@@ -40,7 +40,7 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
-            Self::CallableParams(params) => todo!(),
+            Self::CallableParams(params) => Box::from("TODO CallableParams format"),
         }
     }
 

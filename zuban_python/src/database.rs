@@ -840,8 +840,8 @@ impl DbType {
                     rec.calculated_db_type(format_data.db).format(&format_data)
                 }
             }
-            Self::ParamSpecArgs(usage) => todo!(),
-            Self::ParamSpecKwargs(usage) => todo!(),
+            Self::ParamSpecArgs(usage) => Box::from("TODO format param spec args"),
+            Self::ParamSpecKwargs(usage) => Box::from("TODO format param spec kwargs"),
         }
     }
 
