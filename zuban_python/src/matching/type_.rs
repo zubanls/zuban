@@ -155,6 +155,8 @@ impl<'a> Type<'a> {
                 DbType::Intersection(intersection) => todo!(),
                 DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(_) => todo!(),
+                DbType::ParamSpecArgs(usage) => todo!(),
+                DbType::ParamSpecKwargs(usage) => todo!(),
             },
         }
     }
@@ -294,6 +296,8 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
+                DbType::ParamSpecArgs(usage) => todo!(),
+                DbType::ParamSpecKwargs(usage) => todo!(),
             },
         }
     }

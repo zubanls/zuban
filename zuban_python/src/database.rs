@@ -707,6 +707,8 @@ pub enum DbType {
     Callable(Box<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
     NewType(NewType),
+    ParamSpecArgs(ParamSpecUsage),
+    ParamSpecKwargs(ParamSpecUsage),
     None,
     Any,
     Never,
@@ -838,6 +840,8 @@ impl DbType {
                     rec.calculated_db_type(format_data.db).format(&format_data)
                 }
             }
+            Self::ParamSpecArgs(usage) => todo!(),
+            Self::ParamSpecKwargs(usage) => todo!(),
         }
     }
 
@@ -915,6 +919,8 @@ impl DbType {
                     search_in_generics(generics)
                 }
             }
+            Self::ParamSpecArgs(usage) => todo!(),
+            Self::ParamSpecKwargs(usage) => todo!(),
         }
     }
 
@@ -966,6 +972,7 @@ impl DbType {
             Self::Any => true,
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
+            Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
         }
     }
 
@@ -1135,6 +1142,8 @@ impl DbType {
                 rec.link,
                 rec.generics.as_ref().map(remap_generics),
             ))),
+            Self::ParamSpecArgs(usage) => todo!(),
+            Self::ParamSpecKwargs(usage) => todo!(),
         }
     }
 
@@ -1273,6 +1282,8 @@ impl DbType {
             }
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
+            Self::ParamSpecArgs(usage) => todo!(),
+            Self::ParamSpecKwargs(usage) => todo!(),
         }
     }
 
