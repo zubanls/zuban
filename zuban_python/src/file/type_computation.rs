@@ -696,12 +696,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::Tuple => self.compute_type_get_item_on_tuple(s),
                         SpecialType::Any => todo!(),
                         SpecialType::Protocol => {
-                            self.expect_type_var_args(s, "Protocol");
+                            self.expect_type_var_like_args(s, "Protocol");
                             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics)
                         }
                         SpecialType::ProtocolWithGenerics => todo!(),
                         SpecialType::Generic => {
-                            self.expect_type_var_args(s, "Generic");
+                            self.expect_type_var_like_args(s, "Generic");
                             TypeContent::SpecialType(SpecialType::GenericWithGenerics)
                         }
                         SpecialType::GenericWithGenerics => todo!(),
@@ -1231,7 +1231,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         TypeContent::Concatenate(CallableParams::WithParamSpec(types, param_spec))
     }
 
-    fn expect_type_var_args(&mut self, slice_type: SliceType, class: &'static str) {
+    fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
             let result = self.compute_slice_type(s);
             let unpacked_type_var_tuple = matches!(
@@ -1239,11 +1239,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 TypeContent::Unpacked(TypeOrTypeVarTuple::TypeVarTuple(t))
                     if t.in_definition == self.for_definition
             );
-            if !matches!(
-                result,
-                TypeContent::DbType(DbType::TypeVar(usage))
-                    if usage.in_definition == self.for_definition
-            ) && !unpacked_type_var_tuple
+            if !matches!(result, TypeContent::ParamSpec(_))
+                && !matches!(
+                    result,
+                    TypeContent::DbType(DbType::TypeVar(usage))
+                        if usage.in_definition == self.for_definition
+                )
+                && !unpacked_type_var_tuple
             {
                 self.add_typing_issue(s.as_node_ref(), IssueType::TypeVarExpected { class })
             }
