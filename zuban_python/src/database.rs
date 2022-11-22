@@ -1642,30 +1642,30 @@ pub struct CallableContent {
 
 impl CallableContent {
     pub fn format(&self, format_data: &FormatData) -> String {
-        let mut params = match &self.params {
-            CallableParams::Simple(params) => Some(
-                params
-                    .iter()
-                    .map(|p| p.format(format_data))
-                    .collect::<Vec<_>>(),
-            ),
-            CallableParams::Any => None,
-            CallableParams::WithParamSpec(types, param_spec_usage) => {
-                let p = format_data.format_type_var_like(&TypeVarLikeUsage::ParamSpec(
-                    Cow::Borrowed(param_spec_usage),
-                ));
-                Some(
-                    types
-                        .iter()
-                        .map(|t| t.format(format_data))
-                        .chain(std::iter::once(p))
-                        .collect(),
-                )
-            }
-        };
         let result = self.result_type.format(format_data);
         match format_data.style {
             FormatStyle::MypyRevealType => {
+                let mut params = match &self.params {
+                    CallableParams::Simple(params) => Some(
+                        params
+                            .iter()
+                            .map(|p| p.format(format_data))
+                            .collect::<Vec<_>>(),
+                    ),
+                    CallableParams::Any => None,
+                    CallableParams::WithParamSpec(types, param_spec_usage) => {
+                        let p = format_data.format_type_var_like(&TypeVarLikeUsage::ParamSpec(
+                            Cow::Borrowed(param_spec_usage),
+                        ));
+                        Some(
+                            types
+                                .iter()
+                                .map(|t| t.format(format_data))
+                                .chain(std::iter::once(p))
+                                .collect(),
+                        )
+                    }
+                };
                 if let CallableParams::Simple(callable_params) = &self.params {
                     for (i, p) in callable_params.iter().enumerate() {
                         match p.param_specific {
@@ -1708,9 +1708,7 @@ impl CallableContent {
                 }
             }
             _ => {
-                let param_string = params.map(|p| format!("[{}]", p.join(", ")));
-                let param_str = param_string.as_deref().unwrap_or("...");
-                format!("Callable[{param_str}, {result}]")
+                format!("Callable[{}, {result}]", self.params.format(format_data))
             }
         }
     }
@@ -2279,6 +2277,24 @@ pub enum CallableParams {
     Simple(Box<[CallableParam]>),
     WithParamSpec(Box<[DbType]>, ParamSpecUsage),
     Any,
+}
+
+impl CallableParams {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        match self {
+            Self::Simple(params) => format!(
+                "[{}]",
+                params
+                    .iter()
+                    .map(|p| p.format(format_data))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+            .into(),
+            Self::WithParamSpec(types, usage) => todo!(),
+            Self::Any => Box::from("..."),
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
