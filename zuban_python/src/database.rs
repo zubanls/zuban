@@ -1326,7 +1326,7 @@ impl DbType {
                                         TypeOrTypeVarTuple::Type(t2),
                                     ) => TypeOrTypeVarTuple::Type(t1.merge_matching_parts(t2)),
                                     (t1, t2) => match t1 == t2 {
-                                        true => t1.clone(),
+                                        true => t1,
                                         false => todo!(),
                                     },
                                 })
@@ -1645,13 +1645,24 @@ impl CallableContent {
         let result = self.result_type.format(format_data);
         match format_data.style {
             FormatStyle::MypyRevealType => {
-                let mut params = match &self.params {
-                    CallableParams::Simple(params) => Some(
-                        params
+                let params = match &self.params {
+                    CallableParams::Simple(callable_params) => {
+                        let mut params = callable_params
                             .iter()
                             .map(|p| p.format(format_data))
-                            .collect::<Vec<_>>(),
-                    ),
+                            .collect::<Vec<_>>();
+                        for (i, p) in callable_params.iter().enumerate() {
+                            match p.param_specific {
+                                ParamSpecific::KeywordOnly(_) => {
+                                    params.insert(i, Box::from("*"));
+                                    break;
+                                }
+                                ParamSpecific::Starred(_) => break,
+                                _ => (),
+                            }
+                        }
+                        Some(params)
+                    }
                     CallableParams::Any => None,
                     CallableParams::WithParamSpec(types, param_spec_usage) => {
                         let p = format_data.format_type_var_like(&TypeVarLikeUsage::ParamSpec(
@@ -1666,18 +1677,6 @@ impl CallableContent {
                         )
                     }
                 };
-                if let CallableParams::Simple(callable_params) = &self.params {
-                    for (i, p) in callable_params.iter().enumerate() {
-                        match p.param_specific {
-                            ParamSpecific::KeywordOnly(_) => {
-                                params.as_mut().unwrap().insert(i, Box::from("*"));
-                                break;
-                            }
-                            ParamSpecific::Starred(_) => break,
-                            _ => (),
-                        }
-                    }
-                }
                 let param_string = params.map(|p| p.join(", "));
                 let param_str = param_string.as_deref().unwrap_or("*Any, **Any");
                 let type_vars = self.type_vars.as_ref().map(|t| {
