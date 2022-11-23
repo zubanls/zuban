@@ -645,28 +645,41 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                 .inference(i_s)
                 .use_cached_annotation_type(annotation)
         });
+        fn dbt<'a>(t: Option<&'a Type>) -> Option<&'a DbType> {
+            t.and_then(|t| t.maybe_db_type())
+        }
         match self.kind(i_s.db) {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
-            ParamKind::Starred => WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t.map(|t| {
-                let DbType::Tuple(t) = t.maybe_borrowed_db_type().unwrap() else {
-                    unreachable!()
-                };
-                match t.args.as_ref().unwrap() {
-                    TupleTypeArguments::FixedLength(..) => todo!(),
-                    TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
+            ParamKind::Starred => WrappedParamSpecific::Starred(match dbt(t.as_ref()) {
+                Some(DbType::ParamSpecArgs(param_spec_usage)) => {
+                    todo!()
                 }
-            }))),
-            ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t.map(|t| {
-                let DbType::Class(_, Some(generics)) = t.maybe_borrowed_db_type().unwrap() else {
-                    unreachable!()
-                };
-                let GenericItem::TypeArgument(t) = &generics[1.into()] else {
-                    unreachable!();
-                };
-                Type::new(t)
-            })))
+                _ => WrappedStarred::ArbitraryLength(t.map(|t| {
+                    let DbType::Tuple(t) = t.maybe_borrowed_db_type().unwrap() else {
+                        unreachable!()
+                    };
+                    match t.args.as_ref().unwrap() {
+                        TupleTypeArguments::FixedLength(..) => todo!(),
+                        TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
+                    }
+                }))
+            }),
+            ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(match dbt(t.as_ref()) {
+                Some(DbType::ParamSpecKwargs(param_spec_usage)) => {
+                    todo!()
+                }
+                _ => WrappedDoubleStarred::ValueType(t.map(|t| {
+                    let DbType::Class(_, Some(generics)) = t.maybe_borrowed_db_type().unwrap() else {
+                        unreachable!()
+                    };
+                    let GenericItem::TypeArgument(t) = &generics[1.into()] else {
+                        unreachable!();
+                    };
+                    Type::new(t)
+                }))
+            })
         }
     }
 
