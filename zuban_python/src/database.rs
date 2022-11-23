@@ -907,6 +907,11 @@ impl DbType {
                                 ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
                                     todo!()
                                 }
+                                ParamSpecific::DoubleStarred(
+                                    DoubleStarredParamSpecific::ParamSpecKwargs(_),
+                                ) => {
+                                    todo!()
+                                }
                             }
                         }
                     }
@@ -964,6 +969,9 @@ impl DbType {
                                 DoubleStarredParamSpecific::ValueType(t),
                             ) => t.has_any(),
                             ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
+                            ParamSpecific::DoubleStarred(
+                                DoubleStarredParamSpecific::ParamSpecKwargs(_),
+                            ) => false,
                         })
                     }
                     CallableParams::Any => true,
@@ -1108,6 +1116,9 @@ impl DbType {
                                                 DoubleStarredParamSpecific::ValueType(
                                                     t.replace_type_vars(callable),
                                                 )
+                                            }
+                                            DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
+                                                todo!()
                                             }
                                         })
                                     }
@@ -1263,6 +1274,9 @@ impl DbType {
                                                     DoubleStarredParamSpecific::ValueType(
                                                         t.rewrite_late_bound_callables(manager),
                                                     )
+                                                }
+                                                DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
+                                                    todo!()
                                                 }
                                             })
                                         }
@@ -1500,7 +1514,7 @@ pub enum StarredParamSpecific {
 #[derive(Debug, Clone, PartialEq)]
 pub enum DoubleStarredParamSpecific {
     ValueType(DbType),
-    //ParamSpecKwargs(ParamSpecUsage),
+    ParamSpecKwargs(ParamSpecUsage),
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -1550,6 +1564,7 @@ impl CallableParam {
                     "KwArg({})",
                     match t {
                         DoubleStarredParamSpecific::ValueType(t) => t.format(format_data),
+                        DoubleStarredParamSpecific::ParamSpecKwargs(_) => todo!(),
                     }
                 )
                 .into();
@@ -1582,6 +1597,7 @@ impl CallableParam {
                                 match d {
                                     DoubleStarredParamSpecific::ValueType(t) =>
                                         t.format(format_data),
+                                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => todo!(),
                                 }
                             ),
                         };

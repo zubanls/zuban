@@ -436,6 +436,9 @@ impl<'db: 'a, 'a> Function<'a> {
                         t.map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())))
                     }
                     WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
+                    WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
+                        u,
+                    )) => todo!(),
                 };
                 let current_kind = p.kind(i_s.db);
                 let stars = match current_kind {
@@ -619,6 +622,9 @@ impl FunctionParam<'_> {
             }
             WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
                 ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_db_type(t)))
+            }
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(u.clone()))
             }
         }
     }

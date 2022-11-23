@@ -148,6 +148,9 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                         WrappedParamSpecific::Starred(
                                             WrappedStarred::ParamSpecArgs(u),
                                         ) => todo!(),
+                                        WrappedParamSpecific::DoubleStarred(
+                                            WrappedDoubleStarred::ParamSpecKwargs(u),
+                                        ) => todo!(),
                                     }
                                 }
                                 return matches;
@@ -233,6 +236,18 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             WrappedDoubleStarred::ValueType(t1),
                             WrappedDoubleStarred::ValueType(t2),
                         ) => matches &= match_(i_s, matcher, t1, t2),
+                        (
+                            WrappedDoubleStarred::ParamSpecKwargs(u1),
+                            WrappedDoubleStarred::ParamSpecKwargs(u2),
+                        ) => todo!(),
+                        (
+                            WrappedDoubleStarred::ValueType(_),
+                            WrappedDoubleStarred::ParamSpecKwargs(_),
+                        )
+                        | (
+                            WrappedDoubleStarred::ParamSpecKwargs(_),
+                            WrappedDoubleStarred::ValueType(_),
+                        ) => todo!(),
                     },
                     _ => return Match::new_false(),
                 },
@@ -285,6 +300,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
         | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t2))
         | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t2)) => t2,
         WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
+        WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => todo!(),
     };
     let check_type = |i_s: &mut _, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
@@ -411,6 +427,9 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
                 }
                 return !had_any_fallback_with_default;
             }
+            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                todo!()
+            }
         }
     }
     for param2 in params2 {
@@ -446,11 +465,14 @@ impl<'x> Param<'x> for &'x CallableParam {
                 StarredParamSpecific::ArbitraryLength(t) => {
                     WrappedStarred::ArbitraryLength(Some(Type::new(t)))
                 }
-                StarredParamSpecific::ParamSpecArgs(u) => todo!(),
+                StarredParamSpecific::ParamSpecArgs(u) => WrappedStarred::ParamSpecArgs(u),
             }),
             ParamSpecific::DoubleStarred(s) => WrappedParamSpecific::DoubleStarred(match s {
                 DoubleStarredParamSpecific::ValueType(t) => {
                     WrappedDoubleStarred::ValueType(Some(Type::new(t)))
+                }
+                DoubleStarredParamSpecific::ParamSpecKwargs(u) => {
+                    WrappedDoubleStarred::ParamSpecKwargs(u)
                 }
             }),
         }
@@ -667,5 +689,5 @@ pub enum WrappedStarred<'a> {
 
 pub enum WrappedDoubleStarred<'a> {
     ValueType(Option<Type<'a>>),
-    //ParamSpecKwargs(&'a ParamSpecUsage),
+    ParamSpecKwargs(&'a ParamSpecUsage),
 }
