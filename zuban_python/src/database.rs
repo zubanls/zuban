@@ -1555,7 +1555,7 @@ impl CallableParam {
                     StarredParamSpecific::ArbitraryLength(t) => {
                         format!("VarArg({})", t.format(format_data))
                     }
-                    StarredParamSpecific::ParamSpecArgs(u) => format!("TODO.args"),
+                    StarredParamSpecific::ParamSpecArgs(u) => unreachable!(),
                 }
                 .into();
             } else if let ParamSpecific::DoubleStarred(t) = &self.param_specific {
@@ -1563,7 +1563,7 @@ impl CallableParam {
                     DoubleStarredParamSpecific::ValueType(t) => {
                         format!("KwArg({})", t.format(format_data))
                     }
-                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => format!("TODO.kwargs"),
+                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => unreachable!(),
                 }
                 .into();
             } else if let Some(name) = self.name {
@@ -1665,42 +1665,9 @@ pub struct CallableContent {
 impl CallableContent {
     pub fn format(&self, format_data: &FormatData) -> String {
         let result = self.result_type.format(format_data);
+        let params = self.params.format(format_data);
         match format_data.style {
             FormatStyle::MypyRevealType => {
-                let params = match &self.params {
-                    CallableParams::Simple(callable_params) => {
-                        let mut params = callable_params
-                            .iter()
-                            .map(|p| p.format(format_data))
-                            .collect::<Vec<_>>();
-                        for (i, p) in callable_params.iter().enumerate() {
-                            match p.param_specific {
-                                ParamSpecific::KeywordOnly(_) => {
-                                    params.insert(i, Box::from("*"));
-                                    break;
-                                }
-                                ParamSpecific::Starred(_) => break,
-                                _ => (),
-                            }
-                        }
-                        Some(params)
-                    }
-                    CallableParams::Any => None,
-                    CallableParams::WithParamSpec(types, param_spec_usage) => {
-                        let p = format_data.format_type_var_like(&TypeVarLikeUsage::ParamSpec(
-                            Cow::Borrowed(param_spec_usage),
-                        ));
-                        Some(
-                            types
-                                .iter()
-                                .map(|t| t.format(format_data))
-                                .chain(std::iter::once(p))
-                                .collect(),
-                        )
-                    }
-                };
-                let param_string = params.map(|p| p.join(", "));
-                let param_str = param_string.as_deref().unwrap_or("*Any, **Any");
                 let type_vars = self.type_vars.as_ref().map(|t| {
                     format!(
                         " [{}]",
@@ -1723,14 +1690,12 @@ impl CallableContent {
                 });
                 let type_vars = type_vars.as_deref().unwrap_or("");
                 if result.as_ref() == "None" {
-                    format!("def{type_vars} ({param_str})")
+                    format!("def{type_vars} ({params})")
                 } else {
-                    format!("def{type_vars} ({param_str}) -> {result}")
+                    format!("def{type_vars} ({params}) -> {result}")
                 }
             }
-            _ => {
-                format!("Callable[{}, {result}]", self.params.format(format_data))
-            }
+            _ => format!("Callable[{params}, {result}]"),
         }
     }
 }
@@ -2302,18 +2267,45 @@ pub enum CallableParams {
 
 impl CallableParams {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        match self {
-            Self::Simple(params) => format!(
-                "[{}]",
-                params
+        let parts = match self {
+            Self::Simple(params) => {
+                let mut out_params = Vec::with_capacity(params.len());
+                let mut display_star = !matches!(format_data.style, FormatStyle::MypyRevealType);
+                for param in params.iter() {
+                    if !display_star {
+                        match param.param_specific {
+                            ParamSpecific::KeywordOnly(_) => {
+                                display_star = true;
+                                out_params.push(Box::from("*"));
+                            }
+                            ParamSpecific::Starred(_) => display_star = true,
+                            _ => (),
+                        }
+                    }
+                    out_params.push(param.format(format_data))
+                }
+                out_params
+            }
+            Self::WithParamSpec(types, usage) => {
+                let p = format_data
+                    .format_type_var_like(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
+                types
                     .iter()
-                    .map(|p| p.format(format_data))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-            .into(),
-            Self::WithParamSpec(types, usage) => todo!(),
-            Self::Any => Box::from("..."),
+                    .map(|t| t.format(format_data))
+                    .chain(std::iter::once(p))
+                    .collect()
+            }
+            Self::Any => {
+                return match format_data.style {
+                    FormatStyle::MypyRevealType => Box::from("*Any, **Any"),
+                    _ => Box::from("..."),
+                }
+            }
+        };
+        let params = parts.join(", ");
+        match format_data.style {
+            FormatStyle::MypyRevealType => params.into(),
+            _ => format!("[{params}]").into(),
         }
     }
 }
