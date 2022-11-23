@@ -2271,7 +2271,8 @@ impl CallableParams {
             Self::Simple(params) => {
                 let mut out_params = Vec::with_capacity(params.len());
                 let mut display_star = !matches!(format_data.style, FormatStyle::MypyRevealType);
-                for param in params.iter() {
+                let mut had_param_spec_args = false;
+                for (i, param) in params.iter().enumerate() {
                     if !display_star {
                         match param.param_specific {
                             ParamSpecific::KeywordOnly(_) => {
@@ -2282,7 +2283,27 @@ impl CallableParams {
                             _ => (),
                         }
                     }
-                    out_params.push(param.format(format_data))
+                    use DoubleStarredParamSpecific::ParamSpecKwargs;
+                    use ParamSpecific::{DoubleStarred, Starred};
+                    use StarredParamSpecific::ParamSpecArgs;
+                    match &param.param_specific {
+                        Starred(ParamSpecArgs(usage1)) => match params
+                            .get(i + 1)
+                            .map(|p| &p.param_specific)
+                        {
+                            Some(DoubleStarred(ParamSpecKwargs(usage2))) if usage1 == usage2 => {
+                                had_param_spec_args = true;
+                            }
+                            _ => todo!(),
+                        },
+                        DoubleStarred(ParamSpecKwargs(usage)) => match had_param_spec_args {
+                            true => out_params.push(format_data.format_type_var_like(
+                                &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
+                            )),
+                            false => todo!(),
+                        },
+                        _ => out_params.push(param.format(format_data)),
+                    }
                 }
                 out_params
             }
