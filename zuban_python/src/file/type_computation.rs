@@ -2094,18 +2094,24 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
 }
 
 fn wrap_starred(t: DbType) -> DbType {
-    DbType::Tuple(TupleContent::new_arbitrary_length(t))
+    match &t {
+        DbType::ParamSpecArgs(_) => t,
+        _ => DbType::Tuple(TupleContent::new_arbitrary_length(t)),
+    }
 }
 
 fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
-    DbType::Class(
-        db.python_state.builtins_point_link("dict"),
-        Some(GenericsList::new_generics(Box::new([
-            GenericItem::TypeArgument(DbType::Class(
-                db.python_state.builtins_point_link("str"),
-                None,
-            )),
-            GenericItem::TypeArgument(t),
-        ]))),
-    )
+    match &t {
+        DbType::ParamSpecKwargs(_) => t,
+        _ => DbType::Class(
+            db.python_state.builtins_point_link("dict"),
+            Some(GenericsList::new_generics(Box::new([
+                GenericItem::TypeArgument(DbType::Class(
+                    db.python_state.builtins_point_link("str"),
+                    None,
+                )),
+                GenericItem::TypeArgument(t),
+            ]))),
+        ),
+    }
 }

@@ -1551,22 +1551,20 @@ impl CallableParam {
             || format_data.verbose && self.has_default
         {
             if let ParamSpecific::Starred(t) = &self.param_specific {
-                return format!(
-                    "VarArg({})",
-                    match t {
-                        StarredParamSpecific::ArbitraryLength(t) => t.format(format_data),
-                        StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                return match t {
+                    StarredParamSpecific::ArbitraryLength(t) => {
+                        format!("VarArg({})", t.format(format_data))
                     }
-                )
+                    StarredParamSpecific::ParamSpecArgs(u) => format!("TODO.args"),
+                }
                 .into();
             } else if let ParamSpecific::DoubleStarred(t) = &self.param_specific {
-                return format!(
-                    "KwArg({})",
-                    match t {
-                        DoubleStarredParamSpecific::ValueType(t) => t.format(format_data),
-                        DoubleStarredParamSpecific::ParamSpecKwargs(_) => todo!(),
+                return match t {
+                    DoubleStarredParamSpecific::ValueType(t) => {
+                        format!("KwArg({})", t.format(format_data))
                     }
-                )
+                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => format!("TODO.kwargs"),
+                }
                 .into();
             } else if let Some(name) = self.name {
                 match format_data.style {

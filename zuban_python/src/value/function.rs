@@ -645,16 +645,16 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                 .inference(i_s)
                 .use_cached_annotation_type(annotation)
         });
-        fn dbt<'a>(t: Option<&'a Type>) -> Option<&'a DbType> {
-            t.and_then(|t| t.maybe_db_type())
+        fn dbt<'a>(t: Option<&Type<'a>>) -> Option<&'a DbType> {
+            t.and_then(|t| t.maybe_borrowed_db_type())
         }
         match self.kind(i_s.db) {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
             ParamKind::Starred => WrappedParamSpecific::Starred(match dbt(t.as_ref()) {
-                Some(DbType::ParamSpecArgs(param_spec_usage)) => {
-                    todo!()
+                Some(DbType::ParamSpecArgs(ref param_spec_usage)) => {
+                    WrappedStarred::ParamSpecArgs(param_spec_usage)
                 }
                 _ => WrappedStarred::ArbitraryLength(t.map(|t| {
                     let DbType::Tuple(t) = t.maybe_borrowed_db_type().unwrap() else {
@@ -668,7 +668,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             }),
             ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(match dbt(t.as_ref()) {
                 Some(DbType::ParamSpecKwargs(param_spec_usage)) => {
-                    todo!()
+                    WrappedDoubleStarred::ParamSpecKwargs(param_spec_usage)
                 }
                 _ => WrappedDoubleStarred::ValueType(t.map(|t| {
                     let DbType::Class(_, Some(generics)) = t.maybe_borrowed_db_type().unwrap() else {
