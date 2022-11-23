@@ -3,8 +3,8 @@ use parsa_python_ast::ParamKind;
 use super::{Match, Matcher};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{
-    CallableParam, CallableParams, Database, DbType, DoubleStarredParamSpecific, ParamSpecific,
-    PointLink, StarredParamSpecific, Variance,
+    CallableParam, CallableParams, Database, DbType, DoubleStarredParamSpecific, ParamSpecUsage,
+    ParamSpecific, PointLink, StarredParamSpecific, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -108,6 +108,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         WrappedStarred::ArbitraryLength(t2) => {
                             matches &= match_(i_s, matcher, t1, t2)
                         }
+                        WrappedStarred::ParamSpecArgs(u) => todo!(),
                     },
                     _ => return Match::new_false(),
                 },
@@ -144,6 +145,9 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                             matches &= match_(i_s, matcher, t1, d2);
                                             matches &= match_(i_s, matcher, t1, s2);
                                         }
+                                        WrappedParamSpecific::Starred(
+                                            WrappedStarred::ParamSpecArgs(u),
+                                        ) => todo!(),
                                     }
                                 }
                                 return matches;
@@ -213,6 +217,13 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             WrappedStarred::ArbitraryLength(t1),
                             WrappedStarred::ArbitraryLength(t2),
                         ) => matches &= match_(i_s, matcher, t1, t2),
+                        (WrappedStarred::ParamSpecArgs(u1), WrappedStarred::ParamSpecArgs(u2)) => {
+                            todo!()
+                        }
+                        (WrappedStarred::ArbitraryLength(_), WrappedStarred::ParamSpecArgs(_))
+                        | (WrappedStarred::ParamSpecArgs(_), WrappedStarred::ArbitraryLength(_)) => {
+                            todo!()
+                        }
                     },
                     _ => return Match::new_false(),
                 },
@@ -273,6 +284,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
         | WrappedParamSpecific::KeywordOnly(t2)
         | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t2))
         | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t2)) => t2,
+        WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
     };
     let check_type = |i_s: &mut _, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
@@ -390,6 +402,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
                     }
                 }
             }
+            WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
             WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t1)) => {
                 for param2 in params2 {
                     if !check_type(i_s, t1.as_ref(), param2) {
@@ -433,6 +446,7 @@ impl<'x> Param<'x> for &'x CallableParam {
                 StarredParamSpecific::ArbitraryLength(t) => {
                     WrappedStarred::ArbitraryLength(Some(Type::new(t)))
                 }
+                StarredParamSpecific::ParamSpecArgs(u) => todo!(),
             }),
             ParamSpecific::DoubleStarred(s) => WrappedParamSpecific::DoubleStarred(match s {
                 DoubleStarredParamSpecific::ValueType(t) => {
@@ -648,8 +662,10 @@ pub enum WrappedParamSpecific<'a> {
 
 pub enum WrappedStarred<'a> {
     ArbitraryLength(Option<Type<'a>>),
+    ParamSpecArgs(&'a ParamSpecUsage),
 }
 
 pub enum WrappedDoubleStarred<'a> {
     ValueType(Option<Type<'a>>),
+    //ParamSpecKwargs(&'a ParamSpecUsage),
 }

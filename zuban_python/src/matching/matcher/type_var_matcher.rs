@@ -615,6 +615,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                         None => continue,
                     }
                 }
+                WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
             };
             let value = if matcher.has_type_var_matcher() {
                 argument.infer(
