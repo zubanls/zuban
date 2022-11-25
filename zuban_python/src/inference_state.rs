@@ -1,5 +1,10 @@
+use std::borrow::Cow;
+
 use crate::arguments::{Arguments, SimpleArguments};
-use crate::database::{Database, Execution};
+use crate::database::{
+    CallableParam, CallableParams, Database, Execution, ParamSpecUsage, TypeVarLikeUsage,
+};
+use crate::matching::Generic;
 use crate::value::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]
@@ -116,5 +121,36 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn args_as_execution(&self) -> Option<Execution> {
         self.current_execution()
             .and_then(|(func, args)| args.as_execution(func))
+    }
+
+    pub fn remap_param_spec(
+        &mut self,
+        mut pre_params: Vec<CallableParam>,
+        usage: &ParamSpecUsage,
+    ) -> CallableParams {
+        let into_types = |v| todo!();
+        match self.context {
+            Context::Class(c) => match c
+                .generics()
+                .nth_usage(self, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+            {
+                Generic::CallableParams(p) => match p.into_owned() {
+                    CallableParams::Any => CallableParams::Any,
+                    CallableParams::Simple(params) => {
+                        pre_params.extend(params.into_vec());
+                        CallableParams::Simple(pre_params.into_boxed_slice())
+                    }
+                    CallableParams::WithParamSpec(pre, p) => {
+                        let types = pre.into_vec();
+                        CallableParams::WithParamSpec(into_types(types), p)
+                    }
+                },
+                _ => unreachable!(),
+            },
+            _ => {
+                let types = vec![];
+                CallableParams::WithParamSpec(into_types(types), usage.clone())
+            }
+        }
     }
 }
