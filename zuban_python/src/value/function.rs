@@ -336,6 +336,9 @@ impl<'db: 'a, 'a> Function<'a> {
                     ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_t(t)))
                 }
                 WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                    if !had_param_spec_args {
+                        todo!()
+                    }
                     return DbType::Callable(Box::new(CallableContent {
                         defined_at: self.node_ref.as_link(),
                         params: i_s.remap_param_spec(new_params, u),

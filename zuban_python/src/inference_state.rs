@@ -128,7 +128,12 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         mut pre_params: Vec<CallableParam>,
         usage: &ParamSpecUsage,
     ) -> CallableParams {
-        let into_types = |v| todo!();
+        let into_types = |v, pre_params: Vec<CallableParam>| {
+            pre_params
+                .into_iter()
+                .map(|p| p.param_specific.expect_positional_db_type())
+                .collect()
+        };
         match self.context {
             Context::Class(c) => match c
                 .generics()
@@ -142,14 +147,14 @@ impl<'db, 'a> InferenceState<'db, 'a> {
                     }
                     CallableParams::WithParamSpec(pre, p) => {
                         let types = pre.into_vec();
-                        CallableParams::WithParamSpec(into_types(types), p)
+                        CallableParams::WithParamSpec(into_types(types, pre_params), p)
                     }
                 },
                 _ => unreachable!(),
             },
             _ => {
                 let types = vec![];
-                CallableParams::WithParamSpec(into_types(types), usage.clone())
+                CallableParams::WithParamSpec(into_types(types, pre_params), usage.clone())
             }
         }
     }
