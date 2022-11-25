@@ -1673,7 +1673,10 @@ pub struct CallableContent {
 impl CallableContent {
     pub fn format(&self, format_data: &FormatData) -> String {
         let result = self.result_type.format(format_data);
-        let params = self.params.format(format_data);
+        let params = self.params.format(
+            format_data,
+            !matches!(format_data.style, FormatStyle::MypyRevealType),
+        );
         match format_data.style {
             FormatStyle::MypyRevealType => {
                 let type_vars = self.type_vars.as_ref().map(|t| {
@@ -2274,11 +2277,11 @@ pub enum CallableParams {
 }
 
 impl CallableParams {
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData, as_callable_params: bool) -> Box<str> {
         let parts = match self {
             Self::Simple(params) => {
                 let mut out_params = Vec::with_capacity(params.len());
-                let mut display_star = !matches!(format_data.style, FormatStyle::MypyRevealType);
+                let mut display_star = as_callable_params;
                 let mut had_param_spec_args = false;
                 for (i, param) in params.iter().enumerate() {
                     if !display_star {
@@ -2325,16 +2328,16 @@ impl CallableParams {
                     .collect()
             }
             Self::Any => {
-                return match format_data.style {
-                    FormatStyle::MypyRevealType => Box::from("*Any, **Any"),
-                    _ => Box::from("..."),
+                return match as_callable_params {
+                    true => Box::from("..."),
+                    false => Box::from("*Any, **Any"),
                 }
             }
         };
         let params = parts.join(", ");
-        match format_data.style {
-            FormatStyle::MypyRevealType => params.into(),
-            _ => format!("[{params}]").into(),
+        match as_callable_params {
+            true => format!("[{params}]").into(),
+            false => params.into(),
         }
     }
 }
