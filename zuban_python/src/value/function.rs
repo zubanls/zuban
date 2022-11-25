@@ -283,7 +283,7 @@ impl<'db: 'a, 'a> Function<'a> {
         if skip_first_param {
             params.next();
         }
-        let as_db_type = |i_s: &mut _, t: Type| {
+        let as_db_type = |i_s: &mut InferenceState, t: Type| {
             t.as_db_type(i_s).replace_type_vars(&mut |usage| {
                 if let Some(class) = self.class {
                     if usage.in_definition() == class.node_ref.as_link() {
@@ -305,12 +305,13 @@ impl<'db: 'a, 'a> Function<'a> {
             })
         };
         let result_type = self.result_type(i_s);
+        let x = as_db_type(i_s, result_type);
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
             params: CallableParams::Simple(
                 params
                     .map(|p| CallableParam {
-                        param_specific: p.as_param_specific(i_s),
+                        param_specific: p.as_param_specific(i_s, as_db_type),
                         has_default: p.has_default(),
                         name: Some({
                             let n = p.param.name_definition();
@@ -320,7 +321,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     .collect(),
             ),
             type_vars: type_vars.cloned(),
-            result_type: as_db_type(i_s, result_type),
+            result_type: x,
         }))
     }
 
@@ -604,24 +605,27 @@ pub struct FunctionParam<'x> {
 }
 
 impl FunctionParam<'_> {
-    fn as_param_specific(&self, i_s: &mut InferenceState) -> ParamSpecific {
+    fn as_param_specific(
+        &self,
+        i_s: &mut InferenceState,
+        as_db_type: impl Fn(&mut InferenceState, Type) -> DbType,
+    ) -> ParamSpecific {
         let specific = self.specific(i_s);
-        let mut as_db_type =
-            |t: Option<Type>| t.map(|t| t.into_db_type(i_s)).unwrap_or(DbType::Any);
+        let mut as_t = |t: Option<Type>| t.map(|t| as_db_type(i_s, t)).unwrap_or(DbType::Any);
         match specific {
-            WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_db_type(t)),
+            WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_t(t)),
             WrappedParamSpecific::PositionalOrKeyword(t) => {
-                ParamSpecific::PositionalOrKeyword(as_db_type(t))
+                ParamSpecific::PositionalOrKeyword(as_t(t))
             }
-            WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_db_type(t)),
+            WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_t(t)),
             WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t)) => {
-                ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_db_type(t)))
+                ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_t(t)))
             }
             WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
                 ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(u.clone()))
             }
             WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_db_type(t)))
+                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_t(t)))
             }
             WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
                 ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(u.clone()))
