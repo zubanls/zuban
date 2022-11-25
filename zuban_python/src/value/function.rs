@@ -2,6 +2,7 @@ use parsa_python_ast::{
     FunctionDef, NodeIndex, Param as ASTParam, ParamIterator, ParamKind, ReturnAnnotation,
     ReturnOrYield,
 };
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
@@ -10,7 +11,7 @@ use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, Simp
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
+    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
     TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
@@ -25,7 +26,8 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, FormatData, Generics, Matcher, ResultContext, SignatureMatch, Type,
+    ArgumentIndexWithParam, FormatData, Generic, Generics, Matcher, ResultContext, SignatureMatch,
+    Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -277,6 +279,43 @@ impl<'db: 'a, 'a> Function<'a> {
         self.type_vars(i_s)
     }
 
+    fn remap_param_spec(
+        &self,
+        i_s: &mut InferenceState,
+        mut pre_params: Vec<CallableParam>,
+        usage: &ParamSpecUsage,
+    ) -> CallableParams {
+        let into_types = |v, pre_params: Vec<CallableParam>| {
+            pre_params
+                .into_iter()
+                .map(|p| p.param_specific.expect_positional_db_type())
+                .collect()
+        };
+        match self.class {
+            Some(c) if c.node_ref.as_link() == usage.in_definition => match c
+                .generics()
+                .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+            {
+                Generic::CallableParams(p) => match p.into_owned() {
+                    CallableParams::Any => CallableParams::Any,
+                    CallableParams::Simple(params) => {
+                        pre_params.extend(params.into_vec());
+                        CallableParams::Simple(pre_params.into_boxed_slice())
+                    }
+                    CallableParams::WithParamSpec(pre, p) => {
+                        let types = pre.into_vec();
+                        CallableParams::WithParamSpec(into_types(types, pre_params), p)
+                    }
+                },
+                _ => unreachable!(),
+            },
+            _ => {
+                let types = vec![];
+                CallableParams::WithParamSpec(into_types(types, pre_params), usage.clone())
+            }
+        }
+    }
+
     pub fn as_db_type(&self, i_s: &mut InferenceState, skip_first_param: bool) -> DbType {
         let type_vars = self.type_vars(i_s); // Cache annotation types
         let mut params = self.iter_params().peekable();
@@ -341,7 +380,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     }
                     return DbType::Callable(Box::new(CallableContent {
                         defined_at: self.node_ref.as_link(),
-                        params: i_s.remap_param_spec(new_params, u),
+                        params: self.remap_param_spec(i_s, new_params, u),
                         type_vars: type_vars.cloned(),
                         result_type,
                     }));
