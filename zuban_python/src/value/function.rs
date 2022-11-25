@@ -279,7 +279,7 @@ impl<'db: 'a, 'a> Function<'a> {
 
     pub fn as_db_type(&self, i_s: &mut InferenceState, skip_first_param: bool) -> DbType {
         let type_vars = self.type_vars(i_s); // Cache annotation types
-        let mut params = self.iter_params();
+        let mut params = self.iter_params().peekable();
         if skip_first_param {
             params.next();
         }
@@ -305,23 +305,59 @@ impl<'db: 'a, 'a> Function<'a> {
             })
         };
         let result_type = self.result_type(i_s);
-        let x = as_db_type(i_s, result_type);
+        let result_type = as_db_type(i_s, result_type);
+
+        let mut new_params = vec![];
+        let mut had_param_spec_args = false;
+        while let Some(p) = params.next() {
+            let specific = p.specific(i_s);
+            let mut as_t = |t: Option<Type>| t.map(|t| as_db_type(i_s, t)).unwrap_or(DbType::Any);
+            let param_specific = match specific {
+                WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_t(t)),
+                WrappedParamSpecific::PositionalOrKeyword(t) => {
+                    ParamSpecific::PositionalOrKeyword(as_t(t))
+                }
+                WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_t(t)),
+                WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t)) => {
+                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_t(t)))
+                }
+                WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u1)) => {
+                    match params.peek().map(|p| p.specific(i_s)) {
+                        Some(WrappedParamSpecific::DoubleStarred(
+                            WrappedDoubleStarred::ParamSpecKwargs(u2),
+                        )) if u1 == u2 => {
+                            had_param_spec_args = true;
+                            continue;
+                        }
+                        _ => todo!(),
+                    }
+                }
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_t(t)))
+                }
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                    return DbType::Callable(Box::new(CallableContent {
+                        defined_at: self.node_ref.as_link(),
+                        params: todo!(), //i_s.context.remap_param_spec(u, new_params),
+                        type_vars: type_vars.cloned(),
+                        result_type,
+                    }));
+                }
+            };
+            new_params.push(CallableParam {
+                param_specific,
+                has_default: p.has_default(),
+                name: Some({
+                    let n = p.param.name_definition();
+                    StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
+                }),
+            });
+        }
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
-            params: CallableParams::Simple(
-                params
-                    .map(|p| CallableParam {
-                        param_specific: p.as_param_specific(i_s, as_db_type),
-                        has_default: p.has_default(),
-                        name: Some({
-                            let n = p.param.name_definition();
-                            StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
-                        }),
-                    })
-                    .collect(),
-            ),
+            params: CallableParams::Simple(new_params.into_boxed_slice()),
             type_vars: type_vars.cloned(),
-            result_type: x,
+            result_type,
         }))
     }
 
@@ -602,36 +638,6 @@ impl<'a> Iterator for ReturnOrYieldIterator<'a> {
 pub struct FunctionParam<'x> {
     file: &'x PythonFile,
     param: ASTParam<'x>,
-}
-
-impl FunctionParam<'_> {
-    fn as_param_specific(
-        &self,
-        i_s: &mut InferenceState,
-        as_db_type: impl Fn(&mut InferenceState, Type) -> DbType,
-    ) -> ParamSpecific {
-        let specific = self.specific(i_s);
-        let mut as_t = |t: Option<Type>| t.map(|t| as_db_type(i_s, t)).unwrap_or(DbType::Any);
-        match specific {
-            WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_t(t)),
-            WrappedParamSpecific::PositionalOrKeyword(t) => {
-                ParamSpecific::PositionalOrKeyword(as_t(t))
-            }
-            WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_t(t)),
-            WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t)) => {
-                ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_t(t)))
-            }
-            WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
-                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(u.clone()))
-            }
-            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_t(t)))
-            }
-            WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
-                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(u.clone()))
-            }
-        }
-    }
 }
 
 impl<'x> Param<'x> for FunctionParam<'x> {
