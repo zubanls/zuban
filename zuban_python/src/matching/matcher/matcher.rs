@@ -7,6 +7,7 @@ use super::type_var_matcher::{
     BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher,
 };
 
+use crate::arguments::Argument;
 use crate::database::{
     CallableContent, CallableParams, DbType, ParamSpecUsage, RecursiveAlias, TupleTypeArguments,
     TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
@@ -370,10 +371,37 @@ impl<'a> Matcher<'a> {
         let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
             return Match::new_false()
         };
-        if pre_param_spec_types.len() > 0 {
+        if !pre_param_spec_types.is_empty() {
             todo!()
         }
         tv_matcher.calculated_type_vars[p1.index.as_usize()].merge_param_spec(i_s, params2)
+    }
+
+    pub fn match_param_spec_arguments(
+        &self,
+        i_s: &mut InferenceState,
+        usage: ParamSpecUsage,
+        args: Box<[Argument]>,
+    ) -> Match {
+        let generic = if let Some(type_var_matcher) = &self.type_var_matcher {
+            if type_var_matcher.match_in_definition == usage.in_definition {
+                todo!()
+            } else if let Some(class) = type_var_matcher.class {
+                class
+                    .generics()
+                    .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Owned(usage)))
+            } else {
+                todo!("why?")
+            }
+        } else {
+            todo!("When does this even happen?")
+        };
+        if let Generic::CallableParams(params) = generic {
+            params;
+        } else {
+            unreachable!()
+        }
+        todo!()
     }
 
     pub fn format_in_type_var_matcher(

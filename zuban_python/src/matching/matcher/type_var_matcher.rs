@@ -617,18 +617,9 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                             None => continue,
                         }
                     }
-                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
-                        // TODO Does this assert make sense?
-                        debug_assert!(matches!(
-                            args_with_params.next().unwrap().param.specific(i_s),
-                            WrappedParamSpecific::DoubleStarred(
-                                WrappedDoubleStarred::ParamSpecKwargs(u)
-                            ),
-                        ));
-                        todo!()
-                    }
-                    WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
-                        u,
+                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(_))
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
+                        _,
                     )) => {
                         unreachable!()
                     }
@@ -717,6 +708,9 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                     }
                 }
                 matches &= m
+            }
+            ParamArgument::ParamSpecArgs(param_spec, args) => {
+                matches &= matcher.match_param_spec_arguments(i_s, param_spec, args)
             }
             ParamArgument::None => (),
         }

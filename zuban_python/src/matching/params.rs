@@ -641,8 +641,28 @@ where
                     }
                 }
                 ParamKind::Starred => {
-                    self.current_starred_param = Some(param);
-                    return self.next();
+                    let mut i_s = InferenceState::new(self.db);
+                    match param.specific(&mut i_s) {
+                        WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
+                            debug_assert!(matches!(
+                                self.params.next().unwrap().specific(&mut i_s),
+                                WrappedParamSpecific::DoubleStarred(
+                                    WrappedDoubleStarred::ParamSpecKwargs(u)
+                                ),
+                            ));
+                            return Some(InferrableParam2 {
+                                param,
+                                argument: ParamArgument::ParamSpecArgs(
+                                    u.clone(),
+                                    self.arguments.by_ref().collect(),
+                                ),
+                            });
+                        }
+                        _ => {
+                            self.current_starred_param = Some(param);
+                            return self.next();
+                        }
+                    }
                 }
                 ParamKind::DoubleStarred => {
                     self.current_double_starred_param = Some(param);
@@ -668,6 +688,7 @@ where
 pub enum ParamArgument<'db, 'a> {
     None,
     Argument(Argument<'db, 'a>),
+    ParamSpecArgs(ParamSpecUsage, Box<[Argument<'db, 'a>]>),
 }
 
 #[derive(Debug)]
