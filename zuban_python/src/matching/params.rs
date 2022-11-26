@@ -538,7 +538,7 @@ where
                 }
                 return Some(InferrableParam2 {
                     param,
-                    argument: Some(argument),
+                    argument: ParamArgument::Argument(argument),
                 });
             } else {
                 self.current_starred_param = None;
@@ -551,7 +551,7 @@ where
                 }
                 return Some(InferrableParam2 {
                     param,
-                    argument: Some(argument),
+                    argument: ParamArgument::Argument(argument),
                 });
             } else {
                 self.current_double_starred_param = None;
@@ -564,7 +564,9 @@ where
                         if Some(*key) == param.name(self_.db) {
                             return Some(InferrableParam2 {
                                 param,
-                                argument: Some(self_.unused_keyword_arguments.remove(i)),
+                                argument: ParamArgument::Argument(
+                                    self_.unused_keyword_arguments.remove(i),
+                                ),
                             });
                         }
                     }
@@ -651,11 +653,11 @@ where
                 argument_with_index
                     .map(|a| InferrableParam2 {
                         param,
-                        argument: Some(a),
+                        argument: ParamArgument::Argument(a),
                     })
                     .unwrap_or_else(|| InferrableParam2 {
                         param,
-                        argument: None,
+                        argument: ParamArgument::None,
                     }),
             )
         })
@@ -663,14 +665,24 @@ where
 }
 
 #[derive(Debug)]
+pub enum ParamArgument<'db, 'a> {
+    None,
+    Argument(Argument<'db, 'a>),
+}
+
+#[derive(Debug)]
 pub struct InferrableParam2<'db, 'a, P> {
     pub param: P,
-    pub argument: Option<Argument<'db, 'a>>,
+    pub argument: ParamArgument<'db, 'a>,
 }
 
 impl<'db, 'a, P> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a, P> {
     fn human_readable_argument_index(&self) -> String {
-        self.argument.as_ref().unwrap().human_readable_index()
+        if let ParamArgument::Argument(argument) = &self.argument {
+            argument.human_readable_index()
+        } else {
+            unreachable!()
+        }
     }
 }
 

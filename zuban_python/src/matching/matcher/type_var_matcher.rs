@@ -3,7 +3,8 @@ use std::borrow::Cow;
 use parsa_python_ast::ParamKind;
 
 use super::super::params::{
-    InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
+    InferrableParamIterator2, Param, ParamArgument, WrappedDoubleStarred, WrappedParamSpecific,
+    WrappedStarred,
 };
 use super::super::{
     ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
@@ -597,124 +598,127 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     for (i, p) in args_with_params.by_ref().enumerate() {
-        if p.argument.is_none() && !p.param.has_default() {
+        if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
             missing_params.push(p.param);
             continue;
         }
-        if let Some(ref argument) = p.argument {
-            let specific = p.param.specific(i_s);
-            let annotation_type = match &specific {
-                WrappedParamSpecific::PositionalOnly(t)
-                | WrappedParamSpecific::PositionalOrKeyword(t)
-                | WrappedParamSpecific::KeywordOnly(t)
-                | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
-                | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                    match t {
-                        Some(t) => t,
-                        None => continue,
-                    }
-                }
-                WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
-                    // TODO Does this assert make sense?
-                    debug_assert!(matches!(
-                        args_with_params.next().unwrap().param.specific(i_s),
-                        WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
-                            u
-                        )),
-                    ));
-                    todo!()
-                }
-                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
-                    unreachable!()
-                }
-            };
-            let value = if matcher.has_type_var_matcher() {
-                argument.infer(
-                    i_s,
-                    &mut ResultContext::WithMatcher {
-                        type_: annotation_type,
-                        matcher,
-                    },
-                )
-            } else {
-                argument.infer(i_s, &mut ResultContext::Known(annotation_type))
-            };
-            let m = annotation_type.error_if_not_matches_with_matcher(
-                i_s,
-                matcher,
-                &value,
-                on_type_error.as_ref().map(|on_type_error| {
-                    |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
-                        let node_ref = argument.as_node_ref();
-                        if let Some(starred) = node_ref.maybe_starred_expression() {
-                            t1 = format!(
-                                "*{}",
-                                node_ref.file.inference(i_s).infer_expression(starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                            ).into()
-                        } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
-                            t1 = format!(
-                                "**{}",
-                                node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                            ).into()
+        match p.argument {
+            ParamArgument::Argument(ref argument) => {
+                let specific = p.param.specific(i_s);
+                let annotation_type = match &specific {
+                    WrappedParamSpecific::PositionalOnly(t)
+                    | WrappedParamSpecific::PositionalOrKeyword(t)
+                    | WrappedParamSpecific::KeywordOnly(t)
+                    | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                        match t {
+                            Some(t) => t,
+                            None => continue,
                         }
-                        match reason {
-                            MismatchReason::None => (on_type_error.callback)(
-                                i_s,
-                                node_ref,
-                                class,
-                                function,
-                                &p,
-                                t1,
-                                t2,
+                    }
+                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
+                        // TODO Does this assert make sense?
+                        debug_assert!(matches!(
+                            args_with_params.next().unwrap().param.specific(i_s),
+                            WrappedParamSpecific::DoubleStarred(
+                                WrappedDoubleStarred::ParamSpecKwargs(u)
                             ),
-                            MismatchReason::CannotInferTypeArgument(index) => {
-                                node_ref.add_typing_issue(
-                                    i_s.db,
-                                    IssueType::CannotInferTypeArgument {
-                                        index: *index,
-                                        callable: match function {
-                                            Some(f) => f.diagnostic_string(class),
-                                            None => Box::from("Callable"),
-                                        },
-                                    },
-                                );
+                        ));
+                        todo!()
+                    }
+                    WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
+                        u,
+                    )) => {
+                        unreachable!()
+                    }
+                };
+                let value = if matcher.has_type_var_matcher() {
+                    argument.infer(
+                        i_s,
+                        &mut ResultContext::WithMatcher {
+                            type_: annotation_type,
+                            matcher,
+                        },
+                    )
+                } else {
+                    argument.infer(i_s, &mut ResultContext::Known(annotation_type))
+                };
+                let m = annotation_type.error_if_not_matches_with_matcher(
+                    i_s,
+                    matcher,
+                    &value,
+                    on_type_error.as_ref().map(|on_type_error| {
+                        |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
+                            let node_ref = argument.as_node_ref();
+                            if let Some(starred) = node_ref.maybe_starred_expression() {
+                                t1 = format!(
+                                    "*{}",
+                                    node_ref.file.inference(i_s).infer_expression(starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
+                                ).into()
+                            } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
+                                t1 = format!(
+                                    "**{}",
+                                    node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
+                                ).into()
                             }
-                            MismatchReason::ConstraintMismatch { expected, type_var } => {
-                                if should_generate_errors {
+                            match reason {
+                                MismatchReason::None => (on_type_error.callback)(
+                                    i_s,
+                                    node_ref,
+                                    class,
+                                    function,
+                                    &p,
+                                    t1,
+                                    t2,
+                                ),
+                                MismatchReason::CannotInferTypeArgument(index) => {
                                     node_ref.add_typing_issue(
                                         i_s.db,
-                                        IssueType::InvalidTypeVarValue {
-                                            type_var_name: Box::from(type_var.name(i_s.db)),
-                                            func: match function {
+                                        IssueType::CannotInferTypeArgument {
+                                            index: *index,
+                                            callable: match function {
                                                 Some(f) => f.diagnostic_string(class),
-                                                None => Box::from("function"),
+                                                None => Box::from("Callable"),
                                             },
-                                            actual: expected.format(&FormatData::new_short(i_s.db)),
                                         },
                                     );
-                                } else {
-                                    debug!(
-                                        "TODO this is wrong, because this might also be Match::False{{similar: true}}"
-                                    );
+                                }
+                                MismatchReason::ConstraintMismatch { expected, type_var } => {
+                                    if should_generate_errors {
+                                        node_ref.add_typing_issue(
+                                            i_s.db,
+                                            IssueType::InvalidTypeVarValue {
+                                                type_var_name: Box::from(type_var.name(i_s.db)),
+                                                func: match function {
+                                                    Some(f) => f.diagnostic_string(class),
+                                                    None => Box::from("function"),
+                                                },
+                                                actual: expected.format(&FormatData::new_short(i_s.db)),
+                                            },
+                                        );
+                                    } else {
+                                        debug!(
+                                            "TODO this is wrong, because this might also be Match::False{{similar: true}}"
+                                        );
+                                    }
                                 }
                             }
                         }
-                    }
-                }),
-            );
-            if matches!(m, Match::True { with_any: true }) {
-                if let Some(param_annotation_link) = p.param.func_annotation_link() {
-                    // This is never reached when matching callables
-                    if let Some(argument) = p.argument {
+                    }),
+                );
+                if matches!(m, Match::True { with_any: true }) {
+                    if let Some(param_annotation_link) = p.param.func_annotation_link() {
+                        // This is never reached when matching callables
                         argument_indices_with_any.push(ArgumentIndexWithParam {
                             argument_index: argument.index,
                             param_annotation_link,
                         })
                     }
                 }
+                matches &= m
             }
-            matches &= m
+            ParamArgument::None => (),
         }
     }
     let add_keyword_argument_issue = |reference: NodeRef, name| {
