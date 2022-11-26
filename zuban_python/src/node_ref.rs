@@ -10,8 +10,8 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostic, Issue, IssueType};
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::value::Module;
 

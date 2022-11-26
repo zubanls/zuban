@@ -11,6 +11,7 @@ use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
 use crate::utils::Invalidations;
 use crate::workspaces::DirContent;
+use crate::PythonProject;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 
 type InvalidatedDependencies = Vec<FileIndex>;
@@ -129,7 +130,7 @@ impl<T> AsAny for T {
 
 pub trait File: std::fmt::Debug + AsAny {
     // Called each time a file is loaded
-    fn ensure_initialized(&self);
+    fn ensure_initialized(&self, project: &PythonProject);
     fn implementation<'db>(&self, names: Names<'db>) -> Names<'db> {
         vec![]
     }

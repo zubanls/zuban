@@ -11,7 +11,7 @@ use once_cell::unsync::OnceCell;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
 use crate::file::PythonFile;
-use crate::file_state::{
+use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
@@ -21,6 +21,7 @@ use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
+use crate::PythonProject;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -2474,7 +2475,12 @@ pub struct Database {
 }
 
 impl Database {
-    pub fn new(file_state_loaders: FileStateLoaders, workspaces: Workspaces) -> Self {
+    pub fn new(file_state_loaders: FileStateLoaders, project: PythonProject) -> Self {
+        let mut workspaces = Workspaces::default();
+        for p in &project.sys_path {
+            workspaces.add(file_state_loaders.as_ref(), p.to_owned())
+        }
+        workspaces.add(file_state_loaders.as_ref(), project.path.clone());
         let mut this = Self {
             in_use: false,
             vfs: Box::<FileSystemReader>::new(Default::default()),
@@ -2483,7 +2489,7 @@ impl Database {
             path_to_file: Default::default(),
             workspaces,
             in_memory_files: Default::default(),
-            python_state: PythonState::reserve(),
+            python_state: PythonState::reserve(project),
         };
         this.initial_python_load();
         this
@@ -2518,7 +2524,7 @@ impl Database {
 
     pub fn loaded_file(&self, index: FileIndex) -> &(dyn File + 'static) {
         let f = self.file_state(index).file(&*self.vfs).unwrap();
-        f.ensure_initialized();
+        f.ensure_initialized(&self.python_state.project);
         f
     }
 

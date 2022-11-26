@@ -5,8 +5,8 @@ use crate::database::{
     TypeOrTypeVarTuple,
 };
 use crate::diagnostics::IssueType;
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;

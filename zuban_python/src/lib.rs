@@ -7,7 +7,6 @@ mod arguments;
 mod database;
 mod diagnostics;
 mod file;
-mod file_state;
 mod getitem;
 mod imports;
 mod inference_state;
@@ -23,26 +22,26 @@ mod workspaces;
 
 use database::{Database, FileIndex};
 pub use diagnostics::DiagnosticConfig;
-use file_state::{Leaf, PythonFileLoader};
+use file::Leaf;
 use inference_state::InferenceState;
 use inferred::Inferred;
 use name::{Names, ValueName};
 use parsa_python_ast::CodeIndex;
 pub use value::ValueKind;
-use workspaces::Workspaces;
-
-pub enum ProjectType {
-    PythonProject(PythonProject),
-}
 
 pub struct Project {
-    type_: ProjectType,
     db: Database,
 }
 
+pub struct ProjectOptions {
+    pub path: String,
+    pub strict_optional: bool,
+    pub implicit_optional: bool,
+}
+
 impl Project {
-    pub fn new(path: String) -> Self {
-        let loaders = Box::new([Box::new(PythonFileLoader::default()) as Box<_>]);
+    pub fn new(options: ProjectOptions) -> Self {
+        let loaders = Box::new([Box::new(file::PythonFileLoader::default()) as Box<_>]);
         // TODO use a real sys path
         let sys_path = vec![
             "../typeshed/stdlib".to_owned(),
@@ -53,20 +52,18 @@ impl Project {
             "/home/dave/.local/lib/python3.8/site-packages".to_owned(),
             "/usr/local/lib/python3.8/dist-packages".to_owned(),
         ];
-        let mut workspaces = Workspaces::default();
-        for p in &sys_path {
-            workspaces.add(loaders.as_ref(), p.to_owned())
-        }
-        workspaces.add(loaders.as_ref(), path.clone());
-        let db = Database::new(loaders, workspaces);
-        Self {
-            type_: ProjectType::PythonProject(PythonProject {
-                path,
+        let db = Database::new(
+            loaders,
+            PythonProject {
+                path: options.path,
                 sys_path,
+                strict_optional: options.strict_optional,
+                implicit_optional: options.implicit_optional,
+                mypy_compatible: true,
                 is_django: false,
-            }),
-            db,
-        }
+            },
+        );
+        Self { db }
     }
 
     pub fn search(&self, string: &str, all_scopes: bool) {}
@@ -115,6 +112,9 @@ impl Project {
 pub struct PythonProject {
     path: String,
     sys_path: Vec<String>,
+    strict_optional: bool,
+    implicit_optional: bool,
+    mypy_compatible: bool,
     is_django: bool,
 }
 
@@ -161,7 +161,7 @@ impl<'a> Script<'a> {
         }
     }
 
-    fn file(&self) -> &dyn file_state::File {
+    fn file(&self) -> &dyn file::File {
         self.project.db.loaded_file(self.file_index)
     }
 

@@ -36,7 +36,7 @@ enum Unresolved<'db> {
 }
 
 pub(crate) struct NameBinder<'db, 'a> {
-    is_mypy_compatible: bool,
+    mypy_compatible: bool,
     tree: &'db Tree,
     type_: NameBinderType,
     scope_node: NodeIndex,
@@ -56,7 +56,7 @@ pub(crate) struct NameBinder<'db, 'a> {
 
 impl<'db, 'a> NameBinder<'db, 'a> {
     fn new(
-        is_mypy_compatible: bool,
+        mypy_compatible: bool,
         tree: &'db Tree,
         type_: NameBinderType,
         scope_node: NodeIndex,
@@ -69,7 +69,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         parent: Option<&'a Self>,
     ) -> Self {
         Self {
-            is_mypy_compatible,
+            mypy_compatible,
             tree,
             type_,
             scope_node,
@@ -89,7 +89,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub(crate) fn with_global_binder(
-        is_mypy_compatible: bool,
+        mypy_compatible: bool,
         tree: &'db Tree,
         symbol_table: &'a SymbolTable,
         points: &'db Points,
@@ -102,7 +102,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         'a: 'db,
     {
         let mut binder = NameBinder::new(
-            is_mypy_compatible,
+            mypy_compatible,
             tree,
             NameBinderType::Global,
             0,
@@ -132,7 +132,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         func: impl FnOnce(&mut NameBinder<'db, '_>),
     ) {
         let mut name_binder = NameBinder::new(
-            self.is_mypy_compatible,
+            self.mypy_compatible,
             self.tree,
             type_,
             scope_node,
@@ -184,7 +184,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
         let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
-        if !in_base_scope || self.is_mypy_compatible {
+        if !in_base_scope || self.mypy_compatible {
             if let Some(replaced) = replaced {
                 self.points.set(
                     name_def.name_index(),
@@ -981,7 +981,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     #[inline]
     fn maybe_add_reference(&mut self, name: Name<'db>, ordered: bool) {
-        if !ordered || self.is_mypy_compatible && self.type_ != NameBinderType::Class {
+        if !ordered || self.mypy_compatible && self.type_ != NameBinderType::Class {
             self.unordered_references.push(name);
         } else if !self.try_to_process_reference(name) {
             self.names_to_be_resolved_in_parent.push(name);

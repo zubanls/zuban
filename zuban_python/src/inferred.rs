@@ -8,8 +8,8 @@ use crate::database::{
     MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};

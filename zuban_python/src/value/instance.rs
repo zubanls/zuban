@@ -6,7 +6,7 @@ use super::{
 use crate::arguments::{Arguments, NoArguments};
 use crate::database::{DbType, PointLink};
 use crate::diagnostics::IssueType;
-use crate::file_state::File;
+use crate::file::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;

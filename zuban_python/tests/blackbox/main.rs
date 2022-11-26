@@ -5,6 +5,8 @@ use std::fs::{read_dir, read_to_string};
 use std::path::PathBuf;
 use std::time::Instant;
 
+use zuban_python::{Project, ProjectOptions};
+
 #[derive(Debug)]
 pub struct Filter {
     name: String,
@@ -60,7 +62,11 @@ fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
 
-    let mut project = zuban_python::Project::new("tests/blackbox/".to_owned());
+    let mut project = Project::new(ProjectOptions {
+        path: "tests/blackbox/".to_owned(),
+        strict_optional: true,
+        implicit_optional: false,
+    });
 
     let files = python_files();
     let start = Instant::now();

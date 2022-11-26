@@ -200,7 +200,8 @@ impl Inference<'_, '_, '_, '_> {
                 let f1_type_vars = f1.type_vars(self.i_s);
                 let f1_result_type = f1.result_type(self.i_s);
                 if let Some(implementation) = implementation.filter(|i| {
-                    !self.i_s.db.python_state.mypy_compatible || i.return_annotation().is_some()
+                    !self.i_s.db.python_state.project.mypy_compatible
+                        || i.return_annotation().is_some()
                 }) {
                     let impl_type_vars = implementation.type_vars(self.i_s);
 

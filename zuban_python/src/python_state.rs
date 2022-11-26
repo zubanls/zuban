@@ -4,14 +4,15 @@ use std::ptr::null;
 use crate::database::{
     ComplexPoint, Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
 };
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, OverloadedFunction};
+use crate::PythonProject;
 
 pub struct PythonState {
-    pub mypy_compatible: bool,
+    pub project: PythonProject,
 
     builtins: *const PythonFile,
     typing: *const PythonFile,
@@ -39,9 +40,9 @@ pub struct PythonState {
 }
 
 impl PythonState {
-    pub fn reserve() -> Self {
+    pub fn reserve(project: PythonProject) -> Self {
         Self {
-            mypy_compatible: true,
+            project,
             builtins: null(),
             typing: null(),
             collections: null(),

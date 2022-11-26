@@ -4,7 +4,7 @@ use std::rc::Rc;
 use walkdir::WalkDir;
 
 use crate::database::FileIndex;
-use crate::file_state::{FileStateLoader, Vfs};
+use crate::file::{FileStateLoader, Vfs};
 use crate::utils::Invalidations;
 
 #[derive(Debug, Default)]

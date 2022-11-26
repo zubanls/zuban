@@ -1,6 +1,6 @@
 use crate::database::Database;
+use crate::file::File;
 use crate::file::PythonFile;
-use crate::file_state::File;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::value::{Value, ValueKind};
