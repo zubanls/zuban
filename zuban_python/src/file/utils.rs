@@ -2,13 +2,13 @@ use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 
 use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, TypeVarLikeUsage};
 use crate::diagnostics::IssueType;
-use crate::file::{PythonFile, PythonInference};
+use crate::file::{Inference, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
-impl<'db> PythonInference<'db, '_, '_, '_> {
+impl<'db> Inference<'db, '_, '_, '_> {
     pub fn create_list_or_set_generics(
         &mut self,
         elements: ListOrSetElementIterator,

@@ -8,7 +8,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::PythonInference;
+use crate::file::Inference;
 use crate::inferred::Inferred;
 use crate::matching::{
     matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, ResultContext,
@@ -16,7 +16,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
 
-impl PythonInference<'_, '_, '_, '_> {
+impl Inference<'_, '_, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
     }

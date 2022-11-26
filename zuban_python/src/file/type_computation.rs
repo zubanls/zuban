@@ -12,7 +12,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{PythonFile, PythonInference};
+use crate::file::{Inference, PythonFile};
 use crate::file_state::File;
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
@@ -232,7 +232,7 @@ pub(super) fn type_computation_for_variable_annotation(
 }
 
 pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
-    inference: &'c mut PythonInference<'db, 'file, 'a, 'b>,
+    inference: &'c mut Inference<'db, 'file, 'a, 'b>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager,
@@ -248,7 +248,7 @@ pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
 
 impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b, 'c> {
     pub fn new(
-        inference: &'c mut PythonInference<'db, 'file, 'a, 'b>,
+        inference: &'c mut Inference<'db, 'file, 'a, 'b>,
         for_definition: PointLink,
         type_var_callback: Option<TypeVarCallback<'db, 'c>>,
         origin: TypeComputationOrigin,
@@ -1470,7 +1470,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
     pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
     where
-        C: FnOnce(&PythonInference, &dyn Fn(&DbType) -> DbType),
+        C: FnOnce(&Inference, &dyn Fn(&DbType) -> DbType),
     {
         if self.type_var_manager.has_late_bound_type_vars() {
             on_type_var_recalculation(self.inference, &|t| {
@@ -1491,7 +1491,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     }
 }
 
-impl<'db: 'x, 'file, 'a, 'b, 'x> PythonInference<'db, 'file, 'a, 'b> {
+impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     pub fn compute_type_application_on_class(
         &mut self,
         class: Class,
