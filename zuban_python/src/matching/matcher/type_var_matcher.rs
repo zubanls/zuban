@@ -533,7 +533,7 @@ fn calculate_type_vars<'db>(
                 None,
                 args,
                 on_type_error,
-                InferrableParamIterator2::new(i_s.db, params.iter(), args),
+                InferrableParamIterator2::new(i_s.db, params.iter(), args.iter_arguments()),
             ),
             CallableParams::Any => SignatureMatch::True,
             CallableParams::WithParamSpec(_, _) => todo!(),

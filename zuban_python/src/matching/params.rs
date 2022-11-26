@@ -494,10 +494,10 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
 }
 
 impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
-    pub fn new(db: &'db Database, params: I, arguments: &'a dyn Arguments<'db>) -> Self {
+    pub fn new(db: &'db Database, params: I, arguments: ArgumentIterator<'db, 'a>) -> Self {
         Self {
             db,
-            arguments: Peekable::new(arguments.iter_arguments()),
+            arguments: Peekable::new(arguments),
             params,
             unused_keyword_arguments: vec![],
             current_starred_param: None,
