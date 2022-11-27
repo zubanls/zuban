@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, Execution, MroIndex, PointLink, TupleContent,
+    ComplexPoint, Database, DbType, Execution, MroIndex, ParamSpecUsage, PointLink, TupleContent,
     TypeOrTypeVarTuple,
 };
 use crate::diagnostics::IssueType;
@@ -254,6 +254,11 @@ pub enum ArgumentKind<'db, 'a> {
         context: Context<'db, 'a>,
         slices: Slices<'a>,
     },
+    ParamSpec {
+        usage: ParamSpecUsage,
+        node_ref: NodeRef<'a>,
+        position: usize,
+    },
 }
 
 impl<'db, 'a> ArgumentKind<'db, 'a> {
@@ -340,13 +345,15 @@ impl<'db, 'a> Argument<'db, 'a> {
                     TupleContent::new_fixed_length(parts),
                 ))))
             }
+            ArgumentKind::ParamSpec { .. } => todo!(),
         }
     }
 
     pub fn as_node_ref(&self) -> NodeRef {
         match &self.kind {
-            ArgumentKind::Positional { node_ref, .. } => *node_ref,
-            ArgumentKind::Keyword { node_ref, .. } => *node_ref,
+            ArgumentKind::Positional { node_ref, .. }
+            | ArgumentKind::Keyword { node_ref, .. }
+            | ArgumentKind::ParamSpec { node_ref, .. } => *node_ref,
             ArgumentKind::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }),
@@ -356,7 +363,9 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub fn human_readable_index(&self) -> String {
         match &self.kind {
-            ArgumentKind::Positional { position, .. } | ArgumentKind::Inferred { position, .. } => {
+            ArgumentKind::Positional { position, .. }
+            | ArgumentKind::Inferred { position, .. }
+            | ArgumentKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
             ArgumentKind::Keyword { key, .. } => format!("{key:?}"),
@@ -486,7 +495,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 iterator,
                 kwargs_before_star_args,
             } => {
-                for (i, arg) in iterator {
+                for (i, arg) in iterator.by_ref() {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
                             return Some(ArgumentKind::new_positional_return(
@@ -513,13 +522,28 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
-                            return Some(BaseArgumentReturn::ArgsKwargs(
-                                ArgsKwargsIterator::Args {
-                                    iterator: inf.save_and_iter(i_s, node_ref),
-                                    node_ref,
-                                    position: i + 1,
-                                },
-                            ));
+                            match inf.class_as_type(i_s).maybe_borrowed_db_type() {
+                                Some(DbType::ParamSpecArgs(usage)) => {
+                                    // TODO check for the next arg being **P.kwargs
+                                    iterator.next();
+                                    return Some(BaseArgumentReturn::Argument(
+                                        ArgumentKind::ParamSpec {
+                                            usage: usage.clone(),
+                                            node_ref: NodeRef::new(file, starred_expr.index()),
+                                            position: i + 1,
+                                        },
+                                    ));
+                                }
+                                _ => {
+                                    return Some(BaseArgumentReturn::ArgsKwargs(
+                                        ArgsKwargsIterator::Args {
+                                            iterator: inf.save_and_iter(i_s, node_ref),
+                                            node_ref,
+                                            position: i + 1,
+                                        },
+                                    ));
+                                }
+                            }
                         }
                         ASTArgument::DoubleStarred(double_starred_expr) => {
                             let inf = file

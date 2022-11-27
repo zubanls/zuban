@@ -580,8 +580,9 @@ fn maybe_type_var(
                         return None;
                     }
                 },
-                ArgumentKind::Inferred { .. } => unreachable!(),
-                ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
+                ArgumentKind::Inferred { .. }
+                | ArgumentKind::SlicesTuple { .. }
+                | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }
         if restrictions.len() == 1 {
@@ -768,8 +769,9 @@ fn maybe_type_var_tuple(
                         return None;
                     }
                 },
-                ArgumentKind::Inferred { .. } => unreachable!(),
-                ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
+                ArgumentKind::Inferred { .. }
+                | ArgumentKind::SlicesTuple { .. }
+                | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }
         return Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
@@ -905,8 +907,9 @@ fn maybe_param_spec(
                         return None;
                     }
                 },
-                ArgumentKind::Inferred { .. } => unreachable!(),
-                ArgumentKind::SlicesTuple { slices, .. } => unreachable!(),
+                ArgumentKind::Inferred { .. }
+                | ArgumentKind::SlicesTuple { .. }
+                | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }
         return Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {
