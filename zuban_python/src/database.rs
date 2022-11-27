@@ -586,7 +586,7 @@ impl GenericsList {
             .map(|g| match g {
                 GenericItem::TypeArgument(t) => t.format(format_data),
                 GenericItem::TypeArguments(ts) => ts.format(format_data),
-                GenericItem::CallableParams(params) => Box::from("TODO format params"),
+                GenericItem::CallableParams(params) => params.format(format_data, true),
             })
             .collect::<Vec<_>>()
             .join(", ")
