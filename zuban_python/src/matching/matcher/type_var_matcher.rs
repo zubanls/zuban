@@ -537,18 +537,23 @@ fn calculate_type_vars<'db>(
             ),
             CallableParams::Any => SignatureMatch::True,
             CallableParams::WithParamSpec(pre_types, param_spec) => {
+                let mut args = args.iter_arguments();
                 if !pre_types.is_empty() {
                     todo!()
                 }
-                matcher.match_param_spec_arguments(
-                    i_s,
-                    param_spec,
-                    args.iter_arguments().collect(),
-                    None,
-                    None,
-                    &|| args.as_node_ref(),
-                    on_type_error,
-                )
+                if let Some(arg) = args.next() {
+                    if let ArgumentKind::ParamSpec { usage, .. } = &arg.kind {
+                        if usage.in_definition == param_spec.in_definition {
+                            SignatureMatch::True
+                        } else {
+                            todo!()
+                        }
+                    } else {
+                        todo!()
+                    }
+                } else {
+                    todo!()
+                }
             }
         },
     };

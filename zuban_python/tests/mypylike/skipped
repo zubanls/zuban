@@ -126,7 +126,6 @@ testUnpackingParamsSpecArgsAndKwargs
 
 testParamSpecContextManagerLike
 testParamSpecDecorator
-testParamSpecFunction
 testParamSpecSpecialCase
 testParamSpecInferredFromAny
 testParamSpecDecoratorImplementation
