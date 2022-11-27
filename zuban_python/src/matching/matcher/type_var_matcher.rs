@@ -591,16 +591,18 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
     matcher: &mut Matcher,
     class: Option<&Class>,
     function: Option<&Function>,
+    args_node_ref: NodeRef,
     on_type_error: Option<OnTypeError<'db, '_>>,
-    args_with_params: &mut InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
-) -> (Match, Vec<P>, Vec<ArgumentIndexWithParam>) {
+    mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
+) -> SignatureMatch {
+    let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
-    for (i, p) in args_with_params.enumerate() {
+    for (i, p) in args_with_params.by_ref().enumerate() {
         if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
-            if on_type_error.is_some() {
+            if should_generate_errors {
                 missing_params.push(p.param);
             }
             continue;
@@ -712,36 +714,26 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
                 matches &= m
             }
             ParamArgument::ParamSpecArgs(param_spec, args) => {
-                matches &= matcher.match_param_spec_arguments(i_s, param_spec, args, on_type_error)
+                matches &= match matcher.match_param_spec_arguments(
+                    i_s,
+                    param_spec,
+                    args,
+                    class,
+                    function,
+                    args_node_ref,
+                    on_type_error,
+                ) {
+                    SignatureMatch::True => Match::new_true(),
+                    SignatureMatch::TrueWithAny { .. } => todo!(),
+                    SignatureMatch::False { similar } => Match::False {
+                        similar,
+                        reason: MismatchReason::None,
+                    },
+                }
             }
             ParamArgument::None => (),
         }
     }
-    if args_with_params.too_many_positional_arguments || args_with_params.has_unused_arguments() {
-        matches = Match::new_false();
-    }
-    (matches, missing_params, argument_indices_with_any)
-}
-
-fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
-    i_s: &mut InferenceState<'db, '_>,
-    matcher: &mut Matcher,
-    class: Option<&Class>,
-    function: Option<&Function>,
-    args: &dyn Arguments<'db>,
-    on_type_error: Option<OnTypeError<'db, '_>>,
-    mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
-) -> SignatureMatch {
-    let (matches, missing_params, argument_indices_with_any) = match_arguments_against_params(
-        i_s,
-        matcher,
-        class,
-        function,
-        on_type_error,
-        args_with_params.by_ref(),
-    );
-    // TODO this can be calculated multiple times from different places
-    let should_generate_errors = on_type_error.is_some();
     let add_keyword_argument_issue = |reference: NodeRef, name| {
         let s = if let Some(function) = function {
             if function.iter_params().any(|p| {
@@ -768,6 +760,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
         reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
     };
     if args_with_params.too_many_positional_arguments {
+        matches = Match::new_false();
         if should_generate_errors || true {
             // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();
@@ -776,10 +769,10 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
                 s += &function.diagnostic_string(class);
             }
 
-            args.as_node_ref()
-                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
+        matches = Match::new_false();
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {
@@ -800,8 +793,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
                     s += &function.diagnostic_string(class);
                 }
 
-                args.as_node_ref()
-                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
@@ -823,13 +815,12 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
                         s += " for ";
                         s += &function.diagnostic_string(class);
                     }
-                    args.as_node_ref()
-                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                    args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                 } else {
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
-                args.as_node_ref().add_typing_issue(
+                args_node_ref.add_typing_issue(
                     i_s.db,
                     IssueType::ArgumentIssue(Box::from("Too few arguments")),
                 );
@@ -850,8 +841,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
                 s += " to ";
                 s += &function.diagnostic_string(class);
             }
-            args.as_node_ref()
-                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         };
     }
     match matches {
@@ -861,4 +851,24 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
         },
         Match::False { similar, .. } => SignatureMatch::False { similar },
     }
+}
+
+fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
+    i_s: &mut InferenceState<'db, '_>,
+    matcher: &mut Matcher,
+    class: Option<&Class>,
+    function: Option<&Function>,
+    args: &dyn Arguments<'db>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
+    args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
+) -> SignatureMatch {
+    match_arguments_against_params(
+        i_s,
+        matcher,
+        class,
+        function,
+        args.as_node_ref(),
+        on_type_error,
+        args_with_params,
+    )
 }

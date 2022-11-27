@@ -2,7 +2,8 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::super::{
-    params::InferrableParamIterator2, FormatData, Generic, Match, MismatchReason, Type,
+    params::InferrableParamIterator2, FormatData, Generic, Match, MismatchReason, SignatureMatch,
+    Type,
 };
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{
@@ -16,7 +17,8 @@ use crate::database::{
     Variance,
 };
 use crate::inference_state::InferenceState;
-use crate::value::{Function, OnTypeError};
+use crate::node_ref::NodeRef;
+use crate::value::{Class, Function, OnTypeError};
 
 struct CheckedTypeRecursion {
     recursive_alias1: Rc<RecursiveAlias>,
@@ -384,8 +386,11 @@ impl<'a> Matcher<'a> {
         i_s: &mut InferenceState<'db, '_>,
         usage: ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
+        class: Option<&Class>,
+        function: Option<&Function>,
+        args_node_ref: NodeRef,
         on_type_error: Option<OnTypeError<'db, '_>>,
-    ) -> Match {
+    ) -> SignatureMatch {
         let generic;
         let params = if let Some(type_var_matcher) = &self.type_var_matcher {
             if type_var_matcher.match_in_definition == usage.in_definition {
@@ -411,7 +416,7 @@ impl<'a> Matcher<'a> {
         };
         match params {
             CallableParams::Simple(params) => {
-                let mut iter = InferrableParamIterator2::new(
+                let iter = InferrableParamIterator2::new(
                     i_s.db,
                     params.as_ref().iter(),
                     args.into_vec().into_iter(),
@@ -419,14 +424,14 @@ impl<'a> Matcher<'a> {
                 match_arguments_against_params(
                     i_s,
                     &mut Matcher::new(None),
-                    None,
-                    None,
+                    class,
+                    function,
+                    args_node_ref,
                     on_type_error,
-                    &mut iter,
+                    iter,
                 )
-                .0
             }
-            CallableParams::Any => Match::new_true(),
+            CallableParams::Any => SignatureMatch::True,
             CallableParams::WithParamSpec(_, _) => todo!(),
         }
     }
