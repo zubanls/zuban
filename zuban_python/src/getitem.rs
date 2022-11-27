@@ -3,7 +3,7 @@ use parsa_python_ast::{
     SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
-use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
+use crate::arguments::{ArgumentIteratorImpl, Arguments, ArgumentsType};
 use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::{Context, InferenceState};
@@ -196,8 +196,8 @@ pub struct SliceArguments<'db, 'a> {
 }
 
 impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new_slice(*self.slice_type, self.context)
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+        ArgumentIteratorImpl::new_slice(*self.slice_type, self.context)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {

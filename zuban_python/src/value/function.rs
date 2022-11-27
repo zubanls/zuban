@@ -1,13 +1,15 @@
 use parsa_python_ast::{
-    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator, ParamKind, ReturnAnnotation,
-    ReturnOrYield,
+    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator, ParamKind,
+    ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
-use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
+use crate::arguments::{
+    Argument, ArgumentIterator, ArgumentIteratorImpl, ArgumentKind, Arguments, SimpleArguments,
+};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
@@ -99,7 +101,13 @@ impl<'db: 'a, 'a> Function<'a> {
         db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<'db, 'b, impl Iterator<Item = FunctionParam<'b>>, FunctionParam<'b>>
+    ) -> InferrableParamIterator2<
+        'db,
+        'b,
+        impl Iterator<Item = FunctionParam<'b>>,
+        FunctionParam<'b>,
+        impl ArgumentIterator<'db, 'b>,
+    >
     where
         'a: 'b,
     {
@@ -757,8 +765,8 @@ impl<'x> Param<'x> for FunctionParam<'x> {
 
 pub struct InferrableParamIterator<'db, 'a> {
     db: &'db Database,
-    arguments: ArgumentIterator<'db, 'a>,
-    params: ParamIterator<'a>,
+    arguments: ArgumentIteratorImpl<'db, 'a>,
+    params: ASTParamIterator<'a>,
     file: &'a PythonFile,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
 }
@@ -767,8 +775,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn new(
         db: &'db Database,
         file: &'a PythonFile,
-        params: ParamIterator<'a>,
-        arguments: ArgumentIterator<'db, 'a>,
+        params: ASTParamIterator<'a>,
+        arguments: ArgumentIteratorImpl<'db, 'a>,
     ) -> Self {
         Self {
             db,

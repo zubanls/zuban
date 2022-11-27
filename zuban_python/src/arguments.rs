@@ -18,6 +18,10 @@ use parsa_python_ast::{
     Primary, PrimaryContent,
 };
 
+pub trait ArgumentIterator<'db: 'a, 'a>: Iterator<Item = Argument<'db, 'a>> {
+    fn drop_args_kwargs_iterator(&mut self);
+}
+
 pub enum ArgumentsType<'a> {
     Normal(&'a PythonFile, NodeIndex),
 }
@@ -25,7 +29,7 @@ pub enum ArgumentsType<'a> {
 pub trait Arguments<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_>;
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType;
@@ -44,8 +48,8 @@ pub struct SimpleArguments<'db, 'a> {
 }
 
 impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(match self.details {
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+        ArgumentIteratorImpl::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator {
                 i_s: self.i_s.clone(),
                 file: self.file,
@@ -140,8 +144,8 @@ pub struct KnownArguments<'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+        ArgumentIteratorImpl::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -190,7 +194,7 @@ pub struct CombinedArguments<'db, 'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
         let mut iterator = self.args1.iter_arguments();
         debug_assert!(iterator.next.is_none()); // For now this is not supported
         iterator.next = Some(self.args2);
@@ -621,14 +625,14 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct ArgumentIterator<'db, 'a> {
+pub struct ArgumentIteratorImpl<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'a>,
     next: Option<&'a dyn Arguments<'db>>,
     counter: usize,
 }
 
-impl<'db, 'a> ArgumentIterator<'db, 'a> {
+impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
     fn new(current: ArgumentIteratorBase<'db, 'a>) -> Self {
         Self {
             current,
@@ -668,13 +672,15 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
             }
         }
     }
+}
 
-    pub fn drop_args_kwargs_iterator(&mut self) {
+impl<'db, 'a> ArgumentIterator<'db, 'a> for ArgumentIteratorImpl<'db, 'a> {
+    fn drop_args_kwargs_iterator(&mut self) {
         self.args_kwargs_iterator = ArgsKwargsIterator::None;
     }
 }
 
-impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
+impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -768,8 +774,8 @@ impl<'a> NoArguments<'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Finished)
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+        ArgumentIteratorImpl::new(ArgumentIteratorBase::Finished)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {

@@ -11,7 +11,7 @@ use super::super::{
     ResultContext, SignatureMatch, Type,
 };
 use super::bound::TypeVarBound;
-use crate::arguments::{ArgumentKind, Arguments};
+use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{
     CallableContent, CallableParams, DbType, GenericItem, GenericsList, PointLink,
     TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
@@ -583,24 +583,29 @@ fn calculate_type_vars<'db>(
     }
 }
 
-fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
+fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
     function: Option<&Function>,
-    args: &dyn Arguments<'db>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-    mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
-) -> SignatureMatch {
-    // TODO this can be calculated multiple times from different places
-    let should_generate_errors = on_type_error.is_some();
+    args_with_params: &mut InferrableParamIterator2<
+        'db,
+        'x,
+        impl Iterator<Item = P>,
+        P,
+        impl ArgumentIterator<'db, 'x>,
+    >,
+) -> (Match, Vec<P>, Vec<ArgumentIndexWithParam>) {
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
-    for (i, p) in args_with_params.by_ref().enumerate() {
+    for (i, p) in args_with_params.enumerate() {
         if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
-            missing_params.push(p.param);
+            if on_type_error.is_some() {
+                missing_params.push(p.param);
+            }
             continue;
         }
         match p.argument {
@@ -676,7 +681,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                                     );
                                 }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
-                                    if should_generate_errors {
+                                    if true { // TODO isn't this always true?
                                         node_ref.add_typing_issue(
                                             i_s.db,
                                             IssueType::InvalidTypeVarValue {
@@ -715,6 +720,37 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
             ParamArgument::None => (),
         }
     }
+    if args_with_params.too_many_positional_arguments || args_with_params.has_unused_arguments() {
+        matches = Match::new_false();
+    }
+    (matches, missing_params, argument_indices_with_any)
+}
+
+fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
+    i_s: &mut InferenceState<'db, '_>,
+    matcher: &mut Matcher,
+    class: Option<&Class>,
+    function: Option<&Function>,
+    args: &dyn Arguments<'db>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
+    mut args_with_params: InferrableParamIterator2<
+        'db,
+        'x,
+        impl Iterator<Item = P>,
+        P,
+        impl ArgumentIterator<'db, 'x>,
+    >,
+) -> SignatureMatch {
+    let (matches, missing_params, argument_indices_with_any) = match_arguments_against_params(
+        i_s,
+        matcher,
+        class,
+        function,
+        on_type_error,
+        args_with_params.by_ref(),
+    );
+    // TODO this can be calculated multiple times from different places
+    let should_generate_errors = on_type_error.is_some();
     let add_keyword_argument_issue = |reference: NodeRef, name| {
         let s = if let Some(function) = function {
             if function.iter_params().any(|p| {
@@ -741,7 +777,6 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
     };
     if args_with_params.too_many_positional_arguments {
-        matches = Match::new_false();
         if should_generate_errors || true {
             // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();
@@ -754,7 +789,6 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                 .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
-        matches = Match::new_false();
         if should_generate_errors {
             let mut too_many = false;
             for arg in args_with_params.arguments {

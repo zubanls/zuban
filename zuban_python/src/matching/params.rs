@@ -1,7 +1,7 @@
 use parsa_python_ast::ParamKind;
 
 use super::{Match, Matcher};
-use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentKind};
 use crate::database::{
     CallableParam, CallableParams, Database, DbType, DoubleStarredParamSpecific, ParamSpecUsage,
     ParamSpecific, PointLink, StarredParamSpecific, Variance,
@@ -483,9 +483,9 @@ impl<'x> Param<'x> for &'x CallableParam {
     }
 }
 
-pub struct InferrableParamIterator2<'db, 'a, I, P> {
+pub struct InferrableParamIterator2<'db, 'a, I, P, AI: Iterator> {
     db: &'db Database,
-    pub arguments: Peekable<ArgumentIterator<'db, 'a>>,
+    pub arguments: Peekable<AI>,
     params: I,
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<P>,
@@ -493,8 +493,8 @@ pub struct InferrableParamIterator2<'db, 'a, I, P> {
     pub too_many_positional_arguments: bool,
 }
 
-impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
-    pub fn new(db: &'db Database, params: I, arguments: ArgumentIterator<'db, 'a>) -> Self {
+impl<'db, 'a, I, P, AI: ArgumentIterator<'db, 'a>> InferrableParamIterator2<'db, 'a, I, P, AI> {
+    pub fn new(db: &'db Database, params: I, arguments: AI) -> Self {
         Self {
             db,
             arguments: Peekable::new(arguments),
@@ -523,10 +523,11 @@ impl<'db, 'a, I, P> InferrableParamIterator2<'db, 'a, I, P> {
     }
 }
 
-impl<'db: 'x, 'a, 'x, I, P> Iterator for InferrableParamIterator2<'db, 'a, I, P>
+impl<'db: 'x, 'a, 'x, I, P, AI> Iterator for InferrableParamIterator2<'db, 'a, I, P, AI>
 where
     I: Iterator<Item = P>,
     P: Param<'x>,
+    AI: ArgumentIterator<'db, 'a>,
 {
     type Item = InferrableParam2<'db, 'a, P>;
 
