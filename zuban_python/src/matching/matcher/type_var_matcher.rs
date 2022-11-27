@@ -650,23 +650,29 @@ fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>>(
                             if let Some(starred) = node_ref.maybe_starred_expression() {
                                 t1 = format!(
                                     "*{}",
-                                    node_ref.file.inference(i_s).infer_expression(starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                                ).into()
-                            } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
+                                    node_ref
+                                        .file
+                                        .inference(i_s)
+                                        .infer_expression(starred.expression())
+                                        .format(i_s, &FormatData::new_short(i_s.db))
+                                )
+                                .into()
+                            } else if let Some(double_starred) =
+                                node_ref.maybe_double_starred_expression()
+                            {
                                 t1 = format!(
                                     "**{}",
-                                    node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                                ).into()
+                                    node_ref
+                                        .file
+                                        .inference(i_s)
+                                        .infer_expression(double_starred.expression())
+                                        .format(i_s, &FormatData::new_short(i_s.db))
+                                )
+                                .into()
                             }
                             match reason {
                                 MismatchReason::None => (on_type_error.callback)(
-                                    i_s,
-                                    node_ref,
-                                    class,
-                                    function,
-                                    &p,
-                                    t1,
-                                    t2,
+                                    i_s, node_ref, class, function, &p, t1, t2,
                                 ),
                                 MismatchReason::CannotInferTypeArgument(index) => {
                                     node_ref.add_typing_issue(
@@ -681,23 +687,17 @@ fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>>(
                                     );
                                 }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
-                                    if true { // TODO isn't this always true?
-                                        node_ref.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::InvalidTypeVarValue {
-                                                type_var_name: Box::from(type_var.name(i_s.db)),
-                                                func: match function {
-                                                    Some(f) => f.diagnostic_string(class),
-                                                    None => Box::from("function"),
-                                                },
-                                                actual: expected.format(&FormatData::new_short(i_s.db)),
+                                    node_ref.add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidTypeVarValue {
+                                            type_var_name: Box::from(type_var.name(i_s.db)),
+                                            func: match function {
+                                                Some(f) => f.diagnostic_string(class),
+                                                None => Box::from("function"),
                                             },
-                                        );
-                                    } else {
-                                        debug!(
-                                            "TODO this is wrong, because this might also be Match::False{{similar: true}}"
-                                        );
-                                    }
+                                            actual: expected.format(&FormatData::new_short(i_s.db)),
+                                        },
+                                    );
                                 }
                             }
                         }
