@@ -546,7 +546,7 @@ fn calculate_type_vars<'db>(
                     args.iter_arguments().collect(),
                     None,
                     None,
-                    args.as_node_ref(),
+                    &|| args.as_node_ref(),
                     on_type_error,
                 )
             }
@@ -596,12 +596,18 @@ fn calculate_type_vars<'db>(
     }
 }
 
-pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
+pub fn match_arguments_against_params<
+    'db: 'x,
+    'x,
+    'c,
+    P: Param<'x>,
+    AI: ArgumentIterator<'db, 'x>,
+>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
     function: Option<&Function>,
-    args_node_ref: NodeRef,
+    args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -779,7 +785,7 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
                 s += &function.diagnostic_string(class);
             }
 
-            args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
@@ -803,7 +809,7 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
                     s += &function.diagnostic_string(class);
                 }
 
-                args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
@@ -825,12 +831,12 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
                         s += " for ";
                         s += &function.diagnostic_string(class);
                     }
-                    args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                    args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                 } else {
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
-                args_node_ref.add_typing_issue(
+                args_node_ref().add_typing_issue(
                     i_s.db,
                     IssueType::ArgumentIssue(Box::from("Too few arguments")),
                 );
@@ -851,7 +857,7 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
                 s += " to ";
                 s += &function.diagnostic_string(class);
             }
-            args_node_ref.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         };
     }
     match matches {
@@ -877,7 +883,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
         matcher,
         class,
         function,
-        args.as_node_ref(),
+        &|| args.as_node_ref(),
         on_type_error,
         args_with_params,
     )

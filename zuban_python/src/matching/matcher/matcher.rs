@@ -381,14 +381,14 @@ impl<'a> Matcher<'a> {
         tv_matcher.calculated_type_vars[p1.index.as_usize()].merge_param_spec(i_s, params2)
     }
 
-    pub fn match_param_spec_arguments<'db, 'b>(
+    pub fn match_param_spec_arguments<'db, 'b, 'c>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
         class: Option<&Class>,
         function: Option<&Function>,
-        args_node_ref: NodeRef,
+        args_node_ref: &impl Fn() -> NodeRef<'c>,
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
         let generic;
