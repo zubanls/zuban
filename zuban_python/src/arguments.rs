@@ -22,6 +22,12 @@ pub trait ArgumentIterator<'db: 'a, 'a>: Iterator<Item = Argument<'db, 'a>> {
     fn drop_args_kwargs_iterator(&mut self);
 }
 
+impl<'db, 'a> ArgumentIterator<'db, 'a> for std::vec::IntoIter<Argument<'db, 'a>> {
+    fn drop_args_kwargs_iterator(&mut self) {
+        unreachable!()
+    }
+}
+
 pub enum ArgumentsType<'a> {
     Normal(&'a PythonFile, NodeIndex),
 }

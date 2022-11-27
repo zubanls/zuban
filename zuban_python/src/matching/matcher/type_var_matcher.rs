@@ -583,7 +583,7 @@ fn calculate_type_vars<'db>(
     }
 }
 
-fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
+pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,

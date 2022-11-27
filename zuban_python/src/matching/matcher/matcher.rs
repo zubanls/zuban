@@ -1,12 +1,14 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::super::{FormatData, Generic, Match, MismatchReason, Type};
+use super::super::{
+    params::InferrableParamIterator2, FormatData, Generic, Match, MismatchReason, Type,
+};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{
-    BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher,
+    match_arguments_against_params, BoundKind, CalculatedTypeVarLike, FunctionOrCallable,
+    TypeVarMatcher,
 };
-
 use crate::arguments::Argument;
 use crate::database::{
     CallableContent, CallableParams, DbType, ParamSpecUsage, RecursiveAlias, TupleTypeArguments,
@@ -377,11 +379,11 @@ impl<'a> Matcher<'a> {
         tv_matcher.calculated_type_vars[p1.index.as_usize()].merge_param_spec(i_s, params2)
     }
 
-    pub fn match_param_spec_arguments(
-        &self,
-        i_s: &mut InferenceState,
+    pub fn match_param_spec_arguments<'db, 'b>(
+        &mut self,
+        i_s: &mut InferenceState<'db, '_>,
         usage: ParamSpecUsage,
-        args: Box<[Argument]>,
+        args: Box<[Argument<'db, 'b>]>,
     ) -> Match {
         let generic = if let Some(type_var_matcher) = &self.type_var_matcher {
             if type_var_matcher.match_in_definition == usage.in_definition {
@@ -397,11 +399,21 @@ impl<'a> Matcher<'a> {
             todo!("When does this even happen?")
         };
         if let Generic::CallableParams(params) = generic {
-            params;
+            match params.as_ref() {
+                CallableParams::Simple(params) => {
+                    let mut iter = InferrableParamIterator2::new(
+                        i_s.db,
+                        params.as_ref().iter(),
+                        args.into_vec().into_iter(),
+                    );
+                    match_arguments_against_params(i_s, self, None, None, None, &mut iter).0
+                }
+                CallableParams::Any => Match::new_true(),
+                CallableParams::WithParamSpec(_, _) => todo!(),
+            }
         } else {
             unreachable!()
         }
-        todo!()
     }
 
     pub fn format_in_type_var_matcher(
