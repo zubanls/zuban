@@ -16,7 +16,7 @@ use crate::database::{
     Variance,
 };
 use crate::inference_state::InferenceState;
-use crate::value::Function;
+use crate::value::{Function, OnTypeError};
 
 struct CheckedTypeRecursion {
     recursive_alias1: Rc<RecursiveAlias>,
@@ -384,6 +384,7 @@ impl<'a> Matcher<'a> {
         i_s: &mut InferenceState<'db, '_>,
         usage: ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
+        on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> Match {
         let generic;
         let params = if let Some(type_var_matcher) = &self.type_var_matcher {
@@ -420,7 +421,7 @@ impl<'a> Matcher<'a> {
                     &mut Matcher::new(None),
                     None,
                     None,
-                    None,
+                    on_type_error,
                     &mut iter,
                 )
                 .0

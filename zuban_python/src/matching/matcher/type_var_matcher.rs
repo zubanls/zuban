@@ -712,7 +712,7 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
                 matches &= m
             }
             ParamArgument::ParamSpecArgs(param_spec, args) => {
-                matches &= matcher.match_param_spec_arguments(i_s, param_spec, args)
+                matches &= matcher.match_param_spec_arguments(i_s, param_spec, args, on_type_error)
             }
             ParamArgument::None => (),
         }
