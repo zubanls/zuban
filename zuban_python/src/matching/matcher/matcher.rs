@@ -384,7 +384,7 @@ impl<'a> Matcher<'a> {
     pub fn match_param_spec_arguments<'db, 'b>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        usage: ParamSpecUsage,
+        usage: &ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
         class: Option<&Class>,
         function: Option<&Function>,
@@ -402,7 +402,7 @@ impl<'a> Matcher<'a> {
             } else if let Some(class) = type_var_matcher.class {
                 generic = class
                     .generics()
-                    .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Owned(usage)));
+                    .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
                 if let Generic::CallableParams(params) = &generic {
                     params
                 } else {

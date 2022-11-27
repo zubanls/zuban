@@ -537,8 +537,18 @@ fn calculate_type_vars<'db>(
             ),
             CallableParams::Any => SignatureMatch::True,
             CallableParams::WithParamSpec(pre_types, param_spec) => {
-                dbg!(pre_types, param_spec);
-                todo!()
+                if !pre_types.is_empty() {
+                    todo!()
+                }
+                matcher.match_param_spec_arguments(
+                    i_s,
+                    param_spec,
+                    args.iter_arguments().collect(),
+                    None,
+                    None,
+                    args.as_node_ref(),
+                    on_type_error,
+                )
             }
         },
     };
@@ -716,7 +726,7 @@ pub fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIte
             ParamArgument::ParamSpecArgs(param_spec, args) => {
                 matches &= match matcher.match_param_spec_arguments(
                     i_s,
-                    param_spec,
+                    &param_spec,
                     args,
                     class,
                     function,
