@@ -536,7 +536,10 @@ fn calculate_type_vars<'db>(
                 InferrableParamIterator2::new(i_s.db, params.iter(), args.iter_arguments()),
             ),
             CallableParams::Any => SignatureMatch::True,
-            CallableParams::WithParamSpec(_, _) => todo!(),
+            CallableParams::WithParamSpec(pre_types, param_spec) => {
+                dbg!(pre_types, param_spec);
+                todo!()
+            }
         },
     };
     let type_arguments = matcher.has_type_var_matcher().then(|| {

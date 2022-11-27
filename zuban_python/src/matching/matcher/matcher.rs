@@ -380,39 +380,53 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn match_param_spec_arguments<'db, 'b>(
-        &mut self,
+        &self,
         i_s: &mut InferenceState<'db, '_>,
         usage: ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
     ) -> Match {
-        let generic = if let Some(type_var_matcher) = &self.type_var_matcher {
+        let generic;
+        let params = if let Some(type_var_matcher) = &self.type_var_matcher {
             if type_var_matcher.match_in_definition == usage.in_definition {
-                todo!()
+                match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
+                    BoundKind::CallableParams(params) => params,
+                    BoundKind::Uncalculated => todo!(),
+                    BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
+                }
             } else if let Some(class) = type_var_matcher.class {
-                class
+                generic = class
                     .generics()
-                    .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Owned(usage)))
+                    .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Owned(usage)));
+                if let Generic::CallableParams(params) = &generic {
+                    params
+                } else {
+                    unreachable!()
+                }
             } else {
                 todo!("why?")
             }
         } else {
             todo!("When does this even happen?")
         };
-        if let Generic::CallableParams(params) = generic {
-            match params.as_ref() {
-                CallableParams::Simple(params) => {
-                    let mut iter = InferrableParamIterator2::new(
-                        i_s.db,
-                        params.as_ref().iter(),
-                        args.into_vec().into_iter(),
-                    );
-                    match_arguments_against_params(i_s, self, None, None, None, &mut iter).0
-                }
-                CallableParams::Any => Match::new_true(),
-                CallableParams::WithParamSpec(_, _) => todo!(),
+        match params {
+            CallableParams::Simple(params) => {
+                let mut iter = InferrableParamIterator2::new(
+                    i_s.db,
+                    params.as_ref().iter(),
+                    args.into_vec().into_iter(),
+                );
+                match_arguments_against_params(
+                    i_s,
+                    &mut Matcher::new(None),
+                    None,
+                    None,
+                    None,
+                    &mut iter,
+                )
+                .0
             }
-        } else {
-            unreachable!()
+            CallableParams::Any => Match::new_true(),
+            CallableParams::WithParamSpec(_, _) => todo!(),
         }
     }
 
