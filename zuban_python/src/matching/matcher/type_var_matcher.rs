@@ -583,19 +583,13 @@ fn calculate_type_vars<'db>(
     }
 }
 
-fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>>(
+fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
     function: Option<&Function>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-    args_with_params: &mut InferrableParamIterator2<
-        'db,
-        'x,
-        impl Iterator<Item = P>,
-        P,
-        impl ArgumentIterator<'db, 'x>,
-    >,
+    args_with_params: &mut InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> (Match, Vec<P>, Vec<ArgumentIndexWithParam>) {
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
@@ -726,20 +720,14 @@ fn match_arguments_against_params<'db: 'x, 'x, P: Param<'x>>(
     (matches, missing_params, argument_indices_with_any)
 }
 
-fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
+fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
     function: Option<&Function>,
     args: &dyn Arguments<'db>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-    mut args_with_params: InferrableParamIterator2<
-        'db,
-        'x,
-        impl Iterator<Item = P>,
-        P,
-        impl ArgumentIterator<'db, 'x>,
-    >,
+    mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let (matches, missing_params, argument_indices_with_any) = match_arguments_against_params(
         i_s,
