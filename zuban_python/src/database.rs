@@ -841,8 +841,12 @@ impl DbType {
                     rec.calculated_db_type(format_data.db).format(&format_data)
                 }
             }
-            Self::ParamSpecArgs(usage) => Box::from("TODO format param spec args"),
-            Self::ParamSpecKwargs(usage) => Box::from("TODO format param spec kwargs"),
+            Self::ParamSpecArgs(usage) => {
+                format!("{}.args", usage.param_spec.name(format_data.db)).into()
+            }
+            Self::ParamSpecKwargs(usage) => {
+                format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
+            }
         }
     }
 

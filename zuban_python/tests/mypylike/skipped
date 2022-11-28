@@ -126,10 +126,8 @@ testUnpackingParamsSpecArgsAndKwargs
 
 testParamSpecContextManagerLike
 testParamSpecDecorator
-testParamSpecSpecialCase
 testParamSpecInferredFromAny
 testParamSpecDecoratorImplementation
-testParamSpecArgsAndKwargsTypes
 testParamSpecSubtypeChecking1
 testParamSpecSubtypeChecking2
 testParamSpecJoin

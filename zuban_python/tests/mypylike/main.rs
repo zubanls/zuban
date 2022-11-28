@@ -121,7 +121,7 @@ lazy_static::lazy_static! {
     )).unwrap();
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
-    static ref REPLACE_MYPY: Regex = Regex::new(r"`-\d+").unwrap();
+    static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
