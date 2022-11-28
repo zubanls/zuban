@@ -296,8 +296,14 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                DbType::ParamSpecArgs(usage) => todo!(),
-                DbType::ParamSpecKwargs(usage) => todo!(),
+                DbType::ParamSpecArgs(usage1) => match value_type.maybe_db_type() {
+                    Some(DbType::ParamSpecArgs(usage2)) => (usage1 == usage2).into(),
+                    _ => Match::new_false(),
+                },
+                DbType::ParamSpecKwargs(usage1) => match value_type.maybe_db_type() {
+                    Some(DbType::ParamSpecKwargs(usage2)) => (usage1 == usage2).into(),
+                    _ => Match::new_false(),
+                },
             },
         }
     }
