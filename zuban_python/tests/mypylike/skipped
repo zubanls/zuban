@@ -127,7 +127,6 @@ testUnpackingParamsSpecArgsAndKwargs
 testParamSpecContextManagerLike
 testParamSpecDecorator
 testParamSpecDecoratorImplementation
-testParamSpecSubtypeChecking2
 testParamSpecJoin
 testParamSpecClassWithAny
 testParamSpecInferredFromLambda
@@ -911,7 +910,7 @@ testGlobalInitializedToNoneSetFromMethod
 testNoCrashOnPartialVariable
 testNoCrashOnPartialVariable3
 
-# Cannot call function of unknown type
+# "Cannot call function of unknown type"
 testUnknownFunctionNotCallable
 
 # Implicit any param

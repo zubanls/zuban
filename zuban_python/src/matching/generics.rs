@@ -206,7 +206,7 @@ impl<'a> Generics<'a> {
             let v = match tv {
                 TypeVarLike::TypeVar(t) => t.variance,
                 TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
-                TypeVarLike::ParamSpec(_) => todo!(),
+                TypeVarLike::ParamSpec(_) => Variance::Invariant,
             };
             matches &= t1.matches(i_s, matcher, &t2, v);
         }

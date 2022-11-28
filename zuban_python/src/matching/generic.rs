@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use super::{match_tuple_type_arguments, FormatData, Match, Matcher, Type};
+use super::{match_tuple_type_arguments, matches_params, FormatData, Match, Matcher, Type};
 use crate::database::{CallableParams, GenericItem, TypeArguments, Variance};
 use crate::inference_state::InferenceState;
 
@@ -71,7 +71,12 @@ impl<'a> Generic<'a> {
                 }
                 _ => todo!(),
             },
-            Self::CallableParams(params) => todo!(),
+            Self::CallableParams(params1) => match other {
+                Self::CallableParams(params2) => {
+                    matches_params(i_s, matcher, params1, params2, variance, false)
+                }
+                _ => todo!(),
+            },
         }
     }
 

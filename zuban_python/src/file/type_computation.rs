@@ -850,7 +850,23 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             },
                         ))
                     }
-                    TypeVarLike::ParamSpec(_) => todo!(),
+                    TypeVarLike::ParamSpec(_) => {
+                        if generics.is_empty() {
+                            backfill(self, &mut generics, given_count);
+                        }
+                        if let Some(slice_content) = iterator.next() {
+                            given_count += 1;
+                            GenericItem::CallableParams(CallableParams::WithParamSpec(
+                                Box::new([]),
+                                match self.compute_slice_type(slice_content) {
+                                    TypeContent::ParamSpec(p) => p,
+                                    _ => todo!(),
+                                },
+                            ))
+                        } else {
+                            todo!()
+                        }
+                    }
                 };
                 generics.push(generic_item);
             }
