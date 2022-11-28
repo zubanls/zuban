@@ -910,18 +910,20 @@ impl DbType {
                                     DoubleStarredParamSpecific::ValueType(t),
                                 ) => t.search_type_vars(found_type_var),
                                 ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
-                                    todo!()
+                                    unreachable!()
                                 }
                                 ParamSpecific::DoubleStarred(
                                     DoubleStarredParamSpecific::ParamSpecKwargs(_),
                                 ) => {
-                                    todo!()
+                                    unreachable!()
                                 }
                             }
                         }
                     }
                     CallableParams::Any => (),
-                    CallableParams::WithParamSpec(_, _) => todo!(),
+                    CallableParams::WithParamSpec(_, spec) => {
+                        found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
+                    }
                 }
                 content.result_type.search_type_vars(found_type_var)
             }

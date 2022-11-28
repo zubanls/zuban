@@ -178,7 +178,9 @@ impl<'a> TypeVarMatcher<'a> {
                         TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
                             TypeArguments::new_arbitrary_length(DbType::Any),
                         ),
-                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
+                        TypeVarLikeUsage::ParamSpec(_) => {
+                            BoundKind::CallableParams(CallableParams::Any)
+                        }
                     }
                 }
             }
