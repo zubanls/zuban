@@ -24,6 +24,7 @@ pub struct PythonState {
     builtins_object_node_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
+    builtins_function_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
     builtins_str_index: NodeIndex,
     typing_mapping_index: NodeIndex,
@@ -52,6 +53,7 @@ impl PythonState {
             builtins_object_node_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
+            builtins_function_index: 0,
             builtins_base_exception_index: 0,
             builtins_str_index: 0,
             types_module_type_index: 0,
@@ -93,6 +95,7 @@ impl PythonState {
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
         let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
         let str_name_index = builtins.symbol_table.lookup_symbol("str").unwrap();
+        let function_name_index = builtins.symbol_table.lookup_symbol("function").unwrap();
         let base_exception_name_index = builtins
             .symbol_table
             .lookup_symbol("BaseException")
@@ -103,6 +106,11 @@ impl PythonState {
         s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
         s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
+        s.builtins_function_index = s
+            .builtins()
+            .points
+            .get(function_name_index - 1)
+            .node_index();
         s.builtins_base_exception_index = s
             .builtins()
             .points
@@ -251,6 +259,10 @@ impl PythonState {
         let point = builtins.points.get(node_index);
         debug_assert_eq!(point.type_(), PointType::Redirect);
         PointLink::new(builtins.file_index(), point.node_index())
+    }
+
+    pub fn function_point_link(&self) -> PointLink {
+        PointLink::new(self.builtins().file_index(), self.builtins_function_index)
     }
 
     #[inline]

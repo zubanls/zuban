@@ -920,10 +920,20 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
+                unreachable!("object is always a common base class")
             }
-            _ => return i_s.db.python_state.object_db_type(),
+            (None, None) => {
+                // TODO this should also be done for function/callable and callable/function and
+                // not only callable/callable
+                if let Some(DbType::Callable(c1)) = self.maybe_db_type() {
+                    if let Some(DbType::Callable(c2)) = other.maybe_db_type() {
+                        return DbType::Class(i_s.db.python_state.function_point_link(), None);
+                    }
+                }
+            }
+            _ => (),
         }
-        unreachable!("object is always a common base class")
+        i_s.db.python_state.object_db_type()
     }
 
     pub fn is_any(&self) -> bool {
