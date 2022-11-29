@@ -913,7 +913,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         debug!(
             "Infer primary {} as {}",
             primary.short_debug(),
-            result.description(self.i_s)
+            result
+                .class_as_type(self.i_s)
+                .format(&FormatData::new_short(self.i_s.db))
         );
         result
     }

@@ -127,7 +127,6 @@ testUnpackingParamsSpecArgsAndKwargs
 testParamSpecContextManagerLike
 testParamSpecDecorator
 testParamSpecDecoratorImplementation
-testParamSpecJoin
 testParamSpecClassWithAny
 testParamSpecInferredFromLambda
 testParamSpecInvalidCalls
