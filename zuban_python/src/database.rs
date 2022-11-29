@@ -1627,22 +1627,22 @@ impl CallableParam {
                                 if !format_data.verbose {
                                     return t;
                                 }
-                                if self.has_default {
-                                    format!("DefaultArg({t}, '{}')", name.as_str(format_data.db))
-                                } else {
-                                    format!("Arg({t}, '{}')", name.as_str(format_data.db))
-                                }
+                                let default = match self.has_default {
+                                    false => "",
+                                    true => "Default",
+                                };
+                                format!("{default}Arg({t}, '{}')", name.as_str(format_data.db))
                             }
                             ParamSpecific::KeywordOnly(t) => {
-                                if self.has_default {
-                                    todo!()
-                                } else {
-                                    format!(
-                                        "NamedArg({}, '{}')",
-                                        t.format(format_data),
-                                        name.as_str(format_data.db)
-                                    )
-                                }
+                                let default = match self.has_default {
+                                    false => "",
+                                    true => "Default",
+                                };
+                                format!(
+                                    "{default}NamedArg({}, '{}')",
+                                    t.format(format_data),
+                                    name.as_str(format_data.db)
+                                )
                             }
                             ParamSpecific::Starred(_) | ParamSpecific::DoubleStarred(_) => {
                                 unreachable!()
