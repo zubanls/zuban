@@ -1,6 +1,6 @@
 use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::database::{ComplexPoint, TypeAlias as DbTypeAlias};
+use crate::database::{ComplexPoint, DbType, TypeAlias as DbTypeAlias};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
@@ -47,7 +47,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        todo!()
+        Type::owned(DbType::Type(Box::new(self.alias.db_type.as_ref().clone())))
     }
 
     fn execute(
