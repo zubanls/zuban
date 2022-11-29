@@ -5,8 +5,8 @@ use std::rc::Rc;
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, NewType, PointLink, Specific, TupleContent,
-    TypeVar, TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
+    ComplexPoint, Database, DbType, FormatStyle, NewType, PointLink, Specific, TypeVar,
+    TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -24,14 +24,6 @@ pub struct TypingClass {
 impl TypingClass {
     pub fn new(specific: Specific) -> Self {
         Self { specific }
-    }
-
-    pub fn as_db_type(&self) -> DbType {
-        match self.specific {
-            Specific::TypingTuple => DbType::Tuple(TupleContent::new_empty()),
-            Specific::TypingType => DbType::Type(Rc::new(DbType::Any)),
-            _ => todo!("{:?}", self.specific),
-        }
     }
 }
 

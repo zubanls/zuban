@@ -325,7 +325,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::Type) => {
-                BaseClass::DbType(DbType::Type(Rc::new(DbType::Any)))
+                BaseClass::DbType(self.inference.i_s.db.python_state.type_of_any.clone())
             }
             TypeContent::Unknown => BaseClass::Invalid,
             _ => {
