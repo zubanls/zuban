@@ -703,7 +703,7 @@ pub enum DbType {
     Union(UnionType),
     Intersection(IntersectionType),
     TypeVar(TypeVarUsage),
-    Type(Box<DbType>),
+    Type(Rc<DbType>),
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
@@ -1082,7 +1082,7 @@ impl DbType {
                 GenericItem::TypeArguments(ts) => unreachable!(),
                 GenericItem::CallableParams(params) => todo!(),
             },
-            Self::Type(db_type) => Self::Type(Box::new(db_type.replace_type_vars(callable))),
+            Self::Type(db_type) => Self::Type(Rc::new(db_type.replace_type_vars(callable))),
             Self::Tuple(content) => Self::Tuple(match &content.args {
                 Some(args) => TupleContent {
                     args: Some(remap_tuple_likes(args, callable)),
@@ -1212,7 +1212,7 @@ impl DbType {
             }),
             Self::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
             Self::Type(db_type) => {
-                Self::Type(Box::new(db_type.rewrite_late_bound_callables(manager)))
+                Self::Type(Rc::new(db_type.rewrite_late_bound_callables(manager)))
             }
             Self::Tuple(content) => Self::Tuple(match &content.args {
                 Some(TupleTypeArguments::FixedLength(ts)) => TupleContent::new_fixed_length(

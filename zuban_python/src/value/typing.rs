@@ -5,8 +5,8 @@ use std::rc::Rc;
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific,
-    TupleContent, TypeVar, TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
+    ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
+    TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -24,14 +24,6 @@ pub struct TypingClass {
 impl TypingClass {
     pub fn new(specific: Specific) -> Self {
         Self { specific }
-    }
-
-    pub fn as_db_type(&self) -> DbType {
-        match self.specific {
-            Specific::TypingTuple => DbType::Tuple(TupleContent::new_empty()),
-            Specific::TypingType => DbType::Type(Box::new(DbType::Any)),
-            _ => todo!("{:?}", self.specific),
-        }
     }
 }
 
@@ -94,7 +86,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             todo!()
         } else if let Some(first) = first {
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-                Box::new(
+                Rc::new(
                     first
                         .infer(i_s, &mut ResultContext::Unknown)
                         .class_as_db_type(i_s),
@@ -169,7 +161,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 if let Some(bound) = &t.type_var.bound {
                     TypingType::new(
                         self.db,
-                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                        Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
                         bound,
                     )
                     .lookup_internal(i_s, name)
@@ -193,7 +185,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::Type(Cow::Owned(DbType::Type(Box::new(self.db_type.clone()))))
+        Type::Type(Cow::Owned(DbType::Type(Rc::new(self.db_type.clone()))))
     }
 
     fn execute(
@@ -216,7 +208,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 if let Some(bound) = &t.type_var.bound {
                     TypingType::new(
                         self.db,
-                        Cow::Owned(DbType::Type(Box::new(bound.clone()))),
+                        Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
                         bound,
                     )
                     .execute(i_s, args, result_context, on_type_error)
@@ -955,7 +947,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
     ) -> Inferred {
         if let Some(n) = maybe_new_type(i_s, args) {
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-                Box::new(DbType::NewType(n)),
+                Rc::new(DbType::NewType(n)),
             ))))
         } else {
             Inferred::new_unknown()

@@ -195,7 +195,7 @@ macro_rules! compute_type_application {
                         false,
                     )))
                 } else {
-                    ComplexPoint::TypeInstance(Box::new(DbType::Type(Box::new(db_type))))
+                    ComplexPoint::TypeInstance(Box::new(DbType::Type(Rc::new(db_type))))
                 }
             },
             _ => todo!("{t:?}"),
@@ -332,7 +332,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::Type) => {
-                BaseClass::DbType(DbType::Type(Box::new(DbType::Any)))
+                BaseClass::DbType(self.inference.i_s.db.python_state.type_of_any.clone())
             }
             TypeContent::Unknown => BaseClass::Invalid,
             TypeContent::ParamSpec(_) => {
@@ -480,7 +480,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     result_type: DbType::Any,
                 })),
                 SpecialType::Any => DbType::Any,
-                SpecialType::Type => DbType::Type(Box::new(DbType::Class(
+                SpecialType::Type => DbType::Type(Rc::new(DbType::Class(
                     self.inference.i_s.db.python_state.object().as_link(),
                     None,
                 ))),
@@ -1165,7 +1165,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         if iterator.count() > 0 {
             todo!()
         }
-        TypeContent::DbType(DbType::Type(Box::new(self.compute_slice_db_type(content))))
+        TypeContent::DbType(DbType::Type(Rc::new(self.compute_slice_db_type(content))))
     }
 
     fn compute_type_get_item_on_alias(
