@@ -2325,14 +2325,21 @@ impl CallableParams {
                 }
                 out_params
             }
-            Self::WithParamSpec(types, usage) => {
-                let p = format_data
-                    .format_type_var_like(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
-                types
-                    .iter()
-                    .map(|t| t.format(format_data))
-                    .chain(std::iter::once(p))
-                    .collect()
+            Self::WithParamSpec(pre_types, usage) => {
+                if as_callable_params {
+                    if !pre_types.is_empty() {
+                        todo!()
+                    }
+                    return Box::from(usage.param_spec.name(format_data.db));
+                } else {
+                    let p = format_data
+                        .format_type_var_like(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
+                    pre_types
+                        .iter()
+                        .map(|t| t.format(format_data))
+                        .chain(std::iter::once(p))
+                        .collect()
+                }
             }
             Self::Any => {
                 return match as_callable_params {
