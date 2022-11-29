@@ -1,5 +1,6 @@
 use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, TypeLike};
 use std::ptr::null;
+use std::rc::Rc;
 
 use crate::database::{
     ComplexPoint, Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
@@ -62,11 +63,11 @@ impl PythonState {
             mypy_extensions_default_named_arg_func: 0,
             mypy_extensions_kw_arg_func: 0,
             mypy_extensions_var_arg_func: 0,
-            type_of_object: DbType::Type(Box::new(DbType::Any)), // Will be set later
-            type_of_any: DbType::Type(Box::new(DbType::Any)),
-            type_of_arbitrary_tuple: DbType::Type(Box::new(DbType::Tuple(
-                TupleContent::new_empty(),
-            ))),
+            type_of_object: DbType::Any, // Will be set later
+            type_of_any: DbType::Type(Rc::new(DbType::Any)),
+            type_of_arbitrary_tuple: DbType::Type(Rc::new(
+                DbType::Tuple(TupleContent::new_empty()),
+            )),
         }
     }
 
@@ -128,10 +129,7 @@ impl PythonState {
         //precalculate_type_var_instance(s.typing(), "_T_co");
         //
         let object_db_type = s.object_db_type();
-        match &mut s.type_of_object {
-            DbType::Type(t) => *t.as_mut() = object_db_type,
-            _ => unreachable!(),
-        }
+        s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
         typing_changes(s.typing(), s.builtins(), s.collections());
 

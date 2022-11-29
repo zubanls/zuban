@@ -47,7 +47,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Box::new(self.alias.db_type.as_ref().clone())))
+        Type::owned(DbType::Type(self.alias.db_type.clone()))
     }
 
     fn execute(

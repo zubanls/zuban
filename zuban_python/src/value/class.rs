@@ -1,4 +1,5 @@
 use std::fmt;
+use std::rc::Rc;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
@@ -538,7 +539,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Box::new(self.as_db_type(i_s))))
+        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s))))
     }
 }
 
