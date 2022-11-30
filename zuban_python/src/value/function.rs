@@ -870,20 +870,6 @@ enum ParamInput<'db, 'a> {
     None,
 }
 
-impl ParamInput<'_, '_> {
-    fn human_readable_argument_index(&self) -> String {
-        match self {
-            Self::Argument(arg) => arg.human_readable_index(),
-            Self::Tuple(_) => todo!(),
-            Self::None => todo!(),
-        }
-    }
-}
-
-pub trait ParamWithArgument<'db, 'a> {
-    fn human_readable_argument_index(&self) -> String;
-}
-
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
     pub param: FunctionParam<'a>,
@@ -923,12 +909,6 @@ impl<'db> InferrableParam<'db, '_> {
             }
             ParamInput::None => None,
         }
-    }
-}
-
-impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
-    fn human_readable_argument_index(&self) -> String {
-        self.argument.human_readable_argument_index()
     }
 }
 

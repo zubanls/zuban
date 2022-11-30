@@ -15,10 +15,10 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext};
+use crate::matching::{params::ParamWithArgument, FormatData, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
-use crate::value::{Class, Function, LookupResult, Module, OnTypeError, ParamWithArgument, Value};
+use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
 
 pub struct Inference<'db: 'file, 'file, 'a, 'b> {
     pub(super) file: &'file PythonFile,

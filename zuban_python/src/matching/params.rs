@@ -10,7 +10,6 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 use crate::utils::Peekable;
-use crate::value::ParamWithArgument;
 
 pub trait Param<'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
@@ -21,6 +20,10 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
         // Can be None for Callable
         None
     }
+}
+
+pub trait ParamWithArgument<'db, 'a> {
+    fn human_readable_argument_index(&self) -> String;
 }
 
 pub fn matches_params(
