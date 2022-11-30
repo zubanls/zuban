@@ -22,10 +22,6 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     }
 }
 
-pub trait ParamWithArgument<'db, 'a> {
-    fn human_readable_argument_index(&self) -> String;
-}
-
 pub fn matches_params(
     i_s: &mut InferenceState,
     matcher: &mut Matcher,
@@ -706,16 +702,6 @@ pub enum ParamArgument<'db, 'a> {
 pub struct InferrableParam2<'db, 'a, P> {
     pub param: P,
     pub argument: ParamArgument<'db, 'a>,
-}
-
-impl<'db, 'a, P> ParamWithArgument<'db, 'a> for InferrableParam2<'db, 'a, P> {
-    fn human_readable_argument_index(&self) -> String {
-        if let ParamArgument::Argument(argument) = &self.argument {
-            argument.human_readable_index()
-        } else {
-            unreachable!()
-        }
-    }
 }
 
 pub enum WrappedParamSpecific<'a> {
