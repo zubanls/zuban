@@ -570,11 +570,14 @@ fn calculate_type_vars<'db>(
                     BoundKind::CallableParams(params) => GenericItem::CallableParams(params),
                     BoundKind::Uncalculated => match type_var_like {
                         TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
-                        // TODO TypeVarTuple this feels wrong, should maybe be never?
+                        // TODO TypeVarTuple: this feels wrong, should maybe be never?
                         TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
                             TypeArguments::new_fixed_length(Box::new([])),
                         ),
-                        TypeVarLike::ParamSpec(_) => todo!(),
+                        // TODO ParamSpec: this feels wrong, should maybe be never?
+                        TypeVarLike::ParamSpec(_) => {
+                            GenericItem::CallableParams(CallableParams::Any)
+                        }
                     },
                 })
                 .collect(),

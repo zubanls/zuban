@@ -1063,6 +1063,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             let mut iterator = slice_type.iter();
             let params = match iterator.next().unwrap() {
                 first @ SliceOrSimple::Simple(n) => {
+                    let calc_params = |slf: &mut Self| match slf.compute_slice_type(first) {
+                        TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Box::new([]), p),
+                        _ => {
+                            slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
+                            CallableParams::Any
+                        }
+                    };
                     if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
                         n.named_expr.expression().unpack()
                     {
@@ -1077,21 +1084,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 CallableParams::Simple(params.into_boxed_slice())
                             }
                             AtomContent::Ellipsis => CallableParams::Any,
-                            _ => match self.compute_slice_type(first) {
-                                TypeContent::ParamSpec(p) => {
-                                    CallableParams::WithParamSpec(Box::new([]), p)
-                                }
-                                _ => {
-                                    self.add_typing_issue(
-                                        n.as_node_ref(),
-                                        IssueType::InvalidCallableParams,
-                                    );
-                                    CallableParams::Any
-                                }
-                            },
+                            _ => calc_params(self),
                         }
                     } else {
-                        todo!()
+                        calc_params(self)
                     }
                 }
                 SliceOrSimple::Slice(s) => todo!(),
