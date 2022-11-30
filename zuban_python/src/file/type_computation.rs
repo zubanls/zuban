@@ -856,13 +856,17 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         }
                         if let Some(slice_content) = iterator.next() {
                             given_count += 1;
-                            GenericItem::CallableParams(CallableParams::WithParamSpec(
-                                Box::new([]),
+                            GenericItem::CallableParams(
                                 match self.compute_slice_type(slice_content) {
-                                    TypeContent::ParamSpec(p) => p,
-                                    _ => todo!(),
+                                    TypeContent::ParamSpec(p) => {
+                                        CallableParams::WithParamSpec(Box::new([]), p)
+                                    }
+                                    TypeContent::SpecialType(SpecialType::Any) => {
+                                        CallableParams::Any
+                                    }
+                                    t => todo!("{t:?}"),
                                 },
-                            ))
+                            )
                         } else {
                             todo!()
                         }

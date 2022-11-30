@@ -15,7 +15,7 @@ use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
-use crate::matching::{FormatData, Generics};
+use crate::matching::{FormatData, Generic, Generics};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
@@ -550,14 +550,6 @@ impl GenericItem {
             Self::CallableParams(params) => todo!(),
         }
     }
-
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        match self {
-            Self::TypeArgument(t) => t.format(format_data),
-            Self::TypeArguments(ts) => todo!(),
-            Self::CallableParams(_) => todo!(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
@@ -583,11 +575,7 @@ impl GenericsList {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         self.0
             .iter()
-            .map(|g| match g {
-                GenericItem::TypeArgument(t) => t.format(format_data),
-                GenericItem::TypeArguments(ts) => ts.format(format_data),
-                GenericItem::CallableParams(params) => params.format(format_data, true),
-            })
+            .map(|g| Generic::new(g).format(format_data))
             .collect::<Vec<_>>()
             .join(", ")
             .into()

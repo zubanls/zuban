@@ -40,7 +40,10 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
-            Self::CallableParams(params) => params.format(format_data, true),
+            Self::CallableParams(params) => match params.as_ref() {
+                CallableParams::Any => Box::from("Any"),
+                _ => params.format(format_data, true),
+            },
         }
     }
 
