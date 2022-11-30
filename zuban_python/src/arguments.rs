@@ -345,7 +345,9 @@ impl<'db, 'a> Argument<'db, 'a> {
                     TupleContent::new_fixed_length(parts),
                 ))))
             }
-            ArgumentKind::ParamSpec { .. } => todo!(),
+            ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
+                ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
+            ),
         }
     }
 
