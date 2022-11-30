@@ -10,7 +10,7 @@ use super::type_var_matcher::{
     match_arguments_against_params, BoundKind, CalculatedTypeVarLike, FunctionOrCallable,
     TypeVarMatcher,
 };
-use crate::arguments::Argument;
+use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParams, DbType, ParamSpecUsage, RecursiveAlias, TupleTypeArguments,
     TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
@@ -432,7 +432,41 @@ impl<'a> Matcher<'a> {
                 )
             }
             CallableParams::Any => SignatureMatch::True,
-            CallableParams::WithParamSpec(_, _) => todo!(),
+            CallableParams::WithParamSpec(pre, usage1) => {
+                let mut arg_iterator = args.into_vec().into_iter();
+                if !pre.is_empty() {
+                    todo!()
+                }
+                let Some(last_arg) = arg_iterator.next() else {
+                    todo!()
+                };
+                match last_arg.kind {
+                    ArgumentKind::ParamSpec {
+                        usage: ref usage2, ..
+                    } => {
+                        if usage1 == usage2 {
+                            if arg_iterator.next().is_some() {
+                                unreachable!()
+                            }
+                            SignatureMatch::True
+                        } else {
+                            if let Some(on_type_error) = on_type_error {
+                                (on_type_error.callback)(
+                                    i_s,
+                                    last_arg.as_node_ref(),
+                                    class,
+                                    function,
+                                    &last_arg,
+                                    Box::from("TODO X"),
+                                    Box::from("TODO Y"),
+                                )
+                            }
+                            SignatureMatch::False { similar: false }
+                        }
+                    }
+                    _ => todo!(),
+                }
+            }
         }
     }
 
