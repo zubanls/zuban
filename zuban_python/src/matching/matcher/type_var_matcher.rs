@@ -693,9 +693,9 @@ pub fn match_arguments_against_params<
                                 .into()
                             }
                             match reason {
-                                MismatchReason::None => (on_type_error.callback)(
-                                    i_s, node_ref, class, function, argument, t1, t2,
-                                ),
+                                MismatchReason::None => {
+                                    (on_type_error.callback)(i_s, class, function, argument, t1, t2)
+                                }
                                 MismatchReason::CannotInferTypeArgument(index) => {
                                     node_ref.add_typing_issue(
                                         i_s.db,

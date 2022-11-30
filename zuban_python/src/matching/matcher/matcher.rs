@@ -453,7 +453,6 @@ impl<'a> Matcher<'a> {
                             if let Some(on_type_error) = on_type_error {
                                 (on_type_error.callback)(
                                     i_s,
-                                    last_arg.as_node_ref(),
                                     class,
                                     function,
                                     &last_arg,

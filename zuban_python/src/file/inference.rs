@@ -467,20 +467,18 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 i_s,
                                 &KnownArguments::new(&right, Some(node_ref)),
                                 &mut ResultContext::Unknown,
-                                OnTypeError::new(
-                                    &|i_s, node_ref, class, function, p, right, wanted| {
-                                        node_ref.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::UnsupportedOperand {
-                                                operand: Box::from(aug_assign.operand()),
-                                                left: class
-                                                    .unwrap()
-                                                    .format(&FormatData::new_short(i_s.db)),
-                                                right,
-                                            },
-                                        )
-                                    },
-                                ),
+                                OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
+                                    arg.as_node_ref().add_typing_issue(
+                                        i_s.db,
+                                        IssueType::UnsupportedOperand {
+                                            operand: Box::from(aug_assign.operand()),
+                                            left: class
+                                                .unwrap()
+                                                .format(&FormatData::new_short(i_s.db)),
+                                            right,
+                                        },
+                                    )
+                                }),
                             )
                         })
                 });
@@ -607,20 +605,18 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 i_s,
                                 &CombinedArguments::new(&args, &KnownArguments::new(value, None)),
                                 &mut ResultContext::Unknown,
-                                OnTypeError::new(
-                                    &|i_s, node_ref, class, function, p, actual, expected| {
-                                        node_ref.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::InvalidGetItem {
-                                                actual,
-                                                type_: class
-                                                    .unwrap()
-                                                    .format(&FormatData::new_short(i_s.db)),
-                                                expected,
-                                            },
-                                        )
-                                    },
-                                ),
+                                OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
+                                    arg.as_node_ref().add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidGetItem {
+                                            actual,
+                                            type_: class
+                                                .unwrap()
+                                                .format(&FormatData::new_short(i_s.db)),
+                                            expected,
+                                        },
+                                    )
+                                }),
                             )
                         })
                     });
@@ -892,7 +888,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 &mut ResultContext::Unknown,
                 OnTypeError {
                     on_overload_mismatch: Some(&on_error),
-                    callback: &|i_s, _, class, _, _, _, _| on_error(i_s, class),
+                    callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
                 },
             )
         })
@@ -968,13 +964,12 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             PrimaryContent::Execution(details) => {
                 let f = self.file;
                 let on_type_error = |i_s: &mut InferenceState<'db, '_>,
-                                     node_ref: NodeRef,
                                      class: Option<&Class>,
                                      function: Option<&Function>,
                                      arg: &Argument,
                                      t1,
                                      t2| {
-                    node_ref.add_typing_issue(
+                    arg.as_node_ref().add_typing_issue(
                         i_s.db,
                         IssueType::ArgumentIssue(
                             format!(

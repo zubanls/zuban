@@ -798,7 +798,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s,
                 &NoArguments::new(from),
                 &mut ResultContext::Unknown,
-                OnTypeError::new(&|_, _, _, _, _, _, _| todo!("currently only used for __next__")),
+                OnTypeError::new(&|_, _, _, _, _, _| todo!("currently only used for __next__")),
             )
         })
     }
