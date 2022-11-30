@@ -12,13 +12,13 @@ mod typing;
 
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
-use crate::arguments::Arguments;
+use crate::arguments::{Argument, Arguments};
 use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{params::ParamWithArgument, FormatData, ResultContext, Type};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
@@ -57,7 +57,7 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     NodeRef,
     Option<&Class>,
     Option<&Function>,
-    &dyn ParamWithArgument,
+    &Argument,
     Box<str>,
     Box<str>,
 );

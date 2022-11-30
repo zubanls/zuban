@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use super::type_computation::type_computation_for_variable_annotation;
 use super::{File, PythonFile, TypeComputation, TypeComputationOrigin};
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
+use crate::arguments::{Argument, Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, DbType, FileIndex, GenericItem, GenericsList, Locality, Point, PointLink,
     PointType, Specific, TupleContent, TypeOrTypeVarTuple, TypeVarLikeUsage,
@@ -15,7 +15,7 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{params::ParamWithArgument, FormatData, ResultContext};
+use crate::matching::{FormatData, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
 use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
@@ -971,7 +971,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                      node_ref: NodeRef,
                                      class: Option<&Class>,
                                      function: Option<&Function>,
-                                     p: &dyn ParamWithArgument,
+                                     arg: &Argument,
                                      t1,
                                      t2| {
                     node_ref.add_typing_issue(
@@ -982,10 +982,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 match function {
                                     Some(function) => format!(
                                         "{} to {}",
-                                        p.human_readable_argument_index(),
+                                        arg.human_readable_index(),
                                         function.diagnostic_string(class),
                                     ),
-                                    None => p.human_readable_argument_index(),
+                                    None => arg.human_readable_index(),
                                 },
                             )
                             .into(),
