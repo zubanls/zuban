@@ -1131,14 +1131,27 @@ impl DbType {
                         if types.is_empty() {
                             new_params
                         } else {
-                            let mut types: Vec<DbType> = types
-                                .iter()
-                                .map(|t| t.replace_type_vars(callable))
-                                .collect();
                             match new_params {
-                                CallableParams::Simple(params) => todo!(),
+                                CallableParams::Simple(params) => {
+                                    let mut params = params.into_vec();
+                                    params.splice(
+                                        0..0,
+                                        types.iter().map(|t| CallableParam {
+                                            param_specific: ParamSpecific::PositionalOnly(
+                                                t.replace_type_vars(callable),
+                                            ),
+                                            name: None,
+                                            has_default: false,
+                                        }),
+                                    );
+                                    CallableParams::Simple(params.into_boxed_slice())
+                                }
                                 CallableParams::Any => todo!(),
                                 CallableParams::WithParamSpec(new_types, p) => {
+                                    let mut types: Vec<DbType> = types
+                                        .iter()
+                                        .map(|t| t.replace_type_vars(callable))
+                                        .collect();
                                     types.extend(new_types.into_vec());
                                     CallableParams::WithParamSpec(types.into(), p)
                                 }
