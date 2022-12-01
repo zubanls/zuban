@@ -12,9 +12,9 @@ use super::type_var_matcher::{
 };
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParams, DbType, ParamSpecUsage, RecursiveAlias, TupleTypeArguments,
-    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
-    Variance,
+    CallableContent, CallableParam, CallableParams, DbType, ParamSpecUsage, ParamSpecific,
+    RecursiveAlias, StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
+    TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
@@ -369,16 +369,34 @@ impl<'a> Matcher<'a> {
         i_s: &mut InferenceState,
         pre_param_spec_types: &[DbType],
         p1: &ParamSpecUsage,
-        params2: &CallableParams,
+        params2: &[CallableParam],
+        variance: Variance,
     ) -> Match {
         debug_assert!(!self.is_matching_reverse());
         let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
             return Match::new_false()
         };
-        if !pre_param_spec_types.is_empty() {
-            todo!()
+        let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+        let mut params2_iterator = params2.iter().peekable();
+        let mut matches = Match::new_true();
+        for pre in pre_param_spec_types {
+            let t = match params2_iterator.peek().map(|p| &p.param_specific) {
+                Some(ParamSpecific::PositionalOnly(t) | ParamSpecific::PositionalOrKeyword(t)) => {
+                    params2_iterator.next();
+                    t
+                }
+                Some(ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))) => t,
+                _ => return Match::new_false(),
+            };
+            matches &= Type::new(pre).matches(i_s, &mut Self::new(None), &Type::new(t), variance);
+            if !matches.bool() {
+                return matches;
+            }
         }
-        tv_matcher.calculated_type_vars[p1.index.as_usize()].merge_param_spec(i_s, params2)
+        calc.merge_param_spec(
+            i_s,
+            CallableParams::Simple(params2_iterator.cloned().collect()),
+        )
     }
 
     pub fn match_param_spec_arguments<'db, 'b, 'c>(

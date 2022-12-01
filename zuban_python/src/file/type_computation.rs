@@ -1065,6 +1065,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 first @ SliceOrSimple::Simple(n) => {
                     let calc_params = |slf: &mut Self| match slf.compute_slice_type(first) {
                         TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Box::new([]), p),
+                        TypeContent::Concatenate(p) => p,
                         _ => {
                             slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
                             CallableParams::Any

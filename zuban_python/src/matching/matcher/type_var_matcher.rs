@@ -118,9 +118,12 @@ impl CalculatedTypeVarLike {
         todo!()
     }
 
-    pub fn merge_param_spec(&mut self, i_s: &mut InferenceState, params: &CallableParams) -> Match {
+    pub fn merge_param_spec(&mut self, i_s: &mut InferenceState, params: CallableParams) -> Match {
         match &mut self.type_ {
-            BoundKind::CallableParams(_) => todo!(),
+            BoundKind::CallableParams(params_current) => {
+                // TODO ParamSpec: completely wrong
+                Match::new_true()
+            }
             BoundKind::Uncalculated => {
                 self.type_ = BoundKind::CallableParams(params.clone());
                 Match::new_true()

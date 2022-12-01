@@ -1534,8 +1534,7 @@ impl ParamSpecific {
 
     pub fn expect_positional_db_type(self) -> DbType {
         match self {
-            Self::PositionalOnly(t) => t,
-            Self::PositionalOrKeyword(t) => t,
+            Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
         }
     }
