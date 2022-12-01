@@ -1,8 +1,11 @@
+use std::borrow::Cow;
+
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    DbType, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    CallableParams, DbType, GenericItem, GenericsList, ParamSpecUsage, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -58,6 +61,19 @@ impl<'a> Generics<'a> {
         usage: &TypeVarLikeUsage,
     ) -> Generic<'a> {
         self.nth(i_s, &usage.as_type_var_like(), usage.index().as_usize())
+    }
+
+    pub fn nth_param_spec_usage<'db: 'a>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        usage: &ParamSpecUsage,
+    ) -> Cow<CallableParams> {
+        let generic = self.nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
+        if let Generic::CallableParams(params) = generic {
+            params
+        } else {
+            unreachable!()
+        }
     }
 
     pub fn nth<'db: 'a>(

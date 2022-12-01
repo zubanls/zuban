@@ -117,20 +117,6 @@ impl CalculatedTypeVarLike {
     ) {
         todo!()
     }
-
-    pub fn merge_param_spec(&mut self, i_s: &mut InferenceState, params: CallableParams) -> Match {
-        match &mut self.type_ {
-            BoundKind::CallableParams(params_current) => {
-                // TODO ParamSpec: completely wrong
-                Match::new_true()
-            }
-            BoundKind::Uncalculated => {
-                self.type_ = BoundKind::CallableParams(params.clone());
-                Match::new_true()
-            }
-            _ => unreachable!(),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -475,7 +461,11 @@ fn calculate_type_vars<'db>(
                                                 BoundKind::TypeVarTuple(ts.into_owned());
                                             calculated.defined_by_result_context = true;
                                         }
-                                        Generic::CallableParams(_) => todo!(),
+                                        Generic::CallableParams(p) => {
+                                            calculated.type_ =
+                                                BoundKind::CallableParams(p.into_owned());
+                                            calculated.defined_by_result_context = true;
+                                        }
                                     };
                                 }
                                 true

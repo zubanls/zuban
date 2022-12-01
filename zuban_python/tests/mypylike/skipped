@@ -134,13 +134,14 @@ testParamSpecLiterals
 testParamSpecConcatenateFromPep
 testParamSpecConcatenateNamedArgs
 testParamSpecLiteralsTypeApplication
-testParamSpecLiteralEllipsis
 testParamSpecApplyConcatenateTwice
 testParamSpecLiteralJoin
 testParamSpecConstraintOnOtherParamSpec
 testParamSpecVariance
 testParamSpecArgsAndKwargsMissmatch
 testParamSpecTestPropAccess
+
+testParamSpecConcatenateWithTypeVar
 
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument

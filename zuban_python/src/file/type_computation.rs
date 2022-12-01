@@ -855,8 +855,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             backfill(self, &mut generics, given_count);
                         }
                         if let Some(slice_content) = iterator.next() {
-                            given_count += 1;
-                            GenericItem::CallableParams(
+                            let mut get_params = || {
+                                if let SliceOrSimple::Simple(s) = slice_content {
+                                    if s.named_expr.is_ellipsis_literal() {
+                                        return CallableParams::Any;
+                                    }
+                                }
                                 match self.compute_slice_type(slice_content) {
                                     TypeContent::ParamSpec(p) => {
                                         CallableParams::WithParamSpec(Box::new([]), p)
@@ -865,8 +869,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                         CallableParams::Any
                                     }
                                     t => todo!("{t:?}"),
-                                },
-                            )
+                                }
+                            };
+                            given_count += 1;
+                            GenericItem::CallableParams(get_params())
                         } else {
                             todo!()
                         }

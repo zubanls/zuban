@@ -1,10 +1,8 @@
 use std::borrow::Cow;
 use std::rc::Rc;
 
-use super::super::{
-    params::InferrableParamIterator2, FormatData, Generic, Match, MismatchReason, SignatureMatch,
-    Type,
-};
+use super::super::params::{matches_simple_params, InferrableParamIterator2};
+use super::super::{FormatData, Generic, Match, MismatchReason, SignatureMatch, Type};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{
     match_arguments_against_params, BoundKind, CalculatedTypeVarLike, FunctionOrCallable,
@@ -376,7 +374,6 @@ impl<'a> Matcher<'a> {
         let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
             return Match::new_false()
         };
-        let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
         let mut params2_iterator = params2.iter().peekable();
         let mut matches = Match::new_true();
         for pre in pre_param_spec_types {
@@ -393,10 +390,43 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        calc.merge_param_spec(
-            i_s,
-            CallableParams::Simple(params2_iterator.cloned().collect()),
-        )
+        if !matches.bool() {
+            return matches;
+        }
+        let generics;
+        let params1 = if tv_matcher.match_in_definition == p1.in_definition {
+            let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+            match &mut calc.type_ {
+                BoundKind::CallableParams(params_current) => Cow::Borrowed(params_current),
+                BoundKind::Uncalculated => {
+                    calc.type_ = BoundKind::CallableParams(CallableParams::Simple(
+                        params2_iterator.cloned().collect(),
+                    ));
+                    return matches;
+                }
+                _ => unreachable!(),
+            }
+        } else if let Some(class) = tv_matcher.class {
+            if class.node_ref.as_link() == p1.in_definition {
+                generics = class.generics();
+                generics.nth_param_spec_usage(i_s, p1)
+            } else {
+                todo!()
+            }
+        } else {
+            todo!()
+        };
+        match params1.as_ref() {
+            CallableParams::Simple(params1) => matches_simple_params(
+                i_s,
+                &mut Matcher::new(None),
+                params1.iter(),
+                params2_iterator,
+                variance,
+            ),
+            CallableParams::Any => matches,
+            CallableParams::WithParamSpec(_, _) => todo!(),
+        }
     }
 
     pub fn match_param_spec_arguments<'db, 'b, 'c>(
@@ -409,30 +439,24 @@ impl<'a> Matcher<'a> {
         args_node_ref: &impl Fn() -> NodeRef<'c>,
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
-        let generic;
+        let generics;
         let params = if let Some(type_var_matcher) = &self.type_var_matcher {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
-                    BoundKind::CallableParams(params) => params,
+                    BoundKind::CallableParams(params) => Cow::Borrowed(params),
                     BoundKind::Uncalculated => todo!(),
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
                 }
             } else if let Some(class) = type_var_matcher.class {
-                generic = class
-                    .generics()
-                    .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
-                if let Generic::CallableParams(params) = &generic {
-                    params
-                } else {
-                    unreachable!()
-                }
+                generics = class.generics();
+                generics.nth_param_spec_usage(i_s, usage)
             } else {
                 todo!("why?")
             }
         } else {
             todo!("When does this even happen?")
         };
-        match params {
+        match params.as_ref() {
             CallableParams::Simple(params) => {
                 let iter = InferrableParamIterator2::new(
                     i_s.db,
