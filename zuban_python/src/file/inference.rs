@@ -1390,7 +1390,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         }
                         let d = self
                             .use_db_type_of_annotation(node_index)
-                            .replace_type_vars(&mut |t| {
+                            .replace_type_var_likes(&mut |t| {
                                 if let Some(class) = self.i_s.current_class() {
                                     if class.node_ref.as_link() == t.in_definition() {
                                         return class

@@ -54,16 +54,15 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
-                                found =
-                                    Some(list_cls.as_db_type(i_s).replace_type_vars(&mut |tv| {
-                                        match tv {
-                                            TypeVarLikeUsage::TypeVar(_) => {
-                                                GenericItem::TypeArgument(DbType::Any)
-                                            }
-                                            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
-                                            TypeVarLikeUsage::ParamSpec(_) => todo!(),
+                                found = Some(list_cls.as_db_type(i_s).replace_type_var_likes(
+                                    &mut |tv| match tv {
+                                        TypeVarLikeUsage::TypeVar(_) => {
+                                            GenericItem::TypeArgument(DbType::Any)
                                         }
-                                    }));
+                                        TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
+                                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
+                                    },
+                                ));
                             }
                             true
                         } else {

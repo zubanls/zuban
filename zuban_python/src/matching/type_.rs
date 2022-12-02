@@ -842,8 +842,9 @@ impl<'a> Type<'a> {
                 }
                 DbType::TypeVar(t) => {
                     if matcher.has_type_var_matcher() {
-                        let t =
-                            Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type));
+                        let t = Type::owned(
+                            matcher.replace_type_var_likes_for_nested_context(i_s, db_type),
+                        );
                         return self.try_to_resemble_context(i_s, &mut Matcher::default(), &t);
                     }
                 }
@@ -875,10 +876,10 @@ impl<'a> Type<'a> {
         calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
         match self {
-            Self::Class(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
+            Self::Class(c) => c.as_db_type(i_s).replace_type_var_likes(&mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
-            Self::Type(t) => t.replace_type_vars(&mut |t| {
+            Self::Type(t) => t.replace_type_var_likes(&mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
         }
@@ -899,7 +900,7 @@ impl<'a> Type<'a> {
                     .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
                 Some(db_type @ DbType::TypeVar(_)) => {
                     if matcher.has_type_var_matcher() {
-                        Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type))
+                        Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s, db_type))
                             .on_any_class(i_s, matcher, callable)
                     } else {
                         false

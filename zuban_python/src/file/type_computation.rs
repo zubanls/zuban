@@ -1198,7 +1198,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         self.is_recursive_alias |= alias.is_recursive;
         TypeContent::DbType(
             alias
-                .replace_type_vars(false, &mut |usage| {
+                .replace_type_var_likes(false, &mut |usage| {
                     if mismatch {
                         match usage {
                             TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),

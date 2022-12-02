@@ -525,12 +525,12 @@ pub enum GenericItem {
 }
 
 impl GenericItem {
-    pub fn replace_type_vars(
+    pub fn replace_type_var_likes(
         &self,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Self {
         match self {
-            Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_vars(callable)),
+            Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_var_likes(callable)),
             Self::TypeArguments(_) => todo!(),
             Self::CallableParams(_) => todo!(),
         }
@@ -983,7 +983,7 @@ impl DbType {
         }
     }
 
-    pub fn replace_type_vars<C: FnMut(TypeVarLikeUsage) -> GenericItem>(
+    pub fn replace_type_var_likes<C: FnMut(TypeVarLikeUsage) -> GenericItem>(
         &self,
         callable: &mut C,
     ) -> Self {
@@ -992,9 +992,8 @@ impl DbType {
                 let mut new_args = vec![];
                 for g in ts.iter() {
                     match g {
-                        TypeOrTypeVarTuple::Type(t) => {
-                            new_args.push(TypeOrTypeVarTuple::Type(t.replace_type_vars(callable)))
-                        }
+                        TypeOrTypeVarTuple::Type(t) => new_args
+                            .push(TypeOrTypeVarTuple::Type(t.replace_type_var_likes(callable))),
                         TypeOrTypeVarTuple::TypeVarTuple(t) => {
                             match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
                                 GenericItem::TypeArguments(new) => {
@@ -1017,7 +1016,7 @@ impl DbType {
                 TupleTypeArguments::FixedLength(new_args.into())
             }
             TupleTypeArguments::ArbitraryLength(t) => {
-                TupleTypeArguments::ArbitraryLength(Box::new(t.replace_type_vars(callable)))
+                TupleTypeArguments::ArbitraryLength(Box::new(t.replace_type_var_likes(callable)))
             }
         };
         let remap_callable_params = |params: &CallableParams, callable: &mut C| match params {
@@ -1027,18 +1026,20 @@ impl DbType {
                     .map(|p| CallableParam {
                         param_specific: match &p.param_specific {
                             ParamSpecific::PositionalOnly(t) => {
-                                ParamSpecific::PositionalOnly(t.replace_type_vars(callable))
+                                ParamSpecific::PositionalOnly(t.replace_type_var_likes(callable))
                             }
                             ParamSpecific::PositionalOrKeyword(t) => {
-                                ParamSpecific::PositionalOrKeyword(t.replace_type_vars(callable))
+                                ParamSpecific::PositionalOrKeyword(
+                                    t.replace_type_var_likes(callable),
+                                )
                             }
                             ParamSpecific::KeywordOnly(t) => {
-                                ParamSpecific::KeywordOnly(t.replace_type_vars(callable))
+                                ParamSpecific::KeywordOnly(t.replace_type_var_likes(callable))
                             }
                             ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
                                 StarredParamSpecific::ArbitraryLength(t) => {
                                     StarredParamSpecific::ArbitraryLength(
-                                        t.replace_type_vars(callable),
+                                        t.replace_type_var_likes(callable),
                                     )
                                 }
                                 StarredParamSpecific::ParamSpecArgs(_) => todo!(),
@@ -1047,7 +1048,7 @@ impl DbType {
                                 ParamSpecific::DoubleStarred(match d {
                                     DoubleStarredParamSpecific::ValueType(t) => {
                                         DoubleStarredParamSpecific::ValueType(
-                                            t.replace_type_vars(callable),
+                                            t.replace_type_var_likes(callable),
                                         )
                                     }
                                     DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
@@ -1076,7 +1077,7 @@ impl DbType {
                                 0..0,
                                 types.iter().map(|t| CallableParam {
                                     param_specific: ParamSpecific::PositionalOnly(
-                                        t.replace_type_vars(callable),
+                                        t.replace_type_var_likes(callable),
                                     ),
                                     name: None,
                                     has_default: false,
@@ -1088,7 +1089,7 @@ impl DbType {
                         CallableParams::WithParamSpec(new_types, p) => {
                             let mut types: Vec<DbType> = types
                                 .iter()
-                                .map(|t| t.replace_type_vars(callable))
+                                .map(|t| t.replace_type_var_likes(callable))
                                 .collect();
                             types.extend(new_types.into_vec());
                             CallableParams::WithParamSpec(types.into(), p)
@@ -1103,7 +1104,7 @@ impl DbType {
                     .iter()
                     .map(|g| match g {
                         GenericItem::TypeArgument(t) => {
-                            GenericItem::TypeArgument(t.replace_type_vars(callable))
+                            GenericItem::TypeArgument(t.replace_type_var_likes(callable))
                         }
                         GenericItem::TypeArguments(ts) => {
                             GenericItem::TypeArguments(TypeArguments {
@@ -1128,7 +1129,7 @@ impl DbType {
                 entries: intersection
                     .entries
                     .iter()
-                    .map(|e| e.replace_type_vars(callable))
+                    .map(|e| e.replace_type_var_likes(callable))
                     .collect(),
                 format_as_overload: intersection.format_as_overload,
             }),
@@ -1137,7 +1138,7 @@ impl DbType {
                     .entries
                     .iter()
                     .map(|e| UnionEntry {
-                        type_: e.type_.replace_type_vars(callable),
+                        type_: e.type_.replace_type_var_likes(callable),
                         format_index: e.format_index,
                     })
                     .collect(),
@@ -1148,7 +1149,7 @@ impl DbType {
                 GenericItem::TypeArguments(ts) => unreachable!(),
                 GenericItem::CallableParams(params) => todo!(),
             },
-            Self::Type(db_type) => Self::Type(Rc::new(db_type.replace_type_vars(callable))),
+            Self::Type(db_type) => Self::Type(Rc::new(db_type.replace_type_var_likes(callable))),
             Self::Tuple(content) => Self::Tuple(match &content.args {
                 Some(args) => TupleContent {
                     args: Some(remap_tuple_likes(args, callable)),
@@ -1159,7 +1160,7 @@ impl DbType {
                 defined_at: content.defined_at,
                 type_vars: content.type_vars.clone(), // TODO should this change as well?
                 params: remap_callable_params(&content.params, callable),
-                result_type: content.result_type.replace_type_vars(callable),
+                result_type: content.result_type.replace_type_var_likes(callable),
             })),
             Self::NewType(t) => Self::NewType(t.clone()),
             Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
@@ -1798,7 +1799,7 @@ impl RecursiveAlias {
         } else {
             self.calculated_db_type.get_or_init(|| {
                 self.type_alias(db)
-                    .replace_type_vars(true, &mut |t| {
+                    .replace_type_var_likes(true, &mut |t| {
                         self.generics
                             .as_ref()
                             .map(|g| g.nth(t.index()).unwrap().clone())
@@ -2406,7 +2407,7 @@ impl TypeAlias {
             self.db_type.as_ref().clone()
         } else {
             self.db_type
-                .replace_type_vars(&mut |t| match t.in_definition() == self.location {
+                .replace_type_var_likes(&mut |t| match t.in_definition() == self.location {
                     true => match t {
                         TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                         TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
@@ -2423,7 +2424,7 @@ impl TypeAlias {
         }
     }
 
-    pub fn replace_type_vars(
+    pub fn replace_type_var_likes(
         &self,
         remove_recursive_wrapper: bool,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
@@ -2454,7 +2455,7 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             Cow::Borrowed(self.db_type.as_ref())
         } else {
-            Cow::Owned(self.db_type.replace_type_vars(callable))
+            Cow::Owned(self.db_type.replace_type_var_likes(callable))
         }
     }
 

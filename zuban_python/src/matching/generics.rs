@@ -15,7 +15,7 @@ macro_rules! replace_class_vars {
     ($i_s:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None | Generics::Any) => Generic::new($g),
-            Some(type_var_generics) => Generic::owned($g.replace_type_vars(&mut |t| {
+            Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(&mut |t| {
                 type_var_generics
                     .nth_usage($i_s, &t)
                     .into_generic_item($i_s)

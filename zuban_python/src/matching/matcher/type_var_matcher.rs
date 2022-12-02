@@ -176,12 +176,12 @@ impl<'a> TypeVarMatcher<'a> {
         });
     }
 
-    pub fn replace_type_vars_for_nested_context(
+    pub fn replace_type_var_likes_for_nested_context(
         &self,
         i_s: &mut InferenceState,
         t: &DbType,
     ) -> DbType {
-        t.replace_type_vars(&mut |type_var_like_usage| {
+        t.replace_type_var_likes(&mut |type_var_like_usage| {
             if type_var_like_usage.in_definition() == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_like_usage.index().as_usize()];
                 match &current.type_ {
@@ -209,7 +209,7 @@ impl<'a> TypeVarMatcher<'a> {
                                 let type_var_remap = func_class.type_var_remap.unwrap();
                                 match &type_var_remap[type_var_like_usage.index()] {
                                     GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                        self.replace_type_vars_for_nested_context(i_s, t),
+                                        self.replace_type_var_likes_for_nested_context(i_s, t),
                                     ),
                                     GenericItem::TypeArguments(_) => todo!(),
                                     GenericItem::CallableParams(_) => todo!(),
@@ -425,7 +425,7 @@ fn calculate_type_vars<'db>(
     };
     let mut matcher = Matcher::new(matcher);
     if matcher.has_type_var_matcher() {
-        result_context.with_type_if_exists_and_replace_type_vars(i_s, |i_s, type_| {
+        result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {
             if let Some(class) = expected_return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.

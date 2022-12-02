@@ -555,13 +555,13 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn replace_type_vars_for_nested_context(
+    pub fn replace_type_var_likes_for_nested_context(
         &self,
         i_s: &mut InferenceState,
         t: &DbType,
     ) -> DbType {
         if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
-            type_var_matcher.replace_type_vars_for_nested_context(i_s, t)
+            type_var_matcher.replace_type_var_likes_for_nested_context(i_s, t)
         } else {
             unreachable!()
         }

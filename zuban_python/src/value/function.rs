@@ -331,7 +331,7 @@ impl<'db: 'a, 'a> Function<'a> {
             params.next();
         }
         let as_db_type = |i_s: &mut InferenceState, t: Type| {
-            t.as_db_type(i_s).replace_type_vars(&mut |usage| {
+            t.as_db_type(i_s).replace_type_var_likes(&mut |usage| {
                 if let Some(class) = self.class {
                     if usage.in_definition() == class.node_ref.as_link() {
                         return class
