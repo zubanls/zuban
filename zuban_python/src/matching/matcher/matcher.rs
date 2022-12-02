@@ -371,9 +371,6 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         debug_assert!(!self.is_matching_reverse());
-        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
-            return Match::new_false()
-        };
         let mut params2_iterator = params2.iter().peekable();
         let mut matches = Match::new_true();
         for pre in pre_param_spec_types {
@@ -385,14 +382,14 @@ impl<'a> Matcher<'a> {
                 Some(ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))) => t,
                 _ => return Match::new_false(),
             };
-            matches &= Type::new(pre).matches(i_s, &mut Self::new(None), &Type::new(t), variance);
+            matches &= Type::new(pre).matches(i_s, self, &Type::new(t), variance);
             if !matches.bool() {
                 return matches;
             }
         }
-        if !matches.bool() {
-            return matches;
-        }
+        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+            return Match::new_false()
+        };
         let params1 = if tv_matcher.match_in_definition == p1.in_definition {
             let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
             match &mut calc.type_ {
