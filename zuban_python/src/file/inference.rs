@@ -431,28 +431,34 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 comp.into_type_vars(|inf, recalculate_type_vars| {
                     inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
                 });
-                if let Some(right_side) = right_side {
-                    let t = self.use_cached_annotation_type(annotation);
-                    let right =
-                        self.infer_assignment_right_side(right_side, &mut ResultContext::Known(&t));
-                    t.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
-                        node_ref.add_typing_issue(
-                            i_s.db,
-                            IssueType::IncompatibleAssignment { got, expected },
+                if self.file.points.get(annotation.index()).maybe_specific()
+                    == Some(Specific::TypingTypeAlias)
+                {
+                    debug!("TODO TypeAlias calculation, does this make sense?");
+                } else {
+                    if let Some(right_side) = right_side {
+                        let t = self.use_cached_annotation_type(annotation);
+                        let right = self
+                            .infer_assignment_right_side(right_side, &mut ResultContext::Known(&t));
+                        t.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
+                            node_ref.add_typing_issue(
+                                i_s.db,
+                                IssueType::IncompatibleAssignment { got, expected },
+                            );
+                        });
+                    }
+                    let inf_annot = self.use_cached_annotation(annotation);
+                    self.assign_single_target(target, &inf_annot, true, |index| {
+                        self.file.points.set(
+                            index,
+                            Point::new_redirect(
+                                self.file.file_index(),
+                                annotation.index(),
+                                Locality::Todo,
+                            ),
                         );
-                    });
+                    })
                 }
-                let inf_annot = self.use_cached_annotation(annotation);
-                self.assign_single_target(target, &inf_annot, true, |index| {
-                    self.file.points.set(
-                        index,
-                        Point::new_redirect(
-                            self.file.file_index(),
-                            annotation.index(),
-                            Locality::Todo,
-                        ),
-                    );
-                })
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
                 let (inplace, normal, reverse) = aug_assign.magic_methods();

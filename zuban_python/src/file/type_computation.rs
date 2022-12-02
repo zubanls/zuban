@@ -437,6 +437,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         d
                     }
                 }
+                TypeContent::SpecialType(SpecialType::TypeAlias)
+                    if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation =>
+                {
+                    self.inference.file.points.set(
+                        annotation_index,
+                        Point::new_simple_specific(Specific::TypingTypeAlias, Locality::Todo),
+                    );
+                    return;
+                }
                 _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
             },
         };
