@@ -2328,19 +2328,19 @@ impl CallableParams {
                 out_params
             }
             Self::WithParamSpec(pre_types, usage) => {
+                let pre = pre_types.iter().map(|t| t.format(format_data));
                 if as_callable_params {
-                    if !pre_types.is_empty() {
-                        todo!()
+                    let name = usage.param_spec.name(format_data.db);
+                    if pre_types.is_empty() {
+                        return Box::from(name);
+                    } else {
+                        pre.chain(std::iter::once(format!("**{name}").into()))
+                            .collect()
                     }
-                    return Box::from(usage.param_spec.name(format_data.db));
                 } else {
                     let p = format_data
                         .format_type_var_like(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
-                    pre_types
-                        .iter()
-                        .map(|t| t.format(format_data))
-                        .chain(std::iter::once(p))
-                        .collect()
+                    pre.chain(std::iter::once(p)).collect()
                 }
             }
             Self::Any => {
@@ -2412,7 +2412,9 @@ impl TypeAlias {
                     true => match t {
                         TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
                         TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
-                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
+                        TypeVarLikeUsage::ParamSpec(_) => {
+                            GenericItem::CallableParams(CallableParams::Any)
+                        }
                     },
                     false => match t {
                         TypeVarLikeUsage::TypeVar(t) => {
