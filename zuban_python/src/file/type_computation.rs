@@ -971,18 +971,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
     }
 
-    fn compute_type_get_item_on_callable(
-        &mut self,
-        slice_type: SliceType,
-    ) -> TypeContent<'db, 'db> {
-        let defined_at = slice_type.as_node_ref().as_link();
-        self.type_var_manager.register_callable(CallableWithParent {
-            defined_at,
-            parent_callable: self.current_callable,
-        });
-        let old = std::mem::replace(&mut self.current_callable, Some(defined_at));
-
-        let db = self.inference.i_s.db;
+    fn calculate_callable_params(&mut self, first: SliceOrSimple) -> CallableParams {
+        let SliceOrSimple::Simple(n) = first else {
+            todo!();
+        };
         let add_param = |slf: &mut Self,
                          params: &mut Vec<CallableParam>,
                          element: StarLikeExpression| {
@@ -1065,40 +1057,50 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             }
         };
 
+        let calc_params = |slf: &mut Self| match slf.compute_slice_type(first) {
+            TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Box::new([]), p),
+            TypeContent::Concatenate(p) => p,
+            _ => {
+                slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
+                CallableParams::Any
+            }
+        };
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+            n.named_expr.expression().unpack()
+        {
+            match atom.unpack() {
+                AtomContent::List(list) => {
+                    let mut params = vec![];
+                    if let Some(iterator) = list.unpack() {
+                        for i in iterator {
+                            add_param(self, &mut params, i)
+                        }
+                    }
+                    CallableParams::Simple(params.into_boxed_slice())
+                }
+                AtomContent::Ellipsis => CallableParams::Any,
+                _ => calc_params(self),
+            }
+        } else {
+            calc_params(self)
+        }
+    }
+
+    fn compute_type_get_item_on_callable(
+        &mut self,
+        slice_type: SliceType,
+    ) -> TypeContent<'db, 'db> {
+        let defined_at = slice_type.as_node_ref().as_link();
+        self.type_var_manager.register_callable(CallableWithParent {
+            defined_at,
+            parent_callable: self.current_callable,
+        });
+        let old = std::mem::replace(&mut self.current_callable, Some(defined_at));
+
+        let db = self.inference.i_s.db;
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
-            let params = match iterator.next().unwrap() {
-                first @ SliceOrSimple::Simple(n) => {
-                    let calc_params = |slf: &mut Self| match slf.compute_slice_type(first) {
-                        TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Box::new([]), p),
-                        TypeContent::Concatenate(p) => p,
-                        _ => {
-                            slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
-                            CallableParams::Any
-                        }
-                    };
-                    if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
-                        n.named_expr.expression().unpack()
-                    {
-                        match atom.unpack() {
-                            AtomContent::List(list) => {
-                                let mut params = vec![];
-                                if let Some(iterator) = list.unpack() {
-                                    for i in iterator {
-                                        add_param(self, &mut params, i)
-                                    }
-                                }
-                                CallableParams::Simple(params.into_boxed_slice())
-                            }
-                            AtomContent::Ellipsis => CallableParams::Any,
-                            _ => calc_params(self),
-                        }
-                    } else {
-                        calc_params(self)
-                    }
-                }
-                SliceOrSimple::Slice(s) => todo!(),
-            };
+            let params = self.calculate_callable_params(iterator.next().unwrap());
             let result_type = iterator
                 .next()
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
