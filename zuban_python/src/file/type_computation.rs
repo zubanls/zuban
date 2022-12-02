@@ -71,10 +71,12 @@ pub(super) enum InvalidVariableType<'a> {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TypeComputationOrigin {
-    TypeCommentOrAnnotation,
+    TypeAliasTypeCommentOrAnnotation,
+    ParamTypeCommentOrAnnotation,
     TypeApplication,
     TypeAlias,
     CastTarget,
+    Constraint,
     BaseClass,
 }
 
@@ -872,7 +874,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
         let result = if generics.is_empty()
             && given_count == expected_count
-            && self.origin == TypeComputationOrigin::TypeCommentOrAnnotation
+            && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation
         {
             match primary {
                 Some(primary) => TypeContent::ClassWithoutTypeVar(
@@ -1835,7 +1837,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                             &mut inference,
                             assignment_node_ref.as_link(),
                             Some(&mut x),
-                            TypeComputationOrigin::TypeCommentOrAnnotation,
+                            TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
                         );
                         comp.cache_annotation_internal(index, expr, None);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
@@ -1897,7 +1899,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         self,
                         assignment_node_ref.as_link(),
                         Some(&mut x),
-                        TypeComputationOrigin::TypeCommentOrAnnotation,
+                        TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
                     );
                     let t = comp.compute_type(expr);
                     let mut db_type = comp.as_db_type(t, expr_node_ref);
@@ -1938,7 +1940,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             self,
             node_ref.as_link(),
             Some(&mut on_type_var),
-            TypeComputationOrigin::TypeCommentOrAnnotation,
+            TypeComputationOrigin::Constraint,
         );
         let t = comp.compute_type(expr);
         if matches!(t, TypeContent::InvalidVariable(_)) {

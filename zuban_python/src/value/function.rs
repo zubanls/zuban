@@ -246,7 +246,7 @@ impl<'db: 'a, 'a> Function<'a> {
             &mut inference,
             self.node_ref.as_link(),
             Some(&mut on_type_var),
-            TypeComputationOrigin::TypeCommentOrAnnotation,
+            TypeComputationOrigin::ParamTypeCommentOrAnnotation,
         );
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
