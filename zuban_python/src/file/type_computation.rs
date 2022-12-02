@@ -854,28 +854,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         if generics.is_empty() {
                             backfill(self, &mut generics, given_count);
                         }
-                        if let Some(slice_content) = iterator.next() {
-                            let mut get_params = || {
-                                if let SliceOrSimple::Simple(s) = slice_content {
-                                    if s.named_expr.is_ellipsis_literal() {
-                                        return CallableParams::Any;
-                                    }
-                                }
-                                match self.compute_slice_type(slice_content) {
-                                    TypeContent::ParamSpec(p) => {
-                                        CallableParams::WithParamSpec(Box::new([]), p)
-                                    }
-                                    TypeContent::SpecialType(SpecialType::Any) => {
-                                        CallableParams::Any
-                                    }
-                                    t => todo!("{t:?}"),
-                                }
-                            };
-                            given_count += 1;
-                            GenericItem::CallableParams(get_params())
-                        } else {
-                            todo!()
-                        }
+                        let params = self.calculate_callable_params(iterator.next().unwrap(), true);
+                        given_count += 1;
+                        GenericItem::CallableParams(params)
                     }
                 };
                 generics.push(generic_item);
@@ -971,7 +952,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
     }
 
-    fn calculate_callable_params(&mut self, first: SliceOrSimple) -> CallableParams {
+    fn calculate_callable_params(
+        &mut self,
+        first: SliceOrSimple,
+        from_class_generics: bool,
+    ) -> CallableParams {
         let SliceOrSimple::Simple(n) = first else {
             todo!();
         };
@@ -1059,6 +1044,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
         let calc_params = |slf: &mut Self| match slf.compute_slice_type(first) {
             TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Box::new([]), p),
+            TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
+                CallableParams::Any
+            }
             TypeContent::Concatenate(p) => p,
             _ => {
                 slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
@@ -1100,7 +1088,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let db = self.inference.i_s.db;
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
-            let params = self.calculate_callable_params(iterator.next().unwrap());
+            let params = self.calculate_callable_params(iterator.next().unwrap(), false);
             let result_type = iterator
                 .next()
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
