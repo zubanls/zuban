@@ -386,6 +386,7 @@ pub enum Specific {
     TypingConcatenateClass,
     TypingLiteralString,
     TypingUnpack,
+    TypingTypeAlias,
 
     // TODO reactivate these or remove
     //TypingFinal,

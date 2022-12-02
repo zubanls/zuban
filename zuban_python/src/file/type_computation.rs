@@ -53,6 +53,7 @@ pub(super) enum SpecialType {
     LiteralString,
     Unpack,
     Concatenate,
+    TypeAlias,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -709,6 +710,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
                         SpecialType::LiteralString => todo!(),
+                        SpecialType::TypeAlias => todo!(),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                     },
@@ -1992,6 +1994,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingLiteralString => SpecialType::LiteralString,
                 Specific::TypingUnpack => SpecialType::Unpack,
                 Specific::TypingConcatenateClass => SpecialType::Concatenate,
+                Specific::TypingTypeAlias => SpecialType::TypeAlias,
                 _ => unreachable!(),
             })
         }
