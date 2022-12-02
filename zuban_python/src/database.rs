@@ -2134,7 +2134,7 @@ impl TypeVarLike {
         match self {
             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
             TypeVarLike::TypeVarTuple(_) => todo!(),
-            TypeVarLike::ParamSpec(_) => todo!(),
+            TypeVarLike::ParamSpec(_) => GenericItem::CallableParams(CallableParams::Any),
         }
     }
 }
@@ -2394,11 +2394,7 @@ impl TypeAlias {
                     GenericsList::new_generics(
                         self.type_vars
                             .iter()
-                            .map(|tv| match tv {
-                                TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-                                TypeVarLike::TypeVarTuple(_) => todo!(),
-                                TypeVarLike::ParamSpec(_) => todo!(),
-                            })
+                            .map(|tv| tv.as_any_generic_item())
                             .collect(),
                     )
                 }),
@@ -2409,13 +2405,7 @@ impl TypeAlias {
         } else {
             self.db_type
                 .replace_type_var_likes(&mut |t| match t.in_definition() == self.location {
-                    true => match t {
-                        TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-                        TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
-                        TypeVarLikeUsage::ParamSpec(_) => {
-                            GenericItem::CallableParams(CallableParams::Any)
-                        }
-                    },
+                    true => t.as_type_var_like().as_any_generic_item(),
                     false => match t {
                         TypeVarLikeUsage::TypeVar(t) => {
                             GenericItem::TypeArgument(DbType::TypeVar(t.into_owned()))
