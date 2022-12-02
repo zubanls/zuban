@@ -1146,7 +1146,7 @@ impl DbType {
                                     );
                                     CallableParams::Simple(params.into_boxed_slice())
                                 }
-                                CallableParams::Any => todo!(),
+                                CallableParams::Any => CallableParams::Any,
                                 CallableParams::WithParamSpec(new_types, p) => {
                                     let mut types: Vec<DbType> = types
                                         .iter()

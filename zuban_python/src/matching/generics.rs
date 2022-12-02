@@ -67,7 +67,7 @@ impl<'a> Generics<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
-    ) -> Cow<CallableParams> {
+    ) -> Cow<'a, CallableParams> {
         let generic = self.nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
         if let Generic::CallableParams(params) = generic {
             params
