@@ -2276,8 +2276,12 @@ impl<'a> TypeVarLikeUsage<'a> {
             Self::ParamSpec(p) => {
                 let name = p.param_spec.name(db);
                 match style {
+                    FormatStyle::MypyRevealType if as_callable_params => {
+                        format!("*{name}.args, **{name}.kwargs").into()
+                    }
                     FormatStyle::MypyRevealType => format!("*{name}.args, **{name}.kwargs").into(),
-                    _ => name.into(),
+                    _ if as_callable_params => name.into(),
+                    _ => format!("**{}", name).into(),
                 }
             }
         }
@@ -2336,10 +2340,14 @@ impl CallableParams {
                 out_params
             }
             Self::WithParamSpec(pre_types, usage) => {
+                let as_callable_params = as_callable_params && pre_types.is_empty();
                 let spec = format_data.format_type_var_like(
                     &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
                     as_callable_params,
                 );
+                if as_callable_params {
+                    return spec;
+                }
                 pre_types
                     .iter()
                     .map(|t| t.format(format_data))

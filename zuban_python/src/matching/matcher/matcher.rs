@@ -522,7 +522,7 @@ impl<'a> Matcher<'a> {
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
                 BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                BoundKind::CallableParams(params) => params.format(format_data, false),
+                BoundKind::CallableParams(params) => params.format(format_data, as_callable_params),
                 BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {
