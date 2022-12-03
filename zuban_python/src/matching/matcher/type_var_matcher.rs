@@ -839,10 +839,12 @@ pub fn match_arguments_against_params<
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
-                args_node_ref().add_typing_issue(
-                    i_s.db,
-                    IssueType::ArgumentIssue(Box::from("Too few arguments")),
-                );
+                let mut s = "Too few arguments".to_owned();
+                if let Some(function) = function {
+                    s += " for ";
+                    s += &function.diagnostic_string(class);
+                }
+                args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
         if let Some(mut s) = match &missing_positional[..] {

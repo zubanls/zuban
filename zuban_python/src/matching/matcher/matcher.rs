@@ -441,7 +441,8 @@ impl<'a> Matcher<'a> {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
                     BoundKind::CallableParams(params) => Cow::Borrowed(params),
-                    BoundKind::Uncalculated => todo!(),
+                    // This means that an Any came along.
+                    BoundKind::Uncalculated => return SignatureMatch::True,
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
                 }
             } else if let Some(class) = type_var_matcher.class {
