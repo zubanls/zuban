@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::super::params::{matches_simple_params, InferrableParamIterator2};
-use super::super::{FormatData, Generic, Match, MismatchReason, SignatureMatch, Type};
+use super::super::{FormatData, Generic, Match, MismatchReason, ParamsStyle, SignatureMatch, Type};
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{
     match_arguments_against_params, BoundKind, CalculatedTypeVarLike, FunctionOrCallable,
@@ -511,7 +511,7 @@ impl<'a> Matcher<'a> {
         &self,
         usage: &TypeVarLikeUsage,
         format_data: &FormatData,
-        as_callable_params: bool,
+        params_style: ParamsStyle,
     ) -> Box<str> {
         let type_var_matcher = self.type_var_matcher.as_ref().unwrap();
         let i_s = &mut InferenceState::new(format_data.db);
@@ -522,7 +522,7 @@ impl<'a> Matcher<'a> {
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
                 BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                BoundKind::CallableParams(params) => params.format(format_data, as_callable_params),
+                BoundKind::CallableParams(params) => params.format(format_data, params_style),
                 BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {
@@ -540,7 +540,7 @@ impl<'a> Matcher<'a> {
                             usage.format_without_matcher(
                                 format_data.db,
                                 format_data.style,
-                                as_callable_params,
+                                params_style,
                             )
                         }
                     } else {

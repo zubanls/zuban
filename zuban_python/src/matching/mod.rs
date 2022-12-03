@@ -7,7 +7,7 @@ pub mod params;
 mod result_context;
 mod type_;
 
-pub use format_data::FormatData;
+pub use format_data::{FormatData, ParamsStyle};
 pub use generic::Generic;
 pub use generics::{Generics, GenericsIterator};
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};

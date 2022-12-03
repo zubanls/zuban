@@ -139,9 +139,6 @@ testParamSpecConstraintOnOtherParamSpec
 testParamSpecArgsAndKwargsMissmatch
 testParamSpecTestPropAccess
 
-testParamSpecJoin
-testParamSpecApplyConcatenateTwice
-
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument
 testRejectCovariantArgumentSplitLine

@@ -15,7 +15,7 @@ use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
-use crate::matching::{FormatData, Generic, Generics};
+use crate::matching::{FormatData, Generic, Generics, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
@@ -803,8 +803,10 @@ impl DbType {
             .into(),
             Self::Union(union) => union.format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
-            Self::TypeVar(t) => format_data
-                .format_type_var_like(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)), false),
+            Self::TypeVar(t) => format_data.format_type_var_like(
+                &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)),
+                ParamsStyle::Unreachable,
+            ),
             Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
@@ -1432,8 +1434,10 @@ impl TypeOrTypeVarTuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Type(t) => t.format(format_data),
-            Self::TypeVarTuple(t) => format_data
-                .format_type_var_like(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)), false),
+            Self::TypeVarTuple(t) => format_data.format_type_var_like(
+                &TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)),
+                ParamsStyle::Unreachable,
+            ),
         }
     }
 }
@@ -1682,7 +1686,10 @@ impl CallableContent {
         let result = self.result_type.format(format_data);
         let params = self.params.format(
             format_data,
-            !matches!(format_data.style, FormatStyle::MypyRevealType),
+            match format_data.style {
+                FormatStyle::MypyRevealType => ParamsStyle::FunctionParams,
+                _ => ParamsStyle::CallableParams,
+            },
         );
         match format_data.style {
             FormatStyle::MypyRevealType => {
@@ -2268,20 +2275,18 @@ impl<'a> TypeVarLikeUsage<'a> {
         &self,
         db: &Database,
         style: FormatStyle,
-        as_callable_params: bool,
+        params_style: ParamsStyle,
     ) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
             Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
             Self::ParamSpec(p) => {
                 let name = p.param_spec.name(db);
-                match style {
-                    FormatStyle::MypyRevealType if as_callable_params => {
-                        format!("*{name}.args, **{name}.kwargs").into()
-                    }
-                    FormatStyle::MypyRevealType => format!("*{name}.args, **{name}.kwargs").into(),
-                    _ if as_callable_params => name.into(),
-                    _ => format!("**{}", name).into(),
+                match params_style {
+                    ParamsStyle::FunctionParams => format!("*{name}.args, **{name}.kwargs").into(),
+                    ParamsStyle::CallableParams => name.into(),
+                    ParamsStyle::CallableParamsInner => format!("**{}", name).into(),
+                    ParamsStyle::Unreachable => unreachable!(),
                 }
             }
         }
@@ -2296,11 +2301,12 @@ pub enum CallableParams {
 }
 
 impl CallableParams {
-    pub fn format(&self, format_data: &FormatData, as_callable_params: bool) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData, style: ParamsStyle) -> Box<str> {
         let parts = match self {
             Self::Simple(params) => {
                 let mut out_params = Vec::with_capacity(params.len());
-                let mut display_star = as_callable_params;
+                // Display a star only if we are displaying a "normal" function signature
+                let mut display_star = !matches!(style, ParamsStyle::FunctionParams);
                 let mut had_param_spec_args = false;
                 for (i, param) in params.iter().enumerate() {
                     if !display_star {
@@ -2330,7 +2336,7 @@ impl CallableParams {
                             true => out_params.push(format_data.format_type_var_like(
                                 // TODO is this even reachable?
                                 &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
-                                as_callable_params,
+                                style,
                             )),
                             false => todo!(),
                         },
@@ -2340,12 +2346,17 @@ impl CallableParams {
                 out_params
             }
             Self::WithParamSpec(pre_types, usage) => {
-                let as_callable_params = as_callable_params && pre_types.is_empty();
+                let style = match style {
+                    ParamsStyle::CallableParams if !pre_types.is_empty() => {
+                        ParamsStyle::CallableParamsInner
+                    }
+                    _ => style,
+                };
                 let spec = format_data.format_type_var_like(
                     &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
-                    as_callable_params,
+                    style,
                 );
-                if as_callable_params {
+                if matches!(style, ParamsStyle::CallableParams) {
                     return spec;
                 }
                 pre_types
@@ -2355,16 +2366,16 @@ impl CallableParams {
                     .collect()
             }
             Self::Any => {
-                return match as_callable_params {
-                    true => Box::from("..."),
-                    false => Box::from("*Any, **Any"),
+                return match style {
+                    ParamsStyle::FunctionParams => Box::from("*Any, **Any"),
+                    _ => Box::from("..."),
                 }
             }
         };
         let params = parts.join(", ");
-        match as_callable_params {
-            true => format!("[{params}]").into(),
-            false => params.into(),
+        match style {
+            ParamsStyle::CallableParams => format!("[{params}]").into(),
+            _ => params.into(),
         }
     }
 }
