@@ -511,6 +511,7 @@ impl<'a> Matcher<'a> {
         &self,
         usage: &TypeVarLikeUsage,
         format_data: &FormatData,
+        as_callable_params: bool,
     ) -> Box<str> {
         let type_var_matcher = self.type_var_matcher.as_ref().unwrap();
         let i_s = &mut InferenceState::new(format_data.db);
@@ -521,7 +522,7 @@ impl<'a> Matcher<'a> {
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
                 BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                BoundKind::CallableParams(params) => todo!(),
+                BoundKind::CallableParams(params) => params.format(format_data, false),
                 BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {
@@ -536,7 +537,11 @@ impl<'a> Matcher<'a> {
                             let type_var_remap = func_class.type_var_remap.unwrap();
                             Generic::new(&type_var_remap[usage.index()]).format(format_data)
                         } else {
-                            usage.format_without_matcher(format_data.db, format_data.style)
+                            usage.format_without_matcher(
+                                format_data.db,
+                                format_data.style,
+                                as_callable_params,
+                            )
                         }
                     } else {
                         todo!("Probably nested generic functions???")

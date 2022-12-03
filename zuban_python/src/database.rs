@@ -803,9 +803,8 @@ impl DbType {
             .into(),
             Self::Union(union) => union.format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
-            Self::TypeVar(t) => {
-                format_data.format_type_var_like(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)))
-            }
+            Self::TypeVar(t) => format_data
+                .format_type_var_like(&TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)), false),
             Self::Type(db_type) => format!("Type[{}]", db_type.format(format_data)).into(),
             Self::Tuple(content) => content.format(format_data),
             Self::Callable(content) => content.format(format_data).into(),
@@ -1433,9 +1432,8 @@ impl TypeOrTypeVarTuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::Type(t) => t.format(format_data),
-            Self::TypeVarTuple(t) => {
-                format_data.format_type_var_like(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)))
-            }
+            Self::TypeVarTuple(t) => format_data
+                .format_type_var_like(&TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t)), false),
         }
     }
 }
@@ -2266,13 +2264,21 @@ impl<'a> TypeVarLikeUsage<'a> {
         }
     }
 
-    pub fn format_without_matcher(&self, db: &Database, style: FormatStyle) -> Box<str> {
+    pub fn format_without_matcher(
+        &self,
+        db: &Database,
+        style: FormatStyle,
+        as_callable_params: bool,
+    ) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
             Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
             Self::ParamSpec(p) => {
                 let name = p.param_spec.name(db);
-                format!("*{name}.args, **{name}.kwargs").into()
+                match style {
+                    FormatStyle::MypyRevealType => format!("*{name}.args, **{name}.kwargs").into(),
+                    _ => name.into(),
+                }
             }
         }
     }
@@ -2318,7 +2324,9 @@ impl CallableParams {
                         },
                         DoubleStarred(ParamSpecKwargs(usage)) => match had_param_spec_args {
                             true => out_params.push(format_data.format_type_var_like(
+                                // TODO is this even reachable?
                                 &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
+                                as_callable_params,
                             )),
                             false => todo!(),
                         },
@@ -2328,20 +2336,15 @@ impl CallableParams {
                 out_params
             }
             Self::WithParamSpec(pre_types, usage) => {
-                let pre = pre_types.iter().map(|t| t.format(format_data));
-                if as_callable_params {
-                    let name = usage.param_spec.name(format_data.db);
-                    if pre_types.is_empty() {
-                        return Box::from(name);
-                    } else {
-                        pre.chain(std::iter::once(format!("**{name}").into()))
-                            .collect()
-                    }
-                } else {
-                    let p = format_data
-                        .format_type_var_like(&TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
-                    pre.chain(std::iter::once(p)).collect()
-                }
+                let spec = format_data.format_type_var_like(
+                    &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
+                    as_callable_params,
+                );
+                pre_types
+                    .iter()
+                    .map(|t| t.format(format_data))
+                    .chain(std::iter::once(spec))
+                    .collect()
             }
             Self::Any => {
                 return match as_callable_params {

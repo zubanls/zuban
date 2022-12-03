@@ -136,7 +136,6 @@ testParamSpecConcatenateNamedArgs
 testParamSpecLiteralsTypeApplication
 testParamSpecLiteralJoin
 testParamSpecConstraintOnOtherParamSpec
-testParamSpecVariance
 testParamSpecArgsAndKwargsMissmatch
 testParamSpecTestPropAccess
 

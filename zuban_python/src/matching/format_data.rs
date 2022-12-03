@@ -97,12 +97,20 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         self.verbose = true;
     }
 
-    pub fn format_type_var_like(&self, type_var_usage: &TypeVarLikeUsage) -> Box<str> {
+    pub fn format_type_var_like(
+        &self,
+        type_var_usage: &TypeVarLikeUsage,
+        as_callable_params: bool,
+    ) -> Box<str> {
         if let Some(matcher) = self.matcher {
             if matcher.has_type_var_matcher() {
-                return matcher.format_in_type_var_matcher(type_var_usage, self);
+                return matcher.format_in_type_var_matcher(
+                    type_var_usage,
+                    self,
+                    as_callable_params,
+                );
             }
         }
-        type_var_usage.format_without_matcher(self.db, self.style)
+        type_var_usage.format_without_matcher(self.db, self.style, as_callable_params)
     }
 }
