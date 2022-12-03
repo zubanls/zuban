@@ -110,7 +110,6 @@ testParamSpecCached
 testBoundGenericMethodParamSpecFine
 # Also param spec
 testNonStrictParamSpecConcatenateNamedArgs
-testCallablesAsParameters
 testSolveParamSpecWithSelfType
 testApplyParamSpecToParamSpecLiterals
 testExpandNonBareParamSpecAgainstCallable

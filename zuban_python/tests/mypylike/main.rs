@@ -245,7 +245,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let mut current_step_start = 0;
         let mut flags = vec![];
 
-        let mut process_step_part2 = |step_index, type_, in_between, rest| {
+        let mut process_step_part2 = |step_index, type_, in_between, rest: &'code str| {
             let step = if let Some(s) = steps.get_mut(&step_index) {
                 s
             } else {
@@ -261,11 +261,16 @@ impl<'name, 'code> TestCase<'name, 'code> {
             }
         };
 
-        let mut process_step = |step_index, type_, step_start, step_end, rest| {
+        let mut process_step = |step_index, type_, step_start, step_end, rest: &'code str| {
             let in_between = &self.code[step_start..step_end];
 
             if type_ == "out" && step_index == 1 {
-                assert_eq!(rest, "");
+                // For now just ignore different versions and overwrite the out. This works,
+                // because we always target the latest version and older versions are currently
+                // listed below newer ones (by convention?).
+                if !rest.starts_with("version>=") {
+                    assert_eq!(rest, "");
+                }
                 for (i, part) in in_between.split("==\n").enumerate() {
                     process_step_part2(i + 1, "out", part, rest)
                 }
