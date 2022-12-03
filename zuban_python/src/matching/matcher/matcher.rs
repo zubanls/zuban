@@ -416,7 +416,7 @@ impl<'a> Matcher<'a> {
                 matches
                     & matches_simple_params(
                         i_s,
-                        &mut Matcher::new(None),
+                        &mut Matcher::default(),
                         params1.iter(),
                         params2_iterator,
                         variance,
@@ -461,7 +461,7 @@ impl<'a> Matcher<'a> {
                 );
                 match_arguments_against_params(
                     i_s,
-                    &mut Matcher::new(None),
+                    &mut Matcher::default(),
                     class,
                     function,
                     args_node_ref,
