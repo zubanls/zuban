@@ -427,17 +427,6 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn found_any_param_spec(&mut self, usage: &ParamSpecUsage) {
-        if let Some(tv_matcher) = &mut self.type_var_matcher {
-            if tv_matcher.match_in_definition == usage.in_definition {
-                let calc = &mut tv_matcher.calculated_type_vars[usage.index.as_usize()];
-                if matches!(calc.type_, BoundKind::Uncalculated) {
-                    calc.type_ = BoundKind::CallableParams(CallableParams::Any);
-                }
-            }
-        }
-    }
-
     pub fn match_param_spec_arguments<'db, 'b, 'c>(
         &self,
         i_s: &mut InferenceState<'db, '_>,

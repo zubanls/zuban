@@ -58,14 +58,10 @@ pub fn matches_params(
             })
             && usage1 == usage2)
             .into(),
+        (Any, _) | (_, Any) => Match::new_true(),
         (WithParamSpec(types, param_spec), Simple(params2)) => {
             matcher.match_or_add_param_spec(i_s, types, param_spec, params2, variance)
         }
-        (WithParamSpec(types, param_spec), Any) => {
-            matcher.found_any_param_spec(param_spec);
-            Match::new_true()
-        }
-        (Any, _) | (_, Any) => Match::new_true(),
         (Simple(_), WithParamSpec(..)) => {
             todo!()
         }
