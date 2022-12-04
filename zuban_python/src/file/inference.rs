@@ -1297,7 +1297,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     let file_index = point.file_index();
                     let next_node_index = point.node_index();
                     debug_assert!(
-                        file_index != self.file.file_index() || next_node_index != node_index
+                        file_index != self.file.file_index() || next_node_index != node_index,
+                        "{file_index}:{node_index}"
                     );
                     let infer = |inference: &mut Inference| {
                         let point = inference.file.points.get(next_node_index);

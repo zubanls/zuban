@@ -2,6 +2,8 @@
 testUnboundTypeVar
 testGenericTypeAliasesImporting
 
+testBoundGenericMethodParamSpecFine
+
 testCallableParsingFromExpr
 testCallableParsing
 testCallableTooManyVarArg
@@ -109,7 +111,6 @@ testOverloadIf*
 testConstraintsBetweenConcatenatePrefixes
 testGenericsInInferredParamspec
 testStackedConcatenateIsIllegal
-testBoundGenericMethodParamSpecFine
 
 testParamSpecContextManagerLike
 testParamSpecDecorator
