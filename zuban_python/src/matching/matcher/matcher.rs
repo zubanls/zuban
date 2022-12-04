@@ -368,6 +368,7 @@ impl<'a> Matcher<'a> {
         pre_param_spec_types: &[DbType],
         p1: &ParamSpecUsage,
         params2: &[CallableParam],
+        type_vars2: Option<&TypeVarLikes>,
         variance: Variance,
     ) -> Match {
         debug_assert!(!self.is_matching_reverse());
@@ -397,7 +398,7 @@ impl<'a> Matcher<'a> {
                 BoundKind::Uncalculated => {
                     calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
                         CallableParams::Simple(params2_iterator.cloned().collect()),
-                        None,
+                        type_vars2.cloned(),
                     ));
                     return matches;
                 }

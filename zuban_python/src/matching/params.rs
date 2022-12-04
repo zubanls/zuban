@@ -61,7 +61,7 @@ pub fn matches_params(
             .into(),
         (Any, _) | (_, Any) => Match::new_true(),
         (WithParamSpec(types, param_spec), Simple(params2)) => {
-            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, variance)
+            matcher.match_or_add_param_spec(i_s, types, param_spec, params2, type_vars2, variance)
         }
         (Simple(_), WithParamSpec(..)) => {
             todo!()
