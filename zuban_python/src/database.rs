@@ -522,7 +522,7 @@ pub enum GenericItem {
     // For TypeVarTuple
     TypeArguments(TypeArguments),
     // For ParamSpec
-    CallableParams(CallableParams),
+    ParamSpecArgument(CallableParams),
 }
 
 impl GenericItem {
@@ -533,7 +533,7 @@ impl GenericItem {
         match self {
             Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_var_likes(callable)),
             Self::TypeArguments(_) => todo!(),
-            Self::CallableParams(_) => todo!(),
+            Self::ParamSpecArgument(_) => todo!(),
         }
     }
 
@@ -546,9 +546,9 @@ impl GenericItem {
             Self::TypeArguments(ts1) => match other {
                 Self::TypeArgument(_) => todo!(),
                 Self::TypeArguments(_) => todo!(),
-                Self::CallableParams(_) => todo!(),
+                Self::ParamSpecArgument(_) => todo!(),
             },
-            Self::CallableParams(params) => todo!(),
+            Self::ParamSpecArgument(params) => todo!(),
         }
     }
 }
@@ -853,7 +853,7 @@ impl DbType {
                 match g {
                     GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
                     GenericItem::TypeArguments(_) => todo!(),
-                    GenericItem::CallableParams(params) => todo!(),
+                    GenericItem::ParamSpecArgument(params) => todo!(),
                 }
             }
         };
@@ -940,7 +940,7 @@ impl DbType {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.has_any(),
                 GenericItem::TypeArguments(_) => todo!(),
-                GenericItem::CallableParams(params) => todo!(),
+                GenericItem::ParamSpecArgument(params) => todo!(),
             })
         };
         match self {
@@ -1066,7 +1066,7 @@ impl DbType {
             ),
             CallableParams::Any => CallableParams::Any,
             CallableParams::WithParamSpec(types, param_spec) => {
-                let GenericItem::CallableParams(new_params) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
+                let GenericItem::ParamSpecArgument(new_params) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
                     unreachable!()
                 };
                 if types.is_empty() {
@@ -1113,8 +1113,8 @@ impl DbType {
                                 args: remap_tuple_likes(&ts.args, callable),
                             })
                         }
-                        GenericItem::CallableParams(params) => {
-                            GenericItem::CallableParams(remap_callable_params(params, callable))
+                        GenericItem::ParamSpecArgument(params) => {
+                            GenericItem::ParamSpecArgument(remap_callable_params(params, callable))
                         }
                     })
                     .collect(),
@@ -1149,7 +1149,7 @@ impl DbType {
             Self::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))) {
                 GenericItem::TypeArgument(t) => t,
                 GenericItem::TypeArguments(ts) => unreachable!(),
-                GenericItem::CallableParams(params) => todo!(),
+                GenericItem::ParamSpecArgument(params) => todo!(),
             },
             Self::Type(db_type) => Self::Type(Rc::new(db_type.replace_type_var_likes(callable))),
             Self::Tuple(content) => Self::Tuple(match &content.args {
@@ -2139,7 +2139,7 @@ impl TypeVarLike {
         match self {
             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
             TypeVarLike::TypeVarTuple(_) => todo!(),
-            TypeVarLike::ParamSpec(_) => GenericItem::CallableParams(CallableParams::Any),
+            TypeVarLike::ParamSpec(_) => GenericItem::ParamSpecArgument(CallableParams::Any),
         }
     }
 }

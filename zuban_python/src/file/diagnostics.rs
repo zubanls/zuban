@@ -353,7 +353,7 @@ impl Inference<'_, '_, '_, '_> {
                                     ))
                                 }
                                 TypeVarLike::ParamSpec(param_spec) => {
-                                    GenericItem::CallableParams(CallableParams::WithParamSpec(
+                                    GenericItem::ParamSpecArgument(CallableParams::WithParamSpec(
                                         Box::new([]),
                                         ParamSpecUsage {
                                             param_spec: param_spec.clone(),

@@ -304,7 +304,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 .generics()
                 .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
             {
-                Generic::CallableParams(p) => match p.into_owned() {
+                Generic::ParamSpecArgument(p) => match p.into_owned() {
                     CallableParams::Any => CallableParams::Any,
                     CallableParams::Simple(params) => {
                         pre_params.extend(params.into_vec());
@@ -345,7 +345,7 @@ impl<'db: 'a, 'a> Function<'a> {
                         GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
                     }
                     TypeVarLikeUsage::TypeVarTuple(usage) => todo!("{usage:?}"),
-                    TypeVarLikeUsage::ParamSpec(param_spec) => GenericItem::CallableParams(
+                    TypeVarLikeUsage::ParamSpec(param_spec) => GenericItem::ParamSpecArgument(
                         CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
                     ),
                 }

@@ -10,7 +10,7 @@ use crate::inference_state::InferenceState;
 pub enum Generic<'a> {
     TypeArgument(Type<'a>),
     TypeVarTuple(Cow<'a, TypeArguments>),
-    CallableParams(Cow<'a, CallableParams>),
+    ParamSpecArgument(Cow<'a, CallableParams>),
 }
 
 impl<'a> Generic<'a> {
@@ -18,7 +18,9 @@ impl<'a> Generic<'a> {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::new(t)),
             GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Borrowed(args)),
-            GenericItem::CallableParams(params) => Self::CallableParams(Cow::Borrowed(params)),
+            GenericItem::ParamSpecArgument(params) => {
+                Self::ParamSpecArgument(Cow::Borrowed(params))
+            }
         }
     }
 
@@ -26,7 +28,7 @@ impl<'a> Generic<'a> {
         match g {
             GenericItem::TypeArgument(t) => Self::TypeArgument(Type::owned(t)),
             GenericItem::TypeArguments(args) => Self::TypeVarTuple(Cow::Owned(args)),
-            GenericItem::CallableParams(params) => Self::CallableParams(Cow::Owned(params)),
+            GenericItem::ParamSpecArgument(params) => Self::ParamSpecArgument(Cow::Owned(params)),
         }
     }
 
@@ -34,7 +36,7 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(i_s)),
             Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
-            Self::CallableParams(params) => GenericItem::CallableParams(params.into_owned()),
+            Self::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params.into_owned()),
         }
     }
 
@@ -42,7 +44,7 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
-            Self::CallableParams(params) => match params.as_ref() {
+            Self::ParamSpecArgument(params) => match params.as_ref() {
                 CallableParams::Any => Box::from("Any"),
                 _ => params.format(format_data, ParamsStyle::CallableParams),
             },
@@ -76,8 +78,8 @@ impl<'a> Generic<'a> {
                 }
                 _ => todo!(),
             },
-            Self::CallableParams(params1) => match other {
-                Self::CallableParams(params2) => {
+            Self::ParamSpecArgument(params1) => match other {
+                Self::ParamSpecArgument(params2) => {
                     matches_params(i_s, matcher, params1, params2, variance, false)
                 }
                 _ => todo!(),
@@ -95,7 +97,7 @@ impl<'a> Generic<'a> {
                 Self::TypeVarTuple(ref t2) => todo!(),
                 _ => todo!(),
             },
-            Self::CallableParams(params) => todo!(),
+            Self::ParamSpecArgument(params) => todo!(),
         }
     }
 

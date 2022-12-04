@@ -108,7 +108,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testConstraintsBetweenConcatenatePrefixes
 testGenericsInInferredParamspec
 
 testParamSpecContextManagerLike
@@ -284,6 +283,7 @@ testFunctionInGenericInnerClassTypeVariable-skip
 testSubtypingWithGenericInnerFunctions
 testNestedGenericFunctions
 testInnerFunctionTypeVar
+testConstraintsBetweenConcatenatePrefixes
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody

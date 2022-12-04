@@ -393,9 +393,9 @@ impl<'a> Matcher<'a> {
         let params1 = if tv_matcher.match_in_definition == p1.in_definition {
             let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
             match &mut calc.type_ {
-                BoundKind::CallableParams(params_current) => Cow::Borrowed(params_current),
+                BoundKind::ParamSpecArgument(params_current) => Cow::Borrowed(params_current),
                 BoundKind::Uncalculated => {
-                    calc.type_ = BoundKind::CallableParams(CallableParams::Simple(
+                    calc.type_ = BoundKind::ParamSpecArgument(CallableParams::Simple(
                         params2_iterator.cloned().collect(),
                     ));
                     return matches;
@@ -440,7 +440,7 @@ impl<'a> Matcher<'a> {
         let params = if let Some(type_var_matcher) = &self.type_var_matcher {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
-                    BoundKind::CallableParams(params) => Cow::Borrowed(params),
+                    BoundKind::ParamSpecArgument(params) => Cow::Borrowed(params),
                     // This means that an Any came along.
                     BoundKind::Uncalculated => return SignatureMatch::True,
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
@@ -523,7 +523,7 @@ impl<'a> Matcher<'a> {
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
                 BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                BoundKind::CallableParams(params) => params.format(format_data, params_style),
+                BoundKind::ParamSpecArgument(params) => params.format(format_data, params_style),
                 BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {

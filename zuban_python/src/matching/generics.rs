@@ -69,7 +69,7 @@ impl<'a> Generics<'a> {
         usage: &ParamSpecUsage,
     ) -> Cow<'a, CallableParams> {
         let generic = self.nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
-        if let Generic::CallableParams(params) = generic {
+        if let Generic::ParamSpecArgument(params) = generic {
             params
         } else {
             unreachable!()

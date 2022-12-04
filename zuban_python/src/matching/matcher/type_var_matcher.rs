@@ -33,7 +33,7 @@ pub enum FunctionOrCallable<'a> {
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArguments),
-    CallableParams(CallableParams),
+    ParamSpecArgument(CallableParams),
     Uncalculated,
 }
 
@@ -168,7 +168,7 @@ impl<'a> TypeVarMatcher<'a> {
                             TypeArguments::new_arbitrary_length(DbType::Any),
                         ),
                         TypeVarLikeUsage::ParamSpec(_) => {
-                            BoundKind::CallableParams(CallableParams::Any)
+                            BoundKind::ParamSpecArgument(CallableParams::Any)
                         }
                     }
                 }
@@ -187,7 +187,7 @@ impl<'a> TypeVarMatcher<'a> {
                 match &current.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
-                    BoundKind::CallableParams(params) => todo!(),
+                    BoundKind::ParamSpecArgument(params) => todo!(),
                     // Any is just ignored by the context later.
                     BoundKind::Uncalculated => {
                         type_var_like_usage.as_type_var_like().as_any_generic_item()
@@ -212,7 +212,7 @@ impl<'a> TypeVarMatcher<'a> {
                                         self.replace_type_var_likes_for_nested_context(i_s, t),
                                     ),
                                     GenericItem::TypeArguments(_) => todo!(),
-                                    GenericItem::CallableParams(_) => todo!(),
+                                    GenericItem::ParamSpecArgument(_) => todo!(),
                                 }
                             } else {
                                 match type_var_like_usage {
@@ -461,9 +461,9 @@ fn calculate_type_vars<'db>(
                                                 BoundKind::TypeVarTuple(ts.into_owned());
                                             calculated.defined_by_result_context = true;
                                         }
-                                        Generic::CallableParams(p) => {
+                                        Generic::ParamSpecArgument(p) => {
                                             calculated.type_ =
-                                                BoundKind::CallableParams(p.into_owned());
+                                                BoundKind::ParamSpecArgument(p.into_owned());
                                             calculated.defined_by_result_context = true;
                                         }
                                     };
@@ -493,7 +493,7 @@ fn calculate_type_vars<'db>(
                             t1.has_any() | t2.has_any()
                         }
                         BoundKind::TypeVarTuple(ts) => ts.args.has_any(),
-                        BoundKind::CallableParams(params) => todo!(),
+                        BoundKind::ParamSpecArgument(params) => todo!(),
                         BoundKind::Uncalculated => continue,
                     };
                     if has_any {
@@ -560,7 +560,7 @@ fn calculate_type_vars<'db>(
                 .map(|(c, type_var_like)| match c.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
-                    BoundKind::CallableParams(params) => GenericItem::CallableParams(params),
+                    BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
                     BoundKind::Uncalculated => match type_var_like {
                         TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
                         // TODO TypeVarTuple: this feels wrong, should maybe be never?
@@ -569,7 +569,7 @@ fn calculate_type_vars<'db>(
                         ),
                         // TODO ParamSpec: this feels wrong, should maybe be never?
                         TypeVarLike::ParamSpec(_) => {
-                            GenericItem::CallableParams(CallableParams::Any)
+                            GenericItem::ParamSpecArgument(CallableParams::Any)
                         }
                     },
                 })
