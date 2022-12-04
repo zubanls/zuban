@@ -66,6 +66,7 @@ pub(crate) enum IssueType {
     UnexpectedTypeForTypeVar,
     TypeVarLikeTooManyArguments { class_name: &'static str },
     MultipleTypeVarTuplesInClassDef,
+    NestedConcatenate,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -345,6 +346,8 @@ impl<'db> Diagnostic<'db> {
                 "Only the first argument to {class_name} has defined semantics"),
             IssueType::MultipleTypeVarTuplesInClassDef =>
                 "Can only use one type var tuple in a class def".to_owned(),
+            IssueType::NestedConcatenate =>
+                "Nested Concatenates are invalid".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

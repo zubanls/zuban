@@ -110,7 +110,6 @@ testOverloadIf*
 # Param spec
 testConstraintsBetweenConcatenatePrefixes
 testGenericsInInferredParamspec
-testStackedConcatenateIsIllegal
 
 testParamSpecContextManagerLike
 testParamSpecDecorator

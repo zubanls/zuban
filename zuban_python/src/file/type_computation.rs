@@ -1060,6 +1060,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
                 CallableParams::Any
             }
+            TypeContent::Unknown => CallableParams::Any,
             TypeContent::Concatenate(p) => p,
             _ => {
                 slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
@@ -1250,11 +1251,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             .take(count - 1)
             .map(|s| self.compute_slice_db_type(s))
             .collect();
-        let param_spec = match self.compute_slice_type(iterator.next().unwrap()) {
-            TypeContent::ParamSpec(p) => p,
+        match self.compute_slice_type(iterator.next().unwrap()) {
+            TypeContent::ParamSpec(p) => {
+                TypeContent::Concatenate(CallableParams::WithParamSpec(types, p))
+            }
+            TypeContent::Concatenate(_) => {
+                self.add_typing_issue(slice_type.as_node_ref(), IssueType::NestedConcatenate);
+                TypeContent::Unknown
+            }
             _ => todo!(),
-        };
-        TypeContent::Concatenate(CallableParams::WithParamSpec(types, param_spec))
+        }
     }
 
     fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
