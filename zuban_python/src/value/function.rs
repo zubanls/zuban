@@ -13,8 +13,9 @@ use crate::arguments::{
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
-    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    Overload, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink,
+    StarredParamSpecific, StringSlice, TupleTypeArguments, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -304,7 +305,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 .generics()
                 .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
             {
-                Generic::ParamSpecArgument(p) => match p.into_owned() {
+                Generic::ParamSpecArgument(p) => match p.into_owned().params {
                     CallableParams::Any => CallableParams::Any,
                     CallableParams::Simple(params) => {
                         pre_params.extend(params.into_vec());
@@ -345,9 +346,11 @@ impl<'db: 'a, 'a> Function<'a> {
                         GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
                     }
                     TypeVarLikeUsage::TypeVarTuple(usage) => todo!("{usage:?}"),
-                    TypeVarLikeUsage::ParamSpec(param_spec) => GenericItem::ParamSpecArgument(
-                        CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
-                    ),
+                    TypeVarLikeUsage::ParamSpec(param_spec) => {
+                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                            CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
+                        ))
+                    }
                 }
             })
         };

@@ -4,7 +4,7 @@ use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slice
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    CallableParams, DbType, GenericItem, GenericsList, ParamSpecUsage, TypeVarLike,
+    DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
@@ -67,10 +67,10 @@ impl<'a> Generics<'a> {
         &self,
         i_s: &mut InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
-    ) -> Cow<'a, CallableParams> {
+    ) -> Cow<'a, ParamSpecArgument> {
         let generic = self.nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
-        if let Generic::ParamSpecArgument(params) = generic {
-            params
+        if let Generic::ParamSpecArgument(p) = generic {
+            p
         } else {
             unreachable!()
         }

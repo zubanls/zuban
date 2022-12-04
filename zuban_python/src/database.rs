@@ -522,7 +522,7 @@ pub enum GenericItem {
     // For TypeVarTuple
     TypeArguments(TypeArguments),
     // For ParamSpec
-    ParamSpecArgument(CallableParams),
+    ParamSpecArgument(ParamSpecArgument),
 }
 
 impl GenericItem {
@@ -1070,9 +1070,9 @@ impl DbType {
                     unreachable!()
                 };
                 if types.is_empty() {
-                    new_params
+                    new_params.params
                 } else {
-                    match new_params {
+                    match new_params.params {
                         CallableParams::Simple(params) => {
                             let mut params = params.into_vec();
                             params.splice(
@@ -1113,9 +1113,9 @@ impl DbType {
                                 args: remap_tuple_likes(&ts.args, callable),
                             })
                         }
-                        GenericItem::ParamSpecArgument(params) => {
-                            GenericItem::ParamSpecArgument(remap_callable_params(params, callable))
-                        }
+                        GenericItem::ParamSpecArgument(p) => GenericItem::ParamSpecArgument(
+                            ParamSpecArgument::new(remap_callable_params(&p.params, callable)),
+                        ),
                     })
                     .collect(),
             )
@@ -2139,7 +2139,9 @@ impl TypeVarLike {
         match self {
             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
             TypeVarLike::TypeVarTuple(_) => todo!(),
-            TypeVarLike::ParamSpec(_) => GenericItem::ParamSpecArgument(CallableParams::Any),
+            TypeVarLike::ParamSpec(_) => {
+                GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
+            }
         }
     }
 }
@@ -2237,6 +2239,23 @@ pub struct ParamSpecUsage {
     pub param_spec: Rc<ParamSpec>,
     pub index: TypeVarIndex,
     pub in_definition: PointLink,
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub struct ParamSpecArgument {
+    pub params: CallableParams,
+}
+
+impl ParamSpecArgument {
+    pub fn new(params: CallableParams) -> Self {
+        Self { params }
+    }
+
+    pub fn new_any() -> Self {
+        Self {
+            params: CallableParams::Any,
+        }
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]

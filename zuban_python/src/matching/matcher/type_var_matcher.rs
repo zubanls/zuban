@@ -13,9 +13,9 @@ use super::super::{
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, CallableParams, DbType, GenericItem, GenericsList, PointLink,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes,
+    CallableContent, CallableParams, DbType, GenericItem, GenericsList, ParamSpecArgument,
+    PointLink, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -33,7 +33,7 @@ pub enum FunctionOrCallable<'a> {
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArguments),
-    ParamSpecArgument(CallableParams),
+    ParamSpecArgument(ParamSpecArgument),
     Uncalculated,
 }
 
@@ -168,7 +168,7 @@ impl<'a> TypeVarMatcher<'a> {
                             TypeArguments::new_arbitrary_length(DbType::Any),
                         ),
                         TypeVarLikeUsage::ParamSpec(_) => {
-                            BoundKind::ParamSpecArgument(CallableParams::Any)
+                            BoundKind::ParamSpecArgument(ParamSpecArgument::new_any())
                         }
                     }
                 }
@@ -569,7 +569,7 @@ fn calculate_type_vars<'db>(
                         ),
                         // TODO ParamSpec: this feels wrong, should maybe be never?
                         TypeVarLike::ParamSpec(_) => {
-                            GenericItem::ParamSpecArgument(CallableParams::Any)
+                            GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
                         }
                     },
                 })

@@ -3,14 +3,14 @@ use std::borrow::Cow;
 use super::{
     match_tuple_type_arguments, matches_params, FormatData, Match, Matcher, ParamsStyle, Type,
 };
-use crate::database::{CallableParams, GenericItem, TypeArguments, Variance};
+use crate::database::{CallableParams, GenericItem, ParamSpecArgument, TypeArguments, Variance};
 use crate::inference_state::InferenceState;
 
 #[derive(Debug)]
 pub enum Generic<'a> {
     TypeArgument(Type<'a>),
     TypeVarTuple(Cow<'a, TypeArguments>),
-    ParamSpecArgument(Cow<'a, CallableParams>),
+    ParamSpecArgument(Cow<'a, ParamSpecArgument>),
 }
 
 impl<'a> Generic<'a> {
@@ -44,9 +44,9 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => t.format(format_data),
             Self::TypeVarTuple(ts) => ts.format(format_data),
-            Self::ParamSpecArgument(params) => match params.as_ref() {
+            Self::ParamSpecArgument(args) => match &args.params {
                 CallableParams::Any => Box::from("Any"),
-                _ => params.format(format_data, ParamsStyle::CallableParams),
+                _ => args.params.format(format_data, ParamsStyle::CallableParams),
             },
         }
     }
@@ -78,9 +78,9 @@ impl<'a> Generic<'a> {
                 }
                 _ => todo!(),
             },
-            Self::ParamSpecArgument(params1) => match other {
-                Self::ParamSpecArgument(params2) => {
-                    matches_params(i_s, matcher, params1, params2, variance, false)
+            Self::ParamSpecArgument(p1) => match other {
+                Self::ParamSpecArgument(p2) => {
+                    matches_params(i_s, matcher, &p1.params, &p2.params, variance, false)
                 }
                 _ => todo!(),
             },

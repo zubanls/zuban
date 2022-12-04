@@ -5,10 +5,10 @@ use parsa_python_ast::*;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
     DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, NewType,
-    ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias, Specific,
-    StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple,
-    TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage,
-    TypeVarUsage, UnionEntry, UnionType,
+    ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
+    Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -869,7 +869,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         }
                         let params = self.calculate_callable_params(iterator.next().unwrap(), true);
                         given_count += 1;
-                        GenericItem::ParamSpecArgument(params)
+                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params))
                     }
                 };
                 generics.push(generic_item);

@@ -10,9 +10,9 @@ use super::type_var_matcher::{
 };
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, DbType, ParamSpecUsage, ParamSpecific,
-    RecursiveAlias, StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
-    TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, CallableParam, CallableParams, DbType, ParamSpecArgument, ParamSpecUsage,
+    ParamSpecific, RecursiveAlias, StarredParamSpecific, TupleTypeArguments, TypeArguments,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
@@ -393,10 +393,10 @@ impl<'a> Matcher<'a> {
         let params1 = if tv_matcher.match_in_definition == p1.in_definition {
             let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
             match &mut calc.type_ {
-                BoundKind::ParamSpecArgument(params_current) => Cow::Borrowed(params_current),
+                BoundKind::ParamSpecArgument(p) => Cow::Borrowed(p),
                 BoundKind::Uncalculated => {
-                    calc.type_ = BoundKind::ParamSpecArgument(CallableParams::Simple(
-                        params2_iterator.cloned().collect(),
+                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
+                        CallableParams::Simple(params2_iterator.cloned().collect()),
                     ));
                     return matches;
                 }
@@ -411,7 +411,7 @@ impl<'a> Matcher<'a> {
         } else {
             todo!()
         };
-        match params1.as_ref() {
+        match &params1.params {
             CallableParams::Simple(params1) => {
                 matches
                     & matches_simple_params(
@@ -437,10 +437,10 @@ impl<'a> Matcher<'a> {
         args_node_ref: &impl Fn() -> NodeRef<'c>,
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
-        let params = if let Some(type_var_matcher) = &self.type_var_matcher {
+        let param_spec_arg = if let Some(type_var_matcher) = &self.type_var_matcher {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
-                    BoundKind::ParamSpecArgument(params) => Cow::Borrowed(params),
+                    BoundKind::ParamSpecArgument(p) => Cow::Borrowed(p),
                     // This means that an Any came along.
                     BoundKind::Uncalculated => return SignatureMatch::True,
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
@@ -453,7 +453,7 @@ impl<'a> Matcher<'a> {
         } else {
             todo!("When does this even happen?")
         };
-        match params.as_ref() {
+        match &param_spec_arg.params {
             CallableParams::Simple(params) => {
                 let iter = InferrableParamIterator2::new(
                     i_s.db,
@@ -523,7 +523,7 @@ impl<'a> Matcher<'a> {
             match &current.type_ {
                 BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
                 BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                BoundKind::ParamSpecArgument(params) => params.format(format_data, params_style),
+                BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
                 BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {

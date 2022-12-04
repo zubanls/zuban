@@ -2,9 +2,9 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    CallableParams, ComplexPoint, DbType, GenericItem, GenericsList, Locality, ParamSpecUsage,
-    Point, PointType, Specific, TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarTupleUsage,
-    TypeVarUsage, Variance,
+    CallableParams, ComplexPoint, DbType, GenericItem, GenericsList, Locality, ParamSpecArgument,
+    ParamSpecUsage, Point, PointType, Specific, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TypeVarTupleUsage, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -353,13 +353,15 @@ impl Inference<'_, '_, '_, '_> {
                                     ))
                                 }
                                 TypeVarLike::ParamSpec(param_spec) => {
-                                    GenericItem::ParamSpecArgument(CallableParams::WithParamSpec(
-                                        Box::new([]),
-                                        ParamSpecUsage {
-                                            param_spec: param_spec.clone(),
-                                            index: i.into(),
-                                            in_definition: class.node_ref.as_link(),
-                                        },
+                                    GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                                        CallableParams::WithParamSpec(
+                                            Box::new([]),
+                                            ParamSpecUsage {
+                                                param_spec: param_spec.clone(),
+                                                index: i.into(),
+                                                in_definition: class.node_ref.as_link(),
+                                            },
+                                        ),
                                     ))
                                 }
                             })
