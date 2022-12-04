@@ -201,6 +201,7 @@ impl<'a> Type<'a> {
                                 if let LookupResult::GotoName(_, init) = lookup {
                                     let t2 = init.class_as_type(i_s);
                                     if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
+                                        let type_vars2 = cls.type_vars(i_s);
                                         // Since __init__ does not have a return, We need to check the params
                                         // of the __init__ functions and the class as a return type separately.
                                         return Type::new(&c1.result_type).is_super_type_of(
@@ -212,6 +213,7 @@ impl<'a> Type<'a> {
                                             matcher,
                                             &c1.params,
                                             &c2.params,
+                                            type_vars2,
                                             Variance::Contravariant,
                                             true,
                                         );
@@ -613,6 +615,7 @@ impl<'a> Type<'a> {
                 matcher,
                 &c1.params,
                 &c2.params,
+                c2.type_vars.as_ref(),
                 Variance::Contravariant,
                 false,
             )

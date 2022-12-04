@@ -362,6 +362,7 @@ impl Inference<'_, '_, '_, '_> {
                                                 in_definition: class.node_ref.as_link(),
                                             },
                                         ),
+                                        None,
                                     ))
                                 }
                             })

@@ -397,6 +397,7 @@ impl<'a> Matcher<'a> {
                 BoundKind::Uncalculated => {
                     calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
                         CallableParams::Simple(params2_iterator.cloned().collect()),
+                        None,
                     ));
                     return matches;
                 }

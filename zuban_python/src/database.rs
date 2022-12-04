@@ -1113,9 +1113,12 @@ impl DbType {
                                 args: remap_tuple_likes(&ts.args, callable),
                             })
                         }
-                        GenericItem::ParamSpecArgument(p) => GenericItem::ParamSpecArgument(
-                            ParamSpecArgument::new(remap_callable_params(&p.params, callable)),
-                        ),
+                        GenericItem::ParamSpecArgument(p) => {
+                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                                remap_callable_params(&p.params, callable),
+                                p.type_vars.clone(),
+                            ))
+                        }
                     })
                     .collect(),
             )
@@ -2244,16 +2247,18 @@ pub struct ParamSpecUsage {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ParamSpecArgument {
     pub params: CallableParams,
+    pub type_vars: Option<TypeVarLikes>,
 }
 
 impl ParamSpecArgument {
-    pub fn new(params: CallableParams) -> Self {
-        Self { params }
+    pub fn new(params: CallableParams, type_vars: Option<TypeVarLikes>) -> Self {
+        Self { params, type_vars }
     }
 
     pub fn new_any() -> Self {
         Self {
             params: CallableParams::Any,
+            type_vars: None,
         }
     }
 }

@@ -79,9 +79,15 @@ impl<'a> Generic<'a> {
                 _ => todo!(),
             },
             Self::ParamSpecArgument(p1) => match other {
-                Self::ParamSpecArgument(p2) => {
-                    matches_params(i_s, matcher, &p1.params, &p2.params, variance, false)
-                }
+                Self::ParamSpecArgument(p2) => matches_params(
+                    i_s,
+                    matcher,
+                    &p1.params,
+                    &p2.params,
+                    p2.type_vars.as_ref(),
+                    variance,
+                    false,
+                ),
                 _ => todo!(),
             },
         }

@@ -869,7 +869,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         }
                         let params = self.calculate_callable_params(iterator.next().unwrap(), true);
                         given_count += 1;
-                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params))
+                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
                     }
                 };
                 generics.push(generic_item);
