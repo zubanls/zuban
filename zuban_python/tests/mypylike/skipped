@@ -108,8 +108,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testConstraintBetweenParamSpecFunctions1
-testConstraintBetweenParamSpecFunctions2
 testGenericsInInferredParamspec
 
 testParamSpecContextManagerLike

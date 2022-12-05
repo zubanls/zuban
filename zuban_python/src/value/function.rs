@@ -349,7 +349,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     TypeVarLikeUsage::ParamSpec(param_spec) => {
                         GenericItem::ParamSpecArgument(ParamSpecArgument::new(
                             CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
-                            self.type_vars(i_s).cloned(),
+                            None,
                         ))
                     }
                 }
