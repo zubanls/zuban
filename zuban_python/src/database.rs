@@ -1021,80 +1021,91 @@ impl DbType {
                 TupleTypeArguments::ArbitraryLength(Box::new(t.replace_type_var_likes(callable)))
             }
         };
-        let remap_callable_params = |params: &CallableParams, callable: &mut C| match params {
-            CallableParams::Simple(params) => CallableParams::Simple(
-                params
-                    .iter()
-                    .map(|p| CallableParam {
-                        param_specific: match &p.param_specific {
-                            ParamSpecific::PositionalOnly(t) => {
-                                ParamSpecific::PositionalOnly(t.replace_type_var_likes(callable))
-                            }
-                            ParamSpecific::PositionalOrKeyword(t) => {
-                                ParamSpecific::PositionalOrKeyword(
+        let remap_callable_params = |params: &CallableParams,
+                                     type_vars: &mut Option<Vec<TypeVarLike>>,
+                                     callable: &mut C| {
+            match params {
+                CallableParams::Simple(params) => CallableParams::Simple(
+                    params
+                        .iter()
+                        .map(|p| CallableParam {
+                            param_specific: match &p.param_specific {
+                                ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
                                     t.replace_type_var_likes(callable),
-                                )
-                            }
-                            ParamSpecific::KeywordOnly(t) => {
-                                ParamSpecific::KeywordOnly(t.replace_type_var_likes(callable))
-                            }
-                            ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
-                                StarredParamSpecific::ArbitraryLength(t) => {
-                                    StarredParamSpecific::ArbitraryLength(
+                                ),
+                                ParamSpecific::PositionalOrKeyword(t) => {
+                                    ParamSpecific::PositionalOrKeyword(
                                         t.replace_type_var_likes(callable),
                                     )
                                 }
-                                StarredParamSpecific::ParamSpecArgs(_) => todo!(),
-                            }),
-                            ParamSpecific::DoubleStarred(d) => {
-                                ParamSpecific::DoubleStarred(match d {
-                                    DoubleStarredParamSpecific::ValueType(t) => {
-                                        DoubleStarredParamSpecific::ValueType(
+                                ParamSpecific::KeywordOnly(t) => {
+                                    ParamSpecific::KeywordOnly(t.replace_type_var_likes(callable))
+                                }
+                                ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
+                                    StarredParamSpecific::ArbitraryLength(t) => {
+                                        StarredParamSpecific::ArbitraryLength(
                                             t.replace_type_var_likes(callable),
                                         )
                                     }
-                                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
-                                        todo!()
-                                    }
-                                })
-                            }
-                        },
-                        has_default: p.has_default,
-                        name: p.name,
-                    })
-                    .collect(),
-            ),
-            CallableParams::Any => CallableParams::Any,
-            CallableParams::WithParamSpec(types, param_spec) => {
-                let GenericItem::ParamSpecArgument(new_params) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
+                                    StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                                }),
+                                ParamSpecific::DoubleStarred(d) => {
+                                    ParamSpecific::DoubleStarred(match d {
+                                        DoubleStarredParamSpecific::ValueType(t) => {
+                                            DoubleStarredParamSpecific::ValueType(
+                                                t.replace_type_var_likes(callable),
+                                            )
+                                        }
+                                        DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
+                                            todo!()
+                                        }
+                                    })
+                                }
+                            },
+                            has_default: p.has_default,
+                            name: p.name,
+                        })
+                        .collect(),
+                ),
+                CallableParams::Any => CallableParams::Any,
+                CallableParams::WithParamSpec(types, param_spec) => {
+                    let GenericItem::ParamSpecArgument(new) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
                     unreachable!()
                 };
-                if types.is_empty() {
-                    new_params.params
-                } else {
-                    match new_params.params {
-                        CallableParams::Simple(params) => {
-                            let mut params = params.into_vec();
-                            params.splice(
-                                0..0,
-                                types.iter().map(|t| CallableParam {
-                                    param_specific: ParamSpecific::PositionalOnly(
-                                        t.replace_type_var_likes(callable),
-                                    ),
-                                    name: None,
-                                    has_default: false,
-                                }),
-                            );
-                            CallableParams::Simple(params.into_boxed_slice())
+                    if let Some(new_type_vars) = new.type_vars {
+                        if type_vars.is_some() {
+                            todo!()
+                        } else {
+                            *type_vars = Some(new_type_vars.as_vec());
                         }
-                        CallableParams::Any => CallableParams::Any,
-                        CallableParams::WithParamSpec(new_types, p) => {
-                            let mut types: Vec<DbType> = types
-                                .iter()
-                                .map(|t| t.replace_type_var_likes(callable))
-                                .collect();
-                            types.extend(new_types.into_vec());
-                            CallableParams::WithParamSpec(types.into(), p)
+                    }
+                    if types.is_empty() {
+                        new.params
+                    } else {
+                        match new.params {
+                            CallableParams::Simple(params) => {
+                                let mut params = params.into_vec();
+                                params.splice(
+                                    0..0,
+                                    types.iter().map(|t| CallableParam {
+                                        param_specific: ParamSpecific::PositionalOnly(
+                                            t.replace_type_var_likes(callable),
+                                        ),
+                                        name: None,
+                                        has_default: false,
+                                    }),
+                                );
+                                CallableParams::Simple(params.into_boxed_slice())
+                            }
+                            CallableParams::Any => CallableParams::Any,
+                            CallableParams::WithParamSpec(new_types, p) => {
+                                let mut types: Vec<DbType> = types
+                                    .iter()
+                                    .map(|t| t.replace_type_var_likes(callable))
+                                    .collect();
+                                types.extend(new_types.into_vec());
+                                CallableParams::WithParamSpec(types.into(), p)
+                            }
                         }
                     }
                 }
@@ -1114,9 +1125,10 @@ impl DbType {
                             })
                         }
                         GenericItem::ParamSpecArgument(p) => {
+                            let mut type_vars = p.type_vars.clone().map(|t| t.as_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                                remap_callable_params(&p.params, callable),
-                                p.type_vars.clone(),
+                                remap_callable_params(&p.params, &mut type_vars, callable),
+                                type_vars.map(TypeVarLikes::from_vec),
                             ))
                         }
                     })
@@ -1161,12 +1173,16 @@ impl DbType {
                 },
                 None => TupleContent::new_empty(),
             }),
-            Self::Callable(content) => Self::Callable(Box::new(CallableContent {
-                defined_at: content.defined_at,
-                type_vars: content.type_vars.clone(), // TODO should this change as well?
-                params: remap_callable_params(&content.params, callable),
-                result_type: content.result_type.replace_type_var_likes(callable),
-            })),
+            Self::Callable(content) => {
+                let mut type_vars = content.type_vars.clone().map(|t| t.as_vec());
+                let params = remap_callable_params(&content.params, &mut type_vars, callable);
+                Self::Callable(Box::new(CallableContent {
+                    defined_at: content.defined_at,
+                    type_vars: type_vars.map(TypeVarLikes::from_vec),
+                    params,
+                    result_type: content.result_type.replace_type_var_likes(callable),
+                }))
+            }
             Self::NewType(t) => Self::NewType(t.clone()),
             Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 rec.link,
@@ -2044,6 +2060,10 @@ pub struct TypeVarLikes(Box<[TypeVarLike]>);
 impl TypeVarLikes {
     pub fn from_vec(vec: Vec<TypeVarLike>) -> Self {
         Self(vec.into_boxed_slice())
+    }
+
+    fn as_vec(self) -> Vec<TypeVarLike> {
+        self.0.into_vec()
     }
 
     pub fn len(&self) -> usize {
