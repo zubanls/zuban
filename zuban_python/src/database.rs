@@ -1175,14 +1175,34 @@ impl DbType {
                             &new.params,
                             &mut None,
                             None,
-                            &mut |usage| todo!(),
+                            &mut |usage| {
+                                let mut tv_in_definition = usage.in_definition();
+                                if tv_in_definition == new_spec_type_vars.in_definition {
+                                    tv_in_definition = in_definition;
+                                }
+                                match usage {
+                                    TypeVarLikeUsage::TypeVar(usage) => {
+                                        let mut usage = usage.into_owned();
+                                        usage.in_definition = tv_in_definition;
+                                        GenericItem::TypeArgument(DbType::TypeVar(usage))
+                                    }
+                                    TypeVarLikeUsage::TypeVarTuple(usage) => todo!("{usage:?}"),
+                                    TypeVarLikeUsage::ParamSpec(param_spec) => {
+                                        let mut param_spec = param_spec.into_owned();
+                                        param_spec.in_definition = tv_in_definition;
+                                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                                            CallableParams::WithParamSpec(Box::new([]), param_spec),
+                                            None,
+                                        ))
+                                    }
+                                }
+                            },
                         );
                         if type_vars.is_some() {
-                            /*
-                             */
                             todo!()
                         } else {
                             *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                            dbg!(new_params);
                             dbg!(new_spec_type_vars.in_definition);
                             todo!();
                         }
