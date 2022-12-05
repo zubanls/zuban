@@ -1023,6 +1023,7 @@ impl DbType {
         };
         let remap_callable_params = |params: &CallableParams,
                                      type_vars: &mut Option<Vec<TypeVarLike>>,
+                                     in_definition: Option<PointLink>,
                                      callable: &mut C| {
             match params {
                 CallableParams::Simple(params) => CallableParams::Simple(
@@ -1127,7 +1128,12 @@ impl DbType {
                         GenericItem::ParamSpecArgument(p) => {
                             let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                                remap_callable_params(&p.params, &mut type_vars, callable),
+                                remap_callable_params(
+                                    &p.params,
+                                    &mut type_vars,
+                                    p.type_vars.as_ref().map(|t| t.in_definition),
+                                    callable,
+                                ),
                                 type_vars.map(|t| ParamSpecTypeVars {
                                     type_vars: TypeVarLikes::from_vec(t),
                                     in_definition: p.type_vars.as_ref().unwrap().in_definition,
@@ -1178,7 +1184,12 @@ impl DbType {
             }),
             Self::Callable(content) => {
                 let mut type_vars = content.type_vars.clone().map(|t| t.as_vec());
-                let params = remap_callable_params(&content.params, &mut type_vars, callable);
+                let params = remap_callable_params(
+                    &content.params,
+                    &mut type_vars,
+                    Some(content.defined_at),
+                    callable,
+                );
                 Self::Callable(Box::new(CallableContent {
                     defined_at: content.defined_at,
                     type_vars: type_vars.map(TypeVarLikes::from_vec),
