@@ -1166,7 +1166,7 @@ impl DbType {
             ),
             CallableParams::Any => CallableParams::Any,
             CallableParams::WithParamSpec(types, param_spec) => {
-                let GenericItem::ParamSpecArgument(new) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
+                let GenericItem::ParamSpecArgument(mut new) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
                     unreachable!()
                 };
                 if let Some(new_spec_type_vars) = new.type_vars {
@@ -1175,40 +1175,28 @@ impl DbType {
                             &new.params,
                             &mut None,
                             None,
-                            &mut |usage| {
-                                let mut tv_in_definition = usage.in_definition();
-                                if tv_in_definition == new_spec_type_vars.in_definition {
-                                    tv_in_definition = in_definition;
+                            &mut |mut usage| {
+                                if usage.in_definition() == new_spec_type_vars.in_definition {
+                                    let type_var_len =
+                                        type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
+                                    usage.update_in_definition_and_index(
+                                        in_definition,
+                                        (usage.index().0 as usize + type_var_len).into(),
+                                    );
                                 }
-                                match usage {
-                                    TypeVarLikeUsage::TypeVar(usage) => {
-                                        let mut usage = usage.into_owned();
-                                        usage.in_definition = tv_in_definition;
-                                        GenericItem::TypeArgument(DbType::TypeVar(usage))
-                                    }
-                                    TypeVarLikeUsage::TypeVarTuple(usage) => todo!("{usage:?}"),
-                                    TypeVarLikeUsage::ParamSpec(param_spec) => {
-                                        let mut param_spec = param_spec.into_owned();
-                                        param_spec.in_definition = tv_in_definition;
-                                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                                            CallableParams::WithParamSpec(Box::new([]), param_spec),
-                                            None,
-                                        ))
-                                    }
-                                }
+                                usage.into_generic_item()
                             },
                         );
                         if type_vars.is_some() {
-                            todo!()
+                            todo!("Probably this todo can just be removed")
                         } else {
                             *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
-                            dbg!(new_params);
-                            dbg!(new_spec_type_vars.in_definition);
-                            todo!();
                         }
+                        new.params = new_params
                     } else {
                         debug_assert!(type_vars.is_none());
-                        todo!()
+                        *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                        todo!("Can probably just be removed")
                     }
                 }
                 if types.is_empty() {
@@ -2388,6 +2376,30 @@ impl<'a> TypeVarLikeUsage<'a> {
                 ))
                 */
                 todo!("Should probably be the statement before")
+            }
+        }
+    }
+
+    pub fn update_in_definition_and_index(
+        &mut self,
+        in_definition: PointLink,
+        index: TypeVarIndex,
+    ) {
+        match self {
+            Self::TypeVar(t) => {
+                let t = t.to_mut();
+                t.index = index;
+                t.in_definition = in_definition;
+            }
+            Self::TypeVarTuple(t) => {
+                let t = t.to_mut();
+                t.index = index;
+                t.in_definition = in_definition;
+            }
+            Self::ParamSpec(p) => {
+                let p = p.to_mut();
+                p.index = index;
+                p.in_definition = in_definition;
             }
         }
     }

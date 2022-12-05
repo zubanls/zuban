@@ -108,8 +108,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testGenericsInInferredParamspec
-
 testParamSpecContextManagerLike
 testParamSpecDecorator
 testParamSpecDecoratorImplementation
