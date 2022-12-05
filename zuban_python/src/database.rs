@@ -71,6 +71,7 @@ impl fmt::Display for FileIndex {
 }
 
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
+type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
@@ -985,11 +986,9 @@ impl DbType {
         }
     }
 
-    pub fn replace_type_var_likes<C: FnMut(TypeVarLikeUsage) -> GenericItem>(
-        &self,
-        callable: &mut C,
-    ) -> Self {
-        let remap_tuple_likes = |args: &TupleTypeArguments, callable: &mut C| match args {
+    pub fn replace_type_var_likes(&self, callable: ReplaceTypeVarLike) -> Self {
+        let remap_tuple_likes = |args: &TupleTypeArguments, callable: ReplaceTypeVarLike| match args
+        {
             TupleTypeArguments::FixedLength(ts) => {
                 let mut new_args = vec![];
                 for g in ts.iter() {
@@ -1116,11 +1115,11 @@ impl DbType {
         }
     }
 
-    fn remap_callable_params<C: FnMut(TypeVarLikeUsage) -> GenericItem>(
+    fn remap_callable_params(
         params: &CallableParams,
         type_vars: &mut Option<Vec<TypeVarLike>>,
         in_definition: Option<PointLink>,
-        callable: &mut C,
+        callable: ReplaceTypeVarLike,
     ) -> CallableParams {
         match params {
             CallableParams::Simple(params) => CallableParams::Simple(
@@ -1172,22 +1171,19 @@ impl DbType {
                 };
                 if let Some(new_spec_type_vars) = new.type_vars {
                     if let Some(in_definition) = in_definition {
+                        let new_params = Self::remap_callable_params(
+                            &new.params,
+                            &mut None,
+                            None,
+                            &mut |usage| todo!(),
+                        );
                         if type_vars.is_some() {
                             /*
-                            let new_params = remap_callable_params(
-                                new.params,
-                                None,
-                                 in_definition,
-                                 &mut |usage| {
-                                     todo!()
-                                 }
-                            );
-                            */
+                             */
                             todo!()
                         } else {
                             *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
                             dbg!(new_spec_type_vars.in_definition);
-                            dbg!(&new.params);
                             todo!();
                         }
                     } else {
