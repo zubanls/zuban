@@ -332,14 +332,16 @@ impl<'db: 'a, 'a> Function<'a> {
             params.next();
         }
         let as_db_type = |i_s: &mut InferenceState, t: Type| {
-            t.as_db_type(i_s).replace_type_var_likes(&mut |usage| {
-                if let Some(class) = self.class {
-                    if usage.in_definition() == class.node_ref.as_link() {
-                        return class
-                            .generics()
-                            .nth_usage(i_s, &usage)
-                            .into_generic_item(i_s);
-                    }
+            let t = t.as_db_type(i_s);
+            let Some(class) = self.class else {
+                return t
+            };
+            t.replace_type_var_likes(&mut |usage| {
+                if usage.in_definition() == class.node_ref.as_link() {
+                    return class
+                        .generics()
+                        .nth_usage(i_s, &usage)
+                        .into_generic_item(i_s);
                 }
                 match usage {
                     TypeVarLikeUsage::TypeVar(usage) => {
