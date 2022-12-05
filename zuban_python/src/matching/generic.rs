@@ -84,7 +84,9 @@ impl<'a> Generic<'a> {
                     matcher,
                     &p1.params,
                     &p2.params,
-                    p2.type_vars.as_ref(),
+                    p2.type_vars
+                        .as_ref()
+                        .map(|t| (&t.type_vars, t.in_definition)),
                     variance,
                     false,
                 ),

@@ -213,7 +213,7 @@ impl<'a> Type<'a> {
                                             matcher,
                                             &c1.params,
                                             &c2.params,
-                                            type_vars2,
+                                            type_vars2.map(|t| (t, cls.node_ref.as_link())),
                                             Variance::Contravariant,
                                             true,
                                         );
@@ -615,7 +615,7 @@ impl<'a> Type<'a> {
                 matcher,
                 &c1.params,
                 &c2.params,
-                c2.type_vars.as_ref(),
+                c2.type_vars.as_ref().map(|t| (t, c2.defined_at)),
                 Variance::Contravariant,
                 false,
             )

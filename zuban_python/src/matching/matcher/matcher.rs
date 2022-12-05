@@ -10,9 +10,10 @@ use super::type_var_matcher::{
 };
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, DbType, ParamSpecArgument, ParamSpecUsage,
-    ParamSpecific, RecursiveAlias, StarredParamSpecific, TupleTypeArguments, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
+    CallableContent, CallableParam, CallableParams, DbType, ParamSpecArgument, ParamSpecTypeVars,
+    ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific,
+    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
@@ -368,7 +369,7 @@ impl<'a> Matcher<'a> {
         pre_param_spec_types: &[DbType],
         p1: &ParamSpecUsage,
         params2: &[CallableParam],
-        type_vars2: Option<&TypeVarLikes>,
+        type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
     ) -> Match {
         debug_assert!(!self.is_matching_reverse());
@@ -398,7 +399,10 @@ impl<'a> Matcher<'a> {
                 BoundKind::Uncalculated => {
                     calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
                         CallableParams::Simple(params2_iterator.cloned().collect()),
-                        type_vars2.cloned(),
+                        type_vars2.map(|type_vars| ParamSpecTypeVars {
+                            type_vars: type_vars.0.clone(),
+                            in_definition: type_vars.1,
+                        }),
                     ));
                     return matches;
                 }

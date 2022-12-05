@@ -1070,13 +1070,13 @@ impl DbType {
                 CallableParams::Any => CallableParams::Any,
                 CallableParams::WithParamSpec(types, param_spec) => {
                     let GenericItem::ParamSpecArgument(new) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
-                    unreachable!()
-                };
-                    if let Some(new_type_vars) = new.type_vars {
+                        unreachable!()
+                    };
+                    if let Some(new_spec_type_vars) = new.type_vars {
                         if type_vars.is_some() {
                             todo!()
                         } else {
-                            *type_vars = Some(new_type_vars.as_vec());
+                            *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
                         }
                     }
                     if types.is_empty() {
@@ -1125,10 +1125,13 @@ impl DbType {
                             })
                         }
                         GenericItem::ParamSpecArgument(p) => {
-                            let mut type_vars = p.type_vars.clone().map(|t| t.as_vec());
+                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
                                 remap_callable_params(&p.params, &mut type_vars, callable),
-                                type_vars.map(TypeVarLikes::from_vec),
+                                type_vars.map(|t| ParamSpecTypeVars {
+                                    type_vars: TypeVarLikes::from_vec(t),
+                                    in_definition: p.type_vars.as_ref().unwrap().in_definition,
+                                }),
                             ))
                         }
                     })
@@ -2265,13 +2268,19 @@ pub struct ParamSpecUsage {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct ParamSpecTypeVars {
+    pub type_vars: TypeVarLikes,
+    pub in_definition: PointLink,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ParamSpecArgument {
     pub params: CallableParams,
-    pub type_vars: Option<TypeVarLikes>,
+    pub type_vars: Option<ParamSpecTypeVars>,
 }
 
 impl ParamSpecArgument {
-    pub fn new(params: CallableParams, type_vars: Option<TypeVarLikes>) -> Self {
+    pub fn new(params: CallableParams, type_vars: Option<ParamSpecTypeVars>) -> Self {
         Self { params, type_vars }
     }
 

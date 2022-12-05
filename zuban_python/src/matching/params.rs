@@ -27,7 +27,7 @@ pub fn matches_params(
     matcher: &mut Matcher,
     params1: &CallableParams,
     params2: &CallableParams,
-    type_vars2: Option<&TypeVarLikes>,
+    type_vars2: Option<(&TypeVarLikes, PointLink)>,
     variance: Variance,
     skip_first_of_params2: bool,
 ) -> Match {
