@@ -1074,10 +1074,28 @@ impl DbType {
                         unreachable!()
                     };
                     if let Some(new_spec_type_vars) = new.type_vars {
-                        if type_vars.is_some() {
-                            todo!()
+                        if let Some(in_definition) = in_definition {
+                            if type_vars.is_some() {
+                                /*
+                                let new_params = remap_callable_params(
+                                    new.params,
+                                    None,
+                                     in_definition,
+                                     &mut |usage| {
+                                         todo!()
+                                     }
+                                );
+                                */
+                                todo!()
+                            } else {
+                                *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                                dbg!(new_spec_type_vars.in_definition);
+                                dbg!(&new.params);
+                                todo!();
+                            }
                         } else {
-                            *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                            debug_assert!(type_vars.is_none());
+                            todo!()
                         }
                     }
                     if types.is_empty() {
