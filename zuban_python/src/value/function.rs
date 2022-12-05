@@ -13,9 +13,8 @@ use crate::arguments::{
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink,
-    StarredParamSpecific, StringSlice, TupleTypeArguments, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager,
+    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
+    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -343,18 +342,7 @@ impl<'db: 'a, 'a> Function<'a> {
                         .nth_usage(i_s, &usage)
                         .into_generic_item(i_s);
                 }
-                match usage {
-                    TypeVarLikeUsage::TypeVar(usage) => {
-                        GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
-                    }
-                    TypeVarLikeUsage::TypeVarTuple(usage) => todo!("{usage:?}"),
-                    TypeVarLikeUsage::ParamSpec(param_spec) => {
-                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                            CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
-                            None,
-                        ))
-                    }
-                }
+                usage.into_generic_item()
             })
         };
         let result_type = self.result_type(i_s);

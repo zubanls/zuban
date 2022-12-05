@@ -1,6 +1,6 @@
 use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 
-use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, TypeVarLikeUsage};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::inference_state::InferenceState;
@@ -55,13 +55,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
                                 found = Some(list_cls.as_db_type(i_s).replace_type_var_likes(
-                                    &mut |tv| match tv {
-                                        TypeVarLikeUsage::TypeVar(_) => {
-                                            GenericItem::TypeArgument(DbType::Any)
-                                        }
-                                        TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
-                                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
-                                    },
+                                    &mut |tv| tv.as_type_var_like().as_any_generic_item(),
                                 ));
                             }
                             true

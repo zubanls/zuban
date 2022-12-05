@@ -7,7 +7,7 @@ use super::{File, PythonFile, TypeComputation, TypeComputationOrigin};
 use crate::arguments::{Argument, Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, DbType, FileIndex, GenericItem, GenericsList, Locality, Point, PointLink,
-    PointType, Specific, TupleContent, TypeOrTypeVarTuple, TypeVarLikeUsage,
+    PointType, Specific, TupleContent, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1406,15 +1406,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                             .into_generic_item(self.i_s);
                                     }
                                 }
-                                match t {
-                                    TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArgument(
-                                        DbType::TypeVar(usage.into_owned()),
-                                    ),
-                                    TypeVarLikeUsage::TypeVarTuple(_) => todo!(), //GenericItem::TypeArguments(
-                                    //TypeArguments::new_fixed_length(Box::new([DbType::TypeVarLike(t.clone())]))
-                                    //),
-                                    TypeVarLikeUsage::ParamSpec(_) => todo!(),
-                                }
+                                t.into_generic_item()
                             });
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                     }

@@ -1214,11 +1214,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             alias
                 .replace_type_var_likes(false, &mut |usage| {
                     if mismatch {
-                        match usage {
-                            TypeVarLikeUsage::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-                            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
-                            TypeVarLikeUsage::ParamSpec(_) => todo!(),
-                        }
+                        usage.as_type_var_like().as_any_generic_item()
                     } else {
                         generics[usage.index().as_usize()].clone()
                     }

@@ -215,15 +215,7 @@ impl<'a> TypeVarMatcher<'a> {
                                     GenericItem::ParamSpecArgument(_) => todo!(),
                                 }
                             } else {
-                                match type_var_like_usage {
-                                    TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArgument(
-                                        DbType::TypeVar(usage.into_owned()),
-                                    ),
-                                    TypeVarLikeUsage::TypeVarTuple(usage) => {
-                                        todo!()
-                                    }
-                                    TypeVarLikeUsage::ParamSpec(_) => todo!(),
-                                }
+                                type_var_like_usage.into_generic_item()
                             }
                         } else {
                             todo!()
@@ -311,15 +303,7 @@ impl CalculatedTypeArguments {
                 return c.generics().nth_usage(i_s, &usage).into_generic_item(i_s);
             }
         }
-        match usage {
-            TypeVarLikeUsage::TypeVar(type_var_usage) => {
-                GenericItem::TypeArgument(DbType::TypeVar((*type_var_usage).clone()))
-            }
-            TypeVarLikeUsage::TypeVarTuple(type_var_tuple_usage) => {
-                todo!()
-            }
-            TypeVarLikeUsage::ParamSpec(_) => todo!(),
-        }
+        usage.into_generic_item()
     }
 }
 

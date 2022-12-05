@@ -2372,6 +2372,26 @@ impl<'a> TypeVarLikeUsage<'a> {
         }
     }
 
+    pub fn into_generic_item(self) -> GenericItem {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => {
+                GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
+            }
+            TypeVarLikeUsage::TypeVarTuple(usage) => {
+                todo!()
+            }
+            TypeVarLikeUsage::ParamSpec(param_spec) => {
+                /*
+                GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                    CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
+                    None,
+                ))
+                */
+                todo!("Should probably be the statement before")
+            }
+        }
+    }
+
     pub fn format_without_matcher(
         &self,
         db: &Database,
@@ -2529,13 +2549,7 @@ impl TypeAlias {
             self.db_type
                 .replace_type_var_likes(&mut |t| match t.in_definition() == self.location {
                     true => t.as_type_var_like().as_any_generic_item(),
-                    false => match t {
-                        TypeVarLikeUsage::TypeVar(t) => {
-                            GenericItem::TypeArgument(DbType::TypeVar(t.into_owned()))
-                        }
-                        TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
-                        TypeVarLikeUsage::ParamSpec(_) => todo!(),
-                    },
+                    false => t.into_generic_item(),
                 })
         }
     }
