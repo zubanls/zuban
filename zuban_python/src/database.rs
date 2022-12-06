@@ -1171,14 +1171,13 @@ impl DbType {
                 };
                 if let Some(new_spec_type_vars) = new.type_vars {
                     if let Some(in_definition) = in_definition {
+                        let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
                         let new_params = Self::remap_callable_params(
                             &new.params,
                             &mut None,
                             None,
                             &mut |mut usage| {
                                 if usage.in_definition() == new_spec_type_vars.in_definition {
-                                    let type_var_len =
-                                        type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
                                     usage.update_in_definition_and_index(
                                         in_definition,
                                         (usage.index().0 as usize + type_var_len).into(),
