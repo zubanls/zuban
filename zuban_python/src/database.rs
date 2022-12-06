@@ -1193,8 +1193,8 @@ impl DbType {
                                 )
                             },
                         );
-                        if type_vars.is_some() {
-                            todo!("Probably this todo can just be removed")
+                        if let Some(type_vars) = type_vars.as_mut() {
+                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
                         } else {
                             *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
                         }
@@ -2039,15 +2039,15 @@ impl TypeVarManager {
             let matched = match &t.type_var_like {
                 TypeVarLike::TypeVar(type_var) => match usage {
                     TypeVarLikeUsage::TypeVar(u) => type_var.as_ref() == u.type_var.as_ref(),
-                    _ => unreachable!(),
+                    _ => false,
                 },
                 TypeVarLike::TypeVarTuple(t) => match usage {
                     TypeVarLikeUsage::TypeVarTuple(u) => t.as_ref() == u.type_var_tuple.as_ref(),
-                    _ => unreachable!(),
+                    _ => false,
                 },
                 TypeVarLike::ParamSpec(p) => match usage {
                     TypeVarLikeUsage::ParamSpec(u) => p.as_ref() == u.param_spec.as_ref(),
-                    _ => unreachable!(),
+                    _ => false,
                 },
             };
             if matched {
