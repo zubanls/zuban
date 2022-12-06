@@ -1,0 +1,20 @@
+[case param_spec_with_generics]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+
+class Job(Generic[_P, _T]):
+    def __init__(self, target: Callable[_P, _T]) -> None: ...
+    def into_callable(self) -> Callable[_P, _T]: ...
+
+def generic_f(x: _T) -> _T: ...
+
+j = Job(generic_f)
+reveal_type(j)  # N: Revealed type is "__main__.Job[[x: _T], _T]"
+
+jf = j.into_callable()
+reveal_type(jf)  # N: Revealed type is "def [_T] (x: _T) -> _T"
+reveal_type(jf(1))  # N: Revealed type is "int"
+reveal_type(jf(""))  # N: Revealed type is "str"

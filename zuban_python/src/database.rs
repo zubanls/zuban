@@ -1041,7 +1041,8 @@ impl DbType {
                                     &mut type_vars,
                                     p.type_vars.as_ref().map(|t| t.in_definition),
                                     callable,
-                                ),
+                                )
+                                .0,
                                 type_vars.map(|t| ParamSpecTypeVars {
                                     type_vars: TypeVarLikes::from_vec(t),
                                     in_definition: p.type_vars.as_ref().unwrap().in_definition,
@@ -1092,17 +1093,23 @@ impl DbType {
             }),
             Self::Callable(content) => {
                 let mut type_vars = content.type_vars.clone().map(|t| t.as_vec());
-                let params = Self::remap_callable_params(
+                let (params, remap_data) = Self::remap_callable_params(
                     &content.params,
                     &mut type_vars,
                     Some(content.defined_at),
                     callable,
                 );
+                let mut result_type = content.result_type.replace_type_var_likes(callable);
+                if let Some(remap_data) = remap_data {
+                    result_type = result_type.replace_type_var_likes(&mut |usage| {
+                        Self::remap_param_spec_inner(usage, content.defined_at, remap_data)
+                    });
+                }
                 Self::Callable(Box::new(CallableContent {
                     defined_at: content.defined_at,
                     type_vars: type_vars.map(TypeVarLikes::from_vec),
                     params,
-                    result_type: content.result_type.replace_type_var_likes(callable),
+                    result_type,
                 }))
             }
             Self::NewType(t) => Self::NewType(t.clone()),
@@ -1120,8 +1127,9 @@ impl DbType {
         type_vars: &mut Option<Vec<TypeVarLike>>,
         in_definition: Option<PointLink>,
         callable: ReplaceTypeVarLike,
-    ) -> CallableParams {
-        match params {
+    ) -> (CallableParams, Option<(PointLink, usize)>) {
+        let mut remap_data = None;
+        let new_params = match params {
             CallableParams::Simple(params) => CallableParams::Simple(
                 params
                     .iter()
@@ -1172,18 +1180,17 @@ impl DbType {
                 if let Some(new_spec_type_vars) = new.type_vars {
                     if let Some(in_definition) = in_definition {
                         let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
+                        remap_data = Some((new_spec_type_vars.in_definition, type_var_len));
                         let new_params = Self::remap_callable_params(
                             &new.params,
                             &mut None,
                             None,
-                            &mut |mut usage| {
-                                if usage.in_definition() == new_spec_type_vars.in_definition {
-                                    usage.update_in_definition_and_index(
-                                        in_definition,
-                                        (usage.index().0 as usize + type_var_len).into(),
-                                    );
-                                }
-                                usage.into_generic_item()
+                            &mut |usage| {
+                                Self::remap_param_spec_inner(
+                                    usage,
+                                    in_definition,
+                                    remap_data.unwrap(),
+                                )
                             },
                         );
                         if type_vars.is_some() {
@@ -1191,7 +1198,7 @@ impl DbType {
                         } else {
                             *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
                         }
-                        new.params = new_params
+                        new.params = new_params.0;
                     } else {
                         debug_assert!(type_vars.is_none());
                         *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
@@ -1228,7 +1235,22 @@ impl DbType {
                     }
                 }
             }
+        };
+        (new_params, remap_data)
+    }
+
+    fn remap_param_spec_inner(
+        mut usage: TypeVarLikeUsage,
+        in_definition: PointLink,
+        remap_data: (PointLink, usize),
+    ) -> GenericItem {
+        if usage.in_definition() == remap_data.0 {
+            usage.update_in_definition_and_index(
+                in_definition,
+                (usage.index().0 as usize + remap_data.1).into(),
+            );
         }
+        usage.into_generic_item()
     }
 
     pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
