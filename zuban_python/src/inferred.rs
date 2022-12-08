@@ -17,8 +17,8 @@ use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Module, NewTypeClass, NoneInstance, OnTypeError,
-    OverloadedFunction, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance,
-    TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
+    OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
+    TypeVarInstance, TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -798,7 +798,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s,
                 &NoArguments::new(from),
                 &mut ResultContext::Unknown,
-                OnTypeError::new(&|_, _, _, _, _, _, _| todo!("currently only used for __next__")),
+                OnTypeError::new(&|_, _, _, _, _, _| todo!("currently only used for __next__")),
             )
         })
     }
@@ -1083,6 +1083,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         }
         Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
         Specific::TypingTypeVarTupleClass => callable(i_s, &TypeVarTupleClass()),
+        Specific::TypingParamSpecClass => callable(i_s, &ParamSpecClass()),
         Specific::TypingProtocol
         | Specific::TypingGeneric
         | Specific::TypingTuple
@@ -1195,6 +1196,8 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             reducer,
             on_missing,
         ),
+        DbType::ParamSpecArgs(usage) => todo!(),
+        DbType::ParamSpecKwargs(usage) => todo!(),
     }
 }
 

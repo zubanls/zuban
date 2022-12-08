@@ -5,8 +5,8 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
-    CallableContent, Database, DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
-    UnionType, Variance,
+    CallableContent, CallableParams, Database, DbType, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::inference_state::InferenceState;
@@ -64,6 +64,13 @@ impl<'a> Type<'a> {
         match self {
             Self::Class(_) => None,
             Self::Type(t) => Some(t.as_ref()),
+        }
+    }
+
+    pub fn maybe_borrowed_db_type(&self) -> Option<&'a DbType> {
+        match self {
+            Self::Type(Cow::Borrowed(t)) => Some(t),
+            _ => None,
         }
     }
 
@@ -148,6 +155,8 @@ impl<'a> Type<'a> {
                 DbType::Intersection(intersection) => todo!(),
                 DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(_) => todo!(),
+                DbType::ParamSpecArgs(usage) => todo!(),
+                DbType::ParamSpecKwargs(usage) => todo!(),
             },
         }
     }
@@ -192,6 +201,7 @@ impl<'a> Type<'a> {
                                 if let LookupResult::GotoName(_, init) = lookup {
                                     let t2 = init.class_as_type(i_s);
                                     if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
+                                        let type_vars2 = cls.type_vars(i_s);
                                         // Since __init__ does not have a return, We need to check the params
                                         // of the __init__ functions and the class as a return type separately.
                                         return Type::new(&c1.result_type).is_super_type_of(
@@ -201,16 +211,18 @@ impl<'a> Type<'a> {
                                         ) & matches_params(
                                             i_s,
                                             matcher,
-                                            c1.params.as_ref().map(|p| p.iter()),
-                                            c2.params.as_ref().map(|p| p.iter().skip(1)),
+                                            &c1.params,
+                                            &c2.params,
+                                            type_vars2.map(|t| (t, cls.node_ref.as_link())),
                                             Variance::Contravariant,
+                                            true,
                                         );
                                     }
                                 }
                                 Match::new_false()
                             }
                             _ => {
-                                if c1.params.is_none() {
+                                if matches!(&c1.params, CallableParams::Any) {
                                     Type::new(&c1.result_type).is_super_type_of(
                                         i_s,
                                         matcher,
@@ -286,6 +298,14 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
+                DbType::ParamSpecArgs(usage1) => match value_type.maybe_db_type() {
+                    Some(DbType::ParamSpecArgs(usage2)) => (usage1 == usage2).into(),
+                    _ => Match::new_false(),
+                },
+                DbType::ParamSpecKwargs(usage1) => match value_type.maybe_db_type() {
+                    Some(DbType::ParamSpecKwargs(usage2)) => (usage1 == usage2).into(),
+                    _ => Match::new_false(),
+                },
             },
         }
     }
@@ -296,10 +316,7 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
-        matcher.match_reverse();
-        let result = value_type.is_super_type_of(i_s, matcher, self);
-        matcher.match_reverse();
-        result
+        matcher.match_reverse(|matcher| value_type.is_super_type_of(i_s, matcher, self))
     }
 
     pub fn is_simple_sub_type_of(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
@@ -596,9 +613,11 @@ impl<'a> Type<'a> {
             & matches_params(
                 i_s,
                 matcher,
-                c1.params.as_ref().map(|params| params.iter()),
-                c2.params.as_ref().map(|params| params.iter()),
+                &c1.params,
+                &c2.params,
+                c2.type_vars.as_ref().map(|t| (t, c2.defined_at)),
                 Variance::Contravariant,
+                false,
             )
     }
 
@@ -826,8 +845,9 @@ impl<'a> Type<'a> {
                 }
                 DbType::TypeVar(t) => {
                     if matcher.has_type_var_matcher() {
-                        let t =
-                            Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type));
+                        let t = Type::owned(
+                            matcher.replace_type_var_likes_for_nested_context(i_s, db_type),
+                        );
                         return self.try_to_resemble_context(i_s, &mut Matcher::default(), &t);
                     }
                 }
@@ -859,10 +879,10 @@ impl<'a> Type<'a> {
         calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
         match self {
-            Self::Class(c) => c.as_db_type(i_s).replace_type_vars(&mut |t| {
+            Self::Class(c) => c.as_db_type(i_s).replace_type_var_likes(&mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
-            Self::Type(t) => t.replace_type_vars(&mut |t| {
+            Self::Type(t) => t.replace_type_var_likes(&mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
         }
@@ -883,7 +903,7 @@ impl<'a> Type<'a> {
                     .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
                 Some(db_type @ DbType::TypeVar(_)) => {
                     if matcher.has_type_var_matcher() {
-                        Type::owned(matcher.replace_type_vars_for_nested_context(i_s, db_type))
+                        Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s, db_type))
                             .on_any_class(i_s, matcher, callable)
                     } else {
                         false
@@ -904,10 +924,20 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
+                unreachable!("object is always a common base class")
             }
-            _ => return i_s.db.python_state.object_db_type(),
+            (None, None) => {
+                // TODO this should also be done for function/callable and callable/function and
+                // not only callable/callable
+                if let Some(DbType::Callable(c1)) = self.maybe_db_type() {
+                    if let Some(DbType::Callable(c2)) = other.maybe_db_type() {
+                        return DbType::Class(i_s.db.python_state.function_point_link(), None);
+                    }
+                }
+            }
+            _ => (),
         }
-        unreachable!("object is always a common base class")
+        i_s.db.python_state.object_db_type()
     }
 
     pub fn is_any(&self) -> bool {
@@ -948,6 +978,11 @@ pub fn match_tuple_type_arguments(
     t2: &TupleTypeArguments,
     variance: Variance,
 ) -> Match {
+    if matcher.is_matching_reverse() {
+        return matcher.match_reverse(|matcher| {
+            match_tuple_type_arguments(i_s, matcher, t2, t1, variance.invert())
+        });
+    }
     use TupleTypeArguments::*;
     if matcher.has_type_var_matcher() {
         if let Some(ts) = t1.has_type_var_tuple() {

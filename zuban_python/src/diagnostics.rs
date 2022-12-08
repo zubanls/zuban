@@ -54,7 +54,7 @@ pub(crate) enum IssueType {
     TypeVarOnlySingleRestriction,
     UnexpectedArgument { class_name: &'static str, argument_name: Box<str> },
     TypeVarLikeTooFewArguments { class_name: &'static str },
-    TypeVarLikeFirstArgMustBeString{class_name: &'static str},
+    TypeVarLikeFirstArgMustBeString{ class_name: &'static str },
     TypeVarVarianceMustBeBool { argument: &'static str },
     TypeVarTypeExpected,
     NameMismatch {
@@ -64,8 +64,9 @@ pub(crate) enum IssueType {
     },
     TypeVarInReturnButNotArgument,
     UnexpectedTypeForTypeVar,
-    TypeVarTupleTooManyArguments,
+    TypeVarLikeTooManyArguments { class_name: &'static str },
     MultipleTypeVarTuplesInClassDef,
+    NestedConcatenate,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -303,7 +304,8 @@ impl<'db> Diagnostic<'db> {
                     format!("TypeVarTuple {name:?} is unbound")
                 }
                 TypeVarLike::ParamSpec(param_spec) => {
-                    todo!()
+                    let name = param_spec.name(self.db);
+                    format!("ParamSpec {name:?} is unbound")
                 }
             }
             IssueType::IncompleteGenericOrProtocolTypeVars =>
@@ -340,10 +342,12 @@ impl<'db> Diagnostic<'db> {
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_owned(),
             IssueType::UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_owned(),
-            IssueType::TypeVarTupleTooManyArguments =>
-                "Only the first argument to TypeVarTuple has defined semantics".to_owned(),
+            IssueType::TypeVarLikeTooManyArguments{class_name} => format!(
+                "Only the first argument to {class_name} has defined semantics"),
             IssueType::MultipleTypeVarTuplesInClassDef =>
                 "Can only use one type var tuple in a class def".to_owned(),
+            IssueType::NestedConcatenate =>
+                "Nested Concatenates are invalid".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

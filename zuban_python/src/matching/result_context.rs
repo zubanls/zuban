@@ -13,7 +13,7 @@ pub enum ResultContext<'a, 'b> {
 }
 
 impl<'a> ResultContext<'a, '_> {
-    pub fn with_type_if_exists_and_replace_type_vars<'db, T>(
+    pub fn with_type_if_exists_and_replace_type_var_likes<'db, T>(
         &mut self,
         i_s: &mut InferenceState<'db, '_>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'_>) -> T,
@@ -22,7 +22,7 @@ impl<'a> ResultContext<'a, '_> {
             Self::Known(type_) => Some(callable(i_s, type_)),
             Self::WithMatcher { matcher, type_ } => {
                 let t = type_.as_db_type(i_s);
-                let t = matcher.replace_type_vars_for_nested_context(i_s, &t);
+                let t = matcher.replace_type_var_likes_for_nested_context(i_s, &t);
                 Some(callable(i_s, &Type::new(&t)))
             }
             Self::Unknown => None,

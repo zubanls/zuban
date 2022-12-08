@@ -1,8 +1,11 @@
+use std::borrow::Cow;
+
 use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    DbType, GenericItem, GenericsList, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
 use crate::file::PythonFile;
@@ -12,7 +15,7 @@ macro_rules! replace_class_vars {
     ($i_s:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None | Generics::Any) => Generic::new($g),
-            Some(type_var_generics) => Generic::owned($g.replace_type_vars(&mut |t| {
+            Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(&mut |t| {
                 type_var_generics
                     .nth_usage($i_s, &t)
                     .into_generic_item($i_s)
@@ -58,6 +61,19 @@ impl<'a> Generics<'a> {
         usage: &TypeVarLikeUsage,
     ) -> Generic<'a> {
         self.nth(i_s, &usage.as_type_var_like(), usage.index().as_usize())
+    }
+
+    pub fn nth_param_spec_usage<'db: 'a>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        usage: &ParamSpecUsage,
+    ) -> Cow<'a, ParamSpecArgument> {
+        let generic = self.nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
+        if let Generic::ParamSpecArgument(p) = generic {
+            p
+        } else {
+            unreachable!()
+        }
     }
 
     pub fn nth<'db: 'a>(
@@ -206,9 +222,9 @@ impl<'a> Generics<'a> {
             let v = match tv {
                 TypeVarLike::TypeVar(t) => t.variance,
                 TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
-                TypeVarLike::ParamSpec(_) => todo!(),
+                TypeVarLike::ParamSpec(_) => Variance::Invariant,
             };
-            matches &= t1.matches(i_s, matcher, t2, v);
+            matches &= t1.matches(i_s, matcher, &t2, v);
         }
         matches
     }

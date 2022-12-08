@@ -1,16 +1,20 @@
 use parsa_python_ast::{
-    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator, ParamKind, ReturnAnnotation,
-    ReturnOrYield,
+    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator, ParamKind,
+    ReturnAnnotation, ReturnOrYield,
 };
+use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
-use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
+use crate::arguments::{
+    Argument, ArgumentIterator, ArgumentIteratorImpl, ArgumentKind, Arguments, SimpleArguments,
+};
 use crate::database::{
-    CallableContent, CallableParam, ComplexPoint, Database, DbType, Execution, GenericItem,
-    GenericsList, IntersectionType, Locality, Overload, Point, PointLink, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
+    DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
+    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
+    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -19,10 +23,13 @@ use crate::file::{PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCal
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::params::{InferrableParamIterator2, Param};
+use crate::matching::params::{
+    InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
+};
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, FormatData, Generics, Matcher, ResultContext, SignatureMatch, Type,
+    ArgumentIndexWithParam, FormatData, Generic, Generics, Matcher, ResultContext, SignatureMatch,
+    Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -94,7 +101,13 @@ impl<'db: 'a, 'a> Function<'a> {
         db: &'db Database,
         args: &'b dyn Arguments<'db>,
         skip_first_param: bool,
-    ) -> InferrableParamIterator2<'db, 'b, impl Iterator<Item = FunctionParam<'b>>, FunctionParam<'b>>
+    ) -> InferrableParamIterator2<
+        'db,
+        'b,
+        impl Iterator<Item = FunctionParam<'b>>,
+        FunctionParam<'b>,
+        impl ArgumentIterator<'db, 'b>,
+    >
     where
         'a: 'b,
     {
@@ -102,7 +115,7 @@ impl<'db: 'a, 'a> Function<'a> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(db, params, args)
+        InferrableParamIterator2::new(db, params, args.iter_arguments())
     }
 
     pub fn infer_param(
@@ -233,7 +246,7 @@ impl<'db: 'a, 'a> Function<'a> {
             &mut inference,
             self.node_ref.as_link(),
             Some(&mut on_type_var),
-            TypeComputationOrigin::TypeCommentOrAnnotation,
+            TypeComputationOrigin::ParamTypeCommentOrAnnotation,
         );
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
@@ -274,51 +287,121 @@ impl<'db: 'a, 'a> Function<'a> {
         self.type_vars(i_s)
     }
 
+    fn remap_param_spec(
+        &self,
+        i_s: &mut InferenceState,
+        mut pre_params: Vec<CallableParam>,
+        usage: &ParamSpecUsage,
+    ) -> CallableParams {
+        let into_types = |v, pre_params: Vec<CallableParam>| {
+            pre_params
+                .into_iter()
+                .map(|p| p.param_specific.expect_positional_db_type())
+                .collect()
+        };
+        match self.class {
+            Some(c) if c.node_ref.as_link() == usage.in_definition => match c
+                .generics()
+                .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+            {
+                Generic::ParamSpecArgument(p) => match p.into_owned().params {
+                    CallableParams::Any => CallableParams::Any,
+                    CallableParams::Simple(params) => {
+                        pre_params.extend(params.into_vec());
+                        CallableParams::Simple(pre_params.into_boxed_slice())
+                    }
+                    CallableParams::WithParamSpec(pre, p) => {
+                        let types = pre.into_vec();
+                        CallableParams::WithParamSpec(into_types(types, pre_params), p)
+                    }
+                },
+                _ => unreachable!(),
+            },
+            _ => {
+                let types = vec![];
+                CallableParams::WithParamSpec(into_types(types, pre_params), usage.clone())
+            }
+        }
+    }
+
     pub fn as_db_type(&self, i_s: &mut InferenceState, skip_first_param: bool) -> DbType {
         let type_vars = self.type_vars(i_s); // Cache annotation types
-        let mut params = self.iter_params();
+        let mut params = self.iter_params().peekable();
         if skip_first_param {
             params.next();
         }
-        let as_db_type = |i_s: &mut _, t: Type| {
-            t.as_db_type(i_s).replace_type_vars(&mut |usage| {
-                if let Some(class) = self.class {
-                    if usage.in_definition() == class.node_ref.as_link() {
-                        return class
-                            .generics()
-                            .nth_usage(i_s, &usage)
-                            .into_generic_item(i_s);
-                    }
+        let as_db_type = |i_s: &mut InferenceState, t: Type| {
+            let t = t.as_db_type(i_s);
+            let Some(class) = self.class else {
+                return t
+            };
+            t.replace_type_var_likes(&mut |usage| {
+                if usage.in_definition() == class.node_ref.as_link() {
+                    return class
+                        .generics()
+                        .nth_usage(i_s, &usage)
+                        .into_generic_item(i_s);
                 }
-                match usage {
-                    TypeVarLikeUsage::TypeVar(usage) => {
-                        GenericItem::TypeArgument(DbType::TypeVar(usage.into_owned()))
-                    }
-                    _ => todo!(),
-                }
+                usage.into_generic_item()
             })
         };
         let result_type = self.result_type(i_s);
+        let result_type = as_db_type(i_s, result_type);
+
+        let mut new_params = vec![];
+        let mut had_param_spec_args = false;
+        while let Some(p) = params.next() {
+            let specific = p.specific(i_s);
+            let mut as_t = |t: Option<Type>| t.map(|t| as_db_type(i_s, t)).unwrap_or(DbType::Any);
+            let param_specific = match specific {
+                WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_t(t)),
+                WrappedParamSpecific::PositionalOrKeyword(t) => {
+                    ParamSpecific::PositionalOrKeyword(as_t(t))
+                }
+                WrappedParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(as_t(t)),
+                WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t)) => {
+                    ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_t(t)))
+                }
+                WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u1)) => {
+                    match params.peek().map(|p| p.specific(i_s)) {
+                        Some(WrappedParamSpecific::DoubleStarred(
+                            WrappedDoubleStarred::ParamSpecKwargs(u2),
+                        )) if u1 == u2 => {
+                            had_param_spec_args = true;
+                            continue;
+                        }
+                        _ => todo!(),
+                    }
+                }
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(as_t(t)))
+                }
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                    if !had_param_spec_args {
+                        todo!()
+                    }
+                    return DbType::Callable(Box::new(CallableContent {
+                        defined_at: self.node_ref.as_link(),
+                        params: self.remap_param_spec(i_s, new_params, u),
+                        type_vars: type_vars.cloned(),
+                        result_type,
+                    }));
+                }
+            };
+            new_params.push(CallableParam {
+                param_specific,
+                has_default: p.has_default(),
+                name: Some({
+                    let n = p.param.name_definition();
+                    StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
+                }),
+            });
+        }
         DbType::Callable(Box::new(CallableContent {
             defined_at: self.node_ref.as_link(),
-            params: Some(
-                params
-                    .map(|p| CallableParam {
-                        db_type: p
-                            .annotation_type(i_s)
-                            .map(|t| as_db_type(i_s, t))
-                            .unwrap_or(DbType::Any),
-                        has_default: p.has_default(),
-                        name: Some({
-                            let n = p.param.name_definition();
-                            StringSlice::new(self.node_ref.file_index(), n.start(), n.end())
-                        }),
-                        param_kind: p.kind(i_s.db),
-                    })
-                    .collect(),
-            ),
+            params: CallableParams::Simple(new_params.into_boxed_slice()),
             type_vars: type_vars.cloned(),
-            result_type: as_db_type(i_s, result_type),
+            result_type,
         }))
     }
 
@@ -327,10 +410,6 @@ impl<'db: 'a, 'a> Function<'a> {
             file: self.node_ref.file,
             param,
         })
-    }
-
-    pub fn param_iterator(&self) -> Option<impl Iterator<Item = FunctionParam>> {
-        Some(self.iter_params())
     }
 
     pub(super) fn execute_internal(
@@ -429,9 +508,19 @@ impl<'db: 'a, 'a> Function<'a> {
             .iter_params()
             .enumerate()
             .map(|(i, p)| {
-                let annotation_str = p
-                    .annotation_type(i_s)
-                    .map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())));
+                let annotation_str = match p.specific(i_s) {
+                    WrappedParamSpecific::PositionalOnly(t)
+                    | WrappedParamSpecific::PositionalOrKeyword(t)
+                    | WrappedParamSpecific::KeywordOnly(t)
+                    | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                        t.map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())))
+                    }
+                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
+                    WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
+                        u,
+                    )) => todo!(),
+                };
                 let current_kind = p.kind(i_s.db);
                 let stars = match current_kind {
                     ParamKind::Starred => "*",
@@ -604,12 +693,48 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         Some(self.param.name_definition().as_code())
     }
 
-    fn annotation_type<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
-        self.param.annotation().map(|annotation| {
+    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x> {
+        let t = self.param.annotation().map(|annotation| {
             self.file
                 .inference(i_s)
                 .use_cached_annotation_type(annotation)
-        })
+        });
+        fn dbt<'a>(t: Option<&Type<'a>>) -> Option<&'a DbType> {
+            t.and_then(|t| t.maybe_borrowed_db_type())
+        }
+        match self.kind(i_s.db) {
+            ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
+            ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
+            ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
+            ParamKind::Starred => WrappedParamSpecific::Starred(match dbt(t.as_ref()) {
+                Some(DbType::ParamSpecArgs(ref param_spec_usage)) => {
+                    WrappedStarred::ParamSpecArgs(param_spec_usage)
+                }
+                _ => WrappedStarred::ArbitraryLength(t.map(|t| {
+                    let DbType::Tuple(t) = t.maybe_borrowed_db_type().unwrap() else {
+                        unreachable!()
+                    };
+                    match t.args.as_ref().unwrap() {
+                        TupleTypeArguments::FixedLength(..) => todo!(),
+                        TupleTypeArguments::ArbitraryLength(t) => Type::new(t),
+                    }
+                }))
+            }),
+            ParamKind::DoubleStarred => WrappedParamSpecific::DoubleStarred(match dbt(t.as_ref()) {
+                Some(DbType::ParamSpecKwargs(param_spec_usage)) => {
+                    WrappedDoubleStarred::ParamSpecKwargs(param_spec_usage)
+                }
+                _ => WrappedDoubleStarred::ValueType(t.map(|t| {
+                    let DbType::Class(_, Some(generics)) = t.maybe_borrowed_db_type().unwrap() else {
+                        unreachable!()
+                    };
+                    let GenericItem::TypeArgument(t) = &generics[1.into()] else {
+                        unreachable!();
+                    };
+                    Type::new(t)
+                }))
+            })
+        }
     }
 
     fn func_annotation_link(&self) -> Option<PointLink> {
@@ -634,8 +759,8 @@ impl<'x> Param<'x> for FunctionParam<'x> {
 
 pub struct InferrableParamIterator<'db, 'a> {
     db: &'db Database,
-    arguments: ArgumentIterator<'db, 'a>,
-    params: ParamIterator<'a>,
+    arguments: ArgumentIteratorImpl<'db, 'a>,
+    params: ASTParamIterator<'a>,
     file: &'a PythonFile,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
 }
@@ -644,8 +769,8 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
     fn new(
         db: &'db Database,
         file: &'a PythonFile,
-        params: ParamIterator<'a>,
-        arguments: ArgumentIterator<'db, 'a>,
+        params: ASTParamIterator<'a>,
+        arguments: ArgumentIteratorImpl<'db, 'a>,
     ) -> Self {
         Self {
             db,
@@ -739,20 +864,6 @@ enum ParamInput<'db, 'a> {
     None,
 }
 
-impl ParamInput<'_, '_> {
-    fn human_readable_argument_index(&self) -> String {
-        match self {
-            Self::Argument(arg) => arg.human_readable_index(),
-            Self::Tuple(_) => todo!(),
-            Self::None => todo!(),
-        }
-    }
-}
-
-pub trait ParamWithArgument<'db, 'a> {
-    fn human_readable_argument_index(&self) -> String;
-}
-
 #[derive(Debug)]
 pub struct InferrableParam<'db, 'a> {
     pub param: FunctionParam<'a>,
@@ -792,12 +903,6 @@ impl<'db> InferrableParam<'db, '_> {
             }
             ParamInput::None => None,
         }
-    }
-}
-
-impl<'db, 'a> ParamWithArgument<'db, 'a> for InferrableParam<'db, 'a> {
-    fn human_readable_argument_index(&self) -> String {
-        self.argument.human_readable_argument_index()
     }
 }
 

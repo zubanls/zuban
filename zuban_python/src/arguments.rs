@@ -1,7 +1,7 @@
 use std::mem;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, Execution, MroIndex, PointLink, TupleContent,
+    ComplexPoint, Database, DbType, Execution, MroIndex, ParamSpecUsage, PointLink, TupleContent,
     TypeOrTypeVarTuple,
 };
 use crate::diagnostics::IssueType;
@@ -18,6 +18,16 @@ use parsa_python_ast::{
     Primary, PrimaryContent,
 };
 
+pub trait ArgumentIterator<'db: 'a, 'a>: Iterator<Item = Argument<'db, 'a>> {
+    fn drop_args_kwargs_iterator(&mut self);
+}
+
+impl<'db, 'a> ArgumentIterator<'db, 'a> for std::vec::IntoIter<Argument<'db, 'a>> {
+    fn drop_args_kwargs_iterator(&mut self) {
+        unreachable!()
+    }
+}
+
 pub enum ArgumentsType<'a> {
     Normal(&'a PythonFile, NodeIndex),
 }
@@ -25,7 +35,7 @@ pub enum ArgumentsType<'a> {
 pub trait Arguments<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_>;
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_>;
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType;
@@ -44,8 +54,8 @@ pub struct SimpleArguments<'db, 'a> {
 }
 
 impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(match self.details {
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+        ArgumentIteratorImpl::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator {
                 i_s: self.i_s.clone(),
                 file: self.file,
@@ -140,8 +150,8 @@ pub struct KnownArguments<'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+        ArgumentIteratorImpl::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -190,7 +200,7 @@ pub struct CombinedArguments<'db, 'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
         let mut iterator = self.args1.iter_arguments();
         debug_assert!(iterator.next.is_none()); // For now this is not supported
         iterator.next = Some(self.args2);
@@ -243,6 +253,11 @@ pub enum ArgumentKind<'db, 'a> {
     SlicesTuple {
         context: Context<'db, 'a>,
         slices: Slices<'a>,
+    },
+    ParamSpec {
+        usage: ParamSpecUsage,
+        node_ref: NodeRef<'a>,
+        position: usize,
     },
 }
 
@@ -330,13 +345,17 @@ impl<'db, 'a> Argument<'db, 'a> {
                     TupleContent::new_fixed_length(parts),
                 ))))
             }
+            ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
+                ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
+            ),
         }
     }
 
     pub fn as_node_ref(&self) -> NodeRef {
         match &self.kind {
-            ArgumentKind::Positional { node_ref, .. } => *node_ref,
-            ArgumentKind::Keyword { node_ref, .. } => *node_ref,
+            ArgumentKind::Positional { node_ref, .. }
+            | ArgumentKind::Keyword { node_ref, .. }
+            | ArgumentKind::ParamSpec { node_ref, .. } => *node_ref,
             ArgumentKind::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
                 todo!("Probably happens with something weird like def foo(self: int)")
             }),
@@ -346,7 +365,9 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub fn human_readable_index(&self) -> String {
         match &self.kind {
-            ArgumentKind::Positional { position, .. } | ArgumentKind::Inferred { position, .. } => {
+            ArgumentKind::Positional { position, .. }
+            | ArgumentKind::Inferred { position, .. }
+            | ArgumentKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
             ArgumentKind::Keyword { key, .. } => format!("{key:?}"),
@@ -476,7 +497,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 iterator,
                 kwargs_before_star_args,
             } => {
-                for (i, arg) in iterator {
+                for (i, arg) in iterator.by_ref() {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
                             return Some(ArgumentKind::new_positional_return(
@@ -503,13 +524,28 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
-                            return Some(BaseArgumentReturn::ArgsKwargs(
-                                ArgsKwargsIterator::Args {
-                                    iterator: inf.save_and_iter(i_s, node_ref),
-                                    node_ref,
-                                    position: i + 1,
-                                },
-                            ));
+                            match inf.class_as_type(i_s).maybe_borrowed_db_type() {
+                                Some(DbType::ParamSpecArgs(usage)) => {
+                                    // TODO check for the next arg being **P.kwargs
+                                    iterator.next();
+                                    return Some(BaseArgumentReturn::Argument(
+                                        ArgumentKind::ParamSpec {
+                                            usage: usage.clone(),
+                                            node_ref: NodeRef::new(file, starred_expr.index()),
+                                            position: i + 1,
+                                        },
+                                    ));
+                                }
+                                _ => {
+                                    return Some(BaseArgumentReturn::ArgsKwargs(
+                                        ArgsKwargsIterator::Args {
+                                            iterator: inf.save_and_iter(i_s, node_ref),
+                                            node_ref,
+                                            position: i + 1,
+                                        },
+                                    ));
+                                }
+                            }
                         }
                         ASTArgument::DoubleStarred(double_starred_expr) => {
                             let inf = file
@@ -621,14 +657,14 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub struct ArgumentIterator<'db, 'a> {
+pub struct ArgumentIteratorImpl<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'a>,
     next: Option<&'a dyn Arguments<'db>>,
     counter: usize,
 }
 
-impl<'db, 'a> ArgumentIterator<'db, 'a> {
+impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
     fn new(current: ArgumentIteratorBase<'db, 'a>) -> Self {
         Self {
             current,
@@ -668,13 +704,15 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
             }
         }
     }
+}
 
-    pub fn drop_args_kwargs_iterator(&mut self) {
+impl<'db, 'a> ArgumentIterator<'db, 'a> for ArgumentIteratorImpl<'db, 'a> {
+    fn drop_args_kwargs_iterator(&mut self) {
         self.args_kwargs_iterator = ArgsKwargsIterator::None;
     }
 }
 
-impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
+impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -768,8 +806,8 @@ impl<'a> NoArguments<'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
-    fn iter_arguments(&self) -> ArgumentIterator<'db, '_> {
-        ArgumentIterator::new(ArgumentIteratorBase::Finished)
+    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+        ArgumentIteratorImpl::new(ArgumentIteratorBase::Finished)
     }
 
     fn outer_execution(&self) -> Option<&Execution> {

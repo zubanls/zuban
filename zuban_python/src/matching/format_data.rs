@@ -16,6 +16,14 @@ impl DisplayedRecursive<'_> {
     }
 }
 
+#[derive(Clone, Copy)]
+pub enum ParamsStyle {
+    FunctionParams,
+    CallableParamsInner,
+    CallableParams,
+    Unreachable,
+}
+
 pub struct FormatData<'db, 'a, 'b, 'c> {
     pub db: &'db Database,
     matcher: Option<&'b Matcher<'a>>,
@@ -97,12 +105,16 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         self.verbose = true;
     }
 
-    pub fn format_type_var_like(&self, type_var_usage: &TypeVarLikeUsage) -> Box<str> {
+    pub fn format_type_var_like(
+        &self,
+        type_var_usage: &TypeVarLikeUsage,
+        style: ParamsStyle,
+    ) -> Box<str> {
         if let Some(matcher) = self.matcher {
             if matcher.has_type_var_matcher() {
-                return matcher.format_in_type_var_matcher(type_var_usage, self);
+                return matcher.format_in_type_var_matcher(type_var_usage, self, style);
             }
         }
-        type_var_usage.format_name(self.db, self.style)
+        type_var_usage.format_without_matcher(self.db, self.style, style)
     }
 }

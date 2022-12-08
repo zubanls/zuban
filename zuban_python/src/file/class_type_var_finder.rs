@@ -6,7 +6,7 @@ use crate::database::{
 };
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;
-use crate::file::{PythonFile, PythonInference};
+use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -23,7 +23,7 @@ enum BaseLookup<'file> {
 }
 
 pub struct ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
-    inference: &'c mut PythonInference<'db, 'file, 'i_s, 'b>,
+    inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
     class: &'c Class<'c>,
     type_var_manager: TypeVarManager,
     generic_or_protocol_slice: Option<SliceType<'file>>,
@@ -33,7 +33,7 @@ pub struct ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
 
 impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     pub fn find(
-        inference: &'c mut PythonInference<'db, 'file, 'i_s, 'b>,
+        inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
         class: &'c Class<'file>,
     ) -> TypeVarLikes {
         let mut finder = Self {

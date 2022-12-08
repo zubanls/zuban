@@ -1,14 +1,14 @@
 use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 
-use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, TypeVarLikeUsage};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
 use crate::diagnostics::IssueType;
-use crate::file::{PythonFile, PythonInference};
+use crate::file::{Inference, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::Inferred;
 
-impl<'db> PythonInference<'db, '_, '_, '_> {
+impl<'db> Inference<'db, '_, '_, '_> {
     pub fn create_list_or_set_generics(
         &mut self,
         elements: ListOrSetElementIterator,
@@ -54,15 +54,9 @@ impl<'db> PythonInference<'db, '_, '_, '_> {
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
-                                found =
-                                    Some(list_cls.as_db_type(i_s).replace_type_vars(&mut |tv| {
-                                        match tv {
-                                            TypeVarLikeUsage::TypeVar(_) => {
-                                                GenericItem::TypeArgument(DbType::Any)
-                                            }
-                                            TypeVarLikeUsage::TypeVarTuple(_) => todo!(),
-                                        }
-                                    }));
+                                found = Some(list_cls.as_db_type(i_s).replace_type_var_likes(
+                                    &mut |tv| tv.as_type_var_like().as_any_generic_item(),
+                                ));
                             }
                             true
                         } else {

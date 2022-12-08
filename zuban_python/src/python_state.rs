@@ -25,6 +25,7 @@ pub struct PythonState {
     builtins_object_node_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
+    builtins_function_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
     builtins_str_index: NodeIndex,
     typing_mapping_index: NodeIndex,
@@ -53,6 +54,7 @@ impl PythonState {
             builtins_object_node_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
+            builtins_function_index: 0,
             builtins_base_exception_index: 0,
             builtins_str_index: 0,
             types_module_type_index: 0,
@@ -94,6 +96,7 @@ impl PythonState {
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
         let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
         let str_name_index = builtins.symbol_table.lookup_symbol("str").unwrap();
+        let function_name_index = builtins.symbol_table.lookup_symbol("function").unwrap();
         let base_exception_name_index = builtins
             .symbol_table
             .lookup_symbol("BaseException")
@@ -104,6 +107,11 @@ impl PythonState {
         s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
         s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
+        s.builtins_function_index = s
+            .builtins()
+            .points
+            .get(function_name_index - 1)
+            .node_index();
         s.builtins_base_exception_index = s
             .builtins()
             .points
@@ -131,20 +139,11 @@ impl PythonState {
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
-        typing_changes(s.typing(), s.builtins(), s.collections());
-
-        // TODO this is completely wrong, but for now it's good enough
-        setup_type_alias(s.typing_extensions(), "SupportsIndex", s.builtins(), "int");
-        set_typing_inference(
+        typing_changes(
+            s.typing(),
+            s.builtins(),
+            s.collections(),
             s.typing_extensions(),
-            "LiteralString",
-            Specific::TypingLiteralString,
-        );
-        set_typing_inference(s.typing_extensions(), "Unpack", Specific::TypingUnpack);
-        set_typing_inference(
-            s.typing_extensions(),
-            "TypeVarTuple",
-            Specific::TypingTypeVarTupleClass,
         );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
@@ -260,6 +259,10 @@ impl PythonState {
         PointLink::new(builtins.file_index(), point.node_index())
     }
 
+    pub fn function_point_link(&self) -> PointLink {
+        PointLink::new(self.builtins().file_index(), self.builtins_function_index)
+    }
+
     #[inline]
     pub fn base_exception(&self) -> DbType {
         debug_assert!(self.builtins_base_exception_index != 0);
@@ -302,7 +305,12 @@ impl PythonState {
     }
 }
 
-fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &PythonFile) {
+fn typing_changes(
+    typing: &PythonFile,
+    builtins: &PythonFile,
+    collections: &PythonFile,
+    typing_extensions: &PythonFile,
+) {
     set_typing_inference(typing, "Protocol", Specific::TypingProtocol);
     set_typing_inference(typing, "Generic", Specific::TypingGeneric);
     set_typing_inference(typing, "ClassVar", Specific::TypingClassVar);
@@ -315,8 +323,11 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     set_typing_inference(typing, "NewType", Specific::TypingNewType);
     set_typing_inference(typing, "TypeVar", Specific::TypingTypeVarClass);
     set_typing_inference(typing, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
+    set_typing_inference(typing, "Concatenate", Specific::TypingConcatenateClass);
+    set_typing_inference(typing, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
+    set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
@@ -334,6 +345,16 @@ fn typing_changes(typing: &PythonFile, builtins: &PythonFile, collections: &Pyth
     setup_type_alias(typing, "DefaultDict", collections, "defaultdict");
     setup_type_alias(typing, "Deque", collections, "deque");
     setup_type_alias(typing, "OrderedDict", collections, "OrderedDict");
+
+    let t = typing_extensions;
+    // TODO this is completely wrong, but for now it's good enough
+    setup_type_alias(t, "SupportsIndex", builtins, "int");
+    set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
+    set_typing_inference(t, "Unpack", Specific::TypingUnpack);
+    set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
+    set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
+    set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
+    set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
@@ -346,7 +367,10 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "TypeVar",
         "TypeVarTuple",
         "LiteralString",
+        "Concatenate",
+        "ParamSpec",
         "Unpack",
+        "TypeAlias",
     ]
     .contains(&name)
     {

@@ -2,16 +2,20 @@ use std::borrow::Cow;
 
 use parsa_python_ast::ParamKind;
 
-use super::super::params::{InferrableParamIterator2, Param};
+use super::super::params::{
+    InferrableParamIterator2, Param, ParamArgument, WrappedDoubleStarred, WrappedParamSpecific,
+    WrappedStarred,
+};
 use super::super::{
     ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
     ResultContext, SignatureMatch, Type,
 };
 use super::bound::TypeVarBound;
-use crate::arguments::{ArgumentKind, Arguments};
+use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, DbType, GenericItem, GenericsList, PointLink, TupleTypeArguments,
-    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParams, DbType, GenericItem, GenericsList, ParamSpecArgument,
+    PointLink, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -29,6 +33,7 @@ pub enum FunctionOrCallable<'a> {
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArguments),
+    ParamSpecArgument(ParamSpecArgument),
     Uncalculated,
 }
 
@@ -162,23 +167,27 @@ impl<'a> TypeVarMatcher<'a> {
                         TypeVarLikeUsage::TypeVarTuple(_) => BoundKind::TypeVarTuple(
                             TypeArguments::new_arbitrary_length(DbType::Any),
                         ),
+                        TypeVarLikeUsage::ParamSpec(_) => {
+                            BoundKind::ParamSpecArgument(ParamSpecArgument::new_any())
+                        }
                     }
                 }
             }
         });
     }
 
-    pub fn replace_type_vars_for_nested_context(
+    pub fn replace_type_var_likes_for_nested_context(
         &self,
         i_s: &mut InferenceState,
         t: &DbType,
     ) -> DbType {
-        t.replace_type_vars(&mut |type_var_like_usage| {
+        t.replace_type_var_likes(&mut |type_var_like_usage| {
             if type_var_like_usage.in_definition() == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_like_usage.index().as_usize()];
                 match &current.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
+                    BoundKind::ParamSpecArgument(params) => todo!(),
                     // Any is just ignored by the context later.
                     BoundKind::Uncalculated => {
                         type_var_like_usage.as_type_var_like().as_any_generic_item()
@@ -200,19 +209,13 @@ impl<'a> TypeVarMatcher<'a> {
                                 let type_var_remap = func_class.type_var_remap.unwrap();
                                 match &type_var_remap[type_var_like_usage.index()] {
                                     GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                        self.replace_type_vars_for_nested_context(i_s, t),
+                                        self.replace_type_var_likes_for_nested_context(i_s, t),
                                     ),
                                     GenericItem::TypeArguments(_) => todo!(),
+                                    GenericItem::ParamSpecArgument(_) => todo!(),
                                 }
                             } else {
-                                match type_var_like_usage {
-                                    TypeVarLikeUsage::TypeVar(usage) => GenericItem::TypeArgument(
-                                        DbType::TypeVar(usage.into_owned()),
-                                    ),
-                                    TypeVarLikeUsage::TypeVarTuple(usage) => {
-                                        todo!()
-                                    }
-                                }
+                                type_var_like_usage.into_generic_item()
                             }
                         } else {
                             todo!()
@@ -300,14 +303,7 @@ impl CalculatedTypeArguments {
                 return c.generics().nth_usage(i_s, &usage).into_generic_item(i_s);
             }
         }
-        match usage {
-            TypeVarLikeUsage::TypeVar(type_var_usage) => {
-                GenericItem::TypeArgument(DbType::TypeVar((*type_var_usage).clone()))
-            }
-            TypeVarLikeUsage::TypeVarTuple(type_var_tuple_usage) => {
-                todo!()
-            }
-        }
+        usage.into_generic_item()
     }
 }
 
@@ -413,7 +409,7 @@ fn calculate_type_vars<'db>(
     };
     let mut matcher = Matcher::new(matcher);
     if matcher.has_type_var_matcher() {
-        result_context.with_type_if_exists_and_replace_type_vars(i_s, |i_s, type_| {
+        result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {
             if let Some(class) = expected_return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
                 // check if the classes match and then push the generics there.
@@ -449,6 +445,11 @@ fn calculate_type_vars<'db>(
                                                 BoundKind::TypeVarTuple(ts.into_owned());
                                             calculated.defined_by_result_context = true;
                                         }
+                                        Generic::ParamSpecArgument(p) => {
+                                            calculated.type_ =
+                                                BoundKind::ParamSpecArgument(p.into_owned());
+                                            calculated.defined_by_result_context = true;
+                                        }
                                     };
                                 }
                                 true
@@ -476,6 +477,7 @@ fn calculate_type_vars<'db>(
                             t1.has_any() | t2.has_any()
                         }
                         BoundKind::TypeVarTuple(ts) => ts.args.has_any(),
+                        BoundKind::ParamSpecArgument(params) => todo!(),
                         BoundKind::Uncalculated => continue,
                     };
                     if has_any {
@@ -502,21 +504,37 @@ fn calculate_type_vars<'db>(
                 function.iter_args_with_params(i_s.db, args, skip_first_param),
             )
         }
-        FunctionOrCallable::Callable(callable) => {
-            if let Some(params) = &callable.params {
-                calculate_type_vars_for_params(
-                    i_s,
-                    &mut matcher,
-                    None,
-                    None,
-                    args,
-                    on_type_error,
-                    InferrableParamIterator2::new(i_s.db, params.iter(), args),
-                )
-            } else {
-                SignatureMatch::True
+        FunctionOrCallable::Callable(callable) => match &callable.params {
+            CallableParams::Simple(params) => calculate_type_vars_for_params(
+                i_s,
+                &mut matcher,
+                None,
+                None,
+                args,
+                on_type_error,
+                InferrableParamIterator2::new(i_s.db, params.iter(), args.iter_arguments()),
+            ),
+            CallableParams::Any => SignatureMatch::True,
+            CallableParams::WithParamSpec(pre_types, param_spec) => {
+                let mut args = args.iter_arguments();
+                if !pre_types.is_empty() {
+                    todo!()
+                }
+                if let Some(arg) = args.next() {
+                    if let ArgumentKind::ParamSpec { usage, .. } = &arg.kind {
+                        if usage.in_definition == param_spec.in_definition {
+                            SignatureMatch::True
+                        } else {
+                            todo!()
+                        }
+                    } else {
+                        todo!()
+                    }
+                } else {
+                    todo!()
+                }
             }
-        }
+        },
     };
     let type_arguments = matcher.has_type_var_matcher().then(|| {
         GenericsList::new_generics(
@@ -526,13 +544,17 @@ fn calculate_type_vars<'db>(
                 .map(|(c, type_var_like)| match c.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
+                    BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
                     BoundKind::Uncalculated => match type_var_like {
                         TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
-                        // TODO TypeVarTuple this feels wrong, should maybe be never?
+                        // TODO TypeVarTuple: this feels wrong, should maybe be never?
                         TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
                             TypeArguments::new_fixed_length(Box::new([])),
                         ),
-                        TypeVarLike::ParamSpec(_) => todo!(),
+                        // TODO ParamSpec: this feels wrong, should maybe be never?
+                        TypeVarLike::ParamSpec(_) => {
+                            GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
+                        }
                     },
                 })
                 .collect(),
@@ -561,38 +583,64 @@ fn calculate_type_vars<'db>(
     }
 }
 
-fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
+pub fn match_arguments_against_params<
+    'db: 'x,
+    'x,
+    'c,
+    P: Param<'x>,
+    AI: ArgumentIterator<'db, 'x>,
+>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
     function: Option<&Function>,
-    args: &dyn Arguments<'db>,
+    args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
-    mut args_with_params: InferrableParamIterator2<'db, '_, impl Iterator<Item = P>, P>,
+    mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
-    // TODO this can be calculated multiple times from different places
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
     for (i, p) in args_with_params.by_ref().enumerate() {
-        if p.argument.is_none() && !p.param.has_default() {
+        if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
-            missing_params.push(p.param);
+            if should_generate_errors {
+                missing_params.push(p.param);
+            }
             continue;
         }
-        if let Some(ref argument) = p.argument {
-            if let Some(annotation_type) = p.param.annotation_type(i_s) {
+        match p.argument {
+            ParamArgument::Argument(ref argument) => {
+                let specific = p.param.specific(i_s);
+                let annotation_type = match &specific {
+                    WrappedParamSpecific::PositionalOnly(t)
+                    | WrappedParamSpecific::PositionalOrKeyword(t)
+                    | WrappedParamSpecific::KeywordOnly(t)
+                    | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                        match t {
+                            Some(t) => t,
+                            None => continue,
+                        }
+                    }
+                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(_))
+                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
+                        _,
+                    )) => {
+                        unreachable!()
+                    }
+                };
                 let value = if matcher.has_type_var_matcher() {
                     argument.infer(
                         i_s,
                         &mut ResultContext::WithMatcher {
-                            type_: &annotation_type,
+                            type_: annotation_type,
                             matcher,
                         },
                     )
                 } else {
-                    argument.infer(i_s, &mut ResultContext::Known(&annotation_type))
+                    argument.infer(i_s, &mut ResultContext::Known(annotation_type))
                 };
                 let m = annotation_type.error_if_not_matches_with_matcher(
                     i_s,
@@ -604,24 +652,30 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                             if let Some(starred) = node_ref.maybe_starred_expression() {
                                 t1 = format!(
                                     "*{}",
-                                    node_ref.file.inference(i_s).infer_expression(starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                                ).into()
-                            } else if let Some(double_starred) = node_ref.maybe_double_starred_expression() {
+                                    node_ref
+                                        .file
+                                        .inference(i_s)
+                                        .infer_expression(starred.expression())
+                                        .format(i_s, &FormatData::new_short(i_s.db))
+                                )
+                                .into()
+                            } else if let Some(double_starred) =
+                                node_ref.maybe_double_starred_expression()
+                            {
                                 t1 = format!(
                                     "**{}",
-                                    node_ref.file.inference(i_s).infer_expression(double_starred.expression()).format(i_s, &FormatData::new_short(i_s.db))
-                                ).into()
+                                    node_ref
+                                        .file
+                                        .inference(i_s)
+                                        .infer_expression(double_starred.expression())
+                                        .format(i_s, &FormatData::new_short(i_s.db))
+                                )
+                                .into()
                             }
                             match reason {
-                                MismatchReason::None => (on_type_error.callback)(
-                                    i_s,
-                                    node_ref,
-                                    class,
-                                    function,
-                                    &p,
-                                    t1,
-                                    t2,
-                                ),
+                                MismatchReason::None => {
+                                    (on_type_error.callback)(i_s, class, function, argument, t1, t2)
+                                }
                                 MismatchReason::CannotInferTypeArgument(index) => {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -635,23 +689,17 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                                     );
                                 }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
-                                    if should_generate_errors {
-                                        node_ref.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::InvalidTypeVarValue {
-                                                type_var_name: Box::from(type_var.name(i_s.db)),
-                                                func: match function {
-                                                    Some(f) => f.diagnostic_string(class),
-                                                    None => Box::from("function"),
-                                                },
-                                                actual: expected.format(&FormatData::new_short(i_s.db)),
+                                    node_ref.add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidTypeVarValue {
+                                            type_var_name: Box::from(type_var.name(i_s.db)),
+                                            func: match function {
+                                                Some(f) => f.diagnostic_string(class),
+                                                None => Box::from("function"),
                                             },
-                                        );
-                                    } else {
-                                        debug!(
-                                            "TODO this is wrong, because this might also be Match::False{{similar: true}}"
-                                        );
-                                    }
+                                            actual: expected.format(&FormatData::new_short(i_s.db)),
+                                        },
+                                    );
                                 }
                             }
                         }
@@ -660,16 +708,33 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                 if matches!(m, Match::True { with_any: true }) {
                     if let Some(param_annotation_link) = p.param.func_annotation_link() {
                         // This is never reached when matching callables
-                        if let Some(argument) = p.argument {
-                            argument_indices_with_any.push(ArgumentIndexWithParam {
-                                argument_index: argument.index,
-                                param_annotation_link,
-                            })
-                        }
+                        argument_indices_with_any.push(ArgumentIndexWithParam {
+                            argument_index: argument.index,
+                            param_annotation_link,
+                        })
                     }
                 }
                 matches &= m
             }
+            ParamArgument::ParamSpecArgs(param_spec, args) => {
+                matches &= match matcher.match_param_spec_arguments(
+                    i_s,
+                    &param_spec,
+                    args,
+                    class,
+                    function,
+                    args_node_ref,
+                    on_type_error,
+                ) {
+                    SignatureMatch::True => Match::new_true(),
+                    SignatureMatch::TrueWithAny { .. } => todo!(),
+                    SignatureMatch::False { similar } => Match::False {
+                        similar,
+                        reason: MismatchReason::None,
+                    },
+                }
+            }
+            ParamArgument::None => (),
         }
     }
     let add_keyword_argument_issue = |reference: NodeRef, name| {
@@ -707,8 +772,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                 s += &function.diagnostic_string(class);
             }
 
-            args.as_node_ref()
-                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
@@ -732,8 +796,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                     s += &function.diagnostic_string(class);
                 }
 
-                args.as_node_ref()
-                    .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
@@ -755,16 +818,17 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                         s += " for ";
                         s += &function.diagnostic_string(class);
                     }
-                    args.as_node_ref()
-                        .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                    args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                 } else {
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
-                args.as_node_ref().add_typing_issue(
-                    i_s.db,
-                    IssueType::ArgumentIssue(Box::from("Too few arguments")),
-                );
+                let mut s = "Too few arguments".to_owned();
+                if let Some(function) = function {
+                    s += " for ";
+                    s += &function.diagnostic_string(class);
+                }
+                args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
         if let Some(mut s) = match &missing_positional[..] {
@@ -782,8 +846,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
                 s += " to ";
                 s += &function.diagnostic_string(class);
             }
-            args.as_node_ref()
-                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         };
     }
     match matches {
@@ -793,4 +856,24 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>>(
         },
         Match::False { similar, .. } => SignatureMatch::False { similar },
     }
+}
+
+fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
+    i_s: &mut InferenceState<'db, '_>,
+    matcher: &mut Matcher,
+    class: Option<&Class>,
+    function: Option<&Function>,
+    args: &dyn Arguments<'db>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
+    args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
+) -> SignatureMatch {
+    match_arguments_against_params(
+        i_s,
+        matcher,
+        class,
+        function,
+        &|| args.as_node_ref(),
+        on_type_error,
+        args_with_params,
+    )
 }

@@ -12,7 +12,7 @@ mod typing;
 
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
 
-use crate::arguments::Arguments;
+use crate::arguments::{Argument, Arguments};
 use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
@@ -23,7 +23,7 @@ use crate::node_ref::NodeRef;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{Class, MroIterator};
-pub use function::{Function, InferrableParam, OverloadedFunction, ParamWithArgument};
+pub use function::{Function, InferrableParam, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use module::Module;
@@ -31,8 +31,8 @@ pub use none::NoneInstance;
 pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
-    NewTypeClass, RevealTypeFunction, TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingCast,
-    TypingClass, TypingClassVar, TypingType,
+    NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarInstance,
+    TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType,
 };
 
 type OnOverloadMismatch<'a> = Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>;
@@ -54,10 +54,9 @@ impl<'db, 'a> OnTypeError<'db, 'a> {
 
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &mut InferenceState<'db, '_>,
-    NodeRef,
     Option<&Class>,
     Option<&Function>,
-    &dyn ParamWithArgument,
+    &Argument,
     Box<str>,
     Box<str>,
 );

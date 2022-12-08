@@ -2,20 +2,21 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    ComplexPoint, DbType, GenericItem, GenericsList, Locality, Point, PointType, Specific,
-    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarTupleUsage, TypeVarUsage, Variance,
+    CallableParams, ComplexPoint, DbType, GenericItem, GenericsList, Locality, ParamSpecArgument,
+    ParamSpecUsage, Point, PointType, Specific, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TypeVarTupleUsage, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::PythonInference;
+use crate::file::Inference;
 use crate::inferred::Inferred;
 use crate::matching::{
-    matches_params, overload_has_overlapping_params, Generics, Match, Matcher, ResultContext,
+    matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, ResultContext,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
 
-impl PythonInference<'_, '_, '_, '_> {
+impl Inference<'_, '_, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
     }
@@ -226,11 +227,11 @@ impl PythonInference<'_, '_, '_, '_> {
                         );
                     }
 
-                    if !matches_params(
+                    if !matches_simple_params(
                         self.i_s,
                         &mut matcher,
-                        f1.param_iterator(),
-                        implementation.param_iterator(),
+                        f1.iter_params(),
+                        implementation.iter_params(),
                         Variance::Contravariant,
                     )
                     .bool()
@@ -253,11 +254,11 @@ impl PythonInference<'_, '_, '_, '_> {
                         &mut calculated_type_vars,
                     );
                     if matches!(
-                        matches_params(
+                        matches_simple_params(
                             self.i_s,
                             &mut matcher,
-                            f2.param_iterator(),
-                            f1.param_iterator(),
+                            f2.iter_params(),
+                            f1.iter_params(),
                             Variance::Contravariant
                         ),
                         Match::True { with_any: false }
@@ -351,7 +352,19 @@ impl PythonInference<'_, '_, '_, '_> {
                                         )]),
                                     ))
                                 }
-                                TypeVarLike::ParamSpec(_) => todo!(),
+                                TypeVarLike::ParamSpec(param_spec) => {
+                                    GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                                        CallableParams::WithParamSpec(
+                                            Box::new([]),
+                                            ParamSpecUsage {
+                                                param_spec: param_spec.clone(),
+                                                index: i.into(),
+                                                in_definition: class.node_ref.as_link(),
+                                            },
+                                        ),
+                                        None,
+                                    ))
+                                }
                             })
                             .collect(),
                     )
