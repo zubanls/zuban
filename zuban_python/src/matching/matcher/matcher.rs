@@ -368,12 +368,12 @@ impl<'a> Matcher<'a> {
         i_s: &mut InferenceState,
         pre_param_spec_types: &[DbType],
         p1: &ParamSpecUsage,
-        params2: &[CallableParam],
+        params2_iterator: std::slice::Iter<CallableParam>,
         type_vars2: Option<(&TypeVarLikes, PointLink)>,
         variance: Variance,
     ) -> Match {
         debug_assert!(!self.is_matching_reverse());
-        let mut params2_iterator = params2.iter().peekable();
+        let mut params2_iterator = params2_iterator.peekable();
         let mut matches = Match::new_true();
         for pre in pre_param_spec_types {
             let t = match params2_iterator.peek().map(|p| &p.param_specific) {
