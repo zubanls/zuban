@@ -40,3 +40,26 @@ jf = j.into_callable()
 reveal_type(jf)  # N: Revealed type is "def [_U, _T] (_U, x: _T) -> tuple[_U, list[_T]]"
 reveal_type(jf(1.0, 1))  # N: Revealed type is "tuple[float, list[int]]"
 reveal_type(jf(1, ""))  # N: Revealed type is "tuple[int, list[str]]"
+
+[case param_spec_with_generic_class]
+from typing import Callable, TypeVar, Generic
+from typing_extensions import ParamSpec, Concatenate
+
+_P = ParamSpec("_P")
+_T = TypeVar("_T")
+_U = TypeVar("_U")
+
+class Job(Generic[_P, _T]):
+    def __init__(self, target: Callable[_P, _T]) -> None: ...
+    def into_callable(self) -> Callable[Concatenate[_U, _P], tuple[_U, list[_T]]]: ...
+
+class X(Generic[_T]):
+    def __init__(self, y: set[_T]): ...
+
+j = Job(X)
+reveal_type(j)  # N: Revealed type is "__main__.Job[[y: set[_T]], __main__.X[_T]]"
+
+jf = j.into_callable()
+reveal_type(jf)  # N: Revealed type is "def [_U, _T] (_U, y: set[_T]) -> tuple[_U, list[__main__.X[_T]]]"
+reveal_type(jf(1.0, {1}))  # N: Revealed type is "tuple[float, list[__main__.X[int]]]"
+reveal_type(jf(1, {""}))  # N: Revealed type is "tuple[int, list[__main__.X[str]]]"

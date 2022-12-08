@@ -129,6 +129,7 @@ testDecoratingClassesThatUseParamSpec
 testPropagatedAnyConstraintsAreOK
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
+param_spec_with_generic_class
 
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument
