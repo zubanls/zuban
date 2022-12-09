@@ -1406,8 +1406,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             });
                         }
                         if let Some(callable) = new_inf.maybe_callable(self.i_s) {
+                            let mut content = callable.content.clone();
+                            content.name = Some(func.name_string_slice());
                             func.node_ref.insert_complex(
-                                ComplexPoint::DecoratedFunction(callable.content.clone()),
+                                ComplexPoint::DecoratedFunction(content),
                                 Locality::Todo,
                             );
                             self.file.points.set(

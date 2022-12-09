@@ -352,7 +352,6 @@ impl<'db: 'a, 'a> Function<'a> {
         let mut new_params = vec![];
         let mut had_param_spec_args = false;
         let file_index = self.node_ref.file_index();
-        let name = self.node().name();
         while let Some(p) = params.next() {
             let specific = p.specific(i_s);
             let mut as_t = |t: Option<Type>| t.map(|t| as_db_type(i_s, t)).unwrap_or(DbType::Any);
@@ -384,7 +383,7 @@ impl<'db: 'a, 'a> Function<'a> {
                         todo!()
                     }
                     return DbType::Callable(Box::new(CallableContent {
-                        name: Some(StringSlice::new(file_index, name.start(), name.end())),
+                        name: Some(self.name_string_slice()),
                         defined_at: self.node_ref.as_link(),
                         params: self.remap_param_spec(i_s, new_params, u),
                         type_vars: type_vars.cloned(),
@@ -402,12 +401,17 @@ impl<'db: 'a, 'a> Function<'a> {
             });
         }
         DbType::Callable(Box::new(CallableContent {
-            name: Some(StringSlice::new(file_index, name.start(), name.end())),
+            name: Some(self.name_string_slice()),
             defined_at: self.node_ref.as_link(),
             params: CallableParams::Simple(new_params.into_boxed_slice()),
             type_vars: type_vars.cloned(),
             result_type,
         }))
+    }
+
+    pub fn name_string_slice(&self) -> StringSlice {
+        let name = self.node().name();
+        StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
     pub fn iter_params(&self) -> impl Iterator<Item = FunctionParam<'a>> {
