@@ -1369,8 +1369,43 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             todo!("{:?}", self.i_s.context)
                         }
                     }
-                    Specific::LazyInferredFunction | Specific::LazyInferredClosure => {
-                        todo!("Resolve decorators")
+                    Specific::LazyInferredFunction => {
+                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
+                        let FunctionOrLambda::Function(func) =
+                            name_def.function_or_lambda_ancestor().unwrap() else
+                        {
+                            unreachable!();
+                        };
+                        let func = Function::new(
+                            NodeRef::new(self.file, func.index()),
+                            self.i_s.current_class().copied(),
+                        );
+                        let FunctionParent::Decorated(decorated) = func.node().parent() else {
+                            unreachable!();
+                        };
+                        let mut callable =
+                            Inferred::new_saved2(func.node_ref.file, func.node_ref.node_index);
+                        // TODO order should be reversed.
+                        for decorator in decorated.decorators().iter() {
+                            dbg!(decorator.as_code());
+                            let i = self.infer_named_expression(decorator.named_expression());
+                            // TODO check if it's an function without a return annotation and
+                            // abort in that case.
+                            callable = i.run_on_value(self.i_s, &mut |i_s, v| {
+                                v.execute(
+                                    i_s,
+                                    &KnownArguments::new(
+                                        &callable,
+                                        Some(NodeRef::new(self.file, decorator.index())),
+                                    ),
+                                    &mut ResultContext::Unknown,
+                                    OnTypeError::new(
+                                        &|i_s, class, function, arg, right, wanted| todo!(),
+                                    ),
+                                )
+                            });
+                        }
+                        callable.save_redirect(self.i_s.db, self.file, node_index)
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators

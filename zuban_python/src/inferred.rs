@@ -498,8 +498,10 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition, point) => {
                 // Overwriting strings needs to be possible, because of string annotations
                 if p.calculated()
-                    && p.maybe_specific() != Some(Specific::String)
-                    && point.maybe_specific() != Some(Specific::Cycle)
+                    && !matches!(
+                        p.maybe_specific(),
+                        Some(Specific::String | Specific::Cycle | Specific::LazyInferredFunction)
+                    )
                 {
                     todo!(
                         "{self:?} >>>> {p:?} {index:?}, {}",

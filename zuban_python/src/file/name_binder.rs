@@ -910,7 +910,24 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
 
             if !is_overload {
-                self.add_redirect_definition(name_def, func.index(), true);
+                if let Some(decorators) = decorators {
+                    // TODO this filtering is wrong and should be deleted
+                    if decorators.iter().any(|d| {
+                        ["abstractmethod", "classmethod"]
+                            .iter()
+                            .any(|s| d.as_code().contains(s))
+                    }) {
+                        self.add_redirect_definition(name_def, func.index(), true);
+                    } else {
+                        self.add_point_definition(
+                            name_def,
+                            Specific::LazyInferredFunction,
+                            in_base_scope,
+                        )
+                    }
+                } else {
+                    self.add_redirect_definition(name_def, func.index(), true);
+                }
             }
         }
         self.points.set(

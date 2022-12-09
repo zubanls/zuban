@@ -357,11 +357,9 @@ pub enum Specific {
 
     // SelfParam, TODO Use maybe?
     Param,
-    LazyInferredClass,        // A class that will be inferred later.
-    LazyInferredDynamicClass, // A class defined in a function that will be inferred later.
-    LazyInferredFunction,     // A function that will be inferred later.
-    LazyInferredClosure,      // A closure that will be inferred later.
-    Function,                 // The node point so the index of the result
+    LazyInferredClass,    // A class that will be inferred later.
+    LazyInferredFunction, // A function that will be inferred later.
+    Function,             // The node point so the index of the result
     Closure,
     NoReturnFunction,
     BoundMethod,
