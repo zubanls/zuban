@@ -57,6 +57,10 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         Type::new(self.db_type)
     }
 
+    fn as_callable(&self) -> Option<Callable<'a>> {
+        Some(*self)
+    }
+
     fn execute(
         &self,
         i_s: &mut InferenceState<'db, '_>,

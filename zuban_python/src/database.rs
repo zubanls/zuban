@@ -469,6 +469,7 @@ pub enum ComplexPoint {
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
+    DecoratedFunction(CallableContent),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),

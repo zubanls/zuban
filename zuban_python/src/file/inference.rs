@@ -1383,7 +1383,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         let FunctionParent::Decorated(decorated) = func.node().parent() else {
                             unreachable!();
                         };
-                        let mut callable =
+                        let mut new_inf =
                             Inferred::new_saved2(func.node_ref.file, func.node_ref.node_index);
                         // TODO order should be reversed.
                         for decorator in decorated.decorators().iter() {
@@ -1391,11 +1391,11 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             let i = self.infer_named_expression(decorator.named_expression());
                             // TODO check if it's an function without a return annotation and
                             // abort in that case.
-                            callable = i.run_on_value(self.i_s, &mut |i_s, v| {
+                            new_inf = i.run_on_value(self.i_s, &mut |i_s, v| {
                                 v.execute(
                                     i_s,
                                     &KnownArguments::new(
-                                        &callable,
+                                        &new_inf,
                                         Some(NodeRef::new(self.file, decorator.index())),
                                     ),
                                     &mut ResultContext::Unknown,
@@ -1405,7 +1405,23 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 )
                             });
                         }
-                        callable.save_redirect(self.i_s.db, self.file, node_index)
+                        if let Some(callable) = new_inf.maybe_callable(self.i_s) {
+                            func.node_ref.insert_complex(
+                                ComplexPoint::DecoratedFunction(callable.content.clone()),
+                                Locality::Todo,
+                            );
+                            self.file.points.set(
+                                node_index,
+                                Point::new_redirect(
+                                    self.file.file_index(),
+                                    func.node_ref.node_index,
+                                    Locality::Todo,
+                                ),
+                            );
+                            Inferred::new_saved2(func.node_ref.file, func.node_ref.node_index)
+                        } else {
+                            new_inf.save_redirect(self.i_s.db, self.file, node_index)
+                        }
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators

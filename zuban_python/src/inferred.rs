@@ -4,8 +4,8 @@ use std::fmt;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality,
-    MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
+    AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
+    Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
@@ -410,6 +410,18 @@ impl<'db: 'slf, 'slf> Inferred {
             || unreachable!(),
         );
         instance.unwrap()
+    }
+
+    pub fn maybe_callable<'x>(&'x self, i_s: &mut InferenceState<'db, '_>) -> Option<Callable<'x>>
+    where
+        'db: 'x,
+    {
+        self.internal_run(
+            i_s,
+            &mut |i_s, v| v.as_callable(),
+            &|_, _, _| None,
+            &mut |_| None,
+        )
     }
 
     pub fn maybe_class(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Class<'db>> {
@@ -981,6 +993,9 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 }
                 _ => unreachable!(),
             }
+        }
+        ComplexPoint::DecoratedFunction(c) => {
+            callable(i_s, &Function::new(definition.unwrap(), None))
         }
         ComplexPoint::Closure(function, execution) => {
             let f = i_s.db.loaded_python_file(function.file);
