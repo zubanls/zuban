@@ -1105,6 +1105,7 @@ impl DbType {
                     });
                 }
                 Self::Callable(Box::new(CallableContent {
+                    name: content.name,
                     defined_at: content.defined_at,
                     type_vars: type_vars.map(TypeVarLikes::from_vec),
                     params,
@@ -1324,6 +1325,7 @@ impl DbType {
                     })
                     .collect::<Box<_>>();
                 Self::Callable(Box::new(CallableContent {
+                    name: content.name,
                     defined_at: content.defined_at,
                     type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes(type_vars)),
                     params: match &content.params {
@@ -1451,6 +1453,7 @@ impl DbType {
             },
             Self::Callable(content1) => match other {
                 Self::Callable(content2) => Self::Callable(Box::new(CallableContent {
+                    name: content1.name.or(content2.name),
                     defined_at: content1.defined_at,
                     type_vars: None,
                     params: CallableParams::Any,
@@ -1753,6 +1756,7 @@ impl CallableParam {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct CallableContent {
+    pub name: Option<StringSlice>,
     pub defined_at: PointLink,
     pub type_vars: Option<TypeVarLikes>,
     pub params: CallableParams,

@@ -486,6 +486,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             }
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => DbType::Callable(Box::new(CallableContent {
+                    name: None,
                     defined_at: node_ref.as_link(),
                     type_vars: None,
                     params: CallableParams::Any,
@@ -1108,6 +1109,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
                 .unwrap_or(DbType::Any);
             CallableContent {
+                name: None,
                 defined_at,
                 type_vars: None,
                 params,
@@ -1116,6 +1118,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         } else {
             self.add_typing_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);
             CallableContent {
+                name: None,
                 defined_at,
                 type_vars: None,
                 params: CallableParams::Any,
