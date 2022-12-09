@@ -13,6 +13,26 @@ pub struct Callable<'a> {
     pub content: &'a CallableContent,
 }
 
+pub(super) fn execute_callable<'db>(
+    content: &CallableContent,
+    i_s: &mut InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    on_type_error: OnTypeError<'db, '_>,
+    class: Option<&Class>,
+    result_context: &mut ResultContext,
+) -> Inferred {
+    let calculated_type_vars = calculate_callable_type_vars_and_return(
+        i_s,
+        class,
+        content,
+        args,
+        result_context,
+        on_type_error,
+    );
+    let g_o = Type::new(&content.result_type);
+    g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
+}
+
 impl<'a> Callable<'a> {
     pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
         Self { db_type, content }
@@ -26,16 +46,14 @@ impl<'a> Callable<'a> {
         class: Option<&Class>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let calculated_type_vars = calculate_callable_type_vars_and_return(
-            i_s,
-            class,
+        execute_callable(
             self.content,
+            i_s,
             args,
-            result_context,
             on_type_error,
-        );
-        let g_o = Type::new(&self.content.result_type);
-        g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
+            class,
+            result_context,
+        )
     }
 }
 

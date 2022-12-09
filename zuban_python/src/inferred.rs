@@ -4,8 +4,8 @@ use std::fmt;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
-    Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
+    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality,
+    MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;

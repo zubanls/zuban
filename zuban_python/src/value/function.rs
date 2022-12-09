@@ -6,6 +6,7 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
+use super::callable::execute_callable;
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{
     Argument, ArgumentIterator, ArgumentIteratorImpl, ArgumentKind, Arguments, SimpleArguments,
@@ -421,6 +422,9 @@ impl<'db: 'a, 'a> Function<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
+        if let Some(ComplexPoint::DecoratedFunction(c)) = self.node_ref.complex() {
+            return execute_callable(c, i_s, args, on_type_error, class, result_context);
+        }
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let calculated_type_vars = calculate_function_type_vars_and_return(
             i_s,
