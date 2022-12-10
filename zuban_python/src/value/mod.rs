@@ -55,7 +55,7 @@ impl<'db, 'a> OnTypeError<'db, 'a> {
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &mut InferenceState<'db, '_>,
     Option<&Class>,
-    Option<&Function>,
+    &dyn Fn() -> Option<Box<str>>, // error_text
     &Argument,
     Box<str>,
     Box<str>,

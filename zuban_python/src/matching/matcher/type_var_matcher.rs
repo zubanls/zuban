@@ -598,6 +598,7 @@ pub fn match_arguments_against_params<
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
+    let diagnostic_string = || function.map(|f| f.diagnostic_string(class));
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
@@ -673,9 +674,14 @@ pub fn match_arguments_against_params<
                                 .into()
                             }
                             match reason {
-                                MismatchReason::None => {
-                                    (on_type_error.callback)(i_s, class, function, argument, t1, t2)
-                                }
+                                MismatchReason::None => (on_type_error.callback)(
+                                    i_s,
+                                    class,
+                                    &diagnostic_string,
+                                    argument,
+                                    t1,
+                                    t2,
+                                ),
                                 MismatchReason::CannotInferTypeArgument(index) => {
                                     node_ref.add_typing_issue(
                                         i_s.db,

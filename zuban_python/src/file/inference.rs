@@ -971,23 +971,22 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let f = self.file;
                 let on_type_error = |i_s: &mut InferenceState<'db, '_>,
                                      class: Option<&Class>,
-                                     function: Option<&Function>,
+                                     error_text: &dyn Fn() -> Option<Box<str>>,
                                      arg: &Argument,
                                      t1,
                                      t2| {
+                    let error_text = error_text();
                     arg.as_node_ref().add_typing_issue(
                         i_s.db,
                         IssueType::ArgumentIssue(
                             format!(
-                                "Argument {} has incompatible type {t1:?}; expected {t2:?}",
-                                match function {
-                                    Some(function) => format!(
-                                        "{} to {}",
-                                        arg.human_readable_index(),
-                                        function.diagnostic_string(class),
-                                    ),
-                                    None => arg.human_readable_index(),
+                                "Argument {}{}{} has incompatible type {t1:?}; expected {t2:?}",
+                                arg.human_readable_index(),
+                                match error_text.is_some() {
+                                    true => " to ",
+                                    false => "",
                                 },
+                                error_text.as_deref().unwrap_or(""),
                             )
                             .into(),
                         ),

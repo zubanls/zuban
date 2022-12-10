@@ -499,7 +499,7 @@ impl<'a> Matcher<'a> {
                                 (on_type_error.callback)(
                                     i_s,
                                     class,
-                                    function,
+                                    &|| todo!(),
                                     &last_arg,
                                     Box::from("TODO X"),
                                     Box::from("TODO Y"),
