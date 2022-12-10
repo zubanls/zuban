@@ -687,10 +687,8 @@ pub fn match_arguments_against_params<
                                         i_s.db,
                                         IssueType::CannotInferTypeArgument {
                                             index: *index,
-                                            callable: match function {
-                                                Some(f) => f.diagnostic_string(class),
-                                                None => Box::from("Callable"),
-                                            },
+                                            callable: diagnostic_string()
+                                                .unwrap_or_else(|| Box::from("Callable")),
                                         },
                                     );
                                 }
@@ -699,10 +697,8 @@ pub fn match_arguments_against_params<
                                         i_s.db,
                                         IssueType::InvalidTypeVarValue {
                                             type_var_name: Box::from(type_var.name(i_s.db)),
-                                            func: match function {
-                                                Some(f) => f.diagnostic_string(class),
-                                                None => Box::from("function"),
-                                            },
+                                            func: diagnostic_string()
+                                                .unwrap_or_else(|| Box::from("function")),
                                             actual: expected.format(&FormatData::new_short(i_s.db)),
                                         },
                                     );
