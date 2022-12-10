@@ -598,7 +598,8 @@ pub fn match_arguments_against_params<
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
-    let diagnostic_string = || function.map(|f| f.diagnostic_string(class));
+    let diagnostic_string =
+        |prefix: &str| function.map(|f| (prefix.to_owned() + &f.diagnostic_string(class)).into());
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
@@ -687,7 +688,7 @@ pub fn match_arguments_against_params<
                                         i_s.db,
                                         IssueType::CannotInferTypeArgument {
                                             index: *index,
-                                            callable: diagnostic_string()
+                                            callable: diagnostic_string("")
                                                 .unwrap_or_else(|| Box::from("Callable")),
                                         },
                                     );
@@ -697,7 +698,7 @@ pub fn match_arguments_against_params<
                                         i_s.db,
                                         IssueType::InvalidTypeVarValue {
                                             type_var_name: Box::from(type_var.name(i_s.db)),
-                                            func: diagnostic_string()
+                                            func: diagnostic_string("")
                                                 .unwrap_or_else(|| Box::from("function")),
                                             actual: expected.format(&FormatData::new_short(i_s.db)),
                                         },
