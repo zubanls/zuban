@@ -384,6 +384,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     }
                     return DbType::Callable(Box::new(CallableContent {
                         name: Some(self.name_string_slice()),
+                        class_name: self.class.map(|c| c.name_string_slice()),
                         defined_at: self.node_ref.as_link(),
                         params: self.remap_param_spec(i_s, new_params, u),
                         type_vars: type_vars.cloned(),
@@ -402,6 +403,7 @@ impl<'db: 'a, 'a> Function<'a> {
         }
         DbType::Callable(Box::new(CallableContent {
             name: Some(self.name_string_slice()),
+            class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
             params: CallableParams::Simple(new_params.into_boxed_slice()),
             type_vars: type_vars.cloned(),

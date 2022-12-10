@@ -602,9 +602,13 @@ pub fn match_arguments_against_params<
         FunctionOrCallable::Function(f) => {
             Some((prefix.to_owned() + &f.diagnostic_string(class)).into())
         }
-        FunctionOrCallable::Callable(c) => c
-            .name
-            .map(|n| format!("{prefix}\"{}\"", n.as_str(i_s.db)).into()),
+        FunctionOrCallable::Callable(c) => c.name.map(|n| {
+            let mut string = format!("{prefix}\"{}\"", n.as_str(i_s.db));
+            if let Some(class_name) = c.class_name {
+                string += &format!(" of \"{}\"", class_name.as_str(i_s.db));
+            }
+            string.into()
+        }),
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];

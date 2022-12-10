@@ -1402,6 +1402,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         if let Some(callable) = new_inf.maybe_callable(self.i_s) {
                             let mut content = callable.content.clone();
                             content.name = Some(func.name_string_slice());
+                            content.class_name = func.class.map(|c| c.name_string_slice());
                             func.node_ref.insert_complex(
                                 ComplexPoint::DecoratedFunction(content),
                                 Locality::Todo,

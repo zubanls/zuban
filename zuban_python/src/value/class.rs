@@ -7,7 +7,7 @@ use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, PointType, TypeVarLike, TypeVarLikeUsage,
+    MroIndex, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage,
     TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
@@ -153,6 +153,11 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn node(&self) -> ClassDef<'a> {
         ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
+    }
+
+    pub fn name_string_slice(&self) -> StringSlice {
+        let name = self.node().name();
+        StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
