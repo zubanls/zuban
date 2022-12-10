@@ -602,7 +602,9 @@ pub fn match_arguments_against_params<
         FunctionOrCallable::Function(f) => {
             Some((prefix.to_owned() + &f.diagnostic_string(class)).into())
         }
-        FunctionOrCallable::Callable(_) => None,
+        FunctionOrCallable::Callable(c) => c
+            .name
+            .map(|n| format!("{prefix}\"{}\"", n.as_str(i_s.db)).into()),
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
