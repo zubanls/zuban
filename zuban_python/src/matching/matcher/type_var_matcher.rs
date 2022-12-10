@@ -770,11 +770,7 @@ pub fn match_arguments_against_params<
         if should_generate_errors || true {
             // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();
-            if let Some(function) = function {
-                s += " for ";
-                s += &function.diagnostic_string(class);
-            }
-
+            s += diagnostic_string(" for ").as_deref().unwrap_or("");
             args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
@@ -794,11 +790,7 @@ pub fn match_arguments_against_params<
             }
             if too_many {
                 let mut s = "Too many arguments".to_owned();
-                if let Some(function) = function {
-                    s += " for ";
-                    s += &function.diagnostic_string(class);
-                }
-
+                s += diagnostic_string(" for ").as_deref().unwrap_or("");
                 args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
@@ -817,20 +809,14 @@ pub fn match_arguments_against_params<
             if let Some(param_name) = param.name(i_s.db) {
                 if param.kind(i_s.db) == ParamKind::KeywordOnly {
                     let mut s = format!("Missing named argument {:?}", param_name);
-                    if let Some(function) = function {
-                        s += " for ";
-                        s += &function.diagnostic_string(class);
-                    }
+                    s += diagnostic_string(" for ").as_deref().unwrap_or("");
                     args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
                 } else {
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
                 let mut s = "Too few arguments".to_owned();
-                if let Some(function) = function {
-                    s += " for ";
-                    s += &function.diagnostic_string(class);
-                }
+                s += diagnostic_string(" for ").as_deref().unwrap_or("");
                 args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
             }
         }
@@ -845,10 +831,7 @@ pub fn match_arguments_against_params<
                 missing_positional.join(", ")
             )),
         } {
-            if let Some(function) = function {
-                s += " to ";
-                s += &function.diagnostic_string(class);
-            }
+            s += diagnostic_string(" to ").as_deref().unwrap_or("");
             args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
         };
     }
