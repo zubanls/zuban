@@ -439,7 +439,7 @@ impl<'a> Matcher<'a> {
         usage: &ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
         class: Option<&Class>,
-        function: Option<&Function>,
+        func_or_callable: FunctionOrCallable,
         args_node_ref: &impl Fn() -> NodeRef<'c>,
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
@@ -470,7 +470,7 @@ impl<'a> Matcher<'a> {
                     i_s,
                     &mut Matcher::default(),
                     class,
-                    function,
+                    func_or_callable,
                     args_node_ref,
                     on_type_error,
                     iter,

@@ -498,7 +498,7 @@ fn calculate_type_vars<'db>(
                 i_s,
                 &mut matcher,
                 class,
-                Some(&function),
+                func_or_callable,
                 args,
                 on_type_error,
                 function.iter_args_with_params(i_s.db, args, skip_first_param),
@@ -509,7 +509,7 @@ fn calculate_type_vars<'db>(
                 i_s,
                 &mut matcher,
                 None,
-                None,
+                func_or_callable,
                 args,
                 on_type_error,
                 InferrableParamIterator2::new(i_s.db, params.iter(), args.iter_arguments()),
@@ -593,13 +593,17 @@ pub fn match_arguments_against_params<
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
-    function: Option<&Function>,
+    func_or_callable: FunctionOrCallable,
     args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
-    let diagnostic_string =
-        |prefix: &str| function.map(|f| (prefix.to_owned() + &f.diagnostic_string(class)).into());
+    let diagnostic_string = |prefix: &str| match func_or_callable {
+        FunctionOrCallable::Function(f) => {
+            Some((prefix.to_owned() + &f.diagnostic_string(class)).into())
+        }
+        FunctionOrCallable::Callable(_) => None,
+    };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
@@ -725,7 +729,7 @@ pub fn match_arguments_against_params<
                     &param_spec,
                     args,
                     class,
-                    function,
+                    func_or_callable,
                     args_node_ref,
                     on_type_error,
                 ) {
@@ -741,7 +745,7 @@ pub fn match_arguments_against_params<
         }
     }
     let add_keyword_argument_issue = |reference: NodeRef, name| {
-        let s = if let Some(function) = function {
+        let s = if let FunctionOrCallable::Function(function) = func_or_callable {
             if function.iter_params().any(|p| {
                 p.name(i_s.db) == Some(name)
                     && matches!(
@@ -848,7 +852,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
-    function: Option<&Function>,
+    func_or_callable: FunctionOrCallable,
     args: &dyn Arguments<'db>,
     on_type_error: Option<OnTypeError<'db, '_>>,
     args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
@@ -857,7 +861,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
         i_s,
         matcher,
         class,
-        function,
+        func_or_callable,
         &|| args.as_node_ref(),
         on_type_error,
         args_with_params,
