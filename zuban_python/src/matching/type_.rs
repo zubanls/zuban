@@ -60,6 +60,17 @@ impl<'a> Type<'a> {
         }
     }
 
+    #[inline]
+    pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
+        match self {
+            Self::Class(c) => *c,
+            Self::Type(Cow::Borrowed(DbType::Class(link, generics))) => {
+                Class::from_db_type(db, *link, generics)
+            }
+            _ => unreachable!(),
+        }
+    }
+
     pub fn maybe_db_type(&self) -> Option<&DbType> {
         match self {
             Self::Class(_) => None,

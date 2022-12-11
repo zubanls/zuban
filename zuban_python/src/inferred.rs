@@ -956,7 +956,8 @@ fn run_on_complex<'db: 'a, 'a, T>(
             let instance = inf.expect_instance(i_s);
 
             let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
-            let class = class_t.maybe_class(i_s.db).unwrap();
+            // Mro classes are never owned, because they are saved on classes.
+            let class = class_t.expect_borrowed_class(i_s.db);
             match reference.complex() {
                 Some(ComplexPoint::FunctionOverload(overload)) => {
                     let func = OverloadedFunction::new(reference, overload, Some(class));
