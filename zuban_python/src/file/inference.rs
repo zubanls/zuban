@@ -1403,19 +1403,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             let mut content = callable.content.clone();
                             content.name = Some(func.name_string_slice());
                             content.class_name = func.class.map(|c| c.name_string_slice());
-                            func.node_ref.insert_complex(
-                                ComplexPoint::DecoratedFunction(content),
+                            NodeRef::new(self.file, node_index).insert_complex(
+                                ComplexPoint::TypeInstance(Box::new(DbType::Callable(Box::new(
+                                    content,
+                                )))),
                                 Locality::Todo,
                             );
-                            self.file.points.set(
-                                node_index,
-                                Point::new_redirect(
-                                    self.file.file_index(),
-                                    func.node_ref.node_index,
-                                    Locality::Todo,
-                                ),
-                            );
-                            Inferred::new_saved2(func.node_ref.file, func.node_ref.node_index)
+                            Inferred::new_saved2(func.node_ref.file, node_index)
                         } else {
                             new_inf.save_redirect(self.i_s.db, self.file, node_index)
                         }

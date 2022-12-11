@@ -994,9 +994,6 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 _ => unreachable!(),
             }
         }
-        ComplexPoint::DecoratedFunction(c) => {
-            callable(i_s, &Function::new(definition.unwrap(), None))
-        }
         ComplexPoint::Closure(function, execution) => {
             let f = i_s.db.loaded_python_file(function.file);
             let func = Function::from_execution(i_s.db, execution, None);

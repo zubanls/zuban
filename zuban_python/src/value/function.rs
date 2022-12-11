@@ -432,9 +432,6 @@ impl<'db: 'a, 'a> Function<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
-        if let Some(ComplexPoint::DecoratedFunction(c)) = self.node_ref.complex() {
-            return execute_callable(c, i_s, args, on_type_error, class, result_context);
-        }
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let calculated_type_vars = calculate_function_type_vars_and_return(
             i_s,
