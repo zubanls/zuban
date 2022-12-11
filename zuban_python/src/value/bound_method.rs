@@ -26,14 +26,14 @@ impl<'db: 'a, 'a> BoundMethodFunction<'a> {
 
 #[derive(Debug)]
 pub struct BoundMethod<'a, 'b> {
-    instance: &'b Instance<'b>,
+    instance: &'b Instance<'a>,
     function: BoundMethodFunction<'a>,
     mro_index: MroIndex,
 }
 
 impl<'a, 'b> BoundMethod<'a, 'b> {
     pub fn new(
-        instance: &'b Instance<'b>,
+        instance: &'b Instance<'a>,
         mro_index: MroIndex,
         function: BoundMethodFunction<'a>,
     ) -> Self {
