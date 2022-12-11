@@ -9,7 +9,7 @@ use crate::matching::{calculate_callable_type_vars_and_return, FormatData, Resul
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
-    db_type: &'a DbType,
+    pub db_type: &'a DbType,
     pub content: &'a CallableContent,
 }
 
