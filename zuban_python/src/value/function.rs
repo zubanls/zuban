@@ -6,7 +6,6 @@ use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 
-use super::callable::execute_callable;
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{
     Argument, ArgumentIterator, ArgumentIteratorImpl, ArgumentKind, Arguments, SimpleArguments,

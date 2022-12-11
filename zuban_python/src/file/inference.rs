@@ -1381,7 +1381,6 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             Inferred::new_saved2(func.node_ref.file, func.node_ref.node_index);
                         // TODO order should be reversed.
                         for decorator in decorated.decorators().iter() {
-                            dbg!(decorator.as_code());
                             let i = self.infer_named_expression(decorator.named_expression());
                             // TODO check if it's an function without a return annotation and
                             // abort in that case.
