@@ -2396,13 +2396,10 @@ impl<'a> TypeVarLikeUsage<'a> {
                 todo!()
             }
             TypeVarLikeUsage::ParamSpec(param_spec) => {
-                /*
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new(
                     CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
                     None,
                 ))
-                */
-                todo!("Should probably be the statement before")
             }
         }
     }
