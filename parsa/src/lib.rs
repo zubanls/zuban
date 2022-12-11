@@ -256,6 +256,24 @@ macro_rules! __create_node {
                 })
             }
 
+            pub fn previous_sibling(&self) -> Option<$Node<'a>> {
+                for (i, n) in self.internal_tree.nodes[..self.index as usize].iter().rev().enumerate() {
+                    let i = i as $crate::NodeIndex + 1;
+                    let offset = n.next_node_offset;
+                    if offset == i {
+                        return Some(Self {
+                            internal_tree: self.internal_tree,
+                            index: self.index - i,
+                            internal_node: n
+                        });
+                    } else if (offset > i) {
+                        debug_assert!(!n.type_.is_leaf());
+                        return None
+                    }
+                }
+                None
+            }
+
             pub fn is_error_recovery_node(&self) -> bool {
                 self.internal_node.type_.is_error_recovery()
             }

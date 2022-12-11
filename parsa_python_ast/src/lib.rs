@@ -1201,6 +1201,11 @@ impl<'db> Decorators<'db> {
     pub fn iter(&self) -> DecoratorIterator<'db> {
         DecoratorIterator(self.node.iter_children())
     }
+
+    pub fn iter_reverse(&self) -> ReverseDecoratorIterator<'db> {
+        let current_node = Some(self.node.iter_children().last().unwrap());
+        ReverseDecoratorIterator { current_node }
+    }
 }
 
 pub struct DecoratorIterator<'db>(SiblingIterator<'db>);
@@ -1210,6 +1215,22 @@ impl<'db> Iterator for DecoratorIterator<'db> {
 
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(Self::Item::new)
+    }
+}
+
+pub struct ReverseDecoratorIterator<'db> {
+    current_node: Option<PyNode<'db>>,
+}
+
+impl<'db> Iterator for ReverseDecoratorIterator<'db> {
+    type Item = Decorator<'db>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let current = self.current_node.take();
+        if let Some(current) = current {
+            self.current_node = current.previous_sibling();
+        }
+        current.map(Self::Item::new)
     }
 }
 

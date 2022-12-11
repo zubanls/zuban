@@ -203,6 +203,7 @@ testTypevarValuesSpecialCase1
 testGenericTypeAliasesTypeVarConstraints
 testWideOuterContextValuesOverlapping
 testTypevarValuesWithOverloadedFunctionSpecialCase
+testReferenceToDecoratedFunctionAndTypeVarValues
 
 testTypeVarValuesFunction
 testTypeVarValuesMethod1
@@ -904,9 +905,6 @@ testUnknownFunctionNotCallable
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Decorators
-testReferenceToDecoratedFunctionAndTypeVarValues
-
-testNestedDecorators
 testInvalidDecorator1
 testInvalidDecorator2
 testForwardReferenceToDynamicallyTypedDecorator
