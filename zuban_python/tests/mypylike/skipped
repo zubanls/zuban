@@ -1,6 +1,7 @@
 # Next up
 testUnboundTypeVar
 testGenericTypeAliasesImporting
+testReturnTypeLineNumberWithDecorator
 testUndefinedDecoratorInImportCycle
 
 testBoundGenericMethodParamSpecFine
@@ -342,12 +343,15 @@ testGenericClassInGenericFunction*
 testGenericClassAlternativeConstructorPrecise*
 testNoGenericAccessOnImplicitAttributes
 testOverloadClassMethodImplementation
+testOverloadWithSwappedDecorators
+testForwardReferenceToDecoratedClassMethod
 
 # staticmethod
 testStaticmethodAndNonMethod
 testBoundStaticMethod
 testForwardReferenceToDynamicallyTypedStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
+testOverloadWithSwappedDecorators2
 
 # All conditional function variants must have identical signatures
 testIncompatibleConditionalFunctionDefinition*
@@ -735,6 +739,7 @@ testFakeOverloadCrash
 testFakeOverloadCrash2
 testOverloadNotImportedNoCrash
 testSingleOverload2
+testCustomRedefinitionDecorator
 # Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
 testAliasesInClassBodyNormalVsSubscripted
 # Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
@@ -805,6 +810,11 @@ testCallableDataAttribute
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
 
+# Self type
+DecoratorUpdateMethod
+testDecoratorUpdateNestedClass
+testDecoratorUpdateClassInFunction
+
 # Liskov
 *Liskov*
 testPositionalOverridingArgumentNameInsensitivity
@@ -816,6 +826,8 @@ testSubclassingGenericABC1
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2
 
+# "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
+testPreviousErrorInDecoratedMethodOverride
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
@@ -907,37 +919,19 @@ testUnknownFunctionNotCallable
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
-# Decorators
-testReturnTypeLineNumberWithDecorator
-
-testOverloadDecoratedImplementationNotLast
-testCustomRedefinitionDecorator
-testOverloadWithSwappedDecorators
-testOverloadWithSwappedDecorators2
+# Weird Decorator Cases
 testOverloadWithObjectDecorator
 testOverloadWithErrorDecorator
-
-testForwardReferenceToDecoratedClassMethod
 testDecoratorTypeAfterReprocessing
-testPreviousErrorInDecoratedMethodOverride
-testDecoratorUpdateMod
-testDecoratorUpdateFunc
-DecoratorUpdateMethod
-testDecoratorUpdateDeeepNested
-testDecoratorUpdateNestedClass
-testDecoratorUpdateClassInFunction
-testDecoratorUpdateMROUpdated
-
 testMutuallyRecursiveDecoratedFunctions
 testBoundOnDecorator
-
-testOverloadDeferredNode
 testGenericClassPropertyBound
+testOverloadDeferredNode
 
 # "Decorators on top of @property are not supported"
 testDecoratedProperty
 
-# Function Not checked, missing return annotations (untyped)
+# Function Not checked, missing return annotations (check-untyped)
 testPositionalAndKeywordForSameArg
 testTypeCheckOverloadWithImplementationError
 
