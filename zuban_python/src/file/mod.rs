@@ -36,6 +36,7 @@ use name_binder::NameBinder;
 pub use type_computation::{
     BaseClass, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
 };
+pub use utils::on_argument_type_error;
 
 #[derive(Default, Debug)]
 pub struct ComplexValues(InsertOnlyVec<ComplexPoint>);

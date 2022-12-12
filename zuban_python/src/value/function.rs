@@ -19,8 +19,10 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::File;
-use crate::file::{PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn};
+use crate::file::{
+    on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin,
+    TypeVarCallbackReturn,
+};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -369,7 +371,7 @@ impl<'db: 'a, 'a> Function<'a> {
                         Some(NodeRef::new(self.node_ref.file, decorator.index())),
                     ),
                     &mut ResultContext::Unknown,
-                    OnTypeError::new(&|i_s, class, function, arg, right, wanted| todo!()),
+                    OnTypeError::new(&on_argument_type_error),
                 )
             });
         }

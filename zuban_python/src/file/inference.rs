@@ -3,8 +3,8 @@ use std::cell::Cell;
 use parsa_python_ast::*;
 
 use super::type_computation::type_computation_for_variable_annotation;
-use super::{File, PythonFile, TypeComputation, TypeComputationOrigin};
-use crate::arguments::{Argument, Arguments, CombinedArguments, KnownArguments, SimpleArguments};
+use super::{on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin};
+use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     ComplexPoint, DbType, FileIndex, GenericItem, GenericsList, Locality, Point, PointLink,
     PointType, Specific, TupleContent, TypeOrTypeVarTuple,
@@ -969,24 +969,6 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
-                let on_type_error = |i_s: &mut InferenceState<'db, '_>,
-                                     class: Option<&Class>,
-                                     error_text: &dyn Fn(&str) -> Option<Box<str>>,
-                                     arg: &Argument,
-                                     t1,
-                                     t2| {
-                    arg.as_node_ref().add_typing_issue(
-                        i_s.db,
-                        IssueType::ArgumentIssue(
-                            format!(
-                                "Argument {}{} has incompatible type {t1:?}; expected {t2:?}",
-                                arg.human_readable_index(),
-                                error_text(" to ").as_deref().unwrap_or(""),
-                            )
-                            .into(),
-                        ),
-                    )
-                };
                 let x = self
                     .i_s
                     .current_execution()
@@ -1002,7 +984,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 self.i_s,
                                 &args,
                                 result_context,
-                                OnTypeError::new(&on_type_error),
+                                OnTypeError::new(&on_argument_type_error),
                             );
                             return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
                         }
@@ -1012,7 +994,12 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     self.i_s,
                     &mut |i_s, value| {
                         debug!("Execute {}", value.name());
-                        value.execute(i_s, &args, result_context, OnTypeError::new(&on_type_error))
+                        value.execute(
+                            i_s,
+                            &args,
+                            result_context,
+                            OnTypeError::new(&on_argument_type_error),
+                        )
                     },
                     &|i_s, i1, i2| i1.union(i2),
                     &mut |i_s| {

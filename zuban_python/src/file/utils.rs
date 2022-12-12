@@ -1,11 +1,13 @@
 use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
 
+use crate::arguments::Argument;
 use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::value::Class;
 use crate::Inferred;
 
 impl<'db> Inference<'db, '_, '_, '_> {
@@ -140,4 +142,25 @@ fn check_list_with_context(
         }
     }
     found
+}
+
+pub fn on_argument_type_error(
+    i_s: &mut InferenceState,
+    class: Option<&Class>,
+    error_text: &dyn Fn(&str) -> Option<Box<str>>,
+    arg: &Argument,
+    t1: Box<str>,
+    t2: Box<str>,
+) {
+    arg.as_node_ref().add_typing_issue(
+        i_s.db,
+        IssueType::ArgumentIssue(
+            format!(
+                "Argument {}{} has incompatible type {t1:?}; expected {t2:?}",
+                arg.human_readable_index(),
+                error_text(" to ").as_deref().unwrap_or(""),
+            )
+            .into(),
+        ),
+    )
 }
