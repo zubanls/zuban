@@ -424,13 +424,13 @@ impl<'db: 'slf, 'slf> Inferred {
             i_s,
             &mut |i_s, v| {
                 if include_non_callables {
-                    v.as_callable().map(|c| Cow::Borrowed(c.content))
+                    v.maybe_callable_content()
                 } else {
                     v.as_callable().map(|c| Cow::Borrowed(c.content))
                 }
             },
             &|_, _, _| None,
-            &mut |_| None,
+            &mut |_| Some(Cow::Owned(CallableContent::new_any())),
         )
     }
 

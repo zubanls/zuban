@@ -11,9 +11,12 @@ mod type_alias;
 mod typing;
 
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
+use std::borrow::Cow;
 
 use crate::arguments::{Argument, Arguments};
-use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
+use crate::database::{
+    CallableContent, Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple,
+};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -316,6 +319,10 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
             },
         );
         IteratorContent::Any
+    }
+
+    fn maybe_callable_content(&self) -> Option<Cow<'a, CallableContent>> {
+        None
     }
 
     fn as_instance(&self) -> Option<&Instance<'a>> {

@@ -4,7 +4,7 @@ use super::{
     Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
 };
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{DbType, PointLink};
+use crate::database::{CallableContent, DbType, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::getitem::SliceType;
@@ -185,6 +185,9 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         IteratorContent::Any
     }
 
+    fn maybe_callable_content(&self) -> Option<Cow<'a, CallableContent>> {
+        todo!()
+    }
     fn as_instance(&self) -> Option<&Instance<'a>> {
         Some(self)
     }

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;
@@ -55,6 +57,10 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
+    }
+
+    fn maybe_callable_content(&self) -> Option<Cow<'a, CallableContent>> {
+        Some(Cow::Borrowed(self.content))
     }
 
     fn as_callable(&self) -> Option<Callable<'a>> {

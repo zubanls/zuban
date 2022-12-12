@@ -1769,6 +1769,17 @@ pub struct CallableContent {
 }
 
 impl CallableContent {
+    pub fn new_any() -> Self {
+        Self {
+            name: None,
+            class_name: None,
+            defined_at: PointLink::new(FileIndex(1), 1),
+            type_vars: None,
+            params: CallableParams::Any,
+            result_type: DbType::Any,
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> String {
         let result = self.result_type.format(format_data);
         let params = self.params.format(

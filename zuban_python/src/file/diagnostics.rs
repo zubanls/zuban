@@ -243,7 +243,7 @@ impl Inference<'_, '_, '_, '_> {
                                     ps.iter(),
                                     Variance::Contravariant,
                                 ),
-                                CallableParams::Any => todo!(),
+                                CallableParams::Any => Match::new_true(),
                                 CallableParams::WithParamSpec(_, _) => todo!(),
                             }
                         } else {
