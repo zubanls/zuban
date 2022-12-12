@@ -938,9 +938,6 @@ testTypeCheckOverloadWithImplementationError
 # function type mismatch when untyped
 testSubtypingFunctionsImplicitNames
 
-# https://github.com/python/mypy/issues/13102
-testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
-
 # Protocol
 testProtocolUpdateType*
 testProtocolAddAttrInFunction
@@ -1308,6 +1305,10 @@ testNoSubscriptionOfBuiltinAliases
 
 # Won't support --disable-recursive-alias
 testNewAnalyzerNewTypeForwardClassAliasDirect
+
+# Mypy test case issues
+# https://github.com/python/mypy/issues/13102
+testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 
 # Skips
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
