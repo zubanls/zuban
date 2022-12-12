@@ -331,18 +331,7 @@ impl<'db: 'a, 'a> Function<'a> {
         }
     }
 
-    pub fn maybe_decorated(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred> {
-        let name_def = self.node().name_definition();
-        let p = NodeRef::new(self.node_ref.file, name_def.index()).point();
-        (p.calculated() && p.maybe_specific() == Some(Specific::LazyInferredFunction))
-            .then(|| self.decorated(i_s, name_def))
-    }
-
-    pub fn decorated(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name_def: NameDefinition,
-    ) -> Inferred {
+    pub fn decorated(&self, i_s: &mut InferenceState<'db, '_>) -> Inferred {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...) + 1 for (
         let decorator_ref = self.node_ref.add_to_node_index(5);
@@ -355,12 +344,6 @@ impl<'db: 'a, 'a> Function<'a> {
                 .unwrap();
         }
         let node = self.node();
-        debug_assert!(
-            NodeRef::new(self.node_ref.file, name_def.index())
-                .point()
-                .specific()
-                == Specific::LazyInferredFunction
-        );
         let FunctionParent::Decorated(decorated) = node.parent() else {
             unreachable!();
         };

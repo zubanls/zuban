@@ -261,7 +261,7 @@ impl Point {
     }
 
     pub fn specific(self) -> Specific {
-        debug_assert!(self.type_() == PointType::Specific);
+        debug_assert!(self.type_() == PointType::Specific, "{:?}", self);
         unsafe { mem::transmute(self.flags & SPECIFIC_MASK) }
     }
 }

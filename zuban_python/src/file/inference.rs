@@ -1361,7 +1361,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             NodeRef::new(self.file, func.index()),
                             self.i_s.current_class().copied(),
                         );
-                        func.decorated(self.i_s, name_def)
+                        func.decorated(self.i_s)
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators

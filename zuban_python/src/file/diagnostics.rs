@@ -230,8 +230,10 @@ impl Inference<'_, '_, '_, '_> {
                         );
                     }
 
-                    let match_ = if let Some(inf) = implementation.maybe_decorated(self.i_s) {
-                        if let Some(callable) = inf.maybe_callable(self.i_s) {
+                    let match_ = if o.implementing_function_has_decorators {
+                        if let Some(callable) =
+                            implementation.decorated(self.i_s).maybe_callable(self.i_s)
+                        {
                             match &callable.content.params {
                                 CallableParams::Simple(ps) => matches_simple_params(
                                     self.i_s,
