@@ -1,6 +1,6 @@
 use parsa_python_ast::{
-    FunctionDef, FunctionParent, NameDefinition, NodeIndex, Param as ASTParam,
-    ParamIterator as ASTParamIterator, ParamKind, ReturnAnnotation, ReturnOrYield,
+    FunctionDef, FunctionParent, NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator,
+    ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -14,8 +14,8 @@ use crate::arguments::{
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
-    StringSlice, TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
+    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -368,12 +368,12 @@ impl<'db: 'a, 'a> Function<'a> {
                 )
             });
         }
-        if let Some(callable) = new_inf.maybe_callable(i_s) {
-            let mut content = callable.content.clone();
-            content.name = Some(self.name_string_slice());
-            content.class_name = self.class.map(|c| c.name_string_slice());
+        if let Some(callable_content) = new_inf.maybe_callable(i_s, false) {
+            let mut callable_content = callable_content.clone();
+            callable_content.name = Some(self.name_string_slice());
+            callable_content.class_name = self.class.map(|c| c.name_string_slice());
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
-                Box::new(content),
+                Box::new(callable_content),
             ))))
             .save_redirect(i_s.db, decorator_ref.file, decorator_ref.node_index)
         } else {

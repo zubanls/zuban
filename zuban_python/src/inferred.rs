@@ -4,8 +4,8 @@ use std::fmt;
 
 use crate::arguments::{Arguments, NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList, Locality,
-    MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
+    AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
+    Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
@@ -412,13 +412,23 @@ impl<'db: 'slf, 'slf> Inferred {
         instance.unwrap()
     }
 
-    pub fn maybe_callable<'x>(&'x self, i_s: &mut InferenceState<'db, '_>) -> Option<Callable<'x>>
+    pub fn maybe_callable<'x>(
+        &'x self,
+        i_s: &mut InferenceState<'db, '_>,
+        include_non_callables: bool,
+    ) -> Option<&'x CallableContent>
     where
         'db: 'x,
     {
         self.internal_run(
             i_s,
-            &mut |i_s, v| v.as_callable(),
+            &mut |i_s, v| {
+                if include_non_callables {
+                    v.as_callable().map(|c| c.content)
+                } else {
+                    v.as_callable().map(|c| c.content)
+                }
+            },
             &|_, _, _| None,
             &mut |_| None,
         )
