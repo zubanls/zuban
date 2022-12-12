@@ -1479,6 +1479,7 @@ pub enum FunctionType {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Overload {
     pub implementing_function: Option<PointLink>,
+    pub implementing_function_has_decorators: bool,
     pub functions: Box<[PointLink]>,
     pub function_type: FunctionType,
     pub is_async: bool,
@@ -1491,6 +1492,7 @@ impl Overload {
         functions.push(function);
         Self {
             implementing_function: self.implementing_function,
+            implementing_function_has_decorators: self.implementing_function_has_decorators,
             functions: functions.into_boxed_slice(),
             function_type: self.function_type,
             is_async: self.is_async,

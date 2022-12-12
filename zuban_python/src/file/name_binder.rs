@@ -876,6 +876,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     functions: Box::new([current_link]),
                     function_type,
                     implementing_function: None,
+                    implementing_function_has_decorators: false,
                     is_async,
                 }
             };
@@ -894,6 +895,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     let mut new_overload = o.clone();
                     new_overload.implementing_function =
                         Some(PointLink::new(self.file_index, func.index()));
+
+                    new_overload.implementing_function_has_decorators = decorators.is_some();
                     self.complex_points.insert(
                         self.points,
                         name_def.index(),
