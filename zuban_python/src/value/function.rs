@@ -1,6 +1,6 @@
 use parsa_python_ast::{
-    FunctionDef, NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator, ParamKind,
-    ReturnAnnotation, ReturnOrYield,
+    FunctionDef, FunctionParent, NameDefinition, NodeIndex, Param as ASTParam,
+    ParamIterator as ASTParamIterator, ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -8,13 +8,14 @@ use std::fmt;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{
-    Argument, ArgumentIterator, ArgumentIteratorImpl, ArgumentKind, Arguments, SimpleArguments,
+    Argument, ArgumentIterator, ArgumentIteratorImpl, ArgumentKind, Arguments, KnownArguments,
+    SimpleArguments,
 };
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
-    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
+    StringSlice, TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -52,7 +53,8 @@ impl fmt::Debug for Function<'_> {
 impl<'db: 'a, 'a> Function<'a> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
-    // - "(" to redirect to save calculated type vars
+    // - "function_def_parameters" to save calculated type vars
+    // - "(" for decorator caching
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'a>>) -> Self {
         Self { node_ref, class }
     }
@@ -206,7 +208,7 @@ impl<'db: 'a, 'a> Function<'a> {
 
     pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
         // To save the generics just use the ( operator's storage.
-        // + 1 for def; + 2 for name + 1 for (
+        // + 1 for def; + 2 for name + 1 for (...)
         let type_var_reference = self.node_ref.add_to_node_index(4);
         if type_var_reference.point().calculated() {
             if let Some(complex) = type_var_reference.complex() {
@@ -321,6 +323,58 @@ impl<'db: 'a, 'a> Function<'a> {
                 let types = vec![];
                 CallableParams::WithParamSpec(into_types(types, pre_params), usage.clone())
             }
+        }
+    }
+
+    pub fn decorated(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        name_def: NameDefinition,
+    ) -> Inferred {
+        // To save the generics just use the ( operator's storage.
+        // + 1 for def; + 2 for name + 1 for (...) + 1 for (
+        let node = self.node();
+        debug_assert!(
+            NodeRef::new(self.node_ref.file, name_def.index())
+                .point()
+                .specific()
+                == Specific::LazyInferredFunction
+        );
+        let FunctionParent::Decorated(decorated) = node.parent() else {
+            unreachable!();
+        };
+        let mut new_inf = Inferred::new_saved2(self.node_ref.file, self.node_ref.node_index);
+        for decorator in decorated.decorators().iter_reverse() {
+            let i = self
+                .node_ref
+                .file
+                .inference(i_s)
+                .infer_named_expression(decorator.named_expression());
+            // TODO check if it's an function without a return annotation and
+            // abort in that case.
+            new_inf = i.run_on_value(i_s, &mut |i_s, v| {
+                v.execute(
+                    i_s,
+                    &KnownArguments::new(
+                        &new_inf,
+                        Some(NodeRef::new(self.node_ref.file, decorator.index())),
+                    ),
+                    &mut ResultContext::Unknown,
+                    OnTypeError::new(&|i_s, class, function, arg, right, wanted| todo!()),
+                )
+            });
+        }
+        if let Some(callable) = new_inf.maybe_callable(i_s) {
+            let mut content = callable.content.clone();
+            content.name = Some(self.name_string_slice());
+            content.class_name = self.class.map(|c| c.name_string_slice());
+            NodeRef::new(self.node_ref.file, name_def.index()).insert_complex(
+                ComplexPoint::TypeInstance(Box::new(DbType::Callable(Box::new(content)))),
+                Locality::Todo,
+            );
+            Inferred::new_saved2(self.node_ref.file, name_def.index())
+        } else {
+            new_inf.save_redirect(i_s.db, self.node_ref.file, name_def.index())
         }
     }
 

@@ -1374,43 +1374,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             NodeRef::new(self.file, func.index()),
                             self.i_s.current_class().copied(),
                         );
-                        let FunctionParent::Decorated(decorated) = func.node().parent() else {
-                            unreachable!();
-                        };
-                        let mut new_inf =
-                            Inferred::new_saved2(func.node_ref.file, func.node_ref.node_index);
-                        for decorator in decorated.decorators().iter_reverse() {
-                            let i = self.infer_named_expression(decorator.named_expression());
-                            // TODO check if it's an function without a return annotation and
-                            // abort in that case.
-                            new_inf = i.run_on_value(self.i_s, &mut |i_s, v| {
-                                v.execute(
-                                    i_s,
-                                    &KnownArguments::new(
-                                        &new_inf,
-                                        Some(NodeRef::new(self.file, decorator.index())),
-                                    ),
-                                    &mut ResultContext::Unknown,
-                                    OnTypeError::new(
-                                        &|i_s, class, function, arg, right, wanted| todo!(),
-                                    ),
-                                )
-                            });
-                        }
-                        if let Some(callable) = new_inf.maybe_callable(self.i_s) {
-                            let mut content = callable.content.clone();
-                            content.name = Some(func.name_string_slice());
-                            content.class_name = func.class.map(|c| c.name_string_slice());
-                            NodeRef::new(self.file, node_index).insert_complex(
-                                ComplexPoint::TypeInstance(Box::new(DbType::Callable(Box::new(
-                                    content,
-                                )))),
-                                Locality::Todo,
-                            );
-                            Inferred::new_saved2(func.node_ref.file, node_index)
-                        } else {
-                            new_inf.save_redirect(self.i_s.db, self.file, node_index)
-                        }
+                        func.decorated(self.i_s, name_def)
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators
