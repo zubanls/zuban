@@ -1,6 +1,7 @@
 # Next up
 testUnboundTypeVar
 testGenericTypeAliasesImporting
+testUndefinedDecoratorInImportCycle
 
 testBoundGenericMethodParamSpecFine
 
@@ -516,6 +517,7 @@ testNewAnalyzerConditionalFunc*
 testNewAnalyzerConditionallyDefineFuncOverVar
 testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
+testConditionalFunctionDefinitionUsingDecorator2
 
 # isinstance flow analysis
 testUnionGenericWithBoundedVariable
@@ -907,9 +909,6 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Decorators
 testReturnTypeLineNumberWithDecorator
-
-testUndefinedDecoratorInImportCycle
-testConditionalFunctionDefinitionUsingDecorator2
 
 testOverloadDecoratedImplementationNotLast
 testCustomRedefinitionDecorator
