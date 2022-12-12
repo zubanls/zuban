@@ -230,15 +230,32 @@ impl Inference<'_, '_, '_, '_> {
                         );
                     }
 
-                    if !matches_simple_params(
-                        self.i_s,
-                        &mut matcher,
-                        f1.iter_params(),
-                        implementation.iter_params(),
-                        Variance::Contravariant,
-                    )
-                    .bool()
-                    {
+                    let match_ = if let Some(inf) = implementation.maybe_decorated(self.i_s) {
+                        if let Some(callable) = inf.maybe_callable(self.i_s) {
+                            match &callable.content.params {
+                                CallableParams::Simple(ps) => matches_simple_params(
+                                    self.i_s,
+                                    &mut matcher,
+                                    f1.iter_params(),
+                                    ps.iter(),
+                                    Variance::Contravariant,
+                                ),
+                                CallableParams::Any => todo!(),
+                                CallableParams::WithParamSpec(_, _) => todo!(),
+                            }
+                        } else {
+                            todo!()
+                        }
+                    } else {
+                        matches_simple_params(
+                            self.i_s,
+                            &mut matcher,
+                            f1.iter_params(),
+                            implementation.iter_params(),
+                            Variance::Contravariant,
+                        )
+                    };
+                    if !match_.bool() {
                         name_def_node_ref.add_typing_issue(
                             self.i_s.db,
                             IssueType::OverloadImplementationArgumentsNotBroadEnough {

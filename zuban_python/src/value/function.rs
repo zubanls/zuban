@@ -331,6 +331,13 @@ impl<'db: 'a, 'a> Function<'a> {
         }
     }
 
+    pub fn maybe_decorated(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred> {
+        let name_def = self.node().name_definition();
+        let p = NodeRef::new(self.node_ref.file, name_def.index()).point();
+        (p.calculated() && p.maybe_specific() == Some(Specific::LazyInferredFunction))
+            .then(|| self.decorated(i_s, name_def))
+    }
+
     pub fn decorated(
         &self,
         i_s: &mut InferenceState<'db, '_>,
