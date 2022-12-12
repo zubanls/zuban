@@ -907,11 +907,6 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 # Decorators
 testNewAnalyzerImportedNameUsedInClassBody
 testNewAnalyzerImportedNameUsedInClassBody2
-testDecoratedMethodRefresh
-testDecoratorSpecialCase1
-testDecoratorSpecialCase2
-testDecoratorMethodCompat
-testPreviousErrorInDecoratedFunction
 
 testInvalidDecorator1
 testInvalidDecorator2

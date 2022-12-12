@@ -888,7 +888,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
             let f = i_s.db.loaded_python_file(point.file_index());
             callable(i_s, &Module::new(i_s.db, f))
         }
-        _ => unreachable!(),
+        x => unreachable!("{x:?}"),
     }
 }
 

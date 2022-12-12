@@ -13,6 +13,7 @@ use crate::diagnostics::{Diagnostic, Issue, IssueType};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
+use crate::inferred::Inferred;
 use crate::value::Module;
 
 #[derive(Clone, Copy)]
@@ -193,6 +194,10 @@ impl<'file> NodeRef<'file> {
             Diagnostic::new(db, self.file, &issue).as_string()
         );
         self.file.issues.push(Box::pin(issue));
+    }
+
+    pub fn into_inferred(self) -> Inferred {
+        Inferred::new_saved2(self.file, self.node_index)
     }
 }
 

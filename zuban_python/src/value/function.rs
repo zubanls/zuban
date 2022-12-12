@@ -333,6 +333,15 @@ impl<'db: 'a, 'a> Function<'a> {
     ) -> Inferred {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...) + 1 for (
+        let decorator_ref = self.node_ref.add_to_node_index(5);
+        if decorator_ref.point().calculated() {
+            return self
+                .node_ref
+                .file
+                .inference(i_s)
+                .check_point_cache(decorator_ref.node_index)
+                .unwrap();
+        }
         let node = self.node();
         debug_assert!(
             NodeRef::new(self.node_ref.file, name_def.index())
@@ -371,9 +380,9 @@ impl<'db: 'a, 'a> Function<'a> {
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
                 Box::new(content),
             ))))
-            .save_redirect(i_s.db, self.node_ref.file, name_def.index())
+            .save_redirect(i_s.db, decorator_ref.file, decorator_ref.node_index)
         } else {
-            new_inf.save_redirect(i_s.db, self.node_ref.file, name_def.index())
+            new_inf.save_redirect(i_s.db, decorator_ref.file, decorator_ref.node_index)
         }
     }
 
