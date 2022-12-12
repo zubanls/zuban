@@ -368,11 +368,10 @@ impl<'db: 'a, 'a> Function<'a> {
             let mut content = callable.content.clone();
             content.name = Some(self.name_string_slice());
             content.class_name = self.class.map(|c| c.name_string_slice());
-            NodeRef::new(self.node_ref.file, name_def.index()).insert_complex(
-                ComplexPoint::TypeInstance(Box::new(DbType::Callable(Box::new(content)))),
-                Locality::Todo,
-            );
-            Inferred::new_saved2(self.node_ref.file, name_def.index())
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
+                Box::new(content),
+            ))))
+            .save_redirect(i_s.db, self.node_ref.file, name_def.index())
         } else {
             new_inf.save_redirect(i_s.db, self.node_ref.file, name_def.index())
         }
