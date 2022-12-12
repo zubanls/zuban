@@ -416,7 +416,7 @@ impl<'db: 'slf, 'slf> Inferred {
         &'x self,
         i_s: &mut InferenceState<'db, '_>,
         include_non_callables: bool,
-    ) -> Option<&'x CallableContent>
+    ) -> Option<Cow<'x, CallableContent>>
     where
         'db: 'x,
     {
@@ -424,9 +424,9 @@ impl<'db: 'slf, 'slf> Inferred {
             i_s,
             &mut |i_s, v| {
                 if include_non_callables {
-                    v.as_callable().map(|c| c.content)
+                    v.as_callable().map(|c| Cow::Borrowed(c.content))
                 } else {
-                    v.as_callable().map(|c| c.content)
+                    v.as_callable().map(|c| Cow::Borrowed(c.content))
                 }
             },
             &|_, _, _| None,

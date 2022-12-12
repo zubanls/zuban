@@ -369,7 +369,7 @@ impl<'db: 'a, 'a> Function<'a> {
             });
         }
         if let Some(callable_content) = new_inf.maybe_callable(i_s, false) {
-            let mut callable_content = callable_content.clone();
+            let mut callable_content = callable_content.into_owned();
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
