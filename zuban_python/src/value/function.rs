@@ -164,6 +164,9 @@ impl<'db: 'a, 'a> Function<'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
     ) -> Inferred {
+        if i_s.db.python_state.project.mypy_compatible {
+            return Inferred::new_any();
+        }
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }

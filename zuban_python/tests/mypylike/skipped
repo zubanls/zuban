@@ -311,6 +311,7 @@ testForwardReferenceToStaticallyTypedProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
+testDecoratedPropertySetter
 
 # descriptors
 testOverloadWithNonGenericDescriptor
@@ -461,9 +462,6 @@ testInferringImplicitDynamicTypeForLvar
 testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
-# Dynamic classes Any is inferred instead of None, which is actually true.
-testNewAnalyzerImportedNameUsedInClassBody
-testNewAnalyzerImportedNameUsedInClassBody2
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -908,16 +906,10 @@ testUnknownFunctionNotCallable
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Decorators
-testForwardReferenceToDynamicallyTypedDecorator
-testForwardReferenceToDynamicallyTypedDecoratedMethod
-testForwardReferenceToFunctionWithMultipleDecorators
-testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
-testForwardRefereceToDecoratedFunctionWithCallExpressionDecorator
-testDecoratorWithNoAnnotationInImportCycle
+testReturnTypeLineNumberWithDecorator
+
 testUndefinedDecoratorInImportCycle
 testConditionalFunctionDefinitionUsingDecorator2
-testReturnTypeLineNumberWithDecorator
-testDecoratedPropertySetter
 
 testOverloadDecoratedImplementationNotLast
 testCustomRedefinitionDecorator
