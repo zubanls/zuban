@@ -188,6 +188,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     fn maybe_callable_content(&self) -> Option<Cow<'a, CallableContent>> {
         todo!()
     }
+
     fn as_instance(&self) -> Option<&Instance<'a>> {
         Some(self)
     }

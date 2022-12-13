@@ -352,6 +352,7 @@ testBoundStaticMethod
 testForwardReferenceToDynamicallyTypedStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
+testOverloadWithStaticMethods
 
 # All conditional function variants must have identical signatures
 testIncompatibleConditionalFunctionDefinition*

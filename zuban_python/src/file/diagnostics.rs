@@ -11,12 +11,13 @@ use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::inferred::Inferred;
 use crate::matching::{
-    matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, ResultContext,
+    matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
 
-impl Inference<'_, '_, '_, '_> {
+impl<'db> Inference<'db, '_, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
     }
@@ -195,77 +196,72 @@ impl Inference<'_, '_, '_, '_> {
                 name_def_node_ref
                     .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
             }
-            let implementation = o
-                .implementing_function
-                .map(|i| Function::new(NodeRef::from_link(self.i_s.db, i), class));
+            let mut implementation_info = None;
+            let mut implementation_callable_content = None;
+            let decorated;
+            if let Some(i) = o.implementing_function {
+                let implementation = Function::new(NodeRef::from_link(self.i_s.db, i), class);
+                implementation.type_vars(self.i_s);
+                if !self.i_s.db.python_state.project.mypy_compatible
+                    || implementation.return_annotation().is_some()
+                {
+                    implementation_info =
+                        Some((implementation, implementation.result_type(self.i_s)));
+                }
+                if o.implementing_function_has_decorators {
+                    decorated = implementation.decorated(self.i_s);
+                    implementation_callable_content = decorated.maybe_callable(self.i_s, true);
+                    if let Some(callable_content) = implementation_callable_content.as_ref() {
+                        implementation_info =
+                            Some((implementation, Type::new(&callable_content.result_type)));
+                    }
+                }
+            }
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
-                let f1_result_type = f1.result_type(self.i_s);
-                if let Some(implementation) = implementation.filter(|i| {
-                    !self.i_s.db.python_state.project.mypy_compatible
-                        || i.return_annotation().is_some()
-                }) {
-                    let impl_type_vars = implementation.type_vars(self.i_s);
-
-                    let mut calculated_type_vars = vec![];
-                    let mut matcher = Matcher::new_reverse_function_matcher(
-                        implementation,
-                        impl_type_vars,
-                        &mut calculated_type_vars,
-                    );
-                    let implementation_type = implementation.result_type(self.i_s);
-                    if !f1_result_type
-                        .is_sub_type_of(self.i_s, &mut matcher, &implementation_type)
-                        .bool()
-                        && !f1_result_type
-                            .is_super_type_of(self.i_s, &mut matcher, &implementation_type)
-                            .bool()
-                    {
-                        name_def_node_ref.add_typing_issue(
-                            self.i_s.db,
-                            IssueType::OverloadImplementationReturnTypeIncomplete {
-                                signature_index: i + 1,
-                            },
-                        );
-                    }
-
-                    let match_ = if o.implementing_function_has_decorators {
-                        if let Some(callable_content) = implementation
-                            .decorated(self.i_s)
-                            .maybe_callable(self.i_s, true)
-                        {
+                if let Some((ref implementation, ref implementation_type)) = implementation_info {
+                    if o.implementing_function_has_decorators {
+                        if let Some(callable_content) = &implementation_callable_content {
                             match &callable_content.params {
-                                CallableParams::Simple(ps) => matches_simple_params(
-                                    self.i_s,
-                                    &mut matcher,
-                                    f1.iter_params(),
-                                    ps.iter(),
-                                    Variance::Contravariant,
-                                ),
-                                CallableParams::Any => Match::new_true(),
+                                CallableParams::Simple(ps) => {
+                                    let mut calculated_type_vars = vec![];
+                                    let mut matcher = Matcher::new_reverse_callable_matcher(
+                                        callable_content,
+                                        &mut calculated_type_vars,
+                                    );
+                                    self.calc_overload_implementation_diagnostics(
+                                        name_def_node_ref,
+                                        f1,
+                                        &mut matcher,
+                                        ps.iter(),
+                                        implementation_type,
+                                        i + 1,
+                                    )
+                                }
+                                CallableParams::Any => (),
                                 CallableParams::WithParamSpec(_, _) => todo!(),
                             }
                         } else {
                             todo!()
                         }
                     } else {
-                        matches_simple_params(
-                            self.i_s,
+                        let impl_type_vars = implementation.type_vars(self.i_s);
+                        let mut calculated_type_vars = vec![];
+                        let mut matcher = Matcher::new_reverse_function_matcher(
+                            *implementation,
+                            impl_type_vars,
+                            &mut calculated_type_vars,
+                        );
+                        self.calc_overload_implementation_diagnostics(
+                            name_def_node_ref,
+                            f1,
                             &mut matcher,
-                            f1.iter_params(),
                             implementation.iter_params(),
-                            Variance::Contravariant,
+                            implementation_type,
+                            i + 1,
                         )
                     };
-                    if !match_.bool() {
-                        name_def_node_ref.add_typing_issue(
-                            self.i_s.db,
-                            IssueType::OverloadImplementationArgumentsNotBroadEnough {
-                                signature_index: i + 1,
-                            },
-                        );
-                    }
                 }
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
@@ -295,7 +291,8 @@ impl Inference<'_, '_, '_, '_> {
                         );
                     } else {
                         let f2_result_type = f2.result_type(self.i_s);
-                        if !f1_result_type
+                        if !f1
+                            .result_type(self.i_s)
                             .is_simple_sub_type_of(self.i_s, &f2_result_type)
                             .bool()
                             && overload_has_overlapping_params(
@@ -402,6 +399,46 @@ impl Inference<'_, '_, '_, '_> {
         let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, args);
         let mut inference = self.file.inference(function_i_s);
         inference.calc_block_diagnostics(block, None, Some(&function))
+    }
+
+    fn calc_overload_implementation_diagnostics<'x, P1: Param<'x>>(
+        &mut self,
+        name_def_node_ref: NodeRef,
+        overload_item: Function<'x>,
+        matcher: &mut Matcher,
+        implementation_params: impl Iterator<Item = P1>,
+        implementation_type: &Type,
+        signature_index: usize,
+    ) where
+        'db: 'x,
+    {
+        let item_result_type = overload_item.result_type(self.i_s);
+        if !item_result_type
+            .is_sub_type_of(self.i_s, matcher, implementation_type)
+            .bool()
+            && !item_result_type
+                .is_super_type_of(self.i_s, matcher, implementation_type)
+                .bool()
+        {
+            name_def_node_ref.add_typing_issue(
+                self.i_s.db,
+                IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
+            );
+        }
+
+        let match_ = matches_simple_params(
+            self.i_s,
+            matcher,
+            overload_item.iter_params(),
+            implementation_params,
+            Variance::Contravariant,
+        );
+        if !match_.bool() {
+            name_def_node_ref.add_typing_issue(
+                self.i_s.db,
+                IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
+            );
+        }
     }
 
     fn calc_return_stmt_diagnostics(&mut self, func: Option<&Function>, return_stmt: ReturnStmt) {
