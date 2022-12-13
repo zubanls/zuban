@@ -185,18 +185,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         IteratorContent::Any
     }
 
-    fn maybe_callable_content(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Cow<'a, CallableContent>> {
-        self.lookup_internal(i_s, "__call__")
-            .into_maybe_inferred()
-            .and_then(|i| {
-                i.maybe_callable(i_s, true)
-                    .map(|c| Cow::Owned(c.into_owned()))
-            })
-    }
-
     fn as_instance(&self) -> Option<&Instance<'a>> {
         Some(self)
     }

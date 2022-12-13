@@ -467,13 +467,6 @@ impl<'db: 'a, 'a> Function<'a> {
         }))
     }
 
-    fn maybe_callable_content(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Cow<'a, CallableContent>> {
-        todo!()
-    }
-
     pub fn name_string_slice(&self) -> StringSlice {
         let name = self.node().name();
         StringSlice::new(self.node_ref.file_index(), name.start(), name.end())

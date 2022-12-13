@@ -544,13 +544,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         )
     }
 
-    fn maybe_callable_content(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Cow<'a, CallableContent>> {
-        todo!()
-    }
-
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s))))
     }

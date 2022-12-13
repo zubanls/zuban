@@ -1,10 +1,8 @@
-use std::borrow::Cow;
-
 use super::{
     Callable, Function, Instance, LookupResult, OnTypeError, OverloadedFunction, Value, ValueKind,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
-use crate::database::{CallableContent, CallableParams, MroIndex};
+use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
@@ -94,27 +92,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
                 result_context,
             ),
         }
-    }
-
-    fn maybe_callable_content(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Cow<'a, CallableContent>> {
-        let mut callable_content = match &self.function {
-            BoundMethodFunction::Function(f) => f.maybe_callable_content(i_s).unwrap().into_owned(),
-            BoundMethodFunction::Overload(f) => return None,
-            BoundMethodFunction::Callable(c) => c.content.clone(),
-        };
-        match &mut callable_content.params {
-            CallableParams::Simple(params) => {
-                todo!()
-            }
-            CallableParams::WithParamSpec(pre_types, spec) => {
-                todo!()
-            }
-            CallableParams::Any => (),
-        }
-        Some(Cow::Owned(callable_content))
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {

@@ -59,13 +59,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         Type::new(self.db_type)
     }
 
-    fn maybe_callable_content(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<Cow<'a, CallableContent>> {
-        Some(Cow::Borrowed(self.content))
-    }
-
     fn as_callable(&self) -> Option<Callable<'a>> {
         Some(*self)
     }
