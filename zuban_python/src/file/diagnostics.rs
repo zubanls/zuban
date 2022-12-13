@@ -11,8 +11,8 @@ use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::inferred::Inferred;
 use crate::matching::{
-    matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
-    ResultContext, Type,
+    matches_simple_params, overload_has_overlapping_params, FormatData, Generics, Match, Matcher,
+    Param, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
@@ -196,7 +196,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 name_def_node_ref
                     .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
             }
-            let mut implementation = None;
+            let mut maybe_implementation = None;
             let mut implementation_callable_content = None;
             let decorated;
             if let Some(i) = o.implementing_function {
@@ -205,18 +205,18 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 if !self.i_s.db.python_state.project.mypy_compatible
                     || imp.return_annotation().is_some()
                 {
-                    implementation = Some(imp);
+                    maybe_implementation = Some(imp);
                 }
                 if o.implementing_function_has_decorators {
                     decorated = imp.decorated(self.i_s);
                     implementation_callable_content = decorated.maybe_callable(self.i_s, true);
-                    implementation = Some(imp);
+                    maybe_implementation = Some(imp);
                 }
             }
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
-                if let Some(ref implementation) = implementation {
+                if let Some(ref implementation) = maybe_implementation {
                     if o.implementing_function_has_decorators {
                         if let Some(callable_content) = &implementation_callable_content {
                             match &callable_content.params {
@@ -239,7 +239,16 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                 CallableParams::WithParamSpec(_, _) => todo!(),
                             }
                         } else {
-                            todo!()
+                            implementation.node_ref.add_typing_issue(
+                                self.i_s.db,
+                                IssueType::NotCallable {
+                                    type_: implementation
+                                        .decorated(self.i_s)
+                                        .format(self.i_s, &FormatData::new_short(self.i_s.db)),
+                                },
+                            );
+                            // Avoid multiple reports
+                            maybe_implementation = None;
                         }
                     } else {
                         let impl_type_vars = implementation.type_vars(self.i_s);
