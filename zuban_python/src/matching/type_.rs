@@ -60,6 +60,22 @@ impl<'a> Type<'a> {
         }
     }
 
+    pub fn maybe_callable(&self, db: &'a Database) -> Option<Cow<'a, CallableContent>> {
+        match self {
+            Self::Type(Cow::Borrowed(DbType::Callable(c))) => Some(Cow::Borrowed(c)),
+            _ => match self.maybe_db_type() {
+                Some(DbType::Callable(c)) => Some(Cow::Owned(c.as_ref().clone())),
+                Some(DbType::Type(t)) => match t.as_ref() {
+                    DbType::Class(link, generics) => {
+                        todo!()
+                    }
+                    _ => None,
+                },
+                _ => self.maybe_class(db).map(|c| todo!()),
+            },
+        }
+    }
+
     #[inline]
     pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
         match self {

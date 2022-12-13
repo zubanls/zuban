@@ -4,7 +4,7 @@ use super::{
     Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
 };
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{CallableContent, DbType, PointLink};
+use crate::database::{DbType, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::getitem::SliceType;

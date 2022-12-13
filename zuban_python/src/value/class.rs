@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
@@ -7,9 +6,9 @@ use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle,
-    GenericsList, Locality, MroIndex, ParentScope, Point, PointLink, PointType, StringSlice,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
+    MroIndex, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;

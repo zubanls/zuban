@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::base_description;

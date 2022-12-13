@@ -423,16 +423,11 @@ impl<'db: 'slf, 'slf> Inferred {
         self.internal_run(
             i_s,
             &mut |i_s, v| {
-                let mut result = v.as_callable().map(|c| Cow::Borrowed(c.content));
                 if include_non_callables {
-                    result = result.or_else(|| {
-                        v.as_type(i_s).maybe_db_type().and_then(|t| match t {
-                            DbType::Callable(c) => Some(Cow::Owned(c.as_ref().clone())),
-                            _ => None,
-                        })
-                    });
+                    v.as_type(i_s).maybe_callable(i_s.db)
+                } else {
+                    v.as_callable().map(|c| Cow::Borrowed(c.content))
                 }
-                result
             },
             &|_, _, _| None,
             &mut |_| Some(Cow::Owned(CallableContent::new_any())),

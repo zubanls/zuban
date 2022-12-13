@@ -11,12 +11,9 @@ mod type_alias;
 mod typing;
 
 use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
-use std::borrow::Cow;
 
 use crate::arguments::{Argument, Arguments};
-use crate::database::{
-    CallableContent, Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple,
-};
+use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
