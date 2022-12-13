@@ -922,7 +922,6 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Weird Decorator Cases
 testOverloadWithErrorDecorator
-testDecoratorTypeAfterReprocessing
 testMutuallyRecursiveDecoratedFunctions
 testBoundOnDecorator
 testGenericClassPropertyBound
@@ -1181,6 +1180,9 @@ testPerFileStrictOptionalModule
 testPerFileStrictOptionalModuleOnly
 testPerFileStrictOptionalFunction
 testPerFileStrictOptionalMethod
+
+# Probably fixed eventually by updating mypy or typeshed
+testDecoratorTypeAfterReprocessing
 
 # type: ignore leads to Any type?
 testDunderCallAddition
