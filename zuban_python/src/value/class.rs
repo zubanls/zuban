@@ -544,7 +544,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         )
     }
 
-    fn maybe_callable_content(&self) -> Option<Cow<'a, CallableContent>> {
+    fn maybe_callable_content(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> Option<Cow<'a, CallableContent>> {
         todo!()
     }
 

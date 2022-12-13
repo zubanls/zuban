@@ -321,7 +321,10 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         IteratorContent::Any
     }
 
-    fn maybe_callable_content(&self) -> Option<Cow<'a, CallableContent>> {
+    fn maybe_callable_content(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+    ) -> Option<Cow<'a, CallableContent>> {
         None
     }
 
