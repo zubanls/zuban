@@ -196,31 +196,27 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 name_def_node_ref
                     .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
             }
-            let mut implementation_info = None;
+            let mut implementation = None;
             let mut implementation_callable_content = None;
             let decorated;
             if let Some(i) = o.implementing_function {
-                let implementation = Function::new(NodeRef::from_link(self.i_s.db, i), class);
-                implementation.type_vars(self.i_s);
+                let imp = Function::new(NodeRef::from_link(self.i_s.db, i), class);
+                imp.type_vars(self.i_s);
                 if !self.i_s.db.python_state.project.mypy_compatible
-                    || implementation.return_annotation().is_some()
+                    || imp.return_annotation().is_some()
                 {
-                    implementation_info =
-                        Some((implementation, implementation.result_type(self.i_s)));
+                    implementation = Some(imp);
                 }
                 if o.implementing_function_has_decorators {
-                    decorated = implementation.decorated(self.i_s);
+                    decorated = imp.decorated(self.i_s);
                     implementation_callable_content = decorated.maybe_callable(self.i_s, true);
-                    if let Some(callable_content) = implementation_callable_content.as_ref() {
-                        implementation_info =
-                            Some((implementation, Type::new(&callable_content.result_type)));
-                    }
+                    implementation = Some(imp);
                 }
             }
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
-                if let Some((ref implementation, ref implementation_type)) = implementation_info {
+                if let Some(ref implementation) = implementation {
                     if o.implementing_function_has_decorators {
                         if let Some(callable_content) = &implementation_callable_content {
                             match &callable_content.params {
@@ -235,7 +231,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                         f1,
                                         &mut matcher,
                                         ps.iter(),
-                                        implementation_type,
+                                        &Type::new(&callable_content.result_type),
                                         i + 1,
                                     )
                                 }
@@ -253,12 +249,13 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             impl_type_vars,
                             &mut calculated_type_vars,
                         );
+                        let result_type = implementation.result_type(self.i_s);
                         self.calc_overload_implementation_diagnostics(
                             name_def_node_ref,
                             f1,
                             &mut matcher,
                             implementation.iter_params(),
-                            implementation_type,
+                            &result_type,
                             i + 1,
                         )
                     };
