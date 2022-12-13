@@ -922,7 +922,6 @@ testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Weird Decorator Cases
 testOverloadWithErrorDecorator
-testMutuallyRecursiveDecoratedFunctions
 testBoundOnDecorator
 testGenericClassPropertyBound
 testOverloadDeferredNode

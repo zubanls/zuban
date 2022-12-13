@@ -937,7 +937,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     let object = if value.as_module().is_some() {
                         Box::from("Module")
                     } else {
-                        format!("{:?}", value.name()).into()
+                        format!(
+                            "{:?}",
+                            value
+                                .as_type(i_s)
+                                .format(&FormatData::new_short(self.i_s.db))
+                        )
+                        .into()
                     };
                     NodeRef::new(self.file, node_index).add_typing_issue(
                         i_s.db,
