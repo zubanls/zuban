@@ -921,8 +921,6 @@ testUnknownFunctionNotCallable
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
 # Weird Decorator Cases
-testOverloadWithObjectDecorator
-
 testOverloadWithErrorDecorator
 testDecoratorTypeAfterReprocessing
 testMutuallyRecursiveDecoratedFunctions

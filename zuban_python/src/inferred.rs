@@ -381,7 +381,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 } else {
                     callable(
                         i_s,
-                        &use_instance(
+                        &use_instance_with_ref(
                             definition,
                             generics.unwrap_or(Generics::Any),
                             Some(instance),
@@ -424,7 +424,7 @@ impl<'db: 'slf, 'slf> Inferred {
             i_s,
             &mut |i_s, v| {
                 if include_non_callables {
-                    v.as_type(i_s).maybe_callable(i_s.db)
+                    v.as_type(i_s).maybe_callable(i_s)
                 } else {
                     v.as_callable().map(|c| Cow::Borrowed(c.content))
                 }
@@ -1015,11 +1015,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
             )
         }
         ComplexPoint::Instance(cls, generics_list) => {
-            let generics = generics_list
-                .as_ref()
-                .map(Generics::new_list)
-                .unwrap_or(Generics::None);
-            let instance = use_instance(NodeRef::from_link(i_s.db, *cls), generics, None);
+            let instance = use_instance(NodeRef::from_link(i_s.db, *cls), generics_list);
             callable(i_s, &instance)
         }
         ComplexPoint::FunctionOverload(overload) => callable(
@@ -1160,7 +1156,7 @@ fn load_builtin_instance_from_str<'db>(db: &'db Database, name: &'static str) ->
     let v = builtins.points.get(node_index);
     debug_assert_eq!(v.type_(), PointType::Redirect);
     debug_assert_eq!(v.file_index(), builtins.file_index());
-    use_instance(NodeRef::new(builtins, v.node_index()), Generics::None, None)
+    use_instance_with_ref(NodeRef::new(builtins, v.node_index()), Generics::None, None)
 }
 
 fn infer_instance_with_arguments_cls(i_s: &mut InferenceState, definition: NodeRef) -> Inferred {
@@ -1171,6 +1167,13 @@ fn infer_instance_with_arguments_cls(i_s: &mut InferenceState, definition: NodeR
 }
 
 fn use_instance<'a>(
+    class_reference: NodeRef<'a>,
+    generics: &'a Option<GenericsList>,
+) -> Instance<'a> {
+    use_instance_with_ref(class_reference, Generics::new_maybe_list(generics), None)
+}
+
+fn use_instance_with_ref<'a>(
     class_reference: NodeRef<'a>,
     generics: Generics<'a>,
     instance_reference: Option<NodeRef<'a>>,
@@ -1188,8 +1191,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
 ) -> T {
     match db_type {
         DbType::Class(link, generics) => {
-            let g = Generics::new_maybe_list(generics);
-            let inst = use_instance(NodeRef::from_link(i_s.db, *link), g, None);
+            let inst = use_instance(NodeRef::from_link(i_s.db, *link), generics);
             callable(i_s, &inst)
         }
         DbType::Union(lst) => lst

@@ -200,7 +200,7 @@ pub enum LookupResult {
 }
 
 impl LookupResult {
-    fn into_maybe_inferred(self) -> Option<Inferred> {
+    pub fn into_maybe_inferred(self) -> Option<Inferred> {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {
             Self::GotoName(_, inf) | Self::UnknownName(inf) => Some(inf),

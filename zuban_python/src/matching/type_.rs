@@ -11,7 +11,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::{Class, LookupResult, MroIterator, Value};
+use crate::value::{Class, Instance, LookupResult, MroIterator, Value};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -60,7 +60,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_callable(&self, db: &'a Database) -> Option<Cow<'a, CallableContent>> {
+    pub fn maybe_callable(&self, i_s: &mut InferenceState) -> Option<Cow<'a, CallableContent>> {
         match self {
             Self::Type(Cow::Borrowed(DbType::Callable(c))) => Some(Cow::Borrowed(c)),
             _ => match self.maybe_db_type() {
@@ -71,7 +71,15 @@ impl<'a> Type<'a> {
                     }
                     _ => None,
                 },
-                _ => self.maybe_class(db).map(|c| todo!()),
+                _ => self.maybe_class(i_s.db).and_then(|c| {
+                    Instance::new(c, None)
+                        .lookup_internal(i_s, "__call__")
+                        .into_maybe_inferred()
+                        .and_then(|i| {
+                            i.maybe_callable(i_s, true)
+                                .map(|c| Cow::Owned(c.into_owned()))
+                        })
+                }),
             },
         }
     }
