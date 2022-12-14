@@ -1160,7 +1160,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::None => callable(i_s, &NoneInstance()),
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
-        DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing),
+        DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer),
         DbType::NewType(n) => {
             let t = n.type_(i_s);
             run_on_db_type(i_s, t, callable, reducer, on_missing)
@@ -1183,7 +1183,6 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
     type_: &'a DbType,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
-    on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
     match type_ {
         DbType::Class(link, generics) => {
@@ -1198,11 +1197,9 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
         DbType::Union(lst) => lst
             .iter()
             .fold(None, |input, t| match input {
-                None => Some(run_on_db_type_type(
-                    i_s, db_type, t, callable, reducer, on_missing,
-                )),
+                None => Some(run_on_db_type_type(i_s, db_type, t, callable, reducer)),
                 Some(t1) => {
-                    let t2 = run_on_db_type_type(i_s, db_type, t, callable, reducer, on_missing);
+                    let t2 = run_on_db_type_type(i_s, db_type, t, callable, reducer);
                     Some(reducer(i_s, t1, t2))
                 }
             })
