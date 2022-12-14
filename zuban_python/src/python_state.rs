@@ -1,4 +1,4 @@
-use parsa_python_ast::{ExpressionContent, ExpressionPart, NodeIndex, TypeLike};
+use parsa_python_ast::{NodeIndex, TypeLike};
 use std::ptr::null;
 use std::rc::Rc;
 

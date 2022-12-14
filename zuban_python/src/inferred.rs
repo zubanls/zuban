@@ -2,7 +2,7 @@ use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::fmt;
 
-use crate::arguments::{Arguments, NoArguments, SimpleArguments};
+use crate::arguments::{NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
     Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
