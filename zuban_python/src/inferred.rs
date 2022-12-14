@@ -1042,13 +1042,6 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 callable(&mut i_s.with_annotation_instance(), instance)
             })
         }
-        Specific::SimpleGeneric => {
-            /*
-            let class = self.maybe_class(i_s).unwrap();
-            callable(i_s, &class)
-            */
-            todo!()
-        }
         Specific::List => callable(i_s, &ListLiteral::new(definition)),
         Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
         Specific::AnnotationWithTypeVars => {
@@ -1101,7 +1094,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
             Specific::Bytes => "bytes",
             Specific::Complex => "complex",
             Specific::Ellipsis => "ellipsis", // TODO this should not even be public
-            actual => todo!("{actual:?}"),
+            actual => unreachable!("{actual:?}"),
         },
     )
 }
