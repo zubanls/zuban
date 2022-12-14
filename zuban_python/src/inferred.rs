@@ -305,30 +305,6 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {
                 match point.specific() {
-                    Specific::InstanceWithArguments => {
-                        let node_ref = NodeRef::from_link(i_s.db, definition);
-                        let inf_cls = infer_instance_with_arguments_cls(i_s, node_ref)
-                            .resolve_function_return(i_s);
-                        let class = inf_cls.maybe_class(i_s).unwrap();
-                        debug_assert!(class.type_vars(i_s).is_none());
-                        let args = SimpleArguments::from_primary(
-                            i_s.clone(),
-                            node_ref.file,
-                            node_ref.as_primary(),
-                            None,
-                        );
-                        let init = class.simple_init_func(i_s, &args);
-                        return Inferred::new_unsaved_complex(match args.as_execution(&init) {
-                            Some(execution) => ComplexPoint::ExecutionInstance(
-                                inf_cls.get_saved(i_s.db).unwrap().0.as_link(),
-                                Box::new(execution),
-                            ),
-                            None => ComplexPoint::Instance(
-                                inf_cls.get_saved(i_s.db).unwrap().0.as_link(),
-                                None,
-                            ),
-                        });
-                    }
                     Specific::Closure => {
                         return Inferred::new_unsaved_complex(ComplexPoint::Closure(
                             definition,
@@ -1064,26 +1040,6 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 .unwrap();
             inferred.with_instance(i_s, definition, None, |i_s, instance| {
                 callable(&mut i_s.with_annotation_instance(), instance)
-            })
-        }
-        Specific::InstanceWithArguments => {
-            let inf_cls = infer_instance_with_arguments_cls(i_s, definition);
-            let class = inf_cls.maybe_class(i_s).unwrap();
-            let args = SimpleArguments::from_primary(
-                i_s.clone(),
-                definition.file,
-                definition.as_primary(),
-                None,
-            );
-            let init = class.simple_init_func(i_s, &args);
-            inf_cls.with_instance(i_s, definition, None, |i_s, instance| {
-                // TODO is this MroIndex correct?
-                /*
-                let instance_arg = KnownArguments::new(self, None);
-                let args = CombinedArguments::new(&instance_arg, &args);
-                callable(&mut i_s.with_func_and_args(&init, &args), instance)
-                */
-                todo!()
             })
         }
         Specific::SimpleGeneric => {

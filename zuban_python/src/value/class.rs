@@ -70,21 +70,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn has_non_overloaded_init_func(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
-        let (init, class) = self.lookup_and_class(i_s, "__init__");
-        let cls = class.unwrap_or_else(|| todo!());
-        match init
-            .into_maybe_inferred()
-            .unwrap()
-            .init_as_function(i_s.db, cls)
-        {
-            Some(FunctionOrOverload::Function(_)) => true,
-            Some(FunctionOrOverload::Overload(_)) => false,
-            None => unreachable!(), // There is always an init func
-        }
-    }
-
-    pub fn type_check_init_func(
+    fn type_check_init_func(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -511,7 +497,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
                     None => "".to_owned(),
                 }
             );
-            Inferred::new_unsaved_complex(if generics_list == None && !is_overload {
+            Inferred::new_unsaved_complex(if generics_list.is_none() && !is_overload {
                 match args.as_execution(&func) {
                     Some(execution) => {
                         // TODO probably use something like this here:

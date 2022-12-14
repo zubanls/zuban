@@ -981,21 +981,6 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     .and_then(|x| x.1.as_execution(x.0));
                 let args =
                     SimpleArguments::new(self.i_s.clone(), f, node_index, details, x.as_ref());
-                if x.is_none() && !is_target && false {
-                    if let Some(class) = base.maybe_class(self.i_s) {
-                        if class.type_vars(self.i_s).is_none()
-                            && class.has_non_overloaded_init_func(self.i_s)
-                        {
-                            class.type_check_init_func(
-                                self.i_s,
-                                &args,
-                                result_context,
-                                OnTypeError::new(&on_argument_type_error),
-                            );
-                            return Inferred::new_unsaved_specific(Specific::InstanceWithArguments);
-                        }
-                    }
-                }
                 base.internal_run(
                     self.i_s,
                     &mut |i_s, value| {

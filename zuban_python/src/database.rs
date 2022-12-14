@@ -364,7 +364,6 @@ pub enum Specific {
     NoReturnFunction,
     BoundMethod,
 
-    InstanceWithArguments, // A primary node
     AnnotationClassInstance,
     AnnotationWithTypeVars,
     SimpleGeneric, // primary: primary '[' slices ']'

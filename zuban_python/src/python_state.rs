@@ -130,12 +130,6 @@ impl PythonState {
             .get(module_type_name_index - 1)
             .node_index();
 
-        // Needed because there's a loop for calculating the type var _T_co, which defines string
-        // literal arguments arguments, which means that the class of those is str, which is a sub
-        // class of Sequence[_T_co], which uses _T_co again.
-        // TODO do we really not need this anymore?
-        //precalculate_type_var_instance(s.typing(), "_T_co");
-        //
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
@@ -399,25 +393,6 @@ fn set_assignments_cached(file: &PythonFile, name_node: NodeIndex) {
     if let TypeLike::Assignment(assignment) = name.expect_type() {
         file.points
             .set(assignment.index(), Point::new_node_analysis(Locality::Stmt));
-    } else {
-        unreachable!();
-    }
-}
-
-fn precalculate_type_var_instance(file: &PythonFile, name: &str) {
-    let node_index = file.symbol_table.lookup_symbol(name).unwrap();
-    let name = NodeRef::new(file, node_index).as_name();
-    if let TypeLike::Assignment(assignment) = name.expect_type() {
-        if let Some((_, expr)) = assignment.maybe_simple_type_expression_assignment() {
-            if let ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) = expr.unpack() {
-                file.points.set(
-                    p.index(),
-                    Point::new_simple_specific(Specific::InstanceWithArguments, Locality::File),
-                )
-            }
-        } else {
-            unreachable!()
-        }
     } else {
         unreachable!();
     }
