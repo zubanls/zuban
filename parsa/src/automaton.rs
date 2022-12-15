@@ -385,7 +385,7 @@ impl RuleAutomaton {
         for nfa_state_id in &nfa_state_ids {
             for transition in &self.nfa_state(*nfa_state_id).transitions {
                 // Mode changes need to have separate DFA states as well.
-                if transition.type_ == None {
+                if transition.type_.is_none() {
                     set.insert(transition.to);
                     if !nfa_state_ids.contains(&transition.to) {
                         set.extend(self.group_nfas(set.iter().cloned().collect()));
@@ -1352,7 +1352,7 @@ fn nonterminal_to_str(
 ) -> &str {
     for (k, v) in nonterminal_map {
         if nonterminal == *v {
-            return *k;
+            return k;
         }
     }
     panic!("Something is very wrong, integer not found");

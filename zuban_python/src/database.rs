@@ -1031,7 +1031,7 @@ impl DbType {
                             })
                         }
                         GenericItem::ParamSpecArgument(p) => {
-                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
+                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.into_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
                                 Self::remap_callable_params(
                                     &p.params,
@@ -1089,7 +1089,7 @@ impl DbType {
                 None => TupleContent::new_empty(),
             }),
             Self::Callable(content) => {
-                let mut type_vars = content.type_vars.clone().map(|t| t.as_vec());
+                let mut type_vars = content.type_vars.clone().map(|t| t.into_vec());
                 let (params, remap_data) = Self::remap_callable_params(
                     &content.params,
                     &mut type_vars,
@@ -1193,14 +1193,14 @@ impl DbType {
                             },
                         );
                         if let Some(type_vars) = type_vars.as_mut() {
-                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
+                            type_vars.extend(new_spec_type_vars.type_vars.into_vec());
                         } else {
-                            *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                            *type_vars = Some(new_spec_type_vars.type_vars.into_vec());
                         }
                         new.params = new_params.0;
                     } else {
                         debug_assert!(type_vars.is_none());
-                        *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
+                        *type_vars = Some(new_spec_type_vars.type_vars.into_vec());
                         todo!("Can probably just be removed")
                     }
                 }
@@ -2140,7 +2140,7 @@ impl TypeVarLikes {
         Self(vec.into_boxed_slice())
     }
 
-    fn as_vec(self) -> Vec<TypeVarLike> {
+    fn into_vec(self) -> Vec<TypeVarLike> {
         self.0.into_vec()
     }
 
