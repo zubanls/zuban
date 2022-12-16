@@ -179,6 +179,7 @@ c: Any | Foo[int] = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"
 d: Any | Foo[str] = Foo("")
 
 [case union_context_class_matching_with_overload]
+# flags: --mypy-compatible
 from typing import TypeVar, Generic, overload
 T = TypeVar('T')
 
@@ -197,11 +198,11 @@ x = Foo(lst)
 y = Foo(lst)
 
 [out]
-main:11: error: No overload variant of "Foo" matches argument type "str"
-main:11: note: Possible overload variants:
-main:11: note:     def __init__(self, t: T)
-main:11: note:     def __init__(self, t: list[T])
-main:15: error: Argument 1 to "Foo" has incompatible type "list[str]"; expected "list[int]"
+main:12: error: No overload variant of "Foo" matches argument type "str"
+main:12: note: Possible overload variants:
+main:12: note:     def __init__(self, t: T)
+main:12: note:     def __init__(self, t: list[T])
+main:16: error: Argument 1 to "Foo" has incompatible type "list[str]"; expected "list[int]"
 
 [case contravariant_type_var]
 from typing import Generic, TypeVar
@@ -647,9 +648,9 @@ x4: TupList[str, str] = f(g([((1, 1), (1, 1))])) # E: List item 0 has incompatib
 
 [case context_inference_with_any]
 from typing import TypeVar, Generic
-T = TypeVar('T', Foo[int], Foo[str])
-U = TypeVar('U')
 class Foo(Generic[U]): ...
+U = TypeVar('U')
+T = TypeVar('T', Foo[int], Foo[str])
 
 def f(x: T, y: T) -> list[T]:
     return [x, y]
