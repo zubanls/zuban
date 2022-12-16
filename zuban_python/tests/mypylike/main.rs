@@ -488,32 +488,21 @@ fn main() {
     let filters = calculate_filters(cli_args);
 
     let mut projects = HashMap::new();
-    for config in [
-        BaseConfig {
-            strict_optional: false,
-            implicit_optional: false,
-        },
-        BaseConfig {
-            strict_optional: false,
-            implicit_optional: true,
-        },
-        BaseConfig {
-            strict_optional: true,
-            implicit_optional: false,
-        },
-        BaseConfig {
-            strict_optional: true,
-            implicit_optional: true,
-        },
-    ] {
-        projects.insert(
-            config,
-            Project::new(ProjectOptions {
-                path: BASE_PATH.to_owned(),
-                implicit_optional: config.implicit_optional,
-                strict_optional: config.strict_optional,
-            }),
-        );
+    for strict_optional in [false, true] {
+        for implicit_optional in [false, true] {
+            let config = BaseConfig {
+                strict_optional,
+                implicit_optional,
+            };
+            projects.insert(
+                config,
+                Project::new(ProjectOptions {
+                    path: BASE_PATH.to_owned(),
+                    implicit_optional: config.implicit_optional,
+                    strict_optional: config.strict_optional,
+                }),
+            );
+        }
     }
 
     let skipped = skipped();
