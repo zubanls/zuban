@@ -1,4 +1,5 @@
 [case testMethodCall]
+# flags: --mypy-compatible
 
 a = None # type: A
 b = None # type: B
@@ -14,10 +15,11 @@ class A:
 class B:
     def bar(self, x: 'B', y: A) -> None: pass
 [out]
-main:5: error: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
-main:6: error: "A" has no attribute "bar"
+main:6: error: Argument 1 to "foo" of "A" has incompatible type "B"; expected "A"
+main:7: error: "A" has no attribute "bar"
 
 [case testMethodCallWithSubtype]
+# flags: --mypy-compatible
 
 a = None # type: A
 a.foo(A())
@@ -30,9 +32,10 @@ class A:
     def bar(self, x: 'B') -> None: pass
 class B(A): pass
 [out]
-main:5: error: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
+main:6: error: Argument 1 to "bar" of "A" has incompatible type "A"; expected "B"
 
 [case testInheritingMethod]
+# flags: --mypy-compatible
 
 a = None # type: B
 a.foo(A()) # Fail
@@ -43,7 +46,7 @@ class A:
 class B(A): pass
 [targets __main__, __main__, __main__.A.foo]
 [out]
-main:3: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
+main:4: error: Argument 1 to "foo" of "A" has incompatible type "A"; expected "B"
 
 [case testMethodCallWithInvalidNumberOfArguments]
 
