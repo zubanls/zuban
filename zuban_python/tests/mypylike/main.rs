@@ -133,7 +133,6 @@ struct Step<'code> {
 
 #[derive(Debug)]
 struct TestCase<'name, 'code> {
-    from_mypy_test_suite: bool,
     file_name: &'name str,
     name: String,
     code: &'code str,
@@ -145,7 +144,7 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, projects: &mut HashMap<BaseConfig, Project>) {
+    fn run(&self, projects: &mut HashMap<BaseConfig, Project>, mypy_compatible_override: bool) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
@@ -159,7 +158,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if steps.flags.contains(&"--implicit-optional") {
             config.implicit_optional = true;
         }
-        if self.from_mypy_test_suite || steps.flags.contains(&"--mypy-compatible") {
+        if mypy_compatible_override || steps.flags.contains(&"--mypy-compatible") {
             config.mypy_compatible = true;
         }
         let project = projects.get_mut(&config).unwrap();
@@ -526,7 +525,7 @@ fn main() {
         let code = REPLACE_COMMENTS.replace_all(&code, "");
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
-        for case in mypy_style_cases(from_mypy_test_suite, file_name, &code) {
+        for case in mypy_style_cases(file_name, &code) {
             full_count += 1;
             if !filters.is_empty() && !filters.contains(&case.name) {
                 continue;
@@ -535,7 +534,12 @@ fn main() {
                 println!("Skipped: {}", case.name);
                 continue;
             }
-            case.run(&mut projects);
+            if !from_mypy_test_suite {
+                // Run our own tests both with mypy-compatible and without it.
+                case.run(&mut projects, from_mypy_test_suite);
+                ran_count += 1;
+            }
+            case.run(&mut projects, from_mypy_test_suite);
             ran_count += 1;
         }
     }
@@ -548,16 +552,11 @@ fn main() {
     );
 }
 
-fn mypy_style_cases<'a, 'b>(
-    from_mypy_test_suite: bool,
-    file_name: &'a str,
-    code: &'b str,
-) -> Vec<TestCase<'a, 'b>> {
+fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'a, 'b>> {
     let mut cases = vec![];
 
     let mut add = |name, start, end| {
         cases.push(TestCase {
-            from_mypy_test_suite,
             file_name,
             name,
             code: &code[start..end],
