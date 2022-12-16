@@ -66,6 +66,7 @@ fn main() {
         path: "tests/blackbox/".to_owned(),
         strict_optional: true,
         implicit_optional: false,
+        mypy_compatible: false,
     });
 
     let files = python_files();

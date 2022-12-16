@@ -133,6 +133,7 @@ struct Step<'code> {
 
 #[derive(Debug)]
 struct TestCase<'name, 'code> {
+    from_mypy_test_suite: bool,
     file_name: &'name str,
     name: String,
     code: &'code str,
@@ -157,6 +158,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
         if steps.flags.contains(&"--implicit-optional") {
             config.implicit_optional = true;
+        }
+        if self.from_mypy_test_suite || steps.flags.contains(&"--mypy-compatible") {
+            config.mypy_compatible = true;
         }
         let project = projects.get_mut(&config).unwrap();
 
@@ -481,6 +485,7 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
 struct BaseConfig {
     strict_optional: bool,
     implicit_optional: bool,
+    mypy_compatible: bool,
 }
 
 fn main() {
@@ -490,18 +495,22 @@ fn main() {
     let mut projects = HashMap::new();
     for strict_optional in [false, true] {
         for implicit_optional in [false, true] {
-            let config = BaseConfig {
-                strict_optional,
-                implicit_optional,
-            };
-            projects.insert(
-                config,
-                Project::new(ProjectOptions {
-                    path: BASE_PATH.to_owned(),
-                    implicit_optional: config.implicit_optional,
-                    strict_optional: config.strict_optional,
-                }),
-            );
+            for mypy_compatible in [false, true] {
+                let config = BaseConfig {
+                    strict_optional,
+                    implicit_optional,
+                    mypy_compatible,
+                };
+                projects.insert(
+                    config,
+                    Project::new(ProjectOptions {
+                        path: BASE_PATH.to_owned(),
+                        implicit_optional: config.implicit_optional,
+                        strict_optional: config.strict_optional,
+                        mypy_compatible: config.mypy_compatible,
+                    }),
+                );
+            }
         }
     }
 
@@ -512,12 +521,12 @@ fn main() {
     let mut full_count = 0;
     let mut ran_count = 0;
     let file_count = files.len();
-    for file in files {
+    for (from_mypy_test_suite, file) in files {
         let code = read_to_string(&file).unwrap();
         let code = REPLACE_COMMENTS.replace_all(&code, "");
         let stem = file.file_stem().unwrap().to_owned();
         let file_name = stem.to_str().unwrap();
-        for case in mypy_style_cases(file_name, &code) {
+        for case in mypy_style_cases(from_mypy_test_suite, file_name, &code) {
             full_count += 1;
             if !filters.is_empty() && !filters.contains(&case.name) {
                 continue;
@@ -539,11 +548,16 @@ fn main() {
     );
 }
 
-fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'a, 'b>> {
+fn mypy_style_cases<'a, 'b>(
+    from_mypy_test_suite: bool,
+    file_name: &'a str,
+    code: &'b str,
+) -> Vec<TestCase<'a, 'b>> {
     let mut cases = vec![];
 
     let mut add = |name, start, end| {
         cases.push(TestCase {
+            from_mypy_test_suite,
             file_name,
             name,
             code: &code[start..end],
@@ -579,7 +593,7 @@ fn get_base() -> PathBuf {
     base
 }
 
-fn find_mypy_style_files() -> Vec<PathBuf> {
+fn find_mypy_style_files() -> Vec<(bool, PathBuf)> {
     let base = get_base();
     let mut entries = vec![];
 
@@ -589,7 +603,7 @@ fn find_mypy_style_files() -> Vec<PathBuf> {
 
     let mut our_own_tests: Vec<_> = read_dir(path)
         .unwrap()
-        .map(|res| res.map(|e| e.path()).unwrap())
+        .map(|res| (false, res.unwrap().path()))
         .collect();
 
     our_own_tests.sort();
@@ -598,7 +612,7 @@ fn find_mypy_style_files() -> Vec<PathBuf> {
     for name in USE_MYPY_TEST_FILES {
         let mut path = base.clone();
         path.extend(["mypy", "test-data", "unit", name]);
-        entries.push(path);
+        entries.push((true, path));
     }
 
     entries.extend(our_own_tests);

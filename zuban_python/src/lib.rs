@@ -37,6 +37,7 @@ pub struct ProjectOptions {
     pub path: String,
     pub strict_optional: bool,
     pub implicit_optional: bool,
+    pub mypy_compatible: bool,
 }
 
 impl Project {
@@ -59,7 +60,7 @@ impl Project {
                 sys_path,
                 strict_optional: options.strict_optional,
                 implicit_optional: options.implicit_optional,
-                mypy_compatible: true,
+                mypy_compatible: options.mypy_compatible,
                 is_django: false,
             },
         );

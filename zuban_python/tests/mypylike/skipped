@@ -1,4 +1,18 @@
 # Next up
+match_args_kwargs_callable
+union_context_class_matching_with_overload
+class_generics_recursion
+nested_tuple_context_inference1
+nested_tuple_context_inference2
+nested_tuple_context_inference3
+nested_tuple_context_inference4
+context_inference_with_any
+generic_equals
+function_subtyping_of_keyword_params
+testMethodCall
+testMethodCallWithSubtype
+testInheritingMethod
+
 testUnboundTypeVar
 testGenericTypeAliasesImporting
 testReturnTypeLineNumberWithDecorator
