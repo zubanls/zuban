@@ -252,7 +252,7 @@ impl<'db: 'a, 'a> Function<'a> {
         let mut type_computation = TypeComputation::new(
             &mut inference,
             self.node_ref.as_link(),
-            Some(&mut on_type_var),
+            &mut on_type_var,
             TypeComputationOrigin::ParamTypeCommentOrAnnotation,
         );
         for param in func_node.params().iter() {

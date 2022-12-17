@@ -181,10 +181,13 @@ pub enum BaseClass {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
+        let mut on_type_var = |_: &mut InferenceState, _: &_, type_var, current_callable| {
+            TypeVarCallbackReturn::NotFound
+        };
         let mut tcomp = TypeComputation::new(
             $self,
             $slice_type.as_node_ref().as_link(),
-            None,
+            &mut on_type_var,
             TypeComputationOrigin::TypeApplication
         );
         let t = tcomp.$method $args;
@@ -244,7 +247,7 @@ pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager,
-    type_var_callback: Option<TypeVarCallback<'db, 'c>>,
+    type_var_callback: TypeVarCallback<'db, 'c>,
     // This is only for type aliases. Type aliases are also allowed to be used by Python itself.
     // It's therefore unclear if type inference or type computation is needed. So once we encounter
     // a type alias we check in the database if the error was already calculated and set the flag.
@@ -258,7 +261,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     pub fn new(
         inference: &'c mut Inference<'db, 'file, 'a, 'b>,
         for_definition: PointLink,
-        type_var_callback: Option<TypeVarCallback<'db, 'c>>,
+        type_var_callback: TypeVarCallback<'db, 'c>,
         origin: TypeComputationOrigin,
     ) -> Self {
         Self {
@@ -291,42 +294,22 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     StarExpressionContent::StarExpression(s) => todo!(),
                 };
             let old_manager = std::mem::take(&mut self.type_var_manager);
-            // TODO why do we duplicate this code??? (answer because option<mut> sucks?)
-            if let Some(type_var_callback) = self.type_var_callback.as_mut() {
-                let mut comp = TypeComputation {
-                    inference: &mut f.inference(self.inference.i_s),
-                    type_var_manager: old_manager,
-                    current_callable: self.current_callable,
-                    for_definition: self.for_definition,
-                    type_var_callback: Some(type_var_callback),
-                    errors_already_calculated: self.errors_already_calculated,
-                    has_type_vars: false,
-                    origin: self.origin,
-                    is_recursive_alias: false,
-                };
-                let type_ = compute_type(&mut comp);
-                self.type_var_manager = comp.type_var_manager;
-                self.has_type_vars |= comp.has_type_vars;
-                self.is_recursive_alias |= comp.is_recursive_alias;
-                type_
-            } else {
-                let mut comp = TypeComputation {
-                    inference: &mut f.inference(self.inference.i_s),
-                    type_var_manager: old_manager,
-                    current_callable: self.current_callable,
-                    for_definition: self.for_definition,
-                    type_var_callback: None,
-                    errors_already_calculated: self.errors_already_calculated,
-                    has_type_vars: false,
-                    origin: self.origin,
-                    is_recursive_alias: false,
-                };
-                let type_ = compute_type(&mut comp);
-                self.type_var_manager = comp.type_var_manager;
-                self.has_type_vars |= comp.has_type_vars;
-                self.is_recursive_alias |= comp.is_recursive_alias;
-                type_
-            }
+            let mut comp = TypeComputation {
+                inference: &mut f.inference(self.inference.i_s),
+                type_var_manager: old_manager,
+                current_callable: self.current_callable,
+                for_definition: self.for_definition,
+                type_var_callback: self.type_var_callback,
+                errors_already_calculated: self.errors_already_calculated,
+                has_type_vars: false,
+                origin: self.origin,
+                is_recursive_alias: false,
+            };
+            let type_ = compute_type(&mut comp);
+            self.type_var_manager = comp.type_var_manager;
+            self.has_type_vars |= comp.has_type_vars;
+            self.is_recursive_alias |= comp.is_recursive_alias;
+            type_
         } else {
             debug!("Found non-expression in annotation: {}", f.tree.code());
             todo!()
@@ -1331,65 +1314,61 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeNameLookup::Class(i) => TypeContent::ClassWithoutTypeVar(i),
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars = true;
-                self.type_var_callback
-                    .as_mut()
-                    .and_then(|callback| {
-                        match callback(
-                            self.inference.i_s,
-                            &self.type_var_manager,
-                            type_var_like.clone(),
-                            self.current_callable,
-                        ) {
-                            TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(
-                                usage,
-                            )) => Some(TypeContent::DbType(DbType::TypeVar(usage.into_owned()))),
-                            TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(
-                                usage,
-                            )) => Some(TypeContent::TypeVarTuple(usage.into_owned())),
-                            TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::ParamSpec(
-                                usage,
-                            )) => Some(TypeContent::ParamSpec(usage.into_owned())),
-                            TypeVarCallbackReturn::UnboundTypeVar => {
-                                let node_ref = NodeRef::new(self.inference.file, name.index());
-                                node_ref.add_typing_issue(
-                                    self.inference.i_s.db,
-                                    IssueType::UnboundTypeVarLike {
-                                        type_var_like: type_var_like.clone(),
-                                    },
-                                );
-                                Some(TypeContent::DbType(DbType::Any))
-                            }
-                            TypeVarCallbackReturn::NotFound => None,
+                match (self.type_var_callback)(
+                    self.inference.i_s,
+                    &self.type_var_manager,
+                    type_var_like.clone(),
+                    self.current_callable,
+                ) {
+                    TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVar(usage)) => {
+                        Some(TypeContent::DbType(DbType::TypeVar(usage.into_owned())))
+                    }
+                    TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::TypeVarTuple(usage)) => {
+                        Some(TypeContent::TypeVarTuple(usage.into_owned()))
+                    }
+                    TypeVarCallbackReturn::TypeVarLike(TypeVarLikeUsage::ParamSpec(usage)) => {
+                        Some(TypeContent::ParamSpec(usage.into_owned()))
+                    }
+                    TypeVarCallbackReturn::UnboundTypeVar => {
+                        let node_ref = NodeRef::new(self.inference.file, name.index());
+                        node_ref.add_typing_issue(
+                            self.inference.i_s.db,
+                            IssueType::UnboundTypeVarLike {
+                                type_var_like: type_var_like.clone(),
+                            },
+                        );
+                        Some(TypeContent::DbType(DbType::Any))
+                    }
+                    TypeVarCallbackReturn::NotFound => None,
+                }
+                .unwrap_or_else(|| {
+                    let index = self
+                        .type_var_manager
+                        .add(type_var_like.clone(), self.current_callable);
+                    match type_var_like {
+                        TypeVarLike::TypeVar(type_var) => {
+                            TypeContent::DbType(DbType::TypeVar(TypeVarUsage {
+                                type_var,
+                                index,
+                                in_definition: self.for_definition,
+                            }))
                         }
-                    })
-                    .unwrap_or_else(|| {
-                        let index = self
-                            .type_var_manager
-                            .add(type_var_like.clone(), self.current_callable);
-                        match type_var_like {
-                            TypeVarLike::TypeVar(type_var) => {
-                                TypeContent::DbType(DbType::TypeVar(TypeVarUsage {
-                                    type_var,
-                                    index,
-                                    in_definition: self.for_definition,
-                                }))
-                            }
-                            TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                                TypeContent::TypeVarTuple(TypeVarTupleUsage {
-                                    type_var_tuple,
-                                    index,
-                                    in_definition: self.for_definition,
-                                })
-                            }
-                            TypeVarLike::ParamSpec(param_spec) => {
-                                TypeContent::ParamSpec(ParamSpecUsage {
-                                    param_spec,
-                                    index,
-                                    in_definition: self.for_definition,
-                                })
-                            }
+                        TypeVarLike::TypeVarTuple(type_var_tuple) => {
+                            TypeContent::TypeVarTuple(TypeVarTupleUsage {
+                                type_var_tuple,
+                                index,
+                                in_definition: self.for_definition,
+                            })
                         }
-                    })
+                        TypeVarLike::ParamSpec(param_spec) => {
+                            TypeContent::ParamSpec(ParamSpecUsage {
+                                param_spec,
+                                index,
+                                in_definition: self.for_definition,
+                            })
+                        }
+                    }
+                })
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
@@ -1772,7 +1751,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 let mut comp = TypeComputation::new(
                     self,
                     in_definition,
-                    Some(&mut type_var_callback),
+                    &mut type_var_callback,
                     TypeComputationOrigin::TypeAlias,
                 );
                 comp.errors_already_calculated = p.calculated();
@@ -1858,7 +1837,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         let mut comp = TypeComputation::new(
                             &mut inference,
                             assignment_node_ref.as_link(),
-                            Some(&mut x),
+                            &mut x,
                             TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
                         );
                         comp.cache_annotation_internal(index, expr, None);
@@ -1920,7 +1899,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     let mut comp = TypeComputation::new(
                         self,
                         assignment_node_ref.as_link(),
-                        Some(&mut x),
+                        &mut x,
                         TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
                     );
                     let t = comp.compute_type(expr);
@@ -1942,7 +1921,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         let mut comp = TypeComputation::new(
             self,
             node_ref.as_link(),
-            Some(&mut x),
+            &mut x,
             TypeComputationOrigin::CastTarget,
         );
 
@@ -1961,7 +1940,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         let mut comp = TypeComputation::new(
             self,
             node_ref.as_link(),
-            Some(&mut on_type_var),
+            &mut on_type_var,
             TypeComputationOrigin::Constraint,
         );
         let t = comp.compute_type(expr);

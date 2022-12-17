@@ -245,7 +245,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
-                            Some(&mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
+                            &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
                                 if let Some(type_vars) = type_vars {
                                     if let Some(usage) = type_vars
                                         .find(type_var_like.clone(), self.node_ref.as_link())
@@ -259,7 +259,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     return TypeVarCallbackReturn::TypeVarLike(usage);
                                 }
                                 todo!("Maybe class in func");
-                            }),
+                            },
                             TypeComputationOrigin::BaseClass,
                         )
                         .compute_base_class(n.expression());
