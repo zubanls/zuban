@@ -1,4 +1,7 @@
 # Next up
+testFunctionForwardRefAlias
+testParamSpecApplyConcatenateTwice
+
 testUnboundTypeVar
 testGenericTypeAliasesImporting
 testReturnTypeLineNumberWithDecorator
@@ -299,8 +302,6 @@ testGenericClassInsideOtherGenericClass
 
 # Class: generic access from outside
 testGenericTypeAliasesTypeVarBinding
-# Class alias with class type var prohibited "Can't use bound type variable "T" to define generic alias"
-testProhibitBoundTypeVariableReuseForAliases
 
 # Property
 testNonMethodProperty

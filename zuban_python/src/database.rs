@@ -2210,7 +2210,7 @@ impl TypeVarLike {
         match self {
             Self::TypeVar(t) => t.name(db),
             Self::TypeVarTuple(t) => todo!(), //t.name(db),
-            Self::ParamSpec(s) => todo!(),    // s.name(db),
+            Self::ParamSpec(s) => s.name(db),
         }
     }
 
