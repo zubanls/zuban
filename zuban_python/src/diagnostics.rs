@@ -66,6 +66,7 @@ pub(crate) enum IssueType {
     UnexpectedTypeForTypeVar,
     TypeVarLikeTooManyArguments { class_name: &'static str },
     MultipleTypeVarTuplesInClassDef,
+    BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
 
     BaseExceptionExpected,
@@ -346,6 +347,8 @@ impl<'db> Diagnostic<'db> {
                 "Only the first argument to {class_name} has defined semantics"),
             IssueType::MultipleTypeVarTuplesInClassDef =>
                 "Can only use one type var tuple in a class def".to_owned(),
+            IssueType::BoundTypeVarInAlias{name} =>
+                format!("Can't use bound type variable \"{name}\" to define generic alias"),
             IssueType::NestedConcatenate =>
                 "Nested Concatenates are invalid".to_owned(),
 
