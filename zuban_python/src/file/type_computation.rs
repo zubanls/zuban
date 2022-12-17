@@ -181,7 +181,12 @@ pub enum BaseClass {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
-        let mut tcomp = TypeComputation::new($self, $slice_type.as_node_ref().as_link(), None, TypeComputationOrigin::TypeApplication);
+        let mut tcomp = TypeComputation::new(
+            $self,
+            $slice_type.as_node_ref().as_link(),
+            None,
+            TypeComputationOrigin::TypeApplication
+        );
         let t = tcomp.$method $args;
         Inferred::new_unsaved_complex(match t {
             TypeContent::ClassWithoutTypeVar(inf) => return inf,
