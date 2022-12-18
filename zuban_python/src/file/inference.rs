@@ -1004,7 +1004,11 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let f = self.file;
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     debug!("Get Item on {}", value.name());
-                    value.get_item(i_s, &SliceType::new(f, node_index, slice_type))
+                    value.get_item(
+                        i_s,
+                        &SliceType::new(f, node_index, slice_type),
+                        result_context,
+                    )
                 })
             }
         }

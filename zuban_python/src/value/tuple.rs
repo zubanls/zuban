@@ -7,7 +7,7 @@ use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Type};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -92,7 +92,12 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         Type::new(self.db_type)
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => match &self.content.args {
                 Some(args @ TupleTypeArguments::FixedLength(ts)) => {

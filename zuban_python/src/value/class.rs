@@ -514,11 +514,20 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         }
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         slice_type
             .file
             .inference(i_s)
-            .compute_type_application_on_class(*self, *slice_type)
+            .compute_type_application_on_class(
+                *self,
+                *slice_type,
+                result_context.has_defining_statement(),
+            )
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {

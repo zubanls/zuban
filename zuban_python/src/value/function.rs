@@ -706,7 +706,12 @@ impl<'db, 'a> Value<'db, 'a> for Function<'a> {
         }
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
@@ -1180,7 +1185,12 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);

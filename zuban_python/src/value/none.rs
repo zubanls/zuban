@@ -4,7 +4,7 @@ use crate::debug;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::Type;
+use crate::matching::{ResultContext, Type};
 
 #[derive(Debug)]
 pub struct NoneInstance();
@@ -31,7 +31,12 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         true
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         debug!("TODO None[...]");
         Inferred::new_any()
     }

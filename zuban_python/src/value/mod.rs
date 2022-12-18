@@ -300,7 +300,12 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         Inferred::new_unknown()
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         todo!("get_item not implemented for {self:?}")
     }
 

@@ -9,7 +9,7 @@ use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, Type};
+use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -115,7 +115,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
         }
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
@@ -271,7 +276,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'a> {
         todo!()
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        _: &mut ResultContext,
+    ) -> Inferred {
         /*
         match slice_type {
             SliceTypeContent::Simple(simple) => {

@@ -180,7 +180,7 @@ pub enum BaseClass {
 }
 
 macro_rules! compute_type_application {
-    ($self:ident, $slice_type:expr, $method:ident $args:tt) => {{
+    ($self:ident, $slice_type:expr, $from_alias_definition:expr, $method:ident $args:tt) => {{
         let mut on_type_var = |i_s: &mut InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
             if let Some(class) = i_s.current_class() {
                 if class
@@ -188,12 +188,14 @@ macro_rules! compute_type_application {
                     .and_then(|t| t.find(type_var_like.clone(), class.node_ref.as_link()))
                     .is_some()
                 {
-                    $slice_type.as_node_ref().add_typing_issue(
-                        i_s.db,
-                        IssueType::BoundTypeVarInAlias{
-                            name: Box::from(type_var_like.name(i_s.db))
-                        },
-                    );
+                    if $from_alias_definition {
+                        $slice_type.as_node_ref().add_typing_issue(
+                            i_s.db,
+                            IssueType::BoundTypeVarInAlias{
+                                name: Box::from(type_var_like.name(i_s.db))
+                            },
+                        );
+                    }
                 }
             }
             if let Some(function) = i_s.current_function() {
@@ -1542,10 +1544,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         class: Class,
         slice_type: SliceType,
+        from_alias_definition: bool,
     ) -> Inferred {
         compute_type_application!(
             self,
             slice_type,
+            from_alias_definition,
             compute_type_get_item_on_class(class, slice_type, None)
         )
     }
@@ -1564,6 +1568,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         compute_type_application!(
             self,
             slice_type,
+            false,
             compute_type_get_item_on_alias(alias, slice_type)
         )
     }
@@ -1572,6 +1577,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         specific: Specific,
         slice_type: SliceType,
+        from_alias_definition: bool,
     ) -> Inferred {
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
@@ -1581,6 +1587,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 compute_type_application!(
                     self,
                     slice_type,
+                    from_alias_definition,
                     compute_type_get_item_on_tuple(slice_type)
                 )
             }
@@ -1588,6 +1595,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 compute_type_application!(
                     self,
                     slice_type,
+                    from_alias_definition,
                     compute_type_get_item_on_callable(slice_type)
                 )
             }
@@ -1595,6 +1603,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 compute_type_application!(
                     self,
                     slice_type,
+                    from_alias_definition,
                     compute_type_get_item_on_union(slice_type)
                 )
             }
@@ -1602,6 +1611,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 compute_type_application!(
                     self,
                     slice_type,
+                    from_alias_definition,
                     compute_type_get_item_on_optional(slice_type)
                 )
             }
@@ -1609,6 +1619,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 compute_type_application!(
                     self,
                     slice_type,
+                    from_alias_definition,
                     compute_type_get_item_on_type(slice_type)
                 )
             }

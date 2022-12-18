@@ -97,7 +97,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         }
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         let mro_iterator = self.class.mro(i_s);
         let finder = ClassMroFinder {
             i_s,
@@ -130,7 +135,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                     });
                 }
                 FoundOnClass::UnresolvedDbType(db_type @ DbType::Tuple(t)) => {
-                    return Tuple::new(db_type, t).get_item(i_s, slice_type);
+                    return Tuple::new(db_type, t).get_item(i_s, slice_type, result_context);
                 }
                 _ => (),
             }

@@ -53,11 +53,20 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         Some(self)
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         slice_type
             .file
             .inference(i_s)
-            .compute_type_application_on_typing_class(self.specific, *slice_type)
+            .compute_type_application_on_typing_class(
+                self.specific,
+                *slice_type,
+                result_context.has_defining_statement(),
+            )
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
@@ -114,7 +123,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         todo!()
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 // TODO if it is a (), it's am empty tuple
@@ -177,7 +191,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         }
     }
 
-    fn get_item(&self, i_s: &mut InferenceState, slice_type: &SliceType) -> Inferred {
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         slice_type
             .as_node_ref()
             .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
