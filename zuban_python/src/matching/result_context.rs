@@ -40,11 +40,6 @@ impl<'a> ResultContext<'a, '_> {
             Self::Unknown => None,
         }
     }
-
-    pub fn has_defining_statement(&self) -> bool {
-        // This looks like it's working for now, but I'm not sure this holds up in the future.
-        !matches!(self, Self::Unknown)
-    }
 }
 
 impl fmt::Debug for ResultContext<'_, '_> {

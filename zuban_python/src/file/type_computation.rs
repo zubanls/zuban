@@ -204,12 +204,14 @@ macro_rules! compute_type_application {
                     .and_then(|t| t.find(type_var_like.clone(), function.node_ref.as_link()))
                     .is_some()
                 {
-                    $slice_type.as_node_ref().add_typing_issue(
-                        i_s.db,
-                        IssueType::BoundTypeVarInAlias{
-                            name: Box::from(type_var_like.name(i_s.db))
-                        },
-                    );
+                    if $from_alias_definition {
+                        $slice_type.as_node_ref().add_typing_issue(
+                            i_s.db,
+                            IssueType::BoundTypeVarInAlias{
+                                name: Box::from(type_var_like.name(i_s.db))
+                            },
+                        );
+                    }
                 }
             }
             TypeVarCallbackReturn::NotFound
@@ -1544,8 +1546,9 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         class: Class,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        //from_alias_definition: bool,
     ) -> Inferred {
+        let from_alias_definition = true; // TODO add this
         compute_type_application!(
             self,
             slice_type,
@@ -1577,8 +1580,9 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         specific: Specific,
         slice_type: SliceType,
-        from_alias_definition: bool,
+        //from_alias_definition: bool,
     ) -> Inferred {
+        let from_alias_definition = true; // TODO add this
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 todo!()
