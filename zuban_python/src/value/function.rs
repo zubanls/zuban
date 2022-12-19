@@ -277,11 +277,23 @@ impl<'db: 'a, 'a> Function<'a> {
         if !unbound_type_vars.is_empty() {
             if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
-                    NodeRef::new(
+                    let node_ref = NodeRef::new(
                         self.node_ref.file,
                         func_node.return_annotation().unwrap().expression().index(),
-                    )
-                    .add_typing_issue(i_s.db, IssueType::TypeVarInReturnButNotArgument);
+                    );
+                    node_ref.add_typing_issue(i_s.db, IssueType::TypeVarInReturnButNotArgument);
+                    if let Some(bound) = t.type_var.bound.as_ref() {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::Note(
+                                format!(
+                                    "Consider using the upper bound \"{}\" instead",
+                                    bound.format(&FormatData::new_short(i_s.db))
+                                )
+                                .into(),
+                            ),
+                        );
+                    }
                 }
             }
         }
