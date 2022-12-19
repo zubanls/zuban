@@ -362,8 +362,12 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
         let lines: Box<_> = code.split("\n").collect();
         for (line_nr, type_, comment) in ErrorCommentsOnCode(&lines, lines.iter().enumerate()) {
             for comment in comment.split(" # E: ") {
-                for comment in comment.split(" # N: ") {
-                    wanted.push(format!("{p}:{line_nr}: {type_}: {comment}"))
+                for (i, comment) in comment.split(" # N: ").enumerate() {
+                    if i == 0 {
+                        wanted.push(format!("{p}:{line_nr}: {type_}: {comment}"))
+                    } else {
+                        wanted.push(format!("{p}:{line_nr}: note: {comment}"))
+                    }
                 }
             }
         }

@@ -124,13 +124,17 @@ impl InvalidVariableType<'_> {
                 )));
                 IssueType::Note(Box::from("Did you mean \"List[...]\"?"))
             }
-            Self::Tuple { .. } => {
+            Self::Tuple { tuple_length } => {
                 add_typing_issue(IssueType::InvalidType(Box::from(
                     "Syntax error in type annotation",
                 )));
-                IssueType::Note(Box::from(
-                    "Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)",
-                ))
+                if *tuple_length == 1 {
+                    IssueType::Note(Box::from("Suggestion: Is there a spurious trailing comma?"))
+                } else {
+                    IssueType::Note(Box::from(
+                        "Suggestion: Use Tuple[T1, ..., Tn] instead of (T1, ..., Tn)",
+                    ))
+                }
             }
             Self::Literal(s) => IssueType::InvalidType(
                 format!("Invalid type: try using Literal[{s}] instead?").into(),
