@@ -161,15 +161,9 @@ testCyclicUndefinedImportWithStar3
 testNewAnalyzerTypeAnnotationCycle4
 testNewAnalyzerAliasToNotReadyMixed
 testNewAnalyzerVarTypeVarNoCrashImportCycle
-testRecursiveForwardReferenceInUnion
 testBoundGenericMethodFine
 testSelfReferentialSubscriptExpression
 # Class generics cycles / + type alias cycles
-testNewAnalyzerAliasToNotReadyDirectBase
-testNewAnalyzerAliasToNotReadyDirectBaseFunction
-testNewAnalyzerForwardTypeAliasInBase
-testRecursiveAliasesErrors*
-testJSONAliasApproximation
 testChangeBaseClassAttributeType
 testGenericTypeBody1
 # Class inheritance cycles
@@ -1279,7 +1273,8 @@ testScriptsAreModules
 
 # cmd: mypy ...
 testNonExistentFileOnCommandLine1
-testInlineConfigFineGrained*
+testInlineConfigFineGrained1
+testInlineConfigFineGrained2
 
 # Won't support: __eq__ called directly with a keyword argument
 testMagicMethodPositionalOnlyArg
@@ -1301,7 +1296,14 @@ testMypyPathAndPython2Dir
 testNoSubscriptionOfBuiltinAliases
 
 # Won't support --disable-recursive-alias
+testNewAnalyzerAliasToNotReadyDirectBase
+testNewAnalyzerAliasToNotReadyDirectBaseFunction
 testNewAnalyzerNewTypeForwardClassAliasDirect
+testNewAnalyzerForwardTypeAliasInBase
+testRecursiveForwardReferenceInUnion
+testRecursiveAliasesErrors1
+testRecursiveAliasesErrors2
+testJSONAliasApproximation
 
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102
