@@ -525,7 +525,7 @@ fn calculate_type_vars<'db>(
                         if usage.in_definition == param_spec.in_definition {
                             SignatureMatch::True
                         } else {
-                            todo!()
+                            todo!("{:?}, {:?}", param_spec.in_definition, usage.in_definition)
                         }
                     } else {
                         todo!()

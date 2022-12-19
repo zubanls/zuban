@@ -508,7 +508,7 @@ impl<'a> Matcher<'a> {
                             SignatureMatch::False { similar: false }
                         }
                     }
-                    _ => todo!(),
+                    _ => todo!("{:?}", last_arg.kind),
                 }
             }
         }
