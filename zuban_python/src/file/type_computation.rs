@@ -1632,34 +1632,38 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     }
 
     pub(super) fn use_cached_annotation(&mut self, annotation: Annotation) -> Inferred {
-        let point = self.file.points.get(annotation.index());
-        if point.type_() == PointType::Specific {
-            if point.specific() != Specific::AnnotationClassInstance {
-                debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+        if std::cfg!(debug_assertions) {
+            let point = self.file.points.get(annotation.index());
+            if point.type_() == PointType::Specific {
+                if point.specific() != Specific::AnnotationClassInstance {
+                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                }
+            } else {
+                debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
+                debug_assert!(matches!(
+                    self.file.complex_points.get(point.complex_index()),
+                    ComplexPoint::TypeInstance(_)
+                ));
             }
-        } else {
-            debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
-            debug_assert!(matches!(
-                self.file.complex_points.get(point.complex_index()),
-                ComplexPoint::TypeInstance(_)
-            ));
         }
         self.check_point_cache(annotation.index()).unwrap()
     }
 
     pub fn use_cached_return_annotation(&mut self, annotation: ReturnAnnotation) -> Inferred {
-        let point = self.file.points.get(annotation.index());
-        assert!(point.calculated());
-        if point.type_() == PointType::Specific {
-            if point.specific() != Specific::AnnotationClassInstance {
-                debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+        if std::cfg!(debug_assertions) {
+            let point = self.file.points.get(annotation.index());
+            assert!(point.calculated());
+            if point.type_() == PointType::Specific {
+                if point.specific() != Specific::AnnotationClassInstance {
+                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                }
+            } else {
+                debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
+                debug_assert!(matches!(
+                    self.file.complex_points.get(point.complex_index()),
+                    ComplexPoint::TypeInstance(_)
+                ));
             }
-        } else {
-            debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
-            debug_assert!(matches!(
-                self.file.complex_points.get(point.complex_index()),
-                ComplexPoint::TypeInstance(_)
-            ));
         }
         self.check_point_cache(annotation.index()).unwrap()
     }
