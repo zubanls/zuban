@@ -2,8 +2,6 @@
 testFunctionForwardRefAlias
 testParamSpecApplyConcatenateTwice
 
-testUndefinedDecoratorInImportCycle
-
 testBoundGenericMethodParamSpecFine
 
 testCallableParsingFromExpr

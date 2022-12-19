@@ -183,11 +183,11 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
                         if let Some(link) = import_file.lookup_global(import_name.as_str()) {
                             link.into_point_redirect()
-                        } else if let Some(Some(file_index)) = import_file
+                        } else if let Some(file_index) = import_file
                             .package_dir
                             .as_ref()
                             // TODO this dir is unused???
-                            .map(|dir| module.sub_module(self.i_s.db, import_name.as_str()))
+                            .and_then(|dir| module.sub_module(self.i_s.db, import_name.as_str()))
                         {
                             self.i_s
                                 .db

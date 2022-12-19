@@ -651,62 +651,63 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     fn compute_type_primary(&mut self, primary: Primary<'x>) -> TypeContent<'db, 'x> {
         let base = self.compute_type_primary_or_atom(primary.first());
         match primary.second() {
-            PrimaryContent::Attribute(name) => {
-                match base {
-                    TypeContent::Module(f) => {
-                        // TODO this is a bit weird. shouldn't this just do a goto?
-                        if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_redirect(f.file_index(), index, Locality::Todo),
-                            );
-                            self.compute_type_name(name)
-                        } else {
-                            let node_ref = NodeRef::new(self.inference.file, primary.index());
-                            self.add_typing_issue_for_index(
-                                primary.index(),
-                                IssueType::TypeNotFound,
-                            );
-                            self.inference.file.points.set(
-                                name.index(),
-                                Point::new_unknown(f.file_index(), Locality::Todo),
-                            );
-                            TypeContent::Unknown
-                        }
+            PrimaryContent::Attribute(name) => match base {
+                TypeContent::Module(f) => {
+                    let db = self.inference.i_s.db;
+                    if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
+                        self.inference.file.points.set(
+                            name.index(),
+                            Point::new_redirect(f.file_index(), index, Locality::Todo),
+                        );
+                        self.compute_type_name(name)
+                    } else if let Some(file_index) =
+                        Module::new(db, f).sub_module(db, name.as_str())
+                    {
+                        db.add_invalidates(file_index, self.inference.file.file_index());
+                        self.inference.file.points.set(
+                            name.index(),
+                            Point::new_file_reference(file_index, Locality::Todo),
+                        );
+                        TypeContent::Module(db.loaded_python_file(file_index))
+                    } else {
+                        let node_ref = NodeRef::new(self.inference.file, primary.index());
+                        self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
+                        self.inference.file.points.set(
+                            name.index(),
+                            Point::new_unknown(f.file_index(), Locality::Todo),
+                        );
+                        TypeContent::Unknown
                     }
-                    TypeContent::ClassWithoutTypeVar(i) => {
-                        let cls = i.maybe_class(self.inference.i_s).unwrap();
-                        let point_type = cache_name_on_class(cls, self.inference.file, name);
-                        if point_type == PointType::Redirect {
-                            self.compute_type_name(name)
-                        } else {
-                            debug_assert_eq!(point_type, PointType::Unknown);
-                            self.add_typing_issue_for_index(
-                                primary.index(),
-                                IssueType::TypeNotFound,
-                            );
-                            TypeContent::Unknown
-                        }
-                    }
-                    TypeContent::DbType(t) => match t {
-                        DbType::Class(c, g) => todo!(),
-                        DbType::Any => TypeContent::DbType(DbType::Any),
-                        _ => todo!("{primary:?} {t:?}"),
-                    },
-                    TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
-                    TypeContent::SpecialType(m) => todo!(),
-                    TypeContent::TypeVarTuple(_) => todo!(),
-                    TypeContent::ParamSpec(param_spec) => match name.as_code() {
-                        "args" => TypeContent::DbType(DbType::ParamSpecArgs(param_spec)),
-                        "kwargs" => TypeContent::DbType(DbType::ParamSpecKwargs(param_spec)),
-                        _ => todo!(),
-                    },
-                    TypeContent::Unpacked(_) => todo!(),
-                    TypeContent::Concatenate(_) => todo!(),
-                    TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
-                    TypeContent::Unknown => TypeContent::Unknown,
                 }
-            }
+                TypeContent::ClassWithoutTypeVar(i) => {
+                    let cls = i.maybe_class(self.inference.i_s).unwrap();
+                    let point_type = cache_name_on_class(cls, self.inference.file, name);
+                    if point_type == PointType::Redirect {
+                        self.compute_type_name(name)
+                    } else {
+                        debug_assert_eq!(point_type, PointType::Unknown);
+                        self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
+                        TypeContent::Unknown
+                    }
+                }
+                TypeContent::DbType(t) => match t {
+                    DbType::Class(c, g) => todo!(),
+                    DbType::Any => TypeContent::DbType(DbType::Any),
+                    _ => todo!("{primary:?} {t:?}"),
+                },
+                TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
+                TypeContent::SpecialType(m) => todo!(),
+                TypeContent::TypeVarTuple(_) => todo!(),
+                TypeContent::ParamSpec(param_spec) => match name.as_code() {
+                    "args" => TypeContent::DbType(DbType::ParamSpecArgs(param_spec)),
+                    "kwargs" => TypeContent::DbType(DbType::ParamSpecKwargs(param_spec)),
+                    _ => todo!(),
+                },
+                TypeContent::Unpacked(_) => todo!(),
+                TypeContent::Concatenate(_) => todo!(),
+                TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
+                TypeContent::Unknown => TypeContent::Unknown,
+            },
             PrimaryContent::Execution(details) => match base {
                 TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
                     self.execute_mypy_extension_param(primary, s, details)
