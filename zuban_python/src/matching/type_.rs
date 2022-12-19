@@ -521,7 +521,10 @@ impl<'a> Type<'a> {
                             Type::new(t),
                             Some(Generics::DbType(match &tup.args {
                                 Some(TupleTypeArguments::FixedLength(ts)) => {
-                                    debug!("TODO Only used TypeVarIndex #0 for tuple, and not all of them");
+                                    debug!(
+                                        "TODO Only used TypeVarIndex #0 for tuple, \
+                                         and not all of them {ts:?}",
+                                    );
                                     match ts.get(0) {
                                         Some(TypeOrTypeVarTuple::Type(t)) => t,
                                         Some(TypeOrTypeVarTuple::TypeVarTuple(_)) => {
