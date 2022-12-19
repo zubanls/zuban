@@ -362,7 +362,9 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
         let lines: Box<_> = code.split("\n").collect();
         for (line_nr, type_, comment) in ErrorCommentsOnCode(&lines, lines.iter().enumerate()) {
             for comment in comment.split(" # E: ") {
-                wanted.push(format!("{p}:{line_nr}: {type_}: {comment}",))
+                for comment in comment.split(" # N: ") {
+                    wanted.push(format!("{p}:{line_nr}: {type_}: {comment}"))
+                }
             }
         }
         project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
