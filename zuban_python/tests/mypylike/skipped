@@ -164,11 +164,9 @@ testNewAnalyzerVarTypeVarNoCrashImportCycle
 testBoundGenericMethodFine
 testSelfReferentialSubscriptExpression
 # Class generics cycles / + type alias cycles
-testChangeBaseClassAttributeType
 testGenericTypeBody1
 # Class inheritance cycles
 testNewAnalyzerAliasToNotReadyNestedClass
-testNewAnalyzerAliasToNotReadyNestedClass2
 
 # Module attributes
 testModuleImplicitAttributes
@@ -825,6 +823,9 @@ testGenericOperatorMethodOverlapping2
 
 # class attributes
 testInferAttributeTypeAndAssignInInit
+
+# untyped (inferred?) instance attributes
+testChangeBaseClassAttributeType
 
 # class issues
 testAddBaseClassAttributeCausingErrorInSubclass
