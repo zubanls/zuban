@@ -50,19 +50,32 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         for (mro_index, class) in self.class.mro(i_s) {
             if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
+                    let mut i_s = i_s.with_class_context(&c);
                     return LookupResult::GotoName(
                         PointLink::new(c.node_ref.file.file_index(), self_symbol),
                         c.node_ref
                             .file
-                            .inference(&mut i_s.with_class_context(&c))
+                            .inference(&mut i_s)
                             .infer_name_by_index(self_symbol)
-                            .resolve_function_return(i_s),
+                            .resolve_function_return(&mut i_s),
                     );
                 }
             }
             let result = class.lookup_symbol(i_s, name).map(|inf| {
-                inf.resolve_function_return(i_s)
-                    .bind(i_s, |i_s| self.as_inferred(i_s), mro_index)
+                if let Some(c) = class.maybe_class(i_s.db) {
+                    let mut i_s = i_s.with_class_context(&c);
+                    inf.resolve_function_return(&mut i_s).bind(
+                        &mut i_s,
+                        |i_s| self.as_inferred(i_s),
+                        mro_index,
+                    )
+                } else {
+                    inf.resolve_function_return(i_s).bind(
+                        i_s,
+                        |i_s| self.as_inferred(i_s),
+                        mro_index,
+                    )
+                }
             });
             if !matches!(result, LookupResult::None) {
                 return result;

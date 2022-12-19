@@ -315,6 +315,26 @@ impl<'db: 'slf, 'slf> Inferred {
                         todo!("might not even happen - remove")
                         //return i_s.infer_param(&definition);
                     }
+                    Specific::AnnotationWithTypeVars => {
+                        let file = i_s.db.loaded_python_file(definition.file);
+                        let d = file
+                            .inference(i_s)
+                            .use_db_type_of_annotation(definition.node_index)
+                            .replace_type_var_likes(&mut |t| {
+                                if let Some(class) = i_s.current_class() {
+                                    if class.node_ref.as_link() == t.in_definition() {
+                                        return class
+                                            .generics()
+                                            .nth_usage(i_s, &t)
+                                            .into_generic_item(i_s);
+                                    }
+                                }
+                                t.into_generic_item()
+                            });
+                        return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                            d,
+                        )));
+                    }
                     _ => (),
                 }
             }

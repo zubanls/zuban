@@ -1371,27 +1371,6 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         todo!();
                         //self.check_point_cache(node_index).unwrap()
                     }
-                    Specific::AnnotationWithTypeVars => {
-                        // For variable annotations like a: int
-                        // TODO is this really the right place?
-                        if self.i_s.is_diagnostic() {
-                            return Inferred::new_saved(self.file, node_index, point);
-                        }
-                        let d = self
-                            .use_db_type_of_annotation(node_index)
-                            .replace_type_var_likes(&mut |t| {
-                                if let Some(class) = self.i_s.current_class() {
-                                    if class.node_ref.as_link() == t.in_definition() {
-                                        return class
-                                            .generics()
-                                            .nth_usage(self.i_s, &t)
-                                            .into_generic_item(self.i_s);
-                                    }
-                                }
-                                t.into_generic_item()
-                            });
-                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                    }
                     _ => Inferred::new_saved(self.file, node_index, point),
                 },
                 PointType::MultiDefinition => {

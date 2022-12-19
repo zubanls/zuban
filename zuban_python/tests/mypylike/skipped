@@ -2,7 +2,6 @@
 testFunctionForwardRefAlias
 testParamSpecApplyConcatenateTwice
 
-testGenericTypeAliasesImporting
 testReturnTypeLineNumberWithDecorator
 testUndefinedDecoratorInImportCycle
 
