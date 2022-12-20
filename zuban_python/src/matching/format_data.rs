@@ -1,6 +1,7 @@
 use super::Matcher;
 use crate::database::{Database, FormatStyle, RecursiveAlias, TypeVarLikeUsage};
 
+#[derive(Clone, Copy)]
 struct DisplayedRecursive<'a> {
     current: &'a RecursiveAlias,
     parent: Option<&'a DisplayedRecursive<'a>>,
@@ -90,6 +91,16 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
                 current: rec,
                 parent: self.displayed_recursive.as_ref(),
             }),
+        }
+    }
+
+    pub fn remove_matcher<'x: 'c>(&'x self) -> Self {
+        Self {
+            db: self.db,
+            matcher: None,
+            style: self.style,
+            verbose: self.verbose,
+            displayed_recursive: self.displayed_recursive,
         }
     }
 

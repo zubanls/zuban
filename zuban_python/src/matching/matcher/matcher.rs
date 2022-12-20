@@ -537,7 +537,10 @@ impl<'a> Matcher<'a> {
                 FunctionOrCallable::Function(f) => {
                     if let Some(class) = type_var_matcher.class {
                         if class.node_ref.as_link() == usage.in_definition() {
-                            return class.generics.nth_usage(i_s, usage).format(format_data);
+                            return class
+                                .generics
+                                .nth_usage(i_s, usage)
+                                .format(&format_data.remove_matcher());
                         }
                         let func_class = f.class.unwrap();
                         if usage.in_definition() == func_class.node_ref.as_link() {

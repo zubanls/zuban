@@ -163,8 +163,6 @@ testNewAnalyzerAliasToNotReadyMixed
 testNewAnalyzerVarTypeVarNoCrashImportCycle
 testBoundGenericMethodFine
 testSelfReferentialSubscriptExpression
-# Class generics cycles / + type alias cycles
-testGenericTypeBody1
 
 # Module attributes
 testModuleImplicitAttributes
@@ -801,6 +799,7 @@ testIncompatibleVariance
 DecoratorUpdateMethod
 testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
+testGenericTypeBody1
 
 # Liskov
 *Liskov*
