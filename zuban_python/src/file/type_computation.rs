@@ -671,6 +671,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         TypeContent::Module(db.loaded_python_file(file_index))
                     } else {
                         let node_ref = NodeRef::new(self.inference.file, primary.index());
+                        debug!("TypeComputation: Attribute on class not found");
                         self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
                         self.inference.file.points.set(
                             name.index(),
@@ -685,6 +686,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     if point_type == PointType::Redirect {
                         self.compute_type_name(name)
                     } else {
+                        debug!("TypeComputation: Attribute on class not found");
                         debug_assert_eq!(point_type, PointType::Unknown);
                         self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
                         TypeContent::Unknown

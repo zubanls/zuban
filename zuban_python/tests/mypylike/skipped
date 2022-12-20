@@ -165,8 +165,6 @@ testBoundGenericMethodFine
 testSelfReferentialSubscriptExpression
 # Class generics cycles / + type alias cycles
 testGenericTypeBody1
-# Class inheritance cycles
-testNewAnalyzerAliasToNotReadyNestedClass
 
 # Module attributes
 testModuleImplicitAttributes
@@ -1309,6 +1307,10 @@ testJSONAliasApproximation
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
+
+# Not working in interpreter
+# Recursive class inheritance
+testNewAnalyzerAliasToNotReadyNestedClass
 
 # Skips
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
