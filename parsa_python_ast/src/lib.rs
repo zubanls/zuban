@@ -1620,6 +1620,8 @@ impl<'db> Iterator for ParamIterator<'db> {
                     use ParamKind::*;
                     if node.is_type(Nonterminal(param_no_default))
                         || node.is_type(Nonterminal(param_with_default))
+                        || node.is_type(Nonterminal(lambda_param_no_default))
+                        || node.is_type(Nonterminal(lambda_param_with_default))
                     {
                         return Some(Self::Item::new(
                             &mut node.iter_children(),
@@ -1629,15 +1631,23 @@ impl<'db> Iterator for ParamIterator<'db> {
                                 PositionalOrKeyword
                             },
                         ));
-                    } else if node.is_type(Nonterminal(star_etc)) {
+                    } else if node.is_type(Nonterminal(star_etc))
+                        || node.is_type(Nonterminal(lambda_star_etc))
+                    {
                         *self = Self::Iterator(node.iter_children(), false);
                         return self.next();
-                    } else if node.is_type(Nonterminal(param_maybe_default)) {
+                    } else if node.is_type(Nonterminal(param_maybe_default))
+                        || node.is_type(Nonterminal(lambda_param_maybe_default))
+                    {
                         debug_assert!(!*positional_only);
                         return Some(Self::Item::new(&mut node.iter_children(), KeywordOnly));
-                    } else if node.is_type(Nonterminal(starred_param)) {
+                    } else if node.is_type(Nonterminal(starred_param))
+                        || node.is_type(Nonterminal(lambda_starred_param))
+                    {
                         return Some(Self::Item::new(&mut node.iter_children().skip(1), Starred));
-                    } else if node.is_type(Nonterminal(double_starred_param)) {
+                    } else if node.is_type(Nonterminal(double_starred_param))
+                        || node.is_type(Nonterminal(lambda_double_starred_param))
+                    {
                         return Some(Self::Item::new(
                             &mut node.iter_children().skip(1),
                             DoubleStarred,
