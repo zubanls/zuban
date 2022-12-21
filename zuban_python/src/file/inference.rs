@@ -1345,24 +1345,28 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         // Performance: This could be improved by not needing to lookup all the
                         // parents all the time.
-                        if let FunctionOrLambda::Function(func) =
-                            name_def.function_or_lambda_ancestor().unwrap()
-                        {
-                            let func = Function::new(
-                                NodeRef::new(self.file, func.index()),
-                                self.i_s.current_class().copied(),
-                            );
-                            func.type_vars(self.i_s);
-                        }
+                        match name_def.function_or_lambda_ancestor().unwrap() {
+                            FunctionOrLambda::Function(func) => {
+                                let func = Function::new(
+                                    NodeRef::new(self.file, func.index()),
+                                    self.i_s.current_class().copied(),
+                                );
+                                func.type_vars(self.i_s);
 
-                        if let Some(annotation) = name_def.maybe_param_annotation() {
-                            self.use_cached_annotation(annotation)
-                        } else if let Some((function, args)) = self.i_s.current_execution() {
-                            function
-                                .infer_param(self.i_s, node_index, args)
-                                .resolve_function_return(self.i_s)
-                        } else {
-                            todo!("{:?}", self.i_s.context)
+                                if let Some(annotation) = name_def.maybe_param_annotation() {
+                                    self.use_cached_annotation(annotation)
+                                } else if let Some((function, args)) = self.i_s.current_execution()
+                                {
+                                    function
+                                        .infer_param(self.i_s, node_index, args)
+                                        .resolve_function_return(self.i_s)
+                                } else {
+                                    todo!("{:?}", self.i_s.context)
+                                }
+                            }
+                            FunctionOrLambda::Lambda(lambda) => {
+                                todo!()
+                            }
                         }
                     }
                     Specific::LazyInferredFunction => {
