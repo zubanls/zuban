@@ -1652,6 +1652,12 @@ impl<'db> Iterator for ParamIterator<'db> {
                             &mut node.iter_children().skip(1),
                             DoubleStarred,
                         ));
+                    } else {
+                        debug_assert!(
+                            [",", "*", "/"].contains(&node.as_code()),
+                            "{}",
+                            node.as_code()
+                        )
                     }
                 }
                 None

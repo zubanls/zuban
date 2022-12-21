@@ -15,7 +15,7 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
 use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
@@ -792,7 +792,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     ) -> Inferred {
         let inferred = match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => self.infer_expression_part(n, result_context),
-            ExpressionContent::Lambda(_) => todo!(),
+            ExpressionContent::Lambda(l) => self.infer_lambda(l, result_context),
             ExpressionContent::Ternary(t) => {
                 let (if_, condition, else_) = t.unpack();
                 self.infer_expression_part(if_, &mut ResultContext::Unknown)
@@ -845,6 +845,30 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             }
             _ => todo!("Not handled yet {node:?}"),
         }
+    }
+
+    pub fn infer_lambda(&mut self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
+        result_context
+            .with_type_if_exists(
+                self.i_s,
+                |i_s: &mut InferenceState<'db, '_>, type_, matcher| {
+                    if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
+                        let (params, expr) = lambda.unpack();
+                        let result = self.file.inference(i_s).infer_expression_without_cache(
+                            expr,
+                            &mut ResultContext::Known(&Type::new(&c.result_type)),
+                        );
+                        let mut c = c.clone();
+                        c.result_type = result.class_as_type(i_s).into_db_type(i_s);
+                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                            DbType::Callable(c),
+                        )))
+                    } else {
+                        todo!()
+                    }
+                },
+            )
+            .unwrap_or_else(|| todo!())
     }
 
     fn infer_operation(&mut self, op: Operation) -> Inferred {
