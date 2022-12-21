@@ -463,8 +463,6 @@ testNewAnalyzerVersionCheck*
 
 # lambda
 testGenericTypeAliasesCallable
-testNewAnalyzerVarTypeVarNoCrash
-testOverloadLambdaUnpackingInference
 testOverloadedToGeneric
 testLambdaSemanal
 testLambdaTypeCheck
@@ -478,22 +476,16 @@ testInferLambdaNone
 testLambdaDefaultContext
 testLambdaVarargContext
 testLambdaDeferredSpecialCase
-testInferCallableReturningNone1
-testInferCallableReturningNone2
 testErasedTypeRuntimeCoverage
 testLambdaJoinWithDynamicConstructor
 # Lambda with defined return types (inferred context)
-testInferLambdaReturnTypeUsingContext
 testInferLambdaTypeUsingContext
 testInferLambdaAsGenericFunctionArgument
 testLambdaWithoutContext
-testLambdaContextVararg
 testInvalidContextForLambda
 testEllipsisContextForLambda
 testEllipsisContextForLambda2
-testLambdaNoneInContext
 testIsinstanceInInferredLambda
-testLambdaInListAndHigherOrderFunction
 testLambdaInGenericFunction
 testLambdaInGenericClass
 testLambdaDeferredCrash
