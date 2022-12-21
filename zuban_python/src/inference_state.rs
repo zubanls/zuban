@@ -1,5 +1,5 @@
 use crate::arguments::{Arguments, SimpleArguments};
-use crate::database::{Database, Execution};
+use crate::database::{CallableContent, Database, Execution};
 use crate::value::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]
@@ -9,6 +9,7 @@ pub enum Context<'db, 'a> {
     Class(&'a Class<'a>),
     DiagnosticExecution(&'a Function<'a>, &'a dyn Arguments<'db>),
     Execution(&'a Function<'a>, &'a dyn Arguments<'db>),
+    LambdaCallable(&'a CallableContent),
 }
 
 #[derive(Clone, Debug)]
@@ -71,6 +72,13 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
+    pub fn with_lambda_callable(&self, callable: &'a CallableContent) -> Self {
+        Self {
+            db: self.db,
+            context: Context::LambdaCallable(callable),
+        }
+    }
+
     pub fn current_function(&self) -> Option<&'a Function<'a>> {
         match &self.context {
             Context::DiagnosticExecution(func, _) | Context::Execution(func, _) => Some(func),
@@ -91,6 +99,13 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             Context::DiagnosticExecution(func, _) | Context::Execution(func, _) => {
                 func.class.as_ref()
             }
+            _ => None,
+        }
+    }
+
+    pub fn current_lambda_callable(&self) -> Option<&'a CallableContent> {
+        match &self.context {
+            Context::LambdaCallable(c) => Some(c),
             _ => None,
         }
     }

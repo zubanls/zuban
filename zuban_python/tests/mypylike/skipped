@@ -483,7 +483,6 @@ testInferCallableReturningNone2
 testErasedTypeRuntimeCoverage
 testLambdaJoinWithDynamicConstructor
 # Lambda with defined return types (inferred context)
-testInferLambdaArgumentTypeUsingContext
 testInferLambdaReturnTypeUsingContext
 testInferLambdaTypeUsingContext
 testInferLambdaAsGenericFunctionArgument

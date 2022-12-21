@@ -6,8 +6,8 @@ use super::type_computation::type_computation_for_variable_annotation;
 use super::{on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
-    ComplexPoint, DbType, FileIndex, GenericItem, GenericsList, Locality, Point, PointLink,
-    PointType, Specific, TupleContent, TypeOrTypeVarTuple,
+    CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList, Locality,
+    ParamSpecific, Point, PointLink, PointType, Specific, TupleContent, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -853,13 +853,17 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 self.i_s,
                 |i_s: &mut InferenceState<'db, '_>, type_, matcher| {
                     if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
+                        let mut i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
-                        let result = self.file.inference(i_s).infer_expression_without_cache(
-                            expr,
-                            &mut ResultContext::Known(&Type::new(&c.result_type)),
-                        );
+                        let result = self
+                            .file
+                            .inference(&mut i_s)
+                            .infer_expression_without_cache(
+                                expr,
+                                &mut ResultContext::Known(&Type::new(&c.result_type)),
+                            );
                         let mut c = c.clone();
-                        c.result_type = result.class_as_type(i_s).into_db_type(i_s);
+                        c.result_type = result.class_as_type(&mut i_s).into_db_type(&mut i_s);
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                             DbType::Callable(c),
                         )))
@@ -1365,7 +1369,43 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 }
                             }
                             FunctionOrLambda::Lambda(lambda) => {
-                                todo!()
+                                for (i, p) in lambda.params().enumerate() {
+                                    if p.name_definition().index() == node_index {
+                                        if let Some(current_callable) =
+                                            self.i_s.current_lambda_callable()
+                                        {
+                                            return match &current_callable.params {
+                                                CallableParams::Simple(ps) => {
+                                                    if let Some(p2) = ps.get(i) {
+                                                        if let ParamSpecific::PositionalOnly(t) =
+                                                            &p2.param_specific
+                                                        {
+                                                            if p.type_()
+                                                                == ParamKind::PositionalOrKeyword
+                                                            {
+                                                                Inferred::execute_db_type(
+                                                                    self.i_s,
+                                                                    t.clone(),
+                                                                )
+                                                            } else {
+                                                                todo!()
+                                                            }
+                                                        } else {
+                                                            todo!()
+                                                        }
+                                                    } else {
+                                                        todo!()
+                                                    }
+                                                }
+                                                CallableParams::Any => Inferred::new_any(),
+                                                CallableParams::WithParamSpec(_, _) => todo!(),
+                                            };
+                                        } else {
+                                            todo!()
+                                        }
+                                    }
+                                }
+                                unreachable!()
                             }
                         }
                     }
