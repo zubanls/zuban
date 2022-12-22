@@ -464,15 +464,9 @@ testNewAnalyzerVersionCheck*
 # lambda
 testGenericTypeAliasesCallable
 testOverloadedToGeneric
-testLambdaSemanal
-testLambdaTypeCheck
-testLambdaTypeInference
 testLambdaDefaultTypeErrors
-testInferLambdaType
-testInferLambdaType2
 testUninferableLambda
 testUninferableLambdaWithTypeError
-testInferLambdaNone
 testLambdaDefaultContext
 testLambdaVarargContext
 testLambdaDeferredSpecialCase

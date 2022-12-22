@@ -6,8 +6,9 @@ use super::type_computation::type_computation_for_variable_annotation;
 use super::{on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
-    CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList, Locality,
-    ParamSpecific, Point, PointLink, PointType, Specific, TupleContent, TypeOrTypeVarTuple,
+    CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
+    Locality, ParamSpecific, Point, PointLink, PointType, Specific, TupleContent,
+    TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -868,7 +869,24 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     }
                 },
             )
-            .unwrap_or_else(|| todo!())
+            .unwrap_or_else(|| {
+                let (params, expr) = lambda.unpack();
+                if params.count() == 0 {
+                    let result =
+                        self.infer_expression_without_cache(expr, &mut ResultContext::Unknown);
+                    let c = CallableContent {
+                        name: None,
+                        class_name: None,
+                        defined_at: PointLink::new(self.file.file_index(), lambda.index()),
+                        type_vars: None,
+                        params: CallableParams::Simple(Box::new([])),
+                        result_type: result.class_as_db_type(self.i_s),
+                    };
+                    Inferred::execute_db_type(self.i_s, DbType::Callable(Box::new(c)))
+                } else {
+                    todo!()
+                }
+            })
     }
 
     fn infer_operation(&mut self, op: Operation) -> Inferred {
