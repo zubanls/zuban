@@ -855,13 +855,11 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
                         let mut i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
+                        let rt = Type::new(&c.result_type);
                         let result = self
                             .file
                             .inference(&mut i_s)
-                            .infer_expression_without_cache(
-                                expr,
-                                &mut ResultContext::Known(&Type::new(&c.result_type)),
-                            );
+                            .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = c.clone();
                         c.result_type = result.class_as_type(&mut i_s).into_db_type(&mut i_s);
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(

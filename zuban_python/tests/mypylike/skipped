@@ -485,8 +485,6 @@ testInvalidContextForLambda
 testEllipsisContextForLambda
 testEllipsisContextForLambda2
 testIsinstanceInInferredLambda
-testLambdaInGenericFunction
-testLambdaInGenericClass
 testLambdaDeferredCrash
 testWideOuterContextOptionalTypeVarReturnLambda
 
