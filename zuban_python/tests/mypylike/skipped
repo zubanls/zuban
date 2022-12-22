@@ -25,6 +25,8 @@ testInheritedConstructor2
 # Overloading
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
+# Overloading __init__
+testOverloadedToGeneric
 # *args/**kwargs input use Any if length unclear
 testOverloadWithOverlappingItemsAndAnyArgument6
 testOverloadWithOverlappingItemsAndAnyArgument11
@@ -463,7 +465,6 @@ testListComprehensionSpecialScoping
 testNewAnalyzerVersionCheck*
 
 # lambda
-testOverloadedToGeneric
 testLambdaDefaultTypeErrors
 testLambdaDefaultContext
 testLambdaVarargContext
