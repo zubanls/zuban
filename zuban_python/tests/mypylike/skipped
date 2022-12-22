@@ -486,7 +486,6 @@ testEllipsisContextForLambda
 testEllipsisContextForLambda2
 testIsinstanceInInferredLambda
 testLambdaDeferredCrash
-testWideOuterContextOptionalTypeVarReturnLambda
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*

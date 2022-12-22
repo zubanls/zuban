@@ -362,7 +362,8 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         let mut iterator = args.iter_arguments();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
-        let s = arg.infer(i_s, result_context).format(
+        let inferred = arg.infer(i_s, result_context);
+        let s = inferred.format(
             i_s,
             &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),
         );
@@ -373,7 +374,7 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         if iterator.next().is_some() {
             todo!()
         }
-        Inferred::new_none()
+        inferred
     }
 }
 
