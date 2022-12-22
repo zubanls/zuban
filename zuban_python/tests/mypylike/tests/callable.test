@@ -269,3 +269,21 @@ def foo(x: int): ...
 foo = x # E: Incompatible types in assignment (expression has type "Callable[[VarArg(int), KwArg(object)], Any]", variable has type "Callable[[int], Any]")
 foo = y # E: Incompatible types in assignment (expression has type "Callable[[VarArg(object), KwArg(int)], Any]", variable has type "Callable[[int], Any]")
 foo = z
+
+[case multiple_lambda_mypy_issue_4226]
+from typing import Callable, TypeVar
+
+S = TypeVar('S')
+T = TypeVar('T')
+U = TypeVar('U')
+
+def comp(g: Callable[[T], U], f: Callable[[S], T]) -> Callable[[S], U]:
+    def composed(x: S) -> U:
+        return g(f(x))
+    return composed
+
+def test(s: str) -> int:
+    len_and_inc = comp(lambda i: i + 1, lambda s: len(s))
+    x = len_and_inc(s)
+    reveal_type(x)
+    return x
