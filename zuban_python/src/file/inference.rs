@@ -849,9 +849,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     pub fn infer_lambda(&mut self, lambda: Lambda, result_context: &mut ResultContext) -> Inferred {
         result_context
-            .with_type_if_exists(
+            .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
-                |i_s: &mut InferenceState<'db, '_>, type_, matcher| {
+                |i_s: &mut InferenceState<'db, '_>, type_| {
                     if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
                         let mut i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
