@@ -463,11 +463,8 @@ testListComprehensionSpecialScoping
 testNewAnalyzerVersionCheck*
 
 # lambda
-testGenericTypeAliasesCallable
 testOverloadedToGeneric
 testLambdaDefaultTypeErrors
-testUninferableLambda
-testUninferableLambdaWithTypeError
 testLambdaDefaultContext
 testLambdaVarargContext
 testLambdaDeferredSpecialCase
