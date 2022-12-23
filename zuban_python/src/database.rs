@@ -388,9 +388,8 @@ pub enum Specific {
 
     // TODO reactivate these or remove
     //TypingFinal,
-    //TypingLiteral,
+    TypingLiteral,
     //TypingTypeAlias,
-    //TypingConcatenate,
     //TypingAnnotated,
 
     //TypingAliasClass,

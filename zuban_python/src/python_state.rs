@@ -320,6 +320,7 @@ fn typing_changes(
     set_typing_inference(typing, "Concatenate", Specific::TypingConcatenateClass);
     set_typing_inference(typing, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
+    set_typing_inference(typing, "Literal", Specific::TypingLiteral);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
 
@@ -344,6 +345,7 @@ fn typing_changes(
     // TODO this is completely wrong, but for now it's good enough
     setup_type_alias(t, "SupportsIndex", builtins, "int");
     set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
+    set_typing_inference(t, "Literal", Specific::TypingLiteral);
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
