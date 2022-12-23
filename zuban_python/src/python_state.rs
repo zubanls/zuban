@@ -321,6 +321,7 @@ fn typing_changes(
     set_typing_inference(typing, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Literal", Specific::TypingLiteral);
+    set_typing_inference(typing, "Final", Specific::TypingFinal);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
 
@@ -346,6 +347,7 @@ fn typing_changes(
     setup_type_alias(t, "SupportsIndex", builtins, "int");
     set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(t, "Literal", Specific::TypingLiteral);
+    set_typing_inference(t, "Final", Specific::TypingFinal);
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);

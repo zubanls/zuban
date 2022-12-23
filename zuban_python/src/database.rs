@@ -385,10 +385,9 @@ pub enum Specific {
     TypingLiteralString,
     TypingUnpack,
     TypingTypeAlias,
-
-    // TODO reactivate these or remove
-    //TypingFinal,
+    TypingFinal,
     TypingLiteral,
+    // TODO reactivate these or remove
     //TypingTypeAlias,
     //TypingAnnotated,
 
