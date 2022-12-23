@@ -388,13 +388,9 @@ pub enum Specific {
     TypingFinal,
     TypingLiteral,
     // TODO reactivate these or remove
-    //TypingTypeAlias,
     //TypingAnnotated,
-
-    //TypingAliasClass,
-    //TypingAliasInstance,
     TypingAny,
-    //TypedDict,
+    //TypedDict,  TODO enable
     RevealTypeFunction,
 
     MypyExtensionsArg,
