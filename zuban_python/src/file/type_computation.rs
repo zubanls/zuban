@@ -750,7 +750,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
-                        SpecialType::Literal => todo!(),
+                        SpecialType::Literal => self.compute_get_item_on_literal(s),
                         SpecialType::LiteralString => todo!(),
                         SpecialType::TypeAlias => todo!(),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
@@ -1291,6 +1291,38 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 TypeContent::Unknown
             }
             _ => todo!(),
+        }
+    }
+
+    fn compute_get_item_on_literal(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_some() {
+            todo!()
+        }
+        match first {
+            SliceOrSimple::Simple(s) => {
+                if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+                    s.named_expr.expression().unpack()
+                {
+                    let maybe_index = match atom.unpack() {
+                        AtomContent::Int(i) => Some(i.index()),
+                        AtomContent::Strings(s) => {
+                            s.maybe_single_string_literal().map(|s| s.index())
+                        }
+                        AtomContent::Boolean(keyword) => Some(keyword.index()),
+                        _ => None,
+                    };
+                    if let Some(index) = maybe_index {
+                        return TypeContent::DbType(DbType::Literal {
+                            definition: PointLink::new(self.inference.file.file_index(), index),
+                            implicit: false,
+                        });
+                    }
+                }
+                todo!()
+            }
+            SliceOrSimple::Slice(n) => todo!(),
         }
     }
 

@@ -253,7 +253,6 @@ testChainedAssignmentInferenceContexts
 # Literal
 testImportWithStubIncompatibleType
 testLiteralInvalidString
-testLiteralFromTypingWorks
 testLiteralInsideOtherTypes
 testLiteralValidExpressionsInStringsPython3
 testLiteralMixingUnicodeAndBytesPython3

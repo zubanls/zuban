@@ -298,9 +298,17 @@ impl<'a> Type<'a> {
                 }
                 DbType::Intersection(intersection) => todo!(),
                 DbType::Literal {
-                    definition,
+                    definition: def1,
                     implicit,
-                } => todo!(),
+                } => {
+                    debug_assert!(!implicit);
+                    match value_type.maybe_db_type() {
+                        Some(DbType::Literal {
+                            definition: def2, ..
+                        }) => todo!(),
+                        _ => Match::new_false(),
+                    }
+                }
                 DbType::NewType(new_type1) => match value_type.maybe_db_type() {
                     Some(DbType::NewType(new_type2)) => (new_type1 == new_type2).into(),
                     _ => Match::new_false(),
