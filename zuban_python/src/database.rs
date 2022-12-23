@@ -1879,7 +1879,8 @@ pub struct Literal {
 
 impl Literal {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        format!("Literal[{}]", "TODO").into()
+        let node_ref = NodeRef::from_link(format_data.db, self.definition);
+        format!("Literal[{}]", node_ref.as_code()).into()
     }
 }
 
