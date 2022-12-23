@@ -361,9 +361,8 @@ pub enum Specific {
     LazyInferredFunction, // A function that will be inferred later.
     Function,             // The node point so the index of the result
     Closure,
-    NoReturnFunction,
-    BoundMethod,
-
+    // NoReturnFunction,  // TODO Remove or use?
+    // BoundMethod,       // TODO Remove or use?
     AnnotationClassInstance,
     AnnotationWithTypeVars,
     SimpleGeneric, // primary: primary '[' slices ']'
@@ -389,8 +388,9 @@ pub enum Specific {
     TypingLiteral,
     // TODO reactivate these or remove
     //TypingAnnotated,
+    // TODO maybe NoReturn?
     TypingAny,
-    //TypedDict,  TODO enable
+    TypedDict,
     RevealTypeFunction,
 
     MypyExtensionsArg,

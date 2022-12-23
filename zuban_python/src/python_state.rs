@@ -141,6 +141,15 @@ impl PythonState {
         );
 
         let mypy_extensions = unsafe { &*s.mypy_extensions };
+        let mypy_ext_typed_dict_index = mypy_extensions
+            .symbol_table
+            .lookup_symbol("TypedDict")
+            .unwrap();
+        set_specific(
+            mypy_extensions,
+            mypy_ext_typed_dict_index,
+            Specific::TypedDict,
+        );
         s.mypy_extensions_arg_func =
             set_mypy_extension_specific(mypy_extensions, "Arg", Specific::MypyExtensionsArg);
         s.mypy_extensions_default_arg_func = set_mypy_extension_specific(
@@ -322,6 +331,7 @@ fn typing_changes(
     set_typing_inference(typing, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(typing, "Literal", Specific::TypingLiteral);
     set_typing_inference(typing, "Final", Specific::TypingFinal);
+    set_typing_inference(typing, "TypedDict", Specific::TypedDict);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
 
@@ -348,6 +358,7 @@ fn typing_changes(
     set_typing_inference(t, "LiteralString", Specific::TypingLiteralString);
     set_typing_inference(t, "Literal", Specific::TypingLiteral);
     set_typing_inference(t, "Final", Specific::TypingFinal);
+    set_typing_inference(t, "TypedDict", Specific::TypedDict);
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
@@ -372,9 +383,14 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
     ]
     .contains(&name)
     {
-        debug_assert!(!file.points.get(node_index).calculated());
+        let p = file.points.get(node_index).calculated();
+        assert!(!p, "{:?}", p);
         set_assignments_cached(file, node_index);
     }
+    set_specific(file, node_index, specific)
+}
+
+fn set_specific(file: &PythonFile, node_index: NodeIndex, specific: Specific) {
     file.points.set(
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
