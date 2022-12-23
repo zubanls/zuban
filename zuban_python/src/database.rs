@@ -691,10 +691,7 @@ pub enum DbType {
     NewType(NewType),
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
-    Literal {
-        definition: PointLink,
-        implicit: bool,
-    },
+    Literal(Literal),
     None,
     Any,
     Never,
@@ -809,10 +806,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
-            Self::Literal {
-                definition,
-                implicit,
-            } => format!("Literal[{}]", "TODO").into(),
+            Self::Literal(literal) => literal.format(format_data),
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
@@ -1874,6 +1868,18 @@ impl NewType {
             node_ref.maybe_str().unwrap().content()
         )
         .into()
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Literal {
+    pub definition: PointLink,
+    pub implicit: bool,
+}
+
+impl Literal {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        format!("Literal[{}]", "TODO").into()
     }
 }
 

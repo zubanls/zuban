@@ -167,10 +167,7 @@ impl<'a> Type<'a> {
                 },
                 DbType::Any => true,
                 DbType::Never => todo!(),
-                DbType::Literal {
-                    definition,
-                    implicit,
-                } => todo!(),
+                DbType::Literal(literal) => todo!(),
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
@@ -297,15 +294,10 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
-                DbType::Literal {
-                    definition: def1,
-                    implicit,
-                } => {
-                    debug_assert!(!implicit);
+                DbType::Literal(literal1) => {
+                    debug_assert!(!literal1.implicit);
                     match value_type.maybe_db_type() {
-                        Some(DbType::Literal {
-                            definition: def2, ..
-                        }) => todo!(),
+                        Some(DbType::Literal(literal2)) => todo!(),
                         _ => Match::new_false(),
                     }
                 }

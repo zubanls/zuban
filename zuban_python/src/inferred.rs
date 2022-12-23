@@ -1180,10 +1180,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::None => callable(i_s, &NoneInstance()),
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
-        DbType::Literal {
-            definition,
-            implicit,
-        } => todo!(),
+        DbType::Literal(literal) => todo!(),
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer),
         DbType::NewType(n) => {
             let t = n.type_(i_s);

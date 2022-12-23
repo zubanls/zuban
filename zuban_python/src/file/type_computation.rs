@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
-    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, NewType,
+    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, Locality, NewType,
     ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
     Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
@@ -1314,10 +1314,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         _ => None,
                     };
                     if let Some(index) = maybe_index {
-                        return TypeContent::DbType(DbType::Literal {
+                        return TypeContent::DbType(DbType::Literal(Literal {
                             definition: PointLink::new(self.inference.file.file_index(), index),
                             implicit: false,
-                        });
+                        }));
                     }
                 }
                 todo!()
