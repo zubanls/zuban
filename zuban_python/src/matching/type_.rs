@@ -167,6 +167,10 @@ impl<'a> Type<'a> {
                 },
                 DbType::Any => true,
                 DbType::Never => todo!(),
+                DbType::Literal {
+                    definition,
+                    implicit,
+                } => todo!(),
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
@@ -293,6 +297,10 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
+                DbType::Literal {
+                    definition,
+                    implicit,
+                } => todo!(),
                 DbType::NewType(new_type1) => match value_type.maybe_db_type() {
                     Some(DbType::NewType(new_type2)) => (new_type1 == new_type2).into(),
                     _ => Match::new_false(),

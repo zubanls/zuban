@@ -691,6 +691,10 @@ pub enum DbType {
     NewType(NewType),
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
+    Literal {
+        definition: PointLink,
+        implicit: bool,
+    },
     None,
     Any,
     Never,
@@ -805,6 +809,10 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
+            Self::Literal {
+                definition,
+                implicit,
+            } => format!("Literal[{}]", "TODO").into(),
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
@@ -909,7 +917,9 @@ impl DbType {
                 }
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(_, None) | Self::Any | Self::None | Self::Never => (),
+            Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {
+                ()
+            }
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -969,7 +979,7 @@ impl DbType {
                     }
                 }
             }
-            Self::Class(_, None) | Self::None | Self::Never => false,
+            Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
@@ -1105,6 +1115,7 @@ impl DbType {
                     result_type,
                 }))
             }
+            Self::Literal { .. } => self.clone(),
             Self::NewType(t) => Self::NewType(t.clone()),
             Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 rec.link,
@@ -1308,6 +1319,7 @@ impl DbType {
                 }
                 None => TupleContent::new_empty(),
             }),
+            Self::Literal { .. } => self.clone(),
             Self::Callable(content) => {
                 let type_vars = manager
                     .type_vars
