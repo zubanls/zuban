@@ -251,6 +251,7 @@ multiple_lambda_mypy_issue_4226
 testChainedAssignmentInferenceContexts
 
 # Literal
+testLiteralFromTypingWorks
 testImportWithStubIncompatibleType
 testLiteralInvalidString
 testLiteralInsideOtherTypes
@@ -348,6 +349,7 @@ testLiteralWithEnumsDerivedEnums
 testLiteralWithEnumsAliases
 testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts
+testAliasForEnumTypeAsLiteral
 testLiteralBinderLastValueErased
 testLiteralBinderLastValueErasedPartialTypes
 testLiteralAndInstanceSubtyping
@@ -356,6 +358,7 @@ testLiteralSubtypeContextNested
 testLiteralSubtypeContextGeneric
 testLiteralErrorsWhenInvoked-skip
 testNegativeIntLiteral
+testNegativeIntLiteralWithFinal
 testConditionalBoolLiteralUnionNarrowing
 testNewAnalyzerBool
 testNoneHasBool
@@ -372,6 +375,7 @@ testLiteralFineGrainedStringConversionPython3
 testLiteralSubtypeOverlap
 testCallerTupleVarArgsAndGenericCalleeVarArg
 testNewAnalyzerNewTypeSpecialCase
+testFinalAddFinalVarAssignFine
 
 # int -> float promotion
 testNewAnalyzerPromotion
@@ -475,26 +479,69 @@ testRecursiveTupleClassesNewType
 # namedtuple
 testCallableParsingInInheritence
 
-
 # Typing stuff
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
 testBaseClassAnnotatedWithoutArgs
-*Pep613
-*Abstract*
-*Final*
+
+# abstractmethod / ABCMeta
+testMakeClassNoLongerAbstract1
+testMakeClassNoLongerAbstract2
+testAddAbstractMethod
+testMakeClassAbstract
+testMakeMethodNoLongerAbstract1
+testMakeMethodNoLongerAbstract2
+testAbstractBodyTurnsEmpty
+testAbstractBodyTurnsEmptyProtocol
+testAbstractGlobalFunction
+testAbstractNestedFunction
+testInferenceWithAbstractClassContext3
+
+# Explicit Type Aliases
+testSimplePep613
+testInvalidPep613
+testAliasedImportPep613
+testFunctionScopePep613
+testImportCyclePep613
+
+# Final
+testNewAnalyzerFinalDefiningModuleVar
+testNewAnalyzerFinalDefiningInstanceVar
+testNewAnalyzerFinalReassignModuleVar
+testNewAnalyzerFinalReassignModuleReexport
+testNewAnalyzerFinalOverrideInSubclass
+testNewAnalyzerFinalLiteralInferredAsLiteralWithDeferral
+testFinalAddFinalVarAssignFine
+testFinalAddFinalVarOverrideFine
+testFinalAddFinalMethodOverrideFine
+testFinalAddFinalMethodOverrideWithVarFine
+testFinalAddFinalMethodOverrideOverloadFine
+testFinalAddFinalPropertyWithVarFine
+testFinalBodyReprocessedAndStillFinal
+testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
+testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
+testLiteralFineGrainedChainedViaFinal
+
 
 # TYPE_CHECKING
 testIfTypeCheckingUnreachableClass
 
-# stdlib
+# data class / attrs things
 testDataclass*
 testAttrs*
-*PartialType*
 
 # Enum
-*Enum*
+testNewAnalyzerEnumRedefinition
+testRefreshFunctionalEnum
+testRefreshClassBasedEnum
+testRefreshClassBasedIntEnum
+testClassBasedEnumPropagation1
+testClassBasedEnumPropagation2
+testRefreshFuncBasedEnum
+testRefreshFuncBasedIntEnum
+testFuncBasedEnumPropagation1
+testFuncBasedEnumPropagation2
 testInvariance
 
 # TypedDict
@@ -513,7 +560,11 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 
 # typing.no_type_check
-*NoTypeCheck*
+testNoTypeCheckDecoratorOnMethod1
+testNoTypeCheckDecoratorOnMethod2
+testCallingNoTypeCheckFunction
+testCallingNoTypeCheckFunction2
+testNoTypeCheckDecoratorSemanticError
 
 # Duplicate in Union
 testUnificationRedundantUnion
@@ -834,7 +885,37 @@ testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 testNewAnalyzerNewTypeRedefinition
 
 # Metaclass
-*Metaclass*
+testInvalidMetaclass
+testInvalidQualifiedMetaclass
+testNonClassMetaclass
+testNewAnalyzerMetaclass1
+testNewAnalyzerMetaclass2
+testNewAnalyzerMetaclassPlaceholder
+testNewAnalyzerMetaclassSix1
+testNewAnalyzerMetaclassSix2
+testNewAnalyzerMetaclassSix3
+testNewAnalyzerMetaclassSix4
+testNewAnalyzerMetaclassFuture1
+testNewAnalyzerMetaclassFuture3
+testNewAnalyzerMetaclassFuture4
+testNotSimplifyingUnionWithMetaclass
+testMetaclassAttributes
+testMetaclassAttributesDirect
+testMetaclassOperators
+testMetaclassOperatorsDirect
+testFineMetaclassUpdate
+testFineMetaclassRecalculation
+testFineMetaclassDeclaredUpdate
+testFineMetaclassRemoveFromClass
+testFineMetaclassRemoveFromClass2
+testBadMetaclassCorrected
+testFixedAttrOnAddedMetaclass
+testIndirectSubclassReferenceMetaclass
+testMetaclassDeletion
+testFixMissingMetaclass
+testGoodMetaclassSpoiled
+testProtocolsInvalidateByRemovingMetaclass
+testOverloadedToNormalMethodMetaclass
 testNewAnalyzerClassKeywordsError
 testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
@@ -896,7 +977,15 @@ testDecoratorUpdateClassInFunction
 testGenericTypeBody1
 
 # Liskov
-*Liskov*
+testLiskovFineVariable
+testLiskovFineVariableInFunction
+testLiskovFineDecorator
+testLiskovFineVariableClean-only_when_nocache
+testLiskovFineVariableCleanDefInMethod-only_when_nocache
+testLiskovFineVariableCleanDefInMethodStar-only_when_nocache
+testLiskovFineVariableCleanDefInMethodNested-only_when_nocache
+testLiskovFineVariableInFunctionClean-only_when_nocache
+testLiskovFineDecoratorClean-only_when_nocache
 testPositionalOverridingArgumentNameInsensitivity
 testOverridingMethodInSimpleTypeInheritingGenericType
 testOverridingMethodInGenericTypeInheritingSimpleType
@@ -944,8 +1033,24 @@ testTrailingCommaParsing
 testTrailingCommaInIfParsing
 
 # async/await
-*Await*
-*Async*
+testAwaitCoroutine
+testAwaitDefaultContext
+testAwaitAnyContext
+testAwaitExplicitContext
+testAwaitGeneratorError
+testAwaitIteratorError
+testAwaitArgumentError
+testAwaitResultError
+testAwaitReturnError
+testYieldFromNoAwaitable
+testAwaitableSubclass
+testAwaitOverloadSpecialCase
+testUnusedAwaitable
+testAwaitMissingNote
+testAsyncGeneratorExpressionAwait
+testAwaitAndAsyncDef-only_when_nocache
+testAwaitAnd__await__-only_when_nocache
+testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 
 # Yield
@@ -959,7 +1064,12 @@ testMultipassAndTopLevelVariable
 testMultipassAndCircularDependency
 
 # __new__
-*DunderNew*
+testDunderNewUpdatedMethod
+testDunderNewUpdatedSubclass
+testDunderNewUpdatedAlias
+testDunderNewUpdatedCallable
+testDunderNewDefine
+testDunderNewInsteadOfInit
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
@@ -983,6 +1093,7 @@ testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
 testCallingFunctionsWithDefaultArgumentValues
 testPartiallyInitializedVariableDoesNotEscapeScope2
 testCallerVarArgsAndDefaultArgs
+*PartialType*
 
 # None late binding, because it's None (x = None; x = 3)
 testAssigningAnyStrToNone
@@ -1048,7 +1159,11 @@ testInvalidMultilineLiteralType
 testAssignToFuncDefViaGlobalDecl2
 
 # Nonlocal
-*NonlocalDecl*
+testInvalidNonlocalDecl
+testNonlocalDeclNotMatchingGlobal
+testNonlocalDeclConflictingWithParameter
+testNonlocalDeclOutsideFunction
+testGlobalAndNonlocalDecl
 testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal
 
