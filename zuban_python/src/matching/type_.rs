@@ -636,6 +636,14 @@ impl<'a> Type<'a> {
                 }
                 return Match::new_true();
             }
+        } else {
+            match value_type.maybe_db_type() {
+                Some(DbType::Literal(literal)) => {
+                    let instance = i_s.db.python_state.literal_instance(i_s.db, *literal);
+                    return Self::matches_class(i_s, matcher, class1, &Type::Class(instance.class));
+                }
+                _ => (),
+            }
         }
         Match::new_false()
     }

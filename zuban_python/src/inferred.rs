@@ -16,7 +16,7 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Module, NewTypeClass, NoneInstance, OnTypeError,
+    IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance, OnTypeError,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
     TypeVarInstance, TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
 };
@@ -1050,6 +1050,10 @@ fn run_on_specific<'db: 'a, 'a, T>(
 ) -> T {
     let definition = NodeRef::from_link(i_s.db, definition);
     match specific {
+        Specific::IntegerLiteral | Specific::BooleanLiteral | Specific::BytesLiteral => {
+            let instance = resolve_specific(i_s.db, specific);
+            callable(i_s, &Literal::new(definition, &instance))
+        }
         Specific::Function => callable(i_s, &Function::new(definition, None)),
         Specific::AnnotationClassInstance => {
             let expr_def = definition.add_to_node_index(2);
@@ -1119,7 +1123,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
     )
 }
 
-fn load_builtin_instance_from_str<'db>(db: &'db Database, name: &'static str) -> Instance<'db> {
+pub fn load_builtin_instance_from_str<'db>(db: &'db Database, name: &'static str) -> Instance<'db> {
     let builtins = db.python_state.builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
     let v = builtins.points.get(node_index);

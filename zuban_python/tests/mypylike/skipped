@@ -251,7 +251,6 @@ multiple_lambda_mypy_issue_4226
 testChainedAssignmentInferenceContexts
 
 # Literal
-testLiteralFromTypingWorks
 testImportWithStubIncompatibleType
 testLiteralInvalidString
 testLiteralInsideOtherTypes

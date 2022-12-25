@@ -1871,16 +1871,35 @@ impl NewType {
     }
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Literal {
     pub definition: PointLink,
     pub implicit: bool,
 }
 
+pub enum LiteralKind {
+    String,
+    Integer,
+    Bytes,
+    Boolean,
+}
+
 impl Literal {
+    fn node_ref(self, db: &Database) -> NodeRef {
+        NodeRef::from_link(db, self.definition)
+    }
+
+    pub fn kind(&self, db: &Database) -> LiteralKind {
+        match self.node_ref(db).point().specific() {
+            Specific::IntegerLiteral => LiteralKind::Integer,
+            Specific::BytesLiteral => LiteralKind::Bytes,
+            Specific::BooleanLiteral => LiteralKind::Boolean,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        let node_ref = NodeRef::from_link(format_data.db, self.definition);
-        format!("Literal[{}]", node_ref.as_code()).into()
+        format!("Literal[{}]", self.node_ref(format_data.db).as_code()).into()
     }
 }
 
