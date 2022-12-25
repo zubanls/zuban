@@ -488,7 +488,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn expect_int(&self, db: &Database) -> Option<i64> {
         if let InferredState::Saved(definition, point) = self.state {
-            if let Some(Specific::Integer) = point.maybe_specific() {
+            if let Some(Specific::IntegerLiteral) = point.maybe_specific() {
                 let definition = NodeRef::from_link(db, definition);
                 return definition.infer_int();
             }
@@ -1108,11 +1108,11 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
         db,
         match specific {
             Specific::String => "str",
-            Specific::Integer => "int",
-            Specific::Float => "float",
-            Specific::Boolean => "bool",
-            Specific::Bytes => "bytes",
-            Specific::Complex => "complex",
+            Specific::IntegerLiteral => "int",
+            Specific::FloatLiteral => "float",
+            Specific::BooleanLiteral => "bool",
+            Specific::BytesLiteral => "bytes",
+            Specific::ComplexLiteral => "complex",
             Specific::Ellipsis => "ellipsis", // TODO this should not even be public
             actual => unreachable!("{actual:?}"),
         },
