@@ -772,7 +772,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             Some(self.compute_generics(s.iter())),
                         ))))
                     }
-                    TypeContent::InvalidVariable(t) => todo!(),
+                    TypeContent::InvalidVariable(t) => {
+                        t.add_issue(
+                            self.inference.i_s.db,
+                            |t| self.add_typing_issue(s.as_node_ref(), t),
+                            self.origin,
+                        );
+                        TypeContent::Unknown
+                    }
                     TypeContent::TypeVarTuple(_) => todo!(),
                     TypeContent::ParamSpec(_) => todo!(),
                     TypeContent::Unpacked(_) => todo!(),
