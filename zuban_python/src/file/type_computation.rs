@@ -1374,6 +1374,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         implicit: false,
                     }));
                 }
+            } else {
+                self.add_typing_issue(
+                    first.as_node_ref(),
+                    IssueType::InvalidType(
+                        "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
+                    ),
+                );
+                return TypeContent::Unknown;
             }
         }
         match self.compute_slice_type(first) {
