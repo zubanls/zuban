@@ -1345,6 +1345,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::SpecialType(SpecialType::Any) => todo!(),
             t => match self.as_db_type(t, first.as_node_ref()) {
                 DbType::Any => TypeContent::Unknown,
+                DbType::None => TypeContent::DbType(DbType::None),
                 _ => todo!(),
             },
         }
