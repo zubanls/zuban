@@ -1071,7 +1071,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
             Int(_) => Specific::IntegerLiteral,
-            Float(_) => Specific::FloatLiteral,
+            Float(_) => Specific::Float,
             Complex(_) => Specific::ComplexLiteral,
             Strings(s_o_b) => {
                 for string in s_o_b.iter() {

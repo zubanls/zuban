@@ -343,7 +343,7 @@ pub enum Specific {
 
     String,
     BytesLiteral,
-    FloatLiteral,
+    Float,
     IntegerLiteral,
     ComplexLiteral,
     BooleanLiteral,

@@ -1113,7 +1113,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
         match specific {
             Specific::String => "str",
             Specific::IntegerLiteral => "int",
-            Specific::FloatLiteral => "float",
+            Specific::Float => "float",
             Specific::BooleanLiteral => "bool",
             Specific::BytesLiteral => "bytes",
             Specific::ComplexLiteral => "complex",
