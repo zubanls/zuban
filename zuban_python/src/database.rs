@@ -1914,9 +1914,7 @@ impl Literal {
     pub fn value(self, db: &Database) -> LiteralValue {
         let node_ref = self.node_ref(db);
         match node_ref.point().specific() {
-            Specific::IntegerLiteral => {
-                LiteralValue::Integer({ node_ref.as_code().parse().unwrap() })
-            }
+            Specific::IntegerLiteral => LiteralValue::Integer(node_ref.as_code().parse().unwrap()),
             Specific::BytesLiteral => todo!(),
             Specific::BooleanLiteral => todo!(),
             _ => unreachable!(),
