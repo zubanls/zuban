@@ -344,10 +344,14 @@ pub enum Specific {
     String,
     Float,
     Complex,
+    Bytes,
+    Integer,
+    Boolean,
+    None,
+    // Literals are used for things like Literal[42]
     BytesLiteral,
     IntegerLiteral,
     BooleanLiteral,
-    None,
 
     Ellipsis,
     GeneratorComprehension,

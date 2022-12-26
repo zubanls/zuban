@@ -1112,10 +1112,10 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
         db,
         match specific {
             Specific::String => "str",
-            Specific::IntegerLiteral => "int",
+            Specific::IntegerLiteral | Specific::Integer => "int",
             Specific::Float => "float",
-            Specific::BooleanLiteral => "bool",
-            Specific::BytesLiteral => "bytes",
+            Specific::BooleanLiteral | Specific::Boolean => "bool",
+            Specific::BytesLiteral | Specific::Bytes => "bytes",
             Specific::Complex => "complex",
             Specific::Ellipsis => "ellipsis", // TODO this should not even be public
             actual => unreachable!("{actual:?}"),
