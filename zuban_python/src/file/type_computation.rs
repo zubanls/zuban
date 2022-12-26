@@ -1323,9 +1323,22 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
-            todo!()
+            TypeContent::DbType(DbType::Union(UnionType::new(
+                slice_type
+                    .iter()
+                    .enumerate()
+                    .map(|(i, s)| UnionEntry {
+                        type_: {
+                            let t = self.compute_get_item_on_literal_item(s, i + 1);
+                            self.as_db_type(t, s.as_node_ref())
+                        },
+                        format_index: i,
+                    })
+                    .collect(),
+            )))
+        } else {
+            self.compute_get_item_on_literal_item(first, 1)
         }
-        self.compute_get_item_on_literal_item(first, 0)
     }
 
     fn compute_get_item_on_literal_item(
@@ -1360,7 +1373,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             IssueType::InvalidType(
                                 format!(
                                     "Parameter {} of Literal[...] cannot be of type \"float\"",
-                                    index + 1
+                                    index
                                 )
                                 .into(),
                             ),
@@ -1373,7 +1386,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             IssueType::InvalidType(
                                 format!(
                                     "Parameter {} of Literal[...] cannot be of type \"complex\"",
-                                    index + 1
+                                    index
                                 )
                                 .into(),
                             ),
@@ -1402,7 +1415,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     IssueType::InvalidType(
                         format!(
                             "Parameter {} of Literal[...] cannot be of type \"Any\"",
-                            index + 1
+                            index
                         )
                         .into(),
                     ),
@@ -1416,7 +1429,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.add_typing_issue(
                         slice.as_node_ref(),
                         IssueType::InvalidType(
-                            format!("Parameter {} of Literal[...] is invalid", index + 1).into(),
+                            format!("Parameter {} of Literal[...] is invalid", index).into(),
                         ),
                     );
                     TypeContent::Unknown

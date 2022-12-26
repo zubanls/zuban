@@ -1915,8 +1915,9 @@ impl Literal {
         let node_ref = self.node_ref(db);
         match node_ref.point().specific() {
             Specific::IntegerLiteral => LiteralValue::Integer(node_ref.as_code().parse().unwrap()),
-            Specific::BytesLiteral => todo!(),
+            Specific::StringLiteral => LiteralValue::String(()),
             Specific::BooleanLiteral => todo!(),
+            Specific::BytesLiteral => todo!(),
             _ => unreachable!(),
         }
     }
