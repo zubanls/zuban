@@ -528,6 +528,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
                     None,
                 ),
+                SpecialType::Literal => {
+                    self.add_typing_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from(
+                            "Literal[...] must have at least one parameter",
+                        )),
+                    );
+                    DbType::Any
+                }
                 _ => {
                     self.add_typing_issue(
                         node_ref,
@@ -1300,33 +1309,37 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         if iterator.next().is_some() {
             todo!()
         }
-        match first {
-            SliceOrSimple::Simple(s) => {
-                if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
-                    s.named_expr.expression().unpack()
-                {
-                    let maybe = match atom.unpack() {
-                        AtomContent::Int(i) => Some((i.index(), Specific::IntegerLiteral)),
-                        AtomContent::Strings(s) => s
-                            .maybe_single_string_literal()
-                            .map(|s| (s.index(), Specific::StringLiteral)),
-                        AtomContent::Boolean(keyword) => {
-                            Some((keyword.index(), Specific::BooleanLiteral))
-                        }
-                        _ => None,
-                    };
-                    if let Some((index, specific)) = maybe {
-                        let node_ref = NodeRef::new(self.inference.file, index);
-                        node_ref.set_point(Point::new_simple_specific(specific, Locality::Todo));
-                        return TypeContent::DbType(DbType::Literal(Literal {
-                            definition: node_ref.as_link(),
-                            implicit: false,
-                        }));
+        if let SliceOrSimple::Simple(s) = first {
+            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
+                s.named_expr.expression().unpack()
+            {
+                let maybe = match atom.unpack() {
+                    AtomContent::Int(i) => Some((i.index(), Specific::IntegerLiteral)),
+                    AtomContent::Strings(s) => s
+                        .maybe_single_string_literal()
+                        .map(|s| (s.index(), Specific::StringLiteral)),
+                    AtomContent::Boolean(keyword) => {
+                        Some((keyword.index(), Specific::BooleanLiteral))
                     }
+                    _ => None,
+                };
+                if let Some((index, specific)) = maybe {
+                    let node_ref = NodeRef::new(self.inference.file, index);
+                    node_ref.set_point(Point::new_simple_specific(specific, Locality::Todo));
+                    return TypeContent::DbType(DbType::Literal(Literal {
+                        definition: node_ref.as_link(),
+                        implicit: false,
+                    }));
                 }
-                todo!()
             }
-            SliceOrSimple::Slice(n) => todo!(),
+        }
+        match self.compute_slice_type(first) {
+            TypeContent::Unknown => todo!(),
+            TypeContent::SpecialType(SpecialType::Any) => todo!(),
+            t => match self.as_db_type(t, first.as_node_ref()) {
+                DbType::Any => TypeContent::Unknown,
+                _ => todo!(),
+            },
         }
     }
 
