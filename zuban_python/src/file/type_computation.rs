@@ -1342,7 +1342,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
         let i = 0;
         match self.compute_slice_type(first) {
-            TypeContent::Unknown => TypeContent::Unknown,
             TypeContent::SpecialType(SpecialType::Any) => {
                 self.add_typing_issue(
                     first.as_node_ref(),
@@ -1359,7 +1358,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             t => match self.as_db_type(t, first.as_node_ref()) {
                 DbType::Any => TypeContent::Unknown,
                 DbType::None => TypeContent::DbType(DbType::None),
-                _ => todo!(),
+                _ => {
+                    self.add_typing_issue(
+                        first.as_node_ref(),
+                        IssueType::InvalidType(
+                            format!("Parameter {} of Literal[...] is invalid", i + 1).into(),
+                        ),
+                    );
+                    TypeContent::Unknown
+                }
             },
         }
     }
