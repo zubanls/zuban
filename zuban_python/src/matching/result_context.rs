@@ -47,7 +47,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
         match self {
             Self::Known(t) => write!(f, "Known({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
-            Self::Unknown => write!(f, "UnKnown"),
+            Self::Unknown => write!(f, "Unknown"),
         }
     }
 }
