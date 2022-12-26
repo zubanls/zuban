@@ -67,6 +67,8 @@ pub(super) enum InvalidVariableType<'a> {
     Function(Function<'a>),
     Literal(&'a str),
     Variable(NodeRef<'a>),
+    Float,
+    Complex,
     Other,
 }
 
@@ -144,6 +146,12 @@ impl InvalidVariableType<'_> {
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
                 _ => todo!(),
             },
+            Self::Float => IssueType::InvalidType(
+                "Invalid type: float literals cannot be used as a type".into(),
+            ),
+            Self::Complex => IssueType::InvalidType(
+                "Invalid type: complex literals cannot be used as a type".into(),
+            ),
         })
     }
 }
@@ -1316,6 +1324,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         if iterator.next().is_some() {
             todo!()
         }
+        let i = 0;
         if let SliceOrSimple::Simple(s) = first {
             if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
                 s.named_expr.expression().unpack()
@@ -1327,6 +1336,32 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         .map(|s| (s.index(), Specific::StringLiteral)),
                     AtomContent::Boolean(keyword) => {
                         Some((keyword.index(), Specific::BooleanLiteral))
+                    }
+                    AtomContent::Float(_) => {
+                        self.add_typing_issue(
+                            first.as_node_ref(),
+                            IssueType::InvalidType(
+                                format!(
+                                    "Parameter {} of Literal[...] cannot be of type \"float\"",
+                                    i + 1
+                                )
+                                .into(),
+                            ),
+                        );
+                        return TypeContent::Unknown;
+                    }
+                    AtomContent::Complex(_) => {
+                        self.add_typing_issue(
+                            first.as_node_ref(),
+                            IssueType::InvalidType(
+                                format!(
+                                    "Parameter {} of Literal[...] cannot be of type \"complex\"",
+                                    i + 1
+                                )
+                                .into(),
+                            ),
+                        );
+                        return TypeContent::Unknown;
                     }
                     _ => None,
                 };
@@ -1340,7 +1375,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             }
         }
-        let i = 0;
         match self.compute_slice_type(first) {
             TypeContent::SpecialType(SpecialType::Any) => {
                 self.add_typing_issue(
@@ -1422,6 +1456,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 tuple_length: t.iter().count(),
             }),
             AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Other),
+            AtomContent::Float(_) => TypeContent::InvalidVariable(InvalidVariableType::Float),
+            AtomContent::Complex(_) => TypeContent::InvalidVariable(InvalidVariableType::Complex),
             _ => todo!("{atom:?}"),
         }
     }
