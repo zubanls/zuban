@@ -1305,17 +1305,21 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
                     s.named_expr.expression().unpack()
                 {
-                    let maybe_index = match atom.unpack() {
-                        AtomContent::Int(i) => Some(i.index()),
-                        AtomContent::Strings(s) => {
-                            s.maybe_single_string_literal().map(|s| s.index())
+                    let maybe = match atom.unpack() {
+                        AtomContent::Int(i) => Some((i.index(), Specific::IntegerLiteral)),
+                        AtomContent::Strings(s) => s
+                            .maybe_single_string_literal()
+                            .map(|s| (s.index(), Specific::StringLiteral)),
+                        AtomContent::Boolean(keyword) => {
+                            Some((keyword.index(), Specific::BooleanLiteral))
                         }
-                        AtomContent::Boolean(keyword) => Some(keyword.index()),
                         _ => None,
                     };
-                    if let Some(index) = maybe_index {
+                    if let Some((index, specific)) = maybe {
+                        let node_ref = NodeRef::new(self.inference.file, index);
+                        node_ref.set_point(Point::new_simple_specific(specific, Locality::Todo));
                         return TypeContent::DbType(DbType::Literal(Literal {
-                            definition: PointLink::new(self.inference.file.file_index(), index),
+                            definition: node_ref.as_link(),
                             implicit: false,
                         }));
                     }

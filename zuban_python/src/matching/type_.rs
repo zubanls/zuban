@@ -298,8 +298,7 @@ impl<'a> Type<'a> {
                     debug_assert!(!literal1.implicit);
                     match value_type.maybe_db_type() {
                         Some(DbType::Literal(literal2)) => {
-                            dbg!(literal1, literal2);
-                            todo!()
+                            (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
                         }
                         _ => Match::new_false(),
                     }

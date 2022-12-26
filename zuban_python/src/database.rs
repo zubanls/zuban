@@ -349,6 +349,7 @@ pub enum Specific {
     Boolean,
     None,
     // Literals are used for things like Literal[42]
+    StringLiteral,
     BytesLiteral,
     IntegerLiteral,
     BooleanLiteral,
@@ -1888,12 +1889,20 @@ pub enum LiteralKind {
     Boolean,
 }
 
+#[derive(PartialEq, Eq)]
+pub enum LiteralValue {
+    String(()),
+    Integer(usize), // TODO this does not work for Python ints > usize
+    Bytes(()),
+    Boolean(bool),
+}
+
 impl Literal {
     fn node_ref(self, db: &Database) -> NodeRef {
         NodeRef::from_link(db, self.definition)
     }
 
-    pub fn kind(&self, db: &Database) -> LiteralKind {
+    pub fn kind(self, db: &Database) -> LiteralKind {
         match self.node_ref(db).point().specific() {
             Specific::IntegerLiteral => LiteralKind::Integer,
             Specific::BytesLiteral => LiteralKind::Bytes,
@@ -1902,7 +1911,19 @@ impl Literal {
         }
     }
 
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+    pub fn value(self, db: &Database) -> LiteralValue {
+        let node_ref = self.node_ref(db);
+        match node_ref.point().specific() {
+            Specific::IntegerLiteral => {
+                LiteralValue::Integer({ node_ref.as_code().parse().unwrap() })
+            }
+            Specific::BytesLiteral => todo!(),
+            Specific::BooleanLiteral => todo!(),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn format(self, format_data: &FormatData) -> Box<str> {
         format!("Literal[{}]", self.node_ref(format_data.db).as_code()).into()
     }
 }
