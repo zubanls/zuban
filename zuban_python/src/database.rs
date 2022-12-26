@@ -2296,7 +2296,9 @@ impl TypeVarLike {
     pub fn as_any_generic_item(&self) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-            TypeVarLike::TypeVarTuple(_) => todo!(),
+            TypeVarLike::TypeVarTuple(_) => {
+                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(DbType::Any))
+            }
             TypeVarLike::ParamSpec(_) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
             }
