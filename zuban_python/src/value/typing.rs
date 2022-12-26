@@ -41,6 +41,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingUnion => "Union",
             Specific::TypingOptional => "Optional",
             Specific::TypingType => "Type",
+            Specific::TypingLiteral => "Literal",
             _ => unreachable!("{:?}", self.specific),
         }
     }

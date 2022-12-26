@@ -1084,6 +1084,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         | Specific::TypingUnion
         | Specific::TypingOptional
         | Specific::TypingType
+        | Specific::TypingLiteral
         | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
         Specific::TypingAny | Specific::Cycle => on_missing(i_s),
         Specific::TypingCast => callable(i_s, &TypingCast()),
@@ -1100,7 +1101,6 @@ fn run_on_specific<'db: 'a, 'a, T>(
             let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
             callable(i_s, &func)
         }
-        Specific::TypingLiteral => on_missing(i_s), // TODO this is not correct
         _ => {
             let instance = resolve_specific(i_s.db, specific);
             callable(i_s, &instance)

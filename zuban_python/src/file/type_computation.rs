@@ -254,7 +254,8 @@ macro_rules! compute_type_application {
                     ComplexPoint::TypeInstance(Box::new(DbType::Type(Rc::new(db_type))))
                 }
             },
-            _ => todo!("{t:?}"),
+            TypeContent::Unknown => return Inferred::new_any(),
+            _ => todo!("type application: {t:?}"),
         })
     }}
 }
@@ -1747,6 +1748,14 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     slice_type,
                     from_alias_definition,
                     compute_type_get_item_on_type(slice_type)
+                )
+            }
+            Specific::TypingLiteral => {
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    from_alias_definition,
+                    compute_get_item_on_literal(slice_type)
                 )
             }
             _ => unreachable!("{:?}", specific),
