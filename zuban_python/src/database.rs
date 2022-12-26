@@ -342,10 +342,10 @@ pub enum Specific {
     OverloadUnreachable,
 
     String,
-    BytesLiteral,
     Float,
+    Complex,
+    BytesLiteral,
     IntegerLiteral,
-    ComplexLiteral,
     BooleanLiteral,
     None,
 

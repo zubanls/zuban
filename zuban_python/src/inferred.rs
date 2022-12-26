@@ -1116,7 +1116,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
             Specific::Float => "float",
             Specific::BooleanLiteral => "bool",
             Specific::BytesLiteral => "bytes",
-            Specific::ComplexLiteral => "complex",
+            Specific::Complex => "complex",
             Specific::Ellipsis => "ellipsis", // TODO this should not even be public
             actual => unreachable!("{actual:?}"),
         },

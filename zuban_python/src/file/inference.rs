@@ -1072,7 +1072,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             Name(n) => return self.infer_name_reference(n),
             Int(_) => Specific::IntegerLiteral,
             Float(_) => Specific::Float,
-            Complex(_) => Specific::ComplexLiteral,
+            Complex(_) => Specific::Complex,
             Strings(s_o_b) => {
                 for string in s_o_b.iter() {
                     if let StringType::FString(f) = string {
