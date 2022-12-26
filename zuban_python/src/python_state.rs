@@ -316,8 +316,8 @@ impl PythonState {
                 match literal.kind(db) {
                     LiteralKind::Integer => "int",
                     LiteralKind::String => todo!(),
-                    LiteralKind::Boolean => todo!(),
-                    LiteralKind::Bytes => todo!(),
+                    LiteralKind::Boolean => "bool",
+                    LiteralKind::Bytes => "bytes",
                 },
             )
             .class,
