@@ -1325,11 +1325,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         if iterator.next().is_some() {
             todo!()
         }
-        let i = 0;
-        if let SliceOrSimple::Simple(s) = first {
+        self.compute_get_item_on_literal_item(first, 0)
+    }
+
+    fn compute_get_item_on_literal_item(
+        &mut self,
+        slice: SliceOrSimple<'x>,
+        index: usize,
+    ) -> TypeContent<'db, 'db> {
+        if let SliceOrSimple::Simple(s) = slice {
             let expr_not_allowed = |slf: &Self| {
                 slf.add_typing_issue(
-                    first.as_node_ref(),
+                    slice.as_node_ref(),
                     IssueType::InvalidType(
                         "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
                     ),
@@ -1349,11 +1356,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     AtomContent::Float(_) => {
                         self.add_typing_issue(
-                            first.as_node_ref(),
+                            slice.as_node_ref(),
                             IssueType::InvalidType(
                                 format!(
                                     "Parameter {} of Literal[...] cannot be of type \"float\"",
-                                    i + 1
+                                    index + 1
                                 )
                                 .into(),
                             ),
@@ -1362,11 +1369,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     AtomContent::Complex(_) => {
                         self.add_typing_issue(
-                            first.as_node_ref(),
+                            slice.as_node_ref(),
                             IssueType::InvalidType(
                                 format!(
                                     "Parameter {} of Literal[...] cannot be of type \"complex\"",
-                                    i + 1
+                                    index + 1
                                 )
                                 .into(),
                             ),
@@ -1388,28 +1395,28 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 return expr_not_allowed(self);
             }
         }
-        match self.compute_slice_type(first) {
+        match self.compute_slice_type(slice) {
             TypeContent::SpecialType(SpecialType::Any) => {
                 self.add_typing_issue(
-                    first.as_node_ref(),
+                    slice.as_node_ref(),
                     IssueType::InvalidType(
                         format!(
                             "Parameter {} of Literal[...] cannot be of type \"Any\"",
-                            i + 1
+                            index + 1
                         )
                         .into(),
                     ),
                 );
                 TypeContent::Unknown
             }
-            t => match self.as_db_type(t, first.as_node_ref()) {
+            t => match self.as_db_type(t, slice.as_node_ref()) {
                 DbType::Any => TypeContent::Unknown,
                 DbType::None => TypeContent::DbType(DbType::None),
                 _ => {
                     self.add_typing_issue(
-                        first.as_node_ref(),
+                        slice.as_node_ref(),
                         IssueType::InvalidType(
-                            format!("Parameter {} of Literal[...] is invalid", i + 1).into(),
+                            format!("Parameter {} of Literal[...] is invalid", index + 1).into(),
                         ),
                     );
                     TypeContent::Unknown
