@@ -144,7 +144,7 @@ impl InvalidVariableType<'_> {
             ),
             Self::Other => match origin {
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
-                _ => todo!(),
+                _ => IssueType::InvalidType(Box::from("Invalid type comment or annotation")),
             },
             Self::Float => IssueType::InvalidType(
                 "Invalid type: float literals cannot be used as a type".into(),
@@ -1327,6 +1327,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
         let i = 0;
         if let SliceOrSimple::Simple(s) = first {
+            let expr_not_allowed = |slf: &Self| {
+                slf.add_typing_issue(
+                    first.as_node_ref(),
+                    IssueType::InvalidType(
+                        "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
+                    ),
+                );
+                TypeContent::Unknown
+            };
             if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
                 s.named_expr.expression().unpack()
             {
@@ -1364,7 +1373,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         );
                         return TypeContent::Unknown;
                     }
-                    _ => None,
+                    AtomContent::Name(_) | AtomContent::NoneLiteral => None,
+                    _ => return expr_not_allowed(self),
                 };
                 if let Some((index, specific)) = maybe {
                     let node_ref = NodeRef::new(self.inference.file, index);
@@ -1375,13 +1385,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }));
                 }
             } else {
-                self.add_typing_issue(
-                    first.as_node_ref(),
-                    IssueType::InvalidType(
-                        "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
-                    ),
-                );
-                return TypeContent::Unknown;
+                return expr_not_allowed(self);
             }
         }
         match self.compute_slice_type(first) {
@@ -1467,7 +1471,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Other),
             AtomContent::Float(_) => TypeContent::InvalidVariable(InvalidVariableType::Float),
             AtomContent::Complex(_) => TypeContent::InvalidVariable(InvalidVariableType::Complex),
-            _ => todo!("{atom:?}"),
+            _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
 
