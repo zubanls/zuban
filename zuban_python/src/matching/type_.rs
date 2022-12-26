@@ -637,8 +637,12 @@ impl<'a> Type<'a> {
                 return Match::new_true();
             }
         } else if let Some(DbType::Literal(literal)) = value_type.maybe_db_type() {
-            let instance = i_s.db.python_state.literal_instance(i_s.db, *literal);
-            return Self::matches_class(i_s, matcher, class1, &Type::Class(instance.class));
+            return Self::matches_class(
+                i_s,
+                matcher,
+                class1,
+                &i_s.db.python_state.literal_type(i_s.db, *literal),
+            );
         }
         Match::new_false()
     }

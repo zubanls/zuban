@@ -8,9 +8,9 @@ use crate::database::{
 };
 use crate::file::File;
 use crate::file::PythonFile;
-use crate::matching::Generics;
+use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Instance, OverloadedFunction};
+use crate::value::{Class, OverloadedFunction};
 use crate::PythonProject;
 
 pub struct PythonState {
@@ -308,16 +308,19 @@ impl PythonState {
         OverloadedFunction::new(node_ref, overload, None)
     }
 
-    pub fn literal_instance<'db>(&self, db: &'db Database, literal: Literal) -> Instance<'db> {
+    pub fn literal_type<'db>(&self, db: &'db Database, literal: Literal) -> Type<'db> {
         use crate::inferred::load_builtin_instance_from_str;
-        load_builtin_instance_from_str(
-            db,
-            match literal.kind(db) {
-                LiteralKind::Integer => "int",
-                LiteralKind::String => todo!(),
-                LiteralKind::Boolean => todo!(),
-                LiteralKind::Bytes => todo!(),
-            },
+        Type::Class(
+            load_builtin_instance_from_str(
+                db,
+                match literal.kind(db) {
+                    LiteralKind::Integer => "int",
+                    LiteralKind::String => todo!(),
+                    LiteralKind::Boolean => todo!(),
+                    LiteralKind::Bytes => todo!(),
+                },
+            )
+            .class,
         )
     }
 }
