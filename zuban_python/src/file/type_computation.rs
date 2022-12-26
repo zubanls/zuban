@@ -1368,7 +1368,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 Some(PythonString::Ref(start, s)) => {
                     self.compute_forward_reference(start, s.to_owned())
                 }
-                Some(PythonString::String(start, s)) => todo!(),
+                Some(PythonString::String(start, s)) => self.compute_forward_reference(start, s),
                 Some(PythonString::FString) => todo!(),
                 None => todo!(),
             },

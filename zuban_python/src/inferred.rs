@@ -1100,6 +1100,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
             let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
             callable(i_s, &func)
         }
+        Specific::TypingLiteral => on_missing(i_s), // TODO this is not correct
         _ => {
             let instance = resolve_specific(i_s.db, specific);
             callable(i_s, &instance)

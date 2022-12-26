@@ -29,11 +29,33 @@ impl<'db> PythonString<'db> {
             if !code.starts_with(['"', '\''].as_slice()) {
                 todo!()
             }
-            let c = &code[1..code.len() - 1];
-            if c.contains(['\'', '\\', '"'].as_slice()) {
-                todo!()
+            let inner = &code[1..code.len() - 1];
+
+            let quote = code.as_bytes()[0];
+            let mut iterator = inner.as_bytes().iter().enumerate();
+            let mut string = None;
+            let mut previous_insert = 0;
+            while let Some((i, mut ch)) = iterator.next() {
+                if ch == &b'\\' {
+                    if string.is_none() {
+                        string = Some(String::with_capacity(inner.len()));
+                    }
+                    let s = string.as_mut().unwrap();
+                    s.push_str(&inner[previous_insert..i]);
+                    (previous_insert, ch) = iterator.next().unwrap();
+                    match ch {
+                        b'\\' => todo!(),
+                        _ if *ch == quote => s.push(quote as char),
+                        _ => todo!(),
+                    }
+                }
             }
-            Self::Ref(literal.start() + 1, c)
+            if let Some(mut string) = string {
+                string.push_str(&inner[previous_insert..inner.len()]);
+                Self::String(literal.start() + 1, string)
+            } else {
+                Self::Ref(literal.start() + 1, inner)
+            }
         }
     }
 
