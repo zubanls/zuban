@@ -1360,6 +1360,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
                     let maybe = match atom.unpack() {
                         AtomContent::Int(i) => Some((i.index(), Specific::IntegerLiteral)),
+                        AtomContent::Bytes(b) => Some((b.index(), Specific::BytesLiteral)),
                         AtomContent::Strings(s) => s
                             .maybe_single_string_literal()
                             .map(|s| (s.index(), Specific::StringLiteral)),
