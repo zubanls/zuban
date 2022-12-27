@@ -1424,6 +1424,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     }
                     return expr_not_allowed(self);
                 }
+                ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => {
+                    if let PrimaryContent::Execution(_) = p.second() {
+                        return expr_not_allowed(self);
+                    }
+                }
                 _ => return expr_not_allowed(self),
             }
         }
@@ -1444,6 +1449,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             t => match self.as_db_type(t, slice.as_node_ref()) {
                 DbType::Any => TypeContent::Unknown,
                 DbType::None => TypeContent::DbType(DbType::None),
+                t @ DbType::Literal(_) => TypeContent::DbType(t),
+                DbType::Union(u)
+                    if u.entries
+                        .iter()
+                        .all(|e| matches!(e.type_, DbType::Literal(_) | DbType::None)) =>
+                {
+                    TypeContent::DbType(DbType::Union(u))
+                }
                 _ => {
                     self.add_typing_issue(
                         slice.as_node_ref(),
