@@ -1050,7 +1050,10 @@ fn run_on_specific<'db: 'a, 'a, T>(
 ) -> T {
     let definition = NodeRef::from_link(i_s.db, definition);
     match specific {
-        Specific::IntegerLiteral | Specific::BooleanLiteral | Specific::BytesLiteral => {
+        Specific::IntegerLiteral
+        | Specific::StringLiteral
+        | Specific::BooleanLiteral
+        | Specific::BytesLiteral => {
             let instance = resolve_specific(i_s.db, specific);
             callable(i_s, &Literal::new(definition, &instance))
         }
@@ -1112,7 +1115,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
     load_builtin_instance_from_str(
         db,
         match specific {
-            Specific::String => "str",
+            Specific::String | Specific::StringLiteral => "str",
             Specific::IntegerLiteral | Specific::Integer => "int",
             Specific::Float => "float",
             Specific::BooleanLiteral | Specific::Boolean => "bool",

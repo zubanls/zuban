@@ -1067,22 +1067,27 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
-        use AtomContent::*;
-        let specific = match atom.unpack() {
-            Name(n) => return self.infer_name_reference(n),
-            Int(_) => result_context
+        let mut check_literal = |i_s, non_literal: Specific, literal| {
+            result_context
                 .with_type_if_exists_and_replace_type_var_likes(
-                    self.i_s,
-                    |i_s: &mut InferenceState<'db, '_>, type_| {
-                        if let Some(DbType::Literal(_)) = type_.maybe_db_type() {
-                            Some(Specific::IntegerLiteral)
-                        } else {
-                            None
-                        }
+                    i_s,
+                    |i_s: &mut InferenceState<'db, '_>, type_| match type_.maybe_db_type() {
+                        Some(DbType::Literal(_)) => Some(literal),
+                        Some(DbType::Union(items)) => items
+                            .iter()
+                            .any(|i| matches!(i, DbType::Literal(_)))
+                            .then_some(literal),
+                        _ => None,
                     },
                 )
                 .flatten()
-                .unwrap_or(Specific::Integer),
+                .unwrap_or(non_literal)
+        };
+
+        use AtomContent::*;
+        let specific = match atom.unpack() {
+            Name(n) => return self.infer_name_reference(n),
+            Int(_) => check_literal(self.i_s, Specific::Integer, Specific::IntegerLiteral),
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
             Strings(s_o_b) => {
@@ -1091,7 +1096,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         self.calc_fstring_diagnostics(f)
                     }
                 }
-                Specific::String
+                check_literal(self.i_s, Specific::String, Specific::StringLiteral)
             }
             Bytes(_) => Specific::Bytes,
             NoneLiteral => Specific::None,
