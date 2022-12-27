@@ -2197,6 +2197,10 @@ pub enum PrimaryParent<'db> {
 }
 
 impl<'db> BitwiseOr<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        Operation::new(self.node, "__add__", "__radd__", "+")
+    }
+
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
         // TODO this is probably unused
         let mut iter = self.node.iter_children();
@@ -2328,18 +2332,21 @@ impl<'db> Term<'db> {
     }
 }
 
-impl<'db> BitwiseOr<'db> {
-    pub fn as_operation(&self) -> Operation<'db> {
-        Operation::new(self.node, "__add__", "__radd__", "+")
-    }
-}
-
 impl<'db> Disjunction<'db> {
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
         let mut iter = self.node.iter_children();
         let left = ExpressionPart::new(iter.next().unwrap());
         let _operand = iter.next().unwrap();
         (left, ExpressionPart::new(iter.next().unwrap()))
+    }
+}
+
+impl<'db> Factor<'db> {
+    pub fn unpack(&self) -> (Keyword<'db>, ExpressionPart<'db>) {
+        let mut iter = self.node.iter_children();
+        let first = iter.next().unwrap();
+        let second = iter.next().unwrap();
+        (Keyword::new(first), ExpressionPart::new(second))
     }
 }
 
