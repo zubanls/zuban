@@ -1,0 +1,20 @@
+[case literal_union_formatting1]
+from typing import Literal
+
+a: int
+b: str | Literal[1, 2] | float
+a = b
+
+[case literal_union_formatting2]
+from typing import Literal
+
+a: int
+b: str | Literal[1, 2] | float
+c: str | Literal[1, 2] | float | Literal['x']
+d: Literal[1] | Literal['x']
+
+def x(y: int) -> None: ...
+x(a)
+x(b)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2] | str | float"; expected "int"
+x(c)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 'x'] | str | float"; expected "int"
+x(d)  # E: Argument 1 to "x" has incompatible type "Literal[1, 'x']"; expected "int"

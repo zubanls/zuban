@@ -652,6 +652,7 @@ impl UnionType {
 
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
+            DbType::Literal(_) => -1,
             DbType::TypeVar(_) => 2,
             DbType::None => 3,
             DbType::Any => 4,
@@ -660,25 +661,56 @@ impl UnionType {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        let mut unsorted = self
-            .entries
-            .iter()
+        let mut iterator = self.entries.iter();
+        let mut sorted = match format_data.style {
+            FormatStyle::MypyRevealType => String::new(),
+            _ => {
+                // Fetch the literals in the front of the union and format them like Literal[1, 2]
+                // instead of Literal[1] | Literal[2].
+                let count = self
+                    .entries
+                    .iter()
+                    .take_while(|e| matches!(e.type_, DbType::Literal(_)))
+                    .count();
+                if count > 1 {
+                    let lit = format!(
+                        "Literal[{}]",
+                        iterator
+                            .by_ref()
+                            .take(count)
+                            .map(|l| match l.type_ {
+                                DbType::Literal(l) => l.format_inner(format_data.db),
+                                _ => unreachable!(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                    if count == self.entries.len() {
+                        return lit.into();
+                    } else {
+                        lit + " | "
+                    }
+                } else {
+                    String::new()
+                }
+            }
+        };
+        let mut unsorted = iterator
             .filter_map(|e| {
                 (!self.format_as_optional || !matches!(e.type_, DbType::None))
                     .then(|| (e.format_index, e.type_.format(format_data)))
             })
             .collect::<Vec<_>>();
         unsorted.sort_by_key(|(format_index, _)| *format_index);
-        let sorted = unsorted
+        sorted += &unsorted
             .into_iter()
             .map(|(_, t)| t)
             .collect::<Vec<_>>()
-            .join(" | ")
-            .into();
+            .join(" | ");
         if self.format_as_optional {
             format!("Optional[{sorted}]").into()
         } else {
-            sorted
+            sorted.into()
         }
     }
 }
@@ -1922,8 +1954,12 @@ impl Literal {
         }
     }
 
+    pub fn format_inner(self, db: &Database) -> &str {
+        self.node_ref(db).as_code()
+    }
+
     pub fn format(self, format_data: &FormatData) -> Box<str> {
-        format!("Literal[{}]", self.node_ref(format_data.db).as_code()).into()
+        format!("Literal[{}]", self.format_inner(format_data.db)).into()
     }
 }
 

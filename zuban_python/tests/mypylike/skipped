@@ -1,4 +1,5 @@
 # Next up
+literal_union_formatting1
 testFunctionForwardRefAlias
 testParamSpecApplyConcatenateTwice
 
@@ -258,7 +259,6 @@ testLiteralMixingUnicodeAndBytesPython3
 testLiteralMixingUnicodeAndBytesPython3ForwardStrings
 testLiteralUnicodeWeirdCharacters
 testLiteralBasicStrUsageSlashes
-testLiteralCallingUnionFunction
 testLiteralMultipleValues
 testLiteralMultipleValuesExplicitTuple
 testLiteralNestedUsage
