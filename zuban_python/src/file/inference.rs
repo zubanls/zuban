@@ -1100,7 +1100,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             }
             Bytes(_) => Specific::Bytes,
             NoneLiteral => Specific::None,
-            Boolean(_) => Specific::Boolean,
+            Boolean(_) => check_literal(self.i_s, Specific::Boolean, Specific::BooleanLiteral),
             Ellipsis => Specific::Ellipsis,
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {

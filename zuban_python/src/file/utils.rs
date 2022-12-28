@@ -156,7 +156,7 @@ pub fn on_argument_type_error(
         i_s.db,
         IssueType::ArgumentIssue(
             format!(
-                "Argument {}{} has incompatible type {t1:?}; expected {t2:?}",
+                "Argument {}{} has incompatible type \"{t1}\"; expected \"{t2}\"",
                 arg.human_readable_index(),
                 error_text(" to ").as_deref().unwrap_or(""),
             )
