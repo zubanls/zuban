@@ -218,8 +218,10 @@ testBadOverloadProbableMatch
 testInvalidTypevarValues
 
 # Tuple type var context
+testTupleContextFromIterable
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
+class_generics_recursion
 # bottom up inference for tuple with *args
 testCallerVarArgsListWithTypeInference
 testCallerVarArgsTupleWithTypeInference
@@ -260,7 +262,6 @@ testLiteralMixingUnicodeAndBytesPython3
 testLiteralMixingUnicodeAndBytesPython3ForwardStrings
 testLiteralUnicodeWeirdCharacters
 testLiteralBasicStrUsageSlashes
-testLiteralVariance
 testLiteralInListAndSequence
 testLiteralInferredInListContext
 testLiteralInferredInTupleContext

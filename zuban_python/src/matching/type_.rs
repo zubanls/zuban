@@ -610,7 +610,6 @@ impl<'a> Type<'a> {
     ) -> Match {
         let match_reverse = matcher.is_matching_reverse();
         match value_type.maybe_db_type() {
-            // TODO this should use the variance argument
             Some(DbType::Union(u2)) => match variance {
                 Variance::Covariant => {
                     let mut matches = true;
@@ -638,14 +637,25 @@ impl<'a> Type<'a> {
                 Variance::Contravariant => unreachable!(),
             },
             // TODO doesn't match_reverse also matter here?
-            _ => u1
-                .iter()
-                .any(|g| {
-                    Type::new(g)
-                        .matches(i_s, matcher, value_type, variance)
-                        .bool()
-                })
-                .into(),
+            _ => match variance {
+                Variance::Covariant => u1
+                    .iter()
+                    .any(|g| {
+                        Type::new(g)
+                            .matches(i_s, matcher, value_type, variance)
+                            .bool()
+                    })
+                    .into(),
+                Variance::Invariant => u1
+                    .iter()
+                    .all(|g| {
+                        Type::new(g)
+                            .matches(i_s, matcher, value_type, variance)
+                            .bool()
+                    })
+                    .into(),
+                Variance::Contravariant => unreachable!(),
+            },
         }
     }
 

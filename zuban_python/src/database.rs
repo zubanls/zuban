@@ -1921,7 +1921,7 @@ pub enum LiteralKind {
     Boolean,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Debug)]
 pub enum LiteralValue<'db> {
     String(&'db str),
     Integer(isize), // TODO this does not work for Python ints > usize
