@@ -502,6 +502,24 @@ impl<'a> Type<'a> {
                         .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
                         .into();
                 }
+                // Necessary to e.g. match int to Literal[1, 2]
+                DbType::Union(u2)
+                    if variance == Variance::Covariant
+                    // Union matching was already done.
+                    && !matches!(self.maybe_db_type(), Some(DbType::Union(_))) =>
+                {
+                    if matcher.is_matching_reverse() {
+                        todo!()
+                    }
+                    return u2
+                        .entries
+                        .iter()
+                        .all(|e| {
+                            self.simple_matches(i_s, &Type::new(&e.type_), variance)
+                                .bool()
+                        })
+                        .into();
+                }
                 DbType::NewType(n2) => {
                     let t = n2.type_(i_s);
                     return self.matches(i_s, matcher, &Type::new(t), variance);

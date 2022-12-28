@@ -1937,6 +1937,7 @@ impl Literal {
     pub fn kind(self, db: &Database) -> LiteralKind {
         match self.node_ref(db).point().specific() {
             Specific::IntegerLiteral => LiteralKind::Integer,
+            Specific::StringLiteral => LiteralKind::String,
             Specific::BytesLiteral => LiteralKind::Bytes,
             Specific::BooleanLiteral => LiteralKind::Boolean,
             _ => unreachable!(),
