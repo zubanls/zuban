@@ -255,8 +255,6 @@ multiple_lambda_mypy_issue_4226
 testChainedAssignmentInferenceContexts
 
 # Literal
-testImportWithStubIncompatibleType
-testLiteralInvalidString
 testLiteralValidExpressionsInStringsPython3
 testLiteralMixingUnicodeAndBytesPython3
 testLiteralMixingUnicodeAndBytesPython3ForwardStrings
@@ -264,9 +262,6 @@ testLiteralUnicodeWeirdCharacters
 testLiteralBasicStrUsageSlashes
 testLiteralVariance
 testLiteralInListAndSequence
-testLiteralInferredInAssignment
-testLiteralInferredOnlyForActualLiterals
-testLiteralInferredTypeMustMatchExpected
 testLiteralInferredInListContext
 testLiteralInferredInTupleContext
 testLiteralInferredInDictContext
@@ -1100,6 +1095,7 @@ testOverloadingAndDucktypeCompatibility
 testInvalidStrLiteralSpaces
 testInvalidStrLiteralStrayBrace
 testInvalidMultilineLiteralType
+testLiteralInvalidString
 
 # Global
 testAssignToFuncDefViaGlobalDecl2
