@@ -1949,7 +1949,7 @@ impl Literal {
         match node_ref.point().specific() {
             Specific::IntegerLiteral => LiteralValue::Integer(node_ref.as_code().parse().unwrap()),
             Specific::StringLiteral => LiteralValue::String(node_ref.as_code()),
-            Specific::BooleanLiteral => todo!(),
+            Specific::BooleanLiteral => LiteralValue::Boolean(node_ref.as_code() == "True"),
             Specific::BytesLiteral => todo!(),
             _ => unreachable!(),
         }
