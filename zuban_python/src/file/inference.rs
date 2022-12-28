@@ -521,9 +521,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     fn infer_single_target(&mut self, target: Target) -> Inferred {
         match target {
-            Target::Name(name_def) => {
-                todo!()
-            }
+            // TODO it's a bit weird that we cannot just call self.infer_name_definition here
+            Target::Name(name_def) => self.infer_name_reference(name_def.name()),
             Target::NameExpression(primary_target, name_def_node) => {
                 todo!()
             }
