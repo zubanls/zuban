@@ -167,7 +167,16 @@ impl<'a> Type<'a> {
                 },
                 DbType::Any => true,
                 DbType::Never => todo!(),
-                DbType::Literal(literal) => false, // TODO this is probably wrong
+                DbType::Literal(literal1) => match other.maybe_db_type() {
+                    Some(DbType::Literal(literal2)) => {
+                        literal1.value(i_s.db) == literal2.value(i_s.db)
+                    }
+                    _ => i_s
+                        .db
+                        .python_state
+                        .literal_type(i_s.db, *literal1)
+                        .overlaps(i_s, other),
+                },
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
