@@ -167,7 +167,7 @@ impl<'a> Type<'a> {
                 },
                 DbType::Any => true,
                 DbType::Never => todo!(),
-                DbType::Literal(literal) => todo!(),
+                DbType::Literal(literal) => false, // TODO this is probably wrong
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
