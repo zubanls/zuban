@@ -843,6 +843,29 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     None,
                 ))
             }
+            ExpressionPart::Factor(f) => {
+                let (operator, right) = f.unpack();
+                let method_name = match operator.as_code() {
+                    "-" => {
+                        if let ExpressionPart::Atom(atom) = right {
+                            if let AtomContent::Int(i) = atom.unpack() {
+                                let specific = match result_context.is_literal_context(self.i_s) {
+                                    true => Specific::IntegerLiteral,
+                                    false => Specific::Integer,
+                                };
+                                let point = Point::new_simple_specific(specific, Locality::Todo);
+                                return Inferred::new_and_save(self.file, f.index(), point);
+                            }
+                        }
+                        "__neg__"
+                    }
+                    "+" => "__pos__",
+                    "~" => "__invert__",
+                    _ => unreachable!(),
+                };
+                let right = self.infer_expression_part(right, &mut ResultContext::Unknown);
+                todo!()
+            }
             _ => todo!("Not handled yet {node:?}"),
         }
     }
@@ -1067,20 +1090,11 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
         let mut check_literal = |i_s, non_literal: Specific, literal| {
-            result_context
-                .with_type_if_exists_and_replace_type_var_likes(
-                    i_s,
-                    |i_s: &mut InferenceState<'db, '_>, type_| match type_.maybe_db_type() {
-                        Some(DbType::Literal(_)) => Some(literal),
-                        Some(DbType::Union(items)) => items
-                            .iter()
-                            .any(|i| matches!(i, DbType::Literal(_)))
-                            .then_some(literal),
-                        _ => None,
-                    },
-                )
-                .flatten()
-                .unwrap_or(non_literal)
+            if result_context.is_literal_context(i_s) {
+                literal
+            } else {
+                non_literal
+            }
         };
 
         use AtomContent::*;

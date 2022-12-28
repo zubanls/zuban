@@ -302,7 +302,6 @@ testLiteralSubtypeContext
 testLiteralSubtypeContextNested
 testLiteralSubtypeContextGeneric
 testLiteralErrorsWhenInvoked-skip
-testNegativeIntLiteral
 testNegativeIntLiteralWithFinal
 testConditionalBoolLiteralUnionNarrowing
 testNewAnalyzerBool
