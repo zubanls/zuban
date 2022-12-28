@@ -182,7 +182,7 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::IncompatibleAssignment{got, expected} => {
                 format!(
-                    "Incompatible types in assignment (expression has type {got:?}, variable has type {expected:?})",
+                    "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",
                 )
             }
             IssueType::ListItemMismatch{item, got, expected} => format!(
