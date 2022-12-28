@@ -781,6 +781,26 @@ impl<'db> ExpressionPart<'db> {
             Self::Disjunction(n) => n.index(),
         }
     }
+
+    pub fn as_code(&self) -> &'db str {
+        match self {
+            Self::Atom(n) => n.as_code(),
+            Self::Primary(n) => n.as_code(),
+            Self::AwaitPrimary(n) => n.as_code(),
+            Self::Power(n) => n.as_code(),
+            Self::Factor(n) => n.as_code(),
+            Self::Term(n) => n.as_code(),
+            Self::Sum(n) => n.as_code(),
+            Self::ShiftExpr(n) => n.as_code(),
+            Self::BitwiseAnd(n) => n.as_code(),
+            Self::BitwiseXor(n) => n.as_code(),
+            Self::BitwiseOr(n) => n.as_code(),
+            Self::Comparison(n) => n.as_code(),
+            Self::Inversion(n) => n.as_code(),
+            Self::Conjunction(n) => n.as_code(),
+            Self::Disjunction(n) => n.as_code(),
+        }
+    }
 }
 
 impl<'db> InterestingNodeSearcher<'db> for ExpressionPart<'db> {

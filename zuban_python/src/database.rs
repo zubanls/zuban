@@ -1924,7 +1924,7 @@ pub enum LiteralKind {
 #[derive(PartialEq, Eq)]
 pub enum LiteralValue<'db> {
     String(&'db str),
-    Integer(usize), // TODO this does not work for Python ints > usize
+    Integer(isize), // TODO this does not work for Python ints > usize
     Bytes(()),
     Boolean(bool),
 }
@@ -1947,7 +1947,21 @@ impl Literal {
     pub fn value(self, db: &Database) -> LiteralValue {
         let node_ref = self.node_ref(db);
         match node_ref.point().specific() {
-            Specific::IntegerLiteral => LiteralValue::Integer(node_ref.as_code().parse().unwrap()),
+            Specific::IntegerLiteral => {
+                let factor = node_ref.maybe_factor();
+                if node_ref.as_code().contains("0x") {
+                    todo!()
+                }
+                let mut n: isize = factor
+                    .map(|f| f.unpack().1.as_code())
+                    .unwrap_or_else(|| node_ref.as_code())
+                    .parse()
+                    .unwrap();
+                if factor.is_some() {
+                    n = -n;
+                }
+                LiteralValue::Integer(n)
+            }
             Specific::StringLiteral => LiteralValue::String(node_ref.as_code()),
             Specific::BooleanLiteral => LiteralValue::Boolean(node_ref.as_code() == "True"),
             Specific::BytesLiteral => todo!(),

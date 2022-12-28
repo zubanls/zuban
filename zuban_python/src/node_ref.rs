@@ -1,8 +1,9 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Annotation, Atom, AtomContent, ClassDef, DoubleStarredExpression, Expression, ImportFrom, Name,
-    NamedExpression, NodeIndex, Primary, PythonString, StarredExpression, StringLiteral,
+    Annotation, Atom, AtomContent, ClassDef, DoubleStarredExpression, Expression, Factor,
+    ImportFrom, Name, NamedExpression, NodeIndex, Primary, PythonString, StarredExpression,
+    StringLiteral,
 };
 
 use crate::database::{
@@ -148,6 +149,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn maybe_class(&self) -> Option<ClassDef<'file>> {
         ClassDef::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn maybe_factor(&self) -> Option<Factor<'file>> {
+        Factor::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn as_named_expression(&self) -> NamedExpression<'file> {
