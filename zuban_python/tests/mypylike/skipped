@@ -1258,7 +1258,7 @@ testVariableDeclWithInvalidNumberOfTypesNested4
 
 # EllipsisType
 testUnionWithEllipsis
-# Weird ellipsis assignment
+# Ellipsis / raise NotimplementedError / pass are considered stubs in normal files 
 testEllipsisDefaultArgValueInNonStub
 testEllipsisDefaultArgValueInNonStubsMethods
 
