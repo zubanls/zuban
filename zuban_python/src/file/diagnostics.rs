@@ -326,7 +326,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
-        if !is_overload_member && !self.file.is_stub(self.i_s.db) {
+        if !is_overload_member {
             // Check defaults here.
             for param in params.iter() {
                 if let Some(annotation) = param.annotation() {
@@ -334,6 +334,11 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         let inf = self.infer_expression(default);
                         self.use_cached_annotation_type(annotation)
                             .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
+                                if self.file.is_stub(self.i_s.db) && default.is_ellipsis_literal() {
+                                    // In stubs it is allowed to do stuff like:
+                                    // def foo(x: int = ...) -> int: ...
+                                    return;
+                                }
                                 NodeRef::new(self.file, default.index()).add_typing_issue(
                                     i_s.db,
                                     IssueType::IncompatibleDefaultArgument {
