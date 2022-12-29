@@ -368,6 +368,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         if node_ref.point().calculated() {
             return;
         }
+        let on_type_error = |i_s: &mut InferenceState, got, expected| {
+            node_ref.add_typing_issue(i_s.db, IssueType::IncompatibleAssignment { got, expected });
+        };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 for target in targets {
@@ -400,12 +403,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let right = if let Some((r, type_)) = type_comment_result {
                     let right = self
                         .infer_assignment_right_side(right_side, &mut ResultContext::Known(&type_));
-                    type_.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
-                        node_ref.add_typing_issue(
-                            i_s.db,
-                            IssueType::IncompatibleAssignment { got, expected },
-                        );
-                    });
+                    type_.error_if_not_matches(self.i_s, &right, on_type_error);
                     r
                 } else {
                     let original_def = self.original_definition(assignment);
@@ -441,12 +439,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         let t = self.use_cached_annotation_type(annotation);
                         let right = self
                             .infer_assignment_right_side(right_side, &mut ResultContext::Known(&t));
-                        t.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
-                            node_ref.add_typing_issue(
-                                i_s.db,
-                                IssueType::IncompatibleAssignment { got, expected },
-                            );
-                        });
+                        t.error_if_not_matches(self.i_s, &right, on_type_error);
                     }
                     let inf_annot = self.use_cached_annotation(annotation);
                     self.assign_single_target(target, &inf_annot, true, |index| {
