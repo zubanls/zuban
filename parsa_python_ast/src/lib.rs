@@ -697,6 +697,14 @@ impl<'db> Expression<'db> {
         }
         None
     }
+
+    pub fn is_ellipsis_literal(&self) -> bool {
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = self.unpack() {
+            matches!(a.unpack(), AtomContent::Ellipsis)
+        } else {
+            false
+        }
+    }
 }
 
 pub enum ExpressionContent<'db> {
@@ -857,11 +865,10 @@ impl<'db> NamedExpression<'db> {
 
     pub fn is_ellipsis_literal(&self) -> bool {
         if let NamedExpressionContent::Expression(e) = self.unpack() {
-            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = e.unpack() {
-                return matches!(a.unpack(), AtomContent::Ellipsis);
-            }
+            e.is_ellipsis_literal()
+        } else {
+            false
         }
-        false
     }
 
     pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {

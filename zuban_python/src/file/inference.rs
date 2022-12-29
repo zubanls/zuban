@@ -368,19 +368,33 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         if node_ref.point().calculated() {
             return;
         }
-        let on_type_error = |i_s: &mut InferenceState, got, expected| {
-            node_ref.add_typing_issue(i_s.db, IssueType::IncompatibleAssignment { got, expected });
-        };
-        match assignment.unpack() {
+        let right_side = match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 for target in targets {
                     self.set_calculating_on_target(target);
                 }
+                Some(right_side)
             }
-            AssignmentContent::WithAnnotation(target, _, _) => {
-                self.set_calculating_on_target(target)
+            AssignmentContent::WithAnnotation(target, _, right_side) => {
+                self.set_calculating_on_target(target);
+                right_side
             }
-            AssignmentContent::AugAssign(target, aug_assign, right_side) => (),
+            AssignmentContent::AugAssign(target, aug_assign, right_side) => Some(right_side),
+        };
+        let on_type_error = |i_s: &mut InferenceState, got, expected| {
+            // In cases of stubs when an ellipsis is given, it's not an error.
+            if self.file.is_stub(i_s.db) {
+                // Right side always exists, because it was compared and there was an error because
+                // of it.
+                if let AssignmentRightSide::StarExpressions(star_exprs) = right_side.unwrap() {
+                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
+                        if expr.is_ellipsis_literal() {
+                            return;
+                        }
+                    }
+                }
+            }
+            node_ref.add_typing_issue(i_s.db, IssueType::IncompatibleAssignment { got, expected });
         };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
