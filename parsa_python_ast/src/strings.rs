@@ -43,6 +43,7 @@ impl<'db> PythonString<'db> {
                     let s = string.as_mut().unwrap();
                     s.push_str(&inner[previous_insert..i]);
                     (previous_insert, ch) = iterator.next().unwrap();
+                    previous_insert += 1;
                     match ch {
                         b'\\' => todo!(),
                         _ if *ch == quote => s.push(quote as char),

@@ -257,7 +257,6 @@ multiple_lambda_mypy_issue_4226
 testChainedAssignmentInferenceContexts
 
 # Literal
-testLiteralValidExpressionsInStringsPython3
 testLiteralMixingUnicodeAndBytesPython3
 testLiteralMixingUnicodeAndBytesPython3ForwardStrings
 testLiteralUnicodeWeirdCharacters
