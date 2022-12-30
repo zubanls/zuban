@@ -948,9 +948,7 @@ impl DbType {
                 }
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {
-                ()
-            }
+            Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {}
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {

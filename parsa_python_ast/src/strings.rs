@@ -54,7 +54,7 @@ impl<'db> PythonString<'db> {
             };
             let inner = &code[start..code.len() - 1];
 
-            let mut iterator = inner.as_bytes().iter().enumerate();
+            let mut iterator = inner.as_bytes().iter().enumerate().peekable();
             let mut string = None;
             let mut previous_insert = 0;
             while let Some((i, mut ch)) = iterator.next() {
@@ -64,13 +64,26 @@ impl<'db> PythonString<'db> {
                     }
                     let s = string.as_mut().unwrap();
                     s.push_str(&inner[previous_insert..i]);
-                    (previous_insert, ch) = iterator.next().unwrap();
-                    previous_insert += 1;
-                    match ch {
-                        b'\\' => todo!(),
-                        _ if *ch == quote => s.push(quote as char),
-                        _ => todo!(),
-                    }
+                    (_, ch) = iterator.next().unwrap();
+
+                    s.push(match ch {
+                        b'\\' | b'\'' | b'"' => quote as char,
+                        b'\n' => todo!(),
+                        b'u' => parse_hex(4, iterator.by_ref()),
+                        b'U' => parse_hex(8, iterator.by_ref()),
+                        b'x' => parse_hex(2, iterator.by_ref()),
+                        b'N' => todo!(),
+                        b'a' => todo!(),
+                        b'b' => todo!(),
+                        b'f' => todo!(),
+                        b'n' => todo!(),
+                        b'r' => todo!(),
+                        b't' => todo!(),
+                        b'v' => todo!(),
+                        // TODO also \ooo (where o is 0-7) (octal)
+                        _ => todo!("{inner:?}"),
+                    });
+                    previous_insert = iterator.peek().map(|x| x.0).unwrap_or_else(|| inner.len());
                 }
             }
             if let Some(mut string) = string {
@@ -97,4 +110,21 @@ impl<'db> PythonString<'db> {
             Self::FString => Self::FString,
         }
     }
+}
+
+fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I) -> char {
+    let mut number = 0;
+    for (i, (_, x)) in iterator.take(count).enumerate() {
+        let digit = if (b'0'..=b'9').contains(x) {
+            *x - b'0'
+        } else if (b'a'..=b'f').contains(x) {
+            *x - b'a' + 10
+        } else if (b'A'..=b'F').contains(x) {
+            *x - b'A' + 10
+        } else {
+            todo!()
+        };
+        number += (digit as u32) << ((count - i - 1) * 4);
+    }
+    char::from_u32(number).unwrap_or_else(|| todo!())
 }
