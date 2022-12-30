@@ -2814,7 +2814,7 @@ impl<'db> Bytes<'db> {
         }
         debug_assert!(code[0] != b'"' && code[0] != b'\'');
         if code[1] == b'"' || code[1] == b'\'' {
-            Cow::Borrowed(&code[1..code.len() - 1])
+            Cow::Borrowed(&code[2..code.len() - 1])
         } else {
             todo!()
         }
