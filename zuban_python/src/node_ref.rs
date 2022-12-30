@@ -136,7 +136,7 @@ impl<'file> NodeRef<'file> {
     pub fn infer_str(&self) -> Option<PythonString<'file>> {
         Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
             match atom.unpack() {
-                AtomContent::Strings(s) => s.as_python_string(),
+                AtomContent::Strings(s) => Some(s.as_python_string()),
                 _ => None,
             }
         })

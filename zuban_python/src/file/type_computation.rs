@@ -1505,12 +1505,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 self.compute_type_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                Some(PythonString::Ref(start, s)) => {
-                    self.compute_forward_reference(start, s.to_owned())
-                }
-                Some(PythonString::String(start, s)) => self.compute_forward_reference(start, s),
-                Some(PythonString::FString) => todo!(),
-                None => todo!(),
+                PythonString::Ref(start, s) => self.compute_forward_reference(start, s.to_owned()),
+                PythonString::String(start, s) => self.compute_forward_reference(start, s),
+                PythonString::FString => todo!(),
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
             AtomContent::List(_) => TypeContent::InvalidVariable(InvalidVariableType::List),

@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python::NonterminalType::fstring;
 use parsa_python::PyNodeType::Nonterminal;
 use parsa_python::{CodeIndex, PyNode, SiblingIterator};
@@ -10,7 +12,7 @@ pub enum PythonString<'db> {
 }
 
 impl<'db> PythonString<'db> {
-    pub fn new(strings: SiblingIterator<'db>) -> Option<Self> {
+    pub fn new(strings: SiblingIterator<'db>) -> Self {
         let mut result: Option<Self> = None;
         for literal in strings {
             result = Some(match result {
@@ -18,20 +20,40 @@ impl<'db> PythonString<'db> {
                 None => Self::from_literal(literal),
             });
         }
-        result
+        result.unwrap()
     }
 
-    fn from_literal(literal: PyNode<'db>) -> Self {
+    pub fn into_cow(self) -> Option<Cow<'db, str>> {
+        match self {
+            Self::Ref(_, s) => Some(Cow::Borrowed(s)),
+            Self::String(_, s) => Some(Cow::Owned(s)),
+            Self::FString => None,
+        }
+    }
+
+    pub fn from_literal(literal: PyNode<'db>) -> Self {
         if literal.is_type(Nonterminal(fstring)) {
             Self::FString
         } else {
             let code = literal.as_code();
-            if !code.starts_with(['"', '\''].as_slice()) {
-                todo!()
-            }
-            let inner = &code[1..code.len() - 1];
+            let bytes = code.as_bytes();
+            let mut quote = bytes[0];
+            let start = match quote {
+                b'u' | b'U' => {
+                    quote = bytes[0];
+                    2
+                }
+                b'r' | b'R' => {
+                    quote = bytes[0];
+                    2
+                }
+                _ => {
+                    debug_assert!(quote == b'"' || quote == b'\'');
+                    1
+                }
+            };
+            let inner = &code[start..code.len() - 1];
 
-            let quote = code.as_bytes()[0];
             let mut iterator = inner.as_bytes().iter().enumerate();
             let mut string = None;
             let mut previous_insert = 0;
@@ -53,9 +75,9 @@ impl<'db> PythonString<'db> {
             }
             if let Some(mut string) = string {
                 string.push_str(&inner[previous_insert..inner.len()]);
-                Self::String(literal.start() + 1, string)
+                Self::String(literal.start() + start as u32, string)
             } else {
-                Self::Ref(literal.start() + 1, inner)
+                Self::Ref(literal.start() + start as u32, inner)
             }
         }
     }

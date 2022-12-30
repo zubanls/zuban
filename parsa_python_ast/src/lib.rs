@@ -2882,10 +2882,14 @@ impl<'db> StringLiteral<'db> {
             .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
             .map(|(name, _)| name)
     }
+
+    pub fn as_python_string(&self) -> PythonString<'db> {
+        PythonString::from_literal(self.node)
+    }
 }
 
 impl<'db> Strings<'db> {
-    pub fn as_python_string(&self) -> Option<PythonString<'db>> {
+    pub fn as_python_string(&self) -> PythonString<'db> {
         PythonString::new(self.node.iter_children())
     }
 

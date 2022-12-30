@@ -1924,7 +1924,7 @@ pub enum LiteralKind {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum LiteralValue<'db> {
-    String(&'db str),
+    String(Cow<'db, str>),
     Integer(isize), // TODO this does not work for Python ints > usize
     Bytes(Cow<'db, [u8]>),
     Boolean(bool),
@@ -1963,7 +1963,14 @@ impl Literal {
                 }
                 LiteralValue::Integer(n)
             }
-            Specific::StringLiteral => LiteralValue::String(node_ref.as_code()),
+            Specific::StringLiteral => LiteralValue::String(
+                node_ref
+                    .maybe_str()
+                    .unwrap()
+                    .as_python_string()
+                    .into_cow()
+                    .unwrap(), // Can unwrap, because we know that there was never an f-string.
+            ),
             Specific::BooleanLiteral => LiteralValue::Boolean(node_ref.as_code() == "True"),
             Specific::BytesLiteral => {
                 LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
