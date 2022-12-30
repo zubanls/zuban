@@ -1,8 +1,8 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Annotation, Atom, AtomContent, ClassDef, DoubleStarredExpression, Expression, Factor,
-    ImportFrom, Name, NamedExpression, NodeIndex, Primary, PythonString, StarredExpression,
+    Annotation, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression, Expression, Factor,
+    ImportFrom, Int, Name, NamedExpression, NodeIndex, Primary, PythonString, StarredExpression,
     StringLiteral,
 };
 
@@ -109,6 +109,10 @@ impl<'file> NodeRef<'file> {
         Annotation::by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn as_bytes_literal(&self) -> Bytes<'file> {
+        Bytes::by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn maybe_name(&self) -> Option<Name<'file>> {
         Name::maybe_by_index(&self.file.tree, self.node_index)
     }
@@ -126,12 +130,7 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn infer_int(&self) -> Option<i64> {
-        Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
-            match atom.unpack() {
-                AtomContent::Int(i) => i.as_str().parse().ok(),
-                _ => None,
-            }
-        })
+        Int::maybe_by_index(&self.file.tree, self.node_index).and_then(|i| i.as_str().parse().ok())
     }
 
     pub fn infer_str(&self) -> Option<PythonString<'file>> {

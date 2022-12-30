@@ -117,7 +117,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                                 .unwrap_or_else(Inferred::new_unknown)
                         }
                     } else {
-                        todo!()
+                        todo!("{ts:?}")
                     }
                 }
                 Some(TupleTypeArguments::ArbitraryLength(t)) => {

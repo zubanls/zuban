@@ -1914,6 +1914,7 @@ pub struct Literal {
     pub implicit: bool,
 }
 
+#[derive(PartialEq, Eq)]
 pub enum LiteralKind {
     String,
     Integer,
@@ -1925,7 +1926,7 @@ pub enum LiteralKind {
 pub enum LiteralValue<'db> {
     String(&'db str),
     Integer(isize), // TODO this does not work for Python ints > usize
-    Bytes(()),
+    Bytes(Cow<'db, [u8]>),
     Boolean(bool),
 }
 
@@ -1964,13 +1965,20 @@ impl Literal {
             }
             Specific::StringLiteral => LiteralValue::String(node_ref.as_code()),
             Specific::BooleanLiteral => LiteralValue::Boolean(node_ref.as_code() == "True"),
-            Specific::BytesLiteral => todo!(),
+            Specific::BytesLiteral => {
+                LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
+            }
             _ => unreachable!(),
         }
     }
 
     pub fn format_inner(self, db: &Database) -> &str {
-        self.node_ref(db).as_code()
+        let code = self.node_ref(db).as_code();
+        if self.kind(db) == LiteralKind::String && code.starts_with(['u', 'U']) {
+            &code[1..]
+        } else {
+            code
+        }
     }
 
     pub fn format(self, format_data: &FormatData) -> Box<str> {

@@ -1,5 +1,6 @@
 mod strings;
 
+use std::borrow::Cow;
 use std::iter::{Skip, StepBy};
 use std::str::from_utf8;
 
@@ -2799,6 +2800,25 @@ pub enum AtomContent<'db> {
     GeneratorComprehension(Comprehension<'db>),
     YieldExpr(YieldExpr<'db>),
     NamedExpression(NamedExpression<'db>),
+}
+
+impl<'db> Bytes<'db> {
+    pub fn content_as_bytes(&self) -> Cow<'db, [u8]> {
+        let code = self.as_code();
+        if code.contains("'''") || code.contains("\"\"\"") {
+            todo!()
+        }
+        let code = code.as_bytes();
+        if code.contains(&b'\\') {
+            todo!()
+        }
+        debug_assert!(code[0] != b'"' && code[0] != b'\'');
+        if code[1] == b'"' || code[1] == b'\'' {
+            Cow::Borrowed(&code[1..code.len() - 1])
+        } else {
+            todo!()
+        }
+    }
 }
 
 impl<'db> StringLiteral<'db> {
