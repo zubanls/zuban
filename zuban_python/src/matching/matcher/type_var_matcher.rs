@@ -660,7 +660,7 @@ pub fn match_arguments_against_params<
                     &value,
                     on_type_error.as_ref().map(|on_type_error| {
                         |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
-                            let node_ref = argument.as_node_ref();
+                            let node_ref = argument.as_node_ref().to_db_lifetime(i_s.db);
                             if let Some(starred) = node_ref.maybe_starred_expression() {
                                 t1 = format!(
                                     "*{}",
@@ -685,14 +685,6 @@ pub fn match_arguments_against_params<
                                 .into()
                             }
                             match reason {
-                                MismatchReason::None => (on_type_error.callback)(
-                                    i_s,
-                                    class,
-                                    &diagnostic_string,
-                                    argument,
-                                    t1,
-                                    t2,
-                                ),
                                 MismatchReason::CannotInferTypeArgument(index) => {
                                     node_ref.add_typing_issue(
                                         i_s.db,
@@ -714,7 +706,16 @@ pub fn match_arguments_against_params<
                                         },
                                     );
                                 }
-                            }
+                                _ => (on_type_error.callback)(
+                                    i_s,
+                                    class,
+                                    &diagnostic_string,
+                                    argument,
+                                    t1,
+                                    t2,
+                                ),
+                            };
+                            node_ref
                         }
                     }),
                 );

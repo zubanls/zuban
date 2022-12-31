@@ -364,7 +364,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     }
 
     pub(super) fn cache_assignment_nodes(&mut self, assignment: Assignment) {
-        let node_ref = NodeRef::new(self.file, assignment.index());
+        let node_ref = NodeRef::new(self.file, assignment.index()).to_db_lifetime(self.i_s.db);
         if node_ref.point().calculated() {
             return;
         }
@@ -381,7 +381,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => Some(right_side),
         };
-        let on_type_error = |i_s: &mut InferenceState, got, expected| {
+        let on_type_error = |i_s: &mut InferenceState, got, expected| -> NodeRef {
             // In cases of stubs when an ellipsis is given, it's not an error.
             if self.file.is_stub(i_s.db) {
                 // Right side always exists, because it was compared and there was an error because
@@ -389,12 +389,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right_side.unwrap() {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
                         if expr.is_ellipsis_literal() {
-                            return;
+                            return node_ref;
                         }
                     }
                 }
             }
             node_ref.add_typing_issue(i_s.db, IssueType::IncompatibleAssignment { got, expected });
+            node_ref
         };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
@@ -564,10 +565,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         self.i_s,
                         value,
                         |i_s, got, expected| {
-                            NodeRef::new(self.file, name_def.index()).add_typing_issue(
+                            let node_ref =
+                                NodeRef::new(self.file, name_def.index()).to_db_lifetime(i_s.db);
+                            node_ref.add_typing_issue(
                                 i_s.db,
                                 IssueType::IncompatibleAssignment { got, expected },
                             );
+                            node_ref
                         },
                     );
                 }
@@ -584,10 +588,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     self.infer_primary_target(primary_target)
                         .class_as_type(self.i_s)
                         .error_if_not_matches(self.i_s, value, |i_s, got, expected| {
-                            NodeRef::new(self.file, primary_target.index()).add_typing_issue(
+                            let node_ref = NodeRef::new(self.file, primary_target.index())
+                                .to_db_lifetime(i_s.db);
+                            node_ref.add_typing_issue(
                                 self.i_s.db,
                                 IssueType::IncompatibleAssignment { got, expected },
                             );
+                            node_ref
                         });
                 }
                 // This mostly needs to be saved for self names

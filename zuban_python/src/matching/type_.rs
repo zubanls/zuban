@@ -9,8 +9,10 @@ use crate::database::{
     TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 use crate::value::{Class, Instance, LookupResult, MroIterator, Value};
 
 #[derive(Debug, Clone)]
@@ -668,10 +670,23 @@ impl<'a> Type<'a> {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
             if class1.node_ref == class2.node_ref {
                 if let Some(type_vars) = class1.type_vars(i_s) {
-                    return class1
-                        .generics()
-                        .matches(i_s, matcher, class2.generics(), type_vars)
+                    let c1_generics = class1.generics();
+                    let c2_generics = class2.generics();
+                    let result = c1_generics
+                        .matches(i_s, matcher, c2_generics, type_vars)
                         .similar_if_false();
+                    if !result.bool() && class1.node_ref == i_s.db.python_state.list() {
+                        let type_var_like = &type_vars[0];
+                        let t1 = c1_generics.nth_type_argument(i_s, type_var_like, 0);
+                        let t2 = c2_generics.nth_type_argument(i_s, type_var_like, 0);
+                        if t1.is_super_type_of(i_s, matcher, &t2).bool() {
+                            return Match::False {
+                                similar: true,
+                                reason: MismatchReason::SequenceInsteadOfListNeeded,
+                            };
+                        }
+                    }
+                    return result;
                 }
                 return Match::new_true();
             }
@@ -818,17 +833,21 @@ impl<'a> Type<'a> {
         false
     }
 
-    pub fn error_if_not_matches(
+    pub fn error_if_not_matches<'db>(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &mut InferenceState<'db, '_>,
         value: &Inferred,
-        callback: impl FnOnce(&mut InferenceState, Box<str>, Box<str>),
+        callback: impl FnOnce(&mut InferenceState<'db, '_>, Box<str>, Box<str>) -> NodeRef<'db>,
     ) -> Match {
         self.error_if_not_matches_with_matcher(
             i_s,
             &mut Matcher::default(),
             value,
-            Some(|i_s: &mut InferenceState, t1, t2, reason: &MismatchReason| callback(i_s, t1, t2)),
+            Some(
+                |i_s: &mut InferenceState<'db, '_>, t1, t2, reason: &MismatchReason| {
+                    callback(i_s, t1, t2)
+                },
+            ),
         )
     }
 
@@ -838,7 +857,12 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         value: &Inferred,
         callback: Option<
-            impl FnOnce(&mut InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason),
+            impl FnOnce(
+                &mut InferenceState<'db, '_>,
+                Box<str>,
+                Box<str>,
+                &MismatchReason,
+            ) -> NodeRef<'db>,
         >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
@@ -860,7 +884,28 @@ impl<'a> Type<'a> {
                 matches.clone()
             );
             if let Some(callback) = callback {
-                callback(i_s, input, wanted, reason)
+                let node_ref = callback(i_s, input, wanted, reason);
+                match reason {
+                    MismatchReason::SequenceInsteadOfListNeeded => {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::InvariantNote {
+                                actual: "List",
+                                maybe: "Sequence",
+                            },
+                        );
+                    }
+                    MismatchReason::SequenceInsteadOfDictNeeded => {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::InvariantNote {
+                                actual: "Dict",
+                                maybe: "Mapping",
+                            },
+                        );
+                    }
+                    _ => (),
+                }
             }
         }
         matches

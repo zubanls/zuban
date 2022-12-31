@@ -76,6 +76,20 @@ impl<'a> Generics<'a> {
         }
     }
 
+    pub fn nth_type_argument<'db: 'a>(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        type_var_like: &TypeVarLike,
+        n: usize,
+    ) -> Type<'a> {
+        let generic = self.nth(i_s, type_var_like, n);
+        if let Generic::TypeArgument(p) = generic {
+            p
+        } else {
+            unreachable!()
+        }
+    }
+
     pub fn nth<'db: 'a>(
         &self,
         i_s: &mut InferenceState<'db, '_>,

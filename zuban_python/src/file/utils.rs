@@ -75,8 +75,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
     }
 }
 
-fn check_list_with_context(
-    i_s: &mut InferenceState,
+fn check_list_with_context<'db>(
+    i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     generic_t: Type,
     file: &PythonFile,
@@ -89,14 +89,15 @@ fn check_list_with_context(
     let mut found = None;
     if let Some(elements) = list.unpack() {
         for (item, element) in elements.enumerate() {
-            let mut check_item = |i_s: &mut InferenceState, inferred: Inferred, index| {
+            let mut check_item = |i_s: &mut InferenceState<'db, '_>, inferred: Inferred, index| {
                 let m = generic_t.error_if_not_matches_with_matcher(
                     i_s,
                     matcher,
                     &inferred,
                     Some(
-                        |i_s: &mut InferenceState, got, expected, _: &MismatchReason| {
-                            NodeRef::new(file, index).add_typing_issue(
+                        |i_s: &mut InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
+                            let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
+                            node_ref.add_typing_issue(
                                 i_s.db,
                                 IssueType::ListItemMismatch {
                                     item,
@@ -104,6 +105,7 @@ fn check_list_with_context(
                                     expected,
                                 },
                             );
+                            node_ref
                         },
                     ),
                 );

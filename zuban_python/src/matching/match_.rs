@@ -39,6 +39,8 @@ pub enum MismatchReason {
         expected: DbType,
         type_var: Rc<TypeVar>,
     },
+    SequenceInsteadOfListNeeded,
+    SequenceInsteadOfDictNeeded,
 }
 
 impl Match {
