@@ -1,5 +1,4 @@
 # Next up
-testLiteralBasicStrUsageSlashes
 literal_union_formatting1
 testFunctionForwardRefAlias
 testParamSpecApplyConcatenateTwice

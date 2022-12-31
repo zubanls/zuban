@@ -40,7 +40,7 @@ impl<'db> PythonString<'db> {
             let quote = bytes[0];
             let start = match quote {
                 b'u' | b'U' => 2,
-                b'r' | b'R' => 2,
+                b'r' | b'R' => return Self::Ref(literal.start() + 2, &code[2..code.len() - 1]),
                 _ => {
                     debug_assert!(quote == b'"' || quote == b'\'');
                     1

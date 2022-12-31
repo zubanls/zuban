@@ -376,8 +376,17 @@ pub fn str_repr(content: Cow<str>) -> String {
     let mut repr = String::new();
     for c in content.as_ref().chars() {
         if c.is_ascii_control() {
-            repr += "\\";
-            repr += &format!("{:#04x}", c as u8)[1..];
+            match c {
+                '\n' => repr += "\\n",
+                '\r' => repr += "\\r",
+                '\t' => repr += "\\t",
+                _ => {
+                    repr += "\\";
+                    repr += &format!("{:#04x}", c as u8)[1..];
+                }
+            }
+        } else if c == '\\' {
+            repr += r"\\";
         } else {
             repr.push(c);
         }
