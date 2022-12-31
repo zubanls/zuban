@@ -18,7 +18,7 @@ use crate::inference_state::InferenceState;
 use crate::matching::{FormatData, Generic, Generics, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
-use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
+use crate::utils::{bytes_repr, InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
@@ -1993,7 +1993,7 @@ impl Literal {
             LiteralValue::Integer(i) => Cow::Owned(format!("{i}")),
             LiteralValue::Boolean(true) => Cow::Borrowed("True"),
             LiteralValue::Boolean(false) => Cow::Borrowed("False"),
-            LiteralValue::Bytes(b) => Cow::Borrowed(code),
+            LiteralValue::Bytes(b) => Cow::Owned(bytes_repr(b)),
         }
     }
 
