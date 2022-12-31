@@ -18,7 +18,7 @@ use crate::inference_state::InferenceState;
 use crate::matching::{FormatData, Generic, Generics, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
-use crate::utils::{bytes_repr, InsertOnlyVec, Invalidations, SymbolTable};
+use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
@@ -1981,15 +1981,8 @@ impl Literal {
     }
 
     fn format_inner(self, db: &Database) -> Cow<str> {
-        let code = self.node_ref(db).as_code();
         match self.value(db) {
-            LiteralValue::String(s) => {
-                if self.kind(db) == LiteralKind::String && code.starts_with(['u', 'U']) {
-                    Cow::Borrowed(&code[1..])
-                } else {
-                    Cow::Borrowed(code)
-                }
-            }
+            LiteralValue::String(s) => Cow::Owned(str_repr(s)),
             LiteralValue::Integer(i) => Cow::Owned(format!("{i}")),
             LiteralValue::Boolean(true) => Cow::Borrowed("True"),
             LiteralValue::Boolean(false) => Cow::Borrowed("False"),

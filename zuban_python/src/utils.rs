@@ -371,3 +371,16 @@ pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
     }
     format!("b'{string}'")
 }
+
+pub fn str_repr(content: Cow<str>) -> String {
+    let mut repr = String::new();
+    for c in content.as_ref().chars() {
+        if c.is_ascii_control() {
+            repr += "\\";
+            repr += &format!("{:#04x}", c as u8)[1..];
+        } else {
+            repr.push(c);
+        }
+    }
+    format!("'{repr}'")
+}
