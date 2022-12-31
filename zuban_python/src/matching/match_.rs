@@ -40,7 +40,7 @@ pub enum MismatchReason {
         type_var: Rc<TypeVar>,
     },
     SequenceInsteadOfListNeeded,
-    SequenceInsteadOfDictNeeded,
+    MappingInsteadOfDictNeeded,
 }
 
 impl Match {

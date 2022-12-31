@@ -675,14 +675,28 @@ impl<'a> Type<'a> {
                     let result = c1_generics
                         .matches(i_s, matcher, c2_generics, type_vars)
                         .similar_if_false();
-                    if !result.bool() && class1.node_ref == i_s.db.python_state.list() {
-                        let type_var_like = &type_vars[0];
-                        let t1 = c1_generics.nth_type_argument(i_s, type_var_like, 0);
-                        let t2 = c2_generics.nth_type_argument(i_s, type_var_like, 0);
-                        if t1.is_super_type_of(i_s, matcher, &t2).bool() {
+                    if !result.bool() {
+                        let mut check = |i_s: &mut InferenceState, n| {
+                            let type_var_like = &type_vars[n];
+                            let t1 = c1_generics.nth_type_argument(i_s, type_var_like, n);
+                            if t1.is_any() {
+                                return false;
+                            }
+                            let t2 = c2_generics.nth_type_argument(i_s, type_var_like, n);
+                            if t2.is_any() {
+                                return false;
+                            }
+                            t1.is_super_type_of(i_s, matcher, &t2).bool()
+                        };
+                        if class1.node_ref == i_s.db.python_state.list() && check(i_s, 0) {
                             return Match::False {
                                 similar: true,
                                 reason: MismatchReason::SequenceInsteadOfListNeeded,
+                            };
+                        } else if class1.node_ref == i_s.db.python_state.dict() && check(i_s, 1) {
+                            return Match::False {
+                                similar: true,
+                                reason: MismatchReason::MappingInsteadOfDictNeeded,
                             };
                         }
                     }
@@ -895,7 +909,7 @@ impl<'a> Type<'a> {
                             },
                         );
                     }
-                    MismatchReason::SequenceInsteadOfDictNeeded => {
+                    MismatchReason::MappingInsteadOfDictNeeded => {
                         node_ref.add_typing_issue(
                             i_s.db,
                             IssueType::InvariantNote {

@@ -293,6 +293,8 @@ testSimplifyingUnionAndTypePromotions
 testFlattenTypeAliasWhenAliasedAsUnion
 testOverloadingAndIntFloatSubtyping
 testAssignmentInvariantNoteForList
+testAssignmentInvariantNoteForDict
+testInvariantDictArgNote
 
 # Nested type vars
 testInnerFunctionWithTypevarValues
@@ -1128,8 +1130,6 @@ testSuggestPep604AnnotationForPartialNone
 testIncompatibleAssignmentAmbiguousShortnames
 
 # Invariant note
-testAssignmentInvariantNoteForDict
-testInvariantDictArgNote
 testInferredTypeSubTypeOfReturnType
 testListWithDucktypeCompatibility
 testListWithDucktypeCompatibilityAndTransitivity
