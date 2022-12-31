@@ -37,16 +37,10 @@ impl<'db> PythonString<'db> {
         } else {
             let code = literal.as_code();
             let bytes = code.as_bytes();
-            let mut quote = bytes[0];
+            let quote = bytes[0];
             let start = match quote {
-                b'u' | b'U' => {
-                    quote = bytes[0];
-                    2
-                }
-                b'r' | b'R' => {
-                    quote = bytes[0];
-                    2
-                }
+                b'u' | b'U' => 2,
+                b'r' | b'R' => 2,
                 _ => {
                     debug_assert!(quote == b'"' || quote == b'\'');
                     1
@@ -67,7 +61,7 @@ impl<'db> PythonString<'db> {
                     (_, ch) = iterator.next().unwrap();
 
                     s.push(match ch {
-                        b'\\' | b'\'' | b'"' => quote as char,
+                        b'\\' | b'\'' | b'"' => *ch as char,
                         b'\n' => todo!(),
                         b'u' => parse_hex(4, iterator.by_ref()),
                         b'U' => parse_hex(8, iterator.by_ref()),
