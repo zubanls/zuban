@@ -76,7 +76,7 @@ impl<'db> PythonString<'db> {
                         b'a' => todo!(),
                         b'b' => todo!(),
                         b'f' => todo!(),
-                        b'n' => todo!(),
+                        b'n' => '\n',
                         b'r' => todo!(),
                         b't' => todo!(),
                         b'v' => todo!(),

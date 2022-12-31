@@ -1948,14 +1948,17 @@ impl Literal {
         match node_ref.point().specific() {
             Specific::IntegerLiteral => {
                 let factor = node_ref.maybe_factor();
-                if node_ref.as_code().contains("0x") {
-                    todo!()
-                }
-                let mut n: isize = factor
+                let to_be_parsed = factor
                     .map(|f| f.unpack().1.as_code())
-                    .unwrap_or_else(|| node_ref.as_code())
-                    .parse()
-                    .unwrap();
+                    .unwrap_or_else(|| node_ref.as_code());
+                let mut n: isize = if let Some(stripped) = to_be_parsed.strip_prefix("0x") {
+                    isize::from_str_radix(stripped, 16).unwrap_or_else(|_| todo!())
+                } else {
+                    if to_be_parsed.contains('_') {
+                        todo!("Stuff like 100_000")
+                    }
+                    to_be_parsed.parse().unwrap()
+                };
                 if factor.is_some() {
                     n = -n;
                 }
@@ -1977,12 +1980,20 @@ impl Literal {
         }
     }
 
-    pub fn format_inner(self, db: &Database) -> &str {
+    fn format_inner(self, db: &Database) -> Cow<str> {
         let code = self.node_ref(db).as_code();
-        if self.kind(db) == LiteralKind::String && code.starts_with(['u', 'U']) {
-            &code[1..]
-        } else {
-            code
+        match self.value(db) {
+            LiteralValue::String(s) => {
+                if self.kind(db) == LiteralKind::String && code.starts_with(['u', 'U']) {
+                    Cow::Borrowed(&code[1..])
+                } else {
+                    Cow::Borrowed(code)
+                }
+            }
+            LiteralValue::Integer(i) => Cow::Owned(format!("{i}")),
+            LiteralValue::Boolean(true) => Cow::Borrowed("True"),
+            LiteralValue::Boolean(false) => Cow::Borrowed("False"),
+            LiteralValue::Bytes(b) => Cow::Borrowed(code),
         }
     }
 
