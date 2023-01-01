@@ -1,4 +1,6 @@
 # Next up
+testWideOuterContextNoArgsError
+testWideOuterContextEmptyError
 literal_union_formatting1
 testFunctionForwardRefAlias
 testParamSpecApplyConcatenateTwice
@@ -40,6 +42,7 @@ testOverloadVarargsAndKwargsSelection
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
 testOverloadInferUnionReturnBasic
+testOverloadsUsingAny
 testOverloadInferUnionReturnMultipleArguments
 testOverloadInferUnionRespectsVariance
 testUnionMathTrickyOverload1
@@ -1129,13 +1132,8 @@ testSuggestPep604AnnotationForPartialNone
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
 
-# Invariant note
+# "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
-testListWithDucktypeCompatibility
-testListWithDucktypeCompatibilityAndTransitivity
-testWideOuterContextEmptyError
-testWideOuterContextNoArgsError
-testOverloadsUsingAny
 
 # List unpacking
 testMultipleAssignmentWithLists
@@ -1385,6 +1383,10 @@ testRefreshForWithTypeComment2
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
+
+# Probably won't support: typing._promote
+testListWithDucktypeCompatibility
+testListWithDucktypeCompatibilityAndTransitivity
 
 # Probably won't support Type Var formatting
 testQualifiedTypeVariableName
