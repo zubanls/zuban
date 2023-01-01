@@ -1111,6 +1111,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
 }
 
 fn resolve_specific(db: &Database, specific: Specific) -> Instance {
+    // TODO this should be using python_state.str_node_ref etc.
     load_builtin_instance_from_str(
         db,
         match specific {
