@@ -41,8 +41,10 @@ testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
 testOverloadVarargsSelection
 testOverloadVarargsAndKwargsSelection
-# overload argument expression uses context and fails
+# overload argument expression uses context inference multiple times
+testBadOverloadProbableMatch
 testLiteralAndGenericsWithOverloads
+testPreferExactSignatureMatchInOverload
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
@@ -222,14 +224,6 @@ testUnboundedTypevarUnpacking
 # Tuple Bound with iter unpacking
 testIterableBoundUnpacking
 
-# questionable list/dict type inference
-testInferredTypeIsObjectMismatch
-testCallableListJoinInference
-# Overload List item 0 should not be generated on ALL mismatches
-testPreferExactSignatureMatchInOverload
-# Overload inference of list multiple times
-testBadOverloadProbableMatch
-
 # *args on TypeVar
 testInvalidTypevarValues
 
@@ -277,8 +271,6 @@ testLiteralInferredInListContext
 testLiteralInferredInTupleContext
 testLiteralInferredInDictContext
 testLiteralAndGenericsRespectsUpperBound
-testLiteralMeets
-testLiteralMeetsWithStrictOptional
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
 # Literal with ?
@@ -517,7 +509,11 @@ testNewAnalyzerForwardAliasFromUnion
 testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
+testInferredTypeIsObjectMismatch
 testSimplifyUnionWithCallable
+testLiteralMeets
+testLiteralMeetsWithStrictOptional
+testCallableListJoinInference
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess
