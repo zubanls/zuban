@@ -36,7 +36,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        let tuple_cls = i_s.db.python_state.tuple();
+        let tuple_cls = i_s.db.python_state.tuple_with_any_generics();
         for (mro_index, class) in tuple_cls.mro(i_s) {
             let result = class.lookup_symbol(i_s, name).map(|inf| {
                 inf.bind(

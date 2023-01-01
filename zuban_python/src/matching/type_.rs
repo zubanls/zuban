@@ -564,7 +564,11 @@ impl<'a> Type<'a> {
                         Some(Class::from_db_type(i_s.db, *link, generics).mro(i_s))
                     }
                     DbType::Tuple(tup) => Some({
-                        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
+                        let class_infos = i_s
+                            .db
+                            .python_state
+                            .tuple_with_any_generics()
+                            .class_infos(i_s);
                         MroIterator::new(
                             i_s.db,
                             Type::new(t),

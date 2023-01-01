@@ -271,19 +271,14 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn tuple(&self) -> Class {
-        debug_assert!(self.builtins_tuple_index != 0);
-        Class::from_position(
-            NodeRef::new(self.builtins(), self.builtins_tuple_index),
-            Generics::Any,
-            None,
-        )
-        .unwrap()
+    pub fn tuple_with_any_generics(&self) -> Class {
+        Class::from_position(self.tuple_node_ref(), Generics::Any, None).unwrap()
     }
 
     builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
     builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
     builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
+    builtins_attribute_node_ref!(tuple_node_ref, builtins_tuple_index);
     builtins_attribute_node_ref!(bool_node_ref, builtins_bool_index);
     builtins_attribute_node_ref!(int_node_ref, builtins_int_index);
     builtins_attribute_node_ref!(float_node_ref, builtins_float_index);
