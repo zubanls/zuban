@@ -173,10 +173,7 @@ impl<'a> Type<'a> {
                     Some(DbType::Literal(literal2)) => {
                         literal1.value(i_s.db) == literal2.value(i_s.db)
                     }
-                    _ => i_s
-                        .db
-                        .python_state
-                        .literal_type(i_s.db, *literal1)
+                    _ => Type::Class(i_s.db.python_state.literal_class(literal1.kind(i_s.db)))
                         .overlaps(i_s, other),
                 },
                 DbType::None => {
@@ -725,7 +722,7 @@ impl<'a> Type<'a> {
                 i_s,
                 matcher,
                 class1,
-                &i_s.db.python_state.literal_type(i_s.db, *literal),
+                &Type::Class(i_s.db.python_state.literal_class(literal.kind(i_s.db))),
             );
         }
         Match::new_false()

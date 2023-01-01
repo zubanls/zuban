@@ -1127,7 +1127,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
     )
 }
 
-pub fn load_builtin_instance_from_str<'db>(db: &'db Database, name: &'static str) -> Instance<'db> {
+fn load_builtin_instance_from_str<'db>(db: &'db Database, name: &'static str) -> Instance<'db> {
     let builtins = db.python_state.builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
     let v = builtins.points.get(node_index);
@@ -1189,7 +1189,10 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
         DbType::Literal(literal) => {
-            let t = i_s.db.python_state.literal_instance(i_s.db, *literal);
+            let t = Instance::new(
+                i_s.db.python_state.literal_class(literal.kind(i_s.db)),
+                None,
+            );
             callable(
                 i_s,
                 &Literal::new(NodeRef::from_link(i_s.db, literal.definition), &t),
