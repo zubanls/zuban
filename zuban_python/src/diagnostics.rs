@@ -86,6 +86,7 @@ pub(crate) enum IssueType {
 
     MethodWithoutArguments,
 
+    InvariantNote { actual: &'static str, maybe: &'static str },
     Note(Box<str>),
 }
 
@@ -182,7 +183,7 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::IncompatibleAssignment{got, expected} => {
                 format!(
-                    "Incompatible types in assignment (expression has type {got:?}, variable has type {expected:?})",
+                    "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",
                 )
             }
             IssueType::ListItemMismatch{item, got, expected} => format!(
@@ -382,6 +383,18 @@ impl<'db> Diagnostic<'db> {
                 "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
             ),
 
+            IssueType::InvariantNote{actual, maybe} => {
+                type_ = "note";
+                let suffix = match *actual {
+                    "List" => "",
+                    "Dict" => " in the value type",
+                    _ => unreachable!(),
+                };
+                format!(
+                    "\"{actual}\" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance\n\
+                    {path}:{line}: note: Consider using \"{maybe}\" instead, which is covariant{suffix}"
+                )
+            }
             IssueType::Note(s) => {
                 type_ = "note";
                 s.clone().into()

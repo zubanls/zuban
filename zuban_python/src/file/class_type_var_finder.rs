@@ -163,13 +163,12 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
                 self.find_in_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                Some(PythonString::Ref(start, s)) => {
+                PythonString::Ref(start, s) => {
                     todo!()
                     //self.compute_forward_reference(start, s.to_owned())
                 }
-                Some(PythonString::String(start, s)) => todo!(),
-                Some(PythonString::FString) => todo!(),
-                None => todo!(),
+                PythonString::String(start, s) => todo!(),
+                PythonString::FString => todo!(),
             },
             _ => BaseLookup::Other,
         }

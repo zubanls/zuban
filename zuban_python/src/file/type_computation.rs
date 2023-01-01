@@ -4,7 +4,7 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
-    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, NewType,
+    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, Locality, NewType,
     ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
     Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
@@ -67,6 +67,8 @@ pub(super) enum InvalidVariableType<'a> {
     Function(Function<'a>),
     Literal(&'a str),
     Variable(NodeRef<'a>),
+    Float,
+    Complex,
     Other,
 }
 
@@ -142,8 +144,14 @@ impl InvalidVariableType<'_> {
             ),
             Self::Other => match origin {
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
-                _ => todo!(),
+                _ => IssueType::InvalidType(Box::from("Invalid type comment or annotation")),
             },
+            Self::Float => IssueType::InvalidType(
+                "Invalid type: float literals cannot be used as a type".into(),
+            ),
+            Self::Complex => IssueType::InvalidType(
+                "Invalid type: complex literals cannot be used as a type".into(),
+            ),
         })
     }
 }
@@ -246,7 +254,8 @@ macro_rules! compute_type_application {
                     ComplexPoint::TypeInstance(Box::new(DbType::Type(Rc::new(db_type))))
                 }
             },
-            _ => todo!("{t:?}"),
+            TypeContent::Unknown => return Inferred::new_any(),
+            _ => todo!("type application: {t:?}"),
         })
     }}
 }
@@ -520,7 +529,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 })),
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => DbType::Type(Rc::new(DbType::Class(
-                    self.inference.i_s.db.python_state.object().as_link(),
+                    self.inference
+                        .i_s
+                        .db
+                        .python_state
+                        .object_node_ref()
+                        .as_link(),
                     None,
                 ))),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
@@ -528,6 +542,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
                     None,
                 ),
+                SpecialType::Literal => {
+                    self.add_typing_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from(
+                            "Literal[...] must have at least one parameter",
+                        )),
+                    );
+                    DbType::Any
+                }
                 _ => {
                     self.add_typing_issue(
                         node_ref,
@@ -750,7 +773,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
-                        SpecialType::Literal => todo!(),
+                        SpecialType::Literal => self.compute_get_item_on_literal(s),
                         SpecialType::LiteralString => todo!(),
                         SpecialType::TypeAlias => todo!(),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
@@ -763,7 +786,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             Some(self.compute_generics(s.iter())),
                         ))))
                     }
-                    TypeContent::InvalidVariable(t) => todo!(),
+                    TypeContent::InvalidVariable(t) => {
+                        t.add_issue(
+                            self.inference.i_s.db,
+                            |t| self.add_typing_issue(s.as_node_ref(), t),
+                            self.origin,
+                        );
+                        TypeContent::Unknown
+                    }
                     TypeContent::TypeVarTuple(_) => todo!(),
                     TypeContent::ParamSpec(_) => todo!(),
                     TypeContent::Unpacked(_) => todo!(),
@@ -1294,6 +1324,157 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
     }
 
+    fn compute_get_item_on_literal(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_some() {
+            TypeContent::DbType(DbType::Union(UnionType::new(
+                slice_type
+                    .iter()
+                    .enumerate()
+                    .map(|(i, s)| UnionEntry {
+                        type_: {
+                            let t = self.compute_get_item_on_literal_item(s, i + 1);
+                            self.as_db_type(t, s.as_node_ref())
+                        },
+                        format_index: i,
+                    })
+                    .collect(),
+            )))
+        } else {
+            self.compute_get_item_on_literal_item(first, 1)
+        }
+    }
+
+    fn compute_get_item_on_literal_item(
+        &mut self,
+        slice: SliceOrSimple<'x>,
+        index: usize,
+    ) -> TypeContent<'db, 'db> {
+        if let SliceOrSimple::Simple(s) = slice {
+            let expr_not_allowed = |slf: &Self| {
+                slf.add_typing_issue(
+                    slice.as_node_ref(),
+                    IssueType::InvalidType(
+                        "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
+                    ),
+                );
+                TypeContent::Unknown
+            };
+            match s.named_expr.expression().unpack() {
+                ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
+                    let maybe = match atom.unpack() {
+                        AtomContent::Int(i) => Some((i.index(), Specific::IntegerLiteral)),
+                        AtomContent::Bytes(b) => Some((b.index(), Specific::BytesLiteral)),
+                        AtomContent::Strings(s) => s
+                            .maybe_single_string_literal()
+                            .map(|s| (s.index(), Specific::StringLiteral)),
+                        AtomContent::Boolean(keyword) => {
+                            Some((keyword.index(), Specific::BooleanLiteral))
+                        }
+                        AtomContent::Float(_) => {
+                            self.add_typing_issue(
+                                slice.as_node_ref(),
+                                IssueType::InvalidType(
+                                    format!(
+                                        "Parameter {} of Literal[...] cannot be of type \"float\"",
+                                        index
+                                    )
+                                    .into(),
+                                ),
+                            );
+                            return TypeContent::Unknown;
+                        }
+                        AtomContent::Complex(_) => {
+                            self.add_typing_issue(
+                                slice.as_node_ref(),
+                                IssueType::InvalidType(
+                                    format!(
+                                        "Parameter {} of Literal[...] cannot be of type \"complex\"",
+                                        index
+                                    )
+                                    .into(),
+                                ),
+                            );
+                            return TypeContent::Unknown;
+                        }
+                        AtomContent::Name(_) | AtomContent::NoneLiteral => None,
+                        _ => return expr_not_allowed(self),
+                    };
+                    if let Some((index, specific)) = maybe {
+                        let node_ref = NodeRef::new(self.inference.file, index);
+                        node_ref.set_point(Point::new_simple_specific(specific, Locality::Todo));
+                        return TypeContent::DbType(DbType::Literal(Literal {
+                            definition: node_ref.as_link(),
+                            implicit: false,
+                        }));
+                    }
+                }
+                ExpressionContent::ExpressionPart(ExpressionPart::Factor(f)) => {
+                    let (sign, e) = f.unpack();
+                    if sign.as_code() == "-" {
+                        if let ExpressionPart::Atom(atom) = e {
+                            if let AtomContent::Int(_) = atom.unpack() {
+                                let node_ref = NodeRef::new(self.inference.file, f.index());
+                                node_ref.set_point(Point::new_simple_specific(
+                                    Specific::IntegerLiteral,
+                                    Locality::Todo,
+                                ));
+                                return TypeContent::DbType(DbType::Literal(Literal {
+                                    definition: node_ref.as_link(),
+                                    implicit: false,
+                                }));
+                            }
+                        }
+                    }
+                    return expr_not_allowed(self);
+                }
+                ExpressionContent::ExpressionPart(ExpressionPart::Primary(p)) => {
+                    if let PrimaryContent::Execution(_) = p.second() {
+                        return expr_not_allowed(self);
+                    }
+                }
+                _ => return expr_not_allowed(self),
+            }
+        }
+        match self.compute_slice_type(slice) {
+            TypeContent::SpecialType(SpecialType::Any) => {
+                self.add_typing_issue(
+                    slice.as_node_ref(),
+                    IssueType::InvalidType(
+                        format!(
+                            "Parameter {} of Literal[...] cannot be of type \"Any\"",
+                            index
+                        )
+                        .into(),
+                    ),
+                );
+                TypeContent::Unknown
+            }
+            t => match self.as_db_type(t, slice.as_node_ref()) {
+                DbType::Any => TypeContent::Unknown,
+                DbType::None => TypeContent::DbType(DbType::None),
+                t @ DbType::Literal(_) => TypeContent::DbType(t),
+                DbType::Union(u)
+                    if u.entries
+                        .iter()
+                        .all(|e| matches!(e.type_, DbType::Literal(_) | DbType::None)) =>
+                {
+                    TypeContent::DbType(DbType::Union(u))
+                }
+                _ => {
+                    self.add_typing_issue(
+                        slice.as_node_ref(),
+                        IssueType::InvalidType(
+                            format!("Parameter {} of Literal[...] is invalid", index).into(),
+                        ),
+                    );
+                    TypeContent::Unknown
+                }
+            },
+        }
+    }
+
     fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
         for (i, s) in slice_type.iter().enumerate() {
             let result = self.compute_slice_type(s);
@@ -1329,12 +1510,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 self.compute_type_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                Some(PythonString::Ref(start, s)) => {
-                    self.compute_forward_reference(start, s.to_owned())
-                }
-                Some(PythonString::String(start, s)) => todo!(),
-                Some(PythonString::FString) => todo!(),
-                None => todo!(),
+                PythonString::Ref(start, s) => self.compute_forward_reference(start, s.to_owned()),
+                PythonString::String(start, s) => self.compute_forward_reference(start, s),
+                PythonString::FString => todo!(),
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
             AtomContent::List(_) => TypeContent::InvalidVariable(InvalidVariableType::List),
@@ -1345,7 +1523,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 tuple_length: t.iter().count(),
             }),
             AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Other),
-            _ => todo!("{atom:?}"),
+            AtomContent::Float(_) => TypeContent::InvalidVariable(InvalidVariableType::Float),
+            AtomContent::Complex(_) => TypeContent::InvalidVariable(InvalidVariableType::Complex),
+            _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
     }
 
@@ -1634,6 +1814,14 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     slice_type,
                     from_alias_definition,
                     compute_type_get_item_on_type(slice_type)
+                )
+            }
+            Specific::TypingLiteral => {
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    from_alias_definition,
+                    compute_get_item_on_literal(slice_type)
                 )
             }
             _ => unreachable!("{:?}", specific),
@@ -2055,6 +2243,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingConcatenateClass => SpecialType::Concatenate,
                 Specific::TypingTypeAlias => SpecialType::TypeAlias,
                 Specific::TypingLiteral => SpecialType::Literal,
+                Specific::TypingFinal => todo!(),
                 _ => unreachable!(),
             })
         }

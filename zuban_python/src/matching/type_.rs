@@ -9,8 +9,10 @@ use crate::database::{
     TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
+use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::node_ref::NodeRef;
 use crate::value::{Class, Instance, LookupResult, MroIterator, Value};
 
 #[derive(Debug, Clone)]
@@ -167,10 +169,13 @@ impl<'a> Type<'a> {
                 },
                 DbType::Any => true,
                 DbType::Never => todo!(),
-                DbType::Literal {
-                    definition,
-                    implicit,
-                } => todo!(),
+                DbType::Literal(literal1) => match other.maybe_db_type() {
+                    Some(DbType::Literal(literal2)) => {
+                        literal1.value(i_s.db) == literal2.value(i_s.db)
+                    }
+                    _ => Type::Class(i_s.db.python_state.literal_class(literal1.kind(i_s.db)))
+                        .overlaps(i_s, other),
+                },
                 DbType::None => {
                     matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
                 }
@@ -282,7 +287,7 @@ impl<'a> Type<'a> {
                         .into()
                 }
                 DbType::Any => Match::new_true(),
-                DbType::Never => Match::new_true(), // TODO is this correct?
+                DbType::Never => Match::new_false(),
                 DbType::Tuple(t1) => match value_type {
                     Self::Type(t2) => match t2.as_ref() {
                         DbType::Tuple(t2) => {
@@ -297,10 +302,15 @@ impl<'a> Type<'a> {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
                 DbType::Intersection(intersection) => todo!(),
-                DbType::Literal {
-                    definition,
-                    implicit,
-                } => todo!(),
+                DbType::Literal(literal1) => {
+                    debug_assert!(!literal1.implicit);
+                    match value_type.maybe_db_type() {
+                        Some(DbType::Literal(literal2)) => {
+                            (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
+                        }
+                        _ => Match::new_false(),
+                    }
+                }
                 DbType::NewType(new_type1) => match value_type.maybe_db_type() {
                     Some(DbType::NewType(new_type2)) => (new_type1 == new_type2).into(),
                     _ => Match::new_false(),
@@ -399,6 +409,30 @@ impl<'a> Type<'a> {
             }
         };
         m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant))
+            .or(|| {
+                if let Some(class2) = value_type.maybe_class(i_s.db) {
+                    self.check_promotion(i_s, matcher, class2)
+                } else {
+                    Match::new_false()
+                }
+            })
+    }
+
+    #[inline]
+    pub fn check_promotion(
+        &self,
+        i_s: &mut InferenceState,
+        matcher: &mut Matcher,
+        class2: Class,
+    ) -> Match {
+        if let Some(promote_to) = class2.class_storage.promote_to.get() {
+            let cls =
+                Class::from_position(NodeRef::from_link(i_s.db, promote_to), Generics::None, None);
+            self.is_same_type(i_s, matcher, &Type::Class(cls))
+                .or(|| self.check_promotion(i_s, matcher, cls))
+        } else {
+            Match::new_false()
+        }
     }
 
     pub fn is_simple_same_type(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
@@ -500,11 +534,29 @@ impl<'a> Type<'a> {
                         .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
                         .into();
                 }
+                // Necessary to e.g. match int to Literal[1, 2]
+                DbType::Union(u2)
+                    if variance == Variance::Covariant
+                    // Union matching was already done.
+                    && !matches!(self.maybe_db_type(), Some(DbType::Union(_))) =>
+                {
+                    if matcher.is_matching_reverse() {
+                        todo!()
+                    }
+                    return u2
+                        .entries
+                        .iter()
+                        .all(|e| {
+                            self.simple_matches(i_s, &Type::new(&e.type_), variance)
+                                .bool()
+                        })
+                        .into();
+                }
                 DbType::NewType(n2) => {
                     let t = n2.type_(i_s);
                     return self.matches(i_s, matcher, &Type::new(t), variance);
                 }
-                DbType::Never => return Match::new_true(), // TODO is this correct?
+                DbType::Never => return Match::new_true(), // Never is assignable to anything
                 _ => (),
             }
         }
@@ -523,7 +575,11 @@ impl<'a> Type<'a> {
                         Some(Class::from_db_type(i_s.db, *link, generics).mro(i_s))
                     }
                     DbType::Tuple(tup) => Some({
-                        let class_infos = i_s.db.python_state.tuple().class_infos(i_s);
+                        let class_infos = i_s
+                            .db
+                            .python_state
+                            .tuple_with_any_generics()
+                            .class_infos(i_s);
                         MroIterator::new(
                             i_s.db,
                             Type::new(t),
@@ -581,7 +637,6 @@ impl<'a> Type<'a> {
     ) -> Match {
         let match_reverse = matcher.is_matching_reverse();
         match value_type.maybe_db_type() {
-            // TODO this should use the variance argument
             Some(DbType::Union(u2)) => match variance {
                 Variance::Covariant => {
                     let mut matches = true;
@@ -609,14 +664,25 @@ impl<'a> Type<'a> {
                 Variance::Contravariant => unreachable!(),
             },
             // TODO doesn't match_reverse also matter here?
-            _ => u1
-                .iter()
-                .any(|g| {
-                    Type::new(g)
-                        .matches(i_s, matcher, value_type, variance)
-                        .bool()
-                })
-                .into(),
+            _ => match variance {
+                Variance::Covariant => u1
+                    .iter()
+                    .any(|g| {
+                        Type::new(g)
+                            .matches(i_s, matcher, value_type, variance)
+                            .bool()
+                    })
+                    .into(),
+                Variance::Invariant => u1
+                    .iter()
+                    .all(|g| {
+                        Type::new(g)
+                            .matches(i_s, matcher, value_type, variance)
+                            .bool()
+                    })
+                    .into(),
+                Variance::Contravariant => unreachable!(),
+            },
         }
     }
 
@@ -629,13 +695,49 @@ impl<'a> Type<'a> {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
             if class1.node_ref == class2.node_ref {
                 if let Some(type_vars) = class1.type_vars(i_s) {
-                    return class1
-                        .generics()
-                        .matches(i_s, matcher, class2.generics(), type_vars)
+                    let c1_generics = class1.generics();
+                    let c2_generics = class2.generics();
+                    let result = c1_generics
+                        .matches(i_s, matcher, c2_generics, type_vars)
                         .similar_if_false();
+                    if !result.bool() {
+                        let mut check = |i_s: &mut InferenceState, n| {
+                            let type_var_like = &type_vars[n];
+                            let t1 = c1_generics.nth_type_argument(i_s, type_var_like, n);
+                            if t1.is_any() {
+                                return false;
+                            }
+                            let t2 = c2_generics.nth_type_argument(i_s, type_var_like, n);
+                            if t2.is_any() {
+                                return false;
+                            }
+                            t1.is_super_type_of(i_s, matcher, &t2).bool()
+                        };
+                        if class1.node_ref == i_s.db.python_state.list_node_ref() && check(i_s, 0) {
+                            return Match::False {
+                                similar: true,
+                                reason: MismatchReason::SequenceInsteadOfListNeeded,
+                            };
+                        } else if class1.node_ref == i_s.db.python_state.dict_node_ref()
+                            && check(i_s, 1)
+                        {
+                            return Match::False {
+                                similar: true,
+                                reason: MismatchReason::MappingInsteadOfDictNeeded,
+                            };
+                        }
+                    }
+                    return result;
                 }
                 return Match::new_true();
             }
+        } else if let Some(DbType::Literal(literal)) = value_type.maybe_db_type() {
+            return Self::matches_class(
+                i_s,
+                matcher,
+                class1,
+                &Type::Class(i_s.db.python_state.literal_class(literal.kind(i_s.db))),
+            );
         }
         Match::new_false()
     }
@@ -772,17 +874,21 @@ impl<'a> Type<'a> {
         false
     }
 
-    pub fn error_if_not_matches(
+    pub fn error_if_not_matches<'db>(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &mut InferenceState<'db, '_>,
         value: &Inferred,
-        callback: impl FnOnce(&mut InferenceState, Box<str>, Box<str>),
+        callback: impl FnOnce(&mut InferenceState<'db, '_>, Box<str>, Box<str>) -> NodeRef<'db>,
     ) -> Match {
         self.error_if_not_matches_with_matcher(
             i_s,
             &mut Matcher::default(),
             value,
-            Some(|i_s: &mut InferenceState, t1, t2, reason: &MismatchReason| callback(i_s, t1, t2)),
+            Some(
+                |i_s: &mut InferenceState<'db, '_>, t1, t2, reason: &MismatchReason| {
+                    callback(i_s, t1, t2)
+                },
+            ),
         )
     }
 
@@ -792,7 +898,12 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         value: &Inferred,
         callback: Option<
-            impl FnOnce(&mut InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason),
+            impl FnOnce(
+                &mut InferenceState<'db, '_>,
+                Box<str>,
+                Box<str>,
+                &MismatchReason,
+            ) -> NodeRef<'db>,
         >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
@@ -814,7 +925,28 @@ impl<'a> Type<'a> {
                 matches.clone()
             );
             if let Some(callback) = callback {
-                callback(i_s, input, wanted, reason)
+                let node_ref = callback(i_s, input, wanted, reason);
+                match reason {
+                    MismatchReason::SequenceInsteadOfListNeeded => {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::InvariantNote {
+                                actual: "List",
+                                maybe: "Sequence",
+                            },
+                        );
+                    }
+                    MismatchReason::MappingInsteadOfDictNeeded => {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::InvariantNote {
+                                actual: "Dict",
+                                maybe: "Mapping",
+                            },
+                        );
+                    }
+                    _ => (),
+                }
             }
         }
         matches

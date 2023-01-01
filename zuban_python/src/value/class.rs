@@ -54,7 +54,7 @@ impl<'db: 'a, 'a> Class<'a> {
         list: &'a Option<GenericsList>,
     ) -> Self {
         let generics = Generics::new_maybe_list(list);
-        Self::from_position(NodeRef::from_link(db, link), generics, None).unwrap()
+        Self::from_position(NodeRef::from_link(db, link), generics, None)
     }
 
     #[inline]
@@ -62,10 +62,10 @@ impl<'db: 'a, 'a> Class<'a> {
         node_ref: NodeRef<'a>,
         generics: Generics<'a>,
         type_var_remap: Option<&'a GenericsList>,
-    ) -> Option<Self> {
+    ) -> Self {
         let complex = node_ref.complex().unwrap();
         match complex {
-            ComplexPoint::Class(c) => Some(Self::new(node_ref, c, generics, type_var_remap)),
+            ComplexPoint::Class(c) => Self::new(node_ref, c, generics, type_var_remap),
             _ => unreachable!("Probably an issue with indexing: {complex:?}"),
         }
     }
@@ -181,8 +181,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     NodeRef::new(self.node_ref.file, node_index),
                     Generics::Any, // TODO is this correct?
                     None,
-                )
-                .unwrap();
+                );
                 parent_class
                     .maybe_type_var_like_in_parent(i_s, type_var)
                     .or_else(|| {
@@ -268,17 +267,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                 let mro_index = mro.len();
                                 mro.push(t);
                                 let class = match &mro.last().unwrap() {
-                                    DbType::Class(link, generics) => Some(
-                                        Class::from_position(
-                                            NodeRef::from_link(i_s.db, *link),
-                                            generics
-                                                .as_ref()
-                                                .map(Generics::new_list)
-                                                .unwrap_or(Generics::None),
-                                            None,
-                                        )
-                                        .unwrap(),
-                                    ),
+                                    DbType::Class(link, generics) => Some(Class::from_position(
+                                        NodeRef::from_link(i_s.db, *link),
+                                        generics
+                                            .as_ref()
+                                            .map(Generics::new_list)
+                                            .unwrap_or(Generics::None),
+                                        None,
+                                    )),
                                     DbType::Tuple(content) => None,
                                     DbType::Type(_) => todo!(),
                                     DbType::Callable(content) => todo!(),
@@ -402,7 +398,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_object_class(&self, db: &Database) -> Match {
-        (self.node_ref == db.python_state.object()).into()
+        (self.node_ref == db.python_state.object_node_ref()).into()
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
@@ -448,8 +444,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
                     NodeRef::new(self.node_ref.file, node_index),
                     Generics::Any,
                     None,
-                )
-                .unwrap();
+                );
                 format!("{}.{}", parent_class.qualified_name(db), self.name())
             }
             ParentScope::Function(node_index) => {
@@ -609,14 +604,11 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
-                    DbType::Class(c, generics) => Type::Class(
-                        Class::from_position(
-                            NodeRef::from_link(self.db, *c),
-                            self.generics.unwrap(),
-                            generics.as_ref(),
-                        )
-                        .unwrap(),
-                    ),
+                    DbType::Class(c, generics) => Type::Class(Class::from_position(
+                        NodeRef::from_link(self.db, *c),
+                        self.generics.unwrap(),
+                        generics.as_ref(),
+                    )),
                     _ => Type::new(c),
                 },
             ));

@@ -1,3 +1,4 @@
+use std::borrow::Cow;
 use std::cell::{Cell, UnsafeCell};
 use std::collections::HashMap;
 use std::fmt;
@@ -357,4 +358,38 @@ impl<I: Iterator> Peekable<I> {
     {
         self.next_if(|next| next == expected)
     }
+}
+
+pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
+    let mut string = String::new();
+    for b in bytes.iter() {
+        if b.is_ascii_graphic() {
+            string.push(*b as char);
+        } else {
+            string += &format!("\\x{:#02x}", b);
+        }
+    }
+    format!("b'{string}'")
+}
+
+pub fn str_repr(content: Cow<str>) -> String {
+    let mut repr = String::new();
+    for c in content.as_ref().chars() {
+        if c.is_ascii_control() {
+            match c {
+                '\n' => repr += "\\n",
+                '\r' => repr += "\\r",
+                '\t' => repr += "\\t",
+                _ => {
+                    repr += "\\";
+                    repr += &format!("{:#04x}", c as u8)[1..];
+                }
+            }
+        } else if c == '\\' {
+            repr += r"\\";
+        } else {
+            repr.push(c);
+        }
+    }
+    format!("'{repr}'")
 }

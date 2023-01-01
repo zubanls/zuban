@@ -41,6 +41,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingUnion => "Union",
             Specific::TypingOptional => "Optional",
             Specific::TypingType => "Type",
+            Specific::TypingLiteral => "Literal",
             _ => unreachable!("{:?}", self.specific),
         }
     }
@@ -369,7 +370,7 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         );
         args.as_node_ref().add_typing_issue(
             i_s.db,
-            IssueType::Note(format!("Revealed type is {s:?}").into()),
+            IssueType::Note(format!("Revealed type is \"{s}\"").into()),
         );
         if iterator.next().is_some() {
             todo!()

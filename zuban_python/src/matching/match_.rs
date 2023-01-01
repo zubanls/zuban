@@ -39,6 +39,8 @@ pub enum MismatchReason {
         expected: DbType,
         type_var: Rc<TypeVar>,
     },
+    SequenceInsteadOfListNeeded,
+    MappingInsteadOfDictNeeded,
 }
 
 impl Match {
@@ -70,6 +72,7 @@ impl Match {
         }
     }
 
+    #[inline]
     pub fn or(self, callable: impl FnOnce() -> Self) -> Self {
         if self.bool() {
             self

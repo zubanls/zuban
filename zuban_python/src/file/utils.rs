@@ -46,7 +46,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 |i_s: &mut InferenceState<'db, '_>, type_, matcher| {
                     let mut found = None;
                     type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
-                        if list_cls.node_ref == i_s.db.python_state.list() {
+                        if list_cls.node_ref == i_s.db.python_state.list_node_ref() {
                             let type_vars = list_cls.type_vars(i_s).unwrap();
                             let generic_t = list_cls
                                 .generics()
@@ -75,8 +75,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
     }
 }
 
-fn check_list_with_context(
-    i_s: &mut InferenceState,
+fn check_list_with_context<'db>(
+    i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     generic_t: Type,
     file: &PythonFile,
@@ -89,14 +89,15 @@ fn check_list_with_context(
     let mut found = None;
     if let Some(elements) = list.unpack() {
         for (item, element) in elements.enumerate() {
-            let mut check_item = |i_s: &mut InferenceState, inferred: Inferred, index| {
+            let mut check_item = |i_s: &mut InferenceState<'db, '_>, inferred: Inferred, index| {
                 let m = generic_t.error_if_not_matches_with_matcher(
                     i_s,
                     matcher,
                     &inferred,
                     Some(
-                        |i_s: &mut InferenceState, got, expected, _: &MismatchReason| {
-                            NodeRef::new(file, index).add_typing_issue(
+                        |i_s: &mut InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
+                            let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
+                            node_ref.add_typing_issue(
                                 i_s.db,
                                 IssueType::ListItemMismatch {
                                     item,
@@ -104,12 +105,13 @@ fn check_list_with_context(
                                     expected,
                                 },
                             );
+                            node_ref
                         },
                     ),
                 );
                 if m.bool() && found.is_none() {
                     found = Some(DbType::Class(
-                        i_s.db.python_state.list().as_link(),
+                        i_s.db.python_state.list_node_ref().as_link(),
                         Some(GenericsList::new_generics(Box::new([
                             GenericItem::TypeArgument(
                                 inferred
@@ -156,7 +158,7 @@ pub fn on_argument_type_error(
         i_s.db,
         IssueType::ArgumentIssue(
             format!(
-                "Argument {}{} has incompatible type {t1:?}; expected {t2:?}",
+                "Argument {}{} has incompatible type \"{t1}\"; expected \"{t2}\"",
                 arg.human_readable_index(),
                 error_text(" to ").as_deref().unwrap_or(""),
             )

@@ -1,6 +1,7 @@
 use std::fmt;
 
 use super::{Matcher, Type};
+use crate::database::DbType;
 use crate::InferenceState;
 
 pub enum ResultContext<'a, 'b> {
@@ -40,6 +41,18 @@ impl<'a> ResultContext<'a, '_> {
             Self::Unknown => None,
         }
     }
+
+    pub fn is_literal_context<'db>(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        self.with_type_if_exists_and_replace_type_var_likes(
+            i_s,
+            |i_s: &mut InferenceState<'db, '_>, type_| match type_.maybe_db_type() {
+                Some(DbType::Literal(_)) => true,
+                Some(DbType::Union(items)) => items.iter().any(|i| matches!(i, DbType::Literal(_))),
+                _ => false,
+            },
+        )
+        .unwrap_or(false)
+    }
 }
 
 impl fmt::Debug for ResultContext<'_, '_> {
@@ -47,7 +60,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
         match self {
             Self::Known(t) => write!(f, "Known({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
-            Self::Unknown => write!(f, "UnKnown"),
+            Self::Unknown => write!(f, "Unknown"),
         }
     }
 }

@@ -364,20 +364,38 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     }
 
     pub(super) fn cache_assignment_nodes(&mut self, assignment: Assignment) {
-        let node_ref = NodeRef::new(self.file, assignment.index());
+        let node_ref = NodeRef::new(self.file, assignment.index()).to_db_lifetime(self.i_s.db);
         if node_ref.point().calculated() {
             return;
         }
-        match assignment.unpack() {
+        let right_side = match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 for target in targets {
                     self.set_calculating_on_target(target);
                 }
+                Some(right_side)
             }
-            AssignmentContent::WithAnnotation(target, _, _) => {
-                self.set_calculating_on_target(target)
+            AssignmentContent::WithAnnotation(target, _, right_side) => {
+                self.set_calculating_on_target(target);
+                right_side
             }
-            AssignmentContent::AugAssign(target, aug_assign, right_side) => (),
+            AssignmentContent::AugAssign(target, aug_assign, right_side) => Some(right_side),
+        };
+        let on_type_error = |i_s: &mut InferenceState, got, expected| -> NodeRef {
+            // In cases of stubs when an ellipsis is given, it's not an error.
+            if self.file.is_stub(i_s.db) {
+                // Right side always exists, because it was compared and there was an error because
+                // of it.
+                if let AssignmentRightSide::StarExpressions(star_exprs) = right_side.unwrap() {
+                    if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
+                        if expr.is_ellipsis_literal() {
+                            return node_ref;
+                        }
+                    }
+                }
+            }
+            node_ref.add_typing_issue(i_s.db, IssueType::IncompatibleAssignment { got, expected });
+            node_ref
         };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
@@ -400,12 +418,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let right = if let Some((r, type_)) = type_comment_result {
                     let right = self
                         .infer_assignment_right_side(right_side, &mut ResultContext::Known(&type_));
-                    type_.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
-                        node_ref.add_typing_issue(
-                            i_s.db,
-                            IssueType::IncompatibleAssignment { got, expected },
-                        );
-                    });
+                    type_.error_if_not_matches(self.i_s, &right, on_type_error);
                     r
                 } else {
                     let original_def = self.original_definition(assignment);
@@ -441,12 +454,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         let t = self.use_cached_annotation_type(annotation);
                         let right = self
                             .infer_assignment_right_side(right_side, &mut ResultContext::Known(&t));
-                        t.error_if_not_matches(self.i_s, &right, |i_s, got, expected| {
-                            node_ref.add_typing_issue(
-                                i_s.db,
-                                IssueType::IncompatibleAssignment { got, expected },
-                            );
-                        });
+                        t.error_if_not_matches(self.i_s, &right, on_type_error);
                     }
                     let inf_annot = self.use_cached_annotation(annotation);
                     self.assign_single_target(target, &inf_annot, true, |index| {
@@ -521,9 +529,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     fn infer_single_target(&mut self, target: Target) -> Inferred {
         match target {
-            Target::Name(name_def) => {
-                todo!()
-            }
+            // TODO it's a bit weird that we cannot just call self.infer_name_definition here
+            Target::Name(name_def) => self.infer_name_reference(name_def.name()),
             Target::NameExpression(primary_target, name_def_node) => {
                 todo!()
             }
@@ -558,10 +565,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         self.i_s,
                         value,
                         |i_s, got, expected| {
-                            NodeRef::new(self.file, name_def.index()).add_typing_issue(
+                            let node_ref =
+                                NodeRef::new(self.file, name_def.index()).to_db_lifetime(i_s.db);
+                            node_ref.add_typing_issue(
                                 i_s.db,
                                 IssueType::IncompatibleAssignment { got, expected },
                             );
+                            node_ref
                         },
                     );
                 }
@@ -578,10 +588,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     self.infer_primary_target(primary_target)
                         .class_as_type(self.i_s)
                         .error_if_not_matches(self.i_s, value, |i_s, got, expected| {
-                            NodeRef::new(self.file, primary_target.index()).add_typing_issue(
+                            let node_ref = NodeRef::new(self.file, primary_target.index())
+                                .to_db_lifetime(i_s.db);
+                            node_ref.add_typing_issue(
                                 self.i_s.db,
                                 IssueType::IncompatibleAssignment { got, expected },
                             );
+                            node_ref
                         });
                 }
                 // This mostly needs to be saved for self names
@@ -662,7 +675,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
                             let generic = union.class_as_db_type(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                self.i_s.db.python_state.list().as_link(),
+                                self.i_s.db.python_state.list_node_ref().as_link(),
                                 Some(GenericsList::new_generics(Box::new([
                                     GenericItem::TypeArgument(generic),
                                 ]))),
@@ -676,7 +689,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         } else if value_iterator.len().is_none() {
                             let value = value_iterator.next(self.i_s).unwrap();
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                self.i_s.db.python_state.list().as_link(),
+                                self.i_s.db.python_state.list_node_ref().as_link(),
                                 Some(GenericsList::new_generics(Box::new([
                                     GenericItem::TypeArgument(value.class_as_db_type(self.i_s)),
                                 ]))),
@@ -843,6 +856,29 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     self.i_s.db.python_state.builtins_point_link("bool"),
                     None,
                 ))
+            }
+            ExpressionPart::Factor(f) => {
+                let (operator, right) = f.unpack();
+                let method_name = match operator.as_code() {
+                    "-" => {
+                        if let ExpressionPart::Atom(atom) = right {
+                            if let AtomContent::Int(i) = atom.unpack() {
+                                let specific = match result_context.is_literal_context(self.i_s) {
+                                    true => Specific::IntegerLiteral,
+                                    false => Specific::Integer,
+                                };
+                                let point = Point::new_simple_specific(specific, Locality::Todo);
+                                return Inferred::new_and_save(self.file, f.index(), point);
+                            }
+                        }
+                        "__neg__"
+                    }
+                    "+" => "__pos__",
+                    "~" => "__invert__",
+                    _ => unreachable!(),
+                };
+                let right = self.infer_expression_part(right, &mut ResultContext::Unknown);
+                todo!()
             }
             _ => todo!("Not handled yet {node:?}"),
         }
@@ -1067,10 +1103,27 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
+        let mut check_literal = |i_s, index, non_literal: Specific, literal| {
+            let specific = if result_context.is_literal_context(i_s) {
+                literal
+            } else {
+                non_literal
+            };
+            let point = Point::new_simple_specific(specific, Locality::Todo);
+            Inferred::new_and_save(self.file, index, point)
+        };
+
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
-            Int(_) => Specific::Integer,
+            Int(i) => {
+                return check_literal(
+                    self.i_s,
+                    i.index(),
+                    Specific::Integer,
+                    Specific::IntegerLiteral,
+                )
+            }
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
             Strings(s_o_b) => {
@@ -1079,11 +1132,29 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         self.calc_fstring_diagnostics(f)
                     }
                 }
-                Specific::String
+                if let Some(s) = s_o_b.maybe_single_string_literal() {
+                    return check_literal(
+                        self.i_s,
+                        s.index(),
+                        Specific::String,
+                        Specific::StringLiteral,
+                    );
+                } else {
+                    Specific::String
+                }
             }
-            Bytes(_) => Specific::Bytes,
+            Bytes(b) => {
+                return check_literal(self.i_s, b.index(), Specific::Bytes, Specific::BytesLiteral)
+            }
             NoneLiteral => Specific::None,
-            Boolean(_) => Specific::Boolean,
+            Boolean(b) => {
+                return check_literal(
+                    self.i_s,
+                    b.index(),
+                    Specific::Boolean,
+                    Specific::BooleanLiteral,
+                )
+            }
             Ellipsis => Specific::Ellipsis,
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {

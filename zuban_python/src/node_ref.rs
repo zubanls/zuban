@@ -1,8 +1,9 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Annotation, Atom, AtomContent, ClassDef, DoubleStarredExpression, Expression, ImportFrom, Name,
-    NamedExpression, NodeIndex, Primary, PythonString, StarredExpression, StringLiteral,
+    Annotation, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression, Expression, Factor,
+    ImportFrom, Int, Name, NamedExpression, NodeIndex, Primary, PythonString, StarredExpression,
+    StringLiteral,
 };
 
 use crate::database::{
@@ -108,6 +109,10 @@ impl<'file> NodeRef<'file> {
         Annotation::by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn as_bytes_literal(&self) -> Bytes<'file> {
+        Bytes::by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn maybe_name(&self) -> Option<Name<'file>> {
         Name::maybe_by_index(&self.file.tree, self.node_index)
     }
@@ -125,18 +130,13 @@ impl<'file> NodeRef<'file> {
     }
 
     pub fn infer_int(&self) -> Option<i64> {
-        Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
-            match atom.unpack() {
-                AtomContent::Int(i) => i.as_str().parse().ok(),
-                _ => None,
-            }
-        })
+        Int::maybe_by_index(&self.file.tree, self.node_index).and_then(|i| i.as_str().parse().ok())
     }
 
     pub fn infer_str(&self) -> Option<PythonString<'file>> {
         Atom::maybe_by_index(&self.file.tree, self.node_index).and_then(|atom| {
             match atom.unpack() {
-                AtomContent::Strings(s) => s.as_python_string(),
+                AtomContent::Strings(s) => Some(s.as_python_string()),
                 _ => None,
             }
         })
@@ -148,6 +148,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn maybe_class(&self) -> Option<ClassDef<'file>> {
         ClassDef::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn maybe_factor(&self) -> Option<Factor<'file>> {
+        Factor::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn as_named_expression(&self) -> NamedExpression<'file> {

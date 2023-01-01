@@ -168,8 +168,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
         let class =
-            Class::from_position(NodeRef::new(self.file, class.index()), Generics::Any, None)
-                .unwrap();
+            Class::from_position(NodeRef::new(self.file, class.index()), Generics::Any, None);
         // Make sure the type vars are properly pre-calculated
         class.class_infos(self.i_s);
         self.file
@@ -326,7 +325,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
-        if !is_overload_member && !self.file.is_stub(self.i_s.db) {
+        if !is_overload_member {
             // Check defaults here.
             for param in params.iter() {
                 if let Some(annotation) = param.annotation() {
@@ -334,7 +333,14 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         let inf = self.infer_expression(default);
                         self.use_cached_annotation_type(annotation)
                             .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
-                                NodeRef::new(self.file, default.index()).add_typing_issue(
+                                let node_ref =
+                                    NodeRef::new(self.file, default.index()).to_db_lifetime(i_s.db);
+                                if self.file.is_stub(self.i_s.db) && default.is_ellipsis_literal() {
+                                    // In stubs it is allowed to do stuff like:
+                                    // def foo(x: int = ...) -> int: ...
+                                    return node_ref;
+                                }
+                                node_ref.add_typing_issue(
                                     i_s.db,
                                     IssueType::IncompatibleDefaultArgument {
                                         argument_name: Box::from(param.name_definition().as_code()),
@@ -342,6 +348,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                         expected,
                                     },
                                 );
+                                node_ref
                             });
                     }
                 }
@@ -455,10 +462,12 @@ impl<'db> Inference<'db, '_, '_, '_> {
                     let inf = self
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
                     t.error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
-                        NodeRef::new(self.file, return_stmt.index()).add_typing_issue(
+                        let node_ref = NodeRef::new(self.file, return_stmt.index());
+                        node_ref.add_typing_issue(
                             i_s.db,
                             IssueType::IncompatibleReturn { got, expected },
                         );
+                        node_ref.to_db_lifetime(i_s.db)
                     });
                 } else {
                     debug!("TODO what about an implicit None?");

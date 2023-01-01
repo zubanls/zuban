@@ -16,7 +16,7 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Module, NewTypeClass, NoneInstance, OnTypeError,
+    IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance, OnTypeError,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
     TypeVarInstance, TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
 };
@@ -488,7 +488,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn expect_int(&self, db: &Database) -> Option<i64> {
         if let InferredState::Saved(definition, point) = self.state {
-            if let Some(Specific::Integer) = point.maybe_specific() {
+            if let Some(Specific::IntegerLiteral | Specific::Integer) = point.maybe_specific() {
                 let definition = NodeRef::from_link(db, definition);
                 return definition.infer_int();
             }
@@ -1023,8 +1023,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 NodeRef::from_link(i_s.db, *link),
                 Generics::new_list(generics),
                 None,
-            )
-            .unwrap();
+            );
             callable(i_s, &class)
         }
         ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
@@ -1050,6 +1049,13 @@ fn run_on_specific<'db: 'a, 'a, T>(
 ) -> T {
     let definition = NodeRef::from_link(i_s.db, definition);
     match specific {
+        Specific::IntegerLiteral
+        | Specific::StringLiteral
+        | Specific::BooleanLiteral
+        | Specific::BytesLiteral => {
+            let instance = resolve_specific(i_s.db, specific);
+            callable(i_s, &Literal::new(definition, &instance))
+        }
         Specific::Function => callable(i_s, &Function::new(definition, None)),
         Specific::AnnotationClassInstance => {
             let expr_def = definition.add_to_node_index(2);
@@ -1080,6 +1086,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         | Specific::TypingUnion
         | Specific::TypingOptional
         | Specific::TypingType
+        | Specific::TypingLiteral
         | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
         Specific::TypingAny | Specific::Cycle => on_missing(i_s),
         Specific::TypingCast => callable(i_s, &TypingCast()),
@@ -1104,14 +1111,15 @@ fn run_on_specific<'db: 'a, 'a, T>(
 }
 
 fn resolve_specific(db: &Database, specific: Specific) -> Instance {
+    // TODO this should be using python_state.str_node_ref etc.
     load_builtin_instance_from_str(
         db,
         match specific {
-            Specific::String => "str",
-            Specific::Integer => "int",
+            Specific::String | Specific::StringLiteral => "str",
+            Specific::IntegerLiteral | Specific::Integer => "int",
             Specific::Float => "float",
-            Specific::Boolean => "bool",
-            Specific::Bytes => "bytes",
+            Specific::BooleanLiteral | Specific::Boolean => "bool",
+            Specific::BytesLiteral | Specific::Bytes => "bytes",
             Specific::Complex => "complex",
             Specific::Ellipsis => "ellipsis", // TODO this should not even be public
             actual => unreachable!("{actual:?}"),
@@ -1147,7 +1155,7 @@ fn use_instance_with_ref<'a>(
     generics: Generics<'a>,
     instance_reference: Option<NodeRef<'a>>,
 ) -> Instance<'a> {
-    let class = Class::from_position(class_reference, generics, None).unwrap();
+    let class = Class::from_position(class_reference, generics, None);
     Instance::new(class, instance_reference)
 }
 
@@ -1180,10 +1188,16 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::None => callable(i_s, &NoneInstance()),
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
-        DbType::Literal {
-            definition,
-            implicit,
-        } => todo!(),
+        DbType::Literal(literal) => {
+            let t = Instance::new(
+                i_s.db.python_state.literal_class(literal.kind(i_s.db)),
+                None,
+            );
+            callable(
+                i_s,
+                &Literal::new(NodeRef::from_link(i_s.db, literal.definition), &t),
+            )
+        }
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer),
         DbType::NewType(n) => {
             let t = n.type_(i_s);
@@ -1214,8 +1228,7 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
                 NodeRef::from_link(i_s.db, *link),
                 Generics::new_maybe_list(generics),
                 None,
-            )
-            .unwrap();
+            );
             callable(i_s, &class)
         }
         DbType::Union(lst) => lst

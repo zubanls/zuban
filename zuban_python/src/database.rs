@@ -18,7 +18,7 @@ use crate::inference_state::InferenceState;
 use crate::matching::{FormatData, Generic, Generics, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
-use crate::utils::{InsertOnlyVec, Invalidations, SymbolTable};
+use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
@@ -342,12 +342,17 @@ pub enum Specific {
     OverloadUnreachable,
 
     String,
-    Bytes,
     Float,
-    Integer,
     Complex,
+    Bytes,
+    Integer,
     Boolean,
     None,
+    // Literals are used for things like Literal[42]
+    StringLiteral,
+    BytesLiteral,
+    IntegerLiteral,
+    BooleanLiteral,
 
     Ellipsis,
     GeneratorComprehension,
@@ -647,6 +652,7 @@ impl UnionType {
 
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
+            DbType::Literal(_) => -1,
             DbType::TypeVar(_) => 2,
             DbType::None => 3,
             DbType::Any => 4,
@@ -655,25 +661,56 @@ impl UnionType {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        let mut unsorted = self
-            .entries
-            .iter()
+        let mut iterator = self.entries.iter();
+        let mut sorted = match format_data.style {
+            FormatStyle::MypyRevealType => String::new(),
+            _ => {
+                // Fetch the literals in the front of the union and format them like Literal[1, 2]
+                // instead of Literal[1] | Literal[2].
+                let count = self
+                    .entries
+                    .iter()
+                    .take_while(|e| matches!(e.type_, DbType::Literal(_)))
+                    .count();
+                if count > 1 {
+                    let lit = format!(
+                        "Literal[{}]",
+                        iterator
+                            .by_ref()
+                            .take(count)
+                            .map(|l| match l.type_ {
+                                DbType::Literal(l) => l.format_inner(format_data.db),
+                                _ => unreachable!(),
+                            })
+                            .collect::<Vec<_>>()
+                            .join(", ")
+                    );
+                    if count == self.entries.len() {
+                        return lit.into();
+                    } else {
+                        lit + " | "
+                    }
+                } else {
+                    String::new()
+                }
+            }
+        };
+        let mut unsorted = iterator
             .filter_map(|e| {
                 (!self.format_as_optional || !matches!(e.type_, DbType::None))
                     .then(|| (e.format_index, e.type_.format(format_data)))
             })
             .collect::<Vec<_>>();
         unsorted.sort_by_key(|(format_index, _)| *format_index);
-        let sorted = unsorted
+        sorted += &unsorted
             .into_iter()
             .map(|(_, t)| t)
             .collect::<Vec<_>>()
-            .join(" | ")
-            .into();
+            .join(" | ");
         if self.format_as_optional {
             format!("Optional[{sorted}]").into()
         } else {
-            sorted
+            sorted.into()
         }
     }
 }
@@ -691,10 +728,7 @@ pub enum DbType {
     NewType(NewType),
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
-    Literal {
-        definition: PointLink,
-        implicit: bool,
-    },
+    Literal(Literal),
     None,
     Any,
     Never,
@@ -780,8 +814,7 @@ impl DbType {
                 NodeRef::from_link(format_data.db, link),
                 Generics::Any,
                 None,
-            )
-            .unwrap();
+            );
             match format_data.style {
                 FormatStyle::Short => Box::from(class.name()),
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => {
@@ -809,10 +842,7 @@ impl DbType {
             Self::Any => Box::from("Any"),
             Self::None => Box::from("None"),
             Self::Never => Box::from("<nothing>"),
-            Self::Literal {
-                definition,
-                implicit,
-            } => format!("Literal[{}]", "TODO").into(),
+            Self::Literal(literal) => literal.format(format_data),
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
@@ -917,9 +947,7 @@ impl DbType {
                 }
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {
-                ()
-            }
+            Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {}
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -1877,6 +1905,95 @@ impl NewType {
     }
 }
 
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+pub struct Literal {
+    pub definition: PointLink,
+    pub implicit: bool,
+}
+
+#[derive(PartialEq, Eq)]
+pub enum LiteralKind {
+    String,
+    Integer,
+    Bytes,
+    Boolean,
+}
+
+#[derive(PartialEq, Eq, Debug)]
+pub enum LiteralValue<'db> {
+    String(Cow<'db, str>),
+    Integer(isize), // TODO this does not work for Python ints > usize
+    Bytes(Cow<'db, [u8]>),
+    Boolean(bool),
+}
+
+impl Literal {
+    fn node_ref(self, db: &Database) -> NodeRef {
+        NodeRef::from_link(db, self.definition)
+    }
+
+    pub fn kind(self, db: &Database) -> LiteralKind {
+        match self.node_ref(db).point().specific() {
+            Specific::IntegerLiteral => LiteralKind::Integer,
+            Specific::StringLiteral => LiteralKind::String,
+            Specific::BytesLiteral => LiteralKind::Bytes,
+            Specific::BooleanLiteral => LiteralKind::Boolean,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn value(self, db: &Database) -> LiteralValue {
+        let node_ref = self.node_ref(db);
+        match node_ref.point().specific() {
+            Specific::IntegerLiteral => {
+                let factor = node_ref.maybe_factor();
+                let to_be_parsed = factor
+                    .map(|f| f.unpack().1.as_code())
+                    .unwrap_or_else(|| node_ref.as_code());
+                let mut n: isize = if let Some(stripped) = to_be_parsed.strip_prefix("0x") {
+                    isize::from_str_radix(stripped, 16).unwrap_or_else(|_| todo!())
+                } else {
+                    if to_be_parsed.contains('_') {
+                        todo!("Stuff like 100_000")
+                    }
+                    to_be_parsed.parse().unwrap()
+                };
+                if factor.is_some() {
+                    n = -n;
+                }
+                LiteralValue::Integer(n)
+            }
+            Specific::StringLiteral => LiteralValue::String(
+                node_ref
+                    .maybe_str()
+                    .unwrap()
+                    .as_python_string()
+                    .into_cow()
+                    .unwrap(), // Can unwrap, because we know that there was never an f-string.
+            ),
+            Specific::BooleanLiteral => LiteralValue::Boolean(node_ref.as_code() == "True"),
+            Specific::BytesLiteral => {
+                LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
+            }
+            _ => unreachable!(),
+        }
+    }
+
+    fn format_inner(self, db: &Database) -> Cow<str> {
+        match self.value(db) {
+            LiteralValue::String(s) => Cow::Owned(str_repr(s)),
+            LiteralValue::Integer(i) => Cow::Owned(format!("{i}")),
+            LiteralValue::Boolean(true) => Cow::Borrowed("True"),
+            LiteralValue::Boolean(false) => Cow::Borrowed("False"),
+            LiteralValue::Bytes(b) => Cow::Owned(bytes_repr(b)),
+        }
+    }
+
+    pub fn format(self, format_data: &FormatData) -> Box<str> {
+        format!("Literal[{}]", self.format_inner(format_data.db)).into()
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct RecursiveAlias {
     pub link: PointLink,
@@ -2245,7 +2362,9 @@ impl TypeVarLike {
     pub fn as_any_generic_item(&self) -> GenericItem {
         match self {
             TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Any),
-            TypeVarLike::TypeVarTuple(_) => todo!(),
+            TypeVarLike::TypeVarTuple(_) => {
+                GenericItem::TypeArguments(TypeArguments::new_arbitrary_length(DbType::Any))
+            }
             TypeVarLike::ParamSpec(_) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
             }
@@ -2904,6 +3023,7 @@ pub struct ClassStorage {
     pub class_symbol_table: SymbolTable,
     pub self_symbol_table: SymbolTable,
     pub parent_scope: ParentScope,
+    pub promote_to: Cell<Option<PointLink>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]

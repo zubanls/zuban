@@ -1,5 +1,6 @@
 mod strings;
 
+use std::borrow::Cow;
 use std::iter::{Skip, StepBy};
 use std::str::from_utf8;
 
@@ -697,6 +698,14 @@ impl<'db> Expression<'db> {
         }
         None
     }
+
+    pub fn is_ellipsis_literal(&self) -> bool {
+        if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = self.unpack() {
+            matches!(a.unpack(), AtomContent::Ellipsis)
+        } else {
+            false
+        }
+    }
 }
 
 pub enum ExpressionContent<'db> {
@@ -781,6 +790,26 @@ impl<'db> ExpressionPart<'db> {
             Self::Disjunction(n) => n.index(),
         }
     }
+
+    pub fn as_code(&self) -> &'db str {
+        match self {
+            Self::Atom(n) => n.as_code(),
+            Self::Primary(n) => n.as_code(),
+            Self::AwaitPrimary(n) => n.as_code(),
+            Self::Power(n) => n.as_code(),
+            Self::Factor(n) => n.as_code(),
+            Self::Term(n) => n.as_code(),
+            Self::Sum(n) => n.as_code(),
+            Self::ShiftExpr(n) => n.as_code(),
+            Self::BitwiseAnd(n) => n.as_code(),
+            Self::BitwiseXor(n) => n.as_code(),
+            Self::BitwiseOr(n) => n.as_code(),
+            Self::Comparison(n) => n.as_code(),
+            Self::Inversion(n) => n.as_code(),
+            Self::Conjunction(n) => n.as_code(),
+            Self::Disjunction(n) => n.as_code(),
+        }
+    }
 }
 
 impl<'db> InterestingNodeSearcher<'db> for ExpressionPart<'db> {
@@ -837,11 +866,10 @@ impl<'db> NamedExpression<'db> {
 
     pub fn is_ellipsis_literal(&self) -> bool {
         if let NamedExpressionContent::Expression(e) = self.unpack() {
-            if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(a)) = e.unpack() {
-                return matches!(a.unpack(), AtomContent::Ellipsis);
-            }
+            e.is_ellipsis_literal()
+        } else {
+            false
         }
-        false
     }
 
     pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
@@ -2197,6 +2225,10 @@ pub enum PrimaryParent<'db> {
 }
 
 impl<'db> BitwiseOr<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        Operation::new(self.node, "__add__", "__radd__", "+")
+    }
+
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
         // TODO this is probably unused
         let mut iter = self.node.iter_children();
@@ -2328,18 +2360,21 @@ impl<'db> Term<'db> {
     }
 }
 
-impl<'db> BitwiseOr<'db> {
-    pub fn as_operation(&self) -> Operation<'db> {
-        Operation::new(self.node, "__add__", "__radd__", "+")
-    }
-}
-
 impl<'db> Disjunction<'db> {
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
         let mut iter = self.node.iter_children();
         let left = ExpressionPart::new(iter.next().unwrap());
         let _operand = iter.next().unwrap();
         (left, ExpressionPart::new(iter.next().unwrap()))
+    }
+}
+
+impl<'db> Factor<'db> {
+    pub fn unpack(&self) -> (Keyword<'db>, ExpressionPart<'db>) {
+        let mut iter = self.node.iter_children();
+        let first = iter.next().unwrap();
+        let second = iter.next().unwrap();
+        (Keyword::new(first), ExpressionPart::new(second))
     }
 }
 
@@ -2767,6 +2802,25 @@ pub enum AtomContent<'db> {
     NamedExpression(NamedExpression<'db>),
 }
 
+impl<'db> Bytes<'db> {
+    pub fn content_as_bytes(&self) -> Cow<'db, [u8]> {
+        let code = self.as_code();
+        if code.contains("'''") || code.contains("\"\"\"") {
+            todo!()
+        }
+        let code = code.as_bytes();
+        if code.contains(&b'\\') {
+            todo!()
+        }
+        debug_assert!(code[0] != b'"' && code[0] != b'\'');
+        if code[1] == b'"' || code[1] == b'\'' {
+            Cow::Borrowed(&code[2..code.len() - 1])
+        } else {
+            todo!()
+        }
+    }
+}
+
 impl<'db> StringLiteral<'db> {
     pub fn content(&self) -> &'db str {
         let code = self.node.as_code();
@@ -2828,10 +2882,14 @@ impl<'db> StringLiteral<'db> {
             .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
             .map(|(name, _)| name)
     }
+
+    pub fn as_python_string(&self) -> PythonString<'db> {
+        PythonString::from_literal(self.node)
+    }
 }
 
 impl<'db> Strings<'db> {
-    pub fn as_python_string(&self) -> Option<PythonString<'db>> {
+    pub fn as_python_string(&self) -> PythonString<'db> {
         PythonString::new(self.node.iter_children())
     }
 

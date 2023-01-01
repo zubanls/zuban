@@ -3,7 +3,8 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, Locality, Point, PointLink, PointType, Specific, TupleContent,
+    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, PointType, Specific,
+    TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -11,6 +12,25 @@ use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, OverloadedFunction};
 use crate::PythonProject;
+
+macro_rules! builtins_attribute_node_ref {
+    ($name:ident, $attr:ident) => {
+        #[inline]
+        pub fn $name(&self) -> NodeRef {
+            debug_assert!(self.$attr != 0);
+            NodeRef::new(self.builtins(), self.$attr)
+        }
+    };
+}
+
+macro_rules! node_ref_to_class {
+    ($vis:vis $name:ident, $from_node_ref:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> Class {
+            Class::from_position(self.$from_node_ref(), Generics::None, None)
+        }
+    };
+}
 
 pub struct PythonState {
     pub project: PythonProject,
@@ -22,12 +42,20 @@ pub struct PythonState {
     mypy_extensions: *const PythonFile,
     typing_extensions: *const PythonFile,
 
-    builtins_object_node_index: NodeIndex,
+    builtins_object_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
+    builtins_dict_index: NodeIndex,
+    builtins_bool_index: NodeIndex,
+    builtins_int_index: NodeIndex,
+    builtins_float_index: NodeIndex,
+    builtins_complex_index: NodeIndex,
     builtins_function_index: NodeIndex,
     builtins_base_exception_index: NodeIndex,
     builtins_str_index: NodeIndex,
+    builtins_bytes_index: NodeIndex,
+    builtins_bytearray_index: NodeIndex,
+    builtins_memoryview_index: NodeIndex,
     typing_mapping_index: NodeIndex,
     types_module_type_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
@@ -51,12 +79,20 @@ impl PythonState {
             types: null(),
             mypy_extensions: null(),
             typing_extensions: null(),
-            builtins_object_node_index: 0,
+            builtins_object_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
+            builtins_dict_index: 0,
+            builtins_bool_index: 0,
+            builtins_int_index: 0,
+            builtins_float_index: 0,
+            builtins_complex_index: 0,
             builtins_function_index: 0,
             builtins_base_exception_index: 0,
             builtins_str_index: 0,
+            builtins_bytes_index: 0,
+            builtins_bytearray_index: 0,
+            builtins_memoryview_index: 0,
             types_module_type_index: 0,
             typing_mapping_index: 0,
             mypy_extensions_arg_func: 0,
@@ -95,7 +131,15 @@ impl PythonState {
         let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
         let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
         let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
+        let dict_name_index = builtins.symbol_table.lookup_symbol("dict").unwrap();
+        let bool_name_index = builtins.symbol_table.lookup_symbol("bool").unwrap();
+        let int_name_index = builtins.symbol_table.lookup_symbol("int").unwrap();
+        let float_name_index = builtins.symbol_table.lookup_symbol("float").unwrap();
+        let complex_name_index = builtins.symbol_table.lookup_symbol("complex").unwrap();
         let str_name_index = builtins.symbol_table.lookup_symbol("str").unwrap();
+        let bytes_name_index = builtins.symbol_table.lookup_symbol("bytes").unwrap();
+        let bytearray_name_index = builtins.symbol_table.lookup_symbol("bytearray").unwrap();
+        let memoryview_name_index = builtins.symbol_table.lookup_symbol("memoryview").unwrap();
         let function_name_index = builtins.symbol_table.lookup_symbol("function").unwrap();
         let base_exception_name_index = builtins
             .symbol_table
@@ -104,8 +148,13 @@ impl PythonState {
         let typing_mapping_name_index = typing.symbol_table.lookup_symbol("Mapping").unwrap();
         let module_type_name_index = s.types().symbol_table.lookup_symbol("ModuleType").unwrap();
 
-        s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
+        s.builtins_object_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
+        s.builtins_dict_index = s.builtins().points.get(dict_name_index - 1).node_index();
+        s.builtins_bool_index = s.builtins().points.get(bool_name_index - 1).node_index();
+        s.builtins_int_index = s.builtins().points.get(int_name_index - 1).node_index();
+        s.builtins_float_index = s.builtins().points.get(float_name_index - 1).node_index();
+        s.builtins_complex_index = s.builtins().points.get(complex_name_index - 1).node_index();
         s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
         s.builtins_function_index = s
             .builtins()
@@ -118,6 +167,17 @@ impl PythonState {
             .get(base_exception_name_index - 1)
             .node_index();
         s.builtins_str_index = s.builtins().points.get(str_name_index - 1).node_index();
+        s.builtins_bytes_index = s.builtins().points.get(bytes_name_index - 1).node_index();
+        s.builtins_bytearray_index = s
+            .builtins()
+            .points
+            .get(bytearray_name_index - 1)
+            .node_index();
+        s.builtins_memoryview_index = s
+            .builtins()
+            .points
+            .get(memoryview_name_index - 1)
+            .node_index();
 
         s.typing_mapping_index = s
             .typing()
@@ -171,6 +231,24 @@ impl PythonState {
             set_mypy_extension_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
         s.mypy_extensions_kw_arg_func =
             set_mypy_extension_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
+
+        // Set promotions
+        s.int()
+            .class_storage
+            .promote_to
+            .set(Some(s.float_node_ref().as_link()));
+        s.float()
+            .class_storage
+            .promote_to
+            .set(Some(s.complex_node_ref().as_link()));
+        s.memoryview()
+            .class_storage
+            .promote_to
+            .set(Some(s.bytes_node_ref().as_link()));
+        s.bytearray()
+            .class_storage
+            .promote_to
+            .set(Some(s.bytes_node_ref().as_link()));
     }
 
     #[inline]
@@ -210,48 +288,34 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn object(&self) -> NodeRef {
-        debug_assert!(self.builtins_object_node_index != 0);
-        NodeRef::new(self.builtins(), self.builtins_object_node_index)
-    }
-
-    #[inline]
     pub fn object_db_type(&self) -> DbType {
-        DbType::Class(self.object().as_link(), None)
+        DbType::Class(self.object_node_ref().as_link(), None)
     }
 
     #[inline]
-    pub fn object_class(&self) -> Class {
-        Class::from_position(self.object(), Generics::None, None).unwrap()
+    pub fn tuple_with_any_generics(&self) -> Class {
+        Class::from_position(self.tuple_node_ref(), Generics::Any, None)
     }
 
-    #[inline]
-    pub fn list(&self) -> NodeRef {
-        debug_assert!(self.builtins_list_index != 0);
-        NodeRef::new(self.builtins(), self.builtins_list_index)
-    }
+    builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
+    builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
+    builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
+    builtins_attribute_node_ref!(tuple_node_ref, builtins_tuple_index);
+    builtins_attribute_node_ref!(bool_node_ref, builtins_bool_index);
+    builtins_attribute_node_ref!(int_node_ref, builtins_int_index);
+    builtins_attribute_node_ref!(float_node_ref, builtins_float_index);
+    builtins_attribute_node_ref!(complex_node_ref, builtins_complex_index);
+    builtins_attribute_node_ref!(str_node_ref, builtins_str_index);
+    builtins_attribute_node_ref!(bytes_node_ref, builtins_bytes_index);
+    builtins_attribute_node_ref!(bytearray_node_ref, builtins_bytearray_index);
+    builtins_attribute_node_ref!(memoryview_node_ref, builtins_memoryview_index);
 
-    #[inline]
-    pub fn tuple(&self) -> Class {
-        debug_assert!(self.builtins_tuple_index != 0);
-        Class::from_position(
-            NodeRef::new(self.builtins(), self.builtins_tuple_index),
-            Generics::Any,
-            None,
-        )
-        .unwrap()
-    }
-
-    #[inline]
-    pub fn str(&self) -> Class {
-        Class::from_position(self.str_node_ref(), Generics::None, None).unwrap()
-    }
-
-    #[inline]
-    pub fn str_node_ref(&self) -> NodeRef {
-        debug_assert!(self.builtins_str_index != 0);
-        NodeRef::new(self.builtins(), self.builtins_str_index)
-    }
+    node_ref_to_class!(pub object_class, object_node_ref);
+    node_ref_to_class!(pub str, str_node_ref);
+    node_ref_to_class!(int, int_node_ref);
+    node_ref_to_class!(float, float_node_ref);
+    node_ref_to_class!(memoryview, memoryview_node_ref);
+    node_ref_to_class!(bytearray, bytearray_node_ref);
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
@@ -282,7 +346,7 @@ impl PythonState {
     pub fn module_type(&self) -> Class {
         debug_assert!(self.types_module_type_index != 0);
         let node_ref = NodeRef::new(self.types(), self.types_module_type_index);
-        Class::from_position(node_ref, Generics::None, None).unwrap()
+        Class::from_position(node_ref, Generics::None, None)
     }
 
     pub fn mapping_node_ref(&self) -> NodeRef {
@@ -305,6 +369,19 @@ impl PythonState {
             _ => unreachable!(),
         };
         OverloadedFunction::new(node_ref, overload, None)
+    }
+
+    pub fn literal_class(&self, literal_kind: LiteralKind) -> Class {
+        Class::from_position(
+            match literal_kind {
+                LiteralKind::Integer => self.int_node_ref(),
+                LiteralKind::String => self.str_node_ref(),
+                LiteralKind::Boolean => self.bool_node_ref(),
+                LiteralKind::Bytes => self.bytes_node_ref(),
+            },
+            Generics::None,
+            None,
+        )
     }
 }
 

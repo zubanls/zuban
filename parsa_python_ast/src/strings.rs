@@ -1,3 +1,5 @@
+use std::borrow::Cow;
+
 use parsa_python::NonterminalType::fstring;
 use parsa_python::PyNodeType::Nonterminal;
 use parsa_python::{CodeIndex, PyNode, SiblingIterator};
@@ -10,7 +12,7 @@ pub enum PythonString<'db> {
 }
 
 impl<'db> PythonString<'db> {
-    pub fn new(strings: SiblingIterator<'db>) -> Option<Self> {
+    pub fn new(strings: SiblingIterator<'db>) -> Self {
         let mut result: Option<Self> = None;
         for literal in strings {
             result = Some(match result {
@@ -18,22 +20,72 @@ impl<'db> PythonString<'db> {
                 None => Self::from_literal(literal),
             });
         }
-        result
+        result.unwrap()
     }
 
-    fn from_literal(literal: PyNode<'db>) -> Self {
+    pub fn into_cow(self) -> Option<Cow<'db, str>> {
+        match self {
+            Self::Ref(_, s) => Some(Cow::Borrowed(s)),
+            Self::String(_, s) => Some(Cow::Owned(s)),
+            Self::FString => None,
+        }
+    }
+
+    pub fn from_literal(literal: PyNode<'db>) -> Self {
         if literal.is_type(Nonterminal(fstring)) {
             Self::FString
         } else {
             let code = literal.as_code();
-            if !code.starts_with(['"', '\''].as_slice()) {
-                todo!()
+            let bytes = code.as_bytes();
+            let quote = bytes[0];
+            let start = match quote {
+                b'u' | b'U' => 2,
+                b'r' | b'R' => return Self::Ref(literal.start() + 2, &code[2..code.len() - 1]),
+                _ => {
+                    debug_assert!(quote == b'"' || quote == b'\'');
+                    1
+                }
+            };
+            let inner = &code[start..code.len() - 1];
+
+            let mut iterator = inner.as_bytes().iter().enumerate().peekable();
+            let mut string = None;
+            let mut previous_insert = 0;
+            while let Some((i, mut ch)) = iterator.next() {
+                if ch == &b'\\' {
+                    if string.is_none() {
+                        string = Some(String::with_capacity(inner.len()));
+                    }
+                    let s = string.as_mut().unwrap();
+                    s.push_str(&inner[previous_insert..i]);
+                    (_, ch) = iterator.next().unwrap();
+
+                    s.push(match ch {
+                        b'\\' | b'\'' | b'"' => *ch as char,
+                        b'\n' => todo!(),
+                        b'u' => parse_hex(4, iterator.by_ref()),
+                        b'U' => parse_hex(8, iterator.by_ref()),
+                        b'x' => parse_hex(2, iterator.by_ref()),
+                        b'N' => todo!(),
+                        b'a' => todo!(),
+                        b'b' => todo!(),
+                        b'f' => todo!(),
+                        b'n' => '\n',
+                        b'r' => todo!(),
+                        b't' => todo!(),
+                        b'v' => todo!(),
+                        // TODO also \ooo (where o is 0-7) (octal)
+                        _ => todo!("{inner:?}"),
+                    });
+                    previous_insert = iterator.peek().map(|x| x.0).unwrap_or_else(|| inner.len());
+                }
             }
-            let c = &code[1..code.len() - 1];
-            if c.contains(['\'', '\\', '"'].as_slice()) {
-                todo!()
+            if let Some(mut string) = string {
+                string.push_str(&inner[previous_insert..inner.len()]);
+                Self::String(literal.start() + start as u32, string)
+            } else {
+                Self::Ref(literal.start() + start as u32, inner)
             }
-            Self::Ref(literal.start() + 1, c)
         }
     }
 
@@ -52,4 +104,21 @@ impl<'db> PythonString<'db> {
             Self::FString => Self::FString,
         }
     }
+}
+
+fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I) -> char {
+    let mut number = 0;
+    for (i, (_, x)) in iterator.take(count).enumerate() {
+        let digit = if (b'0'..=b'9').contains(x) {
+            *x - b'0'
+        } else if (b'a'..=b'f').contains(x) {
+            *x - b'a' + 10
+        } else if (b'A'..=b'F').contains(x) {
+            *x - b'A' + 10
+        } else {
+            todo!()
+        };
+        number += (digit as u32) << ((count - i - 1) * 4);
+    }
+    char::from_u32(number).unwrap_or_else(|| todo!())
 }

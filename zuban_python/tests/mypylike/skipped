@@ -1,6 +1,6 @@
 # Next up
-testFunctionForwardRefAlias
-testParamSpecApplyConcatenateTwice
+testWideOuterContextNoArgsError
+testWideOuterContextEmptyError
 
 testBoundGenericMethodParamSpecFine
 
@@ -8,6 +8,9 @@ testCallableParsingFromExpr
 testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
+
+# Details around Never?
+testStar2Context
 
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases
@@ -22,6 +25,15 @@ testRecursiveClassLevelAlias
 testInvalidNumberOfTypeArgs
 testInheritedConstructor2
 
+# Uses function context but is in fact in module context
+testFunctionForwardRefAlias
+
+# Maybe implement reverse operator
+testFlattenTypeAliasWhenAliasedAsUnion
+
+# Overloads should not promote
+testOverloadWithOverlappingItemsAndAnyArgument5
+
 # Overloading
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
@@ -35,14 +47,22 @@ testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
 testOverloadVarargsSelection
 testOverloadVarargsAndKwargsSelection
+# overload argument expression uses context inference multiple times
+testBadOverloadProbableMatch
+testLiteralAndGenericsWithOverloads
+testPreferExactSignatureMatchInOverload
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
 testOverloadInferUnionReturnBasic
+testOverloadsUsingAny
 testOverloadInferUnionReturnMultipleArguments
 testOverloadInferUnionRespectsVariance
 testUnionMathTrickyOverload1
 testUnionMathTrickyOverload2
+testLiteralInferredInOverloadContextUnionMath
+testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType
+testLiteralInferredInOverloadContextUnionMathTrickyOverload
 testManyUnionsInOverload
 testOverloadAndSelfTypes
 # - 3352-3500 Union/Type vars/overloads weird combinations
@@ -102,6 +122,8 @@ testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadingWithParamSpec
 # Overlapping general
 testIntersectionTypesAndVarArgs
+testLiteralInferredInOverloadContextWithTypevars
+testLiteralSubtypeOverlap
 overload_not_overlapping_optional
 overload_overlapping_any
 # overloading for loop
@@ -171,6 +193,8 @@ testSpecialAttrsAreAvaliableInClasses
 testSpecialModulesNameImplicitAttr
 # Function attributes
 testInvalidRvalueTypeInInferredMultipleLvarDefinition
+# None attributes
+testNoneHasBool
 
 # boolean operators
 testOrOperationWithGenericOperands
@@ -193,6 +217,7 @@ testGenericTypeAliasesTypeVarConstraints
 testWideOuterContextValuesOverlapping
 testTypevarValuesWithOverloadedFunctionSpecialCase
 testReferenceToDecoratedFunctionAndTypeVarValues
+testLiteralAndGenericsRespectsValueRestriction
 
 testTypeVarValuesFunction
 testTypeVarValuesMethod1
@@ -205,20 +230,14 @@ testUnboundedTypevarUnpacking
 # Tuple Bound with iter unpacking
 testIterableBoundUnpacking
 
-# questionable list/dict type inference
-testInferredTypeIsObjectMismatch
-testCallableListJoinInference
-# Overload List item 0 should not be generated on ALL mismatches
-testPreferExactSignatureMatchInOverload
-# Overload inference of list multiple times
-testBadOverloadProbableMatch
-
 # *args on TypeVar
 testInvalidTypevarValues
 
 # Tuple type var context
+testTupleContextFromIterable
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
+class_generics_recursion
 # bottom up inference for tuple with *args
 testCallerVarArgsListWithTypeInference
 testCallerVarArgsTupleWithTypeInference
@@ -228,6 +247,9 @@ testListMultiplyInContext
 # bottom up dict
 testDictionaryLiteralInContext
 
+# Not able to infer context with unions and literals
+testLiteralAndGenericWithUnion
+testLiteralAndGenericsNoMatch
 # Union nothing should disappear
 testUnionWithGenericTypeItemContext
 testUnionWithGenericTypeItemContextInMethod
@@ -251,135 +273,15 @@ multiple_lambda_mypy_issue_4226
 testChainedAssignmentInferenceContexts
 
 # Literal
-testImportWithStubIncompatibleType
-testLiteralInvalidString
-testLiteralFromTypingWorks
-testLiteralInsideOtherTypes
-testLiteralValidExpressionsInStringsPython3
-testLiteralMixingUnicodeAndBytesPython3
-testLiteralMixingUnicodeAndBytesPython3ForwardStrings
-testLiteralUnicodeWeirdCharacters
-testLiteralRenamingImportWorks
-testLiteralRenamingImportViaAnotherImportWorks
-testLiteralRenamingImportNameConfusion
-testLiteralBadRawExpressionWithBadType
-testLiteralBasicIntUsage
-testLiteralBasicBoolUsage
-testLiteralBasicStrUsage
-testLiteralBasicStrUsageSlashes
-testLiteralBasicNoneUsage
-testLiteralCallingUnionFunction
-testLiteralDisallowAny
-testLiteralDisallowActualTypes
-testLiteralDisallowFloatsAndComplex
-testLiteralDisallowComplexExpressions
-testLiteralDisallowCollections
-testLiteralDisallowCollections2
-testLiteralDisallowCollectionsTypeAlias
-testLiteralDisallowCollectionsTypeAlias2
-testLiteralDisallowTypeVar
-testLiteralMultipleValues
-testLiteralMultipleValuesExplicitTuple
-testLiteralNestedUsage
-testLiteralBiasTowardsAssumingForwardReference
-testLiteralBiasTowardsAssumingForwardReferenceForTypeAliases
-testLiteralBiasTowardsAssumingForwardReferencesForTypeComments
-testLiteralCallingFunction
-testLiteralCallingFunctionWithUnionLiteral
-testLiteralCallingFunctionWithStandardBase
-testLiteralCheckSubtypingStrictOptional
-testLiteralCheckSubtypingNoStrictOptional
-testLiteralCallingOverloadedFunction
-testLiteralVariance
-testLiteralInListAndSequence
-testLiteralRenamingDoesNotChangeTypeChecking
-testLiteralInferredInAssignment
-testLiteralInferredOnlyForActualLiterals
-testLiteralInferredTypeMustMatchExpected
-testLiteralInferredInCall
-testLiteralInferredInReturnContext
 testLiteralInferredInListContext
 testLiteralInferredInTupleContext
 testLiteralInferredInDictContext
-testLiteralInferredInOverloadContextBasic
-testLiteralOverloadProhibitUnsafeOverlaps
-testLiteralInferredInOverloadContextUnionMath
-testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType
-testLiteralInferredInOverloadContextWithTypevars
-testLiteralInferredInOverloadContextUnionMathTrickyOverload
-testLiteralFallbackOperatorsWorkCorrectly
-testLiteralFallbackInheritedMethodsWorkCorrectly
-testLiteralFallbackMethodsDoNotCoerceToLiteral
-testLiteralErrorsWithIsInstanceAndIsSubclass
-testLiteralErrorsWhenSubclassed
-testLiteralErrorsWhenInvoked
-testLiteralAndGenericsWithSimpleFunctions
-testLiteralAndGenericWithUnion
-testLiteralAndGenericsNoMatch
-testLiteralAndGenericsWithSimpleClasses
 testLiteralAndGenericsRespectsUpperBound
-testLiteralAndGenericsRespectsValueRestriction
-testLiteralAndGenericsWithOverloads
-testLiteralMeets
-testLiteralMeetsWithStrictOptional
 testLiteralIntelligentIndexingTuples
-testLiteralIntelligentIndexingTypedDict
-testLiteralIntelligentIndexingUsingFinal
 testLiteralIntelligentIndexingTupleUnions
-testLiteralIntelligentIndexingTypedDictUnions
-testLiteralIntelligentIndexingMultiTypedDict
-testLiteralFinalInferredAsLiteral
-testLiteralFinalDirectInstanceTypesSupercedeInferredLiteral
-testLiteralFinalDirectLiteralTypesForceLiteral
-testLiteralFinalErasureInMutableDatastructures1
-testLiteralFinalErasureInMutableDatastructures2
-testLiteralFinalMismatchCausesError
-testLiteralFinalGoesOnlyOneLevelDown
-testLiteralFinalCollectionPropagation
-testLiteralFinalStringTypesPython3
-testLiteralFinalPropagatesThroughGenerics
-testLiteralFinalUsedInLiteralType
-testLiteralWithFinalPropagation
-testLiteralWithFinalPropagationIsNotLeaking
-testLiteralWithEnumsBasic
-testLiteralWithEnumsDefinedInClass
-testLiteralWithEnumsSimilarDefinitions
-testLiteralWithEnumsDeclaredUsingCallSyntax
-testLiteralWithEnumsDerivedEnums
-testLiteralWithEnumsAliases
-testLiteralUsingEnumAttributesInLiteralContexts
-testLiteralUsingEnumAttributeNamesInLiteralContexts
-testLiteralBinderLastValueErased
-testLiteralBinderLastValueErasedPartialTypes
-testLiteralAndInstanceSubtyping
-testLiteralSubtypeContext
-testLiteralSubtypeContextNested
-testLiteralSubtypeContextGeneric
-testLiteralErrorsWhenInvoked-skip
-testNegativeIntLiteral
-testConditionalBoolLiteralUnionNarrowing
+# Literal with ?
 testNewAnalyzerBool
-testNoneHasBool
-testNoneHasBoolShowNoneErrorsFalse
-testLiteralFineGrainedVarConversion
-testLiteralFineGrainedFunctionConversion
-testLiteralFineGrainedAlias
-testLiteralFineGrainedOverload
-testLiteralFineGrainedChainedDefinitions
-testLiteralFineGrainedChainedAliases
-testLiteralFineGrainedChainedFunctionDefinitions
-testLiteralFineGrainedChainedTypeVarInference
-testLiteralFineGrainedStringConversionPython3
-testLiteralSubtypeOverlap
 testCallerTupleVarArgsAndGenericCalleeVarArg
-testNewAnalyzerNewTypeSpecialCase
-
-# int -> float promotion
-testNewAnalyzerPromotion
-testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
-testSimplifyingUnionAndTypePromotions
-testFlattenTypeAliasWhenAliasedAsUnion
-testOverloadingAndIntFloatSubtyping
 
 # Nested type vars
 testInnerFunctionWithTypevarValues
@@ -476,30 +378,101 @@ testRecursiveTupleClassesNewType
 # namedtuple
 testCallableParsingInInheritence
 
-
 # Typing stuff
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
 testBaseClassAnnotatedWithoutArgs
-*Pep613
-*Abstract*
-*Final*
+
+# abstractmethod / ABCMeta
+testMakeClassNoLongerAbstract1
+testMakeClassNoLongerAbstract2
+testAddAbstractMethod
+testMakeClassAbstract
+testMakeMethodNoLongerAbstract1
+testMakeMethodNoLongerAbstract2
+testAbstractBodyTurnsEmpty
+testAbstractBodyTurnsEmptyProtocol
+testAbstractGlobalFunction
+testAbstractNestedFunction
+testInferenceWithAbstractClassContext3
+
+# Explicit Type Aliases
+testSimplePep613
+testInvalidPep613
+testAliasedImportPep613
+testFunctionScopePep613
+testImportCyclePep613
+
+# Final
+testNewAnalyzerFinalDefiningModuleVar
+testNewAnalyzerFinalDefiningInstanceVar
+testNewAnalyzerFinalReassignModuleVar
+testNewAnalyzerFinalReassignModuleReexport
+testNewAnalyzerFinalOverrideInSubclass
+testNewAnalyzerFinalLiteralInferredAsLiteralWithDeferral
+testFinalAddFinalVarAssignFine
+testFinalAddFinalVarOverrideFine
+testFinalAddFinalMethodOverrideFine
+testFinalAddFinalMethodOverrideWithVarFine
+testFinalAddFinalMethodOverrideOverloadFine
+testFinalAddFinalPropertyWithVarFine
+testFinalBodyReprocessedAndStillFinal
+testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
+testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
+testLiteralFineGrainedChainedViaFinal
+testLiteralFinalInferredAsLiteral
+testLiteralFinalDirectInstanceTypesSupercedeInferredLiteral
+testLiteralFinalDirectLiteralTypesForceLiteral
+testLiteralFinalErasureInMutableDatastructures1
+testLiteralFinalErasureInMutableDatastructures2
+testLiteralFinalMismatchCausesError
+testLiteralFinalGoesOnlyOneLevelDown
+testLiteralFinalCollectionPropagation
+testLiteralFinalStringTypesPython3
+testLiteralFinalPropagatesThroughGenerics
+testLiteralFinalUsedInLiteralType
+testLiteralWithFinalPropagation
+testLiteralWithFinalPropagationIsNotLeaking
+testLiteralIntelligentIndexingUsingFinal
+testNegativeIntLiteralWithFinal
+testLiteralAndInstanceSubtyping
+testNewAnalyzerNewTypeSpecialCase
 
 # TYPE_CHECKING
 testIfTypeCheckingUnreachableClass
 
-# stdlib
+# data class / attrs things
 testDataclass*
 testAttrs*
-*PartialType*
 
 # Enum
-*Enum*
+testNewAnalyzerEnumRedefinition
+testRefreshFunctionalEnum
+testRefreshClassBasedEnum
+testRefreshClassBasedIntEnum
+testClassBasedEnumPropagation1
+testClassBasedEnumPropagation2
+testRefreshFuncBasedEnum
+testRefreshFuncBasedIntEnum
+testFuncBasedEnumPropagation1
+testFuncBasedEnumPropagation2
+testLiteralWithEnumsBasic
+testLiteralWithEnumsDefinedInClass
+testLiteralWithEnumsSimilarDefinitions
+testLiteralWithEnumsDeclaredUsingCallSyntax
+testLiteralWithEnumsDerivedEnums
+testLiteralWithEnumsAliases
+testLiteralUsingEnumAttributesInLiteralContexts
+testLiteralUsingEnumAttributeNamesInLiteralContexts
+testAliasForEnumTypeAsLiteral
 testInvariance
 
 # TypedDict
 *TypedDict*
+testLiteralIntelligentIndexingTypedDict
+testLiteralIntelligentIndexingTypedDictUnions
+testLiteralIntelligentIndexingMultiTypedDict
 testUnpackKwargsNonIdentifier
 
 # NoReturn
@@ -508,13 +481,20 @@ testUnionWithNoReturn
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype
 testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 testDontNeedAnnotationForCallable
+testLiteralCheckSubtypingStrictOptional
+testLiteralCheckSubtypingNoStrictOptional
 
 # Type application vs. type declaration
+testParamSpecApplyConcatenateTwice
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 
 # typing.no_type_check
-*NoTypeCheck*
+testNoTypeCheckDecoratorOnMethod1
+testNoTypeCheckDecoratorOnMethod2
+testCallingNoTypeCheckFunction
+testCallingNoTypeCheckFunction2
+testNoTypeCheckDecoratorSemanticError
 
 # Duplicate in Union
 testUnificationRedundantUnion
@@ -526,7 +506,11 @@ testNewAnalyzerForwardAliasFromUnion
 testUnionSimplification*
 testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
+testInferredTypeIsObjectMismatch
 testSimplifyUnionWithCallable
+testLiteralMeets
+testLiteralMeetsWithStrictOptional
+testCallableListJoinInference
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess
@@ -579,6 +563,7 @@ testListComprehensionSpecialScoping
 
 # if sys.version
 testNewAnalyzerVersionCheck*
+testPromoteMemoryviewToBytes
 
 # lambda
 testLambdaDefaultTypeErrors
@@ -603,6 +588,11 @@ testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 testConditionalFunctionDefinitionUsingDecorator2
 
+# Weird Name binder type definitions (overwritten?)
+testLiteralBinderLastValueErased
+
+# isinstance
+testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance flow analysis
 testUnionGenericWithBoundedVariable
 testIsinstanceAndTypeVarValues*
@@ -627,12 +617,16 @@ testRecursiveAliasNewStyleSupported
 #  --enable-recursive-aliases & is not None
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
+# narrowing if with literals
+testConditionalBoolLiteralUnionNarrowing
 
 # weird narrowing
 testInferredTypeIsSimpleNestedList
 testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
+testNarrowingDownFromPromoteTargetType
+testNarrowingDownFromPromoteTargetType2
 
 # check after flow analysis
 testAssignAnyToUnionWithAny
@@ -835,7 +829,37 @@ testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 testNewAnalyzerNewTypeRedefinition
 
 # Metaclass
-*Metaclass*
+testInvalidMetaclass
+testInvalidQualifiedMetaclass
+testNonClassMetaclass
+testNewAnalyzerMetaclass1
+testNewAnalyzerMetaclass2
+testNewAnalyzerMetaclassPlaceholder
+testNewAnalyzerMetaclassSix1
+testNewAnalyzerMetaclassSix2
+testNewAnalyzerMetaclassSix3
+testNewAnalyzerMetaclassSix4
+testNewAnalyzerMetaclassFuture1
+testNewAnalyzerMetaclassFuture3
+testNewAnalyzerMetaclassFuture4
+testNotSimplifyingUnionWithMetaclass
+testMetaclassAttributes
+testMetaclassAttributesDirect
+testMetaclassOperators
+testMetaclassOperatorsDirect
+testFineMetaclassUpdate
+testFineMetaclassRecalculation
+testFineMetaclassDeclaredUpdate
+testFineMetaclassRemoveFromClass
+testFineMetaclassRemoveFromClass2
+testBadMetaclassCorrected
+testFixedAttrOnAddedMetaclass
+testIndirectSubclassReferenceMetaclass
+testMetaclassDeletion
+testFixMissingMetaclass
+testGoodMetaclassSpoiled
+testProtocolsInvalidateByRemovingMetaclass
+testOverloadedToNormalMethodMetaclass
 testNewAnalyzerClassKeywordsError
 testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
@@ -859,6 +883,9 @@ testUseSupertypeAsInferenceContextPartial
 testUseSupertypeAsInferenceContextPartialError
 testUseSupertypeAsInferenceContextPartialErrorProperty
 testUseSupertypeAsInferenceContextConflict
+testLiteralSubtypeContext
+testLiteralSubtypeContextNested
+testLiteralSubtypeContextGeneric
 
 # "Access to generic instance variables via class is ambiguous"
 testGenericClassAttrUnboundOnClass
@@ -897,7 +924,15 @@ testDecoratorUpdateClassInFunction
 testGenericTypeBody1
 
 # Liskov
-*Liskov*
+testLiskovFineVariable
+testLiskovFineVariableInFunction
+testLiskovFineDecorator
+testLiskovFineVariableClean-only_when_nocache
+testLiskovFineVariableCleanDefInMethod-only_when_nocache
+testLiskovFineVariableCleanDefInMethodStar-only_when_nocache
+testLiskovFineVariableCleanDefInMethodNested-only_when_nocache
+testLiskovFineVariableInFunctionClean-only_when_nocache
+testLiskovFineDecoratorClean-only_when_nocache
 testPositionalOverridingArgumentNameInsensitivity
 testOverridingMethodInSimpleTypeInheritingGenericType
 testOverridingMethodInGenericTypeInheritingSimpleType
@@ -945,8 +980,24 @@ testTrailingCommaParsing
 testTrailingCommaInIfParsing
 
 # async/await
-*Await*
-*Async*
+testAwaitCoroutine
+testAwaitDefaultContext
+testAwaitAnyContext
+testAwaitExplicitContext
+testAwaitGeneratorError
+testAwaitIteratorError
+testAwaitArgumentError
+testAwaitResultError
+testAwaitReturnError
+testYieldFromNoAwaitable
+testAwaitableSubclass
+testAwaitOverloadSpecialCase
+testUnusedAwaitable
+testAwaitMissingNote
+testAsyncGeneratorExpressionAwait
+testAwaitAndAsyncDef-only_when_nocache
+testAwaitAnd__await__-only_when_nocache
+testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 
 # Yield
@@ -960,7 +1011,12 @@ testMultipassAndTopLevelVariable
 testMultipassAndCircularDependency
 
 # __new__
-*DunderNew*
+testDunderNewUpdatedMethod
+testDunderNewUpdatedSubclass
+testDunderNewUpdatedAlias
+testDunderNewUpdatedCallable
+testDunderNewDefine
+testDunderNewInsteadOfInit
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
@@ -984,6 +1040,7 @@ testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
 testCallingFunctionsWithDefaultArgumentValues
 testPartiallyInitializedVariableDoesNotEscapeScope2
 testCallerVarArgsAndDefaultArgs
+*PartialType*
 
 # None late binding, because it's None (x = None; x = 3)
 testAssigningAnyStrToNone
@@ -1044,12 +1101,17 @@ testOverloadingAndDucktypeCompatibility
 testInvalidStrLiteralSpaces
 testInvalidStrLiteralStrayBrace
 testInvalidMultilineLiteralType
+testLiteralInvalidString
 
 # Global
 testAssignToFuncDefViaGlobalDecl2
 
 # Nonlocal
-*NonlocalDecl*
+testInvalidNonlocalDecl
+testNonlocalDeclNotMatchingGlobal
+testNonlocalDeclConflictingWithParameter
+testNonlocalDeclOutsideFunction
+testGlobalAndNonlocalDecl
 testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal
 
@@ -1074,18 +1136,8 @@ testSuggestPep604AnnotationForPartialNone
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
 
-# Invariant note
-testAssignmentInvariantNoteForList
-testAssignmentInvariantNoteForDict
-testInvariantListArgNote
-testInvariantDictArgNote
-testCallGenericFunctionWithTypeVarValueRestrictionUsingContext
+# "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
-testListWithDucktypeCompatibility
-testListWithDucktypeCompatibilityAndTransitivity
-testWideOuterContextEmptyError
-testWideOuterContextNoArgsError
-testOverloadsUsingAny
 
 # List unpacking
 testMultipleAssignmentWithLists
@@ -1201,9 +1253,7 @@ testVariableDeclWithInvalidNumberOfTypesNested4
 
 # EllipsisType
 testUnionWithEllipsis
-# Weird ellipsis assignment
-testEllipsisInitializerInStubFileWithType
-testEllipsisDefaultArgValueInStub2
+# Ellipsis / raise NotimplementedError / pass are considered stubs in normal files 
 testEllipsisDefaultArgValueInNonStub
 testEllipsisDefaultArgValueInNonStubsMethods
 
@@ -1338,6 +1388,10 @@ testRefreshForWithTypeComment2
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
 
+# Probably won't support: typing._promote
+testListWithDucktypeCompatibility
+testListWithDucktypeCompatibilityAndTransitivity
+
 # Probably won't support Type Var formatting
 testQualifiedTypeVariableName
 testPartiallyQualifiedTypeVariableName
@@ -1413,3 +1467,4 @@ testNewAnalyzerAliasToNotReadyNestedClass
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
+testLiteralErrorsWhenInvoked-skip

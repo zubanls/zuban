@@ -8,7 +8,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 24] = [
+const USE_MYPY_TEST_FILES: [&str; 25] = [
     "check-generics.test",
     "check-generic-alias.test",
     "check-typevar-unbound.test",
@@ -43,8 +43,7 @@ const USE_MYPY_TEST_FILES: [&str; 24] = [
     //"check-narrowing.test",
     //"check-isinstance.test",
     //"check-type-checks.test",
-    //"check-type-promotion.test",
-    //"check-native-int.test",
+    "check-type-promotion.test",
     //"check-async-await.test",
     "check-inference.test",
     "check-inference-context.test",
@@ -106,6 +105,7 @@ const USE_MYPY_TEST_FILES: [&str; 24] = [
 
     // Won't do, because it tests mypy internals
     //"check-incomplete-fixture.test",
+    //"check-native-int.test",
 ];
 
 const BASE_PATH: &str = "/mypylike/";
@@ -271,7 +271,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 // For now just ignore different versions and overwrite the out. This works,
                 // because we always target the latest version and older versions are currently
                 // listed below newer ones (by convention?).
-                if !rest.starts_with("version>=") {
+                if !rest.starts_with("version>=") && rest != "skip-path-normalization" {
                     assert_eq!(rest, "");
                 }
                 for (i, part) in in_between.split("==\n").enumerate() {
