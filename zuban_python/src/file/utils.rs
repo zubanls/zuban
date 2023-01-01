@@ -46,7 +46,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 |i_s: &mut InferenceState<'db, '_>, type_, matcher| {
                     let mut found = None;
                     type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
-                        if list_cls.node_ref == i_s.db.python_state.list() {
+                        if list_cls.node_ref == i_s.db.python_state.list_node_ref() {
                             let type_vars = list_cls.type_vars(i_s).unwrap();
                             let generic_t = list_cls
                                 .generics()
@@ -111,7 +111,7 @@ fn check_list_with_context<'db>(
                 );
                 if m.bool() && found.is_none() {
                     found = Some(DbType::Class(
-                        i_s.db.python_state.list().as_link(),
+                        i_s.db.python_state.list_node_ref().as_link(),
                         Some(GenericsList::new_generics(Box::new([
                             GenericItem::TypeArgument(
                                 inferred

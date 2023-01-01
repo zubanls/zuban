@@ -402,7 +402,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn is_object_class(&self, db: &Database) -> Match {
-        (self.node_ref == db.python_state.object()).into()
+        (self.node_ref == db.python_state.object_node_ref()).into()
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

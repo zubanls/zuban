@@ -675,7 +675,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
                             let generic = union.class_as_db_type(self.i_s);
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                self.i_s.db.python_state.list().as_link(),
+                                self.i_s.db.python_state.list_node_ref().as_link(),
                                 Some(GenericsList::new_generics(Box::new([
                                     GenericItem::TypeArgument(generic),
                                 ]))),
@@ -689,7 +689,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         } else if value_iterator.len().is_none() {
                             let value = value_iterator.next(self.i_s).unwrap();
                             let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                                self.i_s.db.python_state.list().as_link(),
+                                self.i_s.db.python_state.list_node_ref().as_link(),
                                 Some(GenericsList::new_generics(Box::new([
                                     GenericItem::TypeArgument(value.class_as_db_type(self.i_s)),
                                 ]))),

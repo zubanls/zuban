@@ -698,12 +698,14 @@ impl<'a> Type<'a> {
                             }
                             t1.is_super_type_of(i_s, matcher, &t2).bool()
                         };
-                        if class1.node_ref == i_s.db.python_state.list() && check(i_s, 0) {
+                        if class1.node_ref == i_s.db.python_state.list_node_ref() && check(i_s, 0) {
                             return Match::False {
                                 similar: true,
                                 reason: MismatchReason::SequenceInsteadOfListNeeded,
                             };
-                        } else if class1.node_ref == i_s.db.python_state.dict() && check(i_s, 1) {
+                        } else if class1.node_ref == i_s.db.python_state.dict_node_ref()
+                            && check(i_s, 1)
+                        {
                             return Match::False {
                                 similar: true,
                                 reason: MismatchReason::MappingInsteadOfDictNeeded,

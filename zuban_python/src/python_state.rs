@@ -33,7 +33,7 @@ pub struct PythonState {
     mypy_extensions: *const PythonFile,
     typing_extensions: *const PythonFile,
 
-    builtins_object_node_index: NodeIndex,
+    builtins_object_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
     builtins_dict_index: NodeIndex,
@@ -70,7 +70,7 @@ impl PythonState {
             types: null(),
             mypy_extensions: null(),
             typing_extensions: null(),
-            builtins_object_node_index: 0,
+            builtins_object_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
             builtins_dict_index: 0,
@@ -139,7 +139,7 @@ impl PythonState {
         let typing_mapping_name_index = typing.symbol_table.lookup_symbol("Mapping").unwrap();
         let module_type_name_index = s.types().symbol_table.lookup_symbol("ModuleType").unwrap();
 
-        s.builtins_object_node_index = s.builtins().points.get(object_name_index - 1).node_index();
+        s.builtins_object_index = s.builtins().points.get(object_name_index - 1).node_index();
         s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
         s.builtins_dict_index = s.builtins().points.get(dict_name_index - 1).node_index();
         s.builtins_bool_index = s.builtins().points.get(bool_name_index - 1).node_index();
@@ -261,25 +261,13 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn object(&self) -> NodeRef {
-        debug_assert!(self.builtins_object_node_index != 0);
-        NodeRef::new(self.builtins(), self.builtins_object_node_index)
-    }
-
-    #[inline]
     pub fn object_db_type(&self) -> DbType {
-        DbType::Class(self.object().as_link(), None)
+        DbType::Class(self.object_node_ref().as_link(), None)
     }
 
     #[inline]
     pub fn object_class(&self) -> Class {
-        Class::from_position(self.object(), Generics::None, None).unwrap()
-    }
-
-    #[inline]
-    pub fn list(&self) -> NodeRef {
-        debug_assert!(self.builtins_list_index != 0);
-        NodeRef::new(self.builtins(), self.builtins_list_index)
+        Class::from_position(self.object_node_ref(), Generics::None, None).unwrap()
     }
 
     #[inline]
@@ -293,12 +281,9 @@ impl PythonState {
         .unwrap()
     }
 
-    #[inline]
-    pub fn dict(&self) -> NodeRef {
-        debug_assert!(self.builtins_dict_index != 0);
-        NodeRef::new(self.builtins(), self.builtins_dict_index)
-    }
-
+    builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
+    builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
+    builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
     builtins_attribute_node_ref!(bool_node_ref, builtins_bool_index);
     builtins_attribute_node_ref!(int_node_ref, builtins_int_index);
     builtins_attribute_node_ref!(float_node_ref, builtins_float_index);

@@ -529,7 +529,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 })),
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => DbType::Type(Rc::new(DbType::Class(
-                    self.inference.i_s.db.python_state.object().as_link(),
+                    self.inference
+                        .i_s
+                        .db
+                        .python_state
+                        .object_node_ref()
+                        .as_link(),
                     None,
                 ))),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
