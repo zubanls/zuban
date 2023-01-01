@@ -293,6 +293,11 @@ impl PythonState {
         Class::from_position(self.str_node_ref(), Generics::None, None)
     }
 
+    #[inline]
+    pub fn float(&self) -> Class {
+        Class::from_position(self.float_node_ref(), Generics::None, None)
+    }
+
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
         let builtins = self.builtins();

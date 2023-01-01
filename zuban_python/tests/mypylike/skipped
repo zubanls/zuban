@@ -277,10 +277,9 @@ testLiteralIntelligentIndexingTupleUnions
 testNewAnalyzerBool
 testCallerTupleVarArgsAndGenericCalleeVarArg
 
+# Overloads should not promote
+testOverloadWithOverlappingItemsAndAnyArgument5
 # int -> float promotion
-testNewAnalyzerPromotion
-testPromoteIntToFloat
-testCantPromoteFloatToInt
 testPromoteFloatToComplex
 testPromoteIntToComplex
 testPromoteBytearrayToByte

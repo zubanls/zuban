@@ -409,16 +409,18 @@ impl<'a> Type<'a> {
             }
         };
         m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant))
-        /*
-        .or(|| {
-            if let Some(class2) = self.maybe_class(i_s.db) {
-                if class2.node_ref == i_s.db.python_state.int_node_ref() {
-                     // TODO type promotions
+            .or(|| {
+                if let Some(class2) = value_type.maybe_class(i_s.db) {
+                    if class2.node_ref == i_s.db.python_state.int_node_ref() {
+                        return self.is_same_type(
+                            i_s,
+                            matcher,
+                            &Type::Class(i_s.db.python_state.float()),
+                        );
+                    }
                 }
-                Match
-            }
-        })
-        */
+                Match::new_false()
+            })
     }
 
     pub fn is_simple_same_type(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
