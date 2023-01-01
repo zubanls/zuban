@@ -290,7 +290,7 @@ impl<'a> Type<'a> {
                         .into()
                 }
                 DbType::Any => Match::new_true(),
-                DbType::Never => Match::new_true(), // TODO is this correct?
+                DbType::Never => todo!("{value_type:?}"),
                 DbType::Tuple(t1) => match value_type {
                     Self::Type(t2) => match t2.as_ref() {
                         DbType::Tuple(t2) => {
@@ -535,7 +535,7 @@ impl<'a> Type<'a> {
                     let t = n2.type_(i_s);
                     return self.matches(i_s, matcher, &Type::new(t), variance);
                 }
-                DbType::Never => return Match::new_true(), // TODO is this correct?
+                DbType::Never => return Match::new_true(), // Never is assignable to anything
                 _ => (),
             }
         }
