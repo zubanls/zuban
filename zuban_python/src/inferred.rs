@@ -1023,8 +1023,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 NodeRef::from_link(i_s.db, *link),
                 Generics::new_list(generics),
                 None,
-            )
-            .unwrap();
+            );
             callable(i_s, &class)
         }
         ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
@@ -1155,7 +1154,7 @@ fn use_instance_with_ref<'a>(
     generics: Generics<'a>,
     instance_reference: Option<NodeRef<'a>>,
 ) -> Instance<'a> {
-    let class = Class::from_position(class_reference, generics, None).unwrap();
+    let class = Class::from_position(class_reference, generics, None);
     Instance::new(class, instance_reference)
 }
 
@@ -1228,8 +1227,7 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
                 NodeRef::from_link(i_s.db, *link),
                 Generics::new_maybe_list(generics),
                 None,
-            )
-            .unwrap();
+            );
             callable(i_s, &class)
         }
         DbType::Union(lst) => lst

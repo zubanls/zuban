@@ -97,8 +97,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
                 NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list")),
                 Generics::List(self.generic_list(i_s), None),
                 None,
-            )
-            .unwrap(),
+            ),
             Some(self.type_instance_ref(i_s)),
         )
         .lookup_internal(i_s, name)
@@ -187,10 +186,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list"));
-        Type::Class(
-            Class::from_position(node_ref, Generics::new_list(self.generic_list(i_s)), None)
-                .unwrap(),
-        )
+        Type::Class(Class::from_position(
+            node_ref,
+            Generics::new_list(self.generic_list(i_s)),
+            None,
+        ))
     }
 }
 
@@ -333,8 +333,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'a> {
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         let node_ref = NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("dict"));
-        Type::Class(
-            Class::from_position(node_ref, Generics::new_list(self.db_type(i_s)), None).unwrap(),
-        )
+        Type::Class(Class::from_position(
+            node_ref,
+            Generics::new_list(self.db_type(i_s)),
+            None,
+        ))
     }
 }

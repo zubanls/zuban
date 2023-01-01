@@ -814,8 +814,7 @@ impl DbType {
                 NodeRef::from_link(format_data.db, link),
                 Generics::Any,
                 None,
-            )
-            .unwrap();
+            );
             match format_data.style {
                 FormatStyle::Short => Box::from(class.name()),
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => {

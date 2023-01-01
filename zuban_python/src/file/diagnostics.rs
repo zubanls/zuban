@@ -168,8 +168,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
         let class =
-            Class::from_position(NodeRef::new(self.file, class.index()), Generics::Any, None)
-                .unwrap();
+            Class::from_position(NodeRef::new(self.file, class.index()), Generics::Any, None);
         // Make sure the type vars are properly pre-calculated
         class.class_infos(self.i_s);
         self.file

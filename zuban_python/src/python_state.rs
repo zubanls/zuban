@@ -3,14 +3,14 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, Literal, LiteralKind, Locality, Point, PointLink, PointType,
-    Specific, TupleContent,
+    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, PointType, Specific,
+    TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Instance, OverloadedFunction};
+use crate::value::{Class, OverloadedFunction};
 use crate::PythonProject;
 
 macro_rules! builtins_attribute_node_ref {
@@ -267,12 +267,12 @@ impl PythonState {
 
     #[inline]
     pub fn object_class(&self) -> Class {
-        Class::from_position(self.object_node_ref(), Generics::None, None).unwrap()
+        Class::from_position(self.object_node_ref(), Generics::None, None)
     }
 
     #[inline]
     pub fn tuple_with_any_generics(&self) -> Class {
-        Class::from_position(self.tuple_node_ref(), Generics::Any, None).unwrap()
+        Class::from_position(self.tuple_node_ref(), Generics::Any, None)
     }
 
     builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
@@ -290,7 +290,7 @@ impl PythonState {
 
     #[inline]
     pub fn str(&self) -> Class {
-        Class::from_position(self.str_node_ref(), Generics::None, None).unwrap()
+        Class::from_position(self.str_node_ref(), Generics::None, None)
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
@@ -322,7 +322,7 @@ impl PythonState {
     pub fn module_type(&self) -> Class {
         debug_assert!(self.types_module_type_index != 0);
         let node_ref = NodeRef::new(self.types(), self.types_module_type_index);
-        Class::from_position(node_ref, Generics::None, None).unwrap()
+        Class::from_position(node_ref, Generics::None, None)
     }
 
     pub fn mapping_node_ref(&self) -> NodeRef {
@@ -358,7 +358,6 @@ impl PythonState {
             Generics::None,
             None,
         )
-        .unwrap()
     }
 }
 
