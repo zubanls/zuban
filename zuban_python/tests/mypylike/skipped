@@ -279,6 +279,13 @@ testCallerTupleVarArgsAndGenericCalleeVarArg
 
 # int -> float promotion
 testNewAnalyzerPromotion
+testPromoteIntToFloat
+testCantPromoteFloatToInt
+testPromoteFloatToComplex
+testPromoteIntToComplex
+testPromoteBytearrayToByte
+testPromoteMemoryviewToBytes
+testTypePromotionsDontInterfereWithProtocols
 testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 testSimplifyingUnionAndTypePromotions
 testFlattenTypeAliasWhenAliasedAsUnion
@@ -627,6 +634,8 @@ testInferredTypeIsSimpleNestedList
 testInferredTypeIsSimpleNestedIterable
 testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
+testNarrowingDownFromPromoteTargetType
+testNarrowingDownFromPromoteTargetType2
 
 # check after flow analysis
 testAssignAnyToUnionWithAny
