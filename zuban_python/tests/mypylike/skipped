@@ -1,4 +1,5 @@
 # Next up
+testPromoteMemoryviewToBytes
 testWideOuterContextNoArgsError
 testWideOuterContextEmptyError
 literal_union_formatting1
@@ -280,8 +281,6 @@ testCallerTupleVarArgsAndGenericCalleeVarArg
 # Overloads should not promote
 testOverloadWithOverlappingItemsAndAnyArgument5
 # int -> float promotion
-testPromoteBytearrayToByte
-testPromoteMemoryviewToBytes
 testTypePromotionsDontInterfereWithProtocols
 testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 testSimplifyingUnionAndTypePromotions
