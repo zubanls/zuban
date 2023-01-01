@@ -2238,6 +2238,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingConcatenateClass => SpecialType::Concatenate,
                 Specific::TypingTypeAlias => SpecialType::TypeAlias,
                 Specific::TypingLiteral => SpecialType::Literal,
+                Specific::TypingFinal => todo!(),
                 _ => unreachable!(),
             })
         }

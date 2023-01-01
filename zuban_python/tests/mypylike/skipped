@@ -50,6 +50,9 @@ testOverloadInferUnionReturnMultipleArguments
 testOverloadInferUnionRespectsVariance
 testUnionMathTrickyOverload1
 testUnionMathTrickyOverload2
+testLiteralInferredInOverloadContextUnionMath
+testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType
+testLiteralInferredInOverloadContextUnionMathTrickyOverload
 testManyUnionsInOverload
 testOverloadAndSelfTypes
 # - 3352-3500 Union/Type vars/overloads weird combinations
@@ -109,6 +112,7 @@ testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadingWithParamSpec
 # Overlapping general
 testIntersectionTypesAndVarArgs
+testLiteralSubtypeOverlap
 overload_not_overlapping_optional
 overload_overlapping_any
 # overloading for loop
@@ -178,6 +182,8 @@ testSpecialAttrsAreAvaliableInClasses
 testSpecialModulesNameImplicitAttr
 # Function attributes
 testInvalidRvalueTypeInInferredMultipleLvarDefinition
+# None attributes
+testNoneHasBool
 
 # boolean operators
 testOrOperationWithGenericOperands
@@ -200,6 +206,7 @@ testGenericTypeAliasesTypeVarConstraints
 testWideOuterContextValuesOverlapping
 testTypevarValuesWithOverloadedFunctionSpecialCase
 testReferenceToDecoratedFunctionAndTypeVarValues
+testLiteralAndGenericsRespectsValueRestriction
 
 testTypeVarValuesFunction
 testTypeVarValuesMethod1
@@ -266,30 +273,16 @@ testChainedAssignmentInferenceContexts
 testLiteralInferredInListContext
 testLiteralInferredInTupleContext
 testLiteralInferredInDictContext
-testLiteralInferredInOverloadContextUnionMath
-testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType
 testLiteralInferredInOverloadContextWithTypevars
-testLiteralInferredInOverloadContextUnionMathTrickyOverload
-testLiteralErrorsWithIsInstanceAndIsSubclass
 testLiteralAndGenericsRespectsUpperBound
-testLiteralAndGenericsRespectsValueRestriction
 testLiteralAndGenericsWithOverloads
 testLiteralMeets
 testLiteralMeetsWithStrictOptional
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
-testLiteralBinderLastValueErased
-testLiteralAndInstanceSubtyping
-testLiteralSubtypeContext
-testLiteralSubtypeContextNested
-testLiteralSubtypeContextGeneric
 testLiteralErrorsWhenInvoked-skip
-testConditionalBoolLiteralUnionNarrowing
 testNewAnalyzerBool
-testNoneHasBool
-testLiteralSubtypeOverlap
 testCallerTupleVarArgsAndGenericCalleeVarArg
-testNewAnalyzerNewTypeSpecialCase
 
 # int -> float promotion
 testNewAnalyzerPromotion
@@ -454,6 +447,8 @@ testLiteralWithFinalPropagation
 testLiteralWithFinalPropagationIsNotLeaking
 testLiteralIntelligentIndexingUsingFinal
 testNegativeIntLiteralWithFinal
+testLiteralAndInstanceSubtyping
+testNewAnalyzerNewTypeSpecialCase
 
 # TYPE_CHECKING
 testIfTypeCheckingUnreachableClass
@@ -598,6 +593,11 @@ testRedefineFunctionDefinedAsVariableInitializedToNone
 testRedefineNestedFunctionDefinedAsVariableInitializedToNone
 testConditionalFunctionDefinitionUsingDecorator2
 
+# Weird Name binder type definitions (overwritten?)
+testLiteralBinderLastValueErased
+
+# isinstance
+testLiteralErrorsWithIsInstanceAndIsSubclass
 # isinstance flow analysis
 testUnionGenericWithBoundedVariable
 testIsinstanceAndTypeVarValues*
@@ -622,6 +622,8 @@ testRecursiveAliasNewStyleSupported
 #  --enable-recursive-aliases & is not None
 testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
+# narrowing if with literals
+testConditionalBoolLiteralUnionNarrowing
 
 # weird narrowing
 testInferredTypeIsSimpleNestedList
@@ -884,6 +886,9 @@ testUseSupertypeAsInferenceContextPartial
 testUseSupertypeAsInferenceContextPartialError
 testUseSupertypeAsInferenceContextPartialErrorProperty
 testUseSupertypeAsInferenceContextConflict
+testLiteralSubtypeContext
+testLiteralSubtypeContextNested
+testLiteralSubtypeContextGeneric
 
 # "Access to generic instance variables via class is ambiguous"
 testGenericClassAttrUnboundOnClass
