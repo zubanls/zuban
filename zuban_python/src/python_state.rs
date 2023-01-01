@@ -23,6 +23,15 @@ macro_rules! builtins_attribute_node_ref {
     };
 }
 
+macro_rules! node_ref_to_class {
+    ($vis:vis $name:ident, $from_node_ref:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> Class {
+            Class::from_position(self.$from_node_ref(), Generics::None, None)
+        }
+    };
+}
+
 pub struct PythonState {
     pub project: PythonProject,
 
@@ -272,11 +281,6 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn object_class(&self) -> Class {
-        Class::from_position(self.object_node_ref(), Generics::None, None)
-    }
-
-    #[inline]
     pub fn tuple_with_any_generics(&self) -> Class {
         Class::from_position(self.tuple_node_ref(), Generics::Any, None)
     }
@@ -294,15 +298,9 @@ impl PythonState {
     builtins_attribute_node_ref!(bytearray_node_ref, builtins_bytearray_index);
     builtins_attribute_node_ref!(memoryview_node_ref, builtins_memoryview_index);
 
-    #[inline]
-    pub fn str(&self) -> Class {
-        Class::from_position(self.str_node_ref(), Generics::None, None)
-    }
-
-    #[inline]
-    fn int(&self) -> Class {
-        Class::from_position(self.int_node_ref(), Generics::None, None)
-    }
+    node_ref_to_class!(pub object_class, object_node_ref);
+    node_ref_to_class!(pub str, str_node_ref);
+    node_ref_to_class!(int, int_node_ref);
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
