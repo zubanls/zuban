@@ -290,7 +290,7 @@ impl<'a> Type<'a> {
                         .into()
                 }
                 DbType::Any => Match::new_true(),
-                DbType::Never => todo!("{value_type:?}"),
+                DbType::Never => Match::new_false(),
                 DbType::Tuple(t1) => match value_type {
                     Self::Type(t2) => match t2.as_ref() {
                         DbType::Tuple(t2) => {

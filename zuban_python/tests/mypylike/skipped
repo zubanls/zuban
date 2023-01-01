@@ -14,7 +14,6 @@ testCallableKindsOrdering
 
 # Details around Never?
 testStar2Context
-callable_return_from_method_nested_multiple1
 
 # Invalid recursive aliases --enable-recursive-aliases
 testRecursiveAliasesProhibitBadAliases

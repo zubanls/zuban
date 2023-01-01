@@ -103,8 +103,10 @@ class Foo(Generic[V]):
 c = Foo(1.0).return_callable6(1)
 reveal_type(c) # N: Revealed type is "def [U, W] (U) -> tuple[def (W) -> tuple[int, U, float, W], def (W) -> tuple[int, U, float, W]]"
 reveal_type(c("")) # N: Revealed type is "tuple[def (<nothing>) -> tuple[int, str, float, <nothing>], def (<nothing>) -> tuple[int, str, float, <nothing>]]"
-reveal_type(c("")[0](b"")) # N: Revealed type is "tuple[int, str, float, <nothing>]"
-reveal_type(c("")[1](b"")) # N: Revealed type is "tuple[int, str, float, <nothing>]"
+reveal_type(c("")[0](b"")) # N: Revealed type is "tuple[int, str, float, <nothing>]" \
+                           # E: Argument 1 has incompatible type "bytes"; expected "<nothing>"
+reveal_type(c("")[1](b"")) # N: Revealed type is "tuple[int, str, float, <nothing>]" \
+                           # E: Argument 1 has incompatible type "bytes"; expected "<nothing>"
 
 [case callable_return_from_method_nested_multiple2]
 from typing import Callable, TypeVar, Tuple, Generic
