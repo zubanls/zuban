@@ -385,9 +385,14 @@ impl<'db> Diagnostic<'db> {
 
             IssueType::InvariantNote{actual, maybe} => {
                 type_ = "note";
+                let suffix = match *actual {
+                    "List" => "",
+                    "Dict" => " in the value type",
+                    _ => unreachable!(),
+                };
                 format!(
                     "\"{actual}\" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance\n\
-                    {path}:{line}: note: Consider using \"{maybe}\" instead, which is covariant"
+                    {path}:{line}: note: Consider using \"{maybe}\" instead, which is covariant{suffix}"
                 )
             }
             IssueType::Note(s) => {

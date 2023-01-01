@@ -1,5 +1,7 @@
 # Next up
 testPromoteMemoryviewToBytes
+testFlattenTypeAliasWhenAliasedAsUnion
+
 testWideOuterContextNoArgsError
 testWideOuterContextEmptyError
 literal_union_formatting1
@@ -28,6 +30,9 @@ testRecursiveClassLevelAlias
 # func type var in __init__
 testInvalidNumberOfTypeArgs
 testInheritedConstructor2
+
+# Overloads should not promote
+testOverloadWithOverlappingItemsAndAnyArgument5
 
 # Overloading
 testOverloadBadArgumentsInferredToAny1
@@ -277,18 +282,6 @@ testLiteralIntelligentIndexingTupleUnions
 # Literal with ?
 testNewAnalyzerBool
 testCallerTupleVarArgsAndGenericCalleeVarArg
-
-# Overloads should not promote
-testOverloadWithOverlappingItemsAndAnyArgument5
-# int -> float promotion
-testTypePromotionsDontInterfereWithProtocols
-testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
-testSimplifyingUnionAndTypePromotions
-testFlattenTypeAliasWhenAliasedAsUnion
-testOverloadingAndIntFloatSubtyping
-testAssignmentInvariantNoteForList
-testAssignmentInvariantNoteForDict
-testInvariantDictArgNote
 
 # Nested type vars
 testInnerFunctionWithTypevarValues
