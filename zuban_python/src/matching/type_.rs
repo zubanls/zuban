@@ -411,17 +411,28 @@ impl<'a> Type<'a> {
         m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant))
             .or(|| {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
-                    if let Some(promote_to) = class2.class_storage.promote_to.get() {
-                        let cls = Class::from_position(
-                            NodeRef::from_link(i_s.db, promote_to),
-                            Generics::None,
-                            None,
-                        );
-                        return self.is_same_type(i_s, matcher, &Type::Class(cls));
-                    }
+                    self.check_promotion(i_s, matcher, class2)
+                } else {
+                    Match::new_false()
                 }
-                Match::new_false()
             })
+    }
+
+    #[inline]
+    pub fn check_promotion(
+        &self,
+        i_s: &mut InferenceState,
+        matcher: &mut Matcher,
+        class2: Class,
+    ) -> Match {
+        if let Some(promote_to) = class2.class_storage.promote_to.get() {
+            let cls =
+                Class::from_position(NodeRef::from_link(i_s.db, promote_to), Generics::None, None);
+            self.is_same_type(i_s, matcher, &Type::Class(cls))
+                .or(|| self.check_promotion(i_s, matcher, cls))
+        } else {
+            Match::new_false()
+        }
     }
 
     pub fn is_simple_same_type(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {

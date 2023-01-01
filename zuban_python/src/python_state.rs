@@ -236,7 +236,11 @@ impl PythonState {
         s.int()
             .class_storage
             .promote_to
-            .set(Some(s.float_node_ref().as_link()))
+            .set(Some(s.float_node_ref().as_link()));
+        s.float()
+            .class_storage
+            .promote_to
+            .set(Some(s.complex_node_ref().as_link()));
     }
 
     #[inline]
@@ -301,6 +305,7 @@ impl PythonState {
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(pub str, str_node_ref);
     node_ref_to_class!(int, int_node_ref);
+    node_ref_to_class!(float, float_node_ref);
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks

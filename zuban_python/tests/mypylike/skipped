@@ -280,8 +280,6 @@ testCallerTupleVarArgsAndGenericCalleeVarArg
 # Overloads should not promote
 testOverloadWithOverlappingItemsAndAnyArgument5
 # int -> float promotion
-testPromoteFloatToComplex
-testPromoteIntToComplex
 testPromoteBytearrayToByte
 testPromoteMemoryviewToBytes
 testTypePromotionsDontInterfereWithProtocols
