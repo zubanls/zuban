@@ -41,6 +41,8 @@ testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
 testOverloadVarargsSelection
 testOverloadVarargsAndKwargsSelection
+# overload argument expression uses context and fails
+testLiteralAndGenericsWithOverloads
 
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
@@ -112,6 +114,7 @@ testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadingWithParamSpec
 # Overlapping general
 testIntersectionTypesAndVarArgs
+testLiteralInferredInOverloadContextWithTypevars
 testLiteralSubtypeOverlap
 overload_not_overlapping_optional
 overload_overlapping_any
@@ -273,14 +276,12 @@ testChainedAssignmentInferenceContexts
 testLiteralInferredInListContext
 testLiteralInferredInTupleContext
 testLiteralInferredInDictContext
-testLiteralInferredInOverloadContextWithTypevars
 testLiteralAndGenericsRespectsUpperBound
-testLiteralAndGenericsWithOverloads
 testLiteralMeets
 testLiteralMeetsWithStrictOptional
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
-testLiteralErrorsWhenInvoked-skip
+# Literal with ?
 testNewAnalyzerBool
 testCallerTupleVarArgsAndGenericCalleeVarArg
 
@@ -1470,3 +1471,4 @@ testNewAnalyzerAliasToNotReadyNestedClass
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip
 testUnionTwoPassInference-skip
+testLiteralErrorsWhenInvoked-skip
