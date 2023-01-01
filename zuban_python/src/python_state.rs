@@ -222,6 +222,12 @@ impl PythonState {
             set_mypy_extension_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
         s.mypy_extensions_kw_arg_func =
             set_mypy_extension_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
+
+        // Set promotions
+        s.int()
+            .class_storage
+            .promote_to
+            .set(Some(s.float_node_ref().as_link()))
     }
 
     #[inline]
@@ -294,8 +300,8 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn float(&self) -> Class {
-        Class::from_position(self.float_node_ref(), Generics::None, None)
+    fn int(&self) -> Class {
+        Class::from_position(self.int_node_ref(), Generics::None, None)
     }
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {

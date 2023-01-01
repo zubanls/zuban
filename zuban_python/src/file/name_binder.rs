@@ -584,6 +584,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     NameBinderType::Function => ParentScope::Function(self.scope_node),
                     _ => unreachable!(),
                 },
+                promote_to: Default::default(),
             })),
             Locality::File,
         );

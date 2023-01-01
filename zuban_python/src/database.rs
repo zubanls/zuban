@@ -3023,6 +3023,7 @@ pub struct ClassStorage {
     pub class_symbol_table: SymbolTable,
     pub self_symbol_table: SymbolTable,
     pub parent_scope: ParentScope,
+    pub promote_to: Cell<Option<PointLink>>,
 }
 
 #[derive(Debug, Clone, PartialEq)]
