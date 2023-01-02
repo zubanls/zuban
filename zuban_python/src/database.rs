@@ -1097,17 +1097,27 @@ impl DbType {
                     .collect(),
                 format_as_overload: intersection.format_as_overload,
             }),
-            Self::Union(u) => Self::Union(UnionType {
-                entries: u
+            Self::Union(u) => {
+                let entries: Box<[UnionEntry]> = u
                     .entries
                     .iter()
-                    .map(|e| UnionEntry {
-                        type_: e.type_.replace_type_var_likes(callable),
-                        format_index: e.format_index,
+                    .filter_map(|e| match e.type_.replace_type_var_likes(callable) {
+                        DbType::None => None, // TODO enable this: if !db.python_state.project.strict_optional => None,
+                        type_ => Some(UnionEntry {
+                            type_,
+                            format_index: e.format_index,
+                        }),
                     })
-                    .collect(),
-                format_as_optional: u.format_as_optional,
-            }),
+                    .collect();
+                match entries.len() {
+                    0 => DbType::None,
+                    1 => entries.into_vec().into_iter().next().unwrap().type_,
+                    _ => Self::Union(UnionType {
+                        entries,
+                        format_as_optional: u.format_as_optional,
+                    }),
+                }
+            }
             Self::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))) {
                 GenericItem::TypeArgument(t) => t,
                 GenericItem::TypeArguments(ts) => unreachable!(),
