@@ -541,7 +541,7 @@ impl<'a> Type<'a> {
                     && !matches!(self.maybe_db_type(), Some(DbType::Union(_))) =>
                 {
                     if matcher.is_matching_reverse() {
-                        todo!()
+                        debug!("TODO matching reverse?");
                     }
                     return u2
                         .entries

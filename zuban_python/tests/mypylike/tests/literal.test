@@ -18,3 +18,15 @@ x(a)
 x(b)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2] | str | float"; expected "int"
 x(c)  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 'x'] | str | float"; expected "int"
 x(d)  # E: Argument 1 to "x" has incompatible type "Literal[1, 'x']"; expected "int"
+
+[case literal_union_formatting_through_type_vars]
+from typing import Literal, TypeVar
+
+T = TypeVar("T")
+
+l: Literal[3]
+
+def foo(x: T) -> str | Literal[1, 2] | float | Literal['x'] | T: ...
+
+def x(y: int) -> None: ...
+x(foo(l))  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 'x', 3] | str | float"; expected "int"

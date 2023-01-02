@@ -1123,10 +1123,14 @@ impl DbType {
                 match entries.len() {
                     0 => DbType::None,
                     1 => entries.into_vec().into_iter().next().unwrap().type_,
-                    _ => Self::Union(UnionType {
-                        entries,
-                        format_as_optional: u.format_as_optional,
-                    }),
+                    _ => {
+                        let mut union = UnionType {
+                            entries,
+                            format_as_optional: u.format_as_optional,
+                        };
+                        union.sort_for_priority();
+                        Self::Union(union)
+                    }
                 }
             }
             Self::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))) {
