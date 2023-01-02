@@ -292,10 +292,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                             );
                                     } else {
                                         for base in class.class_infos(&mut i_s).mro.iter() {
-                                            mro.push(base.replace_type_var_likes(&mut |t| {
-                                                mro[mro_index].expect_class_generics()[t.index()]
+                                            mro.push(base.replace_type_var_likes(
+                                                &i_s.db.python_state.project,
+                                                &mut |t| {
+                                                    mro[mro_index].expect_class_generics()
+                                                        [t.index()]
                                                     .clone()
-                                            }));
+                                                },
+                                            ));
                                         }
                                     }
                                 }

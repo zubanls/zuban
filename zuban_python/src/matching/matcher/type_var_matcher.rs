@@ -181,7 +181,7 @@ impl<'a> TypeVarMatcher<'a> {
         i_s: &mut InferenceState,
         t: &DbType,
     ) -> DbType {
-        t.replace_type_var_likes(&mut |type_var_like_usage| {
+        t.replace_type_var_likes(&i_s.db.python_state.project, &mut |type_var_like_usage| {
             if type_var_like_usage.in_definition() == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_like_usage.index().as_usize()];
                 match &current.type_ {

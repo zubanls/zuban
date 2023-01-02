@@ -525,10 +525,13 @@ pub enum GenericItem {
 impl GenericItem {
     pub fn replace_type_var_likes(
         &self,
+        project: &PythonProject,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Self {
         match self {
-            Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_var_likes(callable)),
+            Self::TypeArgument(t) => {
+                Self::TypeArgument(t.replace_type_var_likes(project, callable))
+            }
             Self::TypeArguments(_) => todo!(),
             Self::ParamSpecArgument(_) => todo!(),
         }
@@ -1015,15 +1018,20 @@ impl DbType {
         }
     }
 
-    pub fn replace_type_var_likes(&self, callable: ReplaceTypeVarLike) -> Self {
+    pub fn replace_type_var_likes(
+        &self,
+        project: &PythonProject,
+        callable: ReplaceTypeVarLike,
+    ) -> Self {
         let remap_tuple_likes = |args: &TupleTypeArguments, callable: ReplaceTypeVarLike| match args
         {
             TupleTypeArguments::FixedLength(ts) => {
                 let mut new_args = vec![];
                 for g in ts.iter() {
                     match g {
-                        TypeOrTypeVarTuple::Type(t) => new_args
-                            .push(TypeOrTypeVarTuple::Type(t.replace_type_var_likes(callable))),
+                        TypeOrTypeVarTuple::Type(t) => new_args.push(TypeOrTypeVarTuple::Type(
+                            t.replace_type_var_likes(project, callable),
+                        )),
                         TypeOrTypeVarTuple::TypeVarTuple(t) => {
                             match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
                                 GenericItem::TypeArguments(new) => {
@@ -1045,9 +1053,9 @@ impl DbType {
                 }
                 TupleTypeArguments::FixedLength(new_args.into())
             }
-            TupleTypeArguments::ArbitraryLength(t) => {
-                TupleTypeArguments::ArbitraryLength(Box::new(t.replace_type_var_likes(callable)))
-            }
+            TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
+                Box::new(t.replace_type_var_likes(project, callable)),
+            ),
         };
         let remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
@@ -1055,7 +1063,7 @@ impl DbType {
                     .iter()
                     .map(|g| match g {
                         GenericItem::TypeArgument(t) => {
-                            GenericItem::TypeArgument(t.replace_type_var_likes(callable))
+                            GenericItem::TypeArgument(t.replace_type_var_likes(project, callable))
                         }
                         GenericItem::TypeArguments(ts) => {
                             GenericItem::TypeArguments(TypeArguments {
@@ -1066,6 +1074,7 @@ impl DbType {
                             let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.into_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
                                 Self::remap_callable_params(
+                                    project,
                                     &p.params,
                                     &mut type_vars,
                                     p.type_vars.as_ref().map(|t| t.in_definition),
@@ -1093,7 +1102,7 @@ impl DbType {
                 entries: intersection
                     .entries
                     .iter()
-                    .map(|e| e.replace_type_var_likes(callable))
+                    .map(|e| e.replace_type_var_likes(project, callable))
                     .collect(),
                 format_as_overload: intersection.format_as_overload,
             }),
@@ -1101,13 +1110,15 @@ impl DbType {
                 let entries: Box<[UnionEntry]> = u
                     .entries
                     .iter()
-                    .filter_map(|e| match e.type_.replace_type_var_likes(callable) {
-                        DbType::None => None, // TODO enable this: if !db.python_state.project.strict_optional => None,
-                        type_ => Some(UnionEntry {
-                            type_,
-                            format_index: e.format_index,
-                        }),
-                    })
+                    .filter_map(
+                        |e| match e.type_.replace_type_var_likes(project, callable) {
+                            DbType::None if !project.strict_optional => None,
+                            type_ => Some(UnionEntry {
+                                type_,
+                                format_index: e.format_index,
+                            }),
+                        },
+                    )
                     .collect();
                 match entries.len() {
                     0 => DbType::None,
@@ -1123,7 +1134,9 @@ impl DbType {
                 GenericItem::TypeArguments(ts) => unreachable!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             },
-            Self::Type(db_type) => Self::Type(Rc::new(db_type.replace_type_var_likes(callable))),
+            Self::Type(db_type) => {
+                Self::Type(Rc::new(db_type.replace_type_var_likes(project, callable)))
+            }
             Self::Tuple(content) => Self::Tuple(match &content.args {
                 Some(args) => TupleContent {
                     args: Some(remap_tuple_likes(args, callable)),
@@ -1133,14 +1146,17 @@ impl DbType {
             Self::Callable(content) => {
                 let mut type_vars = content.type_vars.clone().map(|t| t.into_vec());
                 let (params, remap_data) = Self::remap_callable_params(
+                    project,
                     &content.params,
                     &mut type_vars,
                     Some(content.defined_at),
                     callable,
                 );
-                let mut result_type = content.result_type.replace_type_var_likes(callable);
+                let mut result_type = content
+                    .result_type
+                    .replace_type_var_likes(project, callable);
                 if let Some(remap_data) = remap_data {
-                    result_type = result_type.replace_type_var_likes(&mut |usage| {
+                    result_type = result_type.replace_type_var_likes(project, &mut |usage| {
                         Self::remap_param_spec_inner(usage, content.defined_at, remap_data)
                     });
                 }
@@ -1165,6 +1181,7 @@ impl DbType {
     }
 
     fn remap_callable_params(
+        project: &PythonProject,
         params: &CallableParams,
         type_vars: &mut Option<Vec<TypeVarLike>>,
         in_definition: Option<PointLink>,
@@ -1177,21 +1194,21 @@ impl DbType {
                     .iter()
                     .map(|p| CallableParam {
                         param_specific: match &p.param_specific {
-                            ParamSpecific::PositionalOnly(t) => {
-                                ParamSpecific::PositionalOnly(t.replace_type_var_likes(callable))
-                            }
+                            ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
+                                t.replace_type_var_likes(project, callable),
+                            ),
                             ParamSpecific::PositionalOrKeyword(t) => {
                                 ParamSpecific::PositionalOrKeyword(
-                                    t.replace_type_var_likes(callable),
+                                    t.replace_type_var_likes(project, callable),
                                 )
                             }
-                            ParamSpecific::KeywordOnly(t) => {
-                                ParamSpecific::KeywordOnly(t.replace_type_var_likes(callable))
-                            }
+                            ParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(
+                                t.replace_type_var_likes(project, callable),
+                            ),
                             ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
                                 StarredParamSpecific::ArbitraryLength(t) => {
                                     StarredParamSpecific::ArbitraryLength(
-                                        t.replace_type_var_likes(callable),
+                                        t.replace_type_var_likes(project, callable),
                                     )
                                 }
                                 StarredParamSpecific::ParamSpecArgs(_) => todo!(),
@@ -1200,7 +1217,7 @@ impl DbType {
                                 ParamSpecific::DoubleStarred(match d {
                                     DoubleStarredParamSpecific::ValueType(t) => {
                                         DoubleStarredParamSpecific::ValueType(
-                                            t.replace_type_var_likes(callable),
+                                            t.replace_type_var_likes(project, callable),
                                         )
                                     }
                                     DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
@@ -1224,6 +1241,7 @@ impl DbType {
                         let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
                         remap_data = Some((new_spec_type_vars.in_definition, type_var_len));
                         let new_params = Self::remap_callable_params(
+                            project,
                             &new.params,
                             &mut None,
                             None,
@@ -1257,7 +1275,7 @@ impl DbType {
                                 0..0,
                                 types.iter().map(|t| CallableParam {
                                     param_specific: ParamSpecific::PositionalOnly(
-                                        t.replace_type_var_likes(callable),
+                                        t.replace_type_var_likes(project, callable),
                                     ),
                                     name: None,
                                     has_default: false,
@@ -1269,7 +1287,7 @@ impl DbType {
                         CallableParams::WithParamSpec(new_types, p) => {
                             let mut types: Vec<DbType> = types
                                 .iter()
-                                .map(|t| t.replace_type_var_likes(callable))
+                                .map(|t| t.replace_type_var_likes(project, callable))
                                 .collect();
                             types.extend(new_types.into_vec());
                             CallableParams::WithParamSpec(types.into(), p)
@@ -2035,7 +2053,7 @@ impl RecursiveAlias {
         } else {
             self.calculated_db_type.get_or_init(|| {
                 self.type_alias(db)
-                    .replace_type_var_likes(true, &mut |t| {
+                    .replace_type_var_likes(&db.python_state.project, true, &mut |t| {
                         self.generics
                             .as_ref()
                             .map(|g| g.nth(t.index()).unwrap().clone())
@@ -2712,7 +2730,7 @@ impl TypeAlias {
             is_recursive,
         }
     }
-    pub fn as_db_type_and_set_type_vars_any(&self) -> DbType {
+    pub fn as_db_type_and_set_type_vars_any(&self, project: &PythonProject) -> DbType {
         if self.is_recursive {
             return DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
@@ -2730,15 +2748,19 @@ impl TypeAlias {
             self.db_type.as_ref().clone()
         } else {
             self.db_type
-                .replace_type_var_likes(&mut |t| match t.in_definition() == self.location {
-                    true => t.as_type_var_like().as_any_generic_item(),
-                    false => t.into_generic_item(),
-                })
+                .replace_type_var_likes(
+                    project,
+                    &mut |t| match t.in_definition() == self.location {
+                        true => t.as_type_var_like().as_any_generic_item(),
+                        false => t.into_generic_item(),
+                    },
+                )
         }
     }
 
     pub fn replace_type_var_likes(
         &self,
+        project: &PythonProject,
         remove_recursive_wrapper: bool,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Cow<DbType> {
@@ -2768,7 +2790,7 @@ impl TypeAlias {
         if self.type_vars.is_empty() {
             Cow::Borrowed(self.db_type.as_ref())
         } else {
-            Cow::Owned(self.db_type.replace_type_var_likes(callable))
+            Cow::Owned(self.db_type.replace_type_var_likes(project, callable))
         }
     }
 

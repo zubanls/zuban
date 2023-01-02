@@ -1,0 +1,10 @@
+[case union_simplification_with_none_strict_optional]
+# flags: --strict-optional
+from typing import TypeVar, Generic, Union
+
+T = TypeVar('T')
+
+def get(default: T) -> Union[int, T]: ...
+
+reveal_type(get(None)) # N: Revealed type is "int | None"
+reveal_type(get("")) # N: Revealed type is "int | str"
