@@ -11,8 +11,8 @@ use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::inferred::Inferred;
 use crate::matching::{
-    matches_simple_params, overload_has_overlapping_params, FormatData, Generics, Match, Matcher,
-    Param, ResultContext, Type,
+    matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};

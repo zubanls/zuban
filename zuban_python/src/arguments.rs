@@ -10,7 +10,7 @@ use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Function, IteratorContent};
 use parsa_python_ast::{

@@ -5,7 +5,8 @@ use std::fmt;
 use crate::arguments::{NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
-    Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
+    Literal as DbLiteral, Locality, MroIndex, NewType, Point, PointLink, PointType, Specific,
+    TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
@@ -14,6 +15,7 @@ use crate::inference_state::InferenceState;
 use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
+use crate::union_value::UnionValue;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance, OnTypeError,
@@ -498,6 +500,48 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         None
+    }
+
+    fn maybe_complex_point(&'slf self, db: &'db Database) -> Option<&'slf ComplexPoint> {
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                let definition = NodeRef::from_link(db, *definition);
+                Some(definition.file.complex_points.get(point.complex_index()))
+            }
+            InferredState::UnsavedComplex(t) => Some(t),
+            _ => None,
+        }
+    }
+
+    pub fn maybe_literal(
+        &'slf self,
+        db: &'db Database,
+    ) -> UnionValue<DbLiteral, impl Iterator<Item = DbLiteral> + 'slf> {
+        if let InferredState::Saved(definition, point) = self.state {
+            if let Some(Specific::IntegerLiteral) = point.maybe_specific() {
+                return UnionValue::Single(DbLiteral {
+                    definition,
+                    implicit: true,
+                });
+            }
+        }
+        if let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(db) {
+            match t.as_ref() {
+                DbType::Union(t) => match t.iter().next() {
+                    Some(DbType::Literal(_)) => {
+                        UnionValue::Multiple(t.iter().map_while(|t| match t {
+                            DbType::Literal(literal) => Some(*literal),
+                            _ => None,
+                        }))
+                    }
+                    _ => UnionValue::Any,
+                },
+                DbType::Literal(literal) => UnionValue::Single(*literal),
+                _ => UnionValue::Any,
+            }
+        } else {
+            UnionValue::Any
+        }
     }
 
     pub fn maybe_str(&self, db: &'db Database) -> Option<PythonString<'db>> {
