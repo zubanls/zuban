@@ -339,7 +339,12 @@ impl<'db, 'a> Argument<'db, 'a> {
                 let mut i_s = i_s.with_context(*context);
                 let parts = slices
                     .iter()
-                    .map(|x| TypeOrTypeVarTuple::Type(x.infer(&mut i_s).class_as_db_type(&mut i_s)))
+                    .map(|x| {
+                        TypeOrTypeVarTuple::Type(
+                            x.infer(&mut i_s, &mut ResultContext::Unknown)
+                                .class_as_db_type(&mut i_s),
+                        )
+                    })
                     .collect();
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
                     TupleContent::new_fixed_length(parts),

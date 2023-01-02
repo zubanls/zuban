@@ -122,7 +122,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
-                if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
+                if let Some(wanted) = simple
+                    .infer(i_s, &mut ResultContext::Unknown)
+                    .expect_int(i_s.db)
+                {
                     match self.list_node().unpack() {
                         Some(elements) => {
                             for (i, child) in elements.enumerate() {

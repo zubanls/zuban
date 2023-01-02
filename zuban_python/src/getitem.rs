@@ -8,6 +8,7 @@ use crate::database::Execution;
 use crate::file::PythonFile;
 use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
+use crate::matching::ResultContext;
 use crate::node_ref::NodeRef;
 use crate::value::Function;
 
@@ -83,10 +84,10 @@ pub struct Simple<'file> {
 }
 
 impl<'file> Simple<'file> {
-    pub fn infer(&self, i_s: &mut InferenceState) -> Inferred {
+    pub fn infer(&self, i_s: &mut InferenceState, result_context: &mut ResultContext) -> Inferred {
         self.file
             .inference(i_s)
-            .infer_named_expression(self.named_expr)
+            .infer_named_expression_with_context(self.named_expr, result_context)
     }
 
     pub fn as_node_ref(&self) -> NodeRef<'file> {
@@ -129,9 +130,9 @@ pub enum SliceOrSimple<'file> {
 }
 
 impl<'file> SliceOrSimple<'file> {
-    pub fn infer(&self, i_s: &mut InferenceState) -> Inferred {
+    pub fn infer(&self, i_s: &mut InferenceState, result_context: &mut ResultContext) -> Inferred {
         match self {
-            Self::Simple(simple) => simple.infer(i_s),
+            Self::Simple(simple) => simple.infer(i_s, result_context),
             Self::Slice(slice) => todo!(),
         }
     }

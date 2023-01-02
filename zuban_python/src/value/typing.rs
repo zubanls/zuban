@@ -129,7 +129,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
                 // TODO if it is a (), it's am empty tuple
-                simple.infer(i_s)
+                simple.infer(i_s, &mut ResultContext::Unknown)
             }
             SliceTypeContent::Slice(x) => {
                 todo!()

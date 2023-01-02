@@ -101,7 +101,10 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => match &self.content.args {
                 Some(args @ TupleTypeArguments::FixedLength(ts)) => {
-                    if let Some(wanted) = simple.infer(i_s).expect_int(i_s.db) {
+                    if let Some(wanted) = simple
+                        .infer(i_s, &mut ResultContext::Unknown)
+                        .expect_int(i_s.db)
+                    {
                         if args.has_type_var_tuple().is_some() {
                             todo!()
                         } else {
