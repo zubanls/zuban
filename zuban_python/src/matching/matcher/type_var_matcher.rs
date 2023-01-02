@@ -668,7 +668,7 @@ pub fn match_arguments_against_params<
                                         .file
                                         .inference(i_s)
                                         .infer_expression(starred.expression())
-                                        .format(i_s, &FormatData::new_short(i_s.db))
+                                        .format_short(i_s)
                                 )
                                 .into()
                             } else if let Some(double_starred) =
@@ -680,7 +680,7 @@ pub fn match_arguments_against_params<
                                         .file
                                         .inference(i_s)
                                         .infer_expression(double_starred.expression())
-                                        .format(i_s, &FormatData::new_short(i_s.db))
+                                        .format_short(i_s)
                                 )
                                 .into()
                             }

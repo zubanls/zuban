@@ -1045,7 +1045,7 @@ impl<'a> Type<'a> {
         let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
         debug!(
             "Resolved type vars: {}",
-            db_type.format(&FormatData::new_short(i_s.db))
+            Type::new(&db_type).format_short(i_s.db)
         );
         Inferred::execute_db_type(i_s, db_type)
     }
@@ -1146,6 +1146,10 @@ impl<'a> Type<'a> {
             Self::Class(c) => c.format(format_data),
             Self::Type(t) => t.format(format_data),
         }
+    }
+
+    pub fn format_short(&self, db: &Database) -> Box<str> {
+        self.format(&FormatData::new_short(db))
     }
 }
 

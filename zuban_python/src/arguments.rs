@@ -453,12 +453,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                             inference.infer_expression(double_starred_expr.expression())
                         }
                     };
-                    format!(
-                        "{prefix}{}",
-                        inf.class_as_type(&mut i_s)
-                            .format(&FormatData::new_short(i_s.db))
-                    )
-                    .into()
+                    format!("{prefix}{}", inf.format_short(&mut i_s)).into()
                 })
                 .collect(),
             Self::Comprehension(_, file, comprehension) => {
@@ -598,7 +593,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                     IssueType::ArgumentIssue(
                                         format!(
                                             "Argument after ** must be a mapping, not \"{}\"",
-                                            type_.format(&FormatData::new_short(i_s.db)),
+                                            type_.format_short(i_s.db),
                                         )
                                         .into(),
                                     ),

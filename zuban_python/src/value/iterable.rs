@@ -9,7 +9,7 @@ use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -75,7 +75,7 @@ impl<'a> ListLiteral<'a> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.list_node().short_debug(),
-                &self.as_type(i_s).format(&FormatData::new_short(i_s.db)),
+                &self.as_type(i_s).format_short(i_s.db),
             );
         }
         reference
@@ -259,7 +259,7 @@ impl<'a> DictLiteral<'a> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.dict_node().short_debug(),
-                &self.as_type(i_s).format(&FormatData::new_short(i_s.db)),
+                &self.as_type(i_s).format_short(i_s.db),
             );
             self.db_type(i_s)
         }

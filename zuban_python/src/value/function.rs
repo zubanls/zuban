@@ -288,7 +288,7 @@ impl<'db: 'a, 'a> Function<'a> {
                             IssueType::Note(
                                 format!(
                                     "Consider using the upper bound \"{}\" instead",
-                                    bound.format(&FormatData::new_short(i_s.db))
+                                    Type::new(bound).format_short(i_s.db)
                                 )
                                 .into(),
                             ),
@@ -526,7 +526,7 @@ impl<'db: 'a, 'a> Function<'a> {
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
-                        .map(|c| format!("{}.", c.format(&FormatData::new_short(i_s.db))))
+                        .map(|c| format!("{}.", c.format_short(i_s.db)))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
@@ -651,16 +651,13 @@ impl<'db: 'a, 'a> Function<'a> {
                         TypeVarLike::TypeVar(t) => {
                             let mut s = t.name(i_s.db).to_owned();
                             if let Some(bound) = &t.bound {
-                                s += &format!(
-                                    " <: {}",
-                                    bound.format(&FormatData::new_short(i_s.db))
-                                );
+                                s += &format!(" <: {}", Type::new(bound).format_short(i_s.db));
                             } else if !t.restrictions.is_empty() {
                                 s += &format!(
                                     " in ({})",
                                     t.restrictions
                                         .iter()
-                                        .map(|t| t.format(&FormatData::new_short(i_s.db)))
+                                        .map(|t| Type::new(t).format_short(i_s.db))
                                         .collect::<Vec<_>>()
                                         .join(", ")
                                 );

@@ -10,7 +10,7 @@ use crate::file::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -137,9 +137,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                                     i_s.db,
                                     IssueType::InvalidGetItem {
                                         actual,
-                                        type_: class
-                                            .unwrap()
-                                            .format(&FormatData::new_short(i_s.db)),
+                                        type_: class.unwrap().format_short(i_s.db),
                                         expected,
                                     },
                                 )
@@ -156,7 +154,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         slice_type.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotIndexable {
-                type_: self.class.format(&FormatData::new_short(i_s.db)),
+                type_: self.class.format_short(i_s.db),
             },
         );
         Inferred::new_any()
@@ -193,11 +191,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         from.add_typing_issue(
             i_s.db,
             IssueType::NotIterable {
-                type_: format!(
-                    "{:?}",
-                    self.as_type(i_s).format(&FormatData::new_short(i_s.db))
-                )
-                .into(),
+                type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
             },
         );
         IteratorContent::Any
@@ -215,7 +209,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.class.format(&FormatData::new_short(i_s.db)),
+            self.class.format_short(i_s.db),
         )
     }
 }

@@ -252,10 +252,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
 impl fmt::Debug for TypingType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypingType")
-            .field(
-                "db_type",
-                &self.db_type.format(&FormatData::new_short(self.db)),
-            )
+            .field("db_type", &Type::new(self.db_type).format_short(self.db))
             .finish()
     }
 }
@@ -431,8 +428,8 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.as_type(i_s).format(&FormatData::new_short(i_s.db)),
-                            db_type.format(&FormatData::new_short(i_s.db)),
+                            v.as_type(i_s).format_short(i_s.db),
+                            Type::new(db_type).format_short(i_s.db),
                             self.name(),
                             name,
                         );

@@ -243,7 +243,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                 IssueType::NotCallable {
                                     type_: implementation
                                         .decorated(self.i_s)
-                                        .format(self.i_s, &FormatData::new_short(self.i_s.db)),
+                                        .format_short(self.i_s),
                                 },
                             );
                             // Avoid multiple reports

@@ -415,6 +415,10 @@ impl<'db: 'a, 'a> Class<'a> {
         result.into()
     }
 
+    pub fn format_short(&self, db: &Database) -> Box<str> {
+        self.format(&FormatData::new_short(db))
+    }
+
     pub fn generics_as_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
         let type_vars = self.type_vars(i_s);
         self.generics().as_generics_list(i_s, type_vars)
@@ -525,7 +529,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.format(&FormatData::new_short(i_s.db)),
+            self.format_short(i_s.db),
         )
     }
 

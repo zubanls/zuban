@@ -487,9 +487,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                         i_s.db,
                                         IssueType::UnsupportedOperand {
                                             operand: Box::from(aug_assign.operand()),
-                                            left: class
-                                                .unwrap()
-                                                .format(&FormatData::new_short(i_s.db)),
+                                            left: class.unwrap().format_short(i_s.db),
                                             right,
                                         },
                                     )
@@ -630,9 +628,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                         i_s.db,
                                         IssueType::InvalidGetItem {
                                             actual,
-                                            type_: class
-                                                .unwrap()
-                                                .format(&FormatData::new_short(i_s.db)),
+                                            type_: class.unwrap().format_short(i_s.db),
                                             expected,
                                         },
                                     )
@@ -935,8 +931,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 i_s.db,
                 IssueType::UnsupportedOperand {
                     operand: Box::from(op.operand),
-                    left: class.unwrap().format(&FormatData::new_short(i_s.db)),
-                    right: right.format(i_s, &FormatData::new_short(i_s.db)),
+                    left: class.unwrap().format_short(i_s.db),
+                    right: right.format_short(i_s),
                 },
             );
             if left.is_union(i_s.db) && !added_note.get() {
@@ -944,11 +940,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 node_ref.add_typing_issue(
                     i_s.db,
                     IssueType::Note(
-                        format!(
-                            "Left operand is of type {:?}",
-                            left.format(i_s, &FormatData::new_short(i_s.db)),
-                        )
-                        .into(),
+                        format!("Left operand is of type {:?}", left.format_short(i_s),).into(),
                     ),
                 );
             }
@@ -959,7 +951,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
-                        left: value.as_type(i_s).format(&FormatData::new_short(i_s.db)),
+                        left: value.as_type(i_s).format_short(i_s.db),
                         note: None, // TODO check for unions and stuff
                     },
                 )
@@ -993,9 +985,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         debug!(
             "Infer primary {} as {}",
             primary.short_debug(),
-            result
-                .class_as_type(self.i_s)
-                .format(&FormatData::new_short(self.i_s.db))
+            result.format_short(self.i_s)
         );
         result
     }
@@ -1015,13 +1005,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     let object = if value.as_module().is_some() {
                         Box::from("Module")
                     } else {
-                        format!(
-                            "{:?}",
-                            value
-                                .as_type(i_s)
-                                .format(&FormatData::new_short(self.i_s.db))
-                        )
-                        .into()
+                        format!("{:?}", value.as_type(i_s).format_short(self.i_s.db)).into()
                     };
                     NodeRef::new(self.file, node_index).add_typing_issue(
                         i_s.db,

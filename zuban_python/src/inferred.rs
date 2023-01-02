@@ -157,6 +157,10 @@ impl<'db: 'slf, 'slf> Inferred {
         self.class_as_type(i_s).format(format_data)
     }
 
+    pub fn format_short(&self, i_s: &mut InferenceState<'db, '_>) -> Box<str> {
+        self.format(i_s, &FormatData::new_short(i_s.db))
+    }
+
     #[inline]
     pub fn internal_run<'a, T>(
         &'a self,

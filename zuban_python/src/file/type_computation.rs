@@ -17,7 +17,7 @@ use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -827,9 +827,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 s.as_node_ref().add_typing_issue(
                     i_s.db,
                     IssueType::TypeVarBoundViolation {
-                        actual: actual.format(&FormatData::new_short(i_s.db)),
+                        actual: actual.format_short(i_s.db),
                         executable: Box::from(class.name()),
-                        expected: expected.format(&FormatData::new_short(i_s.db)),
+                        expected: expected.format_short(i_s.db),
                     },
                 );
             }
@@ -847,7 +847,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     IssueType::InvalidTypeVarValue {
                         type_var_name: Box::from(type_var.name(i_s.db)),
                         func: format!("{:?}", class.name()).into(),
-                        actual: t2.format(&FormatData::new_short(i_s.db)),
+                        actual: t2.format_short(i_s.db),
                     },
                 );
             }

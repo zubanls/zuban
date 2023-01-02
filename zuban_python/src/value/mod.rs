@@ -19,7 +19,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
@@ -292,11 +292,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable {
-                type_: format!(
-                    "{:?}",
-                    self.as_type(i_s).format(&FormatData::new_short(i_s.db))
-                )
-                .into(),
+                type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
             },
         );
         Inferred::new_unknown()
@@ -315,11 +311,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from.add_typing_issue(
             i_s.db,
             IssueType::NotIterable {
-                type_: format!(
-                    "{:?}",
-                    self.as_type(i_s).format(&FormatData::new_short(i_s.db))
-                )
-                .into(),
+                type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
             },
         );
         IteratorContent::Any
