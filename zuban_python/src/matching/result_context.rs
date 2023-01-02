@@ -11,6 +11,7 @@ pub enum ResultContext<'a, 'b> {
         type_: &'a Type<'a>,
     },
     Unknown,
+    ExpectLiteral,
 }
 
 impl<'a> ResultContext<'a, '_> {
@@ -26,7 +27,7 @@ impl<'a> ResultContext<'a, '_> {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s, &t);
                 Some(callable(i_s, &Type::new(&t)))
             }
-            Self::Unknown => None,
+            Self::Unknown | Self::ExpectLiteral => None,
         }
     }
 
@@ -38,11 +39,14 @@ impl<'a> ResultContext<'a, '_> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
             Self::WithMatcher { matcher, type_ } => Some(callable(i_s, type_, matcher)),
-            Self::Unknown => None,
+            Self::Unknown | Self::ExpectLiteral => None,
         }
     }
 
     pub fn is_literal_context<'db>(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        if matches!(self, Self::ExpectLiteral) {
+            return true;
+        }
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
             |i_s: &mut InferenceState<'db, '_>, type_| match type_.maybe_db_type() {
@@ -61,6 +65,7 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::Known(t) => write!(f, "Known({t:?})"),
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::Unknown => write!(f, "Unknown"),
+            Self::ExpectLiteral => write!(f, "ExpectLiteral"),
         }
     }
 }

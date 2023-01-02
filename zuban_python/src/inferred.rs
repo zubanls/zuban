@@ -492,7 +492,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn expect_int(&self, db: &Database) -> Option<i64> {
         if let InferredState::Saved(definition, point) = self.state {
-            if let Some(Specific::IntegerLiteral | Specific::Integer) = point.maybe_specific() {
+            if let Some(Specific::IntegerLiteral) = point.maybe_specific() {
                 let definition = NodeRef::from_link(db, definition);
                 return definition.infer_int();
             }
