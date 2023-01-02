@@ -16,7 +16,6 @@ mod matching;
 mod name;
 mod node_ref;
 mod python_state;
-mod union_value;
 mod utils;
 mod value;
 mod workspaces;

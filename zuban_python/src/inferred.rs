@@ -15,7 +15,6 @@ use crate::inference_state::InferenceState;
 use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
-use crate::union_value::UnionValue;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance, OnTypeError,
@@ -490,16 +489,6 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::Unknown => None,
         }
-    }
-
-    pub fn expect_int(&self, db: &Database) -> Option<i64> {
-        if let InferredState::Saved(definition, point) = self.state {
-            if let Some(Specific::IntegerLiteral) = point.maybe_specific() {
-                let definition = NodeRef::from_link(db, definition);
-                return definition.infer_int();
-            }
-        }
-        None
     }
 
     fn maybe_complex_point(&'slf self, db: &'db Database) -> Option<&'slf ComplexPoint> {
@@ -1292,6 +1281,12 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
         DbType::Never => todo!(),
         _ => callable(i_s, &TypingType::new(i_s.db, Cow::Borrowed(db_type), type_)),
     }
+}
+
+pub enum UnionValue<T, I: Iterator<Item = T>> {
+    Single(T),
+    Multiple(I),
+    Any,
 }
 
 #[cfg(test)]

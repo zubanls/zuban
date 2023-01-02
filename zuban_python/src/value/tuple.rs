@@ -1,12 +1,12 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{
-    ComplexPoint, DbType, GenericItem, GenericsList, TupleContent, TupleTypeArguments,
-    TypeOrTypeVarTuple,
+    ComplexPoint, DbType, GenericItem, GenericsList, LiteralKind, LiteralValue, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferred, UnionValue};
 use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
@@ -101,27 +101,35 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => match &self.content.args {
                 Some(args @ TupleTypeArguments::FixedLength(ts)) => {
-                    if let Some(wanted) = simple
-                        .infer(i_s, &mut ResultContext::ExpectLiteral)
-                        .expect_int(i_s.db)
-                    {
-                        if args.has_type_var_tuple().is_some() {
-                            todo!()
-                        } else {
-                            let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
-                            ts.as_ref()
-                                .get(index)
-                                .map(|t| match t {
-                                    TypeOrTypeVarTuple::Type(t) => {
-                                        Inferred::execute_db_type(i_s, t.clone())
-                                    }
-                                    TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
-                                })
-                                .unwrap_or_else(Inferred::new_unknown)
-                        }
-                    } else {
-                        todo!("{ts:?}")
+                    if args.has_type_var_tuple().is_some() {
+                        todo!()
                     }
+                    let infer = |i_s, wanted| {
+                        let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
+                        ts.as_ref().get(index).map(|t| match t {
+                            TypeOrTypeVarTuple::Type(t) => {
+                                Inferred::execute_db_type(i_s, t.clone())
+                            }
+                            TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
+                        })
+                    };
+                    match simple
+                        .infer(i_s, &mut ResultContext::ExpectLiteral)
+                        .maybe_literal(i_s.db)
+                    {
+                        UnionValue::Single(literal) => match literal.kind(i_s.db) {
+                            LiteralKind::Integer => {
+                                let LiteralValue::Integer(i) = literal.value(i_s.db) else {
+                                    unreachable!();
+                                };
+                                infer(i_s, i)
+                            }
+                            _ => None,
+                        },
+                        UnionValue::Multiple(literals) => todo!(),
+                        UnionValue::Any => todo!(),
+                    }
+                    .unwrap_or_else(Inferred::new_unknown)
                 }
                 Some(TupleTypeArguments::ArbitraryLength(t)) => {
                     Inferred::execute_db_type(i_s, t.as_ref().clone())

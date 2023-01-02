@@ -1,6 +1,5 @@
 use parsa_python_ast::{
     Dict, DictElement, Expression, List, ListOrSetElementIterator, NamedExpression,
-    StarLikeExpression,
 };
 
 use super::{Class, Instance, IteratorContent, LookupResult, Value, ValueKind};
@@ -122,6 +121,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => {
+                /*
                 if let Some(wanted) = simple
                     .infer(i_s, &mut ResultContext::Unknown)
                     .expect_int(i_s.db)
@@ -177,6 +177,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
                     }
                     None => todo!(),
                 }
+                */
+                todo!()
             }
             SliceTypeContent::Slice(simple) => {
                 todo!()
