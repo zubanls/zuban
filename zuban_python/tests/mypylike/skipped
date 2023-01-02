@@ -277,8 +277,6 @@ testLiteralInferredInListContext
 testLiteralInferredInTupleContext
 testLiteralInferredInDictContext
 testLiteralAndGenericsRespectsUpperBound
-testLiteralIntelligentIndexingTuples
-testLiteralIntelligentIndexingTupleUnions
 # Literal with ?
 testNewAnalyzerBool
 testCallerTupleVarArgsAndGenericCalleeVarArg
@@ -375,6 +373,8 @@ testNewAnalyzerCastForward3
 testRecursiveAliasViaBaseClass3
 testNoRecursiveTuplesAtFunctionScope
 testRecursiveTupleClassesNewType
+testLiteralIntelligentIndexingTuples
+testLiteralIntelligentIndexingTupleUnions
 # namedtuple
 testCallableParsingInInheritence
 

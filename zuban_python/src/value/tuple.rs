@@ -1,7 +1,7 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{
-    ComplexPoint, DbType, GenericItem, GenericsList, LiteralKind, LiteralValue, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple,
+    ComplexPoint, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -104,8 +104,14 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                     if args.has_type_var_tuple().is_some() {
                         todo!()
                     }
-                    let infer = |i_s, wanted| {
-                        let index = usize::try_from(wanted).ok().unwrap_or_else(|| todo!());
+                    let infer = |i_s: &mut InferenceState, literal: Literal| {
+                        if literal.kind(i_s.db) != LiteralKind::Integer {
+                            return None;
+                        }
+                        let LiteralValue::Integer(i) = literal.value(i_s.db) else {
+                            unreachable!();
+                        };
+                        let index = usize::try_from(i).ok().unwrap_or_else(|| todo!());
                         ts.as_ref().get(index).map(|t| match t {
                             TypeOrTypeVarTuple::Type(t) => {
                                 Inferred::execute_db_type(i_s, t.clone())
@@ -117,16 +123,20 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         .infer(i_s, &mut ResultContext::ExpectLiteral)
                         .maybe_literal(i_s.db)
                     {
-                        UnionValue::Single(literal) => match literal.kind(i_s.db) {
-                            LiteralKind::Integer => {
-                                let LiteralValue::Integer(i) = literal.value(i_s.db) else {
-                                    unreachable!();
-                                };
-                                infer(i_s, i)
-                            }
-                            _ => None,
-                        },
-                        UnionValue::Multiple(literals) => todo!(),
+                        UnionValue::Single(literal) => infer(i_s, literal),
+                        UnionValue::Multiple(mut literals) => literals
+                            .next()
+                            .and_then(|l| infer(i_s, l))
+                            .and_then(|mut inferred| {
+                                for literal in literals {
+                                    if let Some(new_inf) = infer(i_s, literal) {
+                                        inferred = inferred.union(new_inf);
+                                    } else {
+                                        return None;
+                                    }
+                                }
+                                Some(inferred)
+                            }),
                         UnionValue::Any => todo!(),
                     }
                     .unwrap_or_else(Inferred::new_unknown)
