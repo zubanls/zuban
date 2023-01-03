@@ -15,7 +15,7 @@ use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
-use crate::matching::{FormatData, Generic, Generics, ParamsStyle};
+use crate::matching::{FormatData, Generic, Generics, Matcher, ParamsStyle, Type};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
@@ -1111,6 +1111,21 @@ impl DbType {
                 let mut add = |type_, format_index| {
                     if matches!(type_, DbType::None) && !project.strict_optional {
                         return;
+                    }
+                    // Simplify duplicates & subclass removal
+                    let mut i_s = InferenceState::new(db);
+                    let mut matcher = Matcher::default();
+                    let t = Type::new(&type_);
+                    for entry in entries.iter_mut() {
+                        let current = Type::new(&entry.type_);
+                        if current.is_super_type_of(&mut i_s, &mut matcher, &t).bool() {
+                            return; // Type is already in the union
+                        }
+                        if current.is_sub_type_of(&mut i_s, &mut matcher, &t).bool() {
+                            // The new type is more general and therefore needs to be used.
+                            entry.type_ = t;
+                            return;
+                        }
                     }
                     entries.push(UnionEntry {
                         type_,
