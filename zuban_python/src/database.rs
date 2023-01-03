@@ -1108,25 +1108,26 @@ impl DbType {
             }),
             Self::Union(u) => {
                 let mut entries = Vec::with_capacity(u.entries.len());
+                let mut add = |type_, format_index| {
+                    if matches!(type_, DbType::None) && !project.strict_optional {
+                        return;
+                    }
+                    entries.push(UnionEntry {
+                        type_,
+                        format_index,
+                    })
+                };
                 for entry in u.entries.iter() {
                     match entry.type_.replace_type_var_likes(project, callable) {
-                        DbType::None if !project.strict_optional => continue,
                         DbType::Union(inner) => {
                             for inner_entry in inner.entries.into_vec().into_iter() {
                                 match inner_entry.type_ {
                                     DbType::Union(_) => unreachable!(),
-                                    DbType::None if !project.strict_optional => continue,
-                                    type_ => entries.push(UnionEntry {
-                                        type_,
-                                        format_index: entry.format_index,
-                                    }),
+                                    type_ => add(type_, entry.format_index),
                                 }
                             }
                         }
-                        type_ => entries.push(UnionEntry {
-                            type_,
-                            format_index: entry.format_index,
-                        }),
+                        type_ => add(type_, entry.format_index),
                     }
                 }
                 match entries.len() {
