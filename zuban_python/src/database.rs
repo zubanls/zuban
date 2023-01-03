@@ -1111,7 +1111,18 @@ impl DbType {
                 for entry in u.entries.iter() {
                     match entry.type_.replace_type_var_likes(project, callable) {
                         DbType::None if !project.strict_optional => continue,
-                        DbType::Union(u) => todo!(),
+                        DbType::Union(inner) => {
+                            for inner_entry in inner.entries.into_vec().into_iter() {
+                                match inner_entry.type_ {
+                                    DbType::Union(_) => unreachable!(),
+                                    DbType::None if !project.strict_optional => continue,
+                                    type_ => entries.push(UnionEntry {
+                                        type_,
+                                        format_index: entry.format_index,
+                                    }),
+                                }
+                            }
+                        }
                         type_ => entries.push(UnionEntry {
                             type_,
                             format_index: entry.format_index,
