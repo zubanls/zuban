@@ -325,7 +325,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let d = file
                             .inference(i_s)
                             .use_db_type_of_annotation(definition.node_index)
-                            .replace_type_var_likes(&i_s.db.python_state.project, &mut |t| {
+                            .replace_type_var_likes(i_s.db, &mut |t| {
                                 if let Some(class) = i_s.current_class() {
                                     if class.node_ref.as_link() == t.in_definition() {
                                         return class

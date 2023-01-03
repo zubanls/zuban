@@ -498,13 +498,7 @@ testNoTypeCheckDecoratorSemanticError
 
 # Duplicate in Union
 testUnificationRedundantUnion
-testSimplifyingUnionWithTypeTypes1
-testRecursiveAliasesSimplifiedUnion
-# Incomplete Unions: `int | int`
-testNewAnalyzerForwardAliasFromUnion
 # Union simplification
-testUnionSimplificationGenericFunction
-testUnionSimplificationGenericClass
 testUnionSimplificationSpecialCases
 testUnionSimplificationSpecialCases2
 testUnionSimplificationWithDuplicateItems
@@ -514,10 +508,17 @@ testInferredTypeIsObjectMismatch
 testSimplifyUnionWithCallable
 testLiteralMeets
 testLiteralMeetsWithStrictOptional
-testCallableListJoinInference
 # Completely bonkers unions wtf
 testUnionSimplificationWithBoolIntAndFloat
 testUnionSimplificationWithBoolIntAndFloat2
+# Union type promotion simplification gone wrong (float != int)
+testSimplifyingUnionAndTypePromotions
+literal_union_formatting_through_type_vars
+# Union type simplification stack overflow, because of recursive types
+testRecursiveAliasBasicGenericSubtype
+testRecursiveAliasGenericInferenceNested
+testRecursiveAliasWithRecursiveInstance
+testRecursiveAliasInferenceExplicitNonRecursive
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess

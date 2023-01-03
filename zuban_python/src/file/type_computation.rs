@@ -516,7 +516,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             }
             TypeContent::TypeAlias(a) => {
                 self.is_recursive_alias = a.is_recursive;
-                a.as_db_type_and_set_type_vars_any(&self.inference.i_s.db.python_state.project)
+                a.as_db_type_and_set_type_vars_any(self.inference.i_s.db)
             }
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => DbType::Callable(Box::new(CallableContent {
@@ -1277,17 +1277,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         self.is_recursive_alias |= alias.is_recursive;
         TypeContent::DbType(
             alias
-                .replace_type_var_likes(
-                    &self.inference.i_s.db.python_state.project,
-                    false,
-                    &mut |usage| {
-                        if mismatch {
-                            usage.as_type_var_like().as_any_generic_item()
-                        } else {
-                            generics[usage.index().as_usize()].clone()
-                        }
-                    },
-                )
+                .replace_type_var_likes(self.inference.i_s.db, false, &mut |usage| {
+                    if mismatch {
+                        usage.as_type_var_like().as_any_generic_item()
+                    } else {
+                        generics[usage.index().as_usize()].clone()
+                    }
+                })
                 .into_owned(),
         )
     }

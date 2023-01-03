@@ -56,10 +56,13 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             if found.is_none() {
                                 // As a fallback if there were only errors or no items at all, just use
                                 // the given and expected result context as a type.
-                                found = Some(list_cls.as_db_type(i_s).replace_type_var_likes(
-                                    &self.i_s.db.python_state.project,
-                                    &mut |tv| tv.as_type_var_like().as_any_generic_item(),
-                                ));
+                                found = Some(
+                                    list_cls
+                                        .as_db_type(i_s)
+                                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                                            tv.as_type_var_like().as_any_generic_item()
+                                        }),
+                                );
                             }
                             true
                         } else {

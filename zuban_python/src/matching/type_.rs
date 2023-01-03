@@ -1057,12 +1057,10 @@ impl<'a> Type<'a> {
         calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
         match self {
-            Self::Class(c) => c
-                .as_db_type(i_s)
-                .replace_type_var_likes(&i_s.db.python_state.project, &mut |t| {
-                    calculated_type_args.lookup_type_var_usage(i_s, class, t)
-                }),
-            Self::Type(t) => t.replace_type_var_likes(&i_s.db.python_state.project, &mut |t| {
+            Self::Class(c) => c.as_db_type(i_s).replace_type_var_likes(i_s.db, &mut |t| {
+                calculated_type_args.lookup_type_var_usage(i_s, class, t)
+            }),
+            Self::Type(t) => t.replace_type_var_likes(i_s.db, &mut |t| {
                 calculated_type_args.lookup_type_var_usage(i_s, class, t)
             }),
         }

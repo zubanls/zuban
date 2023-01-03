@@ -404,7 +404,7 @@ impl<'db: 'a, 'a> Function<'a> {
             let Some(class) = self.class else {
                 return t
             };
-            t.replace_type_var_likes(&i_s.db.python_state.project, &mut |usage| {
+            t.replace_type_var_likes(i_s.db, &mut |usage| {
                 if usage.in_definition() == class.node_ref.as_link() {
                     return class
                         .generics()
