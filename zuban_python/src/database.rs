@@ -1107,25 +1107,23 @@ impl DbType {
                 format_as_overload: intersection.format_as_overload,
             }),
             Self::Union(u) => {
-                let entries: Box<[UnionEntry]> = u
-                    .entries
-                    .iter()
-                    .filter_map(
-                        |e| match e.type_.replace_type_var_likes(project, callable) {
-                            DbType::None if !project.strict_optional => None,
-                            type_ => Some(UnionEntry {
-                                type_,
-                                format_index: e.format_index,
-                            }),
-                        },
-                    )
-                    .collect();
+                let mut entries = Vec::with_capacity(u.entries.len());
+                for entry in u.entries.iter() {
+                    match entry.type_.replace_type_var_likes(project, callable) {
+                        DbType::None if !project.strict_optional => continue,
+                        DbType::Union(u) => todo!(),
+                        type_ => entries.push(UnionEntry {
+                            type_,
+                            format_index: entry.format_index,
+                        }),
+                    }
+                }
                 match entries.len() {
                     0 => DbType::None,
-                    1 => entries.into_vec().into_iter().next().unwrap().type_,
+                    1 => entries.into_iter().next().unwrap().type_,
                     _ => {
                         let mut union = UnionType {
-                            entries,
+                            entries: entries.into_boxed_slice(),
                             format_as_optional: u.format_as_optional,
                         };
                         union.sort_for_priority();
