@@ -966,24 +966,24 @@ impl DbType {
         result
     }
 
-    pub fn has_any(&self) -> bool {
+    pub fn has_any(&self, db: &Database) -> bool {
         let search_in_generics = |generics: &GenericsList| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.has_any(),
+                GenericItem::TypeArgument(t) => t.has_any(db),
                 GenericItem::TypeArguments(_) => todo!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             })
         };
         match self {
             Self::Class(_, Some(generics)) => search_in_generics(generics),
-            Self::Union(u) => u.iter().any(|t| t.has_any()),
-            Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any()),
+            Self::Union(u) => u.iter().any(|t| t.has_any(db)),
+            Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any(db)),
             Self::TypeVar(t) => false,
-            Self::Type(db_type) => db_type.has_any(),
+            Self::Type(db_type) => db_type.has_any(db),
             Self::Tuple(content) => content
                 .args
                 .as_ref()
-                .map(|args| args.has_any())
+                .map(|args| args.has_any(db))
                 .unwrap_or(true),
             Self::Callable(content) => {
                 match &content.params {
@@ -995,7 +995,7 @@ impl DbType {
                             | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
                             | ParamSpecific::DoubleStarred(
                                 DoubleStarredParamSpecific::ValueType(t),
-                            ) => t.has_any(),
+                            ) => t.has_any(db),
                             ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
                             ParamSpecific::DoubleStarred(
                                 DoubleStarredParamSpecific::ParamSpecKwargs(_),
@@ -1011,7 +1011,13 @@ impl DbType {
             Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,
             Self::NewType(_) => todo!(),
-            Self::RecursiveAlias(_) => todo!(),
+            Self::RecursiveAlias(recursive_alias) => {
+                let mut has_any = recursive_alias.type_alias(db).db_type.has_any(db);
+                if let Some(generics) = &recursive_alias.generics {
+                    has_any &= search_in_generics(generics);
+                }
+                has_any
+            }
             Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
         }
     }
@@ -1112,7 +1118,7 @@ impl DbType {
                     let t = Type::new(&type_);
                     for entry in entries.iter_mut() {
                         let current = Type::new(&entry.type_);
-                        if entry.type_.has_any() || type_.has_any() {
+                        if entry.type_.has_any(db) || type_.has_any(db) {
                             if entry.type_ == type_ {
                                 return;
                             }
@@ -1632,13 +1638,13 @@ impl TupleTypeArguments {
         }
     }
 
-    pub fn has_any(&self) -> bool {
+    pub fn has_any(&self, db: &Database) -> bool {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| match t {
-                TypeOrTypeVarTuple::Type(t) => t.has_any(),
+                TypeOrTypeVarTuple::Type(t) => t.has_any(db),
                 TypeOrTypeVarTuple::TypeVarTuple(_) => false,
             }),
-            Self::ArbitraryLength(t) => t.has_any(),
+            Self::ArbitraryLength(t) => t.has_any(db),
         }
     }
 

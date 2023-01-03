@@ -516,7 +516,6 @@ testRecursiveAliasBasicGenericSubtype
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasWithRecursiveInstance
 testRecursiveAliasInferenceExplicitNonRecursive
-# Union type simplification implement recursive alias is_any
 testRecursiveAliasesSimplifiedUnion
 testRecursiveAliasTopUnion
 
