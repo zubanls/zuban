@@ -508,8 +508,6 @@ testUnionSimplificationGenericClass
 testUnionSimplificationSpecialCases
 testUnionSimplificationSpecialCases2
 testUnionSimplificationWithDuplicateItems
-testUnionSimplificationWithBoolIntAndFloat
-testUnionSimplificationWithBoolIntAndFloat2
 testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
 testInferredTypeIsObjectMismatch
@@ -517,6 +515,9 @@ testSimplifyUnionWithCallable
 testLiteralMeets
 testLiteralMeetsWithStrictOptional
 testCallableListJoinInference
+# Completely bonkers unions wtf
+testUnionSimplificationWithBoolIntAndFloat
+testUnionSimplificationWithBoolIntAndFloat2
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess
