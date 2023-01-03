@@ -1112,13 +1112,19 @@ impl DbType {
                     let t = Type::new(&type_);
                     for entry in entries.iter_mut() {
                         let current = Type::new(&entry.type_);
-                        if current.is_super_type_of(&mut i_s, &mut matcher, &t).bool() {
-                            return; // Type is already in the union
-                        }
-                        if current.is_sub_type_of(&mut i_s, &mut matcher, &t).bool() {
-                            // The new type is more general and therefore needs to be used.
-                            entry.type_ = type_;
-                            return;
+                        if entry.type_.has_any() || type_.has_any() {
+                            if entry.type_ == type_ {
+                                return;
+                            }
+                        } else {
+                            if current.is_super_type_of(&mut i_s, &mut matcher, &t).bool() {
+                                return; // Type is already in the union
+                            }
+                            if current.is_sub_type_of(&mut i_s, &mut matcher, &t).bool() {
+                                // The new type is more general and therefore needs to be used.
+                                entry.type_ = type_;
+                                return;
+                            }
                         }
                     }
                     entries.push(UnionEntry {

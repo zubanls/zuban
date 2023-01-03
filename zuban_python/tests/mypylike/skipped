@@ -499,9 +499,6 @@ testNoTypeCheckDecoratorSemanticError
 # Duplicate in Union
 testUnificationRedundantUnion
 # Union simplification
-testUnionSimplificationSpecialCases
-testUnionSimplificationSpecialCases2
-testUnionSimplificationWithDuplicateItems
 testSimplifyingUnionWithTypeTypes2
 testNewAnalyzerBuiltinAliasesFixed
 testInferredTypeIsObjectMismatch
@@ -519,6 +516,9 @@ testRecursiveAliasBasicGenericSubtype
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasWithRecursiveInstance
 testRecursiveAliasInferenceExplicitNonRecursive
+# Union type simplification implement recursive alias is_any
+testRecursiveAliasesSimplifiedUnion
+testRecursiveAliasTopUnion
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess
