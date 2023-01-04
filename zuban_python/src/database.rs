@@ -996,27 +996,32 @@ impl DbType {
                 .map(|args| args.has_any_internal(db, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => {
-                match &content.params {
-                    CallableParams::Simple(params) => {
-                        params.iter().any(|param| match &param.param_specific {
-                            ParamSpecific::PositionalOnly(t)
-                            | ParamSpecific::PositionalOrKeyword(t)
-                            | ParamSpecific::KeywordOnly(t)
-                            | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
-                            | ParamSpecific::DoubleStarred(
-                                DoubleStarredParamSpecific::ValueType(t),
-                            ) => t.has_any_internal(db, already_checked),
-                            ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
-                            ParamSpecific::DoubleStarred(
-                                DoubleStarredParamSpecific::ParamSpecKwargs(_),
-                            ) => false,
-                        })
+                content.result_type.has_any_internal(db, already_checked)
+                    || match &content.params {
+                        CallableParams::Simple(params) => {
+                            params.iter().any(|param| match &param.param_specific {
+                                ParamSpecific::PositionalOnly(t)
+                                | ParamSpecific::PositionalOrKeyword(t)
+                                | ParamSpecific::KeywordOnly(t)
+                                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(
+                                    t,
+                                ))
+                                | ParamSpecific::DoubleStarred(
+                                    DoubleStarredParamSpecific::ValueType(t),
+                                ) => t.has_any_internal(db, already_checked),
+                                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
+                                    false
+                                }
+                                ParamSpecific::DoubleStarred(
+                                    DoubleStarredParamSpecific::ParamSpecKwargs(_),
+                                ) => false,
+                            })
+                        }
+                        CallableParams::Any => true,
+                        CallableParams::WithParamSpec(types, param_spec) => {
+                            todo!()
+                        }
                     }
-                    CallableParams::Any => true,
-                    CallableParams::WithParamSpec(types, param_spec) => {
-                        todo!()
-                    }
-                }
             }
             Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,

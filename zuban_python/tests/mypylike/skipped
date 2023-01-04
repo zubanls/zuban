@@ -500,9 +500,7 @@ testNoTypeCheckDecoratorSemanticError
 testUnificationRedundantUnion
 # Union simplification
 testSimplifyingUnionWithTypeTypes2
-testNewAnalyzerBuiltinAliasesFixed
 testInferredTypeIsObjectMismatch
-testSimplifyUnionWithCallable
 testLiteralMeets
 testLiteralMeetsWithStrictOptional
 # Completely bonkers unions wtf
@@ -632,6 +630,7 @@ testInferredTypeIsSimpleNestedListLoop
 testInferredTypeIsSimpleNestedIterableLoop
 testNarrowingDownFromPromoteTargetType
 testNarrowingDownFromPromoteTargetType2
+testNewAnalyzerBuiltinAliasesFixed
 
 # check after flow analysis
 testAssignAnyToUnionWithAny
