@@ -30,5 +30,5 @@ u: Literal[3] | list[int]
 def foo(x: T) -> str | Literal[1, 2] | float | Literal['x'] | T: ...
 
 def x(y: int) -> None: ...
-x(foo(l))  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 'x', 3] | str | float"; expected "int"
-x(foo(u))  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 'x', 3] | str | float | list[int]"; expected "int"
+x(foo(l))  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 3] | float | str"; expected "int"
+x(foo(u))  # E: Argument 1 to "x" has incompatible type "Literal[1, 2, 3] | float | str | list[int]"; expected "int"

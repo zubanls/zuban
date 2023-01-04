@@ -411,10 +411,11 @@ impl<'a> Type<'a> {
         m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant))
             .or(|| {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
-                    self.check_promotion(i_s, matcher, class2)
-                } else {
-                    Match::new_false()
+                    if !matcher.ignore_promotions() {
+                        return self.check_promotion(i_s, matcher, class2);
+                    }
                 }
+                Match::new_false()
             })
     }
 

@@ -28,6 +28,7 @@ struct CheckedTypeRecursion {
 pub struct Matcher<'a> {
     type_var_matcher: Option<TypeVarMatcher<'a>>,
     checked_type_recursions: Vec<CheckedTypeRecursion>,
+    ignore_promotions: bool,
 }
 
 impl<'a> Matcher<'a> {
@@ -76,6 +77,17 @@ impl<'a> Matcher<'a> {
         } else {
             Matcher::default()
         }
+    }
+
+    pub fn with_ignored_promotions() -> Self {
+        Self {
+            ignore_promotions: true,
+            ..Self::default()
+        }
+    }
+
+    pub fn ignore_promotions(&self) -> bool {
+        self.ignore_promotions
     }
 
     #[inline]

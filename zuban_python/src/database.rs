@@ -1138,7 +1138,7 @@ impl DbType {
                     }
                     // Simplify duplicates & subclass removal
                     let mut i_s = InferenceState::new(db);
-                    let mut matcher = Matcher::default();
+                    let mut matcher = Matcher::with_ignored_promotions();
                     let t = Type::new(&type_);
                     for entry in entries.iter_mut() {
                         let current = Type::new(&entry.type_);
