@@ -133,17 +133,11 @@ fn check_list_with_context<'db>(
                         inference.infer_named_expression_with_context(e, &mut new_result_context);
                     check_item(i_s, inferred, e.index())
                 }
-                StarLikeExpression::Expression(e) => {
-                    let inferred =
-                        inference.infer_expression_with_context(e, &mut new_result_context);
-                    check_item(i_s, inferred, e.index())
-                }
                 StarLikeExpression::StarNamedExpression(e) => {
                     todo!("{e:?}")
                 }
-                StarLikeExpression::StarExpression(e) => {
-                    todo!("{e:?}")
-                }
+                StarLikeExpression::Expression(e) => unreachable!(),
+                StarLikeExpression::StarExpression(e) => unreachable!(),
             };
         }
     }
