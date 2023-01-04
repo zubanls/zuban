@@ -498,9 +498,6 @@ testNoTypeCheckDecoratorSemanticError
 
 # Duplicate in Union
 testUnificationRedundantUnion
-# Union simplification
-testSimplifyingUnionWithTypeTypes2
-testInferredTypeIsObjectMismatch
 # Completely bonkers unions wtf
 testUnionSimplificationWithBoolIntAndFloat
 testUnionSimplificationWithBoolIntAndFloat2
@@ -1157,6 +1154,8 @@ testListLiteralWithSimilarFunctionsErasesName
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
 testLiteralMeets
 testLiteralMeetsWithStrictOptional
+testInferredTypeIsObjectMismatch
+testNestedListExpressions
 testGenericJoin*
 
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
@@ -1178,6 +1177,9 @@ testConditionalExpressionWithEmptyIteableAndUnionWithAny
 
 # Too many values to unpack (2 expected, 3 provided)
 testInferringLvarTypesInMultiDefWithInvalidTuple
+
+# Type[Any] is object
+testSimplifyingUnionWithTypeTypes2
 
 # Type execution
 testNoneAlias

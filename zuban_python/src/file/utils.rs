@@ -90,7 +90,7 @@ fn check_list_with_context<'db>(
 
     // Since it's a list, now check all the entries if they match the given
     // result generic;
-    let mut found = None;
+    let mut found: Option<DbType> = None;
     if let Some(elements) = list.unpack() {
         for (item, element) in elements.enumerate() {
             let mut check_item = |i_s: &mut InferenceState<'db, '_>, inferred: Inferred, index| {
@@ -113,17 +113,15 @@ fn check_list_with_context<'db>(
                         },
                     ),
                 );
-                if m.bool() && found.is_none() {
-                    found = Some(DbType::Class(
-                        i_s.db.python_state.list_node_ref().as_link(),
-                        Some(GenericsList::new_generics(Box::new([
-                            GenericItem::TypeArgument(
-                                inferred
-                                    .class_as_type(i_s)
-                                    .try_to_resemble_context(i_s, matcher, &generic_t),
-                            ),
-                        ]))),
-                    ));
+                if m.bool() {
+                    let resembling = inferred
+                        .class_as_type(i_s)
+                        .try_to_resemble_context(i_s, matcher, &generic_t);
+                    if let Some(found) = &mut found {
+                        found.union_in_place(resembling)
+                    } else {
+                        found = Some(resembling);
+                    }
                 }
             };
             let mut inference = file.inference(i_s);
@@ -141,7 +139,14 @@ fn check_list_with_context<'db>(
             };
         }
     }
-    found
+    found.map(|inner| {
+        DbType::Class(
+            i_s.db.python_state.list_node_ref().as_link(),
+            Some(GenericsList::new_generics(Box::new([
+                GenericItem::TypeArgument(inner),
+            ]))),
+        )
+    })
 }
 
 pub fn on_argument_type_error(
