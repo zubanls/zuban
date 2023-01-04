@@ -9,6 +9,9 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 
+# Literal
+testLiteralAndGenericsRespectsUpperBound
+
 # Details around Never?
 testStar2Context
 
@@ -238,6 +241,8 @@ testTupleContextFromIterable
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
 class_generics_recursion
+# bottom up tuple inference
+testLiteralInferredInTupleContext
 # bottom up inference for tuple with *args
 testCallerVarArgsListWithTypeInference
 testCallerVarArgsTupleWithTypeInference
@@ -246,6 +251,7 @@ testCallerVarargsAndComplexTypeInference
 testListMultiplyInContext
 # bottom up dict
 testDictionaryLiteralInContext
+testLiteralInferredInDictContext
 
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
@@ -271,15 +277,6 @@ multiple_lambda_mypy_issue_4226
 # Chained assignments are not legal like a = b = [] if a and b are list[int]
 # and list[str].
 testChainedAssignmentInferenceContexts
-
-# Literal
-testLiteralInferredInListContext
-testLiteralInferredInTupleContext
-testLiteralInferredInDictContext
-testLiteralAndGenericsRespectsUpperBound
-# Literal with ?
-testNewAnalyzerBool
-testCallerTupleVarArgsAndGenericCalleeVarArg
 
 # Nested type vars
 testInnerFunctionWithTypevarValues
@@ -621,6 +618,10 @@ testUnionOrderEquivalence
 
 # Visibility of imports in pyi
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
+
+# Literal with ?
+testNewAnalyzerBool
+testCallerTupleVarArgsAndGenericCalleeVarArg
 
 # typing extensions
 testInvalidUnpackTypes
@@ -1142,6 +1143,7 @@ testLiteralMeets
 testLiteralMeetsWithStrictOptional
 testInferredTypeIsObjectMismatch
 testNestedListExpressions
+testLiteralInferredInListContext
 testGenericJoin*
 
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
