@@ -501,8 +501,6 @@ testUnificationRedundantUnion
 # Union simplification
 testSimplifyingUnionWithTypeTypes2
 testInferredTypeIsObjectMismatch
-testLiteralMeets
-testLiteralMeetsWithStrictOptional
 # Completely bonkers unions wtf
 testUnionSimplificationWithBoolIntAndFloat
 testUnionSimplificationWithBoolIntAndFloat2
@@ -1153,10 +1151,12 @@ testInferringMultipleLvarDefinitionWithListRvalue
 testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
 testUnpackInExpression1-only_when_nocache
 
-# List different types weirdness
+# List inference unions are special
 testListLiteralWithFunctionsErasesNames
 testListLiteralWithSimilarFunctionsErasesName
 testListLiteralWithNameOnlyArgsDoesNotEraseNames
+testLiteralMeets
+testLiteralMeetsWithStrictOptional
 testGenericJoin*
 
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
