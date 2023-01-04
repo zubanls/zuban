@@ -516,8 +516,6 @@ testRecursiveAliasBasicGenericSubtype
 testRecursiveAliasGenericInferenceNested
 testRecursiveAliasWithRecursiveInstance
 testRecursiveAliasInferenceExplicitNonRecursive
-testRecursiveAliasesSimplifiedUnion
-testRecursiveAliasTopUnion
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess

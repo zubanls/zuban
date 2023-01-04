@@ -967,23 +967,33 @@ impl DbType {
     }
 
     pub fn has_any(&self, db: &Database) -> bool {
-        let search_in_generics = |generics: &GenericsList| {
+        self.has_any_internal(db, &mut Vec::new())
+    }
+
+    fn has_any_internal(
+        &self,
+        db: &Database,
+        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+    ) -> bool {
+        let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.has_any(db),
+                GenericItem::TypeArgument(t) => t.has_any_internal(db, already_checked),
                 GenericItem::TypeArguments(_) => todo!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             })
         };
         match self {
-            Self::Class(_, Some(generics)) => search_in_generics(generics),
-            Self::Union(u) => u.iter().any(|t| t.has_any(db)),
-            Self::Intersection(intersection) => intersection.iter().any(|t| t.has_any(db)),
+            Self::Class(_, Some(generics)) => search_in_generics(generics, already_checked),
+            Self::Union(u) => u.iter().any(|t| t.has_any_internal(db, already_checked)),
+            Self::Intersection(intersection) => intersection
+                .iter()
+                .any(|t| t.has_any_internal(db, already_checked)),
             Self::TypeVar(t) => false,
-            Self::Type(db_type) => db_type.has_any(db),
+            Self::Type(db_type) => db_type.has_any_internal(db, already_checked),
             Self::Tuple(content) => content
                 .args
                 .as_ref()
-                .map(|args| args.has_any(db))
+                .map(|args| args.has_any_internal(db, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => {
                 match &content.params {
@@ -995,7 +1005,7 @@ impl DbType {
                             | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
                             | ParamSpecific::DoubleStarred(
                                 DoubleStarredParamSpecific::ValueType(t),
-                            ) => t.has_any(db),
+                            ) => t.has_any_internal(db, already_checked),
                             ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
                             ParamSpecific::DoubleStarred(
                                 DoubleStarredParamSpecific::ParamSpecKwargs(_),
@@ -1012,11 +1022,20 @@ impl DbType {
             Self::Any => true,
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(recursive_alias) => {
-                let mut has_any = recursive_alias.type_alias(db).db_type.has_any(db);
                 if let Some(generics) = &recursive_alias.generics {
-                    has_any &= search_in_generics(generics);
+                    if search_in_generics(generics, already_checked) {
+                        return true;
+                    }
                 }
-                has_any
+                if already_checked.contains(recursive_alias) {
+                    false
+                } else {
+                    already_checked.push(recursive_alias.clone());
+                    recursive_alias
+                        .type_alias(db)
+                        .db_type
+                        .has_any_internal(db, already_checked)
+                }
             }
             Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
         }
@@ -1639,12 +1658,20 @@ impl TupleTypeArguments {
     }
 
     pub fn has_any(&self, db: &Database) -> bool {
+        self.has_any_internal(db, &mut Vec::new())
+    }
+
+    fn has_any_internal(
+        &self,
+        db: &Database,
+        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+    ) -> bool {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| match t {
-                TypeOrTypeVarTuple::Type(t) => t.has_any(db),
+                TypeOrTypeVarTuple::Type(t) => t.has_any_internal(db, already_checked),
                 TypeOrTypeVarTuple::TypeVarTuple(_) => false,
             }),
-            Self::ArbitraryLength(t) => t.has_any(db),
+            Self::ArbitraryLength(t) => t.has_any_internal(db, already_checked),
         }
     }
 
