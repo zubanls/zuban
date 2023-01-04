@@ -745,7 +745,7 @@ impl DbType {
                     Self::Union(u2) => {
                         format_as_optional |= u2.format_as_optional;
                         for mut o in u2.entries.into_vec().into_iter() {
-                            if !vec.contains(&o) {
+                            if !vec.iter().any(|e| e.type_ == o.type_) {
                                 o.format_index = vec.len();
                                 vec.push(o);
                             }

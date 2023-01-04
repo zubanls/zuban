@@ -496,8 +496,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Duplicate in Union
-testUnificationRedundantUnion
 # Completely bonkers unions wtf
 testUnionSimplificationWithBoolIntAndFloat
 testUnionSimplificationWithBoolIntAndFloat2
