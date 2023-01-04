@@ -496,12 +496,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Union type simplification stack overflow, because of recursive types
-testRecursiveAliasBasicGenericSubtype
-testRecursiveAliasGenericInferenceNested
-testRecursiveAliasWithRecursiveInstance
-testRecursiveAliasInferenceExplicitNonRecursive
-
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess
 

@@ -1,0 +1,27 @@
+[case recursive_alias_union_simplifying_with_generics]
+# flags: --mypy-compatible
+from typing import TypeVar, Union
+
+S = TypeVar("S")
+T = TypeVar("T")
+
+def unite(s: S, t: T) -> S | T: ...
+
+Rec1 = Sequence[Union[Rec1[T], int]]
+Rec2 = Sequence[Union[Rec2[T], int, str]]
+Rec3 = Sequence[Union[Rec3[T], float]]
+
+i1: Rec1[int]
+i2: Rec2[int]
+i3: Rec3[int]
+
+s1: Rec1[str]
+
+reveal_type(unite(i1, i1))  # N: Revealed type is "Rec1[int]"
+reveal_type(unite(i1, i2))  # N: Revealed type is "Rec1[int] | Rec2[int]"
+reveal_type(unite(i2, i1))  # N: Revealed type is "Rec2[int] | Rec1[int]"
+reveal_type(unite(i1, i3))  # N: Revealed type is "Rec1[int] | Rec3[int]"
+reveal_type(unite(i3, i1))  # N: Revealed type is "Rec3[int] | Rec1[int]"
+
+reveal_type(unite(i1, s1))  # N: Revealed type is "Rec1[int] | Rec1[str]"
+reveal_type(unite(s1, i1))  # N: Revealed type is "Rec1[str] | Rec1[int]"
