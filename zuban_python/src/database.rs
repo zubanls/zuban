@@ -737,7 +737,14 @@ pub enum DbType {
 
 impl DbType {
     pub fn union(self, other: DbType) -> Self {
-        let mut format_as_optional = false;
+        self.union_with_details(other, false)
+    }
+
+    pub fn make_optional(&mut self) {
+        *self = mem::replace(self, Self::Never).union_with_details(DbType::None, true);
+    }
+
+    pub fn union_with_details(self, other: DbType, mut format_as_optional: bool) -> Self {
         let entries = match self {
             Self::Union(u1) => {
                 let mut vec = u1.entries.into_vec();

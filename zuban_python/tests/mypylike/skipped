@@ -1014,22 +1014,14 @@ testFunctionTypeCompatibilityWithOtherTypes
 testLvarInitializedToVoid
 testForStatementInferenceWithVoid
 
-# Implicit Param Option X = None -> Optional[X] inference (--implicit-optional)
-testCallingVarArgsFunctionWithDefaultArgs
-testOneOfSeveralOptionalKeywordArguments
-testKeywordArgAfterVarArgs
-testKeywordArgAfterVarArgsWithBothCallerAndCalleeVarArgs
-testCallingFunctionsWithDefaultArgumentValues
-testPartiallyInitializedVariableDoesNotEscapeScope2
-testCallerVarArgsAndDefaultArgs
-*PartialType*
-
 # None late binding, because it's None (x = None; x = 3)
+*PartialType*
 testAssigningAnyStrToNone
 testLocalVariablePartiallyInitializedToNone
 testLocalVariablePartiallyTwiceInitializedToNone
 testGvarPartiallyInitializedToNone
 testPartiallyInitializedToNone*
+testPartiallyInitializedVariableDoesNotEscapeScope2
 testAttributePartiallyInitializedToNoneWithMissingAnnotation
 testGlobalInitializedToNoneSetFromFunction
 testGlobalInitializedToNoneSetFromMethod

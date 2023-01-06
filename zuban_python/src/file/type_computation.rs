@@ -457,7 +457,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 TypeContent::DbType(mut d) => {
                     if self.has_type_vars {
                         if is_implicit_optional {
-                            d = d.union(DbType::None)
+                            d.make_optional()
                         }
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                             .save_redirect(
@@ -491,7 +491,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             },
         };
         if is_implicit_optional {
-            db_type = db_type.union(DbType::None)
+            db_type.make_optional()
         }
         let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
         unsaved.save_redirect(self.inference.i_s.db, self.inference.file, annotation_index);
