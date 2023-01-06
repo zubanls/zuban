@@ -1266,10 +1266,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             todo!()
         }
         let mut t = self.compute_slice_db_type(first).union(DbType::None);
-        match &mut t {
-            DbType::Union(union_type) => union_type.format_as_optional = true,
-            _ => unreachable!(),
-        }
+        let DbType::Union(union_type) = &mut t else {unreachable!()};
+        union_type.format_as_optional = true;
+        union_type.sort_for_priority();
         TypeContent::DbType(t)
     }
 

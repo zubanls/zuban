@@ -1252,7 +1252,6 @@ testContextForAttributeDeclaredInInit
 
 # strict optional
 testNoComplainInferredNoneStrict
-testOptionalTypeVarAgainstOptional
 testParamSpecCached
 
 testNoStrictOptionalModule
