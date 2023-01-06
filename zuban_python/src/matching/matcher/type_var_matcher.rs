@@ -276,6 +276,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     }
 }
 
+#[derive(Debug)]
 pub struct CalculatedTypeArguments {
     pub in_definition: PointLink,
     pub matches: SignatureMatch,

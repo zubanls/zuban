@@ -135,7 +135,6 @@ testOverloadedInIter
 testOverloadIf*
 
 # Param spec
-testParamSpecDecorator
 testParamSpecDecoratorImplementation
 testParamSpecInferredFromLambda
 testParamSpecInvalidCalls

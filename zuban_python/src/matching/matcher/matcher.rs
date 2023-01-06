@@ -520,7 +520,12 @@ impl<'a> Matcher<'a> {
                             SignatureMatch::False { similar: false }
                         }
                     }
-                    _ => todo!("{:?}", last_arg.kind),
+                    _ => {
+                        if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
+                            dbg!(type_var_matcher.class);
+                        }
+                        todo!("{:?}", last_arg.kind)
+                    }
                 }
             }
         }

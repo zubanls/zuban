@@ -1396,7 +1396,26 @@ impl DbType {
                         GenericItem::TypeArgument(t) => {
                             GenericItem::TypeArgument(t.rewrite_late_bound_callables(manager))
                         }
-                        _ => g.clone(),
+                        GenericItem::TypeArguments(ts) => todo!(),
+                        GenericItem::ParamSpecArgument(p) => GenericItem::ParamSpecArgument({
+                            debug_assert!(p.type_vars.is_none());
+                            ParamSpecArgument {
+                                params: match &p.params {
+                                    CallableParams::WithParamSpec(types, param_spec) => {
+                                        CallableParams::WithParamSpec(
+                                            types
+                                                .iter()
+                                                .map(|t| t.rewrite_late_bound_callables(manager))
+                                                .collect(),
+                                            manager.remap_param_spec(param_spec),
+                                        )
+                                    }
+                                    CallableParams::Simple(x) => unreachable!(),
+                                    CallableParams::Any => unreachable!(),
+                                },
+                                type_vars: p.type_vars.clone(),
+                            }
+                        }),
                     })
                     .collect(),
             )
@@ -2159,6 +2178,7 @@ struct UnresolvedTypeVarLike {
     most_outer_callable: Option<PointLink>,
 }
 
+#[derive(Debug)]
 pub struct CallableWithParent {
     pub defined_at: PointLink,
     pub parent_callable: Option<PointLink>,
@@ -2191,7 +2211,7 @@ impl Iterator for CallableAncestors<'_> {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct TypeVarManager {
     type_vars: Vec<UnresolvedTypeVarLike>,
     callables: Vec<CallableWithParent>,
