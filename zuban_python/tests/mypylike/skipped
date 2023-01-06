@@ -276,9 +276,7 @@ testParamSpecConcatenateFromPep
 
 # Param spec
 testParamSpecInvalidCalls
-param_spec_with_generic_class
 # ParamSpec Use Class like C[bytes] (matches C[[bytes]])
-testParamSpecLiterals
 testParamSpecLiteralsTypeApplication
 testParamSpecLiteralJoin
 # Param Spec lambda type inference
@@ -907,6 +905,7 @@ testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
 testGenericTypeBody1
 testSolveParamSpecWithSelfType
+param_spec_with_generic_class
 
 # Liskov
 testLiskovFineVariable

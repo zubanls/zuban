@@ -928,9 +928,21 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         if generics.is_empty() {
                             backfill(self, &mut generics, given_count);
                         }
-                        let params = self.calculate_callable_params(iterator.next().unwrap(), true);
-                        given_count += 1;
-                        GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                        if expected_count == 1 && slice_type.iter().count() != 1 {
+                            // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
+                            // because "for aesthetic purposes we allow these to be omitted".
+                            let params =
+                                self.calculate_simplified_param_spec_generics(&mut iterator);
+                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                        } else {
+                            let params = self.calculate_callable_params(
+                                iterator.next().unwrap(),
+                                true,
+                                expected_count == 1,
+                            );
+                            given_count += 1;
+                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                        }
                     }
                 };
                 generics.push(generic_item);
@@ -1026,10 +1038,32 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
     }
 
+    fn calculate_simplified_param_spec_generics<'y, I: Iterator<Item = SliceOrSimple<'y>>>(
+        &mut self,
+        iterator: &mut I,
+    ) -> CallableParams {
+        todo!()
+    }
+
+    fn check_param(&mut self, t: TypeContent, index: NodeIndex) -> CallableParam {
+        if let TypeContent::SpecialType(SpecialType::CallableParam(p)) = t {
+            p
+        } else {
+            CallableParam {
+                param_specific: ParamSpecific::PositionalOnly(
+                    self.as_db_type(t, NodeRef::new(self.inference.file, index)),
+                ),
+                has_default: false,
+                name: None,
+            }
+        }
+    }
+
     fn calculate_callable_params(
         &mut self,
         first: SliceOrSimple,
         from_class_generics: bool,
+        allow_aesthetic_class_simplification: bool,
     ) -> CallableParams {
         let SliceOrSimple::Simple(n) = first else {
             todo!();
@@ -1039,17 +1073,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                          element: StarLikeExpression| {
             if let StarLikeExpression::NamedExpression(n) = element {
                 let t = slf.compute_type(n.expression());
-                let p = if let TypeContent::SpecialType(SpecialType::CallableParam(p)) = t {
-                    p
-                } else {
-                    CallableParam {
-                        param_specific: ParamSpecific::PositionalOnly(
-                            slf.as_db_type(t, NodeRef::new(slf.inference.file, n.index())),
-                        ),
-                        has_default: false,
-                        name: None,
-                    }
-                };
+                let p = slf.check_param(t, n.index());
                 if let Some(previous) = params.last() {
                     let prev_kind = previous.param_specific.param_kind();
                     let current_kind = p.param_specific.param_kind();
@@ -1123,6 +1147,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             }
             TypeContent::Unknown => CallableParams::Any,
             TypeContent::Concatenate(p) => p,
+            t if allow_aesthetic_class_simplification => CallableParams::Simple(Box::new([
+                slf.check_param(t, first.as_node_ref().node_index)
+            ])),
             _ => {
                 slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
                 CallableParams::Any
@@ -1163,7 +1190,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let db = self.inference.i_s.db;
         let content = if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
-            let params = self.calculate_callable_params(iterator.next().unwrap(), false);
+            let params = self.calculate_callable_params(iterator.next().unwrap(), false, false);
             let result_type = iterator
                 .next()
                 .map(|slice_content| self.compute_slice_db_type(slice_content))
