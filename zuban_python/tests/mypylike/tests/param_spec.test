@@ -81,3 +81,15 @@ def identity(x: T) -> T:
 call(identity, 2)  # error: Argument 2 to "call" has incompatible type "int"; expected "T"
 
 y: int = call(identity, 2)
+
+[case param_spec_aesthetic]
+from typing import Generic, ParamSpec
+
+P = ParamSpec("P")
+
+class Z(Generic[P]): ...
+
+t1: Z[int]
+t2: Z[bytes, str]
+reveal_type(t1)  # N: Revealed type is "__main__.Z[[builtins.int]]"
+reveal_type(t2)  # N: Revealed type is "__main__.Z[[builtins.bytes, builtins.str]]"

@@ -273,17 +273,10 @@ testParamSpecTestPropAccess
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
-
-# Param spec
-testParamSpecInvalidCalls
-# ParamSpec Use Class like C[bytes] (matches C[[bytes]])
-testParamSpecLiterals
-testParamSpecLiteralsTypeApplication
-testParamSpecLiteralJoin
-# Param Spec lambda type inference
-testParamSpecInferredFromLambda
-# Nested Type Var in Param Spec
 param_spec_with_identity_mypy_issue_12278
+
+# Param spec invalid calls
+testParamSpecInvalidCalls
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
@@ -558,6 +551,10 @@ testEllipsisContextForLambda
 testEllipsisContextForLambda2
 testIsinstanceInInferredLambda
 testLambdaDeferredCrash
+# Cannot infer type of lambda
+testParamSpecLiteralsTypeApplication
+# Param Spec lambda type inference
+testParamSpecInferredFromLambda
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc*
@@ -586,6 +583,7 @@ testUnionAnyIsInstance
 testNestedUnionsProcessedCorrectly
 testGenericTypeAliasesUnion
 testOverloadsIgnorePromotions
+testParamSpecLiteralJoin
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasBasic
 testRecursiveAliasesRestrictions
