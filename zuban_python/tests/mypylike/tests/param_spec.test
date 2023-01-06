@@ -63,3 +63,20 @@ jf = j.into_callable()
 reveal_type(jf)  # N: Revealed type is "def [_U, _T] (_U, y: set[_T]) -> tuple[_U, list[__main__.X[_T]]]"
 reveal_type(jf(1.0, {1}))  # N: Revealed type is "tuple[float, list[__main__.X[int]]]"
 reveal_type(jf(1, {""}))  # N: Revealed type is "tuple[int, list[__main__.X[str]]]"
+[case param_spec_with_identity_mypy_issue_12278]
+from typing import Callable, ParamSpec, TypeVar
+
+T = TypeVar("T")
+
+P = ParamSpec("P")
+R = TypeVar("R")
+
+def call(f: Callable[P, R], *args: P.args, **kwargs: P.kwargs) -> R:
+    return f(*args, **kwargs)
+
+def identity(x: T) -> T:
+    return x
+
+call(identity, 2)  # error: Argument 2 to "call" has incompatible type "int"; expected "T"
+
+y: int = call(identity, 2)

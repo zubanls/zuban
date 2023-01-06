@@ -137,9 +137,6 @@ testOverloadIf*
 # Param spec
 testParamSpecInferredFromLambda
 testParamSpecInvalidCalls
-testParamSpecLiterals
-testParamSpecConcatenateFromPep
-testParamSpecLiteralsTypeApplication
 testParamSpecLiteralJoin
 testExpandNonBareParamSpecAgainstCallable
 testParamSpecConstraintOnOtherParamSpec
@@ -150,7 +147,12 @@ testDecoratingClassesThatUseParamSpec
 testPropagatedAnyConstraintsAreOK
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
+testParamSpecConcatenateFromPep
 param_spec_with_generic_class
+param_spec_with_identity_mypy_issue_12278
+# ParamSpec Use Class like C[bytes] (matches C[[bytes]])
+testParamSpecLiterals
+testParamSpecLiteralsTypeApplication
 
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument

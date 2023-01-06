@@ -519,6 +519,7 @@ fn calculate_type_vars<'db>(
             CallableParams::WithParamSpec(pre_types, param_spec) => {
                 let mut args = args.iter_arguments();
                 if !pre_types.is_empty() {
+                    dbg!(pre_types, args.collect::<Vec<_>>());
                     todo!()
                 }
                 if let Some(arg) = args.next() {
