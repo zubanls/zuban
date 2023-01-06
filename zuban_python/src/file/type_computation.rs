@@ -1059,6 +1059,68 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
     }
 
+    fn add_param(&mut self, params: &mut Vec<CallableParam>, t: TypeContent, index: NodeIndex) {
+        let p = self.check_param(t, index);
+        if let Some(previous) = params.last() {
+            let prev_kind = previous.param_specific.param_kind();
+            let current_kind = p.param_specific.param_kind();
+            let msg = match current_kind {
+                ParamKind::PositionalOnly
+                    if current_kind < prev_kind || previous.has_default && !p.has_default =>
+                {
+                    Some("Required positional args may not appear after default, named or var args")
+                }
+                ParamKind::PositionalOrKeyword => {
+                    if previous.has_default && !p.has_default {
+                        Some("Required positional args may not appear after default, named or var args")
+                    } else if current_kind < prev_kind {
+                        if p.has_default {
+                            Some("Positional default args may not appear after named or var args")
+                        } else {
+                            Some("Required positional args may not appear after default, named or var args")
+                        }
+                    } else {
+                        None
+                    }
+                }
+                ParamKind::Starred if current_kind <= prev_kind => {
+                    Some("Var args may not appear after named or var args")
+                }
+                ParamKind::KeywordOnly if current_kind <= prev_kind => {
+                    Some("A **kwargs argument must be the last argument")
+                }
+                ParamKind::DoubleStarred if current_kind == prev_kind => {
+                    Some("You may only have one **kwargs argument")
+                }
+                _ => None,
+            };
+            if let Some(msg) = msg {
+                self.add_typing_issue_for_index(index, IssueType::InvalidType(Box::from(msg)));
+                return;
+            }
+
+            if let Some(param_name) = p.name {
+                let param_name = param_name.as_str(self.inference.i_s.db);
+                for other in params.iter() {
+                    if let Some(other_name) = other.name {
+                        let other_name = other_name.as_str(self.inference.i_s.db);
+                        if param_name == other_name {
+                            self.add_typing_issue_for_index(
+                                index,
+                                IssueType::InvalidType(
+                                    format!("Duplicate argument \"{param_name}\" in Callable",)
+                                        .into(),
+                                ),
+                            );
+                            return;
+                        }
+                    }
+                }
+            }
+        }
+        params.push(p);
+    }
+
     fn calculate_callable_params(
         &mut self,
         first: SliceOrSimple,
@@ -1068,78 +1130,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let SliceOrSimple::Simple(n) = first else {
             todo!();
         };
-        let add_param = |slf: &mut Self,
-                         params: &mut Vec<CallableParam>,
-                         element: StarLikeExpression| {
-            if let StarLikeExpression::NamedExpression(n) = element {
-                let t = slf.compute_type(n.expression());
-                let p = slf.check_param(t, n.index());
-                if let Some(previous) = params.last() {
-                    let prev_kind = previous.param_specific.param_kind();
-                    let current_kind = p.param_specific.param_kind();
-                    let msg = match current_kind {
-                        ParamKind::PositionalOnly if current_kind < prev_kind || previous.has_default && !p.has_default => Some(
-                            "Required positional args may not appear after default, named or var args",
-                        ),
-                        ParamKind::PositionalOrKeyword => {
-                            if previous.has_default && !p.has_default {
-                                Some("Required positional args may not appear after default, named or var args")
-                            } else if current_kind < prev_kind {
-                                if p.has_default {
-                                    Some("Positional default args may not appear after named or var args")
-                                } else {
-                                    Some("Required positional args may not appear after default, named or var args")
-                                }
-                            } else {
-                                None
-                            }
-                        }
-                        ParamKind::Starred if current_kind <= prev_kind => Some(
-                            "Var args may not appear after named or var args",
-                        ),
-                        ParamKind::KeywordOnly if current_kind <= prev_kind => Some(
-                            "A **kwargs argument must be the last argument"
-                        ),
-                        ParamKind::DoubleStarred if current_kind == prev_kind => Some(
-                            "You may only have one **kwargs argument"
-                        ),
-                        _ => None,
-                    };
-                    if let Some(msg) = msg {
-                        slf.add_typing_issue_for_index(
-                            n.index(),
-                            IssueType::InvalidType(Box::from(msg)),
-                        );
-                        return;
-                    }
-
-                    if let Some(param_name) = p.name {
-                        let param_name = param_name.as_str(slf.inference.i_s.db);
-                        for other in params.iter() {
-                            if let Some(other_name) = other.name {
-                                let other_name = other_name.as_str(slf.inference.i_s.db);
-                                if param_name == other_name {
-                                    slf.add_typing_issue_for_index(
-                                        n.index(),
-                                        IssueType::InvalidType(
-                                            format!(
-                                                "Duplicate argument \"{param_name}\" in Callable",
-                                            )
-                                            .into(),
-                                        ),
-                                    );
-                                    return;
-                                }
-                            }
-                        }
-                    }
-                }
-                params.push(p);
-            } else {
-                todo!()
-            }
-        };
-
         let calc_params = |slf: &mut Self| match slf.compute_slice_type(first) {
             TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Box::new([]), p),
             TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
@@ -1163,7 +1153,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     let mut params = vec![];
                     if let Some(iterator) = list.unpack() {
                         for i in iterator {
-                            add_param(self, &mut params, i)
+                            if let StarLikeExpression::NamedExpression(n) = i {
+                                let t = self.compute_type(n.expression());
+                                self.add_param(&mut params, t, n.index())
+                            } else {
+                                todo!()
+                            }
                         }
                     }
                     CallableParams::Simple(params.into_boxed_slice())

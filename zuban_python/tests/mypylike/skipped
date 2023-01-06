@@ -277,6 +277,7 @@ testParamSpecConcatenateFromPep
 # Param spec
 testParamSpecInvalidCalls
 # ParamSpec Use Class like C[bytes] (matches C[[bytes]])
+testParamSpecLiterals
 testParamSpecLiteralsTypeApplication
 testParamSpecLiteralJoin
 # Param Spec lambda type inference
