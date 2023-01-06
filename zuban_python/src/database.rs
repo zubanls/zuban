@@ -878,18 +878,45 @@ impl DbType {
         }
     }
 
-    pub fn search_type_vars(&self, found_type_var: &mut impl FnMut(TypeVarLikeUsage)) {
-        let mut search_in_generics = |generics: &GenericsList| {
+    pub fn search_type_vars<C: FnMut(TypeVarLikeUsage)>(&self, found_type_var: &mut C) {
+        let search_params = |found_type_var: &mut C, params: &_| match params {
+            CallableParams::Simple(params) => {
+                for param in params.iter() {
+                    match &param.param_specific {
+                        ParamSpecific::PositionalOnly(t)
+                        | ParamSpecific::PositionalOrKeyword(t)
+                        | ParamSpecific::KeywordOnly(t)
+                        | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
+                        | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => {
+                            t.search_type_vars(found_type_var)
+                        }
+                        ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
+                            unreachable!()
+                        }
+                        ParamSpecific::DoubleStarred(
+                            DoubleStarredParamSpecific::ParamSpecKwargs(_),
+                        ) => {
+                            unreachable!()
+                        }
+                    }
+                }
+            }
+            CallableParams::Any => (),
+            CallableParams::WithParamSpec(_, spec) => {
+                found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
+            }
+        };
+        let search_in_generics = |found_type_var: &mut C, generics: &GenericsList| {
             for g in generics.iter() {
                 match g {
                     GenericItem::TypeArgument(t) => t.search_type_vars(found_type_var),
                     GenericItem::TypeArguments(_) => todo!(),
-                    GenericItem::ParamSpecArgument(params) => todo!(),
+                    GenericItem::ParamSpecArgument(p) => search_params(found_type_var, &p.params),
                 }
             }
         };
         match self {
-            Self::Class(_, Some(generics)) => search_in_generics(generics),
+            Self::Class(_, Some(generics)) => search_in_generics(found_type_var, generics),
             Self::Union(u) => {
                 for t in u.iter() {
                     t.search_type_vars(found_type_var);
@@ -917,42 +944,14 @@ impl DbType {
                 None => (),
             },
             Self::Callable(content) => {
-                match &content.params {
-                    CallableParams::Simple(params) => {
-                        for param in params.iter() {
-                            match &param.param_specific {
-                                ParamSpecific::PositionalOnly(t)
-                                | ParamSpecific::PositionalOrKeyword(t)
-                                | ParamSpecific::KeywordOnly(t)
-                                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(
-                                    t,
-                                ))
-                                | ParamSpecific::DoubleStarred(
-                                    DoubleStarredParamSpecific::ValueType(t),
-                                ) => t.search_type_vars(found_type_var),
-                                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
-                                    unreachable!()
-                                }
-                                ParamSpecific::DoubleStarred(
-                                    DoubleStarredParamSpecific::ParamSpecKwargs(_),
-                                ) => {
-                                    unreachable!()
-                                }
-                            }
-                        }
-                    }
-                    CallableParams::Any => (),
-                    CallableParams::WithParamSpec(_, spec) => {
-                        found_type_var(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(spec)))
-                    }
-                }
+                search_params(found_type_var, &content.params);
                 content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {}
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
-                    search_in_generics(generics)
+                    search_in_generics(found_type_var, generics)
                 }
             }
             Self::ParamSpecArgs(usage) => todo!(),
