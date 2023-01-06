@@ -389,7 +389,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
     }
 
-    pub fn compute_annotation(&mut self, annotation: Annotation) {
+    pub fn cache_annotation(&mut self, annotation: Annotation) {
         let expr = annotation.expression();
         match annotation.simple_param_kind() {
             Some(SimpleParamKind::Normal) | None => {
@@ -415,7 +415,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         };
     }
 
-    pub fn compute_return_annotation(&mut self, annotation: ReturnAnnotation) {
+    pub fn cache_return_annotation(&mut self, annotation: ReturnAnnotation) {
         self.cache_annotation_internal(annotation.index(), annotation.expression(), None);
     }
 

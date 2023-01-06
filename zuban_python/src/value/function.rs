@@ -257,12 +257,12 @@ impl<'db: 'a, 'a> Function<'a> {
         );
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                type_computation.compute_annotation(annotation);
+                type_computation.cache_annotation(annotation);
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
             in_result_type.set(true);
-            type_computation.compute_return_annotation(return_annot);
+            type_computation.cache_return_annotation(return_annot);
         }
         let type_vars = type_computation.into_type_vars(|inf, recalculate_type_vars| {
             for param in func_node.params().iter() {
