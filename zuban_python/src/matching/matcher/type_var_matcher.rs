@@ -187,7 +187,9 @@ impl<'a> TypeVarMatcher<'a> {
                 match &current.type_ {
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
                     BoundKind::TypeVarTuple(_) => todo!(),
-                    BoundKind::ParamSpecArgument(params) => todo!(),
+                    BoundKind::ParamSpecArgument(param_spec) => {
+                        GenericItem::ParamSpecArgument(param_spec.clone())
+                    }
                     // Any is just ignored by the context later.
                     BoundKind::Uncalculated => {
                         type_var_like_usage.as_type_var_like().as_any_generic_item()

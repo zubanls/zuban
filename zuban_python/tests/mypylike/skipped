@@ -136,8 +136,8 @@ testOverloadIf*
 
 # Param spec
 testParamSpecInferredFromLambda
-testParamSpecInvalidCalls
 testExpandNonBareParamSpecAgainstCallable
+testParamSpecInvalidCalls
 testParamSpecConstraintOnOtherParamSpec
 testParamSpecArgsAndKwargsMissmatch
 testParamSpecTestPropAccess
