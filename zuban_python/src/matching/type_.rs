@@ -234,52 +234,49 @@ impl<'a> Type<'a> {
                         matcher.match_or_add_type_var(i_s, t1, value_type, variance)
                     }
                 }
-                DbType::Callable(c1) => match value_type {
-                    Self::Type(ref t2) => match t2.as_ref() {
-                        DbType::Type(t2) => match t2.as_ref() {
-                            DbType::Class(link, generics) => {
-                                let cls = Class::from_db_type(i_s.db, *link, generics);
-                                // TODO the __init__ should actually be looked up on the original class, not
-                                // the subclass
-                                let lookup = cls.lookup_internal(i_s, "__init__");
-                                if let LookupResult::GotoName(_, init) = lookup {
-                                    let t2 = init.class_as_type(i_s);
-                                    if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
-                                        let type_vars2 = cls.type_vars(i_s);
-                                        // Since __init__ does not have a return, We need to check the params
-                                        // of the __init__ functions and the class as a return type separately.
-                                        return Type::new(&c1.result_type).is_super_type_of(
-                                            i_s,
-                                            matcher,
-                                            &Type::Class(cls),
-                                        ) & matches_params(
-                                            i_s,
-                                            matcher,
-                                            &c1.params,
-                                            &c2.params,
-                                            type_vars2.map(|t| (t, cls.node_ref.as_link())),
-                                            Variance::Contravariant,
-                                            true,
-                                        );
-                                    }
-                                }
-                                Match::new_false()
-                            }
-                            _ => {
-                                if matches!(&c1.params, CallableParams::Any) {
-                                    Type::new(&c1.result_type).is_super_type_of(
+                DbType::Callable(c1) => match value_type.maybe_db_type() {
+                    Some(DbType::Type(t2)) => match t2.as_ref() {
+                        DbType::Class(link, generics) => {
+                            let cls = Class::from_db_type(i_s.db, *link, generics);
+                            // TODO the __init__ should actually be looked up on the original class, not
+                            // the subclass
+                            let lookup = cls.lookup_internal(i_s, "__init__");
+                            if let LookupResult::GotoName(_, init) = lookup {
+                                let t2 = init.class_as_type(i_s);
+                                if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {
+                                    let type_vars2 = cls.type_vars(i_s);
+                                    // Since __init__ does not have a return, We need to check the params
+                                    // of the __init__ functions and the class as a return type separately.
+                                    return Type::new(&c1.result_type).is_super_type_of(
                                         i_s,
                                         matcher,
-                                        &Type::new(t2.as_ref()),
-                                    )
-                                } else {
-                                    Match::new_false()
+                                        &Type::Class(cls),
+                                    ) & matches_params(
+                                        i_s,
+                                        matcher,
+                                        &c1.params,
+                                        &c2.params,
+                                        type_vars2.map(|t| (t, cls.node_ref.as_link())),
+                                        Variance::Contravariant,
+                                        true,
+                                    );
                                 }
                             }
-                        },
-                        DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
-                        _ => Match::new_false(),
+                            Match::new_false()
+                        }
+                        _ => {
+                            if matches!(&c1.params, CallableParams::Any) {
+                                Type::new(&c1.result_type).is_super_type_of(
+                                    i_s,
+                                    matcher,
+                                    &Type::new(t2.as_ref()),
+                                )
+                            } else {
+                                Match::new_false()
+                            }
+                        }
                     },
+                    Some(DbType::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, c2),
                     _ => Match::new_false(),
                 },
                 DbType::None => {
