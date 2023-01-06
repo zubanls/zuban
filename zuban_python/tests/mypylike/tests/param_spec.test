@@ -63,6 +63,7 @@ jf = j.into_callable()
 reveal_type(jf)  # N: Revealed type is "def [_U, _T] (_U, y: set[_T]) -> tuple[_U, list[__main__.X[_T]]]"
 reveal_type(jf(1.0, {1}))  # N: Revealed type is "tuple[float, list[__main__.X[int]]]"
 reveal_type(jf(1, {""}))  # N: Revealed type is "tuple[int, list[__main__.X[str]]]"
+
 [case param_spec_with_identity_mypy_issue_12278]
 from typing import Callable, ParamSpec, TypeVar
 

@@ -134,25 +134,9 @@ testOverloadedInIter
 # - Condition cannot be inferred, unable to merge overloads
 testOverloadIf*
 
-# Param spec
-testParamSpecInferredFromLambda
-testExpandNonBareParamSpecAgainstCallable
-testParamSpecInvalidCalls
+# Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
-testParamSpecArgsAndKwargsMissmatch
-testParamSpecTestPropAccess
-testSolveParamSpecWithSelfType
-testDecoratingClassesThatUseParamSpec
-testPropagatedAnyConstraintsAreOK
-testTupleAndDictOperationsOnParamSpecArgsAndKwargs
-testUnpackingParamsSpecArgsAndKwargs
-testParamSpecConcatenateFromPep
-param_spec_with_generic_class
-param_spec_with_identity_mypy_issue_12278
-# ParamSpec Use Class like C[bytes] (matches C[[bytes]])
-testParamSpecLiterals
-testParamSpecLiteralsTypeApplication
-testParamSpecLiteralJoin
+testExpandNonBareParamSpecAgainstCallable
 
 # Cannot use a covariant type variable as a parameter
 testRejectCovariantArgument
@@ -284,6 +268,23 @@ testNestedGenericFunctions
 testInnerFunctionTypeVar
 testConstraintsBetweenConcatenatePrefixes
 testParamSpecDecoratorImplementation
+testParamSpecArgsAndKwargsMissmatch
+testParamSpecTestPropAccess
+testTupleAndDictOperationsOnParamSpecArgsAndKwargs
+testUnpackingParamsSpecArgsAndKwargs
+testParamSpecConcatenateFromPep
+
+# Param spec
+testParamSpecInvalidCalls
+param_spec_with_generic_class
+# ParamSpec Use Class like C[bytes] (matches C[[bytes]])
+testParamSpecLiterals
+testParamSpecLiteralsTypeApplication
+testParamSpecLiteralJoin
+# Param Spec lambda type inference
+testParamSpecInferredFromLambda
+# Nested Type Var in Param Spec
+param_spec_with_identity_mypy_issue_12278
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
@@ -905,6 +906,7 @@ DecoratorUpdateMethod
 testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
 testGenericTypeBody1
+testSolveParamSpecWithSelfType
 
 # Liskov
 testLiskovFineVariable
@@ -1048,6 +1050,8 @@ testOverloadWithErrorDecorator
 testBoundOnDecorator
 testGenericClassPropertyBound
 testOverloadDeferredNode
+# Class decorator
+testDecoratingClassesThatUseParamSpec
 
 # "Decorators on top of @property are not supported"
 testDecoratedProperty
