@@ -1015,7 +1015,6 @@ testLvarInitializedToVoid
 testForStatementInferenceWithVoid
 
 # Implicit Param Option X = None -> Optional[X] inference (--implicit-optional)
-testImplicitOptionalRefresh1
 testCallingVarArgsFunctionWithDefaultArgs
 testOneOfSeveralOptionalKeywordArguments
 testKeywordArgAfterVarArgs

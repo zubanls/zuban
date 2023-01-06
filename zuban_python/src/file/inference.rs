@@ -441,7 +441,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     &mut x,
                     TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
                 );
-                comp.cache_annotation(annotation);
+                comp.cache_annotation(annotation, false);
                 comp.into_type_vars(|inf, recalculate_type_vars| {
                     inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
                 });

@@ -389,15 +389,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
     }
 
-    pub fn cache_annotation(&mut self, annotation: Annotation) {
+    pub fn cache_annotation(&mut self, annotation: Annotation, is_implicit_optional: bool) {
         let expr = annotation.expression();
         match annotation.simple_param_kind() {
             Some(SimpleParamKind::Normal) | None => {
-                self.cache_annotation_internal(annotation.index(), expr, None)
+                self.cache_annotation_internal(annotation.index(), expr, is_implicit_optional, None)
             }
             Some(SimpleParamKind::Starred) => self.cache_annotation_internal(
                 annotation.index(),
                 expr,
+                false,
                 Some(&|slf, t| {
                     wrap_starred(slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
                 }),
@@ -405,6 +406,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             Some(SimpleParamKind::DoubleStarred) => self.cache_annotation_internal(
                 annotation.index(),
                 expr,
+                false,
                 Some(&|slf, t| {
                     wrap_double_starred(
                         self.inference.i_s.db,
@@ -416,13 +418,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     }
 
     pub fn cache_return_annotation(&mut self, annotation: ReturnAnnotation) {
-        self.cache_annotation_internal(annotation.index(), annotation.expression(), None);
+        self.cache_annotation_internal(annotation.index(), annotation.expression(), false, None);
     }
 
     fn cache_annotation_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
+        is_implicit_optional: bool,
         map_type_callback: MapAnnotationTypeCallback,
     ) {
         let point = self.inference.file.points.get(annotation_index);
@@ -437,10 +440,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
         let type_ = self.compute_type(expr);
 
-        let db_type = match map_type_callback {
+        let mut db_type = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
             None => match type_ {
-                TypeContent::ClassWithoutTypeVar(i) => {
+                TypeContent::ClassWithoutTypeVar(i) if !is_implicit_optional => {
                     debug_assert!(self.inference.file.points.get(expr.index()).calculated());
                     self.inference.file.points.set(
                         annotation_index,
@@ -451,8 +454,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     );
                     return;
                 }
-                TypeContent::DbType(d) => {
+                TypeContent::DbType(mut d) => {
                     if self.has_type_vars {
+                        if is_implicit_optional {
+                            d = d.union(DbType::None)
+                        }
                         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
                             .save_redirect(
                                 self.inference.i_s.db,
@@ -474,6 +480,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 TypeContent::SpecialType(SpecialType::TypeAlias)
                     if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation =>
                 {
+                    debug_assert!(!is_implicit_optional);
                     self.inference.file.points.set(
                         annotation_index,
                         Point::new_simple_specific(Specific::TypingTypeAlias, Locality::Todo),
@@ -483,6 +490,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
             },
         };
+        if is_implicit_optional {
+            db_type = db_type.union(DbType::None)
+        }
         let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
         unsaved.save_redirect(self.inference.i_s.db, self.inference.file, annotation_index);
     }
@@ -2112,7 +2122,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                             &mut x,
                             TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
                         );
-                        comp.cache_annotation_internal(index, expr, None);
+                        comp.cache_annotation_internal(index, expr, false, None);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
                             inf.recalculate_annotation_type_vars(index, recalculate_type_vars);
                         });

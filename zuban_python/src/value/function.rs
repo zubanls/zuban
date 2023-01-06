@@ -225,6 +225,7 @@ impl<'db: 'a, 'a> Function<'a> {
             return None;
         }
         let func_node = self.node();
+        let implicit_optional = i_s.db.python_state.project.implicit_optional;
         let mut inference = self.node_ref.file.inference(i_s);
         let in_result_type = Cell::new(false);
         let mut unbound_type_vars = vec![];
@@ -257,7 +258,15 @@ impl<'db: 'a, 'a> Function<'a> {
         );
         for param in func_node.params().iter() {
             if let Some(annotation) = param.annotation() {
-                type_computation.cache_annotation(annotation);
+                let mut is_implicit_optional = false;
+                if implicit_optional {
+                    if let Some(default) = param.default() {
+                        if default.as_code() == "None" {
+                            is_implicit_optional = true;
+                        }
+                    }
+                }
+                type_computation.cache_annotation(annotation, is_implicit_optional);
             }
         }
         if let Some(return_annot) = func_node.return_annotation() {
