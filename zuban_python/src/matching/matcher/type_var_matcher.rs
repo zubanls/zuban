@@ -525,7 +525,10 @@ fn calculate_type_vars<'db>(
                     if let ArgumentKind::ParamSpec { usage, .. } = &arg.kind {
                         if usage.in_definition == param_spec.in_definition {
                             SignatureMatch::True
+                        } else if class.is_none() {
+                            SignatureMatch::False { similar: false }
                         } else {
+                            dbg!(class);
                             todo!("{:?}, {:?}", param_spec.in_definition, usage.in_definition)
                         }
                     } else {
