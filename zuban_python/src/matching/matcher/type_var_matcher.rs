@@ -362,6 +362,45 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     )
 }
 
+fn add_generics_from_result_context_class(
+    i_s: &mut InferenceState,
+    matcher: &mut Matcher,
+    type_vars: &TypeVarLikes,
+    result_class: &Class,
+) {
+    let mut calculating = matcher.iter_calculated_type_vars();
+    for (type_var_like, g) in type_vars
+        .iter()
+        .zip(result_class.generics().iter(i_s.clone()))
+    {
+        let calculated = calculating.next().unwrap();
+        match g {
+            Generic::TypeArgument(g) => {
+                if !g.is_any() {
+                    let mut bound = TypeVarBound::new(
+                        g.as_db_type(i_s),
+                        match type_var_like {
+                            TypeVarLike::TypeVar(t) => t.variance,
+                            _ => unreachable!(),
+                        },
+                    );
+                    bound.invert_bounds();
+                    calculated.type_ = BoundKind::TypeVar(bound);
+                    calculated.defined_by_result_context = true;
+                }
+            }
+            Generic::TypeVarTuple(ts) => {
+                calculated.type_ = BoundKind::TypeVarTuple(ts.into_owned());
+                calculated.defined_by_result_context = true;
+            }
+            Generic::ParamSpecArgument(p) => {
+                calculated.type_ = BoundKind::ParamSpecArgument(p.into_owned());
+                calculated.defined_by_result_context = true;
+            }
+        };
+    }
+}
+
 fn calculate_type_vars<'db>(
     i_s: &mut InferenceState<'db, '_>,
     class: Option<&Class>,
@@ -422,39 +461,12 @@ fn calculate_type_vars<'db>(
                         &mut Matcher::default(),
                         &mut |i_s, _, result_class| {
                             if result_class.node_ref == class.node_ref {
-                                let mut calculating = matcher.iter_calculated_type_vars();
-                                for (type_var_like, g) in type_vars
-                                    .iter()
-                                    .zip(result_class.generics().iter(i_s.clone()))
-                                {
-                                    let calculated = calculating.next().unwrap();
-                                    match g {
-                                        Generic::TypeArgument(g) => {
-                                            if !g.is_any() {
-                                                let mut bound = TypeVarBound::new(
-                                                    g.as_db_type(i_s),
-                                                    match type_var_like {
-                                                        TypeVarLike::TypeVar(t) => t.variance,
-                                                        _ => unreachable!(),
-                                                    },
-                                                );
-                                                bound.invert_bounds();
-                                                calculated.type_ = BoundKind::TypeVar(bound);
-                                                calculated.defined_by_result_context = true;
-                                            }
-                                        }
-                                        Generic::TypeVarTuple(ts) => {
-                                            calculated.type_ =
-                                                BoundKind::TypeVarTuple(ts.into_owned());
-                                            calculated.defined_by_result_context = true;
-                                        }
-                                        Generic::ParamSpecArgument(p) => {
-                                            calculated.type_ =
-                                                BoundKind::ParamSpecArgument(p.into_owned());
-                                            calculated.defined_by_result_context = true;
-                                        }
-                                    };
-                                }
+                                add_generics_from_result_context_class(
+                                    i_s,
+                                    &mut matcher,
+                                    type_vars,
+                                    result_class,
+                                );
                                 true
                             } else {
                                 false
