@@ -554,7 +554,7 @@ impl<'a> Type<'a> {
                     let t = n2.type_(i_s);
                     return self.matches(i_s, matcher, &Type::new(t), variance);
                 }
-                DbType::Never => return Match::new_true(), // Never is assignable to anything
+                DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
                 _ => (),
             }
         }

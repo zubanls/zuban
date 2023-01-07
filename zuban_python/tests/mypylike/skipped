@@ -1,13 +1,17 @@
 # Next up
-testWideOuterContextNoArgsError
 testWideOuterContextEmptyError
 
 testBoundGenericMethodParamSpecFine
 
+# Nicer Callable Errors
 testCallableParsingFromExpr
 testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
+
+# Super Class generics matching
+testInferenceWithAbstractClassContext
+testInferenceWithAbstractClassContext2
 
 # Literal
 testLiteralAndGenericsRespectsUpperBound
@@ -152,6 +156,7 @@ testInvalidTypevarValues
 
 # Tuple type var context
 testTupleContextFromIterable
+testComplexTypeInferenceWithTuple
 testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
 class_generics_recursion
@@ -897,6 +902,7 @@ testTypeVarValuesMethod2
 testBadOverloadProbableMatch
 testLiteralAndGenericsWithOverloads
 testPreferExactSignatureMatchInOverload
+testOverloadInferringArgumentsUsingContext1
 
 # - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
 testOverloadPartialOverlapWithUnrestrictedTypeVar
