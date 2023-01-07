@@ -131,8 +131,6 @@ overload_not_overlapping_optional
 overload_overlapping_any
 # overloading for loop
 testOverloadedInIter
-# - Condition cannot be inferred, unable to merge overloads
-testOverloadIf*
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -169,6 +167,9 @@ testNewAnalyzerTypeAnnotationCycle4
 testNewAnalyzerVarTypeVarNoCrashImportCycle
 testBoundGenericMethodFine
 testSelfReferentialSubscriptExpression
+testOverrideByIdemAliasCorrectType
+testOverrideByIdemAliasCorrectTypeReversed
+testConditionalExceptionAlias
 
 # Module attributes
 testModuleImplicitAttributes
@@ -182,29 +183,6 @@ testNoneHasBool
 # boolean operators
 testOrOperationWithGenericOperands
 testOrOperationInferredFromContext
-
-# Type Var Value in func
-testCheckGenericFunctionBodyWithTypeVarValues
-testCheckGenericFunctionBodyWithTypeVarValues2
-testTypeInferenceAndTypeVarValues
-testTypeDeclaredBasedOnTypeVarWithValues
-testTypeVarValuesAndNestedCalls
-testGenericTypeWithTypevarValuesAndTypevarArgument
-testGenericTypeBodyWithTypevarValues
-testAttributeInGenericTypeWithTypevarValues*
-testMultipleClassTypevarsWithValues1
-testGenericFunctionWithNormalAndRestrictedTypevar
-testDefineAttributeInGenericMethodUsingTypeVarWithValues
-testTypevarValuesSpecialCase1
-testGenericTypeAliasesTypeVarConstraints
-testWideOuterContextValuesOverlapping
-testTypevarValuesWithOverloadedFunctionSpecialCase
-testReferenceToDecoratedFunctionAndTypeVarValues
-testLiteralAndGenericsRespectsValueRestriction
-
-testTypeVarValuesFunction
-testTypeVarValuesMethod1
-testTypeVarValuesMethod2
 
 # Bound with Union: Item "{}" of the upper bound "{}" of type variable "{}" has no attribute "{}"
 testTypeVarBoundToOldUnionAttributeAccess
@@ -236,12 +214,6 @@ testLiteralInferredInDictContext
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
 testLiteralAndGenericsNoMatch
-# Union nothing should disappear
-testUnionWithGenericTypeItemContext
-testUnionWithGenericTypeItemContextInMethod
-
-# nothing is displayed (probably also used as Any)
-tuple_methods_empty
 
 # Type variable "C.T" cannot be used as an expression
 testClassMemberTypeVarInFunctionBody
@@ -278,6 +250,30 @@ param_spec_with_identity_mypy_issue_12278
 # Param spec invalid calls
 testParamSpecInvalidCalls
 
+# strict optional
+testNoComplainInferredNoneStrict
+testInheritedAttributeNoStrictOptional
+testIncompatibleInheritedAttributeNoStrictOptional
+testInheritedAttributeStrictOptional
+testOverloadsAndNoneWithoutStrictOptional
+testOverloadsAndNoneWithStrictOptional
+testOverloadsNoneAndTypeVarsWithNoStrictOptional
+testOverloadsNoneAndTypeVarsWithStrictOptional
+testAssignToFuncDefViaImport
+testRegression11705_Strict
+testGenericMethodCalledInGenericContext
+# non strict call on Optional[T]
+testCastConfusion
+# None | Iterable[X] -> ignore None
+testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
+# strict optional with config file
+testNewAnalyzerTypeArgBoundCheckWithStrictOptional
+testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
+testPerFileStrictOptionalModule
+testPerFileStrictOptionalModuleOnly
+testPerFileStrictOptionalFunction
+testPerFileStrictOptionalMethod
+
 # function call in class of function in class
 testCallConditionalMethodInClassBody
 
@@ -291,6 +287,12 @@ testGenericClassInsideOtherGenericClass
 # Class: generic access from outside
 testGenericTypeAliasesTypeVarBinding
 
+# descriptors
+testOverloadWithNonGenericDescriptor
+testOverloadWithNonGenericDescriptorLookalike
+testOverloadWithGenericDescriptor
+testOverloadWithGenericDescriptorLookalike
+
 # Property
 testNonMethodProperty
 testInvalidArgCountForProperty
@@ -303,12 +305,6 @@ testForwardReferenceToStaticallyTypedProperty
 testOverloadedProperty
 testOverloadedProperty2
 testDecoratedPropertySetter
-
-# descriptors
-testOverloadWithNonGenericDescriptor
-testOverloadWithNonGenericDescriptorLookalike
-testOverloadWithGenericDescriptor
-testOverloadWithGenericDescriptorLookalike
 
 # classmethod
 testAliasToClassMethod
@@ -343,46 +339,11 @@ testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
 
-# All conditional function variants must have identical signatures
-testIncompatibleConditionalFunctionDefinition*
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
-testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
-testIncompatibleConditionalMethodDefinition
-
-# NamedTuple
-*NamedTuple*
-testNewAnalyzerTupleIteration
-testDistinctTypes
-testInfiniteLoop2
-testNewAnalyzerTypeArgBoundCheckDifferentNodes
-testRegression11705_NoStrict
-testNewAnalyzerCastForward3
-testRecursiveAliasViaBaseClass3
-testNoRecursiveTuplesAtFunctionScope
-testRecursiveTupleClassesNewType
-testLiteralIntelligentIndexingTuples
-testLiteralIntelligentIndexingTupleUnions
-# namedtuple
-testCallableParsingInInheritence
-
 # Typing stuff
 testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
 testBaseClassAnnotatedWithoutArgs
-
-# abstractmethod / ABCMeta
-testMakeClassNoLongerAbstract1
-testMakeClassNoLongerAbstract2
-testAddAbstractMethod
-testMakeClassAbstract
-testMakeMethodNoLongerAbstract1
-testMakeMethodNoLongerAbstract2
-testAbstractBodyTurnsEmpty
-testAbstractBodyTurnsEmptyProtocol
-testAbstractGlobalFunction
-testAbstractNestedFunction
-testInferenceWithAbstractClassContext3
 
 # Explicit Type Aliases
 testSimplePep613
@@ -426,11 +387,23 @@ testNegativeIntLiteralWithFinal
 testLiteralAndInstanceSubtyping
 testNewAnalyzerNewTypeSpecialCase
 
-# TYPE_CHECKING
-testIfTypeCheckingUnreachableClass
+# NamedTuple
+*NamedTuple*
+testNewAnalyzerTupleIteration
+testDistinctTypes
+testInfiniteLoop2
+testNewAnalyzerTypeArgBoundCheckDifferentNodes
+testRegression11705_NoStrict
+testNewAnalyzerCastForward3
+testRecursiveAliasViaBaseClass3
+testNoRecursiveTuplesAtFunctionScope
+testRecursiveTupleClassesNewType
+testLiteralIntelligentIndexingTuples
+testLiteralIntelligentIndexingTupleUnions
+# namedtuple
+testCallableParsingInInheritence
 
 # data class / attrs things
-testDataclass*
 testAttrs*
 
 # Enum
@@ -456,7 +429,41 @@ testAliasForEnumTypeAsLiteral
 testInvariance
 
 # TypedDict
-*TypedDict*
+testNewAnalyzerTypedDictClass
+testNewAnalyzerTypedDictClassInheritance
+testNewAnalyzerMemberNameMatchesTypedDict
+testTypeVarWithTypedDictBoundInIndexExpression
+testTypeVarWithUnionTypedDictBoundInIndexExpression
+testTypeVarWithTypedDictValueInIndexExpression
+testDirectlyImportTypedDictObjectAtTopLevel
+testUnpackWithoutTypedDict
+testUnpackTypedDictTotality
+testUnpackKeywordTypesTypedDict
+testUnpackKwargsOverridesTypedDict
+testUnpackGenericTypedDictImplicitAnyEnabled
+testUnpackGenericTypedDictImplicitAnyDisabled
+testOverloadKwargsSelectionWithTypedDict
+testOverloadTypedDictDifferentRequiredKeysMeansDictsAreDisjoint
+testOverloadedTypedDictPartiallyOverlappingRequiredKeys
+testOverloadedTypedDictFullyNonTotalDictsAreAlwaysPartiallyOverlapping
+testOverloadedTotalAndNonTotalTypedDictsCanPartiallyOverlap
+testOverloadedTypedDictsWithSomeOptionalKeysArePartiallyOverlapping
+testBasicRecursiveTypedDictClass
+testBasicRecursiveTypedDictCall
+testBasicRecursiveTypedDictExtending
+testRecursiveTypedDictCreation
+testRecursiveTypedDictMethods
+testRecursiveTypedDictSubtyping
+testRecursiveTypedDictJoin
+testBasicRecursiveGenericTypedDict
+testRecursiveGenericTypedDictExtending
+testTypedDictRefresh
+testTypedDictUpdate
+testTypedDictUpdate2
+testTypedDictUpdate3
+testTypedDictCrashFallbackAfterDeletedMeet
+testTypedDictCrashFallbackAfterDeletedJoin
+testTypedDictUpdateGeneric
 testLiteralIntelligentIndexingTypedDict
 testLiteralIntelligentIndexingTypedDictUnions
 testLiteralIntelligentIndexingMultiTypedDict
@@ -514,9 +521,6 @@ testNestedInstanceUnsimplifiedUnion
 testNestedInstanceTypeAlias
 testNestedInstanceTypeAliasUnsimplifiedUnion
 
-# Unpacking a string is disallowed
-testStringDisallowedUnpacking
-
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions
 testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
@@ -531,10 +535,6 @@ testNewAnalyzerListComprehension
 testNewAnalyzerDictionaryComprehension
 # comprehensions Scoping
 testListComprehensionSpecialScoping
-
-# if sys.version
-testNewAnalyzerVersionCheck*
-testPromoteMemoryviewToBytes
 
 # lambda
 testLambdaDefaultTypeErrors
@@ -556,76 +556,26 @@ testParamSpecLiteralsTypeApplication
 # Param Spec lambda type inference
 testParamSpecInferredFromLambda
 
-# Conditional definitions
-testNewAnalyzerConditionalFunc*
-testNewAnalyzerConditionallyDefineFuncOverVar
-testRedefineFunctionDefinedAsVariableInitializedToNone
-testRedefineNestedFunctionDefinedAsVariableInitializedToNone
-testConditionalFunctionDefinitionUsingDecorator2
-
-# Weird Name binder type definitions (overwritten?)
-testLiteralBinderLastValueErased
-
-# isinstance
-testLiteralErrorsWithIsInstanceAndIsSubclass
-# isinstance flow analysis
-testUnionGenericWithBoundedVariable
-testIsinstanceAndTypeVarValues*
-testIsinstanceWithUserDefinedTypeAndTypeVarValues
-testIsinstanceWithUserDefinedTypeAndTypeVarValues*
-testTypeCheckOverloadImplementationTypeVarWithValueRestriction
-testTypeCheckOverloadImplementationTypeVarDifferingUsage1
-# isinstance & union
-testUnion1
-testUnion2
-testUnion3
-testUnionAnyIsInstance
-testNestedUnionsProcessedCorrectly
-testGenericTypeAliasesUnion
-testOverloadsIgnorePromotions
-testParamSpecLiteralJoin
-# --enable-recursive-aliases & isinstance
-testRecursiveAliasBasic
-testRecursiveAliasesRestrictions
-testRecursiveAliasesRestrictions2
-testRecursiveAliasBasicGenericInference
-testRecursiveAliasNewStyleSupported
-#  --enable-recursive-aliases & is not None
-testTupleTypeUpdateNonRecursiveToRecursiveFine
-testTypeAliasUpdateNonRecursiveToRecursiveFine
-# narrowing if with literals
-testConditionalBoolLiteralUnionNarrowing
-
-# weird narrowing
-testInferredTypeIsSimpleNestedList
-testInferredTypeIsSimpleNestedIterable
-testInferredTypeIsSimpleNestedListLoop
-testInferredTypeIsSimpleNestedIterableLoop
-testNarrowingDownFromPromoteTargetType
-testNarrowingDownFromPromoteTargetType2
-testNewAnalyzerBuiltinAliasesFixed
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional1
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional1
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
-testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
-testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
-
-# check after flow analysis
-testAssignAnyToUnionWithAny
-
-# All conditional function variants must have identical signatures (flow analysis)
-testUnionOrderEquivalence
-
-# Visibility of imports in pyi
-testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
-
-# Literal with ?
-testNewAnalyzerBool
-testCallerTupleVarArgsAndGenericCalleeVarArg
-
-# typing extensions
-testInvalidUnpackTypes
+# Protocol
+testProtocolUpdateType*
+testProtocolAddAttrInFunction
+testProtocolRemoveAttrInClass
+testProtocolConcrete*
+testProtocolUpdateBaseGeneric
+testProtocolChangeGeneric
+testNonProtocolToProtocol
+testInvalidateProtocolViaSuperClass
+testProtocolInvalidateConcreteViaSuperClass*
+testTwoProtocolsTwoFilesCrossedUpdateType-only_when_nocache
+testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
+testProtocolsInvalidateByRemovingBase
+testProtocolVsProtocol*
+testProtocolMultipleUpdates
+testWeAreCarefulWithBuiltinProtocols
+testWeAreCarefullWithBuiltinProtocolsBase
+testModuleAsProtocolImplementationFine
+# Duck typing
+testOverloadingAndDucktypeCompatibility
 
 # TypeVarTuple
 testTypeVarTupleMixed
@@ -654,16 +604,14 @@ testUnpackKwargsJoin
 testUnpackKwargsParamSpec
 testUnpackKwargsUpdateFine
 testUnpackNoCrashOnEmpty
+testInvalidUnpackTypes
+
+# Visibility of imports in pyi
+testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
 
 # x: typing_extensions.TypeAlias = int
 testClassLevelTypeAliasesInUnusualContexts
 testMalformedTypeAliasRuntimeReassignments
-
-# mypy extensions
-testFlexibleAlias*
-
-# --show-error-context
-testNewAnalyzerTypeArgBoundCheckWithContext
 
 # stdlib imports
 testOverloadSpecialCase
@@ -679,7 +627,7 @@ type_var_with_co_and_contra_real_life
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
 testExportedValuesInImportAll
-testAllMustBeSequenceStr*
+testAllMustBeSequenceStr
 testUnderscoreExportedValuesInImportAll
 testReExportAllInStub
 
@@ -708,15 +656,17 @@ testGenericAliasCollectionsABCReveal
 # Complex Star import
 testImportWithinMethod
 
-# Module __getattr__
-testNewAnalyzerModuleGetattrSerialize_incremental
-testModuleLevelGetattr*
-testModuleGetattr*
-testModuleGetAttr*
-
 # Module type does not contain module info
 testMultiModuleAlias
 testModuleAliasWithExplicitAnnotation
+
+# Import itself / Extremely weird import orders
+testNewAnalyzerImportCycleWithIgnoreMissingImports
+testNewAnalyzerImportFromTopLevelFunction
+testNewAnalyzerImportFromTopLevelAlias
+testNewAnalyzerImportAmbiguousWithTopLevelFunction
+testImportCycleSpecialCase
+testPackagePath
 
 # namespace packages
 testClassicNotPackage
@@ -728,92 +678,13 @@ testClassicPackageInsideNamespacePackage
 testNoReExportFromStubs*
 testNoReExportChildStubs
 testReExportChildStubs
+testReExportChildStubs2
 testNoReExportNestedStub
 testNoReExportFromMissingStubs
 testMissingGenericImport
 testStubFixupIssues
 testNoReExportUnrelatedModule
 testNoReExportUnrelatedSiblingPrefix
-
-# Import itself / Extremely weird import orders
-testNewAnalyzerImportCycleWithIgnoreMissingImports
-testNewAnalyzerImportFromTopLevelFunction
-testNewAnalyzerImportFromTopLevelAlias
-testNewAnalyzerImportAmbiguousWithTopLevelFunction
-testReExportChildStubs
-testReExportChildStubs2
-testImportCycleSpecialCase
-testPackagePath
-
-# Multi definition ifs
-testNewAnalyzerFirstAliasTargetWins
-testNewAnalyzerFirstVarDefinitionWins
-
-# Multiple arguments missing
-testMissingPositionalArguments
-
-# Redefinition (Name "X" already defined on line X)
-testGlobalVarRedefinition
-testLocalVarRedefinition
-testClassVarRedefinition
-testMultipleClassDefinitions
-testMultipleMixedDefinitions
-testMultipleMethodDefinition
-testMultipleNestedFunctionDef
-testRedefineVariableAsTypevar
-testRedefineTypevar*
-testImportTwoModulesWithSameNameInFunction
-testImportTwoModulesWithSameNameInGlobalContext
-testTypeRedeclarationNoSpuriousWarnings
-testDuplicateDef*
-testTypeVarClassDup
-testAliasDup
-testImportFuncDup
-testIgnoredImportDup
-testNewAnalyzerRedefinitionAndDeferral*
-testNewAnalyzerImportStarForwardRef*
-testNewAnalyzerImportOverExistingInCycle*
-testNewAnalyzerConditionalFunc
-testNewAnalyzerConditionallyDefineFuncOverClass
-testNewAnalyzerMissingImportErrors*
-testNewAnalyzerDuplicateTypeVar*
-testNewAnalyzerRedefineAsClass
-testNewAnalyzerOverrideClassWithTypeAlias
-testNewAnalyzerIdentityAssignment*
-testProhibitReassigning*
-testUnknownModuleRedefinition
-testStarImportOverlappingMismatch
-testStarImportOverridingLocalImports
-testRedefineFunctionViaImport
-testDifferentImportSameNameTwice
-testNewAnalyzerRedefineAsOverload
-testImportOnTopOfAlias1
-testImportOnTopOfAlias2
-testUnconditionalRedefinitionOfConditionalFunction
-testUnconditionalRedefinitionOfConditionalMethod
-testRedefineFunction2
-testMissingOverloadDecorator
-testDecoratedRedefinitionIsNotOverload
-# redefinition overload
-testRedefinedOverloadedFunction
-testFakeOverloadCrash
-testFakeOverloadCrash2
-testOverloadNotImportedNoCrash
-testSingleOverload2
-testCustomRedefinitionDecorator
-# Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
-testAliasesInClassBodyNormalVsSubscripted
-# Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
-testModuleAliasRepeated
-testModuleAliasRepeatedComplex
-testModuleAliasToOtherModule
-testModuleAliasToQualifiedImport2
-# Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")
-testRedefineFunctionDefinedAsVariableWithInvalidSignature
-# Incompatible redefinition
-testRedefineFunctionDefinedAsVariableInitializedToEmptyList
-# NewType Redefinition
-testNewAnalyzerNewTypeRedefinition
 
 # Metaclass
 testInvalidMetaclass
@@ -852,6 +723,19 @@ testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
 testIgnoredAttrReprocessedMeta
 testImplementingOverloadedMethod
+
+# abstractmethod / ABCMeta
+testMakeClassNoLongerAbstract1
+testMakeClassNoLongerAbstract2
+testAddAbstractMethod
+testMakeClassAbstract
+testMakeMethodNoLongerAbstract1
+testMakeMethodNoLongerAbstract2
+testAbstractBodyTurnsEmpty
+testAbstractBodyTurnsEmptyProtocol
+testAbstractGlobalFunction
+testAbstractNestedFunction
+testInferenceWithAbstractClassContext3
 
 # Signature of "???" incompatible with supertype "???"
 testKeywordOnlyArgumentOrderInsensitivity
@@ -950,23 +834,241 @@ testConstructorSignatureChanged3
 testFineGrainedCallable
 testRefreshSubclassNestedInFunction2
 testAliasFineNormalClassBases
-testSkippedClass*
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
+
+# __new__
+testDunderNewUpdatedMethod
+testDunderNewUpdatedSubclass
+testDunderNewUpdatedAlias
+testDunderNewUpdatedCallable
+testDunderNewDefine
+testDunderNewInsteadOfInit
 
 # Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncremental*
 
+# Unpacking a string is disallowed
+testStringDisallowedUnpacking
+# List unpacking
+testMultipleAssignmentWithLists
+testMultipleAssignmentWithListsInInitialization
+testMultipleAssignmentWithListAndIndexing
+testMultipleAssignmentAndGenericSubtyping
+testInferringLvarTypesInNestedListAssignment
+testInferringMultipleLvarDefinitionWithListRvalue
+testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
+testUnpackInExpression1-only_when_nocache
+
+# List inference unions are special (list meets)
+testListLiteralWithFunctionsErasesNames
+testListLiteralWithSimilarFunctionsErasesName
+testListLiteralWithNameOnlyArgsDoesNotEraseNames
+testLiteralMeets
+testLiteralMeetsWithStrictOptional
+testInferredTypeIsObjectMismatch
+testNestedListExpressions
+testLiteralInferredInListContext
+testGenericJoin*
+
+# List/Set/Dict Inferring type of variable when initialized to an empty collection
+testInferListInitialized*
+testInferSetInitialized*
+testInferDictInitialized*
+testSpecialCaseEmptyListInitialization*
+testInferListInitializedToEmptyAndAssigned
+testInferOrderedDictInitializedToEmpty
+testEmptyCollectionAssignedToVariableTwiceIncremental
+testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
+testInferAttributeInitializedToEmpty*
+testInferAttributeInitializedToNone*
+testInferFromEmptyDictWhen*
+testInferListTypeFromInplaceAdd
+testInferSetTypeFromInplaceOr
+testConditionalExpressionWithEmptyListAndUnionWithAny
+testConditionalExpressionWithEmptyIteableAndUnionWithAny
+
+# Type Var Value in func
+testCheckGenericFunctionBodyWithTypeVarValues
+testCheckGenericFunctionBodyWithTypeVarValues2
+testTypeInferenceAndTypeVarValues
+testTypeDeclaredBasedOnTypeVarWithValues
+testTypeVarValuesAndNestedCalls
+testGenericTypeWithTypevarValuesAndTypevarArgument
+testGenericTypeBodyWithTypevarValues
+testAttributeInGenericTypeWithTypevarValues*
+testMultipleClassTypevarsWithValues1
+testGenericFunctionWithNormalAndRestrictedTypevar
+testDefineAttributeInGenericMethodUsingTypeVarWithValues
+testTypevarValuesSpecialCase1
+testGenericTypeAliasesTypeVarConstraints
+testWideOuterContextValuesOverlapping
+testTypevarValuesWithOverloadedFunctionSpecialCase
+testReferenceToDecoratedFunctionAndTypeVarValues
+testLiteralAndGenericsRespectsValueRestriction
+testTypeVarValuesFunction
+testTypeVarValuesMethod1
+testTypeVarValuesMethod2
+
+# - Condition cannot be inferred, unable to merge overloads
+testOverloadIf*
+
+# Conditional definitions
+testNewAnalyzerConditionalFunc*
+testNewAnalyzerConditionallyDefineFuncOverVar
+testRedefineFunctionDefinedAsVariableInitializedToNone
+testRedefineNestedFunctionDefinedAsVariableInitializedToNone
+testConditionalFunctionDefinitionUsingDecorator2
+
+# All conditional function variants must have identical signatures
+testIncompatibleConditionalFunctionDefinition*
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition1
+testConditionalRedefinitionOfAnUnconditionalFunctionDefinition2
+testIncompatibleConditionalMethodDefinition
+
+# TYPE_CHECKING
+testIfTypeCheckingUnreachableClass
+
+# if sys.version
+testNewAnalyzerVersionCheck*
+testPromoteMemoryviewToBytes
+
+# isinstance
+testLiteralErrorsWithIsInstanceAndIsSubclass
+# isinstance flow analysis
+testUnionGenericWithBoundedVariable
+testIsinstanceAndTypeVarValues*
+testIsinstanceWithUserDefinedTypeAndTypeVarValues
+testIsinstanceWithUserDefinedTypeAndTypeVarValues*
+testTypeCheckOverloadImplementationTypeVarWithValueRestriction
+testTypeCheckOverloadImplementationTypeVarDifferingUsage1
+# isinstance & union
+testUnion1
+testUnion2
+testUnion3
+testUnionAnyIsInstance
+testNestedUnionsProcessedCorrectly
+testGenericTypeAliasesUnion
+testOverloadsIgnorePromotions
+testParamSpecLiteralJoin
+# --enable-recursive-aliases & isinstance
+testRecursiveAliasBasic
+testRecursiveAliasesRestrictions
+testRecursiveAliasesRestrictions2
+testRecursiveAliasBasicGenericInference
+testRecursiveAliasNewStyleSupported
+#  --enable-recursive-aliases & is not None
+testTupleTypeUpdateNonRecursiveToRecursiveFine
+testTypeAliasUpdateNonRecursiveToRecursiveFine
+# narrowing if with literals
+testConditionalBoolLiteralUnionNarrowing
+
+# Weird Name binder type definitions (overwritten?)
+testLiteralBinderLastValueErased
+# weird narrowing
+testInferredTypeIsSimpleNestedList
+testInferredTypeIsSimpleNestedIterable
+testInferredTypeIsSimpleNestedListLoop
+testInferredTypeIsSimpleNestedIterableLoop
+testNarrowingDownFromPromoteTargetType
+testNarrowingDownFromPromoteTargetType2
+testNewAnalyzerBuiltinAliasesFixed
+testAssignAnyToUnionWithAny
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional1
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional1
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
+testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
+testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+
+# All conditional function variants must have identical signatures (flow analysis)
+testUnionOrderEquivalence
+
 # flow graph
-testAssignAndConditional*
+testAssignAndConditionalImport
+testAssignAndConditionalStarImport
 testRedefineImportedFunctionViaImport
 testImportedVariableViaImport
+
+# Multi definition ifs
+testNewAnalyzerFirstAliasTargetWins
+testNewAnalyzerFirstVarDefinitionWins
+
+# Multiple arguments missing
+testMissingPositionalArguments
+
+# Redefinition (Name "X" already defined on line X)
+testGlobalVarRedefinition
+testLocalVarRedefinition
+testClassVarRedefinition
+testMultipleClassDefinitions
+testMultipleMixedDefinitions
+testMultipleMethodDefinition
+testMultipleNestedFunctionDef
+testRedefineVariableAsTypevar
+testRedefineTypevar*
+testImportTwoModulesWithSameNameInFunction
+testImportTwoModulesWithSameNameInGlobalContext
+testTypeRedeclarationNoSpuriousWarnings
+testDuplicateDef*
+testTypeVarClassDup
+testAliasDup
+testImportFuncDup
+testIgnoredImportDup
+testNewAnalyzerRedefinitionAndDeferral*
+testNewAnalyzerImportStarForwardRef*
+testNewAnalyzerImportOverExistingInCycle*
+testNewAnalyzerConditionalFunc
+testNewAnalyzerConditionallyDefineFuncOverClass
+testNewAnalyzerMissingImportErrors*
+testNewAnalyzerDuplicateTypeVar*
+testNewAnalyzerRedefineAsClass
+testNewAnalyzerOverrideClassWithTypeAlias
+testNewAnalyzerIdentityAssignment*
+testProhibitReassigning*
+testUnknownModuleRedefinition
+testStarImportOverlappingMismatch
+testStarImportOverridingLocalImports
+testRedefineFunctionViaImport
+testDifferentImportSameNameTwice
+testNewAnalyzerRedefineAsOverload
+testImportOnTopOfAlias1
+testImportOnTopOfAlias2
+testUnconditionalRedefinitionOfConditionalFunction
+testUnconditionalRedefinitionOfConditionalMethod
+testRedefineFunction2
+testMissingOverloadDecorator
+testDecoratedRedefinitionIsNotOverload
+# redefinition overload
+testRedefinedOverloadedFunction
+testFakeOverloadCrash
+testFakeOverloadCrash2
+testOverloadNotImportedNoCrash
+testSingleOverload2
+testCustomRedefinitionDecorator
+# Cannot assign multiple types to name "b" without an explicit "Type[...]" annotation
+testAliasesInClassBodyNormalVsSubscripted
+# Cannot assign multiple modules to name "..." without explicit "types.ModuleType" annotation
+testModuleAliasRepeated
+testModuleAliasRepeatedComplex
+testModuleAliasToOtherModule
+testModuleAliasToQualifiedImport2
+# Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")
+testRedefineFunctionDefinedAsVariableWithInvalidSignature
+# Incompatible redefinition
+testRedefineFunctionDefinedAsVariableInitializedToEmptyList
+# NewType Redefinition
+testNewAnalyzerNewTypeRedefinition
 
 # syntax errors
 testPreferPackageOverFile
 testPreferPackageOverFile2
 testTrailingCommaParsing
 testTrailingCommaInIfParsing
+
+# Yield
+testYieldOutsideFunction
+testYieldFrom
 
 # async/await
 testAwaitCoroutine
@@ -989,23 +1091,12 @@ testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 
-# Yield
-*Yield*
-
 # "Cannot determine type of"
 testThreePassesRequired
 testAccessGlobalVarBeforeItsTypeIsAvailable
 testAccessDataAttributeBeforeItsTypeIsAvailable
 testMultipassAndTopLevelVariable
 testMultipassAndCircularDependency
-
-# __new__
-testDunderNewUpdatedMethod
-testDunderNewUpdatedSubclass
-testDunderNewUpdatedAlias
-testDunderNewUpdatedCallable
-testDunderNewDefine
-testDunderNewInsteadOfInit
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
@@ -1058,33 +1149,6 @@ testTypeCheckOverloadWithImplementationError
 # function type mismatch when untyped
 testSubtypingFunctionsImplicitNames
 
-# Protocol
-testProtocolUpdateType*
-testProtocolAddAttrInFunction
-testProtocolRemoveAttrInClass
-testProtocolConcrete*
-testProtocolUpdateBaseGeneric
-testProtocolChangeGeneric
-testNonProtocolToProtocol
-testInvalidateProtocolViaSuperClass
-testProtocolInvalidateConcreteViaSuperClass*
-testTwoProtocolsTwoFilesCrossedUpdateType-only_when_nocache
-testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
-testProtocolsInvalidateByRemovingBase
-testProtocolVsProtocol*
-testProtocolMultipleUpdates
-testWeAreCarefulWithBuiltinProtocols
-testWeAreCarefullWithBuiltinProtocolsBase
-testModuleAsProtocolImplementationFine
-# Duck typing
-testOverloadingAndDucktypeCompatibility
-
-# parser recovery in type comments / types in string literals
-testInvalidStrLiteralSpaces
-testInvalidStrLiteralStrayBrace
-testInvalidMultilineLiteralType
-testLiteralInvalidString
-
 # Global
 testAssignToFuncDefViaGlobalDecl2
 
@@ -1121,53 +1185,21 @@ testIncompatibleAssignmentAmbiguousShortnames
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 
-# List unpacking
-testMultipleAssignmentWithLists
-testMultipleAssignmentWithListsInInitialization
-testMultipleAssignmentWithListAndIndexing
-testMultipleAssignmentAndGenericSubtyping
-testInferringLvarTypesInNestedListAssignment
-testInferringMultipleLvarDefinitionWithListRvalue
-testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
-testUnpackInExpression1-only_when_nocache
-
-# List inference unions are special
-testListLiteralWithFunctionsErasesNames
-testListLiteralWithSimilarFunctionsErasesName
-testListLiteralWithNameOnlyArgsDoesNotEraseNames
-testLiteralMeets
-testLiteralMeetsWithStrictOptional
-testInferredTypeIsObjectMismatch
-testNestedListExpressions
-testLiteralInferredInListContext
-testGenericJoin*
-
-# List/Set/Dict Inferring type of variable when initialized to an empty collection
-testInferListInitialized*
-testInferSetInitialized*
-testInferDictInitialized*
-testSpecialCaseEmptyListInitialization*
-testInferListInitializedToEmptyAndAssigned
-testInferOrderedDictInitializedToEmpty
-testEmptyCollectionAssignedToVariableTwiceIncremental
-testEmptyCollectionAssignedToVariableTwiceNoReadIncremental
-testInferAttributeInitializedToEmpty*
-testInferAttributeInitializedToNone*
-testInferFromEmptyDictWhen*
-testInferListTypeFromInplaceAdd
-testInferSetTypeFromInplaceOr
-testConditionalExpressionWithEmptyListAndUnionWithAny
-testConditionalExpressionWithEmptyIteableAndUnionWithAny
-
 # Too many values to unpack (2 expected, 3 provided)
 testInferringLvarTypesInMultiDefWithInvalidTuple
 
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 
-# Type execution
+# Foo = type(...) used as `x: Foo` (type execution)
 testNoneAlias
 testNoneAliasStrict
+
+# Module __getattr__
+testNewAnalyzerModuleGetattrSerialize_incremental
+testModuleLevelGetattr*
+testModuleGetattr*
+testModuleGetAttr*
 
 # Special case for assignment to '_'
 testUnusedTargetLocal
@@ -1181,17 +1213,14 @@ testUnusedTargetForLoop
 testUnusedTargetWithClause
 testUnusedTargetNotExceptClause
 
-# Wtfs
-testEmptyTupleTypeAlias
-testOverrideByIdemAliasCorrectType
-testOverrideByIdemAliasCorrectTypeReversed
-testConditionalExceptionAlias
-
 # weird files
 testScriptsAreNotModules
 
-# Formatting qualified name
-testSubmoduleMixingImportFromAndImport
+# Literal with ?
+testNewAnalyzerBool
+testCallerTupleVarArgsAndGenericCalleeVarArg
+
+# Formatting qualified module names
 testSubmoduleMixingImportFromAndImport2
 testErrorFromGoogleCloud
 testStubPackageSubModule
@@ -1218,13 +1247,16 @@ testModuleAliasRepeatedWithAnnotation
 # NewType formatting instead of internal type
 testNewTypeDependencies3
 
-# Tuple iter
-testNewAnalyzerFallbackUpperBoundCheckAndFallbacks
-
 # tuple type expected for multiple variables
 testVariableDeclWithInvalidType
 testVariableDeclWithInvalidNumberOfTypesNested3
 testVariableDeclWithInvalidNumberOfTypesNested5
+
+# parser recovery in type comments / types in string literals
+testInvalidStrLiteralSpaces
+testInvalidStrLiteralStrayBrace
+testInvalidMultilineLiteralType
+testLiteralInvalidString
 
 # Syntax error in type annotation
 # Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
@@ -1232,7 +1264,7 @@ testImplicitTuple2
 # Suggestion: Use tuple[()] instead of () for an empty tuple, or None for a function without a return value
 testReturnEmptyTuple
 
-# Assignment like ac[b] += c with both __getitem__ and __setitem__ has same # error twice
+# Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
 
 # Incompatible number of tuple items
@@ -1256,30 +1288,6 @@ testTestExtendPrimitives
 # "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
 testContextForAttributeDeclaredInInit
 
-# strict optional
-testNoComplainInferredNoneStrict
-testInheritedAttributeNoStrictOptional
-testIncompatibleInheritedAttributeNoStrictOptional
-testInheritedAttributeStrictOptional
-testOverloadsAndNoneWithoutStrictOptional
-testOverloadsAndNoneWithStrictOptional
-testOverloadsNoneAndTypeVarsWithNoStrictOptional
-testOverloadsNoneAndTypeVarsWithStrictOptional
-testAssignToFuncDefViaImport
-testRegression11705_Strict
-testGenericMethodCalledInGenericContext
-# non strict call on Optional[T]
-testCastConfusion
-# None | Iterable[X] -> ignore None
-testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
-# strict optional with config file
-testNewAnalyzerTypeArgBoundCheckWithStrictOptional
-testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
-testPerFileStrictOptionalModule
-testPerFileStrictOptionalModuleOnly
-testPerFileStrictOptionalFunction
-testPerFileStrictOptionalMethod
-
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
 
@@ -1300,6 +1308,12 @@ testIgnoreErrorFromMissingStubs2
 testRefreshIgnoreErrors1
 testRefreshIgnoreErrors2
 testRefreshOptions
+
+# mypy extensions
+testFlexibleAlias*
+
+# --show-error-context
+testNewAnalyzerTypeArgBoundCheckWithContext
 
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
@@ -1348,7 +1362,7 @@ testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
 
-# for type comment
+# `for ... in` type comment
 testRefreshForWithTypeComment1
 testRefreshForWithTypeComment2
 
