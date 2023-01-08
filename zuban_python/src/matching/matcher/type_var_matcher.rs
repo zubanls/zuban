@@ -460,17 +460,20 @@ fn calculate_type_vars<'db>(
                         i_s,
                         &mut Matcher::default(),
                         &mut |i_s, _, result_class| {
-                            if result_class.node_ref == class.node_ref {
-                                add_generics_from_result_context_class(
-                                    i_s,
-                                    &mut matcher,
-                                    type_vars,
-                                    result_class,
-                                );
-                                true
-                            } else {
-                                false
+                            for (_, t) in class.mro(i_s) {
+                                if let Some(class) = t.maybe_class(i_s.db) {
+                                    if result_class.node_ref == class.node_ref {
+                                        add_generics_from_result_context_class(
+                                            i_s,
+                                            &mut matcher,
+                                            type_vars,
+                                            result_class,
+                                        );
+                                        return true;
+                                    }
+                                }
                             }
+                            false
                         },
                     );
                 }

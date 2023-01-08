@@ -9,10 +9,6 @@ testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
 
-# Super Class generics matching
-testInferenceWithAbstractClassContext
-testInferenceWithAbstractClassContext2
-
 # Literal
 testLiteralAndGenericsRespectsUpperBound
 
