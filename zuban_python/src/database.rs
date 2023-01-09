@@ -391,6 +391,7 @@ pub enum Specific {
     TypingTypeAlias,
     TypingFinal,
     TypingLiteral,
+    TypingSelf,
     // TODO reactivate these or remove
     //TypingAnnotated,
     // TODO maybe NoReturn?

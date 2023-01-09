@@ -411,6 +411,7 @@ fn typing_changes(
     set_typing_inference(typing, "TypedDict", Specific::TypedDict);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
+    set_typing_inference(typing, "Self", Specific::TypingSelf);
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
@@ -441,6 +442,7 @@ fn typing_changes(
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
     set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
     set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
+    set_typing_inference(t, "Self", Specific::TypingSelf);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
@@ -457,6 +459,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "ParamSpec",
         "Unpack",
         "TypeAlias",
+        "Self",
     ]
     .contains(&name)
     {
