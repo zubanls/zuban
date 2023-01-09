@@ -3196,7 +3196,7 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
-        assert_eq!(size_of::<ClassStorage>(), 104);
+        assert_eq!(size_of::<ClassStorage>(), 120);
         assert_eq!(size_of::<ClassInfos>(), 24);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<AnyLink>(), 16);
