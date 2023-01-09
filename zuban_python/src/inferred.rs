@@ -1247,6 +1247,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             reducer,
             on_missing,
         ),
+        DbType::Self_ => todo!(),
         DbType::ParamSpecArgs(usage) => todo!(),
         DbType::ParamSpecKwargs(usage) => todo!(),
     }

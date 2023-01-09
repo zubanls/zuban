@@ -731,6 +731,7 @@ pub enum DbType {
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
+    Self_,
     None,
     Any,
     Never,
@@ -870,6 +871,7 @@ impl DbType {
                     rec.calculated_db_type(format_data.db).format(&format_data)
                 }
             }
+            Self::Self_ => Box::from("Self"),
             Self::ParamSpecArgs(usage) => {
                 format!("{}.args", usage.param_spec.name(format_data.db)).into()
             }
@@ -962,6 +964,7 @@ impl DbType {
                     search_in_generics(found_type_var, generics)
                 }
             }
+            Self::Self_ => todo!(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }
@@ -1049,6 +1052,7 @@ impl DbType {
                         .has_any_internal(db, already_checked)
                 }
             }
+            Self::Self_ => todo!(),
             Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
         }
     }
@@ -1256,6 +1260,7 @@ impl DbType {
                 rec.link,
                 rec.generics.as_ref().map(remap_generics),
             ))),
+            Self::Self_ => todo!(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }
@@ -1555,6 +1560,7 @@ impl DbType {
             }
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
+            Self::Self_ => todo!(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }

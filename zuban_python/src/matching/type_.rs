@@ -199,6 +199,7 @@ impl<'a> Type<'a> {
                 DbType::Intersection(intersection) => todo!(),
                 DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(_) => todo!(),
+                DbType::Self_ => todo!(),
                 DbType::ParamSpecArgs(usage) => todo!(),
                 DbType::ParamSpecKwargs(usage) => todo!(),
             },
@@ -348,6 +349,7 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
+                DbType::Self_ => todo!(),
                 DbType::ParamSpecArgs(usage1) => match value_type.maybe_db_type() {
                     Some(DbType::ParamSpecArgs(usage2)) => (usage1 == usage2).into(),
                     _ => Match::new_false(),
