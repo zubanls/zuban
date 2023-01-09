@@ -566,7 +566,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     if !matches!(
                         self.origin,
                         TypeComputationOrigin::Constraint | TypeComputationOrigin::BaseClass
-                    ) =>
+                    ) && self.inference.i_s.current_class().is_some() =>
                 {
                     DbType::Self_
                 }

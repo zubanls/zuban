@@ -1,12 +1,28 @@
 [case self_as_base_class]
 from typing import Self
-
 class Foo(Self): ...  # E: Invalid base class "Self" \
                       # E: Invalid type
 class Foo(list[Self]): ...  # E: Invalid type
 
 [case self_as_nested_base_class]
 from typing import Self
-
 class Foo:
     class Bar(list[Self]): ...  # E: Invalid type
+
+[case self_invalid_annotation]
+from typing import Self
+x: Self  # E: Invalid type
+def foo(self):
+    x: Self  # E: Invalid type
+
+[case self_valid_annotation]
+from typing import Self
+class Foo:
+    x: Self
+    def foo(self):
+        x: Self
+
+[case self_invalid_function]
+from typing import Self
+def foo(self: Self) -> None:  ...  # E: Invalid type
+def foo() -> Self: ...  # E: Invalid type
