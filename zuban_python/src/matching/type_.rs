@@ -349,7 +349,10 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                DbType::Self_ => todo!(),
+                DbType::Self_ => match value_type.maybe_db_type() {
+                    Some(DbType::Self_) => Match::new_true(),
+                    _ => Match::new_false(),
+                },
                 DbType::ParamSpecArgs(usage1) => match value_type.maybe_db_type() {
                     Some(DbType::ParamSpecArgs(usage2)) => (usage1 == usage2).into(),
                     _ => Match::new_false(),
