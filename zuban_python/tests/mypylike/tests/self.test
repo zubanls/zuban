@@ -1,0 +1,12 @@
+[case self_as_base_class]
+from typing import Self
+
+class Foo(Self): ...  # E: Invalid base class "Self" \
+                      # E: Invalid type
+class Foo(list[Self]): ...  # E: Invalid type
+
+[case self_as_nested_base_class]
+from typing import Self
+
+class Foo:
+    class Bar(list[Self]): ...  # E: Invalid type
