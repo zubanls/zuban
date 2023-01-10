@@ -3,6 +3,10 @@ testWideOuterContextEmptyError
 
 testBoundGenericMethodParamSpecFine
 
+# Generics self assignment
+testGenericTypeBodyWithMultipleVariables
+self_valid_method_untyped_input
+
 # Nicer Callable Errors
 testCallableParsingFromExpr
 testCallableParsing
