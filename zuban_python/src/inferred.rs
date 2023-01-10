@@ -322,20 +322,25 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::AnnotationWithTypeVars => {
                         let file = i_s.db.loaded_python_file(definition.file);
+                        let mut i_s2 = i_s.clone(); // TODO This feels wrong
                         let d = file
                             .inference(i_s)
                             .use_db_type_of_annotation(definition.node_index)
-                            .replace_type_var_likes(i_s.db, &mut |t| {
-                                if let Some(class) = i_s.current_class() {
-                                    if class.node_ref.as_link() == t.in_definition() {
-                                        return class
-                                            .generics()
-                                            .nth_usage(i_s, &t)
-                                            .into_generic_item(i_s);
+                            .replace_type_var_likes_and_self(
+                                i_s.db,
+                                &mut |t| {
+                                    if let Some(class) = i_s.current_class() {
+                                        if class.node_ref.as_link() == t.in_definition() {
+                                            return class
+                                                .generics()
+                                                .nth_usage(i_s, &t)
+                                                .into_generic_item(i_s);
+                                        }
                                     }
-                                }
-                                t.into_generic_item()
-                            });
+                                    t.into_generic_item()
+                                },
+                                &mut || i_s2.current_class().unwrap().as_db_type(&mut i_s2),
+                            );
                         return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                             Box::new(d),
                         ));
