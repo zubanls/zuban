@@ -524,11 +524,7 @@ pub enum GenericItem {
 }
 
 impl GenericItem {
-    pub fn replace_type_var_likes(
-        &self,
-        db: &Database,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
-    ) -> Self {
+    pub fn replace_type_var_likes(&self, db: &Database, callable: ReplaceTypeVarLike) -> Self {
         match self {
             Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_var_likes(db, callable)),
             Self::TypeArguments(_) => todo!(),
@@ -2874,7 +2870,7 @@ impl TypeAlias {
         &self,
         db: &Database,
         remove_recursive_wrapper: bool,
-        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+        callable: ReplaceTypeVarLike,
     ) -> Cow<DbType> {
         if self.is_recursive && !remove_recursive_wrapper {
             return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
