@@ -1414,7 +1414,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     }
                 }
                 PointType::Specific => match point.specific() {
-                    Specific::Param => {
+                    specific @ (Specific::Param | Specific::SelfParam) => {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         // Performance: This could be improved by not needing to lookup all the
                         // parents all the time.
@@ -1430,9 +1430,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     self.use_cached_annotation(annotation)
                                 } else if let Some((function, args)) = self.i_s.current_execution()
                                 {
-                                    function
-                                        .infer_param(self.i_s, node_index, args)
-                                        .resolve_function_return(self.i_s)
+                                    if specific == Specific::SelfParam {
+                                        Inferred::new_saved(self.file, node_index, point)
+                                    } else {
+                                        function
+                                            .infer_param(self.i_s, node_index, args)
+                                            .resolve_function_return(self.i_s)
+                                    }
                                 } else {
                                     todo!("{:?}", self.i_s.context)
                                 }
