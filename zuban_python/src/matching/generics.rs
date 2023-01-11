@@ -146,7 +146,14 @@ impl<'a> Generics<'a> {
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
             Self::Any => Generic::owned(type_var_like.as_any_generic_item()),
-            Self::Self_ => todo!(),
+            Self::Self_ => Generic::owned(
+                type_var_like
+                    .as_type_var_like_usage(
+                        n.into(),
+                        i_s.current_class().unwrap().node_ref.as_link(),
+                    )
+                    .into_generic_item(),
+            ),
             Self::None => unreachable!("No generics given, but {:?} was requested", n),
         }
     }

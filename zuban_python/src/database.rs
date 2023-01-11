@@ -2554,7 +2554,11 @@ impl TypeVarLike {
                     in_definition,
                 }))
             }
-            Self::ParamSpec(s) => todo!(),
+            Self::ParamSpec(p) => TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage {
+                param_spec: p.clone(),
+                index,
+                in_definition,
+            })),
         }
     }
 

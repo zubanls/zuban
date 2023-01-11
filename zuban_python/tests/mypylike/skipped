@@ -8,6 +8,14 @@ testGenericTypeBodyWithMultipleVariables
 self_valid_method_untyped_input
 # as_generics_list
 testCompatibilityOfTypeVarWithObject
+# self annotation
+testOverlappingTypeVarIds
+# formatting Self
+testRemoveAttributeInBaseClass
+testRemoveBaseClass
+testRemoveBaseClass2
+testBaseClassDeleted
+testBaseClassOfNestedClassDeleted
 
 # Nicer Callable Errors
 testCallableParsingFromExpr
