@@ -30,7 +30,9 @@ def foo() -> Self: ...  # E: Invalid type
 [case self_valid_method]
 from typing import Self
 class Foo:
+    x: int
     def return_self(self: Self) -> Self:
+        reveal_type(self.x)  # N: Revealed type is "int"
         reveal_type(self)  # N: Revealed type is "Self"
         return self
 
@@ -39,6 +41,7 @@ from typing import Self
 class Foo:
     x: int
     def return_self(self) -> Self:
+        reveal_type(self.x)  # N: Revealed type is "int"
         reveal_type(self)  # N: Revealed type is "Self"
         return self
 
