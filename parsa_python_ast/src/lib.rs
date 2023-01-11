@@ -377,14 +377,6 @@ impl<'db> Name<'db> {
         }
     }
 
-    pub fn has_self_param_position(&self) -> bool {
-        // Parents are name_definition/param_no_default/parameters
-        let param = self.node.parent().unwrap().parent().unwrap();
-        let params = param.parent().unwrap();
-        // Could also be a kwarg, which is never a self
-        params.is_type(Nonterminal(parameters)) && params.index + 1 == param.index
-    }
-
     pub fn parent(&self) -> NameParent<'db> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(atom)) {

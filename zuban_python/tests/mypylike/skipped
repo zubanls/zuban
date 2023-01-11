@@ -6,6 +6,8 @@ testBoundGenericMethodParamSpecFine
 # Generics self assignment
 testGenericTypeBodyWithMultipleVariables
 self_valid_method_untyped_input
+# as_generics_list
+testCompatibilityOfTypeVarWithObject
 
 # Nicer Callable Errors
 testCallableParsingFromExpr

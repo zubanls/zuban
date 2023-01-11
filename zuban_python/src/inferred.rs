@@ -316,7 +316,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             Box::new(i_s.args_as_execution().unwrap()),
                         ));
                     }
-                    Specific::Param => {
+                    Specific::Param | Specific::SelfParam => {
                         todo!("might not even happen - remove")
                         //return i_s.infer_param(&definition);
                     }
@@ -1121,6 +1121,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 .use_db_type_of_annotation(definition.node_index);
             run_on_db_type(i_s, db_type, callable, reducer, on_missing)
         }
+        Specific::SelfParam => run_on_db_type(i_s, &DbType::Self_, callable, reducer, on_missing),
         Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
         Specific::TypingTypeVarTupleClass => callable(i_s, &TypeVarTupleClass()),
         Specific::TypingParamSpecClass => callable(i_s, &ParamSpecClass()),

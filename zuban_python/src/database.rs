@@ -361,7 +361,7 @@ pub enum Specific {
     ListComprehension,
     Dict,
 
-    // SelfParam, TODO Use maybe?
+    SelfParam,
     Param,
     LazyInferredClass,    // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.

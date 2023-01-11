@@ -28,7 +28,10 @@ enum NameBinderType {
 }
 
 enum Unresolved<'db> {
-    FunctionDef(FunctionDef<'db>),
+    FunctionDef {
+        func: FunctionDef<'db>,
+        is_method: bool,
+    },
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
     DictComprehension(DictComprehension<'db>),
@@ -356,13 +359,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             self.names_to_be_resolved_in_parent.push(name);
                         }
                     }
-                    Unresolved::FunctionDef(func) => {
+                    Unresolved::FunctionDef { func, is_method } => {
                         let symbol_table = SymbolTable::default();
                         self.with_nested(
                             NameBinderType::Function,
                             func.index(),
                             &symbol_table,
-                            |binder| binder.index_function_body(func),
+                            |binder| binder.index_function_body(func, is_method),
                         );
                     }
                     Unresolved::Lambda(lambda) => {
@@ -629,10 +632,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let param_point = self.points.get(param_index - 1);
             if param_point.calculated()
                 && param_point.type_() == PointType::Specific
-                && param_point.specific() == Specific::Param
+                && param_point.specific() == Specific::SelfParam
             {
-                let n = Name::by_index(self.tree, param_index);
-                return n.has_self_param_position();
+                return true;
             }
         }
         false
@@ -804,7 +806,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) {
         // If there is no parent, this does not have to be resolved immediately in theory, but for
         // now we just do.
-        self.unresolved_nodes.push(Unresolved::FunctionDef(func));
+        self.unresolved_nodes.push(Unresolved::FunctionDef {
+            func,
+            is_method: self.type_ == NameBinderType::Class,
+        });
 
         let (name_def, params, return_annotation, _) = func.unpack();
         let mut param_count = 0;
@@ -963,11 +968,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         None
     }
 
-    pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>) {
+    pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {
         // Function name was indexed already.
         let (_, params, _, block) = func.unpack();
 
-        self.index_param_name_defs(params.iter().map(|param| param.name_definition()));
+        self.index_param_name_defs(
+            params.iter().map(|param| param.name_definition()),
+            is_method,
+        );
 
         let latest_return_index = self.index_block(block, true, true);
         // It's kind of hard to know where to store the latest reference statement.
@@ -980,7 +988,16 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         );
     }
 
-    fn index_param_name_defs(&mut self, names: impl Iterator<Item = NameDefinition<'db>>) {
+    fn index_param_name_defs(
+        &mut self,
+        mut names: impl Iterator<Item = NameDefinition<'db>>,
+        is_method: bool,
+    ) {
+        if is_method {
+            if let Some(name_def) = names.next() {
+                self.add_point_definition(name_def, Specific::SelfParam, true);
+            }
+        }
         for name_def in names {
             self.add_point_definition(name_def, Specific::Param, true);
         }
@@ -997,7 +1014,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_lambda(&mut self, lambda: Lambda<'db>) {
         let (params, expr) = lambda.unpack();
-        self.index_param_name_defs(params.map(|param| param.name_definition()));
+        self.index_param_name_defs(params.map(|param| param.name_definition()), false);
         self.index_non_block_node(&expr, true, true);
     }
 
