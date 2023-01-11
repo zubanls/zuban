@@ -967,10 +967,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         // Function name was indexed already.
         let (_, params, _, block) = func.unpack();
 
-        for param in params.iter() {
-            // defaults and annotations are already indexed
-            self.add_point_definition(param.name_definition(), Specific::Param, true);
-        }
+        self.index_param_name_defs(params.iter().map(|param| param.name_definition()));
 
         let latest_return_index = self.index_block(block, true, true);
         // It's kind of hard to know where to store the latest reference statement.
@@ -981,6 +978,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 latest_return_index,
             ),
         );
+    }
+
+    fn index_param_name_defs(&mut self, names: impl Iterator<Item = NameDefinition<'db>>) {
+        for name_def in names {
+            self.add_point_definition(name_def, Specific::Param, true);
+        }
     }
 
     fn index_lambda_param_defaults(&mut self, lambda: Lambda<'db>, ordered: bool) {
@@ -994,9 +997,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn index_lambda(&mut self, lambda: Lambda<'db>) {
         let (params, expr) = lambda.unpack();
-        for param in params {
-            self.add_point_definition(param.name_definition(), Specific::Param, true);
-        }
+        self.index_param_name_defs(params.map(|param| param.name_definition()));
         self.index_non_block_node(&expr, true, true);
     }
 
