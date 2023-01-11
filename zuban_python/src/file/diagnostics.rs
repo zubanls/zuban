@@ -2,9 +2,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::{Arguments, KnownArguments, NoArguments};
 use crate::database::{
-    CallableParams, ComplexPoint, DbType, GenericItem, GenericsList, Locality, ParamSpecArgument,
-    ParamSpecUsage, Point, PointType, Specific, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
-    TypeVarTupleUsage, TypeVarUsage, Variance,
+    CallableParams, ComplexPoint, DbType, Locality, Point, PointType, Specific, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -355,61 +353,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
             }
         }
 
-        let (i_a, a, i);
-        let node_ref = NodeRef::new(self.file, f.index());
-        let args: &dyn Arguments = if let Some(class) = class {
-            // TODO performancewise I don't like at all that this allocates
-            i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                class.node_ref.as_link(),
-                class.type_vars(self.i_s).map(|type_vars| {
-                    GenericsList::new_generics(
-                        type_vars
-                            .iter()
-                            .enumerate()
-                            .map(|(i, t)| match t {
-                                TypeVarLike::TypeVar(type_var) => {
-                                    GenericItem::TypeArgument(DbType::TypeVar(TypeVarUsage {
-                                        type_var: type_var.clone(),
-                                        index: i.into(),
-                                        in_definition: class.node_ref.as_link(),
-                                    }))
-                                }
-                                TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(
-                                        Box::new([TypeOrTypeVarTuple::TypeVarTuple(
-                                            TypeVarTupleUsage {
-                                                type_var_tuple: type_var_tuple.clone(),
-                                                index: i.into(),
-                                                in_definition: class.node_ref.as_link(),
-                                            },
-                                        )]),
-                                    ))
-                                }
-                                TypeVarLike::ParamSpec(param_spec) => {
-                                    GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                                        CallableParams::WithParamSpec(
-                                            Box::new([]),
-                                            ParamSpecUsage {
-                                                param_spec: param_spec.clone(),
-                                                index: i.into(),
-                                                in_definition: class.node_ref.as_link(),
-                                            },
-                                        ),
-                                        None,
-                                    ))
-                                }
-                            })
-                            .collect(),
-                    )
-                }),
-            ));
-            i_a = KnownArguments::new(&i, None);
-            &i_a
-        } else {
-            a = NoArguments::new(node_ref);
-            &a
-        };
-        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, args);
+        let args = NoArguments::new(NodeRef::new(self.file, f.index()));
+        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);
         inference.calc_block_diagnostics(block, None, Some(&function))
     }
