@@ -455,7 +455,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     );
                     return;
                 }
-                TypeContent::DbType(mut d) => {
+                TypeContent::SpecialType(SpecialType::TypeAlias)
+                    if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation =>
+                {
+                    debug_assert!(!is_implicit_optional);
+                    self.inference.file.points.set(
+                        annotation_index,
+                        Point::new_simple_specific(Specific::TypingTypeAlias, Locality::Todo),
+                    );
+                    return;
+                }
+                _ => {
+                    let mut d =
+                        self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index()));
                     if self.has_type_vars {
                         if is_implicit_optional {
                             d.make_optional()
@@ -478,17 +490,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         d
                     }
                 }
-                TypeContent::SpecialType(SpecialType::TypeAlias)
-                    if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation =>
-                {
-                    debug_assert!(!is_implicit_optional);
-                    self.inference.file.points.set(
-                        annotation_index,
-                        Point::new_simple_specific(Specific::TypingTypeAlias, Locality::Todo),
-                    );
-                    return;
-                }
-                _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
             },
         };
         if is_implicit_optional {
