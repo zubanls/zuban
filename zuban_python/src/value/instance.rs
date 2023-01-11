@@ -10,7 +10,7 @@ use crate::file::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -202,7 +202,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::Class(self.class)
+        if matches!(self.class.generics, Generics::Self_) {
+            Type::owned(DbType::Self_)
+        } else {
+            Type::Class(self.class)
+        }
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {

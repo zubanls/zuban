@@ -34,6 +34,7 @@ pub enum Generics<'a> {
     SimpleGenericSlices(&'a PythonFile, Slices<'a>),
     List(&'a GenericsList, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
+    Self_,
     None,
     Any,
 }
@@ -145,6 +146,7 @@ impl<'a> Generics<'a> {
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
             Self::Any => Generic::owned(type_var_like.as_any_generic_item()),
+            Self::Self_ => todo!(),
             Self::None => unreachable!("No generics given, but {:?} was requested", n),
         }
     }
@@ -161,6 +163,7 @@ impl<'a> Generics<'a> {
                 }
                 Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
                 Self::DbType(g) => GenericsIteratorItem::DbType(g),
+                Self::Self_ => todo!(),
                 Self::None | Self::Any => GenericsIteratorItem::None,
             },
         )
@@ -204,6 +207,7 @@ impl<'a> Generics<'a> {
             Self::Any => GenericsList::new_generics(
                 type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
             ),
+            Self::Self_ => todo!(),
             Self::None => unreachable!(),
         })
     }

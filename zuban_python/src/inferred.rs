@@ -1254,10 +1254,17 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             reducer,
             on_missing,
         ),
-        DbType::Self_ => {
-            return on_missing(i_s);
-            todo!("{:?}", i_s.current_class().unwrap())
-        }
+        DbType::Self_ => callable(
+            i_s,
+            &Instance::new(
+                Class::from_position(
+                    i_s.current_class().unwrap().node_ref.to_db_lifetime(i_s.db),
+                    Generics::Self_,
+                    None,
+                ),
+                None,
+            ),
+        ),
         DbType::ParamSpecArgs(usage) => todo!(),
         DbType::ParamSpecKwargs(usage) => todo!(),
     }
