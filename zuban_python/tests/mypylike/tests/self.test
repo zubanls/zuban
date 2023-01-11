@@ -45,5 +45,5 @@ class Foo:
         reveal_type(self)  # N: Revealed type is "Self"
         return self
 
-reveal_type(Foo().return_self())  # N: Revealed type is "Foo"
+reveal_type(Foo().return_self())  # N: Revealed type is "__main__.Foo"
 reveal_type(Foo().return_self().x)  # N: Revealed type is "int"
