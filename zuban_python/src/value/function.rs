@@ -14,8 +14,8 @@ use crate::arguments::{
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
-    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
+    StringSlice, TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -525,11 +525,10 @@ impl<'db: 'a, 'a> Function<'a> {
             let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
             // annotation expression cache instead of recalculating.
-            if func_type_vars.is_some()
-                || self
-                    .class
-                    .map(|c| c.type_vars(i_s).is_some())
-                    .unwrap_or(false)
+            if NodeRef::new(self.node_ref.file, return_annotation.index())
+                .point()
+                .maybe_specific()
+                == Some(Specific::AnnotationWithTypeVars)
             {
                 // TODO this could also be a tuple...
                 debug!(
