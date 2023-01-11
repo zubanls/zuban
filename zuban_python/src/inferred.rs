@@ -339,7 +339,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                     t.into_generic_item()
                                 },
-                                &mut || i_s2.current_class().unwrap().as_db_type(&mut i_s2),
+                                &mut || {
+                                    todo!("i_s2.current_class().unwrap().as_db_type(&mut i_s2)")
+                                },
                             );
                         return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                             Box::new(d),
@@ -1253,6 +1255,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             on_missing,
         ),
         DbType::Self_ => {
+            return on_missing(i_s);
             todo!("{:?}", i_s.current_class().unwrap())
         }
         DbType::ParamSpecArgs(usage) => todo!(),

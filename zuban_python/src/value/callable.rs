@@ -35,7 +35,7 @@ impl<'a> Callable<'a> {
             on_type_error,
         );
         let g_o = Type::new(&self.content.result_type);
-        g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
+        g_o.execute_and_resolve_type_vars(i_s, None, None, &calculated_type_vars)
     }
 }
 

@@ -1043,9 +1043,10 @@ impl<'a> Type<'a> {
         &self,
         i_s: &mut InferenceState,
         class: Option<&Class>,
+        self_class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
     ) -> Inferred {
-        let db_type = self.internal_resolve_type_vars(i_s, class, calculated_type_args);
+        let db_type = self.internal_resolve_type_vars(i_s, class, self_class, calculated_type_args);
         debug!(
             "Resolved type vars: {}",
             Type::new(&db_type).format_short(i_s.db)
@@ -1057,15 +1058,26 @@ impl<'a> Type<'a> {
         &self,
         i_s: &mut InferenceState,
         class: Option<&Class>,
+        self_class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
+        let mut cloned_i_s = i_s.clone(); // TODO
+        let mut replace_self = || {
+            self_class
+                .map(|c| c.as_db_type(&mut cloned_i_s))
+                .unwrap_or(DbType::Self_)
+        };
         match self {
-            Self::Class(c) => c.as_db_type(i_s).replace_type_var_likes(i_s.db, &mut |t| {
-                calculated_type_args.lookup_type_var_usage(i_s, class, t)
-            }),
-            Self::Type(t) => t.replace_type_var_likes(i_s.db, &mut |t| {
-                calculated_type_args.lookup_type_var_usage(i_s, class, t)
-            }),
+            Self::Class(c) => c.as_db_type(i_s).replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
+                &mut replace_self,
+            ),
+            Self::Type(t) => t.replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
+                &mut replace_self,
+            ),
         }
     }
 

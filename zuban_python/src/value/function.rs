@@ -542,7 +542,12 @@ impl<'db: 'a, 'a> Function<'a> {
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation_type(return_annotation)
-                    .execute_and_resolve_type_vars(i_s, self.class.as_ref(), &calculated_type_vars)
+                    .execute_and_resolve_type_vars(
+                        i_s,
+                        self.class.as_ref(),
+                        class,
+                        &calculated_type_vars,
+                    )
             } else {
                 self.node_ref
                     .file
