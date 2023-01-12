@@ -1,13 +1,12 @@
 use parsa_python_ast::*;
 
-use crate::arguments::{Arguments, KnownArguments, NoArguments};
+use crate::arguments::NoArguments;
 use crate::database::{
-    CallableParams, ComplexPoint, DbType, Locality, Point, PointType, Specific, Variance,
+    CallableParams, ComplexPoint, Locality, Point, PointType, Specific, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::Inference;
-use crate::inferred::Inferred;
 use crate::matching::{
     matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
     ResultContext, Type,
