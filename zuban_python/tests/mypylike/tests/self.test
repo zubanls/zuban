@@ -76,3 +76,18 @@ class Foo:
     x: Self
     def foo(self) -> Self:
         return self.x
+
+
+[case self_with_generics]
+from typing import Self, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Foo(Generic[T]):
+    def foo(self) -> Self:
+        x: Foo[T] = self
+        y: Foo[int] = self  # E: Error
+        z: Foo[str] = self  # E: Error
+        return self
+
+reveal_type(Foo[int]().foo())  # N: Revealed type is "__main__.Foo[int]"

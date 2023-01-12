@@ -560,6 +560,13 @@ impl<'a> Type<'a> {
                     return self.matches(i_s, matcher, &Type::new(t), variance);
                 }
                 DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
+                DbType::Self_ if variance == Variance::Covariant => {
+                    return self.simple_matches(
+                        i_s,
+                        &Type::Class(*i_s.current_class().unwrap()),
+                        variance,
+                    )
+                }
                 _ => (),
             }
         }
