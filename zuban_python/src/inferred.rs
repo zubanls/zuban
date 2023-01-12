@@ -1052,8 +1052,12 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 &Function::new(NodeRef::from_link(i_s.db, *function), None),
             )
         }
-        ComplexPoint::Instance(cls, generics_list) => {
-            let instance = use_instance(NodeRef::from_link(i_s.db, *cls), generics_list);
+        ComplexPoint::Instance(cls, generics) => {
+            let instance = use_instance_with_ref(
+                NodeRef::from_link(i_s.db, *cls),
+                Generics::new_maybe_list(generics),
+                None,
+            );
             callable(i_s, &instance)
         }
         ComplexPoint::FunctionOverload(overload) => callable(
@@ -1200,13 +1204,6 @@ fn infer_instance_with_arguments_cls(i_s: &mut InferenceState, definition: NodeR
         .file
         .inference(i_s)
         .infer_primary_or_atom(definition.as_primary().first())
-}
-
-fn use_instance<'a>(
-    class_reference: NodeRef<'a>,
-    generics: &'a Option<GenericsList>,
-) -> Instance<'a> {
-    use_instance_with_ref(class_reference, Generics::new_maybe_list(generics), None)
 }
 
 fn use_instance_with_ref<'a>(
