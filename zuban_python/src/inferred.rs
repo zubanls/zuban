@@ -339,9 +339,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                     t.into_generic_item()
                                 },
-                                &mut || {
-                                    todo!("i_s2.current_class().unwrap().as_db_type(&mut i_s2)")
-                                },
+                                &mut || i_s2.current_class().unwrap().as_db_type(&mut i_s2),
                             );
                         return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                             Box::new(d),

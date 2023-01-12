@@ -47,3 +47,32 @@ class Foo:
 
 reveal_type(Foo().return_self())  # N: Revealed type is "__main__.Foo"
 reveal_type(Foo().return_self().x)  # N: Revealed type is "int"
+
+[case self_instance_variable1]
+from typing import Self
+class Foo:
+    x: Self
+    y: int
+    def foo(self) -> Self:
+        self.x = self
+        return self.x
+
+reveal_type(Foo().x)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().x.y)  # N: Revealed type is "int"
+
+[case self_instance_variable2]
+from typing import Self
+class Foo:
+    x: Self
+    y: int
+    def foo(self) -> None: ...
+
+reveal_type(Foo().x)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().x.y)  # N: Revealed type is "int"
+
+[case self_instance_variable3]
+from typing import Self
+class Foo:
+    x: Self
+    def foo(self) -> Self:
+        return self.x

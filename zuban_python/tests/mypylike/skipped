@@ -870,6 +870,8 @@ testGenericOperatorMethodOverlapping2
 
 # class attributes
 testInferAttributeTypeAndAssignInInit
+self_instance_variable1
+self_instance_variable3
 
 # untyped (inferred?) instance attributes
 testChangeBaseClassAttributeType

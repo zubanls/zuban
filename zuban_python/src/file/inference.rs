@@ -1438,7 +1438,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                             .resolve_function_return(self.i_s)
                                     }
                                 } else {
-                                    todo!("{:?}", self.i_s.context)
+                                    todo!("{:?} {:?}", self.i_s.context, specific)
                                 }
                             }
                             FunctionOrLambda::Lambda(lambda) => {
