@@ -423,6 +423,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
             run_on_db_type(
                 i_s,
                 db_type,
+                None,
                 &mut |i_s, v| {
                     let result = v.lookup_internal(i_s, name);
                     if matches!(result, LookupResult::None) {

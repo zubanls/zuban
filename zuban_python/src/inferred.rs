@@ -1068,7 +1068,9 @@ fn run_on_complex<'db: 'a, 'a, T>(
             );
             callable(i_s, &class)
         }
-        ComplexPoint::TypeInstance(t) => run_on_db_type(i_s, t, callable, reducer, on_missing),
+        ComplexPoint::TypeInstance(t) => {
+            run_on_db_type(i_s, t, definition, callable, reducer, on_missing)
+        }
         ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
         ComplexPoint::TypeVarLike(t) => callable(
             i_s,
@@ -1117,9 +1119,23 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 .file
                 .inference(i_s)
                 .use_db_type_of_annotation(definition.node_index);
-            run_on_db_type(i_s, db_type, callable, reducer, on_missing)
+            run_on_db_type(
+                i_s,
+                db_type,
+                Some(definition),
+                callable,
+                reducer,
+                on_missing,
+            )
         }
-        Specific::SelfParam => run_on_db_type(i_s, &DbType::Self_, callable, reducer, on_missing),
+        Specific::SelfParam => run_on_db_type(
+            i_s,
+            &DbType::Self_,
+            Some(definition),
+            callable,
+            reducer,
+            on_missing,
+        ),
         Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
         Specific::TypingTypeVarTupleClass => callable(i_s, &TypeVarTupleClass()),
         Specific::TypingParamSpecClass => callable(i_s, &ParamSpecClass()),
@@ -1205,21 +1221,26 @@ fn use_instance_with_ref<'a>(
 pub fn run_on_db_type<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
     db_type: &'a DbType,
+    definition: Option<NodeRef<'a>>,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&mut InferenceState<'db, '_>) -> T,
 ) -> T {
     match db_type {
         DbType::Class(link, generics) => {
-            let inst = use_instance(NodeRef::from_link(i_s.db, *link), generics);
+            let inst = use_instance_with_ref(
+                NodeRef::from_link(i_s.db, *link),
+                Generics::new_maybe_list(generics),
+                definition,
+            );
             callable(i_s, &inst)
         }
         DbType::Union(lst) => lst
             .iter()
             .fold(None, |input, t| match input {
-                None => Some(run_on_db_type(i_s, t, callable, reducer, on_missing)),
+                None => Some(run_on_db_type(i_s, t, None, callable, reducer, on_missing)),
                 Some(t1) => {
-                    let t2 = run_on_db_type(i_s, t, callable, reducer, on_missing);
+                    let t2 = run_on_db_type(i_s, t, None, callable, reducer, on_missing);
                     Some(reducer(i_s, t1, t2))
                 }
             })
@@ -1244,11 +1265,12 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer),
         DbType::NewType(n) => {
             let t = n.type_(i_s);
-            run_on_db_type(i_s, t, callable, reducer, on_missing)
+            run_on_db_type(i_s, t, None, callable, reducer, on_missing)
         }
         DbType::RecursiveAlias(rec1) => run_on_db_type(
             i_s,
             rec1.calculated_db_type(i_s.db),
+            None,
             callable,
             reducer,
             on_missing,
@@ -1261,7 +1283,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
                     Generics::Self_,
                     None,
                 ),
-                None,
+                definition,
             ),
         ),
         DbType::ParamSpecArgs(usage) => todo!(),

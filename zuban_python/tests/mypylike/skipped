@@ -5,7 +5,7 @@ testBoundGenericMethodParamSpecFine
 
 # Generics self assignment
 testGenericTypeBodyWithMultipleVariables
-# as_generics_list
+# generics issues
 testCompatibilityOfTypeVarWithObject
 # formatting Self
 testRemoveAttributeInBaseClass
