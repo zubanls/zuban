@@ -86,8 +86,8 @@ T = TypeVar("T")
 class Foo(Generic[T]):
     def foo(self) -> Self:
         x: Foo[T] = self
-        y: Foo[int] = self  # E: Error
-        z: Foo[str] = self  # E: Error
+        y: Foo[int] = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "Foo[int]")
+        z: Foo[str] = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "Foo[str]")
         return self
 
 reveal_type(Foo[int]().foo())  # N: Revealed type is "__main__.Foo[int]"

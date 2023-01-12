@@ -5,7 +5,6 @@ testBoundGenericMethodParamSpecFine
 
 # Generics self assignment
 testGenericTypeBodyWithMultipleVariables
-self_with_generics
 # as_generics_list
 testCompatibilityOfTypeVarWithObject
 # formatting Self
