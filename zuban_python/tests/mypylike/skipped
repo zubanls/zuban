@@ -3,7 +3,6 @@ testWideOuterContextEmptyError
 
 testBoundGenericMethodParamSpecFine
 
-testParamSpecJoin
 # Generics self assignment
 testGenericTypeBodyWithMultipleVariables
 self_with_generics

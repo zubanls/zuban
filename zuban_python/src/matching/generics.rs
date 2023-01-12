@@ -4,7 +4,7 @@ use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slice
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, TypeVarLike,
+    DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, PointLink, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
@@ -158,22 +158,26 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn iter<'x, 'y>(&'y self, i_s: InferenceState<'x, 'y>) -> GenericsIterator<'x, 'y> {
-        GenericsIterator::new(
-            i_s,
-            match self {
-                Self::SimpleGenericExpression(file, expr) => {
-                    GenericsIteratorItem::SimpleGenericExpression(file, *expr)
+    pub fn iter<'x, 'y>(&'y self, mut i_s: InferenceState<'x, 'y>) -> GenericsIterator<'x, 'y> {
+        let item = match self {
+            Self::SimpleGenericExpression(file, expr) => {
+                GenericsIteratorItem::SimpleGenericExpression(file, *expr)
+            }
+            Self::SimpleGenericSlices(file, slices) => {
+                GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
+            }
+            Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
+            Self::DbType(g) => GenericsIteratorItem::DbType(g),
+            Self::Self_ => {
+                let class = i_s.current_class().unwrap();
+                GenericsIteratorItem::TypeVarLikeIterator {
+                    iterator: class.type_vars(&mut i_s).unwrap().iter().enumerate(),
+                    definition: class.node_ref.as_link(),
                 }
-                Self::SimpleGenericSlices(file, slices) => {
-                    GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
-                }
-                Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
-                Self::DbType(g) => GenericsIteratorItem::DbType(g),
-                Self::Self_ => todo!(),
-                Self::None | Self::Any => GenericsIteratorItem::None,
-            },
-        )
+            }
+            Self::None | Self::Any => GenericsIteratorItem::None,
+        };
+        GenericsIterator::new(i_s, item)
     }
 
     pub fn as_generics_list(
@@ -299,6 +303,10 @@ enum GenericsIteratorItem<'a> {
     GenericsList(std::slice::Iter<'a, GenericItem>, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
+    TypeVarLikeIterator {
+        iterator: std::iter::Enumerate<std::slice::Iter<'a, TypeVarLike>>,
+        definition: PointLink,
+    },
     None,
 }
 
@@ -337,6 +345,15 @@ impl<'b> Iterator for GenericsIterator<'_, 'b> {
                 self.ended = true;
                 Some(Generic::TypeArgument(Type::new(g)))
             }
+            GenericsIteratorItem::TypeVarLikeIterator {
+                iterator,
+                definition,
+            } => iterator.next().map(|(i, t)| {
+                Generic::owned(
+                    t.as_type_var_like_usage(i.into(), *definition)
+                        .into_generic_item(),
+                )
+            }),
             GenericsIteratorItem::None => None,
         }
     }

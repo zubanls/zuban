@@ -2507,7 +2507,7 @@ impl TypeVarLikes {
             })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &TypeVarLike> {
+    pub fn iter(&self) -> std::slice::Iter<TypeVarLike> {
         self.0.iter()
     }
 }
