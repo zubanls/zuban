@@ -91,3 +91,14 @@ class Foo(Generic[T]):
         return self
 
 reveal_type(Foo[int]().foo())  # N: Revealed type is "__main__.Foo[int]"
+
+[case self_with_generics_bound]
+from typing import Self, TypeVar, Generic
+
+T = TypeVar("T", bound=int)
+
+class Foo(Generic[T]):
+    value: T
+    def foo(self: Self):
+        reveal_type(self.value) # N: Revealed type is "T"
+        reveal_type(self.value + 1) # N: Revealed type is "int"
