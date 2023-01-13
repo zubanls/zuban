@@ -36,6 +36,8 @@ class Foo:
         reveal_type(self)  # N: Revealed type is "Self"
         return self
 
+reveal_type(Foo().return_self())  # N: Revealed type is "__main__.Foo"
+
 [case self_valid_method_untyped_input]
 from typing import Self
 class Foo:
