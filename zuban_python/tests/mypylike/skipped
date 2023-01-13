@@ -1,6 +1,6 @@
 # Next up
-testWideOuterContextEmptyError
 
+# import cycle
 testBoundGenericMethodParamSpecFine
 
 # Generics self assignment
@@ -19,9 +19,6 @@ testCallableParsingFromExpr
 testCallableParsing
 testCallableTooManyVarArg
 testCallableKindsOrdering
-
-# Literal
-testLiteralAndGenericsRespectsUpperBound
 
 # Details around Never?
 testStar2Context
@@ -157,6 +154,9 @@ testTypeVarBoundToNewUnionAttributeAccess
 testUnboundedTypevarUnpacking
 # Tuple Bound with iter unpacking
 testIterableBoundUnpacking
+# Bound not respected
+testLiteralAndGenericsRespectsUpperBound
+testWideOuterContextEmptyError
 
 # *args on TypeVar
 testInvalidTypevarValues
