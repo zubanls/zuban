@@ -5,6 +5,10 @@ testTypeVariableClashVarSelf
 testTypeVarTypingExtensionsSimpleGeneric
 testTypeVarTypingExtensionsSimpleBound
 
+# Fails only without --release
+testModuleAsTypeNoCrash
+testNonStrictOptional
+
 testGenericUnionMemberWithTypeVarConstraints
 
 testValidTypeAliasValues
