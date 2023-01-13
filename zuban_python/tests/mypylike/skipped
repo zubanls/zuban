@@ -1,8 +1,5 @@
 # Next up
 
-# import cycle
-testBoundGenericMethodParamSpecFine
-
 # Generics self assignment
 testGenericTypeBodyWithMultipleVariables
 self_valid_method
@@ -123,6 +120,10 @@ testJoinUnionWithUnionAndAny
 # Duplicate base class
 testIncludingBaseClassTwice
 
+# Cycle for bytes -> ReadOnlyBuffer -> bytes?
+testPromoteBytearrayToByte
+# import cycle
+testBoundGenericMethodParamSpecFine
 # Cycles
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1
