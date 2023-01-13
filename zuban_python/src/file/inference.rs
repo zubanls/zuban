@@ -825,6 +825,12 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             ExpressionPart::Primary(primary) => self.infer_primary(primary, result_context),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
+            ExpressionPart::BitwiseOr(or) => {
+                self.infer_expression_part(or.as_operation().left, &mut ResultContext::Unknown);
+                self.infer_expression_part(or.as_operation().right, &mut ResultContext::Unknown);
+                debug!("TODO Use: self.infer_operation(or.as_operation())");
+                Inferred::new_any()
+            }
             ExpressionPart::Inversion(inv) => Inferred::new_unsaved_complex(
                 ComplexPoint::Instance(self.i_s.db.python_state.builtins_point_link("bool"), None),
             ),
