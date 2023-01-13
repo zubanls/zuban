@@ -70,6 +70,7 @@ pub(super) enum InvalidVariableType<'a> {
     Variable(NodeRef<'a>),
     Float,
     Complex,
+    Ellipsis,
     Other,
 }
 
@@ -153,6 +154,7 @@ impl InvalidVariableType<'_> {
             Self::Complex => IssueType::InvalidType(
                 "Invalid type: complex literals cannot be used as a type".into(),
             ),
+            Self::Ellipsis => IssueType::InvalidType("Unexpected \"...\"".into()),
         })
     }
 }
@@ -1571,7 +1573,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             AtomContent::Tuple(t) => TypeContent::InvalidVariable(InvalidVariableType::Tuple {
                 tuple_length: t.iter().count(),
             }),
-            AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Other),
+            AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Ellipsis),
             AtomContent::Float(_) => TypeContent::InvalidVariable(InvalidVariableType::Float),
             AtomContent::Complex(_) => TypeContent::InvalidVariable(InvalidVariableType::Complex),
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
