@@ -5,15 +5,10 @@ testTypeVariableClashVarSelf
 testTypeVarTypingExtensionsSimpleGeneric
 testTypeVarTypingExtensionsSimpleBound
 
-testNewStyleUnionInTypeAliasWithMalformedInstance
+testGenericUnionMemberWithTypeVarConstraints
+
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
-testTupleWithDifferentArgsStub
-testRedefineTypeViaImport
-testGenericUnionMemberWithTypeVarConstraints
-testTypingSelfFine
-testTypeAliasWithNewStyleUnionChangedToVariable
-
 testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
@@ -25,20 +20,6 @@ testParamSpecAliasInRuntimeContext
 testParamSpecAliasInvalidLocations
 testTrivialParametersHandledCorrectly
 testParamSpecAliasNested
-
-testIntersectionUsingPromotion1
-testIntersectionUsingPromotion2
-testIntersectionUsingPromotion3
-testIntersectionUsingPromotion4
-testIntersectionUsingPromotion5
-testIntersectionUsingPromotion6
-testIntersectionUsingPromotion7
-testIntersectionUsingPromotion8
-
-testOptionalTypeNarrowedByGenericCall
-testOptionalTypeNarrowedByGenericCall2
-testOptionalTypeNarrowedByGenericCall3
-testOptionalTypeNarrowedByGenericCall5
 
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityTypeVar-xfail
@@ -72,6 +53,7 @@ testTypingSelfAllowAliasUseInFinalClasses
 testTypingSelfCallableClassVar
 testSelfTypeCallableClassVarOldStyle
 testTypingSelfOnSuperTypeVarValues
+testTypingSelfFine
 
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
@@ -85,6 +67,11 @@ testTypeVarTuplePep646TypeVarStarArgs
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 testTypeVarTuplePep646Callable
+
+# | Union
+testNewStyleUnionInTypeAliasWithMalformedInstance
+testTypeAliasWithNewStyleUnionChangedToVariable
+testTupleWithDifferentArgsStub
 
 # Type variable "__main__.T" is unbound
 # (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
@@ -1157,6 +1144,14 @@ testIsinstanceWithUserDefinedTypeAndTypeVarValues
 testIsinstanceWithUserDefinedTypeAndTypeVarValues2
 testTypeCheckOverloadImplementationTypeVarWithValueRestriction
 testTypeCheckOverloadImplementationTypeVarDifferingUsage1
+testIntersectionUsingPromotion1
+testIntersectionUsingPromotion2
+testIntersectionUsingPromotion3
+testIntersectionUsingPromotion4
+testIntersectionUsingPromotion5
+testIntersectionUsingPromotion6
+testIntersectionUsingPromotion7
+testIntersectionUsingPromotion8
 # isinstance & union
 testUnion1
 testUnion2
@@ -1177,6 +1172,11 @@ testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 # narrowing if with literals
 testConditionalBoolLiteralUnionNarrowing
+# narrowing optional with if
+testOptionalTypeNarrowedByGenericCall
+testOptionalTypeNarrowedByGenericCall2
+testOptionalTypeNarrowedByGenericCall3
+testOptionalTypeNarrowedByGenericCall5
 
 # Intersection types
 testIsInstanceAdHocIntersectionFineGrainedIncrementalNoChange
@@ -1219,6 +1219,8 @@ testNewAnalyzerFirstVarDefinitionWins
 # Multiple arguments missing
 testMissingPositionalArguments
 
+# Import Redefinition
+testRedefineTypeViaImport
 # Redefinition (Name "X" already defined on line X)
 testGlobalVarRedefinition
 testLocalVarRedefinition
