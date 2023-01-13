@@ -11,6 +11,7 @@ testNonStrictOptional
 
 testGenericUnionMemberWithTypeVarConstraints
 
+# new param spec in aliases etc changes
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
 testInvalidParamSpecDefinitionsWithArgsKwargs
@@ -25,6 +26,7 @@ testParamSpecAliasInvalidLocations
 testTrivialParametersHandledCorrectly
 testParamSpecAliasNested
 
+# Self tests
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityTypeVar-xfail
 testMixinProtocolSuper
@@ -59,18 +61,10 @@ testSelfTypeCallableClassVarOldStyle
 testTypingSelfOnSuperTypeVarValues
 testTypingSelfFine
 
+# No recursion tests
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
 testNoRecursiveExpandInstanceUnionCrashInference
-
-testTypeVarTuplePep646ArrayExample
-testTypeVarTuplePep646ArrayExampleWithDType
-testTypeVarTuplePep646TypeVarTupleUnpacking
-testTypeVarTuplePep646TypeVarStarArgsBasic
-testTypeVarTuplePep646TypeVarStarArgs
-testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
-testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
-testTypeVarTuplePep646Callable
 
 # Type variable "__main__.T" is unbound
 # (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
@@ -83,9 +77,6 @@ testMissingSelf
 testMissingSelfInMethod
 testReprocessMethodInNestedClassSemanal
 testPreviousErrorInMethodSemanal1
-
-# Unpack item in ** argument must be a TypedDict
-testTypeVarTuple
 
 # "<typing special form>"
 testGenericTypeAliasesRuntimeExpressionsOther
@@ -658,11 +649,15 @@ testOverloadingAndDucktypeCompatibility
 testTypeVarTupleMixed
 testTypeVarTupleChaining
 testTypeVarTupleGenericClassDefn
-testPep646ArrayExample
-testPep646ArrayExampleWithDType
-testPep646TypeVarTupleUnpacking
-testPep646TypeVarStarArgs
 testTypeVarTupleCached
+testTypeVarTuplePep646ArrayExample
+testTypeVarTuplePep646ArrayExampleWithDType
+testTypeVarTuplePep646TypeVarTupleUnpacking
+testTypeVarTuplePep646TypeVarStarArgsBasic
+testTypeVarTuplePep646TypeVarStarArgs
+testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
+testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
+testTypeVarTuplePep646Callable
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
 testUnpackKwargsReveal
@@ -682,6 +677,8 @@ testUnpackKwargsParamSpec
 testUnpackKwargsUpdateFine
 testUnpackNoCrashOnEmpty
 testInvalidUnpackTypes
+# Unpack item in ** argument must be a TypedDict
+testTypeVarTuple
 
 # Visibility of imports in pyi
 testNewSemanticAnalyzerModulePrivateRefInMiddleOfQualified
