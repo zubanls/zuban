@@ -480,7 +480,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
-                                &KnownArguments::new(&right, Some(node_ref)),
+                                &KnownArguments::new(&right, node_ref),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
                                     arg.as_node_ref().add_typing_issue(
@@ -621,7 +621,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
-                                &CombinedArguments::new(&args, &KnownArguments::new(value, None)),
+                                &CombinedArguments::new(
+                                    &args,
+                                    &KnownArguments::new(value, node_ref),
+                                ),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
                                     arg.as_node_ref().add_typing_issue(
@@ -960,7 +963,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(
                 i_s,
-                &KnownArguments::new(&right, Some(node_ref)),
+                &KnownArguments::new(&right, node_ref),
                 &mut ResultContext::Unknown,
                 OnTypeError {
                     on_overload_mismatch: Some(&on_error),

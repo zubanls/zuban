@@ -382,7 +382,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     i_s,
                     &KnownArguments::new(
                         &new_inf,
-                        Some(NodeRef::new(self.node_ref.file, decorator.index())),
+                        NodeRef::new(self.node_ref.file, decorator.index()),
                     ),
                     &mut ResultContext::Unknown,
                     OnTypeError::new(&on_argument_type_error),

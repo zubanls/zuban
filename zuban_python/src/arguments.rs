@@ -146,7 +146,7 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
 pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
     mro_index: MroIndex,
-    node_ref: Option<NodeRef<'a>>,
+    node_ref: NodeRef<'a>,
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
@@ -167,12 +167,12 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
     }
 
     fn as_node_ref(&self) -> NodeRef {
-        todo!()
+        self.node_ref
     }
 }
 
 impl<'a> KnownArguments<'a> {
-    pub fn new(inferred: &'a Inferred, node_ref: Option<NodeRef<'a>>) -> Self {
+    pub fn new(inferred: &'a Inferred, node_ref: NodeRef<'a>) -> Self {
         Self {
             inferred,
             node_ref,
@@ -183,7 +183,7 @@ impl<'a> KnownArguments<'a> {
     pub fn with_mro_index(
         inferred: &'a Inferred,
         mro_index: MroIndex,
-        node_ref: Option<NodeRef<'a>>,
+        node_ref: NodeRef<'a>,
     ) -> Self {
         Self {
             inferred,
@@ -241,7 +241,7 @@ pub enum ArgumentKind<'db, 'a> {
     Inferred {
         inferred: Inferred,
         position: usize, // The position as a 1-based index
-        node_ref: Option<NodeRef<'a>>,
+        node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
         is_keyword: bool,
     },
@@ -360,10 +360,8 @@ impl<'db, 'a> Argument<'db, 'a> {
         match &self.kind {
             ArgumentKind::Positional { node_ref, .. }
             | ArgumentKind::Keyword { node_ref, .. }
-            | ArgumentKind::ParamSpec { node_ref, .. } => *node_ref,
-            ArgumentKind::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
-                todo!("Probably happens with something weird like def foo(self: int)")
-            }),
+            | ArgumentKind::ParamSpec { node_ref, .. }
+            | ArgumentKind::Inferred { node_ref, .. } => *node_ref,
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
         }
     }
@@ -401,7 +399,7 @@ enum ArgumentIteratorBase<'db, 'a> {
         kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
     Comprehension(Context<'db, 'a>, &'a PythonFile, Comprehension<'a>),
-    Inferred(&'a Inferred, Option<NodeRef<'a>>),
+    Inferred(&'a Inferred, NodeRef<'a>),
     SliceType(Context<'db, 'a>, SliceType<'a>),
     Finished,
 }
@@ -748,7 +746,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                         kind: ArgumentKind::Inferred {
                             inferred,
                             position: *position,
-                            node_ref: Some(*node_ref),
+                            node_ref: *node_ref,
                             in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
                             is_keyword: false,
                         },
@@ -770,7 +768,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                     kind: ArgumentKind::Inferred {
                         inferred: inferred_value.clone(),
                         position: *position,
-                        node_ref: Some(*node_ref),
+                        node_ref: *node_ref,
                         in_args_or_kwargs_and_arbitrary_len: true,
                         is_keyword: true,
                     },
