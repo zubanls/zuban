@@ -979,6 +979,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             self.compute_slice_db_type(slice_content);
             given_count += 1;
         }
+        if given_count != expected_count && !had_valid_multi_type_arg {
+            self.add_typing_issue(
+                slice_type.as_node_ref(),
+                IssueType::TypeArgumentIssue {
+                    class: Box::from(class.name()),
+                    expected_count,
+                    given_count,
+                },
+            );
+            generics.clear();
+            given_count = 0;
+        }
         let result = if generics.is_empty()
             && given_count == expected_count
             && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation
@@ -1013,16 +1025,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             })
         };
-        if given_count != expected_count && !had_valid_multi_type_arg {
-            self.add_typing_issue(
-                slice_type.as_node_ref(),
-                IssueType::TypeArgumentIssue {
-                    class: Box::from(class.name()),
-                    expected_count,
-                    given_count,
-                },
-            );
-        }
         result
     }
 

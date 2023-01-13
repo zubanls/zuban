@@ -73,7 +73,6 @@ testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 testTypeVarTuplePep646Callable
 
 # | Union
-testNewStyleUnionInTypeAliasWithMalformedInstance
 testTypeAliasWithNewStyleUnionChangedToVariable
 
 # Type variable "__main__.T" is unbound
