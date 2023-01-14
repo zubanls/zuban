@@ -306,7 +306,19 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn resolve_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Self {
+    pub fn resolve_untyped_function_return(self, i_s: &mut InferenceState<'db, '_>) -> Self {
+        if let InferredState::Saved(definition, point) = self.state {
+            if point.type_() == PointType::Specific && point.specific() == Specific::Closure {
+                return Inferred::new_unsaved_complex(ComplexPoint::Closure(
+                    definition,
+                    Box::new(i_s.args_as_execution().unwrap()),
+                ));
+            }
+        }
+        self.resolve_type_vars(i_s)
+    }
+
+    pub fn resolve_type_vars(self, i_s: &mut InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {
                 match point.specific() {

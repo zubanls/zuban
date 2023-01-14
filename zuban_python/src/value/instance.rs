@@ -57,20 +57,20 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                             .file
                             .inference(&mut i_s)
                             .infer_name_by_index(self_symbol)
-                            .resolve_function_return(&mut i_s),
+                            .resolve_type_vars(&mut i_s),
                     );
                 }
             }
             let result = class.lookup_symbol(i_s, name).map(|inf| {
                 if let Some(c) = class.maybe_class(i_s.db) {
                     let mut i_s = i_s.with_class_context(&c);
-                    inf.resolve_function_return(&mut i_s).bind_descriptors(
+                    inf.resolve_type_vars(&mut i_s).bind_descriptors(
                         &mut i_s,
                         |i_s| self.as_inferred(i_s),
                         mro_index,
                     )
                 } else {
-                    inf.resolve_function_return(i_s).bind_descriptors(
+                    inf.resolve_type_vars(i_s).bind_descriptors(
                         i_s,
                         |i_s| self.as_inferred(i_s),
                         mro_index,
@@ -239,7 +239,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_> {
                 let result = class
                     .lookup_symbol(self.i_s, self.name)
                     .map(|inf| {
-                        inf.resolve_function_return(self.i_s).bind_descriptors(
+                        inf.resolve_type_vars(self.i_s).bind_descriptors(
                             self.i_s,
                             |i_s| self.instance.as_inferred(i_s),
                             mro_index,

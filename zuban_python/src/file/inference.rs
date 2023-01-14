@@ -1444,7 +1444,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     } else {
                                         function
                                             .infer_param(self.i_s, node_index, args)
-                                            .resolve_function_return(self.i_s)
+                                            .resolve_type_vars(self.i_s)
                                     }
                                 } else {
                                     todo!("{:?} {:?}", self.i_s.context, specific)

@@ -182,7 +182,7 @@ impl<'db: 'a, 'a> Function<'a> {
                             .file
                             .inference(&mut inner_i_s)
                             .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
-                            .resolve_function_return(&mut inner_i_s);
+                            .resolve_untyped_function_return(&mut inner_i_s);
                     } else {
                         todo!()
                     }
