@@ -1616,7 +1616,7 @@ impl DbType {
             }
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
-            Self::Self_ => todo!(),
+            Self::Self_ => Self::Self_,
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }
