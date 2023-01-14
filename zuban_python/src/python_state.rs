@@ -439,6 +439,7 @@ fn typing_changes(
     set_typing_inference(t, "TypedDict", Specific::TypedDict);
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
+    set_typing_inference(t, "TypeVar", Specific::TypingTypeVarClass);
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
     set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
     set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);

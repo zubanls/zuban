@@ -1,6 +1,4 @@
 # Next up
-testTypeVarTypingExtensionsSimpleGeneric
-testTypeVarTypingExtensionsSimpleBound
 
 # Fails only without --release
 testModuleAsTypeNoCrash
