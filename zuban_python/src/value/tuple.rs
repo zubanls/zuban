@@ -39,7 +39,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         let tuple_cls = i_s.db.python_state.tuple_with_any_generics();
         for (mro_index, class) in tuple_cls.mro(i_s) {
             let result = class.lookup_symbol(i_s, name).map(|inf| {
-                inf.bind(
+                inf.bind_descriptors(
                     i_s,
                     |i_s| {
                         Inferred::new_unsaved_complex(ComplexPoint::Instance(

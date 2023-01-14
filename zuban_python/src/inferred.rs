@@ -689,7 +689,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn bind(
+    pub fn bind_descriptors(
         self,
         i_s: &mut InferenceState<'db, '_>,
         get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred,
