@@ -1,6 +1,4 @@
 # Next up
-testTypeVariableClashVar
-testTypeVariableClashMethod
 testTypeVariableClashVarSelf
 testTypeVarTypingExtensionsSimpleGeneric
 testTypeVarTypingExtensionsSimpleBound

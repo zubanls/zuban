@@ -370,7 +370,10 @@ impl<'a> Matcher<'a> {
                         )
                     }
                 }
-                FunctionOrCallable::Callable(c) => todo!(),
+                FunctionOrCallable::Callable(c) => {
+                    Type::owned(DbType::TypeVar(type_var_usage.clone()))
+                        .simple_matches(i_s, value_type, variance)
+                }
             }
         }
     }
