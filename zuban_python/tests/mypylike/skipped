@@ -1,10 +1,9 @@
 # Next up
+testGenericUnionMemberWithTypeVarConstraints
 
 # Fails only without --release
 testModuleAsTypeNoCrash
 testNonStrictOptional
-
-testGenericUnionMemberWithTypeVarConstraints
 
 # new param spec in aliases etc changes
 testValidTypeAliasValues
@@ -22,9 +21,6 @@ testTrivialParametersHandledCorrectly
 testParamSpecAliasNested
 
 # Self tests
-testSelfTypeOverrideCompatibility
-testSelfTypeOverrideCompatibilityTypeVar-xfail
-testMixinProtocolSuper
 testTypingSelfBasic
 testTypingSelfInvalidLocations
 testTypingSelfInvalidArgs
@@ -55,6 +51,7 @@ testTypingSelfCallableClassVar
 testSelfTypeCallableClassVarOldStyle
 testTypingSelfOnSuperTypeVarValues
 testTypingSelfFine
+testMixinProtocolSuper
 
 # No recursion tests
 testRecursiveDoubleUnionNoCrash
@@ -1072,6 +1069,8 @@ testLiteralSubtypeOverlap
 overload_overlapping_any
 
 # - Signature of "f" incompatible with supertype "Parent"
+testSelfTypeOverrideCompatibility
+testSelfTypeOverrideCompatibilityTypeVar-xfail
 #     Overload variants must be defined in the same order as they are in "Parent"
 testOverrideOverloadSwapped
 testOverrideOverloadSwappedWithExtraVariants
