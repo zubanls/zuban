@@ -22,7 +22,6 @@ testParamSpecAliasNested
 
 # Self tests
 testTypingSelfBasic
-testTypingSelfInvalidArgs
 testTypingSelfConflict
 testTypingSelfProperty
 testTypingSelfCallableVar
