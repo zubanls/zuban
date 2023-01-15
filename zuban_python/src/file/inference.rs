@@ -1442,9 +1442,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     if specific == Specific::SelfParam {
                                         Inferred::new_saved(self.file, node_index, point)
                                     } else {
-                                        function
-                                            .infer_param(self.i_s, node_index, args)
-                                            .resolve_type_vars(self.i_s, self.i_s.current_class())
+                                        function.infer_param(self.i_s, node_index, args)
                                     }
                                 } else {
                                     todo!("{:?} {:?}", self.i_s.context, specific)
