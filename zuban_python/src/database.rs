@@ -624,7 +624,18 @@ impl IntersectionType {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         if self.format_as_overload {
-            Box::from("overloaded function")
+            match format_data.style {
+                FormatStyle::MypyRevealType => format!(
+                    "Overload({})",
+                    self.entries
+                        .iter()
+                        .map(|t| t.format(format_data))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+                .into(),
+                _ => Box::from("overloaded function"),
+            }
         } else {
             todo!()
         }
@@ -968,7 +979,7 @@ impl DbType {
                     search_in_generics(found_type_var, generics)
                 }
             }
-            Self::Self_ => todo!(),
+            Self::Self_ => (),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }

@@ -199,7 +199,7 @@ impl<'a> Type<'a> {
                 DbType::Intersection(intersection) => todo!(),
                 DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(_) => todo!(),
-                DbType::Self_ => todo!(),
+                DbType::Self_ => false, // TODO this is wrong
                 DbType::ParamSpecArgs(usage) => todo!(),
                 DbType::ParamSpecKwargs(usage) => todo!(),
             },
