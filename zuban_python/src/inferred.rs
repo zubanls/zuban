@@ -315,14 +315,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 ));
             }
         }
-        self.resolve_type_vars(i_s, i_s.current_class())
+        if let Some(class) = i_s.current_class() {
+            self.resolve_class_type_vars(i_s, class)
+        } else {
+            self
+        }
     }
 
-    pub fn resolve_type_vars(
-        self,
-        i_s: &mut InferenceState<'db, '_>,
-        class: Option<&Class>,
-    ) -> Self {
+    pub fn resolve_class_type_vars(self, i_s: &mut InferenceState<'db, '_>, class: &Class) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {
                 match point.specific() {
