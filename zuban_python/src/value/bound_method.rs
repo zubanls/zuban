@@ -5,7 +5,7 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{replace_class_type_vars, ResultContext, Type};
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
@@ -96,10 +96,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(match &self.function {
+        let t = match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Callable(c) => return c.as_type(i_s),
-        })
+        };
+        Type::owned(replace_class_type_vars(i_s, &t, &self.instance.class))
     }
 }

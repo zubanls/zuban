@@ -25,7 +25,6 @@ testTypingSelfBasic
 testTypingSelfConflict
 testTypingSelfProperty
 testTypingSelfClassMethod
-testTypingSelfOverload
 testTypingSelfOverrideVar
 testTypingSelfOverrideVarMulti
 testTypingSelfAlternativeGenericConstructor
