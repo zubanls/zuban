@@ -1169,6 +1169,19 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         Inferred::execute_db_type(i_s, t.unwrap())
     }
 
+    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>, skip_first_param: bool) -> DbType {
+        DbType::Intersection(IntersectionType::new_overload(
+            self.overload
+                .functions
+                .iter()
+                .map(|link| {
+                    let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+                    function.as_db_type(i_s, skip_first_param)
+                })
+                .collect(),
+        ))
+    }
+
     pub(super) fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
@@ -1225,16 +1238,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Intersection(IntersectionType::new_overload(
-            self.overload
-                .functions
-                .iter()
-                .map(|link| {
-                    let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                    function.as_db_type(i_s, false)
-                })
-                .collect(),
-        )))
+        Type::owned(self.as_db_type(i_s, false))
     }
 }
 
