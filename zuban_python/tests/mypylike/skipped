@@ -922,7 +922,6 @@ testTypingSelfCorrectName
 testTypingSelfNonAnnotationUses
 testTypingSelfInternalSafe
 testTypingSelfTypeVarClash
-testTypingSelfTypeVarClashAttr
 testTypingSelfClashInBodies
 testTypingSelfFine
 testMixinProtocolSuper
