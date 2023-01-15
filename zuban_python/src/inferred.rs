@@ -12,7 +12,7 @@ use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{replace_class_type_vars, FormatData, Generics, ResultContext, Type};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -338,25 +338,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::AnnotationWithTypeVars => {
                         let file = i_s.db.loaded_python_file(definition.file);
-                        let mut i_s2 = i_s.clone(); // TODO This feels wrong
-                        let d = file
+                        let t = file
                             .inference(i_s)
-                            .use_db_type_of_annotation(definition.node_index)
-                            .replace_type_var_likes_and_self(
-                                i_s.db,
-                                &mut |t| {
-                                    if let Some(class) = i_s.current_class() {
-                                        if class.node_ref.as_link() == t.in_definition() {
-                                            return class
-                                                .generics()
-                                                .nth_usage(i_s, &t)
-                                                .into_generic_item(i_s);
-                                        }
-                                    }
-                                    t.into_generic_item()
-                                },
-                                &mut || class.unwrap().as_db_type(&mut i_s2),
-                            );
+                            .use_db_type_of_annotation(definition.node_index);
+                        let d = replace_class_type_vars(i_s, t, class);
                         return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                             Box::new(d),
                         ));
