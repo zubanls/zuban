@@ -1,19 +1,19 @@
 [case self_as_base_class]
 from typing import Self
 class Foo(Self): ...  # E: Invalid base class "Self" \
-                      # E: Invalid type
-class Foo(list[Self]): ...  # E: Invalid type
+                      # E: Self type is only allowed in annotations within class definition
+class Foo(list[Self]): ...  # E: Self type is only allowed in annotations within class definition
 
 [case self_as_nested_base_class]
 from typing import Self
 class Foo:
-    class Bar(list[Self]): ...  # E: Invalid type
+    class Bar(list[Self]): ...  # E: Self type is only allowed in annotations within class definition
 
 [case self_invalid_annotation]
 from typing import Self
-x: Self  # E: Invalid type
+x: Self  # E: Self type is only allowed in annotations within class definition
 def foo(self):
-    x: Self  # E: Invalid type
+    x: Self  # E: Self type is only allowed in annotations within class definition
 
 [case self_valid_annotation]
 from typing import Self
@@ -24,8 +24,8 @@ class Foo:
 
 [case self_invalid_function]
 from typing import Self
-def foo(self: Self) -> None:  ...  # E: Invalid type
-def foo() -> Self: ...  # E: Invalid type
+def foo(self: Self) -> None:  ...  # E: Self type is only allowed in annotations within class definition
+def foo() -> Self: ...  # E: Self type is only allowed in annotations within class definition
 
 [case self_valid_method]
 from typing import Self

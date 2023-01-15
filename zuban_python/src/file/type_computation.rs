@@ -574,6 +574,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.has_type_vars = true;
                     DbType::Self_
                 }
+                SpecialType::Self_ => {
+                    self.add_typing_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from(
+                            "Self type is only allowed in annotations within class definition",
+                        )),
+                    );
+                    DbType::Any
+                }
                 _ => {
                     self.add_typing_issue(
                         node_ref,
