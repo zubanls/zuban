@@ -20,35 +20,6 @@ testParamSpecAliasInvalidLocations
 testTrivialParametersHandledCorrectly
 testParamSpecAliasNested
 
-# Self tests
-testTypingSelfBasic
-testTypingSelfConflict
-testTypingSelfProperty
-testTypingSelfClassMethod
-testTypingSelfOverrideVar
-testTypingSelfOverrideVarMulti
-testTypingSelfAlternativeGenericConstructor
-testTypingSelfRecursiveInit
-testTypingSelfCorrectName
-testTypingSelfClassVar
-testTypingSelfMetaClassDisabled
-testTypingSelfNonAnnotationUses
-testTypingSelfInternalSafe
-testTypingSelfRedundantAllowed
-testTypingSelfRedundantWarning
-testTypingSelfAssertType
-testTypingSelfTypeVarClash
-testTypingSelfTypeVarClashAttr
-testTypingSelfAttrOldVsNewStyle
-testTypingSelfClashInBodies
-testTypingSelfDifferentImport
-testTypingSelfAllowAliasUseInFinalClasses
-testTypingSelfCallableClassVar
-testSelfTypeCallableClassVarOldStyle
-testTypingSelfOnSuperTypeVarValues
-testTypingSelfFine
-testMixinProtocolSuper
-
 # No recursion tests
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
@@ -372,6 +343,14 @@ testNoGenericAccessOnImplicitAttributes
 testOverloadClassMethodImplementation
 testOverloadWithSwappedDecorators
 testForwardReferenceToDecoratedClassMethod
+# Self type classmethod
+testTypingSelfClassMethod
+testTypingSelfAlternativeGenericConstructor
+testTypingSelfRedundantAllowed
+testTypingSelfRedundantWarning
+testTypingSelfDifferentImport
+# Self type with final
+testTypingSelfAllowAliasUseInFinalClasses
 
 # staticmethod
 testStaticmethodAndNonMethod
@@ -386,6 +365,8 @@ testInvalidAssertType
 testInvalidAnyCall
 testInvalidTypeInTypeApplication
 testBaseClassAnnotatedWithoutArgs
+# typing assert_type
+testTypingSelfAssertType
 
 # Explicit Type Aliases
 testSimplePep613
@@ -792,6 +773,7 @@ testNewAnalyzerNotAnAlias
 testNewAnalyzerClassPropertiesInAllScopes
 testIgnoredAttrReprocessedMeta
 testImplementingOverloadedMethod
+testTypingSelfMetaClassDisabled
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -839,6 +821,7 @@ testSuperField
 testSuperBasics
 testRefreshGenericSubclass
 testConstrainedGenericSuper
+testTypingSelfOnSuperTypeVarValues
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -853,11 +836,13 @@ testMethodAsDataAttribute
 testMethodWithDynamicallyTypedMethodAsDataAttribute
 testPartiallyTypedSelfInMethodDataAttribute
 testCallableDataAttribute
+testTypingSelfClassVar
+testTypingSelfCallableClassVar
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
 
-# Self type
+# Self type variable type
 DecoratorUpdateMethod
 testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
@@ -923,6 +908,24 @@ testBadClassLevelDecoratorHack
 testUnionPropertyField
 SelfTypeOverloadedClassMethod
 testEnumerateReturningSelfFromIter
+testTypingSelfAttrOldVsNewStyle
+testSelfTypeCallableClassVarOldStyle
+
+# Self tests
+testTypingSelfBasic
+testTypingSelfConflict
+testTypingSelfProperty
+testTypingSelfOverrideVar
+testTypingSelfOverrideVarMulti
+testTypingSelfRecursiveInit
+testTypingSelfCorrectName
+testTypingSelfNonAnnotationUses
+testTypingSelfInternalSafe
+testTypingSelfTypeVarClash
+testTypingSelfTypeVarClashAttr
+testTypingSelfClashInBodies
+testTypingSelfFine
+testMixinProtocolSuper
 
 # Liskov
 testLiskovFineVariable

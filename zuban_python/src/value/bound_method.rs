@@ -101,6 +101,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, true),
             BoundMethodFunction::Callable(c) => return c.as_type(i_s),
         };
+        // TODO performance: it may be questionable that we allocate here again.
         Type::owned(replace_class_type_vars(i_s, &t, &self.instance.class))
     }
 }
