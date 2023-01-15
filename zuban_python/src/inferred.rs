@@ -315,10 +315,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 ));
             }
         }
-        self.resolve_type_vars(i_s)
+        self.resolve_type_vars(i_s, i_s.current_class())
     }
 
-    pub fn resolve_type_vars(self, i_s: &mut InferenceState<'db, '_>) -> Self {
+    pub fn resolve_type_vars(
+        self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: Option<&Class>,
+    ) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {
                 match point.specific() {
@@ -351,7 +355,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                     t.into_generic_item()
                                 },
-                                &mut || i_s2.current_class().unwrap().as_db_type(&mut i_s2),
+                                &mut || class.unwrap().as_db_type(&mut i_s2),
                             );
                         return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                             Box::new(d),

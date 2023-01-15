@@ -24,7 +24,6 @@ testParamSpecAliasNested
 testTypingSelfBasic
 testTypingSelfConflict
 testTypingSelfProperty
-testTypingSelfCallableVar
 testTypingSelfClassMethod
 testTypingSelfOverload
 testTypingSelfOverrideVar
