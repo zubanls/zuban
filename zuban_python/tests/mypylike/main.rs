@@ -8,7 +8,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 26] = [
+const USE_MYPY_TEST_FILES: [&str; 27] = [
     "check-generics.test",
     "check-generic-alias.test",
     "check-typevar-unbound.test",
@@ -33,7 +33,7 @@ const USE_MYPY_TEST_FILES: [&str; 26] = [
     "check-overloading.test",
     "check-literal.test",
     "check-unions.test",
-    //"check-union-or-syntax.test",
+    "check-union-or-syntax.test",
     //"check-protocols.test",
     //"check-callable.test",
     "check-parameter-specification.test",

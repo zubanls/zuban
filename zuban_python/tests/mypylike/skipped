@@ -1,4 +1,11 @@
 # Next up
+testUnionOrSyntaxWithTypeAliasWorking
+testUnionOrSyntaxWithinRuntimeContextNotAllowed
+testUnionOrSyntaxWithinRuntimeContextNotAllowed2
+testUnionOrSyntaxMissingFutureImport
+testUnionOrSyntaxInIsinstance
+testUnionOrSyntaxInIsinstanceNotSupported
+
 testGenericUnionMemberWithTypeVarConstraints
 
 # Fails only without --release
