@@ -1,12 +1,4 @@
 # Next up
-testUnionOrSyntaxWithTypeAliasWorking
-testUnionOrSyntaxWithinRuntimeContextNotAllowed
-testUnionOrSyntaxWithinRuntimeContextNotAllowed2
-testUnionOrSyntaxMissingFutureImport
-testUnionOrSyntaxInIsinstance
-testUnionOrSyntaxInIsinstanceNotSupported
-
-testGenericUnionMemberWithTypeVarConstraints
 
 # Fails only without --release
 testModuleAsTypeNoCrash
@@ -26,6 +18,7 @@ testParamSpecAliasInRuntimeContext
 testParamSpecAliasInvalidLocations
 testTrivialParametersHandledCorrectly
 testParamSpecAliasNested
+testGenericUnionMemberWithTypeVarConstraints
 
 # No recursion tests
 testRecursiveDoubleUnionNoCrash
@@ -43,6 +36,9 @@ testMissingSelf
 testMissingSelfInMethod
 testReprocessMethodInNestedClassSemanal
 testPreviousErrorInMethodSemanal1
+
+# Implement bitwise or
+testUnionOrSyntaxWithTypeAliasWorking
 
 # "<typing special form>"
 testGenericTypeAliasesRuntimeExpressionsOther
@@ -1159,6 +1155,8 @@ testNestedUnionsProcessedCorrectly
 testGenericTypeAliasesUnion
 testOverloadsIgnorePromotions
 testParamSpecLiteralJoin
+testUnionOrSyntaxInIsinstance
+testUnionOrSyntaxInIsinstanceNotSupported
 # --enable-recursive-aliases & isinstance
 testRecursiveAliasBasic
 testRecursiveAliasesRestrictions
@@ -1653,7 +1651,7 @@ testNonExistentFileOnCommandLine1
 testInlineConfigFineGrained1
 testInlineConfigFineGrained2
 
-# Won't support: __eq__ called directly with a keyword argument
+# Won't support: __eq__ called directly with a keyword argument (which is actually legal)
 testMagicMethodPositionalOnlyArg
 testMagicMethodPositionalOnlyArgFastparse
 
@@ -1662,6 +1660,11 @@ testRevealLocalsFunction
 
 # Won't support: Warning about wrong usage of type var values
 testObsoleteTypevarValuesSyntax
+
+# Won't support ever: Union Pipe "|" not allowed in 3.9
+testUnionOrSyntaxWithinRuntimeContextNotAllowed
+testUnionOrSyntaxWithinRuntimeContextNotAllowed2
+testUnionOrSyntaxMissingFutureImport
 
 # Won't support ever: Mypy test case details
 testNewAnalyzerIncompleteFixture
