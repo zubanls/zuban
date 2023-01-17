@@ -371,9 +371,6 @@ testBaseClassAnnotatedWithoutArgs
 # typing assert_type
 testTypingSelfAssertType
 
-# Explicit Type Aliases
-testInvalidPep613
-
 # Final
 testNewAnalyzerFinalDefiningModuleVar
 testNewAnalyzerFinalDefiningInstanceVar

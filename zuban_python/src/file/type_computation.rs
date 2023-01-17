@@ -107,9 +107,6 @@ impl InvalidVariableType<'_> {
                     Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
                 )
             }
-            Self::Execution => {
-                IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
-            }
             Self::Function(func) => {
                 add_typing_issue(IssueType::InvalidType(
                     format!(
@@ -145,8 +142,11 @@ impl InvalidVariableType<'_> {
             Self::Literal(s) => IssueType::InvalidType(
                 format!("Invalid type: try using Literal[{s}] instead?").into(),
             ),
-            Self::Other => match origin {
+            Self::Execution | Self::Other => match origin {
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
+                TypeComputationOrigin::TypeAlias => IssueType::InvalidType(Box::from(
+                    "Invalid type alias: expression is not a valid type",
+                )),
                 _ => IssueType::InvalidType(Box::from("Invalid type comment or annotation")),
             },
             Self::Float => IssueType::InvalidType(
@@ -176,6 +176,7 @@ enum TypeContent<'db, 'a> {
     Unknown,
 }
 
+#[derive(Debug)]
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Class(Inferred),
@@ -2022,6 +2023,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     fn compute_type_assignment(
         &mut self,
         assignment: Assignment<'x>,
+        is_explicit: bool,
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
@@ -2039,8 +2041,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             debug_assert!(node_ref.point().calculated());
             return check_type_name(self.i_s, node_ref);
         }
-        if let Some((name_def, _, expr)) = assignment.maybe_simple_type_expression_assignment() {
-            debug_assert!(file.points.get(name_def.index()).calculated());
+        if let Some((name_def, annotation, expr)) =
+            assignment.maybe_simple_type_expression_assignment()
+        {
+            debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
             let in_definition = cached_type_node_ref.as_link();
             if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
@@ -2076,7 +2080,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
                         return TypeNameLookup::Class(i);
                     }
-                    TypeContent::InvalidVariable(t) => {
+                    TypeContent::InvalidVariable(t) if !is_explicit => {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                             NodeRef::new(file, name_def.index()),
@@ -2103,6 +2107,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             debug!("TODO invalid type def");
             TypeNameLookup::Unknown
         }
+    }
+
+    pub(super) fn compute_explicit_type_assignment(&mut self, assignment: Assignment) {
+        self.compute_type_assignment(assignment, true);
     }
 
     pub(super) fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
@@ -2385,7 +2393,7 @@ fn check_type_name<'db: 'file, 'file>(
             if !def_point.calculated() || def_point.maybe_specific() != Some(Specific::Cycle) {
                 inference.cache_assignment_nodes(assignment);
             }
-            inference.compute_type_assignment(assignment)
+            inference.compute_type_assignment(assignment, false)
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None),

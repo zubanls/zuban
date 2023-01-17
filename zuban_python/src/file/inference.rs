@@ -449,6 +449,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     == Some(Specific::TypingTypeAlias)
                 {
                     debug!("TODO TypeAlias calculation, does this make sense?");
+                    self.compute_explicit_type_assignment(assignment)
                 } else {
                     if let Some(right_side) = right_side {
                         let t = self.use_cached_annotation_type(annotation);
