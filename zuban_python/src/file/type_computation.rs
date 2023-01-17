@@ -21,6 +21,7 @@ use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
+#[derive(Debug)]
 pub enum TypeVarCallbackReturn {
     TypeVarLike(TypeVarLikeUsage<'static>),
     UnboundTypeVar,
