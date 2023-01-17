@@ -258,6 +258,39 @@ impl fmt::Debug for TypingType<'_> {
 }
 
 #[derive(Debug)]
+pub struct TypingAny();
+
+impl<'db, 'a> Value<'db, 'a> for TypingAny {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &str {
+        "Any"
+    }
+
+    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+        todo!()
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        todo!()
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        _: &mut ResultContext,
+        _: OnTypeError,
+    ) -> Inferred {
+        args.as_node_ref()
+            .add_typing_issue(i_s.db, IssueType::AnyNotCallable);
+        Inferred::new_any()
+    }
+}
+
+#[derive(Debug)]
 pub struct TypingCast();
 
 impl<'db, 'a> Value<'db, 'a> for TypingCast {

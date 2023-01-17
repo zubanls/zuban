@@ -28,6 +28,7 @@ pub(crate) enum IssueType {
     TypeArgumentIssue { class: Box<str>, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
     NotCallable { type_: Box<str> },
+    AnyNotCallable,
     NotIterable { type_: Box<str> },
     InvalidCallableParams,
     InvalidCallableArgCount,
@@ -243,6 +244,7 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
             IssueType::NotCallable{type_} => format!("{type_} not callable"),
+            IssueType::AnyNotCallable => format!("Any(...) is no longer supported. Use cast(Any, ...) instead"),
             IssueType::NotIterable{type_} => format!("{type_} object is not iterable"),
             IssueType::InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\

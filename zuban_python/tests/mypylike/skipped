@@ -364,8 +364,6 @@ testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
 
-# calling any()
-testInvalidAnyCall
 # typing Annotated
 testBaseClassAnnotatedWithoutArgs
 # typing assert_type

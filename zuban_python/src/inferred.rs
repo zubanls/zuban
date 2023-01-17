@@ -19,7 +19,8 @@ use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
     IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance, OnTypeError,
     OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
-    TypeVarInstance, TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
+    TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast, TypingClass, TypingClassVar,
+    TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -1158,6 +1159,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
         Specific::None => callable(i_s, &NoneInstance()),
         Specific::TypingNewType => callable(i_s, &NewTypeClass()),
+        Specific::TypingAny => callable(i_s, &TypingAny()),
         Specific::MypyExtensionsArg
         | Specific::MypyExtensionsDefaultArg
         | Specific::MypyExtensionsNamedArg
