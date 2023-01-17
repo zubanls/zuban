@@ -94,7 +94,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn new_any() -> Self {
         Self {
-            state: InferredState::UnsavedSpecific(Specific::TypingAny),
+            state: InferredState::UnsavedSpecific(Specific::Any),
         }
     }
 
@@ -182,7 +182,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => callable(i_s, &NoneInstance()),
-                Specific::TypingAny => on_missing(i_s),
+                Specific::Any => on_missing(i_s),
                 _ => todo!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
@@ -208,7 +208,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(complex) => unreachable!(),
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => callable(i_s, &NoneInstance()),
-                Specific::TypingAny => on_missing(i_s),
+                Specific::Any => on_missing(i_s),
                 _ => todo!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
@@ -589,7 +589,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             name: Box::from(r.as_code()),
                         },
                     );
-                    specific = Specific::TypingAny;
+                    specific = Specific::Any;
                 }
                 Point::new_simple_specific(specific, Locality::Todo)
             }
@@ -983,7 +983,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
                     }
                     AnyLink::SimpleSpecific(specific) => match specific {
                         Specific::None => callable(i_s, &NoneInstance()),
-                        Specific::TypingAny => on_missing(i_s),
+                        Specific::Any => on_missing(i_s),
                         _ => todo!("not even sure if this should be a separate class {specific:?}"),
                     },
                     AnyLink::Unknown => on_missing(i_s),
@@ -1152,7 +1152,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         | Specific::TypingType
         | Specific::TypingLiteral
         | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
-        Specific::TypingAny | Specific::Cycle => on_missing(i_s),
+        Specific::Any | Specific::Cycle => on_missing(i_s),
         Specific::TypingCast => callable(i_s, &TypingCast()),
         Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
         Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),

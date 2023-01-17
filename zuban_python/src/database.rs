@@ -341,6 +341,7 @@ pub enum Specific {
     Calculating,
     Cycle,
     OverloadUnreachable,
+    Any,
 
     String,
     Float,
