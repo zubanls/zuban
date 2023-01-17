@@ -1870,7 +1870,11 @@ impl<'db> Assignment<'db> {
 
     pub fn maybe_simple_type_expression_assignment(
         &self,
-    ) -> Option<(NameDefinition<'db>, Expression<'db>)> {
+    ) -> Option<(
+        NameDefinition<'db>,
+        Option<Annotation<'db>>,
+        Expression<'db>,
+    )> {
         match self.unpack() {
             AssignmentContent::Normal(mut targets_, right) => {
                 let first_target = targets_.next().unwrap();
@@ -1885,12 +1889,12 @@ impl<'db> Assignment<'db> {
                 };
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_def, expr));
+                        return Some((name_def, None, expr));
                     }
                 }
                 None
             }
-            AssignmentContent::WithAnnotation(t, _, right) => {
+            AssignmentContent::WithAnnotation(t, annotation_, right) => {
                 let name_def = if let Target::Name(name_def) = t {
                     name_def
                 } else {
@@ -1898,7 +1902,7 @@ impl<'db> Assignment<'db> {
                 };
                 if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_def, expr));
+                        return Some((name_def, Some(annotation_), expr));
                     }
                 }
                 None
@@ -1909,7 +1913,10 @@ impl<'db> Assignment<'db> {
 
     pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
         self.maybe_simple_type_expression_assignment()
-            .and_then(|(_, expr)| expr.maybe_name_or_last_primary_name())
+            .and_then(|(_, annot, expr)| match annot {
+                None => expr.maybe_name_or_last_primary_name(),
+                Some(_) => None,
+            })
     }
 }
 
@@ -2872,7 +2879,7 @@ impl<'db> StringLiteral<'db> {
         self.node
             .parent_until(&[Nonterminal(assignment)])
             .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
-            .map(|(name, _)| name)
+            .map(|(name, _, _)| name)
     }
 
     pub fn as_python_string(&self) -> PythonString<'db> {

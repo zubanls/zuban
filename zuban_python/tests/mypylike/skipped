@@ -372,11 +372,7 @@ testBaseClassAnnotatedWithoutArgs
 testTypingSelfAssertType
 
 # Explicit Type Aliases
-testSimplePep613
 testInvalidPep613
-testAliasedImportPep613
-testFunctionScopePep613
-testImportCyclePep613
 
 # Final
 testNewAnalyzerFinalDefiningModuleVar

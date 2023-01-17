@@ -2039,7 +2039,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             debug_assert!(node_ref.point().calculated());
             return check_type_name(self.i_s, node_ref);
         }
-        if let Some((name_def, expr)) = assignment.maybe_simple_type_expression_assignment() {
+        if let Some((name_def, _, expr)) = assignment.maybe_simple_type_expression_assignment() {
             debug_assert!(file.points.get(name_def.index()).calculated());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
             let in_definition = cached_type_node_ref.as_link();
