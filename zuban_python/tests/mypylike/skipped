@@ -232,7 +232,6 @@ testTypeVarTupleIsNotValidAliasTarget
 testGenericTypeAliasesRuntimeExpressionsInstance
 testNestedGenericFunctionTypeApplication
 
-
 # type var backtracking
 testUnionInference
 testMapWithOverloadedFunc
@@ -279,13 +278,6 @@ testGenericMethodCalledInGenericContext
 testCastConfusion
 # None | Iterable[X] -> ignore None
 testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
-# strict optional with config file
-testNewAnalyzerTypeArgBoundCheckWithStrictOptional
-testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
-testPerFileStrictOptionalModule
-testPerFileStrictOptionalModuleOnly
-testPerFileStrictOptionalFunction
-testPerFileStrictOptionalMethod
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
@@ -298,7 +290,11 @@ testInfiniteLoop
 testGenericClassInsideOtherGenericClass
 
 # Class: generic access from outside
+# Type application vs. type declaration
 testGenericTypeAliasesTypeVarBinding
+testParamSpecApplyConcatenateTwice
+testNewAnalyzerAliasToNotReadyClassDoubleGeneric
+testTypeAliasesResultingInPlainInstance
 
 # descriptors
 testOverloadWithNonGenericDescriptor
@@ -494,11 +490,6 @@ testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 testDontNeedAnnotationForCallable
 testLiteralCheckSubtypingStrictOptional
 testLiteralCheckSubtypingNoStrictOptional
-
-# Type application vs. type declaration
-testParamSpecApplyConcatenateTwice
-testNewAnalyzerAliasToNotReadyClassDoubleGeneric
-testTypeAliasesResultingInPlainInstance
 
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1
@@ -1537,6 +1528,14 @@ testIgnoreErrorFromMissingStubs2
 testRefreshIgnoreErrors1
 testRefreshIgnoreErrors2
 testRefreshOptions
+
+# strict optional with config file
+testNewAnalyzerTypeArgBoundCheckWithStrictOptional
+testNewAnalyzerTypeArgBoundCheckWithStrictOptionalPyProjectTOML
+testPerFileStrictOptionalModule
+testPerFileStrictOptionalModuleOnly
+testPerFileStrictOptionalFunction
+testPerFileStrictOptionalMethod
 
 # mypy extensions
 testFlexibleAlias1
