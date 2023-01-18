@@ -2370,7 +2370,7 @@ fn check_type_name<'db: 'file, 'file>(
                     Some(Specific::TypingTuple) => {
                         return TypeNameLookup::SpecialType(SpecialType::Tuple);
                     }
-                    Some(Specific::TypingTypeVarClass) => {
+                    Some(_) => {
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                             name_node_ref,
                         ))
