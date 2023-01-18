@@ -57,6 +57,7 @@ pub(super) enum SpecialType {
     Concatenate,
     TypeAlias,
     Self_,
+    Final,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -819,6 +820,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             );
                             TypeContent::DbType(DbType::Any)
                         }
+                        SpecialType::Final => self.compute_type_get_item_on_final(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                     },
@@ -1358,6 +1360,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 })
                 .into_owned(),
         )
+    }
+
+    fn compute_type_get_item_on_final(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.count() == 0 {
+            TypeContent::DbType(self.compute_slice_db_type(first))
+        } else {
+            todo!()
+        }
     }
 
     fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
@@ -2322,7 +2334,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingConcatenateClass => SpecialType::Concatenate,
                 Specific::TypingTypeAlias => SpecialType::TypeAlias,
                 Specific::TypingLiteral => SpecialType::Literal,
-                Specific::TypingFinal => todo!(),
+                Specific::TypingFinal => SpecialType::Final,
                 Specific::TypingSelf => SpecialType::Self_,
                 _ => unreachable!(),
             })
