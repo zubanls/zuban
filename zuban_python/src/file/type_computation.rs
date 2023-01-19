@@ -460,13 +460,20 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     );
                     return;
                 }
-                TypeContent::SpecialType(SpecialType::TypeAlias)
-                    if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation =>
-                {
+                TypeContent::SpecialType(
+                    special @ (SpecialType::TypeAlias | SpecialType::Final),
+                ) if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation => {
                     debug_assert!(!is_implicit_optional);
                     self.inference.file.points.set(
                         annotation_index,
-                        Point::new_simple_specific(Specific::TypingTypeAlias, Locality::Todo),
+                        Point::new_simple_specific(
+                            match special {
+                                SpecialType::TypeAlias => Specific::TypingTypeAlias,
+                                SpecialType::Final => Specific::TypingFinal,
+                                _ => unreachable!(),
+                            },
+                            Locality::Todo,
+                        ),
                     );
                     return;
                 }

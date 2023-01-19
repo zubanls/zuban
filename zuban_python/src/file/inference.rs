@@ -445,29 +445,45 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 comp.into_type_vars(|inf, recalculate_type_vars| {
                     inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
                 });
-                if self.file.points.get(annotation.index()).maybe_specific()
-                    == Some(Specific::TypingTypeAlias)
-                {
-                    debug!("TODO TypeAlias calculation, does this make sense?");
-                    self.compute_explicit_type_assignment(assignment)
-                } else {
-                    if let Some(right_side) = right_side {
-                        let t = self.use_cached_annotation_type(annotation);
-                        let right = self
-                            .infer_assignment_right_side(right_side, &mut ResultContext::Known(&t));
-                        t.error_if_not_matches(self.i_s, &right, on_type_error);
+                match self.file.points.get(annotation.index()).maybe_specific() {
+                    Some(Specific::TypingTypeAlias) => {
+                        debug!("TODO TypeAlias calculation, does this make sense?");
+                        self.compute_explicit_type_assignment(assignment)
                     }
-                    let inf_annot = self.use_cached_annotation(annotation);
-                    self.assign_single_target(target, &inf_annot, true, |index| {
-                        self.file.points.set(
-                            index,
-                            Point::new_redirect(
-                                self.file.file_index(),
-                                annotation.index(),
-                                Locality::Todo,
-                            ),
-                        );
-                    })
+                    Some(Specific::TypingFinal) => {
+                        if let Some(right_side) = right_side {
+                            let right = self.infer_assignment_right_side(
+                                right_side,
+                                &mut ResultContext::ExpectLiteral,
+                            );
+                            self.assign_single_target(target, &right.clone(), true, |index| {
+                                right.save_redirect(self.i_s.db, self.file, index);
+                            });
+                        } else {
+                            todo!()
+                        }
+                    }
+                    _ => {
+                        if let Some(right_side) = right_side {
+                            let t = self.use_cached_annotation_type(annotation);
+                            let right = self.infer_assignment_right_side(
+                                right_side,
+                                &mut ResultContext::Known(&t),
+                            );
+                            t.error_if_not_matches(self.i_s, &right, on_type_error);
+                        }
+                        let inf_annot = self.use_cached_annotation(annotation);
+                        self.assign_single_target(target, &inf_annot, true, |index| {
+                            self.file.points.set(
+                                index,
+                                Point::new_redirect(
+                                    self.file.file_index(),
+                                    annotation.index(),
+                                    Locality::Todo,
+                                ),
+                            );
+                        })
+                    }
                 }
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
@@ -543,7 +559,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         target: Target,
         value: &Inferred,
         is_definition: bool,
-        save: impl Fn(NodeIndex),
+        save: impl FnOnce(NodeIndex),
     ) {
         match target {
             Target::Name(name_def) => {
