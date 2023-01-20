@@ -1107,25 +1107,45 @@ fn run_on_specific<'db: 'a, 'a, T>(
         Specific::IntLiteral => {
             let instance = resolve_specific(i_s.db, specific);
             let literal = Literal::new(
-                LiteralKind::Int(definition.expect_int().parse().unwrap()),
+                DbLiteral {
+                    kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
+                    implicit: true,
+                },
                 &instance,
             );
             callable(i_s, &literal)
         }
         Specific::StringLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            let literal = Literal::new(LiteralKind::String(definition.as_link()), &instance);
+            let literal = Literal::new(
+                DbLiteral {
+                    kind: LiteralKind::String(definition.as_link()),
+                    implicit: true,
+                },
+                &instance,
+            );
             callable(i_s, &literal)
         }
         Specific::BoolLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            let literal =
-                Literal::new(LiteralKind::Bool(definition.as_code() == "True"), &instance);
+            let literal = Literal::new(
+                DbLiteral {
+                    kind: LiteralKind::Bool(definition.as_code() == "True"),
+                    implicit: true,
+                },
+                &instance,
+            );
             callable(i_s, &literal)
         }
         Specific::BytesLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            let literal = Literal::new(LiteralKind::Bytes(definition.as_link()), &instance);
+            let literal = Literal::new(
+                DbLiteral {
+                    kind: LiteralKind::Bytes(definition.as_link()),
+                    implicit: true,
+                },
+                &instance,
+            );
             callable(i_s, &literal)
         }
         Specific::Function => callable(i_s, &Function::new(definition, None)),
@@ -1276,7 +1296,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Never => on_missing(i_s),
         DbType::Literal(literal) => {
             let t = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-            callable(i_s, &Literal::new(literal.kind, &t))
+            callable(i_s, &Literal::new(*literal, &t))
         }
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer),
         DbType::NewType(n) => {

@@ -1,7 +1,7 @@
 use parsa_python_ast::{Int, List, ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::Argument;
-use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, Locality, Point, Specific};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::inference_state::InferenceState;

@@ -1,5 +1,5 @@
 use super::super::{FormatData, Match, Type};
-use crate::database::{DbType, FormatStyle, Variance};
+use crate::database::{Database, DbType, FormatStyle, Variance};
 use crate::inference_state::InferenceState;
 
 #[derive(Debug, Clone)]
@@ -36,8 +36,15 @@ impl TypeVarBound {
         }
     }
 
-    pub fn into_db_type(self) -> DbType {
+    pub fn into_db_type(self, db: &Database) -> DbType {
         match self {
+            // If the lower bound is a literal, we do not want to lower the bound.
+            Self::LowerAndUpper(t @ DbType::Literal(_), _) => t,
+            Self::Upper(DbType::Literal(l)) | Self::LowerAndUpper(_, DbType::Literal(l))
+                if l.implicit =>
+            {
+                db.python_state.literal_db_type(l.kind)
+            }
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => t,
         }
     }

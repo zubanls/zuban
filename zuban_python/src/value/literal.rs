@@ -1,18 +1,18 @@
 use super::{LookupResult, Module, OnLookupError, Value, ValueKind};
-use crate::database::{Database, DbType, Literal as DbLiteral, LiteralKind};
+use crate::database::{Database, DbType, Literal as DbLiteral};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::Type;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Literal<'db, 'a, 'b> {
-    kind: LiteralKind,
+    db_literal: DbLiteral,
     value: &'b dyn Value<'db, 'a>,
 }
 
 impl<'db, 'a, 'b> Literal<'db, 'a, 'b> {
-    pub fn new(kind: LiteralKind, value: &'b dyn Value<'db, 'a>) -> Self {
-        Self { kind, value }
+    pub fn new(db_literal: DbLiteral, value: &'b dyn Value<'db, 'a>) -> Self {
+        Self { db_literal, value }
     }
 }
 
@@ -68,9 +68,6 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Literal(DbLiteral {
-            kind: self.kind,
-            implicit: false,
-        }))
+        Type::owned(DbType::Literal(self.db_literal))
     }
 }

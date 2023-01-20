@@ -383,6 +383,19 @@ impl PythonState {
             None,
         )
     }
+
+    pub fn literal_db_type(&self, literal_kind: LiteralKind) -> DbType {
+        DbType::Class(
+            match literal_kind {
+                LiteralKind::Int(_) => self.int_node_ref(),
+                LiteralKind::String(_) => self.str_node_ref(),
+                LiteralKind::Bool(_) => self.bool_node_ref(),
+                LiteralKind::Bytes(_) => self.bytes_node_ref(),
+            }
+            .as_link(),
+            None,
+        )
+    }
 }
 
 fn typing_changes(

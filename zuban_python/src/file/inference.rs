@@ -892,7 +892,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                         self.i_s,
                                         DbType::Literal(Literal {
                                             kind: LiteralKind::Int(-i),
-                                            implicit: false,
+                                            implicit: true,
                                         }),
                                     )
                                 } else {
@@ -917,7 +917,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     self.i_s,
                                     DbType::Literal(Literal {
                                         kind: LiteralKind::Int(-i),
-                                        implicit: false,
+                                        implicit: true,
                                     }),
                                 );
                             }

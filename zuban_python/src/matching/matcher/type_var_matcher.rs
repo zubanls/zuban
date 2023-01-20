@@ -185,7 +185,9 @@ impl<'a> TypeVarMatcher<'a> {
             if type_var_like_usage.in_definition() == self.match_in_definition {
                 let current = &self.calculated_type_vars[type_var_like_usage.index().as_usize()];
                 match &current.type_ {
-                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.clone().into_db_type()),
+                    BoundKind::TypeVar(t) => {
+                        GenericItem::TypeArgument(t.clone().into_db_type(i_s.db))
+                    }
                     BoundKind::TypeVarTuple(_) => todo!(),
                     BoundKind::ParamSpecArgument(param_spec) => {
                         GenericItem::ParamSpecArgument(param_spec.clone())
@@ -564,7 +566,7 @@ fn calculate_type_vars<'db>(
                 .into_iter()
                 .zip(used_type_vars.unwrap().iter())
                 .map(|(c, type_var_like)| match c.type_ {
-                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type()),
+                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type(i_s.db)),
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
                     BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
                     BoundKind::Uncalculated => match type_var_like {
