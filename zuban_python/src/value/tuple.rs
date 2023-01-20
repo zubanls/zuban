@@ -105,7 +105,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         todo!()
                     }
                     let infer = |i_s: &mut InferenceState, literal: Literal| {
-                        if literal.kind(i_s.db) != LiteralKind::Integer {
+                        if !matches!(literal.kind, LiteralKind::Integer(_)) {
                             return None;
                         }
                         let LiteralValue::Integer(i) = literal.value(i_s.db) else {

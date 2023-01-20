@@ -2117,16 +2117,16 @@ impl NewType {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Literal {
-    pub definition: PointLink,
+    pub kind: LiteralKind,
     pub implicit: bool,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LiteralKind {
-    String,
-    Integer,
-    Bytes,
-    Boolean,
+    String(PointLink),
+    Integer(PointLink),
+    Bytes(PointLink),
+    Boolean(PointLink),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -2138,24 +2138,10 @@ pub enum LiteralValue<'db> {
 }
 
 impl Literal {
-    fn node_ref(self, db: &Database) -> NodeRef {
-        NodeRef::from_link(db, self.definition)
-    }
-
-    pub fn kind(self, db: &Database) -> LiteralKind {
-        match self.node_ref(db).point().specific() {
-            Specific::IntegerLiteral => LiteralKind::Integer,
-            Specific::StringLiteral => LiteralKind::String,
-            Specific::BytesLiteral => LiteralKind::Bytes,
-            Specific::BooleanLiteral => LiteralKind::Boolean,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn value(self, db: &Database) -> LiteralValue {
-        let node_ref = self.node_ref(db);
-        match node_ref.point().specific() {
-            Specific::IntegerLiteral => {
+        match self.kind {
+            LiteralKind::Integer(link) => {
+                let node_ref = NodeRef::from_link(db, link);
                 let factor = node_ref.maybe_factor();
                 let to_be_parsed = factor
                     .map(|f| f.unpack().1.as_code())
@@ -2173,19 +2159,25 @@ impl Literal {
                 }
                 LiteralValue::Integer(n)
             }
-            Specific::StringLiteral => LiteralValue::String(
-                node_ref
-                    .maybe_str()
-                    .unwrap()
-                    .as_python_string()
-                    .into_cow()
-                    .unwrap(), // Can unwrap, because we know that there was never an f-string.
-            ),
-            Specific::BooleanLiteral => LiteralValue::Boolean(node_ref.as_code() == "True"),
-            Specific::BytesLiteral => {
+            LiteralKind::String(link) => {
+                let node_ref = NodeRef::from_link(db, link);
+                LiteralValue::String(
+                    node_ref
+                        .maybe_str()
+                        .unwrap()
+                        .as_python_string()
+                        .into_cow()
+                        .unwrap(), // Can unwrap, because we know that there was never an f-string.
+                )
+            }
+            LiteralKind::Boolean(link) => {
+                let node_ref = NodeRef::from_link(db, link);
+                LiteralValue::Boolean(node_ref.as_code() == "True")
+            }
+            LiteralKind::Bytes(link) => {
+                let node_ref = NodeRef::from_link(db, link);
                 LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
             }
-            _ => unreachable!(),
         }
     }
 

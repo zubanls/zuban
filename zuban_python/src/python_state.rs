@@ -374,10 +374,10 @@ impl PythonState {
     pub fn literal_class(&self, literal_kind: LiteralKind) -> Class {
         Class::from_position(
             match literal_kind {
-                LiteralKind::Integer => self.int_node_ref(),
-                LiteralKind::String => self.str_node_ref(),
-                LiteralKind::Boolean => self.bool_node_ref(),
-                LiteralKind::Bytes => self.bytes_node_ref(),
+                LiteralKind::Integer(_) => self.int_node_ref(),
+                LiteralKind::String(_) => self.str_node_ref(),
+                LiteralKind::Boolean(_) => self.bool_node_ref(),
+                LiteralKind::Bytes(_) => self.bytes_node_ref(),
             },
             Generics::None,
             None,

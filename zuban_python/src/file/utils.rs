@@ -36,7 +36,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                     .i_s
                     .db
                     .python_state
-                    .literal_class(l.kind(self.i_s.db))
+                    .literal_class(l.kind)
                     .as_db_type(self.i_s);
             }
             result.union_in_place(t);

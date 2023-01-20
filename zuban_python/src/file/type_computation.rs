@@ -4,11 +4,11 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
-    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, Locality, NewType,
-    ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
-    Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind, Locality,
+    NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType,
+    RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias,
+    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1495,8 +1495,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     if let Some((index, specific)) = maybe {
                         let node_ref = NodeRef::new(self.inference.file, index);
                         node_ref.set_point(Point::new_simple_specific(specific, Locality::Todo));
+                        let link = node_ref.as_link();
                         return TypeContent::DbType(DbType::Literal(Literal {
-                            definition: node_ref.as_link(),
+                            kind: match specific {
+                                Specific::IntegerLiteral => LiteralKind::Integer(link),
+                                Specific::BytesLiteral => LiteralKind::Bytes(link),
+                                Specific::StringLiteral => LiteralKind::String(link),
+                                Specific::BooleanLiteral => LiteralKind::Boolean(link),
+                                _ => unreachable!(),
+                            },
                             implicit: false,
                         }));
                     }
@@ -1512,7 +1519,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                     Locality::Todo,
                                 ));
                                 return TypeContent::DbType(DbType::Literal(Literal {
-                                    definition: node_ref.as_link(),
+                                    kind: LiteralKind::Integer(node_ref.as_link()),
                                     implicit: false,
                                 }));
                             }

@@ -5,8 +5,8 @@ use std::fmt;
 use crate::arguments::{NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
-    Literal as DbLiteral, Locality, MroIndex, NewType, Point, PointLink, PointType, Specific,
-    TypeVarLike,
+    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
+    Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
@@ -516,7 +516,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition, point) = self.state {
             if let Some(Specific::IntegerLiteral) = point.maybe_specific() {
                 return UnionValue::Single(DbLiteral {
-                    definition,
+                    kind: LiteralKind::Integer(definition),
                     implicit: true,
                 });
             }
@@ -1099,12 +1099,25 @@ fn run_on_specific<'db: 'a, 'a, T>(
 ) -> T {
     let definition = NodeRef::from_link(i_s.db, definition);
     match specific {
-        Specific::IntegerLiteral
-        | Specific::StringLiteral
-        | Specific::BooleanLiteral
-        | Specific::BytesLiteral => {
+        Specific::IntegerLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            callable(i_s, &Literal::new(definition, &instance))
+            let literal = Literal::new(LiteralKind::Integer(definition.as_link()), &instance);
+            callable(i_s, &literal)
+        }
+        Specific::StringLiteral => {
+            let instance = resolve_specific(i_s.db, specific);
+            let literal = Literal::new(LiteralKind::String(definition.as_link()), &instance);
+            callable(i_s, &literal)
+        }
+        Specific::BooleanLiteral => {
+            let instance = resolve_specific(i_s.db, specific);
+            let literal = Literal::new(LiteralKind::Boolean(definition.as_link()), &instance);
+            callable(i_s, &literal)
+        }
+        Specific::BytesLiteral => {
+            let instance = resolve_specific(i_s.db, specific);
+            let literal = Literal::new(LiteralKind::Bytes(definition.as_link()), &instance);
+            callable(i_s, &literal)
         }
         Specific::Function => callable(i_s, &Function::new(definition, None)),
         Specific::AnnotationClassInstance => {
@@ -1253,14 +1266,8 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::Any => on_missing(i_s),
         DbType::Never => on_missing(i_s),
         DbType::Literal(literal) => {
-            let t = Instance::new(
-                i_s.db.python_state.literal_class(literal.kind(i_s.db)),
-                None,
-            );
-            callable(
-                i_s,
-                &Literal::new(NodeRef::from_link(i_s.db, literal.definition), &t),
-            )
+            let t = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
+            callable(i_s, &Literal::new(literal.kind, &t))
         }
         DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer),
         DbType::NewType(n) => {
