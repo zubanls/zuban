@@ -1533,11 +1533,17 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 self.add_typing_issue(
                     slice.as_node_ref(),
                     IssueType::InvalidType(
-                        format!(
-                            "Parameter {} of Literal[...] cannot be of type \"Any\"",
-                            index
-                        )
-                        .into(),
+                        format!("Parameter {index} of Literal[...] cannot be of type \"Any\"")
+                            .into(),
+                    ),
+                );
+                TypeContent::Unknown
+            }
+            TypeContent::InvalidVariable(_) => {
+                self.add_typing_issue(
+                    slice.as_node_ref(),
+                    IssueType::InvalidType(
+                        format!("Parameter {index} of Literal[...] is invalid").into(),
                     ),
                 );
                 TypeContent::Unknown
@@ -2123,8 +2129,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 load_cached_type(cached_type_node_ref)
             }
         } else {
-            debug!("TODO invalid type def");
-            TypeNameLookup::Unknown
+            TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
         }
     }
 
