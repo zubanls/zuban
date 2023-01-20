@@ -373,7 +373,6 @@ testLiteralFinalPropagatesThroughGenerics
 testLiteralWithFinalPropagation
 testLiteralWithFinalPropagationIsNotLeaking
 testLiteralIntelligentIndexingUsingFinal
-testNegativeIntLiteralWithFinal
 
 # NamedTuple
 *NamedTuple*

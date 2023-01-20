@@ -4,7 +4,9 @@ use parsa_python_ast::*;
 
 use super::type_computation::type_computation_for_variable_annotation;
 use super::{on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin};
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
+use crate::arguments::{
+    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
+};
 use crate::database::{
     CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
     Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType, Specific,
@@ -15,7 +17,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
+use crate::inferred::{Inferred, UnionValue};
 use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
@@ -906,8 +908,51 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     "~" => "__invert__",
                     _ => unreachable!(),
                 };
-                let right = self.infer_expression_part(right, &mut ResultContext::Unknown);
-                todo!()
+                let inf = self.infer_expression_part(right, &mut ResultContext::Unknown);
+                if operator.as_code() == "-" && result_context.is_literal_context(self.i_s) {
+                    match inf.maybe_literal(self.i_s.db) {
+                        UnionValue::Single(literal) => {
+                            if let LiteralKind::Int(i) = &literal.kind {
+                                return Inferred::execute_db_type(
+                                    self.i_s,
+                                    DbType::Literal(Literal {
+                                        kind: LiteralKind::Int(-i),
+                                        implicit: false,
+                                    }),
+                                );
+                            }
+                        }
+                        UnionValue::Multiple(literals) => todo!(),
+                        UnionValue::Any => (),
+                    }
+                }
+                let node_ref = NodeRef::new(self.file, f.index());
+                inf.run_on_value(self.i_s, &mut |i_s, value| {
+                    value.lookup_implicit(i_s, method_name, &|i_s| {
+                        /*
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::UnsupportedLeftOperand {
+                                operand: Box::from(op.operand),
+                                left: value.as_type(i_s).format_short(i_s.db),
+                                note: None,
+                            },
+                        )
+                        */
+                    })
+                })
+                .run_on_value(self.i_s, &mut |i_s, value| {
+                    value.execute(
+                        i_s,
+                        &NoArguments::new(node_ref),
+                        &mut ResultContext::Unknown,
+                        OnTypeError {
+                            on_overload_mismatch: None,
+                            // TODO is this unreachable correct with self: X[int]?
+                            callback: &|i_s, class, _, _, _, _| unreachable!(),
+                        },
+                    )
+                })
             }
             _ => todo!("Not handled yet {node:?}"),
         }
