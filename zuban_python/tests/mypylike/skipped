@@ -207,6 +207,7 @@ testInferenceWithTypeVariableTwiceInReturnType
 testInferenceWithTypeVariableTwiceInReturnTypeAndMultipleVariables
 testLiteralFinalErasureInMutableDatastructures1
 testLiteralFinalGoesOnlyOneLevelDown
+testLiteralAndInstanceSubtyping
 class_generics_recursion
 # bottom up tuple inference
 testLiteralInferredInTupleContext
@@ -388,7 +389,6 @@ testLiteralWithFinalPropagation
 testLiteralWithFinalPropagationIsNotLeaking
 testLiteralIntelligentIndexingUsingFinal
 testNegativeIntLiteralWithFinal
-testLiteralAndInstanceSubtyping
 
 # NamedTuple
 *NamedTuple*
