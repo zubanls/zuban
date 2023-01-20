@@ -17,7 +17,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
     ) -> GenericItem {
         let mut result = DbType::Never;
         for child in elements {
-            result.union_in_place(match child {
+            let mut t = match child {
                 StarLikeExpression::NamedExpression(named_expr) => self
                     .infer_named_expression(named_expr)
                     .class_as_db_type(self.i_s),
@@ -29,7 +29,17 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
                     unreachable!()
                 }
-            });
+            };
+            // Just because we defined a literal somewhere, we should probably not infer that.
+            if let DbType::Literal(l) = t {
+                t = self
+                    .i_s
+                    .db
+                    .python_state
+                    .literal_class(l.kind(self.i_s.db))
+                    .as_db_type(self.i_s);
+            }
+            result.union_in_place(t);
         }
         GenericItem::TypeArgument(result)
     }

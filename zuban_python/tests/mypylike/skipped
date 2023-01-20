@@ -383,7 +383,6 @@ testFinalAddFinalVarOverrideFine
 testNewAnalyzerFinalReassignModuleVar
 testLiteralFinalMismatchCausesError
 # Final literal issues
-testLiteralFinalCollectionPropagation
 testLiteralFinalPropagatesThroughGenerics
 testLiteralFinalUsedInLiteralType
 testLiteralWithFinalPropagation
