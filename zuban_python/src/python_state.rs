@@ -374,7 +374,7 @@ impl PythonState {
     pub fn literal_class(&self, literal_kind: LiteralKind) -> Class {
         Class::from_position(
             match literal_kind {
-                LiteralKind::Integer(_) => self.int_node_ref(),
+                LiteralKind::Int(_) => self.int_node_ref(),
                 LiteralKind::String(_) => self.str_node_ref(),
                 LiteralKind::Bool(_) => self.bool_node_ref(),
                 LiteralKind::Bytes(_) => self.bytes_node_ref(),

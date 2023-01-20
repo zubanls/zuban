@@ -514,9 +514,9 @@ impl<'db: 'slf, 'slf> Inferred {
         db: &'db Database,
     ) -> UnionValue<DbLiteral, impl Iterator<Item = DbLiteral> + 'slf> {
         if let InferredState::Saved(definition, point) = self.state {
-            if let Some(Specific::IntegerLiteral) = point.maybe_specific() {
+            if let Some(Specific::IntLiteral) = point.maybe_specific() {
                 return UnionValue::Single(DbLiteral {
-                    kind: LiteralKind::Integer(definition),
+                    kind: LiteralKind::Int(definition),
                     implicit: true,
                 });
             }
@@ -1099,9 +1099,9 @@ fn run_on_specific<'db: 'a, 'a, T>(
 ) -> T {
     let definition = NodeRef::from_link(i_s.db, definition);
     match specific {
-        Specific::IntegerLiteral => {
+        Specific::IntLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            let literal = Literal::new(LiteralKind::Integer(definition.as_link()), &instance);
+            let literal = Literal::new(LiteralKind::Int(definition.as_link()), &instance);
             callable(i_s, &literal)
         }
         Specific::StringLiteral => {
@@ -1196,7 +1196,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
         db,
         match specific {
             Specific::String | Specific::StringLiteral => "str",
-            Specific::IntegerLiteral | Specific::Integer => "int",
+            Specific::IntLiteral | Specific::Int => "int",
             Specific::Float => "float",
             Specific::BoolLiteral | Specific::Bool => "bool",
             Specific::BytesLiteral | Specific::Bytes => "bytes",

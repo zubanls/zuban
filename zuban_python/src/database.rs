@@ -347,13 +347,13 @@ pub enum Specific {
     Float,
     Complex,
     Bytes,
-    Integer,
+    Int,
     Bool,
     None,
     // Literals are used for things like Literal[42]
     StringLiteral,
     BytesLiteral,
-    IntegerLiteral,
+    IntLiteral,
     BoolLiteral,
 
     Ellipsis,
@@ -2124,7 +2124,7 @@ pub struct Literal {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LiteralKind {
     String(PointLink),
-    Integer(PointLink),
+    Int(PointLink),
     Bytes(PointLink),
     Bool(bool),
 }
@@ -2132,7 +2132,7 @@ pub enum LiteralKind {
 #[derive(PartialEq, Eq, Debug)]
 pub enum LiteralValue<'db> {
     String(Cow<'db, str>),
-    Integer(isize), // TODO this does not work for Python ints > usize
+    Int(isize), // TODO this does not work for Python ints > usize
     Bytes(Cow<'db, [u8]>),
     Bool(bool),
 }
@@ -2140,7 +2140,7 @@ pub enum LiteralValue<'db> {
 impl Literal {
     pub fn value(self, db: &Database) -> LiteralValue {
         match self.kind {
-            LiteralKind::Integer(link) => {
+            LiteralKind::Int(link) => {
                 let node_ref = NodeRef::from_link(db, link);
                 let factor = node_ref.maybe_factor();
                 let to_be_parsed = factor
@@ -2157,7 +2157,7 @@ impl Literal {
                 if factor.is_some() {
                     n = -n;
                 }
-                LiteralValue::Integer(n)
+                LiteralValue::Int(n)
             }
             LiteralKind::String(link) => {
                 let node_ref = NodeRef::from_link(db, link);
@@ -2181,7 +2181,7 @@ impl Literal {
     fn format_inner(self, db: &Database) -> Cow<str> {
         match self.value(db) {
             LiteralValue::String(s) => Cow::Owned(str_repr(s)),
-            LiteralValue::Integer(i) => Cow::Owned(format!("{i}")),
+            LiteralValue::Int(i) => Cow::Owned(format!("{i}")),
             LiteralValue::Bool(true) => Cow::Borrowed("True"),
             LiteralValue::Bool(false) => Cow::Borrowed("False"),
             LiteralValue::Bytes(b) => Cow::Owned(bytes_repr(b)),

@@ -886,8 +886,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         if let ExpressionPart::Atom(atom) = right {
                             if let AtomContent::Int(i) = atom.unpack() {
                                 let specific = match result_context.is_literal_context(self.i_s) {
-                                    true => Specific::IntegerLiteral,
-                                    false => Specific::Integer,
+                                    true => Specific::IntLiteral,
+                                    false => Specific::Int,
                                 };
                                 let point = Point::new_simple_specific(specific, Locality::Todo);
                                 return Inferred::new_and_save(self.file, f.index(), point);
@@ -1127,12 +1127,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
             Int(i) => {
-                return check_literal(
-                    self.i_s,
-                    i.index(),
-                    Specific::Integer,
-                    Specific::IntegerLiteral,
-                )
+                return check_literal(self.i_s, i.index(), Specific::Int, Specific::IntLiteral)
             }
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,

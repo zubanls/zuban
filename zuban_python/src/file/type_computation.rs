@@ -1455,7 +1455,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             match s.named_expr.expression().unpack() {
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
                     let maybe = match atom.unpack() {
-                        AtomContent::Int(i) => Some((i.index(), Specific::IntegerLiteral)),
+                        AtomContent::Int(i) => Some((i.index(), Specific::IntLiteral)),
                         AtomContent::Bytes(b) => Some((b.index(), Specific::BytesLiteral)),
                         AtomContent::Strings(s) => s
                             .maybe_single_string_literal()
@@ -1498,7 +1498,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         let link = node_ref.as_link();
                         return TypeContent::DbType(DbType::Literal(Literal {
                             kind: match specific {
-                                Specific::IntegerLiteral => LiteralKind::Integer(link),
+                                Specific::IntLiteral => LiteralKind::Int(link),
                                 Specific::BytesLiteral => LiteralKind::Bytes(link),
                                 Specific::StringLiteral => LiteralKind::String(link),
                                 Specific::BoolLiteral => {
@@ -1517,11 +1517,11 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             if let AtomContent::Int(_) = atom.unpack() {
                                 let node_ref = NodeRef::new(self.inference.file, f.index());
                                 node_ref.set_point(Point::new_simple_specific(
-                                    Specific::IntegerLiteral,
+                                    Specific::IntLiteral,
                                     Locality::Todo,
                                 ));
                                 return TypeContent::DbType(DbType::Literal(Literal {
-                                    kind: LiteralKind::Integer(node_ref.as_link()),
+                                    kind: LiteralKind::Int(node_ref.as_link()),
                                     implicit: false,
                                 }));
                             }
