@@ -2719,7 +2719,7 @@ impl<'db> Atom<'db> {
             Nonterminal(bytes) => AtomContent::Bytes(Bytes::new(first)),
             PyNodeType::Keyword => match first.as_code() {
                 "None" => AtomContent::NoneLiteral,
-                "True" | "False" => AtomContent::Boolean(Keyword::new(first)),
+                "True" | "False" => AtomContent::Bool(Keyword::new(first)),
                 "..." => AtomContent::Ellipsis,
                 "(" => {
                     let next_node = iter.next().unwrap();
@@ -2786,7 +2786,7 @@ pub enum AtomContent<'db> {
     Bytes(Bytes<'db>),
 
     NoneLiteral,
-    Boolean(Keyword<'db>),
+    Bool(Keyword<'db>),
     Ellipsis,
 
     List(List<'db>),

@@ -348,13 +348,13 @@ pub enum Specific {
     Complex,
     Bytes,
     Integer,
-    Boolean,
+    Bool,
     None,
     // Literals are used for things like Literal[42]
     StringLiteral,
     BytesLiteral,
     IntegerLiteral,
-    BooleanLiteral,
+    BoolLiteral,
 
     Ellipsis,
     GeneratorComprehension,
@@ -2126,7 +2126,7 @@ pub enum LiteralKind {
     String(PointLink),
     Integer(PointLink),
     Bytes(PointLink),
-    Boolean(bool),
+    Bool(bool),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -2134,7 +2134,7 @@ pub enum LiteralValue<'db> {
     String(Cow<'db, str>),
     Integer(isize), // TODO this does not work for Python ints > usize
     Bytes(Cow<'db, [u8]>),
-    Boolean(bool),
+    Bool(bool),
 }
 
 impl Literal {
@@ -2170,7 +2170,7 @@ impl Literal {
                         .unwrap(), // Can unwrap, because we know that there was never an f-string.
                 )
             }
-            LiteralKind::Boolean(b) => LiteralValue::Boolean(b),
+            LiteralKind::Bool(b) => LiteralValue::Bool(b),
             LiteralKind::Bytes(link) => {
                 let node_ref = NodeRef::from_link(db, link);
                 LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
@@ -2182,8 +2182,8 @@ impl Literal {
         match self.value(db) {
             LiteralValue::String(s) => Cow::Owned(str_repr(s)),
             LiteralValue::Integer(i) => Cow::Owned(format!("{i}")),
-            LiteralValue::Boolean(true) => Cow::Borrowed("True"),
-            LiteralValue::Boolean(false) => Cow::Borrowed("False"),
+            LiteralValue::Bool(true) => Cow::Borrowed("True"),
+            LiteralValue::Bool(false) => Cow::Borrowed("False"),
             LiteralValue::Bytes(b) => Cow::Owned(bytes_repr(b)),
         }
     }

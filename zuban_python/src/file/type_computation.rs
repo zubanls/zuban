@@ -1460,8 +1460,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         AtomContent::Strings(s) => s
                             .maybe_single_string_literal()
                             .map(|s| (s.index(), Specific::StringLiteral)),
-                        AtomContent::Boolean(keyword) => {
-                            Some((keyword.index(), Specific::BooleanLiteral))
+                        AtomContent::Bool(keyword) => {
+                            Some((keyword.index(), Specific::BoolLiteral))
                         }
                         AtomContent::Float(_) => {
                             self.add_typing_issue(
@@ -1501,8 +1501,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 Specific::IntegerLiteral => LiteralKind::Integer(link),
                                 Specific::BytesLiteral => LiteralKind::Bytes(link),
                                 Specific::StringLiteral => LiteralKind::String(link),
-                                Specific::BooleanLiteral => {
-                                    LiteralKind::Boolean(node_ref.as_code() == "True")
+                                Specific::BoolLiteral => {
+                                    LiteralKind::Bool(node_ref.as_code() == "True")
                                 }
                                 _ => unreachable!(),
                             },

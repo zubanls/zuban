@@ -1109,12 +1109,10 @@ fn run_on_specific<'db: 'a, 'a, T>(
             let literal = Literal::new(LiteralKind::String(definition.as_link()), &instance);
             callable(i_s, &literal)
         }
-        Specific::BooleanLiteral => {
+        Specific::BoolLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            let literal = Literal::new(
-                LiteralKind::Boolean(definition.as_code() == "True"),
-                &instance,
-            );
+            let literal =
+                Literal::new(LiteralKind::Bool(definition.as_code() == "True"), &instance);
             callable(i_s, &literal)
         }
         Specific::BytesLiteral => {
@@ -1200,7 +1198,7 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
             Specific::String | Specific::StringLiteral => "str",
             Specific::IntegerLiteral | Specific::Integer => "int",
             Specific::Float => "float",
-            Specific::BooleanLiteral | Specific::Boolean => "bool",
+            Specific::BoolLiteral | Specific::Bool => "bool",
             Specific::BytesLiteral | Specific::Bytes => "bytes",
             Specific::Complex => "complex",
             Specific::Ellipsis => "ellipsis", // TODO this should not even be public

@@ -376,7 +376,7 @@ impl PythonState {
             match literal_kind {
                 LiteralKind::Integer(_) => self.int_node_ref(),
                 LiteralKind::String(_) => self.str_node_ref(),
-                LiteralKind::Boolean(_) => self.bool_node_ref(),
+                LiteralKind::Bool(_) => self.bool_node_ref(),
                 LiteralKind::Bytes(_) => self.bytes_node_ref(),
             },
             Generics::None,

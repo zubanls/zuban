@@ -1157,13 +1157,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 return check_literal(self.i_s, b.index(), Specific::Bytes, Specific::BytesLiteral)
             }
             NoneLiteral => Specific::None,
-            Boolean(b) => {
-                return check_literal(
-                    self.i_s,
-                    b.index(),
-                    Specific::Boolean,
-                    Specific::BooleanLiteral,
-                )
+            Bool(b) => {
+                return check_literal(self.i_s, b.index(), Specific::Bool, Specific::BoolLiteral)
             }
             Ellipsis => Specific::Ellipsis,
             List(list) => {

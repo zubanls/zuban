@@ -92,7 +92,7 @@ pub enum ValueKind {
     Constant = 14,
     String = 15,
     Number = 16,
-    Boolean = 17,
+    Bool = 17,
     Array = 18,
     Object = 19, // From JavaScript objects -> Basically an instance
     //Key = 20,
