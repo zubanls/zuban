@@ -1501,7 +1501,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 Specific::IntegerLiteral => LiteralKind::Integer(link),
                                 Specific::BytesLiteral => LiteralKind::Bytes(link),
                                 Specific::StringLiteral => LiteralKind::String(link),
-                                Specific::BooleanLiteral => LiteralKind::Boolean(link),
+                                Specific::BooleanLiteral => {
+                                    LiteralKind::Boolean(node_ref.as_code() == "True")
+                                }
                                 _ => unreachable!(),
                             },
                             implicit: false,

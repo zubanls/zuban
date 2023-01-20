@@ -2126,7 +2126,7 @@ pub enum LiteralKind {
     String(PointLink),
     Integer(PointLink),
     Bytes(PointLink),
-    Boolean(PointLink),
+    Boolean(bool),
 }
 
 #[derive(PartialEq, Eq, Debug)]
@@ -2170,10 +2170,7 @@ impl Literal {
                         .unwrap(), // Can unwrap, because we know that there was never an f-string.
                 )
             }
-            LiteralKind::Boolean(link) => {
-                let node_ref = NodeRef::from_link(db, link);
-                LiteralValue::Boolean(node_ref.as_code() == "True")
-            }
+            LiteralKind::Boolean(b) => LiteralValue::Boolean(b),
             LiteralKind::Bytes(link) => {
                 let node_ref = NodeRef::from_link(db, link);
                 LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())

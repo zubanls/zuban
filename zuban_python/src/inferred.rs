@@ -1111,7 +1111,10 @@ fn run_on_specific<'db: 'a, 'a, T>(
         }
         Specific::BooleanLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            let literal = Literal::new(LiteralKind::Boolean(definition.as_link()), &instance);
+            let literal = Literal::new(
+                LiteralKind::Boolean(definition.as_code() == "True"),
+                &instance,
+            );
             callable(i_s, &literal)
         }
         Specific::BytesLiteral => {
