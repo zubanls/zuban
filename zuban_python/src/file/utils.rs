@@ -1,7 +1,7 @@
-use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
+use parsa_python_ast::{Int, List, ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::Argument;
-use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
+use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList, Locality, Point, Specific};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::inference_state::InferenceState;
@@ -86,6 +86,18 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 },
             )
             .flatten()
+    }
+
+    pub fn parse_int(&mut self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
+        if result_context.is_literal_context(self.i_s) {
+            let result = int.parse();
+            if result.is_none() {
+                todo!("Add diagnostic");
+            }
+            result
+        } else {
+            None
+        }
     }
 }
 

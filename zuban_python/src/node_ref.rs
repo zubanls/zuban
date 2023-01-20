@@ -146,6 +146,10 @@ impl<'file> NodeRef<'file> {
         StringLiteral::maybe_by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn expect_int(&self) -> Int<'file> {
+        Int::by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn maybe_class(&self) -> Option<ClassDef<'file>> {
         ClassDef::maybe_by_index(&self.file.tree, self.node_index)
     }

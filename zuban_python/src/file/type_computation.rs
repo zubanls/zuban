@@ -1455,13 +1455,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             match s.named_expr.expression().unpack() {
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
                     let maybe = match atom.unpack() {
-                        AtomContent::Int(i) => Some((i.index(), Specific::IntLiteral)),
-                        AtomContent::Bytes(b) => Some((b.index(), Specific::BytesLiteral)),
-                        AtomContent::Strings(s) => s
-                            .maybe_single_string_literal()
-                            .map(|s| (s.index(), Specific::StringLiteral)),
+                        AtomContent::Int(i) => {
+                            Some(LiteralKind::Int(i.parse().unwrap_or_else(|| todo!())))
+                        }
+                        AtomContent::Bytes(b) => Some(LiteralKind::Bytes(
+                            NodeRef::new(self.inference.file, b.index()).as_link(),
+                        )),
+                        AtomContent::Strings(s) => s.maybe_single_string_literal().map(|s| {
+                            LiteralKind::String(
+                                NodeRef::new(self.inference.file, s.index()).as_link(),
+                            )
+                        }),
                         AtomContent::Bool(keyword) => {
-                            Some((keyword.index(), Specific::BoolLiteral))
+                            Some(LiteralKind::Bool(keyword.as_code() == "True"))
                         }
                         AtomContent::Float(_) => {
                             self.add_typing_issue(
@@ -1492,20 +1498,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         AtomContent::Name(_) | AtomContent::NoneLiteral => None,
                         _ => return expr_not_allowed(self),
                     };
-                    if let Some((index, specific)) = maybe {
-                        let node_ref = NodeRef::new(self.inference.file, index);
-                        node_ref.set_point(Point::new_simple_specific(specific, Locality::Todo));
-                        let link = node_ref.as_link();
+                    if let Some(kind) = maybe {
                         return TypeContent::DbType(DbType::Literal(Literal {
-                            kind: match specific {
-                                Specific::IntLiteral => LiteralKind::Int(link),
-                                Specific::BytesLiteral => LiteralKind::Bytes(link),
-                                Specific::StringLiteral => LiteralKind::String(link),
-                                Specific::BoolLiteral => {
-                                    LiteralKind::Bool(node_ref.as_code() == "True")
-                                }
-                                _ => unreachable!(),
-                            },
+                            kind,
                             implicit: false,
                         }));
                     }
@@ -1514,16 +1509,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     let (sign, e) = f.unpack();
                     if sign.as_code() == "-" {
                         if let ExpressionPart::Atom(atom) = e {
-                            if let AtomContent::Int(_) = atom.unpack() {
-                                let node_ref = NodeRef::new(self.inference.file, f.index());
-                                node_ref.set_point(Point::new_simple_specific(
-                                    Specific::IntLiteral,
-                                    Locality::Todo,
-                                ));
-                                return TypeContent::DbType(DbType::Literal(Literal {
-                                    kind: LiteralKind::Int(node_ref.as_link()),
-                                    implicit: false,
-                                }));
+                            if let AtomContent::Int(i) = atom.unpack() {
+                                if let Some(i) = i.parse() {
+                                    let node_ref = NodeRef::new(self.inference.file, f.index());
+                                    return TypeContent::DbType(DbType::Literal(Literal {
+                                        kind: LiteralKind::Int(-i),
+                                        implicit: false,
+                                    }));
+                                } else {
+                                    todo!()
+                                }
                             }
                         }
                     }

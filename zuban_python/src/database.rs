@@ -2124,7 +2124,7 @@ pub struct Literal {
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LiteralKind {
     String(PointLink),
-    Int(PointLink),
+    Int(i64), // TODO this does not work for Python ints > usize
     Bytes(PointLink),
     Bool(bool),
 }
@@ -2132,7 +2132,7 @@ pub enum LiteralKind {
 #[derive(PartialEq, Eq, Debug)]
 pub enum LiteralValue<'db> {
     String(Cow<'db, str>),
-    Int(isize), // TODO this does not work for Python ints > usize
+    Int(i64),
     Bytes(Cow<'db, [u8]>),
     Bool(bool),
 }
@@ -2140,25 +2140,7 @@ pub enum LiteralValue<'db> {
 impl Literal {
     pub fn value(self, db: &Database) -> LiteralValue {
         match self.kind {
-            LiteralKind::Int(link) => {
-                let node_ref = NodeRef::from_link(db, link);
-                let factor = node_ref.maybe_factor();
-                let to_be_parsed = factor
-                    .map(|f| f.unpack().1.as_code())
-                    .unwrap_or_else(|| node_ref.as_code());
-                let mut n: isize = if let Some(stripped) = to_be_parsed.strip_prefix("0x") {
-                    isize::from_str_radix(stripped, 16).unwrap_or_else(|_| todo!())
-                } else {
-                    if to_be_parsed.contains('_') {
-                        todo!("Stuff like 100_000")
-                    }
-                    to_be_parsed.parse().unwrap()
-                };
-                if factor.is_some() {
-                    n = -n;
-                }
-                LiteralValue::Int(n)
-            }
+            LiteralKind::Int(i) => LiteralValue::Int(i),
             LiteralKind::String(link) => {
                 let node_ref = NodeRef::from_link(db, link);
                 LiteralValue::String(

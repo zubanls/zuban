@@ -415,6 +415,18 @@ impl<'db> Int<'db> {
     pub fn as_str(&self) -> &'db str {
         self.node.as_code()
     }
+
+    pub fn parse(&self) -> Option<i64> {
+        let to_be_parsed = self.as_code();
+        if let Some(stripped) = to_be_parsed.strip_prefix("0x") {
+            i64::from_str_radix(stripped, 16).ok()
+        } else {
+            if to_be_parsed.contains('_') {
+                todo!("Stuff like 100_000")
+            }
+            to_be_parsed.parse().ok()
+        }
+    }
 }
 
 #[derive(Debug)]

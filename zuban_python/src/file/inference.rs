@@ -7,8 +7,8 @@ use super::{on_argument_type_error, File, PythonFile, TypeComputation, TypeCompu
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
-    Locality, ParamSpecific, Point, PointLink, PointType, Specific, TupleContent,
-    TypeOrTypeVarTuple,
+    Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType, Specific,
+    TupleContent, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -885,12 +885,19 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     "-" => {
                         if let ExpressionPart::Atom(atom) = right {
                             if let AtomContent::Int(i) = atom.unpack() {
-                                let specific = match result_context.is_literal_context(self.i_s) {
-                                    true => Specific::IntLiteral,
-                                    false => Specific::Int,
+                                return if let Some(i) = self.parse_int(i, result_context) {
+                                    Inferred::execute_db_type(
+                                        self.i_s,
+                                        DbType::Literal(Literal {
+                                            kind: LiteralKind::Int(-i),
+                                            implicit: false,
+                                        }),
+                                    )
+                                } else {
+                                    let point =
+                                        Point::new_simple_specific(Specific::Int, Locality::Todo);
+                                    Inferred::new_and_save(self.file, f.index(), point)
                                 };
-                                let point = Point::new_simple_specific(specific, Locality::Todo);
-                                return Inferred::new_and_save(self.file, f.index(), point);
                             }
                         }
                         "__neg__"
@@ -1126,9 +1133,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
-            Int(i) => {
-                return check_literal(self.i_s, i.index(), Specific::Int, Specific::IntLiteral)
-            }
+            Int(i) => match self.parse_int(i, result_context) {
+                Some(_) => {
+                    let point = Point::new_simple_specific(Specific::IntLiteral, Locality::Todo);
+                    return Inferred::new_and_save(self.file, i.index(), point);
+                }
+                None => Specific::Int,
+            },
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
             Strings(s_o_b) => {

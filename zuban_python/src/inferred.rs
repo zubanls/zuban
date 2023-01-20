@@ -516,7 +516,12 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition, point) = self.state {
             if let Some(Specific::IntLiteral) = point.maybe_specific() {
                 return UnionValue::Single(DbLiteral {
-                    kind: LiteralKind::Int(definition),
+                    kind: LiteralKind::Int(
+                        NodeRef::from_link(db, definition)
+                            .expect_int()
+                            .parse()
+                            .unwrap(),
+                    ),
                     implicit: true,
                 });
             }
@@ -1101,7 +1106,10 @@ fn run_on_specific<'db: 'a, 'a, T>(
     match specific {
         Specific::IntLiteral => {
             let instance = resolve_specific(i_s.db, specific);
-            let literal = Literal::new(LiteralKind::Int(definition.as_link()), &instance);
+            let literal = Literal::new(
+                LiteralKind::Int(definition.expect_int().parse().unwrap()),
+                &instance,
+            );
             callable(i_s, &literal)
         }
         Specific::StringLiteral => {
