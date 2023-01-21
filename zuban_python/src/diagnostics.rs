@@ -33,7 +33,7 @@ pub(crate) enum IssueType {
     InvalidCallableParams,
     InvalidCallableArgCount,
     UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
-    UnsupportedLeftOperand { operand: Box<str>, left: Box<str>, note: Option<Box<str>> },
+    UnsupportedLeftOperand { operand: Box<str>, left: Box<str> },
     InvalidGetItem { actual: Box<str>, type_: Box<str>, expected: Box<str> },
     NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
@@ -256,15 +256,9 @@ impl<'db> Diagnostic<'db> {
                     "Unsupported operand types for {operand} ({left:?} and {right:?})",
                 )
             }
-            IssueType::UnsupportedLeftOperand{operand, left, note} => {
-                let mut s = format!(
-                    "Unsupported left operand type for {operand} ({left:?})",
-                );
-                if let Some(note) = note {
-                    s += note;
-                }
-                s
-            }
+            IssueType::UnsupportedLeftOperand{operand, left} => format!(
+                "Unsupported left operand type for {operand} ({left:?})"
+            ),
             IssueType::InvalidGetItem{actual, type_, expected} => format!(
                 "Invalid index type {actual:?} for {type_:?}; expected type {expected:?}",
             ),

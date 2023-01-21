@@ -1033,7 +1033,6 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
                         left: value.as_type(i_s).format_short(i_s.db),
-                        note: None, // TODO check for unions and stuff
                     },
                 )
             })
