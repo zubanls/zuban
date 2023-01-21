@@ -1,5 +1,4 @@
 # Next up
-testInferOptionalFromDefaultNone
 testNoInferOptionalFromDefaultNone
 testNoInferOptionalFromDefaultNoneComment
 testInferOptionalDictKeyValueTypes
