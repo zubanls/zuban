@@ -931,6 +931,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let node_ref = NodeRef::new(self.file, f.index());
                 inf.run_on_value(self.i_s, &mut |i_s, value| {
                     value.lookup_implicit(i_s, method_name, &|i_s| {
+                        todo!()
                         /*
                         node_ref.add_typing_issue(
                             i_s.db,
