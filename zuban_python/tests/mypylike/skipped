@@ -1,4 +1,11 @@
 # Next up
+testAnnotatedNoImport
+testAnnotatedAliasSimple
+testAnnotatedAliasTypeVar
+testAnnotatedAliasGenericTuple
+testAnnotatedAliasGenericUnion
+testAnnotatedSecondParamNonType
+testSliceAnnotated39
 
 # Fails only without --release
 testModuleAsTypeNoCrash

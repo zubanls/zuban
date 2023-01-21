@@ -1589,16 +1589,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
     fn compute_get_item_on_annotated(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
-        let result = self.compute_slice_db_type(iterator.next().unwrap());
-        if let Some(second_param) = iterator.next() {
-            // TODO what about second? infer?
+        let first = iterator.next().unwrap();
+        if iterator.next().is_none() {
+            self.add_typing_issue(
+                slice_type.as_node_ref(),
+                IssueType::InvalidType(Box::from(
+                    "Annotated[...] must have exactly one type argument and at least one annotation",
+                )),
+            );
+            TypeContent::Unknown
         } else {
-            todo!()
+            TypeContent::DbType(self.compute_slice_db_type(first))
         }
-        if iterator.next().is_some() {
-            todo!()
-        }
-        TypeContent::DbType(result)
     }
 
     fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
