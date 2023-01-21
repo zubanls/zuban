@@ -362,8 +362,6 @@ testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
 
-# typing Annotated
-testBaseClassAnnotatedWithoutArgs
 # typing assert_type
 testTypingSelfAssertType
 testInvalidAssertType

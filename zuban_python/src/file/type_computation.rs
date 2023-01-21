@@ -58,6 +58,7 @@ pub(super) enum SpecialType {
     TypeAlias,
     Self_,
     Final,
+    Annotated,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -593,6 +594,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     );
                     DbType::Any
                 }
+                SpecialType::Annotated => {
+                    self.add_typing_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from(
+                            "Annotated[...] must have exactly one type argument and at least one annotation",
+                        )),
+                    );
+                    DbType::Any
+                }
                 _ => {
                     self.add_typing_issue(
                         node_ref,
@@ -830,6 +840,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::Final => self.compute_type_get_item_on_final(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
+                        SpecialType::Annotated => self.compute_get_item_on_annotated(s),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -1574,6 +1585,20 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             },
         }
+    }
+
+    fn compute_get_item_on_annotated(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let result = self.compute_slice_db_type(iterator.next().unwrap());
+        if let Some(second_param) = iterator.next() {
+            // TODO what about second? infer?
+        } else {
+            todo!()
+        }
+        if iterator.next().is_some() {
+            todo!()
+        }
+        TypeContent::DbType(result)
     }
 
     fn expect_type_var_like_args(&mut self, slice_type: SliceType, class: &'static str) {
@@ -2352,6 +2377,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingLiteral => SpecialType::Literal,
                 Specific::TypingFinal => SpecialType::Final,
                 Specific::TypingSelf => SpecialType::Self_,
+                Specific::TypingAnnotated => SpecialType::Annotated,
                 _ => unreachable!(),
             })
         }
