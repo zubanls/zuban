@@ -195,10 +195,17 @@ impl<'db> Diagnostic<'db> {
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
             IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone().into(),
-            IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => format!(
-                "Incompatible default for argument \"{argument_name}\" \
-                 (default has type \"{got}\", argument has type \"{expected}\")"
-            ),
+            IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => {
+                let mut out = format!(
+                    "Incompatible default for argument \"{argument_name}\" \
+                     (default has type \"{got}\", argument has type \"{expected}\")"
+                );
+                if got.as_ref() == "None" {
+                    out += &format!("\n{path}:{line}: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True");
+                    out += &format!("\n{path}:{line}: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase");
+                }
+                out
+            },
             IssueType::TypeNotFound => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())

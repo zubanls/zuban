@@ -1,6 +1,4 @@
 # Next up
-testNoInferOptionalFromDefaultNone
-testNoInferOptionalFromDefaultNoneComment
 testInferOptionalDictKeyValueTypes
 testNoneClassVariableInInit
 testMultipleAssignmentNoneClassVariableInInit
@@ -1686,6 +1684,7 @@ testLiteralInsideOtherTypesTypeCommentsPython3
 testLiteralInvalidTypeComment
 testLiteralInvalidTypeComment2
 testInferOptionalFromDefaultNoneComment
+testNoInferOptionalFromDefaultNoneComment
 
 # --scripts-are-modules
 testScriptsAreModules
