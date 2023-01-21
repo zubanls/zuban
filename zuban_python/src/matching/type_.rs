@@ -214,13 +214,14 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match self {
-            Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type),
+            Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type, variance),
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => Self::matches_class(
                     i_s,
                     matcher,
                     &Class::from_db_type(i_s.db, *link, generics),
                     value_type,
+                    variance,
                 ),
                 DbType::Type(t1) => match value_type.maybe_db_type() {
                     Some(DbType::Type(t2)) => {
@@ -701,6 +702,7 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         class1: &Class,
         value_type: &Type,
+        variance: Variance,
     ) -> Match {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
             if class1.node_ref == class2.node_ref {
@@ -741,13 +743,16 @@ impl<'a> Type<'a> {
                 }
                 return Match::new_true();
             }
-        } else if let Some(DbType::Literal(literal)) = value_type.maybe_db_type() {
-            return Self::matches_class(
-                i_s,
-                matcher,
-                class1,
-                &Type::Class(i_s.db.python_state.literal_class(literal.kind)),
-            );
+        } else if variance == Variance::Covariant {
+            if let Some(DbType::Literal(literal)) = value_type.maybe_db_type() {
+                return Self::matches_class(
+                    i_s,
+                    matcher,
+                    class1,
+                    &Type::Class(i_s.db.python_state.literal_class(literal.kind)),
+                    variance,
+                );
+            }
         }
         Match::new_false()
     }
@@ -971,7 +976,14 @@ impl<'a> Type<'a> {
         if let Some(class) = t.maybe_class(i_s.db) {
             if let Some(mro) = self.mro(i_s) {
                 for (_, value_type) in mro {
-                    if Self::matches_class(i_s, &mut Matcher::default(), &class, &value_type).bool()
+                    if Self::matches_class(
+                        i_s,
+                        &mut Matcher::default(),
+                        &class,
+                        &value_type,
+                        Variance::Covariant,
+                    )
+                    .bool()
                     {
                         return value_type.into_db_type(i_s);
                     }

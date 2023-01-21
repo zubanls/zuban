@@ -369,7 +369,6 @@ testTypingSelfAssertType
 testInvalidAssertType
 
 # Final literal issues
-testLiteralFinalPropagatesThroughGenerics
 testLiteralWithFinalPropagation
 testLiteralWithFinalPropagationIsNotLeaking
 
