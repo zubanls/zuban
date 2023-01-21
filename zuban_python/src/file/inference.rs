@@ -402,11 +402,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
-                const TYPE: &str = "# type: ";
+                const TYPE: &str = "# type:";
                 let mut type_comment_result = None;
                 if let Some(start) = suffix.find(TYPE) {
-                    let start = start + TYPE.len();
-                    let s = &suffix[start..];
+                    let mut start = start + TYPE.len();
+                    let with_spaces = &suffix[start..];
+                    let s = with_spaces.trim_start_matches(' ');
+                    start += with_spaces.len() - s.len();
                     debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                     if s != "ignore" {
                         type_comment_result = Some(self.compute_type_comment(
