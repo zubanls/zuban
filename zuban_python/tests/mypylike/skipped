@@ -1,5 +1,4 @@
 # Next up
-testNoneNotMemberOfType
 testOptionalNotMemberOfType
 testInferOptionalFromDefaultNone
 testNoInferOptionalFromDefaultNone
@@ -15,6 +14,9 @@ testOptionalAndAnyBaseClass
 testFlattenOptionalUnion
 testOverloadWithNoneAndOptional
 testWarnNoReturnWorksWithStrictOptional
+
+# None as a default for class variables, even if not optional?
+testNoneClassVariable
 
 # Fails only without --release
 testModuleAsTypeNoCrash

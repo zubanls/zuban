@@ -155,7 +155,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             diagnostics_config.ignore_missing_imports = true;
         }
         let mut config = BaseConfig::default();
-        if steps.flags.contains(&"--strict-optional") {
+        if steps.flags.contains(&"--strict-optional") || self.file_name == "check-optional" {
             config.strict_optional = true;
         }
         if steps.flags.contains(&"--implicit-optional") {
