@@ -1,10 +1,5 @@
 # Next up
 testAnnotatedNoImport
-testAnnotatedAliasSimple
-testAnnotatedAliasTypeVar
-testAnnotatedAliasGenericTuple
-testAnnotatedAliasGenericUnion
-testAnnotatedSecondParamNonType
 
 # Fails only without --release
 testModuleAsTypeNoCrash

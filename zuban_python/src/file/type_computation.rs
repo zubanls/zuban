@@ -1952,6 +1952,14 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     compute_get_item_on_literal(slice_type)
                 )
             }
+            Specific::TypingAnnotated => {
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    from_alias_definition,
+                    compute_get_item_on_annotated(slice_type)
+                )
+            }
             _ => unreachable!("{:?}", specific),
         }
     }

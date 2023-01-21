@@ -42,6 +42,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingOptional => "Optional",
             Specific::TypingType => "Type",
             Specific::TypingLiteral => "Literal",
+            Specific::TypingAnnotated => "Annotated",
             _ => unreachable!("{:?}", self.specific),
         }
     }
@@ -75,6 +76,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
             Specific::TypingCallable => todo!(),
             Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
+            Specific::TypingAnnotated => todo!(),
             _ => unreachable!("{:?}", self.specific),
         }
     }

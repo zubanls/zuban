@@ -1194,6 +1194,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         | Specific::TypingOptional
         | Specific::TypingType
         | Specific::TypingLiteral
+        | Specific::TypingAnnotated
         | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
         Specific::Any | Specific::Cycle => on_missing(i_s),
         Specific::TypingCast => callable(i_s, &TypingCast()),
