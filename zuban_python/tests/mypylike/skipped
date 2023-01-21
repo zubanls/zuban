@@ -5,7 +5,6 @@ testAnnotatedAliasTypeVar
 testAnnotatedAliasGenericTuple
 testAnnotatedAliasGenericUnion
 testAnnotatedSecondParamNonType
-testSliceAnnotated39
 
 # Fails only without --release
 testModuleAsTypeNoCrash

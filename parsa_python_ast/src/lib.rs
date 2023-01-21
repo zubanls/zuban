@@ -2479,7 +2479,7 @@ impl<'db> Iterator for SliceIterator<'db> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.0.next().map(|n| {
-            if n.is_type(Nonterminal(slices)) {
+            if n.is_type(Nonterminal(slice)) {
                 SliceContent::Slice(Slice::new(n))
             } else {
                 SliceContent::NamedExpression(NamedExpression::new(n))
