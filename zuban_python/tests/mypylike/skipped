@@ -1,18 +1,13 @@
 # Next up
-testInferOptionalDictKeyValueTypes
-testNoneClassVariableInInit
-testMultipleAssignmentNoneClassVariableInInit
 testUseOfNoneReturningFunction
-testOptionalLambdaInference
-testGenericTypeAliasesOptional
-testDontSimplifyNoneUnionsWithStrictOptional
-testOptionalAndAnyBaseClass
 testFlattenOptionalUnion
 testOverloadWithNoneAndOptional
 testWarnNoReturnWorksWithStrictOptional
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariable
+testNoneClassVariableInInit
+testMultipleAssignmentNoneClassVariableInInit
 
 # Fails only without --release
 testModuleAsTypeNoCrash
@@ -312,6 +307,10 @@ testGenericTypeAliasesTypeVarBinding
 testParamSpecApplyConcatenateTwice
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
+
+# base class: type alias
+testDontSimplifyNoneUnionsWithStrictOptional
+testOptionalAndAnyBaseClass
 
 # descriptors
 testOverloadWithNonGenericDescriptor
@@ -974,6 +973,8 @@ testGenericJoinRecursiveTypes
 testGenericJoinRecursiveInvariant
 testGenericJoinNestedInvariantAny
 
+# __setitem__
+testInferOptionalDictKeyValueTypes
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
 testInferSetInitializedToEmpty
@@ -1021,6 +1022,9 @@ testLiteralAndGenericsRespectsValueRestriction
 testTypeVarValuesFunction
 testTypeVarValuesMethod1
 testTypeVarValuesMethod2
+
+# Callable[..., int] | Callable[..., str] lambda inference may conflict
+testOptionalLambdaInference
 
 # overload argument expression uses context inference multiple times
 testBadOverloadProbableMatch
@@ -1179,6 +1183,7 @@ testInferEqualsNotOptionalWithMultipleArgs
 testTernaryWithNone
 testNoneListTernary
 testIsinstanceAndOptionalAndAnyBase
+testGenericTypeAliasesOptional
 # narrowing with or/and
 testOptionalTypeOrTypeBothOptional
 testOptionalTypeOrTypeComplexUnion
