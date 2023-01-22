@@ -1,6 +1,5 @@
 # Next up
 testUseOfNoneReturningFunction
-testFlattenOptionalUnion
 testOverloadWithNoneAndOptional
 testWarnNoReturnWorksWithStrictOptional
 
