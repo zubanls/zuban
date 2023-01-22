@@ -1,6 +1,4 @@
 # Next up
-testUseOfNoneReturningFunction
-testWarnNoReturnWorksWithStrictOptional
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariable
@@ -625,6 +623,12 @@ testMalformedTypeAliasRuntimeReassignments
 
 # TypeAlias normal string interpreted as a forward reference
 testTypeAliasWithNewStyleUnionChangedToVariable
+
+# "Missing return statement"
+testWarnNoReturnWorksWithStrictOptional
+
+# ""f" does not return a value"
+testUseOfNoneReturningFunction
 
 # stdlib imports
 testOverloadSpecialCase
