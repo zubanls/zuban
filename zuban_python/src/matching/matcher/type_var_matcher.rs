@@ -584,23 +584,7 @@ fn calculate_type_vars<'db>(
             calculated_type_vars
                 .into_iter()
                 .zip(used_type_vars.unwrap().iter())
-                .map(|(c, type_var_like)| match c.type_ {
-                    // TODO use into_generic_item
-                    BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type(i_s.db)),
-                    BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
-                    BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
-                    BoundKind::Uncalculated => match type_var_like {
-                        TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
-                        // TODO TypeVarTuple: this feels wrong, should maybe be never?
-                        TypeVarLike::TypeVarTuple(_) => GenericItem::TypeArguments(
-                            TypeArguments::new_fixed_length(Box::new([])),
-                        ),
-                        // TODO ParamSpec: this feels wrong, should maybe be never?
-                        TypeVarLike::ParamSpec(_) => {
-                            GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
-                        }
-                    },
-                })
+                .map(|(c, type_var_like)| c.into_generic_item(i_s.db, type_var_like))
                 .collect(),
         )
     });
