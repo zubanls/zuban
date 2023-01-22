@@ -821,7 +821,6 @@ testGenericTypeBody1
 testSolveParamSpecWithSelfType
 param_spec_with_generic_class
 
-testSelfTypeInstance
 testSelfTypeStaticAccess
 testSelfTypeReturn
 testSelfTypeClass

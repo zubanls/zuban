@@ -13,9 +13,9 @@ use super::super::{
 use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{
-    CallableContent, CallableParams, DbType, GenericItem, GenericsList, ParamSpecArgument,
-    PointLink, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParams, Database, DbType, GenericItem, GenericsList,
+    ParamSpecArgument, PointLink, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -29,7 +29,7 @@ pub enum FunctionOrCallable<'a> {
     Callable(&'a CallableContent),
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum BoundKind {
     TypeVar(TypeVarBound),
     TypeVarTuple(TypeArguments),
@@ -43,7 +43,7 @@ impl Default for BoundKind {
     }
 }
 
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Clone)]
 pub struct CalculatedTypeVarLike {
     pub(super) type_: BoundKind,
     pub(super) defined_by_result_context: bool,
@@ -116,6 +116,25 @@ impl CalculatedTypeVarLike {
         item: &DbType,
     ) {
         todo!()
+    }
+
+    pub fn into_generic_item(self, db: &Database, type_var_like: &TypeVarLike) -> GenericItem {
+        match self.type_ {
+            BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type(db)),
+            BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
+            BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),
+            BoundKind::Uncalculated => match type_var_like {
+                TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
+                // TODO TypeVarTuple: this feels wrong, should maybe be never?
+                TypeVarLike::TypeVarTuple(_) => {
+                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(Box::new([])))
+                }
+                // TODO ParamSpec: this feels wrong, should maybe be never?
+                TypeVarLike::ParamSpec(_) => {
+                    GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
+                }
+            },
+        }
     }
 }
 
@@ -566,6 +585,7 @@ fn calculate_type_vars<'db>(
                 .into_iter()
                 .zip(used_type_vars.unwrap().iter())
                 .map(|(c, type_var_like)| match c.type_ {
+                    // TODO use into_generic_item
                     BoundKind::TypeVar(t) => GenericItem::TypeArgument(t.into_db_type(i_s.db)),
                     BoundKind::TypeVarTuple(ts) => GenericItem::TypeArguments(ts),
                     BoundKind::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params),

@@ -14,7 +14,8 @@ pub use generics::{Generics, GenericsIterator};
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub use matcher::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,
-    calculate_function_type_vars_and_return, CalculatedTypeArguments, Matcher,
+    calculate_function_type_vars_and_return, CalculatedTypeArguments, CalculatedTypeVarLike,
+    Matcher,
 };
 pub use params::{matches_params, matches_simple_params, overload_has_overlapping_params, Param};
 pub use result_context::ResultContext;

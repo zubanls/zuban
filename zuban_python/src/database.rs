@@ -2444,7 +2444,7 @@ impl TypeVarLikes {
         Self(vec.into_boxed_slice())
     }
 
-    fn into_vec(self) -> Vec<TypeVarLike> {
+    pub fn into_vec(self) -> Vec<TypeVarLike> {
         self.0.into_vec()
     }
 

@@ -778,6 +778,16 @@ pub struct FunctionParam<'x> {
     param: ASTParam<'x>,
 }
 
+impl<'db: 'x, 'x> FunctionParam<'x> {
+    pub fn annotation(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
+        self.param.annotation().map(|annotation| {
+            self.file
+                .inference(i_s)
+                .use_cached_annotation_type(annotation)
+        })
+    }
+}
+
 impl<'x> Param<'x> for FunctionParam<'x> {
     fn has_default(&self) -> bool {
         self.param.default().is_some()
