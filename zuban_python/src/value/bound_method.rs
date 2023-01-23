@@ -2,12 +2,10 @@ use super::{
     Callable, Function, Instance, LookupResult, OnTypeError, OverloadedFunction, Value, ValueKind,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
-use crate::database::{CallableContent, DbType, MroIndex};
+use crate::database::{DbType, MroIndex, TypeVarLikes};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{
-    replace_class_type_vars, CalculatedTypeVarLike, Matcher, ResultContext, Type,
-};
+use crate::matching::{replace_class_type_vars, Matcher, ResultContext, Type};
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
@@ -59,6 +57,10 @@ impl<'db: 'a, 'a> BoundMethodFunction<'a> {
                                 if c.calculated() {
                                     old_type_vars.remove(i);
                                 }
+                            }
+                            if !old_type_vars.is_empty() {
+                                callable_content.type_vars =
+                                    Some(TypeVarLikes::from_vec(old_type_vars));
                             }
                             let t = t.replace_type_var_likes_and_self(
                                 i_s.db,

@@ -318,7 +318,7 @@ impl CalculatedTypeArguments {
                 fm[usage.index()].clone()
             } else {
                 // TODO we are just passing the type vars again. Does this make sense?
-                // GenericItem::TypeArgument(DbType::TypeVar(usage.clone()))
+                // usage.into_generic_item()
                 todo!()
             };
         }
