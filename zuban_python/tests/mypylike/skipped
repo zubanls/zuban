@@ -322,6 +322,12 @@ testNewAnalyzerNoCrashOnCustomProperty
 testOverloadNotConfusedForProperty
 testForwardReferenceToDynamicallyTypedProperty
 testForwardReferenceToStaticallyTypedProperty
+testSelfTypePropertyUnion
+testSelfTypeProperSupertypeAttribute
+testSelfTypeProperSupertypeAttributeTuple
+testSelfTypeProperSupertypeAttributeMeta
+testSelfTypeProperSupertypeAttributeGeneric
+testUnionPropertyField
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -362,6 +368,8 @@ testTypingSelfRedundantWarning
 testTypingSelfDifferentImport
 # Self type classmethod (no Self)
 testSelfTypeClass
+testSelfTypeClone
+testSelfTypeNoTypeVars
 testSelfTypeRecursiveBinding
 testSelfTypeRestrictedClassMethod
 testSelfTypeProtocolClassmethodMatch
@@ -372,6 +380,7 @@ testSelfTypeClassMethodOnUnionList
 testSelfTypeClassMethodOverloadedOnInstance
 testSelfTypeGenericClassNoClashClassMethod
 testSelfTypeGenericClassNoClashClassMethodClassObject
+testSelfTypeLambdaDefault
 SelfTypeOverloadedClassMethod
 # Self type with final
 testTypingSelfAllowAliasUseInFinalClasses
@@ -383,6 +392,10 @@ testForwardReferenceToDynamicallyTypedStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
+
+# "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
+testSelfTypeNonsensical
+testSelfTypeNew
 
 # typing assert_type
 testTypingSelfAssertType
@@ -589,6 +602,8 @@ testProtocolMultipleUpdates
 testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
 testModuleAsProtocolImplementationFine
+testMixinAllowedWithProtocol
+testBadClassLevelDecoratorHack
 # Duck typing
 testOverloadingAndDucktypeCompatibility
 
@@ -758,6 +773,8 @@ testNewAnalyzerClassPropertiesInAllScopes
 testIgnoredAttrReprocessedMeta
 testImplementingOverloadedMethod
 testTypingSelfMetaClassDisabled
+testSelfTypeStructureMetaclassMatch
+testSelfTypeProtocolMetaclassMatch
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -823,6 +840,7 @@ testPartiallyTypedSelfInMethodDataAttribute
 testCallableDataAttribute
 testTypingSelfClassVar
 testTypingSelfCallableClassVar
+testSelfTypeCallableClassVarOldStyle
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
@@ -837,15 +855,6 @@ param_spec_with_generic_class
 testSelfTypeStaticAccess
 testSelfTypeReturn
 testSelfTypeBound
-testSelfTypeClone
-testSelfTypeNonsensical
-testSelfTypeLambdaDefault
-testSelfTypeNew
-testSelfTypePropertyUnion
-testSelfTypeProperSupertypeAttribute
-testSelfTypeProperSupertypeAttributeTuple
-testSelfTypeProperSupertypeAttributeMeta
-testSelfTypeProperSupertypeAttributeGeneric
 testSelfTypeRestrictedMethod
 testSelfTypeRestrictedMethodOverload
 testSelfTypeRestrictedMethodOverloadFallback
@@ -856,20 +865,13 @@ testSelfTypeNarrowBinding
 testSelfTypeTrickyExample
 testSelfTypeReallyTrickyExample
 testSelfTypeMutuallyExclusiveRestrictions
-testSelfTypeStructureMetaclassMatch
-testSelfTypeProtocolMetaclassMatch
 testSelfTypeNotSelfType
-testSelfTypeNoTypeVars
 testSelfTypeNoTypeVarsRestrict
 testSelfTypeMultipleTypeVars
 testSelfTypeBadTypeIgnoredInConstructorOverload
 testSelfTypeInGenericClassUsedFromAnotherGenericClass1
-testMixinAllowedWithProtocol
-testBadClassLevelDecoratorHack
-testUnionPropertyField
 testEnumerateReturningSelfFromIter
 testTypingSelfAttrOldVsNewStyle
-testSelfTypeCallableClassVarOldStyle
 
 # Self tests
 testTypingSelfBasic
