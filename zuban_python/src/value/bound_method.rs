@@ -53,7 +53,7 @@ impl<'db: 'a, 'a> BoundMethodFunction<'a> {
                                 std::mem::replace(&mut callable_content.type_vars, None)
                                     .unwrap()
                                     .into_vec();
-                            for (i, c) in calculated.iter().rev().enumerate() {
+                            for (i, c) in calculated.iter().enumerate().rev() {
                                 if c.calculated() {
                                     old_type_vars.remove(i);
                                 }
