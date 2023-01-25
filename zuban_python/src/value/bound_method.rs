@@ -6,6 +6,7 @@ use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{replace_class_type_vars, ResultContext, Type};
+use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
@@ -54,8 +55,15 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
         self.function.as_value().name()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        self.function.as_value().lookup_internal(i_s, name)
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.function
+            .as_value()
+            .lookup_internal(i_s, node_ref, name)
     }
 
     fn execute(

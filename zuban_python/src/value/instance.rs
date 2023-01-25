@@ -46,7 +46,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         self.class.name()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         for (mro_index, class) in self.class.mro(i_s) {
             if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
@@ -89,12 +94,16 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
+        let node_ref = args.as_node_ref();
+        if let Some(inf) = self
+            .lookup_internal(i_s, Some(node_ref), "__call__")
+            .into_maybe_inferred()
+        {
             inf.run_on_value(i_s, &mut |i_s, value| {
                 value.execute(i_s, args, result_context, on_type_error)
             })
         } else {
-            args.as_node_ref().add_typing_issue(
+            node_ref.add_typing_issue(
                 i_s.db,
                 IssueType::NotCallable {
                     type_: format!("{:?}", self.name()).into(),

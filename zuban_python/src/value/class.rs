@@ -327,7 +327,10 @@ impl<'db: 'a, 'a> Class<'a> {
         for c in self.class_infos(i_s).mro.iter() {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
-                if let Some(l) = other.lookup_internal(i_s, class_name).into_maybe_inferred() {
+                if let Some(l) = other
+                    .lookup_internal(i_s, None, class_name)
+                    .into_maybe_inferred()
+                {
                     // TODO check signature details here!
                 } else {
                     return false;
@@ -472,7 +475,12 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         Module::new(db, self.node_ref.file)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         self.lookup_and_class(i_s, name).0
     }
 

@@ -75,7 +75,7 @@ impl<'a> Type<'a> {
                 },
                 _ => self.maybe_class(i_s.db).and_then(|c| {
                     Instance::new(c, None)
-                        .lookup_internal(i_s, "__call__")
+                        .lookup_internal(i_s, None, "__call__")
                         .into_maybe_inferred()
                         .and_then(|i| {
                             i.maybe_callable(i_s, true)
@@ -242,7 +242,7 @@ impl<'a> Type<'a> {
                             let cls = Class::from_db_type(i_s.db, *link, generics);
                             // TODO the __init__ should actually be looked up on the original class, not
                             // the subclass
-                            let lookup = cls.lookup_internal(i_s, "__init__");
+                            let lookup = cls.lookup_internal(i_s, None, "__init__");
                             if let LookupResult::GotoName(_, init) = lookup {
                                 let t2 = init.class_as_type(i_s);
                                 if let Some(DbType::Callable(c2)) = t2.maybe_db_type() {

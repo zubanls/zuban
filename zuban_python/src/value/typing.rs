@@ -47,7 +47,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         }
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -118,7 +123,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         "ClassVar"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -168,7 +178,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         "Type"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
@@ -177,14 +192,13 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                         Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
                         bound,
                     )
-                    .lookup_internal(i_s, name)
+                    .lookup_internal(i_s, node_ref, name)
                 } else {
                     todo!("{t:?}")
                 }
             }
-            DbType::Class(link, generics_list) => {
-                Class::from_db_type(i_s.db, *link, generics_list).lookup_internal(i_s, name)
-            }
+            DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
+                .lookup_internal(i_s, node_ref, name),
             DbType::Callable(_) => LookupResult::None,
             _ => todo!("{:?}", self.db_type),
         }
@@ -271,7 +285,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
         "Any"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -304,7 +323,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         "cast"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -381,7 +405,12 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         "reveal_type"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -436,7 +465,12 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
         self.type_var_usage.type_var.name(self.db)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         let type_var = &self.type_var_usage.type_var;
         if !type_var.restrictions.is_empty() {
             debug!("TODO type var values");
@@ -460,7 +494,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                 db_type,
                 None,
                 &mut |i_s, v| {
-                    let result = v.lookup_internal(i_s, name);
+                    let result = v.lookup_internal(i_s, node_ref, name);
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
@@ -479,7 +513,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
             let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we
             // should just use a precreated object() from somewhere.
-            Instance::new(s.object_class(), None).lookup_internal(i_s, name)
+            Instance::new(s.object_class(), None).lookup_internal(i_s, node_ref, name)
         }
     }
 
@@ -670,7 +704,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         "TypeVar"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         LookupResult::None
     }
 
@@ -705,7 +744,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
         "TypeVarTuple"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         LookupResult::None
     }
 
@@ -846,7 +890,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
         "ParamSpec"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         LookupResult::None
     }
 
@@ -983,7 +1032,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
         "NewType"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         // TODO?
         LookupResult::None
     }

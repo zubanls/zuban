@@ -879,7 +879,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
     ) -> Inferred {
         self.run_on_value(i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, name, &|i_s| todo!("{value:?}"))
+            value.lookup_implicit(i_s, Some(from), name, &|i_s| todo!("{value:?}"))
         })
         .run_on_value(i_s, &mut |i_s, value| {
             value.execute(

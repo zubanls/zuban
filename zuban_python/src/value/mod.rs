@@ -250,7 +250,12 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         base_description!(self)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult;
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult;
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
         true
@@ -259,10 +264,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn lookup(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        node_ref: Option<NodeRef>,
         name: &str,
         on_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
-        let result = self.lookup_internal(i_s, name);
+        let result = self.lookup_internal(i_s, node_ref, name);
         if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s) {
             on_error(i_s);
         }
@@ -272,10 +278,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn lookup_implicit(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        node_ref: Option<NodeRef>,
         name: &str,
         on_error: OnLookupError<'db, '_>,
     ) -> Inferred {
-        match self.lookup(i_s, name, on_error) {
+        match self.lookup(i_s, node_ref, name, on_error) {
             LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
             LookupResult::FileReference(f) => todo!(),
             LookupResult::None => Inferred::new_unknown(),

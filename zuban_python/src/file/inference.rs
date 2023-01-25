@@ -497,7 +497,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
-                        .lookup_implicit(i_s, normal, &|i_s| todo!())
+                        .lookup_implicit(i_s, Some(node_ref), normal, &|i_s| todo!())
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
@@ -636,7 +636,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     let args = slice.as_args(self.i_s.context);
                     base.run_on_value(self.i_s, &mut |i_s, v| {
                         debug!("Set Item on {}", v.name());
-                        v.lookup_implicit(i_s, "__setitem__", &|i_s| {
+                        v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {
                             debug!("TODO __setitem__ not found");
                         })
                         .run_on_value(i_s, &mut |i_s, v| {
@@ -930,7 +930,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 }
                 let node_ref = NodeRef::new(self.file, f.index());
                 inf.run_on_value(self.i_s, &mut |i_s, value| {
-                    value.lookup_implicit(i_s, method_name, &|i_s| {
+                    value.lookup_implicit(i_s, Some(node_ref), method_name, &|i_s| {
                         todo!()
                         /*
                         node_ref.add_typing_issue(
@@ -1030,7 +1030,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             maybe_add_union_note(i_s)
         };
         left.run_on_value(self.i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, op.magic_method, &|i_s| {
+            value.lookup_implicit(i_s, Some(node_ref), op.magic_method, &|i_s| {
                 node_ref.add_typing_issue(
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
@@ -1082,16 +1082,17 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         is_target: bool,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        let node_ref = NodeRef::new(self.file, node_index);
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.lookup(i_s, name.as_str(), &|i_s| {
+                match value.lookup(i_s, Some(node_ref), name.as_str(), &|i_s| {
                     let object = if value.as_module().is_some() {
                         Box::from("Module")
                     } else {
                         format!("{:?}", value.as_type(i_s).format_short(self.i_s.db)).into()
                     };
-                    NodeRef::new(self.file, node_index).add_typing_issue(
+                    node_ref.add_typing_issue(
                         i_s.db,
                         IssueType::AttributeError {
                             object,

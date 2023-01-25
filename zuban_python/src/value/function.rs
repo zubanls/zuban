@@ -704,7 +704,12 @@ impl<'db, 'a> Value<'db, 'a> for Function<'a> {
         func.name().as_str()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!("{name:?}")
     }
 
@@ -1216,7 +1221,12 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         self.node_ref.as_code()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
