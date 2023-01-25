@@ -1,4 +1,5 @@
 # Next up
+testSolveParamSpecWithSelfType
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariable

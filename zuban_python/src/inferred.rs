@@ -6,13 +6,15 @@ use crate::arguments::{NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
-    Specific, TypeVarLike,
+    Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
-use crate::matching::{replace_class_type_vars, FormatData, Generics, ResultContext, Type};
+use crate::matching::{
+    replace_class_type_vars, FormatData, Generics, Matcher, ResultContext, Type,
+};
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
@@ -711,11 +713,19 @@ impl<'db: 'slf, 'slf> Inferred {
                         let (instance, class) =
                             load_bound_method_instance(i_s, &instance_inf, mro_index);
                         let func = Function::new(node_ref, Some(class));
-                        let complex = ComplexPoint::BoundMethod(
-                            instance_inf.as_any_link(i_s),
-                            mro_index,
-                            *definition,
-                        );
+                        let complex = if let Some(first_type) =
+                            func.iter_params().next().unwrap().annotation(i_s)
+                        {
+                            ComplexPoint::TypeInstance(Box::new(create_signature_without_self(
+                                i_s, func, instance, first_type,
+                            )))
+                        } else {
+                            ComplexPoint::BoundMethod(
+                                instance_inf.as_any_link(i_s),
+                                mro_index,
+                                *definition,
+                            )
+                        };
                         return Self::new_unsaved_complex(complex);
                     }
                 }
@@ -1231,6 +1241,57 @@ fn load_bound_method_instance<'db>(
     // Mro classes are never owned, because they are saved on classes.
     let class = class_t.expect_borrowed_class(i_s.db);
     (instance, class)
+}
+
+fn create_signature_without_self(
+    i_s: &mut InferenceState,
+    func: Function,
+    instance: Instance,
+    expected_type: Type,
+) -> DbType {
+    let mut calculated = vec![];
+    let type_vars = func.type_vars(i_s);
+    let type_vars_len = type_vars.map(|t| t.len()).unwrap_or(0);
+    calculated.resize_with(type_vars_len, Default::default);
+    let mut matcher = Matcher::new_reverse_function_matcher(func, type_vars, &mut calculated);
+    let instance_t = instance.as_type(i_s);
+    let match_ = matcher.match_reverse(|m| expected_type.is_sub_type_of(i_s, m, &instance_t));
+    if !match_.bool() {
+        todo!()
+    }
+    let mut t = func.as_db_type(i_s, true);
+    if let Some(type_vars) = type_vars {
+        let DbType::Callable(callable_content) = &mut t else {
+            unreachable!();
+        };
+        let mut old_type_vars = std::mem::replace(&mut callable_content.type_vars, None)
+            .unwrap()
+            .into_vec();
+        for (i, c) in calculated.iter().enumerate().rev() {
+            if c.calculated() {
+                old_type_vars.remove(i);
+            }
+        }
+        if !old_type_vars.is_empty() {
+            callable_content.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
+        }
+        t = t.replace_type_var_likes_and_self(
+            i_s.db,
+            &mut |usage| {
+                if usage.in_definition() == func.node_ref.as_link() {
+                    let index = usage.index().as_usize();
+                    let c = &calculated[index];
+                    if c.calculated() {
+                        return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
+                    }
+                }
+                usage.into_generic_item()
+            },
+            &mut || DbType::Self_,
+        );
+    }
+    // TODO this should not be run separately, we do two replacements here.
+    replace_class_type_vars(i_s, &t, &instance.class)
 }
 
 fn resolve_specific(db: &Database, specific: Specific) -> Instance {
