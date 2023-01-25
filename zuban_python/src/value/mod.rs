@@ -228,6 +228,15 @@ impl LookupResult {
             _ => self,
         }
     }
+
+    fn and_then(self, c: impl FnOnce(Inferred) -> Option<Inferred>) -> Option<Self> {
+        match self {
+            Self::GotoName(link, inf) => c(inf).map(|inf| Self::GotoName(link, inf)),
+            Self::UnknownName(inf) => c(inf).map(|inf| Self::UnknownName(inf)),
+            // TODO is it ok that map does not include FileReference(_)?
+            _ => Some(self),
+        }
+    }
 }
 
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520

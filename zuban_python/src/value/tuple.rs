@@ -43,7 +43,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     ) -> LookupResult {
         let tuple_cls = i_s.db.python_state.tuple_with_any_generics();
         for (mro_index, class) in tuple_cls.mro(i_s) {
-            let result = class.lookup_symbol(i_s, name).map(|inf| {
+            let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 inf.bind_descriptors(
                     i_s,
                     |i_s| {
@@ -66,11 +66,14 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                             ]))),
                         ))
                     },
+                    node_ref,
                     mro_index,
                 )
             });
-            if !matches!(result, LookupResult::None) {
-                return result;
+            match result {
+                Some(LookupResult::None) => (),
+                None => return LookupResult::None,
+                Some(x) => return x,
             }
         }
         debug!("TODO tuple object lookups");

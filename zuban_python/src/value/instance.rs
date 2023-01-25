@@ -66,18 +66,25 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                     );
                 }
             }
-            let result = class.lookup_symbol(i_s, name).map(|inf| {
+            let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let Some(c) = class.maybe_class(i_s.db) {
                     let mut i_s = i_s.with_class_context(&c);
                     inf.resolve_class_type_vars(&mut i_s, &self.class)
-                        .bind_descriptors(&mut i_s, |i_s| self.as_inferred(i_s), mro_index)
+                        .bind_descriptors(
+                            &mut i_s,
+                            |i_s| self.as_inferred(i_s),
+                            node_ref,
+                            mro_index,
+                        )
                 } else {
                     inf.resolve_class_type_vars(i_s, &self.class)
-                        .bind_descriptors(i_s, |i_s| self.as_inferred(i_s), mro_index)
+                        .bind_descriptors(i_s, |i_s| self.as_inferred(i_s), node_ref, mro_index)
                 }
             });
-            if !matches!(result, LookupResult::None) {
-                return result;
+            match result {
+                Some(LookupResult::None) => (),
+                None => return LookupResult::None,
+                Some(x) => return x,
             }
         }
         LookupResult::None
@@ -120,10 +127,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         let mro_iterator = self.class.mro(i_s);
+        let node_ref = slice_type.as_node_ref();
         let finder = ClassMroFinder {
             i_s,
             instance: self,
             mro_iterator,
+            from: slice_type.as_node_ref(),
             name: "__getitem__",
         };
         for found_on_class in finder {
@@ -154,7 +163,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 _ => (),
             }
         }
-        slice_type.as_node_ref().add_typing_issue(
+        node_ref.add_typing_issue(
             i_s.db,
             IssueType::NotIndexable {
                 type_: self.class.format_short(i_s.db),
@@ -169,6 +178,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             i_s,
             instance: self,
             mro_iterator,
+            from,
             name: "__iter__",
         };
         for found_on_class in finder {
@@ -230,6 +240,7 @@ struct ClassMroFinder<'db, 'a, 'c, 'd> {
     i_s: &'d mut InferenceState<'db, 'c>,
     instance: &'d Instance<'d>,
     mro_iterator: MroIterator<'db, 'a>,
+    from: NodeRef<'d>,
     name: &'d str,
 }
 
@@ -241,15 +252,16 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_> {
             if let Some(class) = t.maybe_class(self.i_s.db) {
                 let result = class
                     .lookup_symbol(self.i_s, self.name)
-                    .map(|inf| {
+                    .and_then(|inf| {
                         inf.resolve_class_type_vars(self.i_s, &self.instance.class)
                             .bind_descriptors(
                                 self.i_s,
                                 |i_s| self.instance.as_inferred(i_s),
+                                Some(self.from),
                                 mro_index,
                             )
                     })
-                    .into_maybe_inferred();
+                    .and_then(|lookup_result| lookup_result.into_maybe_inferred());
                 if let Some(result) = result {
                     return Some(FoundOnClass::Attribute(result));
                 }

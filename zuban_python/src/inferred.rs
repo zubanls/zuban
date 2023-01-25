@@ -702,8 +702,9 @@ impl<'db: 'slf, 'slf> Inferred {
         self,
         i_s: &mut InferenceState<'db, '_>,
         get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred,
+        from: Option<NodeRef>,
         mro_index: MroIndex,
-    ) -> Self {
+    ) -> Option<Self> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
                 PointType::Specific => {
@@ -721,7 +722,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             {
                                 ComplexPoint::TypeInstance(Box::new(t))
                             } else {
-                                return Self::new_any();
+                                return if let Some(node_ref) = from {
+                                    Some(Self::new_any())
+                                } else {
+                                    None
+                                };
                             }
                         } else {
                             ComplexPoint::BoundMethod(
@@ -730,7 +735,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 *definition,
                             )
                         };
-                        return Self::new_unsaved_complex(complex);
+                        return Some(Self::new_unsaved_complex(complex));
                     }
                 }
                 PointType::Complex => {
@@ -742,7 +747,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 mro_index,
                                 *definition,
                             );
-                            return Self::new_unsaved_complex(complex);
+                            return Some(Self::new_unsaved_complex(complex));
                         }
                         ComplexPoint::TypeInstance(t) => {
                             if let DbType::Callable(c) = t.as_ref() {
@@ -751,7 +756,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     mro_index,
                                     *definition,
                                 );
-                                return Self::new_unsaved_complex(complex);
+                                return Some(Self::new_unsaved_complex(complex));
                             }
                         }
                         _ => (),
@@ -764,7 +769,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::Unknown => (),
         }
-        self
+        Some(self)
     }
 
     pub fn description(&self, i_s: &mut InferenceState<'db, '_>) -> String {
