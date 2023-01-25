@@ -706,8 +706,13 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition, point) => match point.type_() {
                 PointType::Specific => {
                     if point.specific() == Specific::Function {
+                        let node_ref = NodeRef::from_link(i_s.db, *definition);
+                        let instance_inf = get_inferred(i_s);
+                        let (instance, class) =
+                            load_bound_method_instance(i_s, &instance_inf, mro_index);
+                        let func = Function::new(node_ref, Some(class));
                         let complex = ComplexPoint::BoundMethod(
-                            get_inferred(i_s).as_any_link(i_s),
+                            instance_inf.as_any_link(i_s),
                             mro_index,
                             *definition,
                         );
@@ -1008,11 +1013,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
             // TODO this is potentially not needed, a class could lazily be fetched with a
             // closure
             let inf = Inferred::from_any_link(i_s.db, instance_link);
-            let instance = inf.expect_instance(i_s);
-
-            let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
-            // Mro classes are never owned, because they are saved on classes.
-            let class = class_t.expect_borrowed_class(i_s.db);
+            let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
             match reference.complex() {
                 Some(ComplexPoint::FunctionOverload(overload)) => {
                     let func = OverloadedFunction::new(reference, overload, Some(class));
@@ -1217,6 +1218,19 @@ fn run_on_specific<'db: 'a, 'a, T>(
             callable(i_s, &instance)
         }
     }
+}
+
+fn load_bound_method_instance<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    inf: &Inferred,
+    mro_index: MroIndex,
+) -> (Instance<'db>, Class<'db>) {
+    let instance = inf.expect_instance(i_s);
+
+    let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
+    // Mro classes are never owned, because they are saved on classes.
+    let class = class_t.expect_borrowed_class(i_s.db);
+    (instance, class)
 }
 
 fn resolve_specific(db: &Database, specific: Specific) -> Instance {
