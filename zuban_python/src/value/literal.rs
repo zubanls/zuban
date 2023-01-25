@@ -1,7 +1,6 @@
-use super::{LookupResult, Module, OnLookupError, Value, ValueKind};
+use super::{LookupResult, Module, Value, ValueKind};
 use crate::database::{Database, DbType, Literal as DbLiteral};
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
 use crate::matching::Type;
 
 #[derive(Debug, Copy, Clone)]
@@ -43,28 +42,6 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
         self.value.should_add_lookup_error(i_s)
-    }
-
-    fn lookup(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-        on_error: OnLookupError<'db, '_>,
-    ) -> LookupResult {
-        self.value.lookup(i_s, name, on_error)
-    }
-
-    fn lookup_implicit(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        name: &str,
-        on_error: OnLookupError<'db, '_>,
-    ) -> Inferred {
-        self.value.lookup_implicit(i_s, name, on_error)
-    }
-
-    fn as_module(&self) -> Option<&Module<'a>> {
-        None
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
