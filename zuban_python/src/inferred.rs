@@ -716,9 +716,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         let complex = if let Some(first_type) =
                             func.iter_params().next().unwrap().annotation(i_s)
                         {
-                            ComplexPoint::TypeInstance(Box::new(create_signature_without_self(
-                                i_s, func, instance, first_type,
-                            )))
+                            if let Some(t) =
+                                create_signature_without_self(i_s, func, instance, first_type)
+                            {
+                                ComplexPoint::TypeInstance(Box::new(t))
+                            } else {
+                                return Self::new_any();
+                            }
                         } else {
                             ComplexPoint::BoundMethod(
                                 instance_inf.as_any_link(i_s),
@@ -1248,7 +1252,7 @@ fn create_signature_without_self(
     func: Function,
     instance: Instance,
     expected_type: Type,
-) -> DbType {
+) -> Option<DbType> {
     let mut calculated = vec![];
     let type_vars = func.type_vars(i_s);
     let type_vars_len = type_vars.map(|t| t.len()).unwrap_or(0);
@@ -1257,7 +1261,7 @@ fn create_signature_without_self(
     let instance_t = instance.as_type(i_s);
     let match_ = matcher.match_reverse(|m| expected_type.is_sub_type_of(i_s, m, &instance_t));
     if !match_.bool() {
-        todo!()
+        return None;
     }
     let mut t = func.as_db_type(i_s, true);
     if let Some(type_vars) = type_vars {
@@ -1291,7 +1295,7 @@ fn create_signature_without_self(
         );
     }
     // TODO this should not be run separately, we do two replacements here.
-    replace_class_type_vars(i_s, &t, &instance.class)
+    Some(replace_class_type_vars(i_s, &t, &instance.class))
 }
 
 fn resolve_specific(db: &Database, specific: Specific) -> Instance {
