@@ -711,18 +711,28 @@ impl<'db: 'slf, 'slf> Inferred {
                     if point.specific() == Specific::Function {
                         let node_ref = NodeRef::from_link(i_s.db, *definition);
                         let instance_inf = get_inferred(i_s);
-                        let (instance, class) =
+                        let (instance, func_class) =
                             load_bound_method_instance(i_s, &instance_inf, mro_index);
-                        let func = Function::new(node_ref, Some(class));
+                        let func = Function::new(node_ref, Some(func_class));
                         let complex = if let Some(first_type) =
                             func.iter_params().next().unwrap().annotation(i_s)
                         {
                             if let Some(t) =
-                                create_signature_without_self(i_s, func, instance, first_type)
+                                create_signature_without_self(i_s, func, instance, &first_type)
                             {
                                 ComplexPoint::TypeInstance(Box::new(t))
                             } else {
-                                return if let Some(node_ref) = from {
+                                return if let Some(from) = from {
+                                    from.add_typing_issue(
+                                        i_s.db,
+                                        IssueType::InvalidSelfArgument {
+                                            argument_type: instance
+                                                .as_type(i_s)
+                                                .format_short(i_s.db),
+                                            function_name: Box::from(func.name()),
+                                            callable: func.as_type(i_s).format_short(i_s.db),
+                                        },
+                                    );
                                     Some(Self::new_any())
                                 } else {
                                     None
@@ -1256,7 +1266,7 @@ fn create_signature_without_self(
     i_s: &mut InferenceState,
     func: Function,
     instance: Instance,
-    expected_type: Type,
+    expected_type: &Type,
 ) -> Option<DbType> {
     let mut calculated = vec![];
     let type_vars = func.type_vars(i_s);

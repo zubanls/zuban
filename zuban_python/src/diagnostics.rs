@@ -69,6 +69,7 @@ pub(crate) enum IssueType {
     MultipleTypeVarTuplesInClassDef,
     BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
+    InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -355,6 +356,9 @@ impl<'db> Diagnostic<'db> {
                 format!("Can't use bound type variable \"{name}\" to define generic alias"),
             IssueType::NestedConcatenate =>
                 "Nested Concatenates are invalid".to_owned(),
+            IssueType::InvalidSelfArgument{argument_type, function_name, callable} => format!(
+                "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
+            ),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
