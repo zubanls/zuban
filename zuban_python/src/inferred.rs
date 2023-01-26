@@ -1274,7 +1274,7 @@ fn create_signature_without_self(
     calculated.resize_with(type_vars_len, Default::default);
     let mut matcher = Matcher::new_reverse_function_matcher(func, type_vars, &mut calculated);
     let instance_t = instance.as_type(i_s);
-    let match_ = matcher.match_reverse(|m| expected_type.is_sub_type_of(i_s, m, &instance_t));
+    let match_ = matcher.match_reverse(|m| expected_type.is_super_type_of(i_s, m, &instance_t));
     if !match_.bool() {
         return None;
     }
