@@ -643,7 +643,9 @@ where
                     argument_with_index = self.arguments.next();
                     if let Some(ref arg) = argument_with_index {
                         match arg.kind {
-                            ArgumentKind::Positional { .. } | ArgumentKind::Inferred { .. } => (),
+                            ArgumentKind::Positional { .. }
+                            | ArgumentKind::Inferred { .. }
+                            | ArgumentKind::Comprehension { .. } => (),
                             ArgumentKind::Keyword { .. } => {
                                 self.unused_keyword_arguments
                                     .push(argument_with_index.take().unwrap());
