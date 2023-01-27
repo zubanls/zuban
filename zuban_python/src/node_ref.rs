@@ -158,8 +158,8 @@ impl<'file> NodeRef<'file> {
         Factor::maybe_by_index(&self.file.tree, self.node_index)
     }
 
-    pub fn maybe_named_expression(&self) -> Option<NamedExpression<'file>> {
-        NamedExpression::maybe_by_index(&self.file.tree, self.node_index)
+    pub fn as_named_expression(&self) -> NamedExpression<'file> {
+        NamedExpression::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn expect_import_from(&self) -> ImportFrom<'file> {

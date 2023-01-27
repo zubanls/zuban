@@ -359,16 +359,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
                     position, node_ref, ..
                 } => {
                     if position == 1 {
-                        if let Some(named_expr) = node_ref.maybe_named_expression() {
-                            result = Some(
-                                arg.as_node_ref()
-                                    .file
-                                    .inference(i_s)
-                                    .compute_cast_target(node_ref, named_expr),
-                            )
-                        } else {
-                            todo!("is a comprehension")
-                        }
+                        result = Some(
+                            arg.as_node_ref()
+                                .file
+                                .inference(i_s)
+                                .compute_cast_target(node_ref),
+                        )
                     } else {
                         arg.infer(i_s, &mut ResultContext::Unknown);
                     }
@@ -552,8 +548,8 @@ fn maybe_type_var(
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
-                .maybe_named_expression()
-                .and_then(|named_expr| named_expr.maybe_single_string_literal())
+                .as_named_expression()
+                .maybe_single_string_literal()
                 .map(|py_string| (node_ref, py_string))
         } else {
             None
@@ -593,9 +589,9 @@ fn maybe_type_var(
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
                     let mut inference = node_ref.file.inference(i_s);
-                    if let Some(t) = node_ref.maybe_named_expression().and_then(|named_expr| {
-                        inference.compute_type_var_constraint(named_expr.expression())
-                    }) {
+                    if let Some(t) = inference
+                        .compute_type_var_constraint(node_ref.as_named_expression().expression())
+                    {
                         restrictions.push(t);
                     } else {
                         return None;
@@ -791,8 +787,8 @@ fn maybe_type_var_tuple(
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
-                .maybe_named_expression()
-                .and_then(|named_expr| named_expr.maybe_single_string_literal())
+                .as_named_expression()
+                .maybe_single_string_literal()
                 .map(|py_string| (node_ref, py_string))
         } else {
             None
@@ -937,8 +933,8 @@ fn maybe_param_spec(
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
-                .maybe_named_expression()
-                .and_then(|named_expr| named_expr.maybe_single_string_literal())
+                .as_named_expression()
+                .maybe_single_string_literal()
                 .map(|py_string| (node_ref, py_string))
         } else {
             None
@@ -1073,8 +1069,8 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
-                .maybe_named_expression()
-                .and_then(|named_expr| named_expr.maybe_single_string_literal())
+                .as_named_expression()
+                .maybe_single_string_literal()
                 .map(|py_string| (node_ref, py_string))
         } else {
             None
@@ -1101,11 +1097,10 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
         }
         let type_node_ref = if let Some(second_arg) = iterator.next() {
             if let ArgumentKind::Positional { node_ref, .. } = second_arg.kind {
-                if let Some(named_expr) = node_ref.maybe_named_expression() {
-                    NodeRef::new(node_ref.file, named_expr.expression().index())
-                } else {
-                    todo!("is a comprehension")
-                }
+                NodeRef::new(
+                    node_ref.file,
+                    node_ref.as_named_expression().expression().index(),
+                )
             } else {
                 todo!()
             }

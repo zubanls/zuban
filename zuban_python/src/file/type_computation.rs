@@ -2305,11 +2305,8 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         DbType::Tuple(TupleContent::new_fixed_length(generics))
     }
 
-    pub fn compute_cast_target(
-        &mut self,
-        node_ref: NodeRef,
-        named_expr: NamedExpression,
-    ) -> Inferred {
+    pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Inferred {
+        let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;
         let mut comp = TypeComputation::new(
             self,
