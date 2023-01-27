@@ -714,6 +714,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let (instance, func_class) =
                             load_bound_method_instance(i_s, &instance_inf, mro_index);
                         let func = Function::new(node_ref, Some(func_class));
+                        func.type_vars(i_s); // Cache annotations
                         let complex = if let Some(first_type) =
                             func.iter_params().next().unwrap().annotation(i_s)
                         {
