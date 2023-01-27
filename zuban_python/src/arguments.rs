@@ -259,6 +259,11 @@ pub enum ArgumentKind<'db, 'a> {
         node_ref: NodeRef<'a>,
         position: usize,
     },
+    Comprehension {
+        context: Context<'db, 'a>,
+        file: &'a PythonFile,
+        comprehension: Comprehension<'a>,
+    },
 }
 
 impl<'db, 'a> ArgumentKind<'db, 'a> {
@@ -350,6 +355,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                     TupleContent::new_fixed_length(parts),
                 ))))
             }
+            ArgumentKind::Comprehension { .. } => todo!(),
             ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
             ),
@@ -362,6 +368,11 @@ impl<'db, 'a> Argument<'db, 'a> {
             | ArgumentKind::Keyword { node_ref, .. }
             | ArgumentKind::ParamSpec { node_ref, .. }
             | ArgumentKind::Inferred { node_ref, .. } => *node_ref,
+            ArgumentKind::Comprehension {
+                file,
+                comprehension,
+                ..
+            } => NodeRef::new(file, comprehension.index()),
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
         }
     }
@@ -373,6 +384,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             | ArgumentKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
+            ArgumentKind::Comprehension { .. } => "0".to_owned(),
             ArgumentKind::Keyword { key, .. } => format!("{key:?}"),
             ArgumentKind::SlicesTuple { .. } => todo!(),
         }
@@ -625,9 +637,13 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 }
                 None
             }
-            Self::Comprehension(context, file, comprehension) => Some(
-                ArgumentKind::new_positional_return(*context, 1, file, comprehension.index()),
-            ),
+            Self::Comprehension(context, file, comprehension) => {
+                Some(BaseArgumentReturn::Argument(ArgumentKind::Comprehension {
+                    context: *context,
+                    file,
+                    comprehension: *comprehension,
+                }))
+            }
             Self::Finished => None,
             Self::SliceType(context, slice_type) => match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {

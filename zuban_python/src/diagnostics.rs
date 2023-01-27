@@ -70,6 +70,7 @@ pub(crate) enum IssueType {
     BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
+    UnexpectedComprehension,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -359,6 +360,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::InvalidSelfArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
             ),
+            IssueType::UnexpectedComprehension => "Unexpected comprehension".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

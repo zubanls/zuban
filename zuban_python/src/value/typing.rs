@@ -594,6 +594,7 @@ fn maybe_type_var(
                     {
                         restrictions.push(t);
                     } else {
+                        // TODO this needs a lint?
                         return None;
                     }
                 }
@@ -657,6 +658,11 @@ fn maybe_type_var(
                         return None;
                     }
                 },
+                ArgumentKind::Comprehension { .. } => {
+                    arg.as_node_ref()
+                        .add_typing_issue(i_s.db, IssueType::UnexpectedComprehension);
+                    return None;
+                }
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
@@ -856,6 +862,11 @@ fn maybe_type_var_tuple(
                         return None;
                     }
                 },
+                ArgumentKind::Comprehension { .. } => {
+                    arg.as_node_ref()
+                        .add_typing_issue(i_s.db, IssueType::UnexpectedComprehension);
+                    return None;
+                }
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
@@ -968,8 +979,22 @@ fn maybe_param_spec(
 
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Positional { node_ref, .. } => {
-                    node_ref.add_typing_issue(
+                ArgumentKind::Keyword { key, node_ref, .. } if key == "default" => {
+                    if let Some(t) = node_ref
+                        .file
+                        .inference(i_s)
+                        .compute_type_var_constraint(node_ref.as_expression())
+                    {
+                        todo!()
+                    } else {
+                        todo!()
+                    }
+                }
+                ArgumentKind::Inferred { .. }
+                | ArgumentKind::SlicesTuple { .. }
+                | ArgumentKind::ParamSpec { .. } => unreachable!(),
+                _ => {
+                    arg.as_node_ref().add_typing_issue(
                         i_s.db,
                         IssueType::TypeVarLikeTooManyArguments {
                             class_name: "ParamSpec",
@@ -977,31 +1002,6 @@ fn maybe_param_spec(
                     );
                     return None;
                 }
-                ArgumentKind::Keyword { key, node_ref, .. } => match key {
-                    "default" => {
-                        if let Some(t) = node_ref
-                            .file
-                            .inference(i_s)
-                            .compute_type_var_constraint(node_ref.as_expression())
-                        {
-                            todo!()
-                        } else {
-                            todo!()
-                        }
-                    }
-                    _ => {
-                        node_ref.add_typing_issue(
-                            i_s.db,
-                            IssueType::TypeVarLikeTooManyArguments {
-                                class_name: "ParamSpec",
-                            },
-                        );
-                        return None;
-                    }
-                },
-                ArgumentKind::Inferred { .. }
-                | ArgumentKind::SlicesTuple { .. }
-                | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }
         return Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {
