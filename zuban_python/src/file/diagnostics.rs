@@ -253,6 +253,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         let impl_type_vars = implementation.type_vars(self.i_s);
                         let mut calculated_type_vars = vec![];
                         let mut matcher = Matcher::new_reverse_function_matcher(
+                            class.as_ref(),
                             *implementation,
                             impl_type_vars,
                             &mut calculated_type_vars,
@@ -273,6 +274,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                     let f2_type_vars = f2.type_vars(self.i_s);
                     let mut calculated_type_vars = vec![];
                     let mut matcher = Matcher::new_reverse_function_matcher(
+                        class.as_ref(),
                         f1,
                         f1_type_vars,
                         &mut calculated_type_vars,

@@ -57,6 +57,7 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn new_reverse_function_matcher(
+        class: Option<&'a Class<'a>>,
         function: Function<'a>,
         type_vars: Option<&TypeVarLikes>,
         calculated_type_vars: &'a mut Vec<CalculatedTypeVarLike>,
@@ -64,7 +65,7 @@ impl<'a> Matcher<'a> {
         if let Some(type_vars) = type_vars {
             calculated_type_vars.resize_with(type_vars.len(), Default::default);
             let mut m = TypeVarMatcher::new(
-                None,
+                class,
                 FunctionOrCallable::Function(function),
                 function.node_ref.as_link(),
                 calculated_type_vars,
