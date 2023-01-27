@@ -36,6 +36,7 @@ testMissingSelf
 testMissingSelfInMethod
 testReprocessMethodInNestedClassSemanal
 testPreviousErrorInMethodSemanal1
+testSelfTypeNotSelfType
 
 # Implement bitwise or
 testUnionOrSyntaxWithTypeAliasWorking
@@ -860,11 +861,8 @@ testSelfTypeRestrictedMethodOverloadFallback
 testSelfTypeRestrictedMethodOverloadInit
 testSelfTypeRestrictedMethodOverloadInitFallBacks
 testSelfTypeReallyTrickyExample
-testSelfTypeNotSelfType
 testSelfTypeBadTypeIgnoredInConstructorOverload
-testSelfTypeInGenericClassUsedFromAnotherGenericClass1
 testEnumerateReturningSelfFromIter
-testTypingSelfAttrOldVsNewStyle
 
 # Self tests
 testTypingSelfBasic
@@ -880,6 +878,7 @@ testTypingSelfTypeVarClash
 testTypingSelfClashInBodies
 testTypingSelfFine
 testMixinProtocolSuper
+testTypingSelfAttrOldVsNewStyle
 
 # Liskov
 testLiskovFineVariable
@@ -932,6 +931,7 @@ testDunderNewUpdatedAlias
 testDunderNewUpdatedCallable
 testDunderNewDefine
 testDunderNewInsteadOfInit
+testSelfTypeInGenericClassUsedFromAnotherGenericClass1
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
