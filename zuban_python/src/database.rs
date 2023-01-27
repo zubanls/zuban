@@ -2717,9 +2717,32 @@ impl<'a> TypeVarLikeUsage<'a> {
             TypeVarLikeUsage::TypeVarTuple(usage) => {
                 todo!()
             }
-            TypeVarLikeUsage::ParamSpec(param_spec) => {
+            TypeVarLikeUsage::ParamSpec(usage) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                    CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
+                    CallableParams::WithParamSpec(Box::new([]), usage.into_owned()),
+                    None,
+                ))
+            }
+        }
+    }
+
+    pub fn into_generic_item_with_new_index(self, index: TypeVarIndex) -> GenericItem {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => {
+                let mut usage = usage.into_owned();
+                usage.index = index;
+                GenericItem::TypeArgument(DbType::TypeVar(usage))
+            }
+            TypeVarLikeUsage::TypeVarTuple(usage) => {
+                let mut usage = usage.into_owned();
+                usage.index = index;
+                todo!()
+            }
+            TypeVarLikeUsage::ParamSpec(usage) => {
+                let mut usage = usage.into_owned();
+                usage.index = index;
+                GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                    CallableParams::WithParamSpec(Box::new([]), usage),
                     None,
                 ))
             }
