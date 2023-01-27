@@ -243,7 +243,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                         Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
                         bound,
                     )
-                    .execute(i_s, args, result_context, on_type_error)
+                    .execute(i_s, args, result_context, on_type_error);
+                    Inferred::execute_db_type(i_s, self.db_type.clone())
                 } else {
                     todo!("{t:?}")
                 }

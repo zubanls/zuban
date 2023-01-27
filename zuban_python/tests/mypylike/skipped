@@ -855,8 +855,6 @@ testGenericTypeBody1
 param_spec_with_generic_class
 
 testSelfTypeStaticAccess
-testSelfTypeReturn
-testSelfTypeBound
 testSelfTypeRestrictedMethodOverload
 testSelfTypeRestrictedMethodOverloadFallback
 testSelfTypeRestrictedMethodOverloadInit
@@ -905,6 +903,7 @@ testSubclassingGenericABCWithDeepHierarchy2
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride
+testSelfTypeBound
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
