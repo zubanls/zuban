@@ -317,14 +317,15 @@ impl<'db, 'a> Argument<'db, 'a> {
                 context, node_ref, ..
             } => {
                 let mut i_s = i_s.with_context(*context);
-                node_ref
-                    .file
-                    // TODO this execution is wrong
-                    .inference(&mut i_s)
-                    .infer_named_expression_with_context(
-                        node_ref.as_named_expression(),
-                        result_context,
-                    )
+                if let Some(named_expr) = node_ref.maybe_named_expression() {
+                    node_ref
+                        .file
+                        // TODO this execution is wrong
+                        .inference(&mut i_s)
+                        .infer_named_expression_with_context(named_expr, result_context)
+                } else {
+                    todo!("comprehension")
+                }
             }
             ArgumentKind::Keyword {
                 context, node_ref, ..
