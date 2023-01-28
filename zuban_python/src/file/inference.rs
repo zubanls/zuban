@@ -1702,4 +1702,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         self.check_point_cache(node_index)
             .unwrap_or_else(|| todo!())
     }
+
+    pub fn infer_comprehension(&mut self, comprehension: Comprehension) -> Inferred {
+        let (expr, for_if_clauses) = comprehension.unpack();
+        let clauses = for_if_clauses.iter();
+        todo!()
+    }
 }

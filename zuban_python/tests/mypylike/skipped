@@ -554,6 +554,7 @@ testInferringTypesFromIterable
 # Comprehensions
 testNewAnalyzerListComprehension
 testNewAnalyzerDictionaryComprehension
+testEnumerateReturningSelfFromIter
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 
@@ -862,7 +863,6 @@ testSelfTypeRestrictedMethodOverloadInit
 testSelfTypeRestrictedMethodOverloadInitFallBacks
 testSelfTypeReallyTrickyExample
 testSelfTypeBadTypeIgnoredInConstructorOverload
-testEnumerateReturningSelfFromIter
 
 # Self tests
 testTypingSelfBasic

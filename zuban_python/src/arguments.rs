@@ -355,7 +355,14 @@ impl<'db, 'a> Argument<'db, 'a> {
                     TupleContent::new_fixed_length(parts),
                 ))))
             }
-            ArgumentKind::Comprehension { .. } => todo!(),
+            ArgumentKind::Comprehension {
+                file,
+                comprehension,
+                context,
+            } => {
+                let mut i_s = i_s.with_context(*context);
+                file.inference(&mut i_s).infer_comprehension(*comprehension)
+            }
             ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
             ),
