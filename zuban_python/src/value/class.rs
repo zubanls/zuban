@@ -120,23 +120,6 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn simple_init_func(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-    ) -> Function {
-        let (init, class) = self.lookup_and_class(i_s, "__init__");
-        let class = class.unwrap_or_else(|| todo!());
-        match init
-            .into_maybe_inferred()
-            .unwrap()
-            .init_as_function(i_s.db, class)
-        {
-            Some(FunctionOrOverload::Function(func)) => func,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn node(&self) -> ClassDef<'a> {
         ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
