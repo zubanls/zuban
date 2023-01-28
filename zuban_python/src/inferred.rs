@@ -753,6 +753,45 @@ impl<'db: 'slf, 'slf> Inferred {
                     let file = i_s.db.loaded_python_file(definition.file);
                     match file.complex_points.get(point.complex_index()) {
                         ComplexPoint::FunctionOverload(o) => {
+                            let instance_inf = get_inferred(i_s);
+                            let (instance, func_class) =
+                                load_bound_method_instance(i_s, &instance_inf, mro_index);
+                            let has_self_arguments = o.functions.iter().any(|func_link| {
+                                let node_ref = NodeRef::from_link(i_s.db, *func_link);
+                                let func = Function::new(node_ref, Some(func_class));
+                                func.type_vars(i_s); // Cache annotations
+                                func.iter_params().next().unwrap().annotation(i_s).is_some()
+                            });
+                            if has_self_arguments {
+                                let results: Vec<_> = o
+                                    .functions
+                                    .iter()
+                                    .filter_map(|func_link| {
+                                        let node_ref = NodeRef::from_link(i_s.db, *func_link);
+                                        let func = Function::new(node_ref, Some(func_class));
+                                        if let Some(first_type) =
+                                            func.iter_params().next().unwrap().annotation(i_s)
+                                        {
+                                            create_signature_without_self(
+                                                i_s,
+                                                func,
+                                                instance,
+                                                &first_type,
+                                            )
+                                        } else {
+                                            Some(func.as_db_type(i_s, true))
+                                        }
+                                    })
+                                    .collect();
+                                if results.len() == 1 {
+                                    return Some(Inferred::execute_db_type(
+                                        i_s,
+                                        results.into_iter().next().unwrap(),
+                                    ));
+                                } else {
+                                    // TODO
+                                }
+                            }
                             let complex = ComplexPoint::BoundMethod(
                                 get_inferred(i_s).as_any_link(i_s),
                                 mro_index,
