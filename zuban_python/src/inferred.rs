@@ -715,37 +715,36 @@ impl<'db: 'slf, 'slf> Inferred {
                             load_bound_method_instance(i_s, &instance_inf, mro_index);
                         let func = Function::new(node_ref, Some(func_class));
                         func.type_vars(i_s); // Cache annotations
-                        let complex = if let Some(first_type) =
-                            func.iter_params().next().unwrap().annotation(i_s)
-                        {
-                            if let Some(t) =
-                                create_signature_without_self(i_s, func, instance, &first_type)
-                            {
-                                ComplexPoint::TypeInstance(Box::new(t))
-                            } else {
-                                return if let Some(from) = from {
-                                    from.add_typing_issue(
-                                        i_s.db,
-                                        IssueType::InvalidSelfArgument {
-                                            argument_type: instance
-                                                .as_type(i_s)
-                                                .format_short(i_s.db),
-                                            function_name: Box::from(func.name()),
-                                            callable: func.as_type(i_s).format_short(i_s.db),
-                                        },
-                                    );
-                                    Some(Self::new_any())
+                        let complex =
+                            if let Some(first_type) = func.first_param_annotation_type(i_s) {
+                                if let Some(t) =
+                                    create_signature_without_self(i_s, func, instance, &first_type)
+                                {
+                                    ComplexPoint::TypeInstance(Box::new(t))
                                 } else {
-                                    None
-                                };
-                            }
-                        } else {
-                            ComplexPoint::BoundMethod(
-                                instance_inf.as_any_link(i_s),
-                                mro_index,
-                                *definition,
-                            )
-                        };
+                                    return if let Some(from) = from {
+                                        from.add_typing_issue(
+                                            i_s.db,
+                                            IssueType::InvalidSelfArgument {
+                                                argument_type: instance
+                                                    .as_type(i_s)
+                                                    .format_short(i_s.db),
+                                                function_name: Box::from(func.name()),
+                                                callable: func.as_type(i_s).format_short(i_s.db),
+                                            },
+                                        );
+                                        Some(Self::new_any())
+                                    } else {
+                                        None
+                                    };
+                                }
+                            } else {
+                                ComplexPoint::BoundMethod(
+                                    instance_inf.as_any_link(i_s),
+                                    mro_index,
+                                    *definition,
+                                )
+                            };
                         return Some(Self::new_unsaved_complex(complex));
                     }
                 }
@@ -760,7 +759,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let node_ref = NodeRef::from_link(i_s.db, *func_link);
                                 let func = Function::new(node_ref, Some(func_class));
                                 func.type_vars(i_s); // Cache annotations
-                                func.iter_params().next().unwrap().annotation(i_s).is_some()
+                                func.first_param_annotation_type(i_s).is_some()
                             });
                             if has_self_arguments {
                                 let results: Vec<_> = o
@@ -769,15 +768,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .filter_map(|func_link| {
                                         let node_ref = NodeRef::from_link(i_s.db, *func_link);
                                         let func = Function::new(node_ref, Some(func_class));
-                                        if let Some(first_type) =
-                                            func.iter_params().next().unwrap().annotation(i_s)
-                                        {
-                                            create_signature_without_self(
-                                                i_s,
-                                                func,
-                                                instance,
-                                                &first_type,
-                                            )
+                                        if let Some(t) = func.first_param_annotation_type(i_s) {
+                                            create_signature_without_self(i_s, func, instance, &t)
                                         } else {
                                             Some(func.as_db_type(i_s, true))
                                         }

@@ -500,6 +500,10 @@ impl<'db: 'a, 'a> Function<'a> {
         })
     }
 
+    pub fn first_param_annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type> {
+        self.iter_params().next().unwrap().annotation(i_s)
+    }
+
     pub(super) fn execute_internal(
         &self,
         i_s: &mut InferenceState<'db, '_>,
