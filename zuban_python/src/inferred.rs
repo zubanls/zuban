@@ -788,8 +788,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                         i_s,
                                         results.into_iter().next().unwrap(),
                                     ));
-                                } else {
-                                    // TODO
+                                } else if results.len() != o.functions.len() {
+                                    todo!()
                                 }
                             }
                             let complex = ComplexPoint::BoundMethod(
