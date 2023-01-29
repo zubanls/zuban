@@ -28,12 +28,15 @@ struct CheckedTypeRecursion {
 pub struct Matcher<'a> {
     type_var_matcher: Option<TypeVarMatcher<'a>>,
     checked_type_recursions: Vec<CheckedTypeRecursion>,
+    class: Option<&'a Class<'a>>,
+    //func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
 }
 
 impl<'a> Matcher<'a> {
-    pub fn new(type_var_matcher: Option<TypeVarMatcher<'a>>) -> Self {
+    pub fn new(class: Option<&'a Class<'a>>, type_var_matcher: Option<TypeVarMatcher<'a>>) -> Self {
         Self {
+            class,
             type_var_matcher,
             ..Self::default()
         }
@@ -44,7 +47,6 @@ impl<'a> Matcher<'a> {
         calculated_type_vars: &'a mut [CalculatedTypeVarLike],
     ) -> Self {
         let mut m = TypeVarMatcher::new(
-            None,
             FunctionOrCallable::Callable(callable),
             callable.defined_at,
             calculated_type_vars,
@@ -65,13 +67,13 @@ impl<'a> Matcher<'a> {
         if let Some(type_vars) = type_vars {
             calculated_type_vars.resize_with(type_vars.len(), Default::default);
             let mut m = TypeVarMatcher::new(
-                class,
                 FunctionOrCallable::Function(function),
                 function.node_ref.as_link(),
                 calculated_type_vars,
             );
             m.match_reverse = true;
             Self {
+                class,
                 type_var_matcher: Some(m),
                 ..Self::default()
             }
@@ -322,7 +324,7 @@ impl<'a> Matcher<'a> {
             if let Some(parent_matcher) = type_var_matcher.parent_matcher.as_mut() {
                 todo!()
             }
-            if let Some(class) = type_var_matcher.class {
+            if let Some(class) = self.class {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class
                         .generics
@@ -424,7 +426,7 @@ impl<'a> Matcher<'a> {
                 }
                 _ => unreachable!(),
             }
-        } else if let Some(class) = tv_matcher.class {
+        } else if let Some(class) = self.class {
             if class.node_ref.as_link() == p1.in_definition {
                 class.generics().nth_param_spec_usage(i_s, p1)
             } else {
@@ -467,7 +469,7 @@ impl<'a> Matcher<'a> {
                     BoundKind::Uncalculated => return SignatureMatch::True,
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
                 }
-            } else if let Some(class) = type_var_matcher.class {
+            } else if let Some(class) = self.class {
                 class.generics().nth_param_spec_usage(i_s, usage)
             } else {
                 todo!("why?")
@@ -526,7 +528,7 @@ impl<'a> Matcher<'a> {
                     }
                     _ => {
                         if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
-                            dbg!(type_var_matcher.class);
+                            dbg!(self.class);
                         }
                         todo!("{:?}", last_arg.kind)
                     }
@@ -556,7 +558,7 @@ impl<'a> Matcher<'a> {
         } else {
             match type_var_matcher.func_or_callable {
                 FunctionOrCallable::Function(f) => {
-                    if let Some(class) = type_var_matcher.class {
+                    if let Some(class) = self.class {
                         if class.node_ref.as_link() == usage.in_definition() {
                             return class
                                 .generics
@@ -597,7 +599,7 @@ impl<'a> Matcher<'a> {
         t: &DbType,
     ) -> DbType {
         if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
-            type_var_matcher.replace_type_var_likes_for_nested_context(i_s, t)
+            type_var_matcher.replace_type_var_likes_for_nested_context(i_s, self.class, t)
         } else {
             unreachable!()
         }

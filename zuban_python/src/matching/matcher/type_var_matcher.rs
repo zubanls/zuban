@@ -140,7 +140,6 @@ impl CalculatedTypeVarLike {
 
 #[derive(Debug)]
 pub struct TypeVarMatcher<'a> {
-    pub(super) class: Option<&'a Class<'a>>,
     pub(super) func_or_callable: FunctionOrCallable<'a>,
     pub(super) calculated_type_vars: &'a mut [CalculatedTypeVarLike],
     pub(super) match_in_definition: PointLink,
@@ -150,14 +149,12 @@ pub struct TypeVarMatcher<'a> {
 
 impl<'a> TypeVarMatcher<'a> {
     pub fn new(
-        class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVarLike],
         //parent_matcher: Option<&'a mut Self>,
     ) -> Self {
         Self {
-            class,
             func_or_callable,
             calculated_type_vars,
             match_in_definition,
@@ -198,6 +195,7 @@ impl<'a> TypeVarMatcher<'a> {
     pub fn replace_type_var_likes_for_nested_context(
         &self,
         i_s: &mut InferenceState,
+        class: Option<&Class>,
         t: &DbType,
     ) -> DbType {
         t.replace_type_var_likes(i_s.db, &mut |type_var_like_usage| {
@@ -216,36 +214,33 @@ impl<'a> TypeVarMatcher<'a> {
                         type_var_like_usage.as_type_var_like().as_any_generic_item()
                     }
                 }
-            } else {
+            } else if let Some(c) = class {
+                if c.node_ref.as_link() == type_var_like_usage.in_definition() {
+                    return c
+                        .generics
+                        .nth_usage(i_s, &type_var_like_usage)
+                        .into_generic_item(i_s);
+                }
                 match self.func_or_callable {
                     FunctionOrCallable::Function(f) => {
-                        if let Some(class) = self.class {
-                            if class.node_ref.as_link() == type_var_like_usage.in_definition() {
-                                return class
-                                    .generics
-                                    .nth_usage(i_s, &type_var_like_usage)
-                                    .into_generic_item(i_s);
-                            }
-                            let func_class = f.class.unwrap();
-                            if type_var_like_usage.in_definition() == func_class.node_ref.as_link()
-                            {
-                                let type_var_remap = func_class.type_var_remap.unwrap();
-                                match &type_var_remap[type_var_like_usage.index()] {
-                                    GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                        self.replace_type_var_likes_for_nested_context(i_s, t),
-                                    ),
-                                    GenericItem::TypeArguments(_) => todo!(),
-                                    GenericItem::ParamSpecArgument(_) => todo!(),
-                                }
-                            } else {
-                                type_var_like_usage.into_generic_item()
+                        let func_class = f.class.unwrap();
+                        if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
+                            let type_var_remap = func_class.type_var_remap.unwrap();
+                            match &type_var_remap[type_var_like_usage.index()] {
+                                GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                                    self.replace_type_var_likes_for_nested_context(i_s, class, t),
+                                ),
+                                GenericItem::TypeArguments(_) => todo!(),
+                                GenericItem::ParamSpecArgument(_) => todo!(),
                             }
                         } else {
-                            todo!()
+                            type_var_like_usage.into_generic_item()
                         }
                     }
                     FunctionOrCallable::Callable(c) => todo!(),
                 }
+            } else {
+                todo!()
             }
         })
     }
@@ -450,7 +445,6 @@ fn calculate_type_vars<'db>(
     let mut used_type_vars = type_vars;
     let matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(
-            class,
             func_or_callable,
             match_in_definition,
             &mut calculated_type_vars,
@@ -461,7 +455,6 @@ fn calculate_type_vars<'db>(
                     used_type_vars = func_class.type_vars(i_s);
                     used_type_vars.map(|_| {
                         TypeVarMatcher::new(
-                            class,
                             func_or_callable,
                             match_in_definition,
                             &mut calculated_type_vars, // TODO There are no type vars in there, should set it to 0
@@ -475,7 +468,7 @@ fn calculate_type_vars<'db>(
             }
         }
     };
-    let mut matcher = Matcher::new(matcher);
+    let mut matcher = Matcher::new(class, matcher);
     if matcher.has_type_var_matcher() {
         result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {
             if let Some(class) = expected_return_class {
