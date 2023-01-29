@@ -2,8 +2,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::super::params::{matches_simple_params, InferrableParamIterator2};
-use super::super::{FormatData, Generic, Match, MismatchReason, ParamsStyle, SignatureMatch, Type};
-use super::bound::TypeVarBound;
+use super::super::{FormatData, Generic, Match, ParamsStyle, SignatureMatch, Type};
 use super::type_var_matcher::{
     match_arguments_against_params, BoundKind, CalculatedTypeVarLike, FunctionOrCallable,
     TypeVarMatcher,
@@ -12,7 +11,7 @@ use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, DbType, ParamSpecArgument, ParamSpecTypeVars,
     ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLikeUsage, TypeVarLikes,
+    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage, TypeVarLikes,
     TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
@@ -124,8 +123,8 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         match self.type_var_matcher.as_mut() {
-            Some(_) => {
-                let m = self.match_or_add_type_var_in_type_var_matcher(
+            Some(matcher) => {
+                let m = matcher.match_or_add_type_var(
                     i_s,
                     t1,
                     t1.type_var.as_ref(),
@@ -276,104 +275,6 @@ impl<'a> Matcher<'a> {
             }
         };
         matches
-    }
-
-    fn match_or_add_type_var_in_type_var_matcher(
-        &mut self,
-        i_s: &mut InferenceState,
-        type_var_usage: &TypeVarUsage,
-        type_var: &TypeVar,
-        value_type: &Type,
-        variance: Variance,
-    ) -> Option<Match> {
-        let type_var_matcher = self.type_var_matcher.as_mut().unwrap();
-        let type_var_like = &type_var_usage.type_var;
-        if type_var_matcher.match_in_definition == type_var_usage.in_definition {
-            let current =
-                &mut type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
-            if let BoundKind::TypeVar(current_type) = &mut current.type_ {
-                let m = current_type.merge_or_mismatch(i_s, value_type, variance);
-                return Some(match m.bool() || !type_var.restrictions.is_empty() {
-                    true => m,
-                    false => match current.defined_by_result_context {
-                        true => Match::new_false(),
-                        false => Match::False {
-                            reason: MismatchReason::CannotInferTypeArgument(type_var_usage.index),
-                            similar: false,
-                        },
-                    },
-                });
-            } else {
-                debug_assert!(!current.calculated(), "{current:?}");
-            }
-            // Before setting the type var, we need to check if the constraints match.
-            let mut mismatch_constraints = false;
-            if !type_var.restrictions.is_empty() {
-                if let Some(DbType::TypeVar(t2)) = value_type.maybe_db_type() {
-                    if !t2.type_var.restrictions.is_empty() {
-                        if current.calculated() {
-                            todo!()
-                        } else if t2.type_var.restrictions.iter().all(|r2| {
-                            type_var.restrictions.iter().any(|r1| {
-                                Type::new(r1)
-                                    .is_simple_super_type_of(i_s, &Type::new(r2))
-                                    .bool()
-                            })
-                        }) {
-                            current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
-                                value_type.as_db_type(i_s),
-                            ));
-                            return Some(Match::new_true());
-                        } else {
-                            mismatch_constraints = true;
-                        }
-                    }
-                }
-                if !mismatch_constraints {
-                    for restriction in type_var.restrictions.iter() {
-                        let m = Type::new(restriction).simple_matches(i_s, value_type, variance);
-                        if m.bool() {
-                            if current.calculated() {
-                                // This means that any is involved and multiple restrictions
-                                // are matching. Therefore just return Any.
-                                current.type_ =
-                                    BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
-                                return Some(m);
-                            }
-                            current.type_ =
-                                BoundKind::TypeVar(TypeVarBound::Invariant(restriction.clone()));
-                            if !value_type.has_any(i_s) {
-                                return Some(m);
-                            }
-                        }
-                    }
-                    mismatch_constraints = true;
-                }
-            }
-            if let Some(bound) = &type_var.bound {
-                mismatch_constraints |= !Type::new(bound)
-                    .is_simple_super_type_of(i_s, value_type)
-                    .bool();
-            }
-            if mismatch_constraints {
-                return Some(Match::False {
-                    reason: MismatchReason::ConstraintMismatch {
-                        expected: value_type.as_db_type(i_s),
-                        type_var: type_var_usage.type_var.clone(),
-                    },
-                    similar: false,
-                });
-            }
-            current.type_ =
-                BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s), variance));
-            if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
-                Some(Match::True { with_any: true })
-            } else {
-                Some(Match::new_true())
-            }
-        } else {
-            None
-        }
     }
 
     pub fn match_or_add_param_spec(

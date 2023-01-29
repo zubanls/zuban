@@ -14,8 +14,8 @@ use super::bound::TypeVarBound;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments};
 use crate::database::{
     CallableContent, CallableParams, Database, DbType, GenericItem, GenericsList,
-    ParamSpecArgument, PointLink, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    ParamSpecArgument, PointLink, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -235,6 +235,102 @@ impl<'a> TypeVarMatcher<'a> {
                 todo!()
             }
         })
+    }
+
+    pub fn match_or_add_type_var(
+        &mut self,
+        i_s: &mut InferenceState,
+        type_var_usage: &TypeVarUsage,
+        type_var: &TypeVar,
+        value_type: &Type,
+        variance: Variance,
+    ) -> Option<Match> {
+        let type_var_like = &type_var_usage.type_var;
+        if self.match_in_definition == type_var_usage.in_definition {
+            let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
+            if let BoundKind::TypeVar(current_type) = &mut current.type_ {
+                let m = current_type.merge_or_mismatch(i_s, value_type, variance);
+                return Some(match m.bool() || !type_var.restrictions.is_empty() {
+                    true => m,
+                    false => match current.defined_by_result_context {
+                        true => Match::new_false(),
+                        false => Match::False {
+                            reason: MismatchReason::CannotInferTypeArgument(type_var_usage.index),
+                            similar: false,
+                        },
+                    },
+                });
+            } else {
+                debug_assert!(!current.calculated(), "{current:?}");
+            }
+            // Before setting the type var, we need to check if the constraints match.
+            let mut mismatch_constraints = false;
+            if !type_var.restrictions.is_empty() {
+                if let Some(DbType::TypeVar(t2)) = value_type.maybe_db_type() {
+                    if !t2.type_var.restrictions.is_empty() {
+                        if current.calculated() {
+                            todo!()
+                        } else if t2.type_var.restrictions.iter().all(|r2| {
+                            type_var.restrictions.iter().any(|r1| {
+                                Type::new(r1)
+                                    .is_simple_super_type_of(i_s, &Type::new(r2))
+                                    .bool()
+                            })
+                        }) {
+                            current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
+                                value_type.as_db_type(i_s),
+                            ));
+                            return Some(Match::new_true());
+                        } else {
+                            mismatch_constraints = true;
+                        }
+                    }
+                }
+                if !mismatch_constraints {
+                    for restriction in type_var.restrictions.iter() {
+                        let m = Type::new(restriction).simple_matches(i_s, value_type, variance);
+                        if m.bool() {
+                            if current.calculated() {
+                                // This means that any is involved and multiple restrictions
+                                // are matching. Therefore just return Any.
+                                current.type_ =
+                                    BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
+                                return Some(m);
+                            }
+                            current.type_ =
+                                BoundKind::TypeVar(TypeVarBound::Invariant(restriction.clone()));
+                            if !value_type.has_any(i_s) {
+                                return Some(m);
+                            }
+                        }
+                    }
+                    mismatch_constraints = true;
+                }
+            }
+            if let Some(bound) = &type_var.bound {
+                mismatch_constraints |= !Type::new(bound)
+                    .is_simple_super_type_of(i_s, value_type)
+                    .bool();
+            }
+            if mismatch_constraints {
+                return Some(Match::False {
+                    reason: MismatchReason::ConstraintMismatch {
+                        expected: value_type.as_db_type(i_s),
+                        type_var: type_var_usage.type_var.clone(),
+                    },
+                    similar: false,
+                });
+            }
+            current.type_ =
+                BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s), variance));
+            if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
+                Some(Match::True { with_any: true })
+            } else {
+                Some(Match::new_true())
+            }
+        } else {
+            None
+        }
     }
 }
 
