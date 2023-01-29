@@ -42,32 +42,46 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     if let Some(t) = function.first_param_annotation_type(i_s) {
         // TODO
     }
-
+    let func_or_callable = FunctionOrCallable::Function(function);
     if has_generics {
+        let match_in_definition = function.node_ref.as_link();
         let mut type_arguments = calculate_type_vars(
             i_s,
+            get_matcher(
+                Some(class),
+                func_or_callable,
+                match_in_definition,
+                func_type_vars,
+            ),
             Some(class),
-            FunctionOrCallable::Function(function),
+            func_or_callable,
             None,
             args,
             true,
             func_type_vars,
-            function.node_ref.as_link(),
+            match_in_definition,
             result_context,
             on_type_error,
         );
         type_arguments.type_arguments = class.generics_as_list(i_s);
         type_arguments
     } else {
+        let match_in_definition = class.node_ref.as_link();
         calculate_type_vars(
             i_s,
+            get_matcher(
+                Some(class),
+                func_or_callable,
+                match_in_definition,
+                type_vars,
+            ),
             Some(class),
-            FunctionOrCallable::Function(function),
+            func_or_callable,
             Some(class),
             args,
             true,
             type_vars,
-            class.node_ref.as_link(),
+            match_in_definition,
             result_context,
             on_type_error,
         )
@@ -122,10 +136,12 @@ pub fn calculate_function_type_vars_and_return<'db>(
         function.name(),
         class.map(|c| c.name()).unwrap_or("-")
     );
+    let func_or_callable = FunctionOrCallable::Function(function);
     calculate_type_vars(
         i_s,
+        get_matcher(class, func_or_callable, match_in_definition, type_vars),
         class,
-        FunctionOrCallable::Function(function),
+        func_or_callable,
         None,
         args,
         skip_first_param,
@@ -144,18 +160,31 @@ pub fn calculate_callable_type_vars_and_return<'db>(
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> CalculatedTypeArguments {
+    let func_or_callable = FunctionOrCallable::Callable(callable);
+    let type_vars = callable.type_vars.as_ref();
     calculate_type_vars(
         i_s,
+        get_matcher(class, func_or_callable, callable.defined_at, type_vars),
         None,
-        FunctionOrCallable::Callable(callable),
+        func_or_callable,
         None,
         args,
         false,
-        callable.type_vars.as_ref(),
+        type_vars,
         callable.defined_at,
         result_context,
         Some(on_type_error),
     )
+}
+
+fn get_matcher<'a>(
+    class: Option<&'a Class>,
+    func_or_callable: FunctionOrCallable<'a>,
+    match_in_definition: PointLink,
+    type_vars: Option<&TypeVarLikes>,
+) -> Matcher<'a> {
+    let matcher = type_vars.map(|t| TypeVarMatcher::new(match_in_definition, t.len()));
+    Matcher::new(class, func_or_callable, matcher)
 }
 
 fn add_generics_from_result_context_class(
@@ -199,7 +228,7 @@ fn add_generics_from_result_context_class(
 
 fn calculate_type_vars<'db>(
     i_s: &mut InferenceState<'db, '_>,
-    //mut matcher: Matcher,
+    mut matcher: Matcher,
     class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
     expected_return_class: Option<&Class>,
@@ -210,8 +239,6 @@ fn calculate_type_vars<'db>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
-    let matcher = type_vars.map(|t| TypeVarMatcher::new(match_in_definition, t.len()));
-    let mut matcher = Matcher::new(class, func_or_callable, matcher);
     if matcher.type_var_matcher.is_some() {
         result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {
             if let Some(class) = expected_return_class {
