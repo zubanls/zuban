@@ -220,10 +220,9 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         if let Some(callable_content) = &implementation_callable_content {
                             match &callable_content.params {
                                 CallableParams::Simple(ps) => {
-                                    let mut calculated_type_vars = vec![];
                                     let mut matcher = Matcher::new_reverse_callable_matcher(
                                         callable_content,
-                                        &mut calculated_type_vars,
+                                        0, // TODO are there really no type vars?
                                     );
                                     self.calc_overload_implementation_diagnostics(
                                         name_def_node_ref,
@@ -251,12 +250,10 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         }
                     } else {
                         let impl_type_vars = implementation.type_vars(self.i_s);
-                        let mut calculated_type_vars = vec![];
                         let mut matcher = Matcher::new_reverse_function_matcher(
                             class.as_ref(),
                             *implementation,
                             impl_type_vars,
-                            &mut calculated_type_vars,
                         );
                         let result_type = implementation.result_type(self.i_s);
                         self.calc_overload_implementation_diagnostics(
@@ -272,13 +269,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
                     let f2_type_vars = f2.type_vars(self.i_s);
-                    let mut calculated_type_vars = vec![];
-                    let mut matcher = Matcher::new_reverse_function_matcher(
-                        class.as_ref(),
-                        f1,
-                        f1_type_vars,
-                        &mut calculated_type_vars,
-                    );
+                    let mut matcher =
+                        Matcher::new_reverse_function_matcher(class.as_ref(), f1, f1_type_vars);
                     if matches!(
                         matches_simple_params(
                             self.i_s,

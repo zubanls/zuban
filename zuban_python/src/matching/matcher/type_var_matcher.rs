@@ -139,17 +139,16 @@ impl CalculatedTypeVarLike {
 }
 
 #[derive(Debug)]
-pub struct TypeVarMatcher<'a> {
-    pub(super) calculated_type_vars: &'a mut [CalculatedTypeVarLike],
+pub struct TypeVarMatcher {
+    pub(super) calculated_type_vars: Vec<CalculatedTypeVarLike>,
     pub(super) match_in_definition: PointLink,
     pub match_reverse: bool, // For contravariance subtypes
 }
 
-impl<'a> TypeVarMatcher<'a> {
-    pub fn new(
-        match_in_definition: PointLink,
-        calculated_type_vars: &'a mut [CalculatedTypeVarLike],
-    ) -> Self {
+impl TypeVarMatcher {
+    pub fn new(match_in_definition: PointLink, type_var_count: usize) -> Self {
+        let mut calculated_type_vars = vec![];
+        calculated_type_vars.resize_with(type_var_count, Default::default);
         Self {
             calculated_type_vars,
             match_in_definition,
@@ -518,28 +517,14 @@ fn calculate_type_vars<'db>(
 ) -> CalculatedTypeArguments {
     // We could allocate on stack as described here:
     // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
-    let type_vars_len = match type_vars {
-        Some(type_vars) => type_vars.len(),
-        None => 0,
-    };
-    let mut calculated_type_vars = vec![];
-    calculated_type_vars.resize_with(type_vars_len, Default::default);
     let mut used_type_vars = type_vars;
     let matcher = match type_vars {
-        Some(type_vars) => Some(TypeVarMatcher::new(
-            match_in_definition,
-            &mut calculated_type_vars,
-        )),
+        Some(type_vars) => Some(TypeVarMatcher::new(match_in_definition, type_vars.len())),
         None => {
             if let FunctionOrCallable::Function(function) = func_or_callable {
                 if let Some(func_class) = function.class {
                     used_type_vars = func_class.type_vars(i_s);
-                    used_type_vars.map(|_| {
-                        TypeVarMatcher::new(
-                            match_in_definition,
-                            &mut calculated_type_vars, // TODO There are no type vars in there, should set it to 0
-                        )
-                    })
+                    used_type_vars.map(|_| TypeVarMatcher::new(match_in_definition, 0))
                 } else {
                     None
                 }
@@ -657,9 +642,9 @@ fn calculate_type_vars<'db>(
             }
         },
     };
-    let type_arguments = matcher.has_type_var_matcher().then(|| {
+    let type_arguments = matcher.type_var_matcher.map(|m| {
         GenericsList::new_generics(
-            calculated_type_vars
+            m.calculated_type_vars
                 .into_iter()
                 .zip(used_type_vars.unwrap().iter())
                 .map(|(c, type_var_like)| c.into_generic_item(i_s.db, type_var_like))

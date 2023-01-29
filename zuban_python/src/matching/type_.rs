@@ -765,10 +765,7 @@ impl<'a> Type<'a> {
     ) -> Match {
         if !matcher.has_type_var_matcher() {
             if let Some(c2_type_vars) = c2.type_vars.as_ref() {
-                let mut calculated_type_vars = vec![];
-                calculated_type_vars.resize_with(c2_type_vars.len(), Default::default);
-                let mut matcher =
-                    Matcher::new_reverse_callable_matcher(c2, &mut calculated_type_vars);
+                let mut matcher = Matcher::new_reverse_callable_matcher(c2, c2_type_vars.len());
                 return Type::matches_callable(i_s, &mut matcher, c1, c2);
             }
         }

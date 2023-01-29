@@ -25,7 +25,7 @@ struct CheckedTypeRecursion {
 
 #[derive(Default)]
 pub struct Matcher<'a> {
-    type_var_matcher: Option<TypeVarMatcher<'a>>,
+    pub(super) type_var_matcher: Option<TypeVarMatcher>,
     checked_type_recursions: Vec<CheckedTypeRecursion>,
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
@@ -36,7 +36,7 @@ impl<'a> Matcher<'a> {
     pub fn new(
         class: Option<&'a Class<'a>>,
         func_or_callable: FunctionOrCallable<'a>,
-        type_var_matcher: Option<TypeVarMatcher<'a>>,
+        type_var_matcher: Option<TypeVarMatcher>,
     ) -> Self {
         Self {
             class,
@@ -48,9 +48,9 @@ impl<'a> Matcher<'a> {
 
     pub fn new_reverse_callable_matcher(
         callable: &'a CallableContent,
-        calculated_type_vars: &'a mut [CalculatedTypeVarLike],
+        type_var_count: usize,
     ) -> Self {
-        let mut m = TypeVarMatcher::new(callable.defined_at, calculated_type_vars);
+        let mut m = TypeVarMatcher::new(callable.defined_at, type_var_count);
         m.match_reverse = true;
         Self {
             type_var_matcher: Some(m),
@@ -63,11 +63,9 @@ impl<'a> Matcher<'a> {
         class: Option<&'a Class<'a>>,
         function: Function<'a>,
         type_vars: Option<&TypeVarLikes>,
-        calculated_type_vars: &'a mut Vec<CalculatedTypeVarLike>,
     ) -> Self {
         if let Some(type_vars) = type_vars {
-            calculated_type_vars.resize_with(type_vars.len(), Default::default);
-            let mut m = TypeVarMatcher::new(function.node_ref.as_link(), calculated_type_vars);
+            let mut m = TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len());
             m.match_reverse = true;
             Self {
                 class,
@@ -537,5 +535,9 @@ impl<'a> Matcher<'a> {
             recursive_alias1,
             type2,
         })
+    }
+
+    pub fn unwrap_calculated_type_args(self) -> Vec<CalculatedTypeVarLike> {
+        self.type_var_matcher.unwrap().calculated_type_vars
     }
 }

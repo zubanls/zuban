@@ -1300,16 +1300,9 @@ fn create_signature_without_self(
     instance: Instance,
     expected_type: &Type,
 ) -> Option<DbType> {
-    let mut calculated = vec![];
     let type_vars = func.type_vars(i_s);
     let type_vars_len = type_vars.map(|t| t.len()).unwrap_or(0);
-    calculated.resize_with(type_vars_len, Default::default);
-    let mut matcher = Matcher::new_reverse_function_matcher(
-        Some(&instance.class),
-        func,
-        type_vars,
-        &mut calculated,
-    );
+    let mut matcher = Matcher::new_reverse_function_matcher(Some(&instance.class), func, type_vars);
     let instance_t = instance.as_type(i_s);
     let match_ = matcher.match_reverse(|m| expected_type.is_super_type_of(i_s, m, &instance_t));
     if !match_.bool() {
@@ -1323,6 +1316,7 @@ fn create_signature_without_self(
         let mut old_type_vars = std::mem::replace(&mut callable_content.type_vars, None)
             .unwrap()
             .into_vec();
+        let calculated = matcher.unwrap_calculated_type_args();
         for (i, c) in calculated.iter().enumerate().rev() {
             if c.calculated() {
                 old_type_vars.remove(i);
