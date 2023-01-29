@@ -4,9 +4,9 @@ use std::rc::Rc;
 use super::super::params::{matches_simple_params, InferrableParamIterator2};
 use super::super::{FormatData, Generic, Match, ParamsStyle, SignatureMatch, Type};
 use super::type_var_matcher::{
-    match_arguments_against_params, BoundKind, CalculatedTypeVarLike, FunctionOrCallable,
-    TypeVarMatcher,
+    BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher,
 };
+use super::utils::match_arguments_against_params;
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, DbType, ParamSpecArgument, ParamSpecTypeVars,
