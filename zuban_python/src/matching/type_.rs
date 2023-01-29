@@ -1043,7 +1043,7 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                DbType::TypeVar(t) => {
+                DbType::TypeVar(_) => {
                     if matcher.has_type_var_matcher() {
                         let t = Type::owned(
                             matcher.replace_type_var_likes_for_nested_context(i_s, db_type),
