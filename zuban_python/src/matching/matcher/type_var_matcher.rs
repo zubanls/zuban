@@ -134,6 +134,8 @@ pub struct TypeVarMatcher {
 
 impl TypeVarMatcher {
     pub fn new(match_in_definition: PointLink, type_var_count: usize) -> Self {
+        // We could allocate on stack as described here:
+        // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
         let mut calculated_type_vars = vec![];
         calculated_type_vars.resize_with(type_var_count, Default::default);
         Self {

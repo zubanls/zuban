@@ -199,6 +199,7 @@ fn add_generics_from_result_context_class(
 
 fn calculate_type_vars<'db>(
     i_s: &mut InferenceState<'db, '_>,
+    //mut matcher: Matcher,
     class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
     expected_return_class: Option<&Class>,
@@ -209,16 +210,14 @@ fn calculate_type_vars<'db>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
-    // We could allocate on stack as described here:
-    // https://stackoverflow.com/questions/27859822/is-it-possible-to-have-stack-allocated-arrays-with-the-size-determined-at-runtim
-    let mut used_type_vars = type_vars;
     let matcher = match type_vars {
         Some(type_vars) => Some(TypeVarMatcher::new(match_in_definition, type_vars.len())),
         None => {
             if let FunctionOrCallable::Function(function) = func_or_callable {
                 if let Some(func_class) = function.class {
-                    used_type_vars = func_class.type_vars(i_s);
-                    used_type_vars.map(|_| TypeVarMatcher::new(match_in_definition, 0))
+                    func_class
+                        .type_vars(i_s)
+                        .map(|_| TypeVarMatcher::new(match_in_definition, 0))
                 } else {
                     None
                 }
@@ -336,14 +335,16 @@ fn calculate_type_vars<'db>(
             }
         },
     };
-    let type_arguments = matcher.type_var_matcher.map(|m| {
-        GenericsList::new_generics(
-            m.calculated_type_vars
-                .into_iter()
-                .zip(used_type_vars.unwrap().iter())
-                .map(|(c, type_var_like)| c.into_generic_item(i_s.db, type_var_like))
-                .collect(),
-        )
+    let type_arguments = matcher.type_var_matcher.and_then(|m| {
+        type_vars.map(|type_vars| {
+            GenericsList::new_generics(
+                m.calculated_type_vars
+                    .into_iter()
+                    .zip(type_vars.iter())
+                    .map(|(c, type_var_like)| c.into_generic_item(i_s.db, type_var_like))
+                    .collect(),
+            )
+        })
     });
     if cfg!(feature = "zuban_debug") {
         if let Some(type_arguments) = &type_arguments {
