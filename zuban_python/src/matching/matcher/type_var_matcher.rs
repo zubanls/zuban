@@ -163,14 +163,6 @@ impl<'a> TypeVarMatcher<'a> {
         }
     }
 
-    pub(super) fn class(&self) -> Option<Class<'_>> {
-        // Currently this is used for formatting, but it probably shouldn't be.
-        match self.func_or_callable {
-            FunctionOrCallable::Function(func) => func.class,
-            FunctionOrCallable::Callable(_) => None,
-        }
-    }
-
     pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
         type_.search_type_vars(&mut |t| {
             if t.in_definition() == self.match_in_definition {
