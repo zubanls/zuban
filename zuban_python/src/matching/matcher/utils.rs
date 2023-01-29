@@ -39,20 +39,33 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = function.type_vars(i_s);
 
+    let func_or_callable = FunctionOrCallable::Function(function);
+    let match_in_definition;
+    let matcher = if has_generics {
+        match_in_definition = function.node_ref.as_link();
+        get_matcher(
+            Some(class),
+            func_or_callable,
+            match_in_definition,
+            func_type_vars,
+        )
+    } else {
+        match_in_definition = class.node_ref.as_link();
+        get_matcher(
+            Some(class),
+            func_or_callable,
+            match_in_definition,
+            type_vars,
+        )
+    };
+
     if let Some(t) = function.first_param_annotation_type(i_s) {
         // TODO
     }
-    let func_or_callable = FunctionOrCallable::Function(function);
     if has_generics {
-        let match_in_definition = function.node_ref.as_link();
         let mut type_arguments = calculate_type_vars(
             i_s,
-            get_matcher(
-                Some(class),
-                func_or_callable,
-                match_in_definition,
-                func_type_vars,
-            ),
+            matcher,
             Some(class),
             func_or_callable,
             None,
@@ -66,15 +79,9 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         type_arguments.type_arguments = class.generics_as_list(i_s);
         type_arguments
     } else {
-        let match_in_definition = class.node_ref.as_link();
         calculate_type_vars(
             i_s,
-            get_matcher(
-                Some(class),
-                func_or_callable,
-                match_in_definition,
-                type_vars,
-            ),
+            matcher,
             Some(class),
             func_or_callable,
             Some(class),
