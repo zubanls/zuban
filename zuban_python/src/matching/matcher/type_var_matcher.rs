@@ -8,7 +8,7 @@ use crate::database::{
     TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
-use crate::value::{Class, Function};
+use crate::value::Function;
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'a> {
@@ -164,65 +164,6 @@ impl TypeVarMatcher {
                 }
             }
         });
-    }
-
-    pub fn replace_type_var_likes_for_nested_context(
-        &self,
-        i_s: &mut InferenceState,
-        class: Option<&Class>,
-        func_or_callable: &FunctionOrCallable,
-        t: &DbType,
-    ) -> DbType {
-        t.replace_type_var_likes(i_s.db, &mut |type_var_like_usage| {
-            if type_var_like_usage.in_definition() == self.match_in_definition {
-                let current = &self.calculated_type_vars[type_var_like_usage.index().as_usize()];
-                match &current.type_ {
-                    BoundKind::TypeVar(t) => {
-                        GenericItem::TypeArgument(t.clone().into_db_type(i_s.db))
-                    }
-                    BoundKind::TypeVarTuple(_) => todo!(),
-                    BoundKind::ParamSpecArgument(param_spec) => {
-                        GenericItem::ParamSpecArgument(param_spec.clone())
-                    }
-                    // Any is just ignored by the context later.
-                    BoundKind::Uncalculated => {
-                        type_var_like_usage.as_type_var_like().as_any_generic_item()
-                    }
-                }
-            } else if let Some(c) = class {
-                if c.node_ref.as_link() == type_var_like_usage.in_definition() {
-                    return c
-                        .generics
-                        .nth_usage(i_s, &type_var_like_usage)
-                        .into_generic_item(i_s);
-                }
-                match func_or_callable {
-                    FunctionOrCallable::Function(f) => {
-                        let func_class = f.class.unwrap();
-                        if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
-                            let type_var_remap = func_class.type_var_remap.unwrap();
-                            match &type_var_remap[type_var_like_usage.index()] {
-                                GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                    self.replace_type_var_likes_for_nested_context(
-                                        i_s,
-                                        class,
-                                        func_or_callable,
-                                        t,
-                                    ),
-                                ),
-                                GenericItem::TypeArguments(_) => todo!(),
-                                GenericItem::ParamSpecArgument(_) => todo!(),
-                            }
-                        } else {
-                            type_var_like_usage.into_generic_item()
-                        }
-                    }
-                    FunctionOrCallable::Callable(c) => todo!(),
-                }
-            } else {
-                todo!()
-            }
-        })
     }
 
     pub fn match_or_add_type_var(

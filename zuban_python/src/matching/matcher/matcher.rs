@@ -9,10 +9,10 @@ use super::type_var_matcher::{
 use super::utils::match_arguments_against_params;
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, DbType, ParamSpecArgument, ParamSpecTypeVars,
-    ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarUsage, Variance,
+    CallableContent, CallableParam, CallableParams, DbType, GenericItem, ParamSpecArgument,
+    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
+    StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
@@ -495,16 +495,56 @@ impl<'a> Matcher<'a> {
         i_s: &mut InferenceState,
         t: &DbType,
     ) -> DbType {
-        if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
-            type_var_matcher.replace_type_var_likes_for_nested_context(
-                i_s,
-                self.class,
-                self.func_or_callable.as_ref().unwrap(),
-                t,
-            )
-        } else {
-            unreachable!()
-        }
+        t.replace_type_var_likes(i_s.db, &mut |type_var_like_usage| {
+            if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
+                if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
+                    let current = &type_var_matcher.calculated_type_vars
+                        [type_var_like_usage.index().as_usize()];
+                    return match &current.type_ {
+                        BoundKind::TypeVar(t) => {
+                            GenericItem::TypeArgument(t.clone().into_db_type(i_s.db))
+                        }
+                        BoundKind::TypeVarTuple(_) => todo!(),
+                        BoundKind::ParamSpecArgument(param_spec) => {
+                            GenericItem::ParamSpecArgument(param_spec.clone())
+                        }
+                        // Any is just ignored by the context later.
+                        BoundKind::Uncalculated => {
+                            type_var_like_usage.as_type_var_like().as_any_generic_item()
+                        }
+                    };
+                }
+            }
+            if let Some(c) = self.class {
+                if c.node_ref.as_link() == type_var_like_usage.in_definition() {
+                    return c
+                        .generics
+                        .nth_usage(i_s, &type_var_like_usage)
+                        .into_generic_item(i_s);
+                }
+                match self.func_or_callable {
+                    Some(FunctionOrCallable::Function(f)) => {
+                        let func_class = f.class.unwrap();
+                        if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
+                            let type_var_remap = func_class.type_var_remap.unwrap();
+                            match &type_var_remap[type_var_like_usage.index()] {
+                                GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                                    self.replace_type_var_likes_for_nested_context(i_s, t),
+                                ),
+                                GenericItem::TypeArguments(_) => todo!(),
+                                GenericItem::ParamSpecArgument(_) => todo!(),
+                            }
+                        } else {
+                            type_var_like_usage.into_generic_item()
+                        }
+                    }
+                    Some(FunctionOrCallable::Callable(c)) => todo!(),
+                    None => unreachable!(),
+                }
+            } else {
+                todo!()
+            }
+        })
     }
 
     pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
