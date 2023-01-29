@@ -124,14 +124,15 @@ impl<'a> Matcher<'a> {
     ) -> Match {
         match self.type_var_matcher.as_mut() {
             Some(matcher) => {
-                let m = matcher.match_or_add_type_var(
-                    i_s,
-                    t1,
-                    t1.type_var.as_ref(),
-                    value_type,
-                    variance,
-                );
-                m.unwrap_or_else(|| {
+                if matcher.match_in_definition == t1.in_definition {
+                    matcher.match_or_add_type_var(
+                        i_s,
+                        t1,
+                        t1.type_var.as_ref(),
+                        value_type,
+                        variance,
+                    )
+                } else {
                     if let Some(class) = self.class {
                         if class.node_ref.as_link() == t1.in_definition {
                             let g = class
@@ -180,7 +181,7 @@ impl<'a> Matcher<'a> {
                         FunctionOrCallable::Callable(c) => Type::owned(DbType::TypeVar(t1.clone()))
                             .simple_matches(i_s, value_type, variance),
                     }
-                })
+                }
             }
             None => match value_type.maybe_db_type() {
                 Some(DbType::TypeVar(t2)) => {
