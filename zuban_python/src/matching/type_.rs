@@ -763,7 +763,7 @@ impl<'a> Type<'a> {
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
-        // TODO This is is weird.
+        // TODO This if is weird.
         if !matcher.has_type_var_matcher() {
             if let Some(c2_type_vars) = c2.type_vars.as_ref() {
                 let mut matcher = Matcher::new_reverse_callable_matcher(c2, c2_type_vars.len());

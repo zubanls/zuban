@@ -210,22 +210,7 @@ fn calculate_type_vars<'db>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
-    let matcher = match type_vars {
-        Some(type_vars) => Some(TypeVarMatcher::new(match_in_definition, type_vars.len())),
-        None => {
-            if let FunctionOrCallable::Function(function) = func_or_callable {
-                if let Some(func_class) = function.class {
-                    func_class
-                        .type_vars(i_s)
-                        .map(|_| TypeVarMatcher::new(match_in_definition, 0))
-                } else {
-                    None
-                }
-            } else {
-                None
-            }
-        }
-    };
+    let matcher = type_vars.map(|t| TypeVarMatcher::new(match_in_definition, t.len()));
     let mut matcher = Matcher::new(class, func_or_callable, matcher);
     if matcher.type_var_matcher.is_some() {
         result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {

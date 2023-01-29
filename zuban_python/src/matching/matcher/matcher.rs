@@ -366,11 +366,11 @@ impl<'a> Matcher<'a> {
                     BoundKind::Uncalculated => return SignatureMatch::True,
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
                 }
-            } else if let Some(class) = self.class {
-                class.generics().nth_param_spec_usage(i_s, usage)
             } else {
                 todo!("why?")
             }
+        } else if let Some(class) = self.class {
+            class.generics().nth_param_spec_usage(i_s, usage)
         } else {
             todo!("When does this even happen?")
         };
