@@ -69,11 +69,6 @@ impl<'a> Generic<'a> {
             },
             Self::TypeVarTuple(ts1) => match other {
                 Self::TypeVarTuple(ref ts2) => {
-                    if matcher.has_type_var_matcher() {
-                        if let Some(ts) = ts1.args.has_type_var_tuple() {
-                            return matcher.match_type_var_tuple(i_s, ts, &ts2.args, variance);
-                        }
-                    }
                     match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
                 }
                 _ => todo!(),
