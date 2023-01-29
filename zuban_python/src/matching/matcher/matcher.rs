@@ -435,48 +435,42 @@ impl<'a> Matcher<'a> {
         format_data: &FormatData,
         params_style: ParamsStyle,
     ) -> Box<str> {
-        let Some(type_var_matcher) = self.type_var_matcher.as_ref() else {
-            return usage.format_without_matcher(format_data.db, format_data.style, params_style)
-        };
         let i_s = &mut InferenceState::new(format_data.db);
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
-        if type_var_matcher.match_in_definition == usage.in_definition() {
-            let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
-            match &current.type_ {
-                BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
-                BoundKind::TypeVarTuple(ts) => ts.format(format_data),
-                BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
-                BoundKind::Uncalculated => DbType::Never.format(format_data),
-            }
-        } else {
-            match self.func_or_callable.unwrap() {
-                FunctionOrCallable::Function(f) => {
-                    if let Some(class) = self.class {
-                        if class.node_ref.as_link() == usage.in_definition() {
-                            return class
-                                .generics
-                                .nth_usage(i_s, usage)
-                                .format(&format_data.remove_matcher());
-                        }
-                        let func_class = f.class.unwrap();
-                        if usage.in_definition() == func_class.node_ref.as_link() {
-                            let type_var_remap = func_class.type_var_remap.unwrap();
-                            Generic::new(&type_var_remap[usage.index()]).format(format_data)
-                        } else {
-                            usage.format_without_matcher(
-                                format_data.db,
-                                format_data.style,
-                                params_style,
-                            )
-                        }
-                    } else {
-                        todo!("Probably nested generic functions???")
-                    }
-                }
-                FunctionOrCallable::Callable(c) => todo!(),
+        if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
+            if type_var_matcher.match_in_definition == usage.in_definition() {
+                let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
+                return match &current.type_ {
+                    BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
+                    BoundKind::TypeVarTuple(ts) => ts.format(format_data),
+                    BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
+                    BoundKind::Uncalculated => DbType::Never.format(format_data),
+                };
             }
         }
+        match self.func_or_callable {
+            Some(FunctionOrCallable::Function(f)) => {
+                if let Some(class) = self.class {
+                    if class.node_ref.as_link() == usage.in_definition() {
+                        return class
+                            .generics
+                            .nth_usage(i_s, usage)
+                            .format(&format_data.remove_matcher());
+                    }
+                    let func_class = f.class.unwrap();
+                    if usage.in_definition() == func_class.node_ref.as_link() {
+                        let type_var_remap = func_class.type_var_remap.unwrap();
+                        return Generic::new(&type_var_remap[usage.index()]).format(format_data);
+                    }
+                } else {
+                    todo!("Probably nested generic functions???")
+                }
+            }
+            Some(FunctionOrCallable::Callable(c)) => todo!(),
+            None => (),
+        }
+        usage.format_without_matcher(format_data.db, format_data.style, params_style)
     }
 
     pub fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {
