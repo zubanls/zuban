@@ -29,14 +29,19 @@ pub struct Matcher<'a> {
     type_var_matcher: Option<TypeVarMatcher<'a>>,
     checked_type_recursions: Vec<CheckedTypeRecursion>,
     class: Option<&'a Class<'a>>,
-    //func_or_callable: Option<FunctionOrCallable<'a>>,
+    func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
 }
 
 impl<'a> Matcher<'a> {
-    pub fn new(class: Option<&'a Class<'a>>, type_var_matcher: Option<TypeVarMatcher<'a>>) -> Self {
+    pub fn new(
+        class: Option<&'a Class<'a>>,
+        func_or_callable: FunctionOrCallable<'a>,
+        type_var_matcher: Option<TypeVarMatcher<'a>>,
+    ) -> Self {
         Self {
             class,
+            func_or_callable: Some(func_or_callable),
             type_var_matcher,
             ..Self::default()
         }
@@ -46,14 +51,11 @@ impl<'a> Matcher<'a> {
         callable: &'a CallableContent,
         calculated_type_vars: &'a mut [CalculatedTypeVarLike],
     ) -> Self {
-        let mut m = TypeVarMatcher::new(
-            FunctionOrCallable::Callable(callable),
-            callable.defined_at,
-            calculated_type_vars,
-        );
+        let mut m = TypeVarMatcher::new(callable.defined_at, calculated_type_vars);
         m.match_reverse = true;
         Self {
             type_var_matcher: Some(m),
+            func_or_callable: Some(FunctionOrCallable::Callable(callable)),
             ..Self::default()
         }
     }
@@ -66,15 +68,12 @@ impl<'a> Matcher<'a> {
     ) -> Self {
         if let Some(type_vars) = type_vars {
             calculated_type_vars.resize_with(type_vars.len(), Default::default);
-            let mut m = TypeVarMatcher::new(
-                FunctionOrCallable::Function(function),
-                function.node_ref.as_link(),
-                calculated_type_vars,
-            );
+            let mut m = TypeVarMatcher::new(function.node_ref.as_link(), calculated_type_vars);
             m.match_reverse = true;
             Self {
                 class,
                 type_var_matcher: Some(m),
+                func_or_callable: Some(FunctionOrCallable::Function(function)),
                 ..Self::default()
             }
         } else {
@@ -336,7 +335,8 @@ impl<'a> Matcher<'a> {
                     return g.simple_matches(i_s, value_type, type_var.variance);
                 }
             }
-            match type_var_matcher.func_or_callable {
+            match self.func_or_callable.unwrap() {
+                // TODO this should probably moved out
                 FunctionOrCallable::Function(f) => {
                     // If we're in a class context, we must also be in a method.
                     if let Some(func_class) = f.class {
@@ -556,7 +556,7 @@ impl<'a> Matcher<'a> {
                 BoundKind::Uncalculated => DbType::Never.format(format_data),
             }
         } else {
-            match type_var_matcher.func_or_callable {
+            match self.func_or_callable.unwrap() {
                 FunctionOrCallable::Function(f) => {
                     if let Some(class) = self.class {
                         if class.node_ref.as_link() == usage.in_definition() {
@@ -599,7 +599,12 @@ impl<'a> Matcher<'a> {
         t: &DbType,
     ) -> DbType {
         if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
-            type_var_matcher.replace_type_var_likes_for_nested_context(i_s, self.class, t)
+            type_var_matcher.replace_type_var_likes_for_nested_context(
+                i_s,
+                self.class,
+                self.func_or_callable.as_ref().unwrap(),
+                t,
+            )
         } else {
             unreachable!()
         }
