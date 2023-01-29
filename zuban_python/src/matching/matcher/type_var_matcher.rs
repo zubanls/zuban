@@ -268,6 +268,11 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     let type_vars = class.type_vars(i_s);
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = function.type_vars(i_s);
+
+    if let Some(t) = function.first_param_annotation_type(i_s) {
+        // TODO
+    }
+
     if has_generics {
         let mut type_arguments = calculate_type_vars(
             i_s,
