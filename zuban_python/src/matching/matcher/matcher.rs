@@ -532,13 +532,15 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn format_in_type_var_matcher(
+    pub fn format(
         &self,
         usage: &TypeVarLikeUsage,
         format_data: &FormatData,
         params_style: ParamsStyle,
     ) -> Box<str> {
-        let type_var_matcher = self.type_var_matcher.as_ref().unwrap();
+        let Some(type_var_matcher) = self.type_var_matcher.as_ref() else {
+            return usage.format_without_matcher(format_data.db, format_data.style, params_style)
+        };
         let i_s = &mut InferenceState::new(format_data.db);
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
