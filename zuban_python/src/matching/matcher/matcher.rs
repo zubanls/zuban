@@ -124,13 +124,54 @@ impl<'a> Matcher<'a> {
         variance: Variance,
     ) -> Match {
         match self.type_var_matcher.as_mut() {
-            Some(matcher) => self.match_or_add_type_var_in_type_var_matcher(
-                i_s,
-                t1,
-                t1.type_var.as_ref(),
-                value_type,
-                variance,
-            ),
+            Some(_) => {
+                let m = self.match_or_add_type_var_in_type_var_matcher(
+                    i_s,
+                    t1,
+                    t1.type_var.as_ref(),
+                    value_type,
+                    variance,
+                );
+                m.unwrap_or_else(|| match self.func_or_callable.unwrap() {
+                    // TODO this should probably moved out
+                    FunctionOrCallable::Function(f) => {
+                        // If we're in a class context, we must also be in a method.
+                        if let Some(func_class) = f.class {
+                            if t1.in_definition == func_class.node_ref.as_link() {
+                                // By definition, because the class did not match there will never be a
+                                // type_var_remap that is not defined.
+                                let type_var_remap = func_class.type_var_remap.unwrap();
+                                let g =
+                                    Generic::new(&type_var_remap[t1.index]).expect_type_argument();
+                                // The remapping of type vars needs to be checked now. In a lot of
+                                // cases this is T -> T and S -> S, but it could also be T -> S and S
+                                // -> List[T] or something completely arbitrary.
+                                g.matches(i_s, self, value_type, t1.type_var.variance)
+                            } else {
+                                // Happens e.g. for testInvalidNumberOfTypeArgs
+                                // class C:  # Forgot to add type params here
+                                //     def __init__(self, t: T) -> None: pass
+                                if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
+                                    if v == t1 {
+                                        return Match::new_true();
+                                    }
+                                }
+                                todo!(
+                                    "TODO free type param annotations; found {:?}",
+                                    t1.in_definition,
+                                )
+                            }
+                        } else {
+                            todo!(
+                                "Probably nested generic functions??? {:?}",
+                                t1.in_definition,
+                            )
+                        }
+                    }
+                    FunctionOrCallable::Callable(c) => Type::owned(DbType::TypeVar(t1.clone()))
+                        .simple_matches(i_s, value_type, variance),
+                })
+            }
             None => match value_type.maybe_db_type() {
                 Some(DbType::TypeVar(t2)) => {
                     (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
@@ -233,7 +274,7 @@ impl<'a> Matcher<'a> {
         type_var: &TypeVar,
         value_type: &Type,
         variance: Variance,
-    ) -> Match {
+    ) -> Option<Match> {
         let type_var_matcher = self.type_var_matcher.as_mut().unwrap();
         let type_var_like = &type_var_usage.type_var;
         if type_var_matcher.match_in_definition == type_var_usage.in_definition {
@@ -241,7 +282,7 @@ impl<'a> Matcher<'a> {
                 &mut type_var_matcher.calculated_type_vars[type_var_usage.index.as_usize()];
             if let BoundKind::TypeVar(current_type) = &mut current.type_ {
                 let m = current_type.merge_or_mismatch(i_s, value_type, variance);
-                return match m.bool() || !type_var.restrictions.is_empty() {
+                return Some(match m.bool() || !type_var.restrictions.is_empty() {
                     true => m,
                     false => match current.defined_by_result_context {
                         true => Match::new_false(),
@@ -250,7 +291,7 @@ impl<'a> Matcher<'a> {
                             similar: false,
                         },
                     },
-                };
+                });
             } else {
                 debug_assert!(!current.calculated(), "{current:?}");
             }
@@ -271,7 +312,7 @@ impl<'a> Matcher<'a> {
                             current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
                                 value_type.as_db_type(i_s),
                             ));
-                            return Match::new_true();
+                            return Some(Match::new_true());
                         } else {
                             mismatch_constraints = true;
                         }
@@ -286,12 +327,12 @@ impl<'a> Matcher<'a> {
                                 // are matching. Therefore just return Any.
                                 current.type_ =
                                     BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
-                                return m;
+                                return Some(m);
                             }
                             current.type_ =
                                 BoundKind::TypeVar(TypeVarBound::Invariant(restriction.clone()));
                             if !value_type.has_any(i_s) {
-                                return m;
+                                return Some(m);
                             }
                         }
                     }
@@ -304,20 +345,20 @@ impl<'a> Matcher<'a> {
                     .bool();
             }
             if mismatch_constraints {
-                return Match::False {
+                return Some(Match::False {
                     reason: MismatchReason::ConstraintMismatch {
                         expected: value_type.as_db_type(i_s),
                         type_var: type_var_usage.type_var.clone(),
                     },
                     similar: false,
-                };
+                });
             }
             current.type_ =
                 BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s), variance));
             if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
-                Match::True { with_any: true }
+                Some(Match::True { with_any: true })
             } else {
-                Match::new_true()
+                Some(Match::new_true())
             }
         } else {
             if let Some(parent_matcher) = type_var_matcher.parent_matcher.as_mut() {
@@ -332,52 +373,10 @@ impl<'a> Matcher<'a> {
                             &TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
                         )
                         .expect_type_argument();
-                    return g.simple_matches(i_s, value_type, type_var.variance);
+                    return Some(g.simple_matches(i_s, value_type, type_var.variance));
                 }
             }
-            match self.func_or_callable.unwrap() {
-                // TODO this should probably moved out
-                FunctionOrCallable::Function(f) => {
-                    // If we're in a class context, we must also be in a method.
-                    if let Some(func_class) = f.class {
-                        if type_var_usage.in_definition == func_class.node_ref.as_link() {
-                            // By definition, because the class did not match there will never be a
-                            // type_var_remap that is not defined.
-                            let type_var_remap = func_class.type_var_remap.unwrap();
-                            let g = Generic::new(&type_var_remap[type_var_usage.index])
-                                .expect_type_argument();
-                            // The remapping of type vars needs to be checked now. In a lot of
-                            // cases this is T -> T and S -> S, but it could also be T -> S and S
-                            // -> List[T] or something completely arbitrary.
-                            g.matches(i_s, self, value_type, type_var.variance)
-                        } else {
-                            // Happens e.g. for testInvalidNumberOfTypeArgs
-                            // class C:  # Forgot to add type params here
-                            //     def __init__(self, t: T) -> None: pass
-                            if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
-                                if v == type_var_usage {
-                                    return Match::new_true();
-                                }
-                            }
-                            todo!(
-                                "TODO free type param annotations; searched ({:?}), found {:?}",
-                                type_var_matcher.match_in_definition,
-                                type_var_usage.in_definition,
-                            )
-                        }
-                    } else {
-                        todo!(
-                            "Probably nested generic functions??? {:?} {:?}",
-                            type_var_usage.in_definition,
-                            type_var_matcher.match_in_definition
-                        )
-                    }
-                }
-                FunctionOrCallable::Callable(c) => {
-                    Type::owned(DbType::TypeVar(type_var_usage.clone()))
-                        .simple_matches(i_s, value_type, variance)
-                }
-            }
+            None
         }
     }
 
