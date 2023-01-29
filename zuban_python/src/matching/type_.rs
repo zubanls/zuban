@@ -763,6 +763,7 @@ impl<'a> Type<'a> {
         c1: &CallableContent,
         c2: &CallableContent,
     ) -> Match {
+        // TODO This is is weird.
         if !matcher.has_type_var_matcher() {
             if let Some(c2_type_vars) = c2.type_vars.as_ref() {
                 let mut matcher = Matcher::new_reverse_callable_matcher(c2, c2_type_vars.len());
@@ -806,7 +807,7 @@ impl<'a> Type<'a> {
                 let mut overlaps = true;
                 for type1 in ts1.iter() {
                     /*
-                    if matcher.has_type_var_matcher() {
+                    if matcher.might_have_defined_type_vars() {
                         match type1 {
                             DbType::TypeVarLike(t) if t.is_type_var_tuple() => {
                                 todo!()
@@ -1041,7 +1042,7 @@ impl<'a> Type<'a> {
                     }
                 }
                 DbType::TypeVar(_) => {
-                    if matcher.has_type_var_matcher() {
+                    if matcher.might_have_defined_type_vars() {
                         let t = Type::owned(
                             matcher.replace_type_var_likes_for_nested_context(i_s, db_type),
                         );
@@ -1111,7 +1112,7 @@ impl<'a> Type<'a> {
                     .iter()
                     .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
                 Some(db_type @ DbType::TypeVar(_)) => {
-                    if matcher.has_type_var_matcher() {
+                    if matcher.might_have_defined_type_vars() {
                         Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s, db_type))
                             .on_any_class(i_s, matcher, callable)
                     } else {
@@ -1197,7 +1198,7 @@ pub fn match_tuple_type_arguments(
         });
     }
     use TupleTypeArguments::*;
-    if matcher.has_type_var_matcher() {
+    if matcher.might_have_defined_type_vars() {
         if let Some(ts) = t1.has_type_var_tuple() {
             return matcher.match_type_var_tuple(i_s, ts, t2, variance);
         }

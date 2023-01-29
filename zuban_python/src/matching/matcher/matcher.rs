@@ -90,6 +90,11 @@ impl<'a> Matcher<'a> {
     }
 
     #[inline]
+    pub fn might_have_defined_type_vars(&self) -> bool {
+        self.type_var_matcher.is_some() || self.func_or_callable.is_some()
+    }
+
+    #[inline]
     pub fn has_type_var_matcher(&self) -> bool {
         self.type_var_matcher.is_some()
     }

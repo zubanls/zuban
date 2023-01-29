@@ -227,7 +227,7 @@ fn calculate_type_vars<'db>(
         }
     };
     let mut matcher = Matcher::new(class, func_or_callable, matcher);
-    if matcher.has_type_var_matcher() {
+    if matcher.type_var_matcher.is_some() {
         result_context.with_type_if_exists_and_replace_type_var_likes(i_s, |i_s, type_| {
             if let Some(class) = expected_return_class {
                 // This is kind of a special case. Since __init__ has no return annotation, we simply
@@ -429,7 +429,7 @@ pub fn match_arguments_against_params<
                         unreachable!()
                     }
                 };
-                let value = if matcher.has_type_var_matcher() {
+                let value = if matcher.might_have_defined_type_vars() {
                     argument.infer(
                         i_s,
                         &mut ResultContext::WithMatcher {
