@@ -794,6 +794,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         ComplexPoint::TypeInstance(t) => {
                             if let DbType::Callable(c) = t.as_ref() {
+                                // TODO should use create_signature_without_self!
                                 let complex = ComplexPoint::BoundMethod(
                                     get_inferred(i_s).as_any_link(i_s),
                                     mro_index,
