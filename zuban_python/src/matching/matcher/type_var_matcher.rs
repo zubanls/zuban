@@ -142,7 +142,6 @@ impl CalculatedTypeVarLike {
 pub struct TypeVarMatcher<'a> {
     pub(super) calculated_type_vars: &'a mut [CalculatedTypeVarLike],
     pub(super) match_in_definition: PointLink,
-    pub(super) parent_matcher: Option<&'a mut Self>,
     pub match_reverse: bool, // For contravariance subtypes
 }
 
@@ -150,13 +149,11 @@ impl<'a> TypeVarMatcher<'a> {
     pub fn new(
         match_in_definition: PointLink,
         calculated_type_vars: &'a mut [CalculatedTypeVarLike],
-        //parent_matcher: Option<&'a mut Self>,
     ) -> Self {
         Self {
             calculated_type_vars,
             match_in_definition,
             match_reverse: false,
-            parent_matcher: None, //parent_matcher,
         }
     }
 

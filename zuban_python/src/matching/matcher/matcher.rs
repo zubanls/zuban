@@ -361,9 +361,6 @@ impl<'a> Matcher<'a> {
                 Some(Match::new_true())
             }
         } else {
-            if let Some(parent_matcher) = type_var_matcher.parent_matcher.as_mut() {
-                todo!()
-            }
             if let Some(class) = self.class {
                 if class.node_ref.as_link() == type_var_usage.in_definition {
                     let g = class
