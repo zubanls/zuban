@@ -132,44 +132,55 @@ impl<'a> Matcher<'a> {
                     value_type,
                     variance,
                 );
-                m.unwrap_or_else(|| match self.func_or_callable.unwrap() {
-                    // TODO this should probably moved out
-                    FunctionOrCallable::Function(f) => {
-                        // If we're in a class context, we must also be in a method.
-                        if let Some(func_class) = f.class {
-                            if t1.in_definition == func_class.node_ref.as_link() {
-                                // By definition, because the class did not match there will never be a
-                                // type_var_remap that is not defined.
-                                let type_var_remap = func_class.type_var_remap.unwrap();
-                                let g =
-                                    Generic::new(&type_var_remap[t1.index]).expect_type_argument();
-                                // The remapping of type vars needs to be checked now. In a lot of
-                                // cases this is T -> T and S -> S, but it could also be T -> S and S
-                                // -> List[T] or something completely arbitrary.
-                                g.matches(i_s, self, value_type, t1.type_var.variance)
-                            } else {
-                                // Happens e.g. for testInvalidNumberOfTypeArgs
-                                // class C:  # Forgot to add type params here
-                                //     def __init__(self, t: T) -> None: pass
-                                if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
-                                    if v == t1 {
-                                        return Match::new_true();
+                m.unwrap_or_else(|| {
+                    if let Some(class) = self.class {
+                        if class.node_ref.as_link() == t1.in_definition {
+                            let g = class
+                                .generics
+                                .nth_usage(i_s, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
+                                .expect_type_argument();
+                            return g.simple_matches(i_s, value_type, t1.type_var.variance);
+                        }
+                    }
+                    match self.func_or_callable.unwrap() {
+                        // TODO this should probably moved out
+                        FunctionOrCallable::Function(f) => {
+                            // If we're in a class context, we must also be in a method.
+                            if let Some(func_class) = f.class {
+                                if t1.in_definition == func_class.node_ref.as_link() {
+                                    // By definition, because the class did not match there will never be a
+                                    // type_var_remap that is not defined.
+                                    let type_var_remap = func_class.type_var_remap.unwrap();
+                                    let g = Generic::new(&type_var_remap[t1.index])
+                                        .expect_type_argument();
+                                    // The remapping of type vars needs to be checked now. In a lot of
+                                    // cases this is T -> T and S -> S, but it could also be T -> S and S
+                                    // -> List[T] or something completely arbitrary.
+                                    g.matches(i_s, self, value_type, t1.type_var.variance)
+                                } else {
+                                    // Happens e.g. for testInvalidNumberOfTypeArgs
+                                    // class C:  # Forgot to add type params here
+                                    //     def __init__(self, t: T) -> None: pass
+                                    if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
+                                        if v == t1 {
+                                            return Match::new_true();
+                                        }
                                     }
+                                    todo!(
+                                        "TODO free type param annotations; found {:?}",
+                                        t1.in_definition,
+                                    )
                                 }
+                            } else {
                                 todo!(
-                                    "TODO free type param annotations; found {:?}",
+                                    "Probably nested generic functions??? {:?}",
                                     t1.in_definition,
                                 )
                             }
-                        } else {
-                            todo!(
-                                "Probably nested generic functions??? {:?}",
-                                t1.in_definition,
-                            )
                         }
+                        FunctionOrCallable::Callable(c) => Type::owned(DbType::TypeVar(t1.clone()))
+                            .simple_matches(i_s, value_type, variance),
                     }
-                    FunctionOrCallable::Callable(c) => Type::owned(DbType::TypeVar(t1.clone()))
-                        .simple_matches(i_s, value_type, variance),
                 })
             }
             None => match value_type.maybe_db_type() {
@@ -361,18 +372,6 @@ impl<'a> Matcher<'a> {
                 Some(Match::new_true())
             }
         } else {
-            if let Some(class) = self.class {
-                if class.node_ref.as_link() == type_var_usage.in_definition {
-                    let g = class
-                        .generics
-                        .nth_usage(
-                            i_s,
-                            &TypeVarLikeUsage::TypeVar(Cow::Borrowed(type_var_usage)),
-                        )
-                        .expect_type_argument();
-                    return Some(g.simple_matches(i_s, value_type, type_var.variance));
-                }
-            }
             None
         }
     }
