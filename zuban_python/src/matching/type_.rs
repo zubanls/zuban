@@ -37,11 +37,15 @@ impl<'a> Type<'a> {
         Self::owned(self.into_db_type(i_s).union(other.into_db_type(i_s)))
     }
 
-    pub fn into_db_type(self, i_s: &mut InferenceState) -> DbType {
+    fn into_cow(self, i_s: &mut InferenceState) -> Cow<'a, DbType> {
         match self {
-            Self::Class(class) => class.as_db_type(i_s),
-            Self::Type(t) => t.into_owned(),
+            Self::Class(class) => Cow::Owned(class.as_db_type(i_s)),
+            Self::Type(t) => t,
         }
+    }
+
+    pub fn into_db_type(self, i_s: &mut InferenceState) -> DbType {
+        self.into_cow(i_s).into_owned()
     }
 
     pub fn as_db_type(&self, i_s: &mut InferenceState) -> DbType {
