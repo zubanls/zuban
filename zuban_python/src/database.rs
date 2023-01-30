@@ -973,13 +973,12 @@ impl DbType {
                 content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {}
-            Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
                     search_in_generics(found_type_var, generics)
                 }
             }
-            Self::Self_ => (),
+            Self::Self_ | Self::NewType(_) => (),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }
@@ -1050,7 +1049,8 @@ impl DbType {
             }
             Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,
-            Self::NewType(_) => todo!(),
+            // TODO why do we not have access to i_s?
+            Self::NewType(n) => n.type_(&mut InferenceState::new(db)).has_any(db),
             Self::RecursiveAlias(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
                     if search_in_generics(generics, already_checked) {

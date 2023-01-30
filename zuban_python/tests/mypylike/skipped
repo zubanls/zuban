@@ -282,10 +282,6 @@ testSelfTypeRestrictedMethodOverloadInit
 
 # strict optional
 testNoComplainInferredNoneStrict
-# non strict call on Optional[T]
-testCastConfusion
-# None | Iterable[X] -> ignore None
-testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
@@ -1168,6 +1164,7 @@ testTernaryWithNone
 testNoneListTernary
 testIsinstanceAndOptionalAndAnyBase
 testGenericTypeAliasesOptional
+testCastConfusion
 # narrowing with or/and
 testOptionalTypeOrTypeBothOptional
 testOptionalTypeOrTypeComplexUnion
