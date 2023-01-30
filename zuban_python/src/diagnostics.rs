@@ -253,7 +253,7 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
             IssueType::NotCallable{type_} => format!("{type_} not callable"),
-            IssueType::AnyNotCallable => format!("Any(...) is no longer supported. Use cast(Any, ...) instead"),
+            IssueType::AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_owned(),
             IssueType::NotIterable{type_} => format!("{type_} object is not iterable"),
             IssueType::InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
