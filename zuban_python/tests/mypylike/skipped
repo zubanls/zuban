@@ -1,7 +1,6 @@
 # Next up
 testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
-testSelfTypeBadTypeIgnoredInConstructorGeneric
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariable
@@ -273,6 +272,11 @@ param_spec_with_identity_mypy_issue_12278
 
 # Param spec invalid calls
 testParamSpecInvalidCalls
+
+# Are generics in self types always bound to the function?
+# https://github.com/python/typing/discussions/1340
+testSelfTypeBadTypeIgnoredInConstructorGeneric
+testSelfTypeRestrictedMethodOverloadInit
 
 # strict optional
 testNoComplainInferredNoneStrict
@@ -859,7 +863,6 @@ testDecoratorUpdateClassInFunction
 testGenericTypeBody1
 param_spec_with_generic_class
 
-testSelfTypeRestrictedMethodOverloadInit
 testSelfTypeReallyTrickyExample
 
 # Self tests
