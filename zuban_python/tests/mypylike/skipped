@@ -2,11 +2,6 @@
 testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
 
-# None as a default for class variables, even if not optional?
-testNoneClassVariable
-testNoneClassVariableInInit
-testMultipleAssignmentNoneClassVariableInInit
-
 # Fails only without --release
 testModuleAsTypeNoCrash
 testNonStrictOptional
@@ -865,6 +860,11 @@ testTypingSelfClashInBodies
 testTypingSelfFine
 testMixinProtocolSuper
 testTypingSelfAttrOldVsNewStyle
+
+# None as a default for class variables, even if not optional?
+testNoneClassVariable
+testNoneClassVariableInInit
+testMultipleAssignmentNoneClassVariableInInit
 
 # Liskov
 testLiskovFineVariable
