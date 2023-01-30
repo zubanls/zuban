@@ -10,7 +10,7 @@ use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
-    Function(Function<'a>),
+    Function(Function<'a, 'a>),
     Overload(OverloadedFunction<'a>),
     Callable(Callable<'a>),
 }

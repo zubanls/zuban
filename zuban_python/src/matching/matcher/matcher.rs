@@ -61,7 +61,7 @@ impl<'a> Matcher<'a> {
 
     pub fn new_reverse_function_matcher(
         class: Option<&'a Class<'a>>,
-        function: Function<'a>,
+        function: Function<'a, 'a>,
         type_vars: Option<&TypeVarLikes>,
     ) -> Self {
         if let Some(type_vars) = type_vars {

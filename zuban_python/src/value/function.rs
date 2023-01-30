@@ -38,12 +38,12 @@ use crate::node_ref::NodeRef;
 use crate::value::Class;
 
 #[derive(Clone, Copy)]
-pub struct Function<'a> {
+pub struct Function<'a, 'class> {
     pub node_ref: NodeRef<'a>,
-    pub class: Option<Class<'a>>,
+    pub class: Option<Class<'class>>,
 }
 
-impl fmt::Debug for Function<'_> {
+impl fmt::Debug for Function<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("file", self.node_ref.file)
@@ -52,19 +52,19 @@ impl fmt::Debug for Function<'_> {
     }
 }
 
-impl<'db: 'a, 'a> Function<'a> {
+impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "function_def_parameters" to save calculated type vars
     // - "(" for decorator caching
-    pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'a>>) -> Self {
+    pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
         Self { node_ref, class }
     }
 
     pub fn from_execution(
         db: &'db Database,
         execution: &Execution,
-        class: Option<Class<'a>>,
+        class: Option<Class<'class>>,
     ) -> Self {
         let f_func = db.loaded_python_file(execution.function.file);
         Function::new(
@@ -713,7 +713,7 @@ impl<'db: 'a, 'a> Function<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Function<'a> {
+impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -768,7 +768,7 @@ impl<'db, 'a> Value<'db, 'a> for Function<'a> {
         Type::owned(self.as_db_type(i_s, false))
     }
 
-    fn as_function(&self) -> Option<&Function<'a>> {
+    fn as_function(&self) -> Option<&Function<'a, 'class>> {
         Some(self)
     }
 
@@ -1058,8 +1058,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<(Function<'a>, Option<GenericsList>)> {
-        let mut match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'a>| {
+    ) -> Option<(Function<'a, 'a>, Option<GenericsList>)> {
+        let mut match_signature = |i_s: &mut InferenceState<'db, '_>,
+                                   function: Function<'a, 'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
                 calculate_class_init_type_vars_and_return(

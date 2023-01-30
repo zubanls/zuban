@@ -28,7 +28,7 @@ use crate::value::{
 
 #[derive(Debug)]
 pub enum FunctionOrOverload<'a> {
-    Function(Function<'a>),
+    Function(Function<'a, 'a>),
     Overload(OverloadedFunction<'a>),
 }
 

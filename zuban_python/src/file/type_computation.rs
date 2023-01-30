@@ -68,7 +68,7 @@ pub(super) enum InvalidVariableType<'a> {
     List,
     Tuple { tuple_length: usize },
     Execution,
-    Function(Function<'a>),
+    Function(Function<'a, 'a>),
     Literal(&'a str),
     Variable(NodeRef<'a>),
     Float,

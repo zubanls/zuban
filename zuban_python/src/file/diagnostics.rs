@@ -358,7 +358,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
     fn calc_overload_implementation_diagnostics<'x, P1: Param<'x>>(
         &mut self,
         name_def_node_ref: NodeRef,
-        overload_item: Function<'x>,
+        overload_item: Function<'x, 'x>,
         matcher: &mut Matcher,
         implementation_params: impl Iterator<Item = P1>,
         implementation_type: &Type,

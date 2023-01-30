@@ -12,7 +12,7 @@ use crate::value::Function;
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'a> {
-    Function(Function<'a>),
+    Function(Function<'a, 'a>),
     Callable(&'a CallableContent),
 }
 
