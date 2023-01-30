@@ -120,6 +120,8 @@ testOverloadInferUnionWithDifferingLengths
 testOverloadInferUnionWithMixOfPositionalAndOptionalArgs
 testOverloadingInferUnionReturn*
 testOverloadInferUnionReturnWithInconsistentTypevarNames
+testOverloadsNoneAndTypeVarsWithNoStrictOptional
+testOverloadsNoneAndTypeVarsWithStrictOptional
 overload_union_math_on_class_init_constrained
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
@@ -280,16 +282,6 @@ testSelfTypeRestrictedMethodOverloadInit
 
 # strict optional
 testNoComplainInferredNoneStrict
-testInheritedAttributeNoStrictOptional
-testIncompatibleInheritedAttributeNoStrictOptional
-testInheritedAttributeStrictOptional
-testOverloadsAndNoneWithoutStrictOptional
-testOverloadsAndNoneWithStrictOptional
-testOverloadsNoneAndTypeVarsWithNoStrictOptional
-testOverloadsNoneAndTypeVarsWithStrictOptional
-testAssignToFuncDefViaImport
-testRegression11705_Strict
-testGenericMethodCalledInGenericContext
 # non strict call on Optional[T]
 testCastConfusion
 # None | Iterable[X] -> ignore None
@@ -713,6 +705,8 @@ testGenericAliasCollectionsABCReveal
 
 # Complex Star import
 testImportWithinMethod
+# Star import override
+testAssignToFuncDefViaImport
 
 # Module type does not contain module info
 testMultiModuleAlias
@@ -1029,6 +1023,8 @@ testOverloadingWithParamSpec
 testIntersectionTypesAndVarArgs
 testLiteralInferredInOverloadContextWithTypevars
 testLiteralSubtypeOverlap
+testOverloadsAndNoneWithoutStrictOptional
+testOverloadsAndNoneWithStrictOptional
 overload_overlapping_any
 
 # - Signature of "f" incompatible with supertype "Parent"
@@ -1184,6 +1180,7 @@ testNoneOrTypeVarIsTypeVar
 testNoneAndStringIsNone
 testInferInWithErasedTypes
 testUnionTruthinessTracking
+testRegression11705_Strict
 # narrowing with assert
 testNarrowOptionalOutsideLambda
 testNarrowOptionalOutsideLambdaWithDeferred
@@ -1208,6 +1205,9 @@ testInferOptionalTypeLocallyBound
 testInferOptionalAnyType
 testInferOptionalTypeFromOptional
 testDeferredAndOptionalInferenceSpecialCase
+testInheritedAttributeNoStrictOptional
+testIncompatibleInheritedAttributeNoStrictOptional
+testInheritedAttributeStrictOptional
 
 # Weird Name binder type definitions (overwritten?)
 testLiteralBinderLastValueErased
