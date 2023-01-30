@@ -27,13 +27,6 @@ testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
 testNoRecursiveExpandInstanceUnionCrashInference
 
-#  Method must have at least one argument. Did you forget the "self" argument?
-testMissingSelf
-testMissingSelfInMethod
-testReprocessMethodInNestedClassSemanal
-testPreviousErrorInMethodSemanal1
-testSelfTypeNotSelfType
-
 # Implement bitwise or
 testUnionOrSyntaxWithTypeAliasWorking
 
@@ -860,6 +853,9 @@ testTypingSelfClashInBodies
 testTypingSelfFine
 testMixinProtocolSuper
 testTypingSelfAttrOldVsNewStyle
+# "Self argument missing for a non-static method"
+# "The erased type of self "None" is not a supertype of its class "__main__.A""
+testSelfTypeNotSelfType
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariable

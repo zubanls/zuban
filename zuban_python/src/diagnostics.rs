@@ -273,7 +273,7 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
             IssueType::MethodWithoutArguments => {
-                "Method must have at least one argument".to_owned()
+                "Method must have at least one argument. Did you forget the \"self\" argument?".to_owned()
             }
             IssueType::OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_owned()
