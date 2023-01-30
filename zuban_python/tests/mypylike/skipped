@@ -859,11 +859,8 @@ testDecoratorUpdateClassInFunction
 testGenericTypeBody1
 param_spec_with_generic_class
 
-testSelfTypeStaticAccess
 testSelfTypeRestrictedMethodOverloadInit
-testSelfTypeRestrictedMethodOverloadInitFallBacks
 testSelfTypeReallyTrickyExample
-testSelfTypeBadTypeIgnoredInConstructorOverload
 
 # Self tests
 testTypingSelfBasic
@@ -1438,6 +1435,7 @@ testInferLocalVariableTypeWithUnderspecifiedGenericType
 testLocalVariableInferenceFromEmptyList
 testNoPartialInSupertypeAsContext
 testSuggestPep604AnnotationForPartialNone
+testSelfTypeRestrictedMethodOverloadInitFallBacks
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
