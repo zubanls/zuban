@@ -505,10 +505,7 @@ impl<'a> Type<'a> {
         if let Type::Type(t2) = value_type {
             match t2.as_ref() {
                 DbType::Any => {
-                    let t1 = match self {
-                        Self::Class(c) => Cow::Owned(c.as_db_type(i_s)),
-                        Self::Type(t) => Cow::Borrowed(t.as_ref()),
-                    };
+                    let t1 = self.as_cow(i_s);
                     matcher.set_all_contained_type_vars_to_any(i_s, &t1);
                     return Match::True { with_any: true };
                 }
