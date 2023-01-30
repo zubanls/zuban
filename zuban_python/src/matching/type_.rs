@@ -48,11 +48,15 @@ impl<'a> Type<'a> {
         self.into_cow(i_s).into_owned()
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState) -> DbType {
+    fn as_cow(&self, i_s: &mut InferenceState) -> Cow<DbType> {
         match self {
-            Self::Class(class) => class.as_db_type(i_s),
-            Self::Type(t) => t.clone().into_owned(),
+            Self::Class(class) => Cow::Owned(class.as_db_type(i_s)),
+            Self::Type(t) => Cow::Borrowed(t),
         }
+    }
+
+    pub fn as_db_type(&self, i_s: &mut InferenceState) -> DbType {
+        self.as_cow(i_s).into_owned()
     }
 
     #[inline]
@@ -1088,18 +1092,11 @@ impl<'a> Type<'a> {
                 .map(|c| c.as_db_type(&mut cloned_i_s))
                 .unwrap_or(DbType::Self_)
         };
-        match self {
-            Self::Class(c) => c.as_db_type(i_s).replace_type_var_likes_and_self(
-                i_s.db,
-                &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
-                &mut replace_self,
-            ),
-            Self::Type(t) => t.replace_type_var_likes_and_self(
-                i_s.db,
-                &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
-                &mut replace_self,
-            ),
-        }
+        self.as_cow(i_s).replace_type_var_likes_and_self(
+            i_s.db,
+            &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
+            &mut replace_self,
+        )
     }
 
     pub fn on_any_class(
