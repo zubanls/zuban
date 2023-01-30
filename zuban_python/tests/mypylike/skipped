@@ -163,6 +163,7 @@ testMisguidedSetItem
 
 # Union Not matching type vars
 testJoinUnionWithUnionAndAny
+testNoComplainInferredNoneStrict
 
 # Duplicate base class
 testIncludingBaseClassTwice
@@ -279,9 +280,6 @@ testParamSpecInvalidCalls
 # https://github.com/python/typing/discussions/1340
 testSelfTypeBadTypeIgnoredInConstructorGeneric
 testSelfTypeRestrictedMethodOverloadInit
-
-# strict optional
-testNoComplainInferredNoneStrict
 
 # function call in class of function in class
 testCallConditionalMethodInClassBody
