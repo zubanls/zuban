@@ -990,37 +990,37 @@ impl DbType {
         result
     }
 
-    pub fn has_any(&self, db: &Database) -> bool {
-        self.has_any_internal(db, &mut Vec::new())
+    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+        self.has_any_internal(i_s, &mut Vec::new())
     }
 
     fn has_any_internal(
         &self,
-        db: &Database,
+        i_s: &mut InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
-        let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
+        let mut search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.has_any_internal(db, already_checked),
+                GenericItem::TypeArgument(t) => t.has_any_internal(i_s, already_checked),
                 GenericItem::TypeArguments(_) => todo!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             })
         };
         match self {
             Self::Class(_, Some(generics)) => search_in_generics(generics, already_checked),
-            Self::Union(u) => u.iter().any(|t| t.has_any_internal(db, already_checked)),
+            Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::Intersection(intersection) => intersection
                 .iter()
-                .any(|t| t.has_any_internal(db, already_checked)),
+                .any(|t| t.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
-            Self::Type(db_type) => db_type.has_any_internal(db, already_checked),
+            Self::Type(db_type) => db_type.has_any_internal(i_s, already_checked),
             Self::Tuple(content) => content
                 .args
                 .as_ref()
-                .map(|args| args.has_any_internal(db, already_checked))
+                .map(|args| args.has_any_internal(i_s, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => {
-                content.result_type.has_any_internal(db, already_checked)
+                content.result_type.has_any_internal(i_s, already_checked)
                     || match &content.params {
                         CallableParams::Simple(params) => {
                             params.iter().any(|param| match &param.param_specific {
@@ -1032,7 +1032,7 @@ impl DbType {
                                 ))
                                 | ParamSpecific::DoubleStarred(
                                     DoubleStarredParamSpecific::ValueType(t),
-                                ) => t.has_any_internal(db, already_checked),
+                                ) => t.has_any_internal(i_s, already_checked),
                                 ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
                                     false
                                 }
@@ -1049,8 +1049,7 @@ impl DbType {
             }
             Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,
-            // TODO why do we not have access to i_s?
-            Self::NewType(n) => n.type_(&mut InferenceState::new(db)).has_any(db),
+            Self::NewType(n) => n.type_(i_s).has_any(i_s),
             Self::RecursiveAlias(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
                     if search_in_generics(generics, already_checked) {
@@ -1062,9 +1061,9 @@ impl DbType {
                 } else {
                     already_checked.push(recursive_alias.clone());
                     recursive_alias
-                        .type_alias(db)
+                        .type_alias(i_s.db)
                         .db_type
-                        .has_any_internal(db, already_checked)
+                        .has_any_internal(i_s, already_checked)
                 }
             }
             Self::Self_ => todo!(),
@@ -1191,7 +1190,7 @@ impl DbType {
                     let t = Type::new(&type_);
                     for entry in entries.iter_mut() {
                         let current = Type::new(&entry.type_);
-                        if entry.type_.has_any(db) || type_.has_any(db) {
+                        if entry.type_.has_any(&mut i_s) || type_.has_any(&mut i_s) {
                             if entry.type_ == type_ {
                                 return;
                             }
@@ -1778,21 +1777,21 @@ impl TupleTypeArguments {
         }
     }
 
-    pub fn has_any(&self, db: &Database) -> bool {
-        self.has_any_internal(db, &mut Vec::new())
+    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+        self.has_any_internal(i_s, &mut Vec::new())
     }
 
     fn has_any_internal(
         &self,
-        db: &Database,
+        i_s: &mut InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| match t {
-                TypeOrTypeVarTuple::Type(t) => t.has_any_internal(db, already_checked),
+                TypeOrTypeVarTuple::Type(t) => t.has_any_internal(i_s, already_checked),
                 TypeOrTypeVarTuple::TypeVarTuple(_) => false,
             }),
-            Self::ArbitraryLength(t) => t.has_any_internal(db, already_checked),
+            Self::ArbitraryLength(t) => t.has_any_internal(i_s, already_checked),
         }
     }
 

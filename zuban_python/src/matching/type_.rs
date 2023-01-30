@@ -1157,8 +1157,8 @@ impl<'a> Type<'a> {
     pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
         match self {
             // TODO this does not not need to generate a db type
-            Self::Class(c) => c.as_db_type(i_s).has_any(i_s.db),
-            Self::Type(t) => t.has_any(i_s.db),
+            Self::Class(c) => c.as_db_type(i_s).has_any(i_s),
+            Self::Type(t) => t.has_any(i_s),
         }
     }
 

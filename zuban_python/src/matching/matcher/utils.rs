@@ -302,11 +302,11 @@ fn calculate_type_vars<'db>(
                             TypeVarBound::Invariant(t)
                             | TypeVarBound::Lower(t)
                             | TypeVarBound::Upper(t),
-                        ) => t.has_any(i_s.db),
+                        ) => t.has_any(i_s),
                         BoundKind::TypeVar(TypeVarBound::LowerAndUpper(t1, t2)) => {
-                            t1.has_any(i_s.db) | t2.has_any(i_s.db)
+                            t1.has_any(i_s) | t2.has_any(i_s)
                         }
-                        BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s.db),
+                        BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s),
                         BoundKind::ParamSpecArgument(params) => todo!(),
                         BoundKind::Uncalculated => continue,
                     };
