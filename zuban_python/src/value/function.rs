@@ -431,7 +431,22 @@ impl<'db: 'a, 'a> Function<'a> {
         let file_index = self.node_ref.file_index();
         while let Some(p) = params.next() {
             let specific = p.specific(i_s);
-            let mut as_t = |t: Option<Type>| t.map(|t| as_db_type(i_s, t)).unwrap_or(DbType::Any);
+            let mut as_t = |t: Option<Type>| {
+                t.map(|t| as_db_type(i_s, t)).unwrap_or({
+                    let name_ref =
+                        NodeRef::new(self.node_ref.file, p.param.name_definition().index());
+                    if name_ref.point().maybe_specific() == Some(Specific::SelfParam) {
+                        if let Some(class) = self.class {
+                            // TODO this if should not be necessary
+                            self.class.unwrap().as_db_type(i_s)
+                        } else {
+                            DbType::Any
+                        }
+                    } else {
+                        DbType::Any
+                    }
+                })
+            };
             let param_specific = match specific {
                 WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_t(t)),
                 WrappedParamSpecific::PositionalOrKeyword(t) => {
