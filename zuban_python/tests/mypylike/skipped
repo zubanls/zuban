@@ -1,6 +1,7 @@
 # Next up
 testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
+testSelfTypeBadTypeIgnoredInConstructorGeneric
 
 # None as a default for class variables, even if not optional?
 testNoneClassVariable
@@ -396,6 +397,7 @@ testForwardReferenceToDynamicallyTypedStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
+testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical

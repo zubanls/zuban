@@ -41,7 +41,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
 
     let func_or_callable = FunctionOrCallable::Function(function);
     let match_in_definition;
-    let matcher = if has_generics {
+    let mut matcher = if has_generics {
         match_in_definition = function.node_ref.as_link();
         get_matcher(
             Some(class),
@@ -60,7 +60,23 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     };
 
     if let Some(t) = function.first_param_annotation_type(i_s) {
-        // TODO
+        let mut class = *class;
+        // The generics of the class are Any, until we actually execute this function and check the
+        // __init__.
+        debug_assert!(matches!(class.generics, Generics::Any));
+        class.generics = Generics::Self_;
+        let matches = Type::Class(class).is_super_type_of(
+            &mut i_s.with_class_context(&class),
+            &mut matcher,
+            &t,
+        );
+        if let Match::False { similar, .. } = matches {
+            return CalculatedTypeArguments {
+                in_definition: match_in_definition,
+                matches: SignatureMatch::False { similar },
+                type_arguments: None,
+            };
+        }
     }
     if has_generics {
         let mut type_arguments = calculate_type_vars(
