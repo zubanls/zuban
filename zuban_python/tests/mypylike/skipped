@@ -42,9 +42,6 @@ testSelfTypeNotSelfType
 # Implement bitwise or
 testUnionOrSyntaxWithTypeAliasWorking
 
-# "<typing special form>"
-testGenericTypeAliasesRuntimeExpressionsOther
-
 # Generics self assignment
 testGenericTypeBodyWithMultipleVariables
 self_valid_method
