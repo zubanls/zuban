@@ -340,7 +340,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn lookup_and_class(
+    pub fn lookup_and_class(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,

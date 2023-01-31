@@ -830,13 +830,13 @@ testSelfTypeCallableClassVarOldStyle
 testIncompatibleVariance
 
 # Self type variable type
-DecoratorUpdateMethod
 testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
 testGenericTypeBody1
 param_spec_with_generic_class
 
 testSelfTypeReallyTrickyExample
+testSelfTypeStaticAccess
 
 # Self tests
 testTypingSelfBasic
