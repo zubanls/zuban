@@ -273,7 +273,7 @@ impl<'a> Type<'a> {
                                         &c2.params,
                                         type_vars2.map(|t| (t, cls.node_ref.as_link())),
                                         Variance::Contravariant,
-                                        true,
+                                        true, // Ignore the first param
                                     );
                                 }
                             }
