@@ -70,7 +70,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 if let Some(c) = class.maybe_class(i_s.db) {
                     let mut i_s = i_s.with_class_context(&c);
                     inf.resolve_class_type_vars(&mut i_s, &self.class)
-                        .bind_descriptors(
+                        .bind_instance_descriptors(
                             &mut i_s,
                             |i_s| self.as_inferred(i_s),
                             node_ref,
@@ -78,7 +78,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                         )
                 } else {
                     inf.resolve_class_type_vars(i_s, &self.class)
-                        .bind_descriptors(i_s, |i_s| self.as_inferred(i_s), node_ref, mro_index)
+                        .bind_instance_descriptors(
+                            i_s,
+                            |i_s| self.as_inferred(i_s),
+                            node_ref,
+                            mro_index,
+                        )
                 }
             });
             match result {
@@ -254,7 +259,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_> {
                     .lookup_symbol(self.i_s, self.name)
                     .and_then(|inf| {
                         inf.resolve_class_type_vars(self.i_s, &self.instance.class)
-                            .bind_descriptors(
+                            .bind_instance_descriptors(
                                 self.i_s,
                                 |i_s| self.instance.as_inferred(i_s),
                                 Some(self.from),
