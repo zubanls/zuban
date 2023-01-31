@@ -250,14 +250,9 @@ impl<'a> Type<'a> {
                             let cls = Class::from_db_type(i_s.db, *link, generics);
                             // TODO the __init__ should actually be looked up on the original class, not
                             // the subclass
-                            let (lookup, func_class) = cls.lookup_and_class(i_s, "__init__");
+                            let lookup = cls.lookup_internal(i_s, None, "__init__");
                             if let LookupResult::GotoName(_, init) = lookup {
-                                let t2 = if let Some(func_class) = func_class {
-                                    let mut i_s = i_s.with_class_context(&func_class);
-                                    init.class_as_type(&mut i_s).into_db_type(&mut i_s)
-                                } else {
-                                    init.class_as_type(i_s).into_db_type(i_s)
-                                };
+                                let t2 = init.class_as_type(i_s).into_db_type(i_s);
                                 if let DbType::Callable(c2) = t2 {
                                     let type_vars2 = cls.type_vars(i_s);
                                     // Since __init__ does not have a return, We need to check the params

@@ -340,7 +340,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn lookup_and_class(
+    fn lookup_and_class(
         &self,
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
@@ -464,7 +464,19 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        self.lookup_and_class(i_s, name).0
+        let (lookup_result, in_class) = self.lookup_and_class(i_s, name);
+        let result = lookup_result.and_then(|inf| {
+            if let Some(in_class) = in_class {
+                let mut i_s = i_s.with_class_context(&in_class);
+                inf.bind_class_descriptors(&mut i_s, self, node_ref)
+            } else {
+                inf.bind_class_descriptors(i_s, self, node_ref)
+            }
+        });
+        match result {
+            Some(LookupResult::None) | None => LookupResult::None,
+            Some(x) => x,
+        }
     }
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {

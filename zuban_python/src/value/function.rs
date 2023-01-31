@@ -402,10 +402,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState, skip_first_param: bool) -> DbType {
+    pub fn as_db_type(&self, i_s: &mut InferenceState, first: FirstParamProperties) -> DbType {
         let type_vars = self.type_vars(i_s); // Cache annotation types
         let mut params = self.iter_params().peekable();
-        if skip_first_param {
+        if matches!(first, FirstParamProperties::Skip) {
             params.next();
         }
         let as_db_type = |i_s: &mut InferenceState, t: Type| {
@@ -760,7 +760,7 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, false))
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 
     fn as_function(&self) -> Option<&Function<'a, 'class>> {
@@ -770,6 +770,13 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     fn module(&self, db: &'a Database) -> Module<'a> {
         Module::new(db, self.node_ref.file)
     }
+}
+
+#[derive(Copy, Clone)]
+pub enum FirstParamProperties<'a> {
+    Skip,
+    InClass(&'a Class<'a>),
+    None,
 }
 
 struct ReturnOrYieldIterator<'a> {
@@ -1199,14 +1206,18 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         Inferred::execute_db_type(i_s, t.unwrap())
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>, skip_first_param: bool) -> DbType {
+    pub fn as_db_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        first: FirstParamProperties,
+    ) -> DbType {
         DbType::Intersection(IntersectionType::new_overload(
             self.overload
                 .functions
                 .iter()
                 .map(|link| {
                     let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                    function.as_db_type(i_s, skip_first_param)
+                    function.as_db_type(i_s, first)
                 })
                 .collect(),
         ))
@@ -1273,7 +1284,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, false))
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 }
 

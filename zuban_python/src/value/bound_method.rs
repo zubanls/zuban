@@ -1,5 +1,6 @@
 use super::{
-    Callable, Function, Instance, LookupResult, OnTypeError, OverloadedFunction, Value, ValueKind,
+    Callable, FirstParamProperties, Function, Instance, LookupResult, OnTypeError,
+    OverloadedFunction, Value, ValueKind,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
@@ -105,8 +106,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         let t = match &self.function {
-            BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
-            BoundMethodFunction::Overload(f) => f.as_db_type(i_s, true),
+            BoundMethodFunction::Function(f) => f.as_db_type(i_s, FirstParamProperties::Skip),
+            BoundMethodFunction::Overload(f) => f.as_db_type(i_s, FirstParamProperties::Skip),
             BoundMethodFunction::Callable(c) => return c.as_type(i_s),
         };
         // TODO performance: it may be questionable that we allocate here again.

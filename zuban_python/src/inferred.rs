@@ -19,11 +19,11 @@ use crate::matching::{
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, Function, Instance,
-    IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance, OnTypeError,
-    OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple, TypeAlias, TypeVarClass,
-    TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast, TypingClass, TypingClassVar,
-    TypingType, Value,
+    BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, FirstParamProperties, Function,
+    Instance, IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance,
+    OnTypeError, OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple, TypeAlias,
+    TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast, TypingClass,
+    TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -698,7 +698,6 @@ impl<'db: 'slf, 'slf> Inferred {
         result.unwrap_or_else(|| todo!())
     }
 
-    #[inline]
     pub fn bind_instance_descriptors(
         self,
         i_s: &mut InferenceState<'db, '_>,
@@ -736,6 +735,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                         );
                                         Some(Self::new_any())
                                     } else {
+                                        // In case there is no node ref, we do not want to just
+                                        // ignore the type error and we basically say that the
+                                        // attribute does not even exist.
                                         None
                                     };
                                 }
@@ -772,7 +774,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         if let Some(t) = func.first_param_annotation_type(i_s) {
                                             create_signature_without_self(i_s, func, instance, &t)
                                         } else {
-                                            Some(func.as_db_type(i_s, true))
+                                            Some(func.as_db_type(i_s, FirstParamProperties::Skip))
                                         }
                                     })
                                     .collect();
@@ -801,6 +803,45 @@ impl<'db: 'slf, 'slf> Inferred {
                                     *definition,
                                 );
                                 return Some(Self::new_unsaved_complex(complex));
+                            }
+                        }
+                        _ => (),
+                    }
+                }
+                _ => (),
+            },
+            InferredState::UnsavedComplex(complex) => (),
+            InferredState::UnsavedSpecific(specific) => todo!(),
+            InferredState::UnsavedFileReference(file_index) => todo!(),
+            InferredState::Unknown => (),
+        }
+        Some(self)
+    }
+
+    pub fn bind_class_descriptors(
+        self,
+        i_s: &mut InferenceState<'db, '_>,
+        class: &Class,
+        from: Option<NodeRef>,
+    ) -> Option<Self> {
+        match &self.state {
+            InferredState::Saved(definition, point) => match point.type_() {
+                PointType::Specific => {
+                    if point.specific() == Specific::Function {
+                        let func = Function::new(NodeRef::from_link(i_s.db, *definition), None);
+                        let t = func.as_db_type(i_s, FirstParamProperties::InClass(class));
+                        return Some(Inferred::execute_db_type(i_s, t));
+                    }
+                }
+                PointType::Complex => {
+                    let file = i_s.db.loaded_python_file(definition.file);
+                    match file.complex_points.get(point.complex_index()) {
+                        ComplexPoint::FunctionOverload(o) => {
+                            todo!()
+                        }
+                        ComplexPoint::TypeInstance(t) => {
+                            if let DbType::Callable(c) = t.as_ref() {
+                                todo!()
                             }
                         }
                         _ => (),

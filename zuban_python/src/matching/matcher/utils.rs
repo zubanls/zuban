@@ -19,7 +19,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, Instance, OnTypeError, Value};
+use crate::value::{Class, FirstParamProperties, Function, Instance, OnTypeError, Value};
 
 pub fn calculate_class_init_type_vars_and_return<'db>(
     i_s: &mut InferenceState<'db, '_>,
@@ -710,7 +710,7 @@ pub fn create_signature_without_self(
     if !match_.bool() {
         return None;
     }
-    let mut t = func.as_db_type(i_s, true);
+    let mut t = func.as_db_type(i_s, FirstParamProperties::Skip);
     if let Some(type_vars) = type_vars {
         let DbType::Callable(callable_content) = &mut t else {
             unreachable!();
