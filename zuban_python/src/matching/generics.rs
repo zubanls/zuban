@@ -132,7 +132,7 @@ impl<'a> Generics<'a> {
                 } else {
                     debug!(
                         "Generic list {} given, but item {:?} was requested",
-                        self.format(&FormatData::new_short(i_s.db), None),
+                        self.format(&FormatData::new_short(i_s), None),
                         n,
                     );
                     todo!()
@@ -226,7 +226,7 @@ impl<'a> Generics<'a> {
     pub fn format(&self, format_data: &FormatData, expected: Option<usize>) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut strings: Vec<_> = self
-            .iter(InferenceState::new(format_data.db))
+            .iter(format_data.clone_i_s())
             .map(|g| g.format(format_data))
             .collect();
         if let Some(expected) = expected {

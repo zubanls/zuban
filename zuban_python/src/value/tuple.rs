@@ -164,6 +164,6 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
-        self.content.format(&FormatData::new_short(i_s.db)).into()
+        self.content.format(&FormatData::new_short(i_s)).into()
     }
 }

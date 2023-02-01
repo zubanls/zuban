@@ -13,7 +13,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -269,7 +269,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
 impl fmt::Debug for TypingType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypingType")
-            .field("db_type", &Type::new(self.db_type).format_short(self.db))
+            .field("db_type", &self.db_type)
             .finish()
     }
 }
@@ -426,10 +426,7 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
         let inferred = arg.infer(i_s, result_context);
-        let s = inferred.format(
-            i_s,
-            &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),
-        );
+        let s = inferred.format(i_s, FormatStyle::MypyRevealType);
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::Note(format!("Revealed type is \"{s}\"").into()),
@@ -499,8 +496,8 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.as_type(i_s).format_short(i_s.db),
-                            Type::new(db_type).format_short(i_s.db),
+                            v.as_type(i_s).format_short(i_s),
+                            Type::new(db_type).format_short(i_s),
                             self.name(),
                             name,
                         );

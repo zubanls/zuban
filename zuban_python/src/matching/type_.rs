@@ -928,8 +928,8 @@ impl<'a> Type<'a> {
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
             let value_type = value.class_as_type(i_s);
-            let mut fmt1 = FormatData::new_short(i_s.db);
-            let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);
+            let mut fmt1 = FormatData::new_short(i_s);
+            let mut fmt2 = FormatData::with_matcher(i_s, matcher);
             let mut input = value_type.format(&fmt1);
             let mut wanted = self.format(&fmt2);
             if input == wanted {
@@ -1071,7 +1071,7 @@ impl<'a> Type<'a> {
         let db_type = self.internal_resolve_type_vars(i_s, class, self_class, calculated_type_args);
         debug!(
             "Resolved type vars: {}",
-            Type::new(&db_type).format_short(i_s.db)
+            Type::new(&db_type).format_short(i_s)
         );
         Inferred::execute_db_type(i_s, db_type)
     }
@@ -1178,8 +1178,8 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn format_short(&self, db: &Database) -> Box<str> {
-        self.format(&FormatData::new_short(db))
+    pub fn format_short(&self, i_s: &InferenceState) -> Box<str> {
+        self.format(&FormatData::new_short(i_s))
     }
 }
 

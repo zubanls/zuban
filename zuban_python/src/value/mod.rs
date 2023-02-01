@@ -308,7 +308,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable {
-                type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
+                type_: format!("{:?}", self.as_type(i_s).format_short(i_s)).into(),
             },
         );
         Inferred::new_unknown()
@@ -327,7 +327,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         from.add_typing_issue(
             i_s.db,
             IssueType::NotIterable {
-                type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
+                type_: format!("{:?}", self.as_type(i_s).format_short(i_s)).into(),
             },
         );
         IteratorContent::Any

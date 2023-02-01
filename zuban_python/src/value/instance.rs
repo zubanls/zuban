@@ -154,7 +154,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                                     i_s.db,
                                     IssueType::InvalidGetItem {
                                         actual,
-                                        type_: class.unwrap().format_short(i_s.db),
+                                        type_: class.unwrap().format_short(i_s),
                                         expected,
                                     },
                                 )
@@ -171,7 +171,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         node_ref.add_typing_issue(
             i_s.db,
             IssueType::NotIndexable {
-                type_: self.class.format_short(i_s.db),
+                type_: self.class.format_short(i_s),
             },
         );
         Inferred::new_any()
@@ -209,7 +209,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         from.add_typing_issue(
             i_s.db,
             IssueType::NotIterable {
-                type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
+                type_: format!("{:?}", self.class.format_short(i_s)).into(),
             },
         );
         IteratorContent::Any
@@ -231,7 +231,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.class.format_short(i_s.db),
+            self.class.format_short(i_s),
         )
     }
 }

@@ -440,7 +440,7 @@ impl<'a> Matcher<'a> {
         format_data: &FormatData,
         params_style: ParamsStyle,
     ) -> Box<str> {
-        let i_s = &mut InferenceState::new(format_data.db);
+        let i_s = &mut format_data.clone_i_s();
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
         if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
@@ -475,7 +475,7 @@ impl<'a> Matcher<'a> {
             Some(FunctionOrCallable::Callable(c)) => todo!(),
             None => (),
         }
-        usage.format_without_matcher(format_data.db, format_data.style, params_style)
+        usage.format_without_matcher(format_data.i_s.db, format_data.style, params_style)
     }
 
     pub fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {

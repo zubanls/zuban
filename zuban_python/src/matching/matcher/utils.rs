@@ -389,11 +389,11 @@ fn calculate_type_vars<'db>(
                 match &func_or_callable {
                     FunctionOrCallable::Function(function) => function.name(),
                     FunctionOrCallable::Callable(callable) => {
-                        callable_description = callable.format(&FormatData::new_short(i_s.db));
+                        callable_description = callable.format(&FormatData::new_short(i_s));
                         &callable_description
                     }
                 },
-                type_arguments.format(&FormatData::new_short(i_s.db)),
+                type_arguments.format(&FormatData::new_short(i_s)),
             );
         }
     }
@@ -523,7 +523,7 @@ pub fn match_arguments_against_params<
                                             type_var_name: Box::from(type_var.name(i_s.db)),
                                             func: diagnostic_string("")
                                                 .unwrap_or_else(|| Box::from("function")),
-                                            actual: expected.format(&FormatData::new_short(i_s.db)),
+                                            actual: expected.format(&FormatData::new_short(i_s)),
                                         },
                                     );
                                 }
