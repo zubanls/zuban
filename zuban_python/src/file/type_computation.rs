@@ -2045,15 +2045,6 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         }
     }
 
-    pub fn use_cached_simple_generic_type(&mut self, expression: Expression) -> Type<'db> {
-        debug_assert_eq!(
-            self.file.points.get(expression.index()).type_(),
-            PointType::Redirect
-        );
-        let inferred = self.check_point_cache(expression.index()).unwrap();
-        Type::Class(inferred.maybe_class(self.i_s).unwrap())
-    }
-
     pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'file DbType {
         debug_assert_eq!(
             self.file.points.get(node_index).specific(),
@@ -2532,4 +2523,20 @@ fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
             ]))),
         ),
     }
+}
+
+pub fn use_cached_simple_generic_type<'db>(
+    db: &'db Database,
+    file: &PythonFile,
+    expr: Expression,
+) -> Type<'db> {
+    // The context of inference state is not important, because this is only a simple generic type.
+    let i_s = &mut InferenceState::new(db);
+    let mut inference = file.inference(i_s);
+    debug_assert_eq!(
+        inference.file.points.get(expr.index()).type_(),
+        PointType::Redirect
+    );
+    let inferred = inference.check_point_cache(expr.index()).unwrap();
+    Type::Class(inferred.maybe_class(i_s).unwrap())
 }

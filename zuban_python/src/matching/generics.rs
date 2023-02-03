@@ -8,7 +8,7 @@ use crate::database::{
     TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
-use crate::file::PythonFile;
+use crate::file::{use_cached_simple_generic_type, PythonFile};
 use crate::inference_state::InferenceState;
 
 macro_rules! replace_class_vars {
@@ -104,7 +104,7 @@ impl<'a> Generics<'a> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
                 if n == 0 {
-                    Generic::TypeArgument(file.inference(i_s).use_cached_simple_generic_type(*expr))
+                    Generic::TypeArgument(use_cached_simple_generic_type(i_s.db, file, *expr))
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {:?} was requested",
@@ -119,9 +119,9 @@ impl<'a> Generics<'a> {
                     .iter()
                     .nth(n)
                     .map(|slice_content| match slice_content {
-                        SliceContent::NamedExpression(n) => file
-                            .inference(i_s)
-                            .use_cached_simple_generic_type(n.expression()),
+                        SliceContent::NamedExpression(n) => {
+                            use_cached_simple_generic_type(i_s.db, file, n.expression())
+                        }
                         SliceContent::Slice(s) => todo!(),
                     })
                     .unwrap_or_else(|| todo!()),
@@ -188,9 +188,7 @@ impl<'a> Generics<'a> {
         type_vars.map(|type_vars| match self {
             Self::SimpleGenericExpression(file, expr) => {
                 GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
-                    file.inference(i_s)
-                        .use_cached_simple_generic_type(*expr)
-                        .into_db_type(i_s),
+                    use_cached_simple_generic_type(i_s.db, file, *expr).into_db_type(i_s),
                 )]))
             }
             Self::SimpleGenericSlices(file, slices) => GenericsList::new_generics(
@@ -199,8 +197,7 @@ impl<'a> Generics<'a> {
                     .map(|slice| {
                         if let SliceContent::NamedExpression(n) = slice {
                             GenericItem::TypeArgument(
-                                file.inference(i_s)
-                                    .use_cached_simple_generic_type(n.expression())
+                                use_cached_simple_generic_type(i_s.db, file, n.expression())
                                     .into_db_type(i_s),
                             )
                         } else {
@@ -320,17 +317,19 @@ impl<'b> Iterator for GenericsIterator<'_, 'b> {
                     return None;
                 }
                 self.ended = true;
-                Some(Generic::TypeArgument(
-                    file.inference(&mut self.i_s)
-                        .use_cached_simple_generic_type(*expr),
-                ))
+                Some(Generic::TypeArgument(use_cached_simple_generic_type(
+                    self.i_s.db,
+                    file,
+                    *expr,
+                )))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
-                    Some(Generic::TypeArgument(
-                        file.inference(&mut self.i_s)
-                            .use_cached_simple_generic_type(s.expression()),
-                    ))
+                    Some(Generic::TypeArgument(use_cached_simple_generic_type(
+                        self.i_s.db,
+                        file,
+                        s.expression(),
+                    )))
                 } else {
                     None
                 }
