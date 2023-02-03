@@ -536,7 +536,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             Some(on_type_error),
         );
         if let Some(return_annotation) = return_annotation {
-            let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
             // annotation expression cache instead of recalculating.
             if NodeRef::new(self.node_ref.file, return_annotation.index())

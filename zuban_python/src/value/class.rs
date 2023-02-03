@@ -217,13 +217,12 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut incomplete_mro = false;
         let mut is_protocol = false;
         if let Some(arguments) = self.node().arguments() {
-            let mut i_s = i_s.with_annotation_instance();
             // Calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
                         let db = i_s.db;
-                        let mut inference = self.node_ref.file.inference(&mut i_s);
+                        let mut inference = self.node_ref.file.inference(i_s);
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
@@ -274,7 +273,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 IssueType::CyclicDefinition { name },
                                             );
                                     } else {
-                                        for base in class.class_infos(&mut i_s).mro.iter() {
+                                        for base in class.class_infos(i_s).mro.iter() {
                                             mro.push(base.replace_type_var_likes(
                                                 i_s.db,
                                                 &mut |t| {

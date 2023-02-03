@@ -1262,7 +1262,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 .check_point_cache(expr_def.node_index)
                 .unwrap();
             inferred.with_instance(i_s, definition, None, |i_s, instance| {
-                callable(&mut i_s.with_annotation_instance(), instance)
+                callable(&mut i_s.with_simplified_annotation_instance(), instance)
             })
         }
         Specific::List => callable(i_s, &ListLiteral::new(definition)),

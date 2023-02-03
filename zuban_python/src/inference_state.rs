@@ -55,7 +55,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn with_annotation_instance(&self) -> Self {
+    pub fn with_simplified_annotation_instance(&self) -> Self {
         Self {
             db: self.db,
             context: Context::None,
