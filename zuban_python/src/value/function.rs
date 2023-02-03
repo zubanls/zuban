@@ -297,7 +297,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                             IssueType::Note(
                                 format!(
                                     "Consider using the upper bound \"{}\" instead",
-                                    Type::new(bound).format_short(i_s)
+                                    Type::new(bound).format_short(i_s.db)
                                 )
                                 .into(),
                             ),
@@ -547,7 +547,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
-                        .map(|c| format!("{}.", c.format_short(i_s)))
+                        .map(|c| format!("{}.", c.format_short(i_s.db)))
                         .unwrap_or_else(|| "".to_owned()),
                     self.name()
                 );
@@ -605,7 +605,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 .file
                 .inference(i_s)
                 .use_cached_return_annotation_type(annotation)
-                .format(&FormatData::with_matcher(i_s, &Matcher::default()))
+                .format(&FormatData::with_matcher(i_s.db, &Matcher::default()))
         };
         let node = self.node();
         let mut previous_kind = None;
@@ -619,7 +619,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     | WrappedParamSpecific::KeywordOnly(t)
                     | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
                     | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                        t.map(|t| t.format(&FormatData::with_matcher(i_s, &Matcher::default())))
+                        t.map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())))
                     }
                     WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
                     WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
@@ -677,13 +677,13 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         TypeVarLike::TypeVar(t) => {
                             let mut s = t.name(i_s.db).to_owned();
                             if let Some(bound) = &t.bound {
-                                s += &format!(" <: {}", Type::new(bound).format_short(i_s));
+                                s += &format!(" <: {}", Type::new(bound).format_short(i_s.db));
                             } else if !t.restrictions.is_empty() {
                                 s += &format!(
                                     " in ({})",
                                     t.restrictions
                                         .iter()
-                                        .map(|t| Type::new(t).format_short(i_s))
+                                        .map(|t| Type::new(t).format_short(i_s.db))
                                         .collect::<Vec<_>>()
                                         .join(", ")
                                 );

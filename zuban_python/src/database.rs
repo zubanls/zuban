@@ -696,7 +696,7 @@ impl UnionType {
                             .by_ref()
                             .take(count)
                             .map(|l| match l.type_ {
-                                DbType::Literal(l) => l.format_inner(format_data.i_s.db),
+                                DbType::Literal(l) => l.format_inner(format_data.db),
                                 _ => unreachable!(),
                             })
                             .collect::<Vec<_>>()
@@ -836,14 +836,14 @@ impl DbType {
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let class_name = |link| {
             let class = Class::from_position(
-                NodeRef::from_link(format_data.i_s.db, link),
+                NodeRef::from_link(format_data.db, link),
                 Generics::Any,
                 None,
             );
             match format_data.style {
                 FormatStyle::Short => Box::from(class.name()),
                 FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                    class.qualified_name(format_data.i_s.db).into()
+                    class.qualified_name(format_data.db).into()
                 }
             }
         };
@@ -871,28 +871,27 @@ impl DbType {
             Self::NewType(n) => n.format(format_data),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = &rec.generics {
-                    let alias = rec.type_alias(format_data.i_s.db);
+                    let alias = rec.type_alias(format_data.db);
                     format!(
                         "{}[{}]",
-                        alias.name(format_data.i_s.db).unwrap(),
+                        alias.name(format_data.db).unwrap(),
                         generics.format(format_data)
                     )
                     .into()
                 } else if format_data.has_already_seen_recursive_alias(rec) {
-                    let alias = rec.type_alias(format_data.i_s.db);
-                    Box::from(alias.name(format_data.i_s.db).unwrap())
+                    let alias = rec.type_alias(format_data.db);
+                    Box::from(alias.name(format_data.db).unwrap())
                 } else {
                     let format_data = format_data.with_seen_recursive_alias(rec);
-                    rec.calculated_db_type(format_data.i_s.db)
-                        .format(&format_data)
+                    rec.calculated_db_type(format_data.db).format(&format_data)
                 }
             }
             Self::Self_ => Box::from("Self"),
             Self::ParamSpecArgs(usage) => {
-                format!("{}.args", usage.param_spec.name(format_data.i_s.db)).into()
+                format!("{}.args", usage.param_spec.name(format_data.db)).into()
             }
             Self::ParamSpecKwargs(usage) => {
-                format!("{}.kwargs", usage.param_spec.name(format_data.i_s.db)).into()
+                format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
         }
     }
@@ -1921,14 +1920,14 @@ impl CallableParam {
                             | ParamSpecific::KeywordOnly(t) => {
                                 format!(
                                     "{}: {}",
-                                    name.as_str(format_data.i_s.db),
+                                    name.as_str(format_data.db),
                                     t.format(format_data),
                                 )
                             }
                             // TODO these two cases are probably unreachable
                             ParamSpecific::Starred(s) => format!(
                                 "*{}: {}",
-                                name.as_str(format_data.i_s.db),
+                                name.as_str(format_data.db),
                                 match s {
                                     StarredParamSpecific::ArbitraryLength(t) =>
                                         t.format(format_data),
@@ -1937,7 +1936,7 @@ impl CallableParam {
                             ),
                             ParamSpecific::DoubleStarred(d) => format!(
                                 "**{}: {}",
-                                name.as_str(format_data.i_s.db),
+                                name.as_str(format_data.db),
                                 match d {
                                     DoubleStarredParamSpecific::ValueType(t) =>
                                         t.format(format_data),
@@ -1962,7 +1961,7 @@ impl CallableParam {
                                     false => "",
                                     true => "Default",
                                 };
-                                format!("{default}Arg({t}, '{}')", name.as_str(format_data.i_s.db))
+                                format!("{default}Arg({t}, '{}')", name.as_str(format_data.db))
                             }
                             ParamSpecific::KeywordOnly(t) => {
                                 let default = match self.has_default {
@@ -1972,7 +1971,7 @@ impl CallableParam {
                                 format!(
                                     "{default}NamedArg({}, '{}')",
                                     t.format(format_data),
-                                    name.as_str(format_data.i_s.db)
+                                    name.as_str(format_data.db)
                                 )
                             }
                             ParamSpecific::Starred(_) | ParamSpecific::DoubleStarred(_) => {
@@ -2039,7 +2038,7 @@ impl CallableContent {
                         t.iter()
                             .map(|t| match t {
                                 TypeVarLike::TypeVar(t) => {
-                                    let mut name = t.name(format_data.i_s.db).to_owned();
+                                    let mut name = t.name(format_data.db).to_owned();
                                     if let Some(bound) = &t.bound {
                                         name += " <: ";
                                         name += &bound.format(format_data);
@@ -2047,7 +2046,7 @@ impl CallableContent {
                                     name
                                 }
                                 TypeVarLike::TypeVarTuple(_) => todo!(),
-                                TypeVarLike::ParamSpec(p) => p.name(format_data.i_s.db).to_owned(),
+                                TypeVarLike::ParamSpec(p) => p.name(format_data.db).to_owned(),
                             })
                             .collect::<Vec<_>>()
                             .join(", ")
@@ -2089,9 +2088,9 @@ impl NewType {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match format_data.style {
-            FormatStyle::Short => self.name(format_data.i_s.db).into(),
+            FormatStyle::Short => self.name(format_data.db).into(),
             FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                self.qualified_name(format_data.i_s.db)
+                self.qualified_name(format_data.db)
             }
         }
     }
@@ -2170,7 +2169,7 @@ impl Literal {
     }
 
     pub fn format(self, format_data: &FormatData) -> Box<str> {
-        format!("Literal[{}]", self.format_inner(format_data.i_s.db)).into()
+        format!("Literal[{}]", self.format_inner(format_data.db)).into()
     }
 }
 

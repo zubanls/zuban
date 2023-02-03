@@ -394,18 +394,18 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut result = match format_data.style {
             FormatStyle::Short => self.name().to_owned(),
             FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                self.qualified_name(format_data.i_s.db)
+                self.qualified_name(format_data.db)
             }
         };
-        let type_vars = self.type_vars(&mut format_data.clone_i_s());
+        let type_vars = self.type_vars(&mut InferenceState::new(format_data.db));
         if let Some(type_vars) = type_vars {
             result += &self.generics().format(format_data, Some(type_vars.len()));
         }
         result.into()
     }
 
-    pub fn format_short(&self, i_s: &InferenceState) -> Box<str> {
-        self.format(&FormatData::new_short(i_s))
+    pub fn format_short(&self, db: &Database) -> Box<str> {
+        self.format(&FormatData::new_short(db))
     }
 
     pub fn generics_as_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
@@ -497,8 +497,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
                 "Class execute: {}{}",
                 self.name(),
                 match generics_list.as_ref() {
-                    Some(generics_list) =>
-                        Generics::new_list(generics_list).format(&FormatData::new_short(i_s), None),
+                    Some(generics_list) => Generics::new_list(generics_list)
+                        .format(&FormatData::new_short(i_s.db), None),
                     None => "".to_owned(),
                 }
             );
@@ -535,7 +535,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
-            self.format_short(i_s),
+            self.format_short(i_s.db),
         )
     }
 

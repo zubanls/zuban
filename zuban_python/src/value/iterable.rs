@@ -74,7 +74,7 @@ impl<'a> ListLiteral<'a> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.list_node().short_debug(),
-                &self.as_type(i_s).format_short(i_s),
+                &self.as_type(i_s).format_short(i_s.db),
             );
         }
         reference
@@ -266,7 +266,7 @@ impl<'a> DictLiteral<'a> {
             debug!(
                 "Calculated generics for {}: {}",
                 self.dict_node().short_debug(),
-                &self.as_type(i_s).format_short(i_s),
+                &self.as_type(i_s).format_short(i_s.db),
             );
             self.db_type(i_s)
         }

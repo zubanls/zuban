@@ -1,6 +1,5 @@
 use super::Matcher;
-use crate::database::{FormatStyle, RecursiveAlias, TypeVarLikeUsage};
-use crate::inference_state::InferenceState;
+use crate::database::{Database, FormatStyle, RecursiveAlias, TypeVarLikeUsage};
 
 #[derive(Clone, Copy)]
 struct DisplayedRecursive<'a> {
@@ -26,18 +25,18 @@ pub enum ParamsStyle {
     Unreachable,
 }
 
-pub struct FormatData<'db, 'a, 'b, 'c, 'd> {
-    pub i_s: &'b InferenceState<'db, 'd>,
+pub struct FormatData<'db, 'a, 'b, 'c> {
+    pub db: &'db Database,
     matcher: Option<&'b Matcher<'a>>,
     pub style: FormatStyle,
     pub verbose: bool,
     displayed_recursive: Option<DisplayedRecursive<'c>>,
 }
 
-impl<'db, 'a, 'b, 'c, 'd> FormatData<'db, 'a, 'b, 'c, 'd> {
-    pub fn new_short(i_s: &'b InferenceState<'db, 'd>) -> Self {
+impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
+    pub fn new_short(db: &'db Database) -> Self {
         Self {
-            i_s,
+            db,
             matcher: None,
             style: FormatStyle::Short,
             verbose: false,
@@ -45,9 +44,9 @@ impl<'db, 'a, 'b, 'c, 'd> FormatData<'db, 'a, 'b, 'c, 'd> {
         }
     }
 
-    pub fn with_style(i_s: &'b InferenceState<'db, 'd>, style: FormatStyle) -> Self {
+    pub fn with_style(db: &'db Database, style: FormatStyle) -> Self {
         Self {
-            i_s,
+            db,
             matcher: None,
             style,
             verbose: false,
@@ -55,9 +54,9 @@ impl<'db, 'a, 'b, 'c, 'd> FormatData<'db, 'a, 'b, 'c, 'd> {
         }
     }
 
-    pub fn with_matcher(i_s: &'b InferenceState<'db, 'd>, matcher: &'b Matcher<'a>) -> Self {
+    pub fn with_matcher(db: &'db Database, matcher: &'b Matcher<'a>) -> Self {
         Self {
-            i_s,
+            db,
             matcher: Some(matcher),
             style: FormatStyle::Short,
             verbose: false,
@@ -66,12 +65,12 @@ impl<'db, 'a, 'b, 'c, 'd> FormatData<'db, 'a, 'b, 'c, 'd> {
     }
 
     pub fn with_matcher_and_style(
-        i_s: &'b InferenceState<'db, 'd>,
+        db: &'db Database,
         matcher: &'b Matcher<'a>,
         style: FormatStyle,
     ) -> Self {
         Self {
-            i_s,
+            db,
             matcher: Some(matcher),
             style,
             verbose: false,
@@ -82,9 +81,9 @@ impl<'db, 'a, 'b, 'c, 'd> FormatData<'db, 'a, 'b, 'c, 'd> {
     pub fn with_seen_recursive_alias<'x: 'c>(
         &'x self,
         rec: &'x RecursiveAlias,
-    ) -> FormatData<'db, 'a, 'b, 'x, 'd> {
+    ) -> FormatData<'db, 'a, 'b, 'x> {
         Self {
-            i_s: self.i_s,
+            db: self.db,
             matcher: self.matcher,
             style: self.style,
             verbose: self.verbose,
@@ -97,7 +96,7 @@ impl<'db, 'a, 'b, 'c, 'd> FormatData<'db, 'a, 'b, 'c, 'd> {
 
     pub fn remove_matcher<'x: 'c>(&'x self) -> Self {
         Self {
-            i_s: self.i_s,
+            db: self.db,
             matcher: None,
             style: self.style,
             verbose: self.verbose,
@@ -125,10 +124,6 @@ impl<'db, 'a, 'b, 'c, 'd> FormatData<'db, 'a, 'b, 'c, 'd> {
         if let Some(matcher) = self.matcher {
             return matcher.format(type_var_usage, self, params_style);
         }
-        type_var_usage.format_without_matcher(self.i_s.db, self.style, params_style)
-    }
-
-    pub fn clone_i_s(&self) -> InferenceState<'db, 'd> {
-        self.i_s.clone()
+        type_var_usage.format_without_matcher(self.db, self.style, params_style)
     }
 }

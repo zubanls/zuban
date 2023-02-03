@@ -4,9 +4,9 @@ use std::fmt;
 
 use crate::arguments::{NoArguments, SimpleArguments};
 use crate::database::{
-    AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, FormatStyle, GenericItem,
-    GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink,
-    PointType, Specific, TypeVarLike,
+    AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
+    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
+    Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
@@ -158,13 +158,12 @@ impl<'db: 'slf, 'slf> Inferred {
         self.class_as_type(i_s).into_db_type(i_s)
     }
 
-    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, style: FormatStyle) -> Box<str> {
-        self.class_as_type(i_s)
-            .format(&FormatData::with_style(i_s, style))
+    pub fn format(&self, i_s: &mut InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
+        self.class_as_type(i_s).format(format_data)
     }
 
     pub fn format_short(&self, i_s: &mut InferenceState<'db, '_>) -> Box<str> {
-        self.class_as_type(i_s).format(&FormatData::new_short(i_s))
+        self.format(i_s, &FormatData::new_short(i_s.db))
     }
 
     #[inline]
@@ -716,38 +715,39 @@ impl<'db: 'slf, 'slf> Inferred {
                             load_bound_method_instance(i_s, &instance_inf, mro_index);
                         let func = Function::new(node_ref, Some(func_class));
                         func.type_vars(i_s); // Cache annotations
-                        let complex = if let Some(first_type) =
-                            func.first_param_annotation_type(i_s)
-                        {
-                            if let Some(t) =
-                                create_signature_without_self(i_s, func, instance, &first_type)
-                            {
-                                ComplexPoint::TypeInstance(Box::new(t))
-                            } else {
-                                return if let Some(from) = from {
-                                    from.add_typing_issue(
-                                        i_s.db,
-                                        IssueType::InvalidSelfArgument {
-                                            argument_type: instance.as_type(i_s).format_short(i_s),
-                                            function_name: Box::from(func.name()),
-                                            callable: func.as_type(i_s).format_short(i_s),
-                                        },
-                                    );
-                                    Some(Self::new_any())
+                        let complex =
+                            if let Some(first_type) = func.first_param_annotation_type(i_s) {
+                                if let Some(t) =
+                                    create_signature_without_self(i_s, func, instance, &first_type)
+                                {
+                                    ComplexPoint::TypeInstance(Box::new(t))
                                 } else {
-                                    // In case there is no node ref, we do not want to just
-                                    // ignore the type error and we basically say that the
-                                    // attribute does not even exist.
-                                    None
-                                };
-                            }
-                        } else {
-                            ComplexPoint::BoundMethod(
-                                instance_inf.as_any_link(i_s),
-                                mro_index,
-                                *definition,
-                            )
-                        };
+                                    return if let Some(from) = from {
+                                        from.add_typing_issue(
+                                            i_s.db,
+                                            IssueType::InvalidSelfArgument {
+                                                argument_type: instance
+                                                    .as_type(i_s)
+                                                    .format_short(i_s.db),
+                                                function_name: Box::from(func.name()),
+                                                callable: func.as_type(i_s).format_short(i_s.db),
+                                            },
+                                        );
+                                        Some(Self::new_any())
+                                    } else {
+                                        // In case there is no node ref, we do not want to just
+                                        // ignore the type error and we basically say that the
+                                        // attribute does not even exist.
+                                        None
+                                    };
+                                }
+                            } else {
+                                ComplexPoint::BoundMethod(
+                                    instance_inf.as_any_link(i_s),
+                                    mro_index,
+                                    *definition,
+                                )
+                            };
                         return Some(Self::new_unsaved_complex(complex));
                     }
                 }

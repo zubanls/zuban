@@ -508,7 +508,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                         i_s.db,
                                         IssueType::UnsupportedOperand {
                                             operand: Box::from(aug_assign.operand()),
-                                            left: class.unwrap().format_short(i_s),
+                                            left: class.unwrap().format_short(i_s.db),
                                             right,
                                         },
                                     )
@@ -652,7 +652,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                         i_s.db,
                                         IssueType::InvalidGetItem {
                                             actual,
-                                            type_: class.unwrap().format_short(i_s),
+                                            type_: class.unwrap().format_short(i_s.db),
                                             expected,
                                         },
                                     )
@@ -937,7 +937,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             i_s.db,
                             IssueType::UnsupportedLeftOperand {
                                 operand: Box::from(op.operand),
-                                left: value.as_type(i_s).format_short(i_s),
+                                left: value.as_type(i_s).format_short(i_s.db),
                                 note: None,
                             },
                         )
@@ -1023,7 +1023,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 i_s.db,
                 IssueType::UnsupportedOperand {
                     operand: Box::from(op.operand),
-                    left: class.unwrap().format_short(i_s),
+                    left: class.unwrap().format_short(i_s.db),
                     right: right.format_short(i_s),
                 },
             );
@@ -1035,7 +1035,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
-                        left: value.as_type(i_s).format_short(i_s),
+                        left: value.as_type(i_s).format_short(i_s.db),
                     },
                 );
                 maybe_add_union_note(i_s)
@@ -1090,7 +1090,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     let object = if value.as_module().is_some() {
                         Box::from("Module")
                     } else {
-                        format!("{:?}", value.as_type(i_s).format_short(i_s)).into()
+                        format!("{:?}", value.as_type(i_s).format_short(self.i_s.db)).into()
                     };
                     node_ref.add_typing_issue(
                         i_s.db,
@@ -1305,7 +1305,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let content = TupleContent::new_fixed_length(generics.into_boxed_slice());
         debug!(
             "Inferred: {}",
-            content.format(&FormatData::new_short(self.i_s))
+            content.format(&FormatData::new_short(self.i_s.db))
         );
         Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
     }
