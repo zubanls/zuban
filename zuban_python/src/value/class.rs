@@ -181,12 +181,28 @@ impl<'db: 'a, 'a> Class<'a> {
         self.class_info_node_ref().point().calculating()
     }
 
+    #[inline]
     fn type_vars_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(1)
     }
 
+    #[inline]
     fn class_info_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(4)
+    }
+
+    pub fn ensure_calculated_class_infos(&self, i_s: &mut InferenceState<'db, '_>) {
+        let node_ref = self.class_info_node_ref();
+        let point = node_ref.point();
+        if !point.calculated() {
+            let node_ref = self.class_info_node_ref();
+            node_ref.set_point(Point::new_calculating());
+            node_ref.insert_complex(
+                ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
+                Locality::Todo,
+            );
+            debug_assert!(node_ref.point().calculated());
+        }
     }
 
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
@@ -198,12 +214,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 _ => unreachable!(),
             }
         } else {
-            node_ref.set_point(Point::new_calculating());
-            node_ref.insert_complex(
-                ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
-                Locality::Todo,
-            );
-            debug_assert!(node_ref.point().calculated());
+            self.ensure_calculated_class_infos(i_s);
             self.class_infos(i_s)
         }
     }

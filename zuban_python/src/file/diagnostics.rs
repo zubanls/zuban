@@ -170,7 +170,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
             None,
         );
         // Make sure the type vars are properly pre-calculated
-        class.class_infos(self.i_s);
+        class.ensure_calculated_class_infos(self.i_s);
         self.file
             .inference(&mut self.i_s.with_diagnostic_class_context(&class))
             .calc_block_diagnostics(block, Some(class), None)

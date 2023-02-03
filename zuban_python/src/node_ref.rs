@@ -30,6 +30,7 @@ impl<'file> std::cmp::PartialEq for NodeRef<'file> {
 }
 
 impl<'file> NodeRef<'file> {
+    #[inline]
     pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
         Self { file, node_index }
     }
@@ -55,6 +56,7 @@ impl<'file> NodeRef<'file> {
         unsafe { std::mem::transmute(self) }
     }
 
+    #[inline]
     pub fn add_to_node_index(&self, add: NodeIndex) -> Self {
         Self::new(self.file, self.node_index + add)
     }
