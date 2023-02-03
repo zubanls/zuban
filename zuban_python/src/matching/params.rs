@@ -655,7 +655,7 @@ where
                     }
                 }
                 ParamKind::Starred => {
-                    let mut i_s = InferenceState::new(self.db);
+                    let mut i_s = InferenceState::new(self.db); // TODO why this?
                     match param.specific(&mut i_s) {
                         WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
                             debug_assert!(matches!(
