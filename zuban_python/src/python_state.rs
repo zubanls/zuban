@@ -3,8 +3,7 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, PointType, Specific,
-    TupleContent,
+    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;

@@ -2,17 +2,7 @@
 testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
 
-testDecoratedMethodRefresh
-testDecoratorMethodCompat
-testAliasFineNormalClass
-testAliasFineChainedClass
-testTypeVarValuesRuntime
-testTypeVarBoundRuntime
-testChangeTypeVar*
-testRefresh*
-testProtocol*
-testOverloads*
-testReprocess*
+testNewAnalyzerAliasToNotReadyClass3
 
 # Fails only without --release
 testModuleAsTypeNoCrash

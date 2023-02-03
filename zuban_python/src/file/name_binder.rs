@@ -603,9 +603,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             );
         } else {
         */
-        self.add_point_definition(
+        self.add_new_definition(
             class.name_definition(),
-            Specific::NoDecoratorClass,
+            Point::new_uncalculated(),
             in_base_scope,
         );
         //}

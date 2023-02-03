@@ -164,16 +164,18 @@ impl<'db> Inference<'db, '_, '_, '_> {
 
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
-        let class = Class::from_position(
+        let name_def = NodeRef::new(self.file, class.name_definition().index());
+        if !name_def.point().calculated() {
+            self.cache_class(name_def, class)
+        }
+        let c = Class::from_position(
             NodeRef::new(self.file, class.index()),
             Generics::Self_,
             None,
         );
-        // Make sure the type vars are properly pre-calculated
-        class.ensure_calculated_class_infos(self.i_s);
         self.file
-            .inference(&mut self.i_s.with_diagnostic_class_context(&class))
-            .calc_block_diagnostics(block, Some(class), None)
+            .inference(&mut self.i_s.with_diagnostic_class_context(&c))
+            .calc_block_diagnostics(block, Some(c), None)
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {

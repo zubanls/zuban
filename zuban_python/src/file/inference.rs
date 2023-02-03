@@ -109,8 +109,35 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 // calculating the names.
                 self.cache_for_stmt_names(star_targets, star_exprs);
             }
+            StmtContent::ClassDef(cls) => self.cache_class(name_def, cls),
+            StmtContent::Decorated(decorated) => match decorated.decoratee() {
+                Decoratee::ClassDef(cls) => {
+                    // TODO this just ignores decorators? Should this even be reachable?
+                    self.cache_class(name_def, cls)
+                }
+                _ => unreachable!(),
+            },
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
+    }
+
+    pub fn cache_class(&mut self, name_def: NodeRef, class_node: ClassDef) {
+        let definition = NodeRef::new(self.file, class_node.index());
+        let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
+            unreachable!()
+        };
+
+        debug_assert!(!name_def.point().calculated());
+        // We can redirect now, because we are going to calculate the class infos.
+        name_def.set_point(Point::new_redirect(
+            self.file_index,
+            class_node.index(),
+            Locality::Todo,
+        ));
+
+        let class = Class::new(definition, cls_storage, Generics::Any, None);
+        // Make sure the type vars are properly pre-calculated
+        class.ensure_calculated_class_infos(self.i_s);
     }
 
     pub(super) fn cache_import_name(&mut self, imp: ImportName) {
@@ -1559,28 +1586,6 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             }
                         }
                     }
-                    Specific::NoDecoratorClass => {
-                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
-                        let class_node = name_def.expect_class_def();
-
-                        let definition = NodeRef::new(self.file, class_node.index());
-                        let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
-                            unreachable!()
-                        };
-                        let class = Class::new(definition, cls_storage, Generics::Any, None);
-
-                        // Now that we have calculated the mro and type vars, we can redirect
-                        // directly.
-                        self.file.points.set(
-                            node_index,
-                            Point::new_redirect(
-                                self.file_index,
-                                class_node.index(),
-                                Locality::Todo,
-                            ),
-                        );
-                        Inferred::from_saved_node_ref(definition)
-                    }
                     Specific::LazyInferredFunction => {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         let FunctionOrLambda::Function(func) =
@@ -1592,6 +1597,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             NodeRef::new(self.file, func.index()),
                             self.i_s.current_class().copied(),
                         );
+                        // Caches the decorated inference on properly
                         func.decorated(self.i_s)
                     }
                     Specific::LazyInferredClass => {

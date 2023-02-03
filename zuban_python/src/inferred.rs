@@ -1363,8 +1363,7 @@ fn load_builtin_instance_from_str<'db>(
     // TODO this is slow and ugly, please make sure to do this different
     builtins
         .inference(i_s)
-        .check_point_cache(node_index)
-        .unwrap();
+        .infer_name_definition(NodeRef::new(builtins, node_index).as_name_def());
 
     let v = builtins.points.get(node_index);
     debug_assert_eq!(v.type_(), PointType::Redirect);

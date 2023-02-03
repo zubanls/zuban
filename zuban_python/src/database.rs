@@ -364,7 +364,6 @@ pub enum Specific {
 
     SelfParam,
     Param,
-    NoDecoratorClass,
     LazyInferredClass,    // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.
     Function,             // The node point so the index of the result

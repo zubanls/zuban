@@ -2,8 +2,8 @@ use std::fmt;
 
 use parsa_python_ast::{
     Annotation, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression, Expression, Factor,
-    ImportFrom, Int, Name, NamedExpression, NodeIndex, Primary, PythonString, StarredExpression,
-    StringLiteral,
+    ImportFrom, Int, Name, NameDefinition, NamedExpression, NodeIndex, Primary, PythonString,
+    StarredExpression, StringLiteral,
 };
 
 use crate::database::{
@@ -105,6 +105,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn as_name(&self) -> Name<'file> {
         Name::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn as_name_def(&self) -> NameDefinition<'file> {
+        NameDefinition::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn as_annotation(&self) -> Annotation<'file> {
