@@ -129,7 +129,7 @@ impl<'db: 'a, 'a> Class<'a> {
         StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
+    pub fn type_vars(&self, i_s: &mut InferenceState) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
