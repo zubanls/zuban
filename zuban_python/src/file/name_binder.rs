@@ -603,7 +603,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             );
         } else {
         */
-        self.add_redirect_definition(class.name_definition(), class.index(), in_base_scope);
+        self.add_point_definition(
+            class.name_definition(),
+            Specific::NoDecoratorClass,
+            in_base_scope,
+        );
         //}
     }
 

@@ -348,10 +348,6 @@ impl<'db> Name<'db> {
         FunctionDef::new(self.node.parent().unwrap().parent().unwrap())
     }
 
-    pub fn expect_class_def(&self) -> ClassDef<'db> {
-        ClassDef::new(self.node.parent().unwrap().parent().unwrap())
-    }
-
     pub fn expect_type(&self) -> TypeLike<'db> {
         let node = self
             .node
@@ -2675,6 +2671,10 @@ impl<'db> NameDefinition<'db> {
         } else {
             unreachable!()
         }
+    }
+
+    pub fn expect_class_def(&self) -> ClassDef<'db> {
+        ClassDef::new(self.node.parent().unwrap())
     }
 
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {

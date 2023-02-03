@@ -13,6 +13,11 @@ use crate::node_ref::NodeRef;
 use crate::value::{Class, OverloadedFunction};
 use crate::PythonProject;
 
+// This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
+// wrong. Basically it goes three nodes back: name_def class literal and then the actual
+// class.
+const NAME_TO_CLASS_DIFF: u32 = 3;
+
 macro_rules! builtins_attribute_node_ref {
     ($name:ident, $attr:ident) => {
         #[inline]
@@ -148,47 +153,23 @@ impl PythonState {
         let typing_mapping_name_index = typing.symbol_table.lookup_symbol("Mapping").unwrap();
         let module_type_name_index = s.types().symbol_table.lookup_symbol("ModuleType").unwrap();
 
-        s.builtins_object_index = s.builtins().points.get(object_name_index - 1).node_index();
-        s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
-        s.builtins_dict_index = s.builtins().points.get(dict_name_index - 1).node_index();
-        s.builtins_bool_index = s.builtins().points.get(bool_name_index - 1).node_index();
-        s.builtins_int_index = s.builtins().points.get(int_name_index - 1).node_index();
-        s.builtins_float_index = s.builtins().points.get(float_name_index - 1).node_index();
-        s.builtins_complex_index = s.builtins().points.get(complex_name_index - 1).node_index();
-        s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
-        s.builtins_function_index = s
-            .builtins()
-            .points
-            .get(function_name_index - 1)
-            .node_index();
-        s.builtins_base_exception_index = s
-            .builtins()
-            .points
-            .get(base_exception_name_index - 1)
-            .node_index();
-        s.builtins_str_index = s.builtins().points.get(str_name_index - 1).node_index();
-        s.builtins_bytes_index = s.builtins().points.get(bytes_name_index - 1).node_index();
-        s.builtins_bytearray_index = s
-            .builtins()
-            .points
-            .get(bytearray_name_index - 1)
-            .node_index();
-        s.builtins_memoryview_index = s
-            .builtins()
-            .points
-            .get(memoryview_name_index - 1)
-            .node_index();
-
-        s.typing_mapping_index = s
-            .typing()
-            .points
-            .get(typing_mapping_name_index - 1)
-            .node_index();
-        s.types_module_type_index = s
-            .types()
-            .points
-            .get(module_type_name_index - 1)
-            .node_index();
+        let class_of = |index| index - NAME_TO_CLASS_DIFF;
+        s.builtins_object_index = class_of(object_name_index);
+        s.builtins_list_index = class_of(list_name_index);
+        s.builtins_dict_index = class_of(dict_name_index);
+        s.builtins_bool_index = class_of(bool_name_index);
+        s.builtins_int_index = class_of(int_name_index);
+        s.builtins_float_index = class_of(float_name_index);
+        s.builtins_complex_index = class_of(complex_name_index);
+        s.builtins_tuple_index = class_of(tuple_name_index);
+        s.builtins_function_index = class_of(function_name_index);
+        s.builtins_base_exception_index = class_of(base_exception_name_index);
+        s.builtins_str_index = class_of(str_name_index);
+        s.builtins_bytes_index = class_of(bytes_name_index);
+        s.builtins_bytearray_index = class_of(bytearray_name_index);
+        s.builtins_memoryview_index = class_of(memoryview_name_index);
+        s.typing_mapping_index = class_of(typing_mapping_name_index);
+        s.types_module_type_index = class_of(module_type_name_index);
 
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
@@ -320,10 +301,8 @@ impl PythonState {
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
         let builtins = self.builtins();
-        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap() - 1;
-        let point = builtins.points.get(node_index);
-        debug_assert_eq!(point.type_(), PointType::Redirect);
-        PointLink::new(builtins.file_index(), point.node_index())
+        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
+        PointLink::new(builtins.file_index(), node_index - NAME_TO_CLASS_DIFF)
     }
 
     pub fn function_point_link(&self) -> PointLink {

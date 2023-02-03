@@ -18,7 +18,7 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, UnionValue};
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
 use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
@@ -1559,6 +1559,28 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             }
                         }
                     }
+                    Specific::NoDecoratorClass => {
+                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
+                        let class_node = name_def.expect_class_def();
+
+                        let definition = NodeRef::new(self.file, class_node.index());
+                        let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
+                            unreachable!()
+                        };
+                        let class = Class::new(definition, cls_storage, Generics::Any, None);
+
+                        // Now that we have calculated the mro and type vars, we can redirect
+                        // directly.
+                        self.file.points.set(
+                            node_index,
+                            Point::new_redirect(
+                                self.file_index,
+                                class_node.index(),
+                                Locality::Todo,
+                            ),
+                        );
+                        Inferred::from_saved_node_ref(definition)
+                    }
                     Specific::LazyInferredFunction => {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         let FunctionOrLambda::Function(func) =
@@ -1574,15 +1596,16 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators
-                        let name = Name::by_index(&self.file.tree, node_index);
-                        let class = name.expect_class_def();
+                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
+                        let class = name_def.expect_class_def();
                         // Avoid overwriting multi definitions
-                        let mut name_index = name.index();
-                        if self.file.points.get(name_index).type_() == PointType::MultiDefinition {
-                            name_index = name.name_definition().unwrap().index();
+                        if self.file.points.get(name_def.name().index()).type_()
+                            == PointType::MultiDefinition
+                        {
+                            todo!()
                         }
                         self.file.points.set(
-                            name_index,
+                            name_def.index(),
                             Point::new_redirect(self.file_index, class.index(), Locality::Todo),
                         );
                         debug_assert!(self.file.points.get(node_index).calculated());

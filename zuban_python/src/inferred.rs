@@ -1210,7 +1210,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
     let definition = NodeRef::from_link(i_s.db, definition);
     match specific {
         Specific::IntLiteral => {
-            let instance = resolve_specific(i_s.db, specific);
+            let instance = resolve_specific(i_s, specific);
             let literal = Literal::new(
                 DbLiteral {
                     kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
@@ -1221,7 +1221,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
             callable(i_s, &literal)
         }
         Specific::StringLiteral => {
-            let instance = resolve_specific(i_s.db, specific);
+            let instance = resolve_specific(i_s, specific);
             let literal = Literal::new(
                 DbLiteral {
                     kind: LiteralKind::String(definition.as_link()),
@@ -1232,7 +1232,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
             callable(i_s, &literal)
         }
         Specific::BoolLiteral => {
-            let instance = resolve_specific(i_s.db, specific);
+            let instance = resolve_specific(i_s, specific);
             let literal = Literal::new(
                 DbLiteral {
                     kind: LiteralKind::Bool(definition.as_code() == "True"),
@@ -1243,7 +1243,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
             callable(i_s, &literal)
         }
         Specific::BytesLiteral => {
-            let instance = resolve_specific(i_s.db, specific);
+            let instance = resolve_specific(i_s, specific);
             let literal = Literal::new(
                 DbLiteral {
                     kind: LiteralKind::Bytes(definition.as_link()),
@@ -1318,7 +1318,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
             callable(i_s, &func)
         }
         _ => {
-            let instance = resolve_specific(i_s.db, specific);
+            let instance = resolve_specific(i_s, specific);
             callable(i_s, &instance)
         }
     }
@@ -1337,10 +1337,10 @@ fn load_bound_method_instance<'db>(
     (instance, class)
 }
 
-fn resolve_specific(db: &Database, specific: Specific) -> Instance {
+fn resolve_specific<'db>(i_s: &mut InferenceState<'db, '_>, specific: Specific) -> Instance<'db> {
     // TODO this should be using python_state.str_node_ref etc.
     load_builtin_instance_from_str(
-        db,
+        i_s,
         match specific {
             Specific::String | Specific::StringLiteral => "str",
             Specific::IntLiteral | Specific::Int => "int",
@@ -1354,9 +1354,18 @@ fn resolve_specific(db: &Database, specific: Specific) -> Instance {
     )
 }
 
-fn load_builtin_instance_from_str<'db>(db: &'db Database, name: &'static str) -> Instance<'db> {
-    let builtins = db.python_state.builtins();
+fn load_builtin_instance_from_str<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    name: &'static str,
+) -> Instance<'db> {
+    let builtins = i_s.db.python_state.builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
+    // TODO this is slow and ugly, please make sure to do this different
+    builtins
+        .inference(i_s)
+        .check_point_cache(node_index)
+        .unwrap();
+
     let v = builtins.points.get(node_index);
     debug_assert_eq!(v.type_(), PointType::Redirect);
     debug_assert_eq!(v.file_index(), builtins.file_index());
