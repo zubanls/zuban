@@ -559,6 +559,16 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn save_redirect(self, db: &Database, file: &PythonFile, index: NodeIndex) -> Self {
+        self.maybe_save_redirect(db, file, index, false)
+    }
+
+    pub fn maybe_save_redirect(
+        self,
+        db: &Database,
+        file: &PythonFile,
+        index: NodeIndex,
+        ignore_if_already_saved: bool,
+    ) -> Self {
         // TODO this locality should be calculated in a more correct way
         let p = file.points.get(index);
         if p.calculated() && p.maybe_specific() == Some(Specific::Cycle) {
@@ -573,9 +583,14 @@ impl<'db: 'slf, 'slf> Inferred {
                         Some(Specific::String | Specific::Cycle | Specific::LazyInferredFunction)
                     )
                 {
+                    if ignore_if_already_saved {
+                        return self;
+                    }
+                    let node_ref = NodeRef::new(file, index);
                     todo!(
-                        "{self:?} >>>> {p:?} {index:?}, {}",
-                        file.tree.short_debug_of_index(index)
+                        "{self:?} >>>> {p:?} {index:?}, {}, {:?}",
+                        file.tree.short_debug_of_index(index),
+                        node_ref.complex()
                     );
                 }
                 file.points.set(

@@ -101,9 +101,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             stmt.index(),
             stmt.short_debug().trim()
         );
-        name_def.set_point(Point::new_calculating());
         match stmt.unpack() {
             StmtContent::ForStmt(for_stmt) => {
+                name_def.set_point(Point::new_calculating());
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
                 // Performance: We probably do not need to calculate diagnostics just for
                 // calculating the names.
@@ -122,22 +122,24 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     }
 
     pub fn cache_class(&mut self, name_def: NodeRef, class_node: ClassDef) {
-        let definition = NodeRef::new(self.file, class_node.index());
-        let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
-            unreachable!()
-        };
+        if !name_def.point().calculated() {
+            let definition = NodeRef::new(self.file, class_node.index());
+            let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
+                unreachable!()
+            };
 
-        debug_assert!(!name_def.point().calculated());
-        // We can redirect now, because we are going to calculate the class infos.
-        name_def.set_point(Point::new_redirect(
-            self.file_index,
-            class_node.index(),
-            Locality::Todo,
-        ));
+            debug_assert!(!name_def.point().calculated());
+            // We can redirect now, because we are going to calculate the class infos.
+            name_def.set_point(Point::new_redirect(
+                self.file_index,
+                class_node.index(),
+                Locality::Todo,
+            ));
 
-        let class = Class::new(definition, cls_storage, Generics::Any, None);
-        // Make sure the type vars are properly pre-calculated
-        class.ensure_calculated_class_infos(self.i_s);
+            let class = Class::new(definition, cls_storage, Generics::Any, None);
+            // Make sure the type vars are properly pre-calculated
+            class.ensure_calculated_class_infos(self.i_s);
+        }
     }
 
     pub(super) fn cache_import_name(&mut self, imp: ImportName) {
@@ -784,7 +786,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 todo!("Star tuple unpack");
             }
             _ => self.assign_single_target(target, &value, is_definition, |index| {
-                value.clone().save_redirect(self.i_s.db, self.file, index);
+                value
+                    .clone()
+                    .maybe_save_redirect(self.i_s.db, self.file, index, true);
             }),
         };
     }
@@ -860,7 +864,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     .union(self.infer_expression(else_))
             }
         };
-        inferred.save_redirect(self.i_s.db, self.file, expr.index())
+        inferred.maybe_save_redirect(self.i_s.db, self.file, expr.index(), true)
     }
 
     pub fn infer_expression_part(

@@ -2,8 +2,6 @@
 testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
 
-testNewAnalyzerAliasToNotReadyClass3
-
 # Fails only without --release
 testModuleAsTypeNoCrash
 testNonStrictOptional
