@@ -166,9 +166,15 @@ impl<'db> Inference<'db, '_, '_, '_> {
         let (_, block) = class.unpack();
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         self.cache_class(name_def, class);
+        let class_node_ref = NodeRef::new(self.file, class.index());
+        let type_var_likes =
+            Class::from_position(class_node_ref, Generics::Any, None).type_vars(self.i_s);
         let c = Class::from_position(
-            NodeRef::new(self.file, class.index()),
-            Generics::Self_,
+            class_node_ref,
+            Generics::Self_ {
+                class_definition: class_node_ref.as_link(),
+                type_var_likes,
+            },
             None,
         );
         self.file

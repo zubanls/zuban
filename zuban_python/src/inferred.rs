@@ -1453,17 +1453,24 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             reducer,
             on_missing,
         ),
-        DbType::Self_ => callable(
-            i_s,
-            &Instance::new(
-                Class::from_position(
-                    i_s.current_class().unwrap().node_ref.to_db_lifetime(i_s.db),
-                    Generics::Self_,
-                    None,
+        DbType::Self_ => {
+            let current_class = i_s.current_class().unwrap();
+            let type_var_likes = current_class.type_vars(i_s);
+            callable(
+                i_s,
+                &Instance::new(
+                    Class::from_position(
+                        current_class.node_ref.to_db_lifetime(i_s.db),
+                        Generics::Self_ {
+                            class_definition: current_class.node_ref.as_link(),
+                            type_var_likes: unsafe { std::mem::transmute(type_var_likes) },
+                        },
+                        None,
+                    ),
+                    definition,
                 ),
-                definition,
-            ),
-        ),
+            )
+        }
         DbType::ParamSpecArgs(usage) => todo!(),
         DbType::ParamSpecKwargs(usage) => todo!(),
     }

@@ -220,7 +220,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        if matches!(self.class.generics, Generics::Self_) {
+        if matches!(self.class.generics, Generics::Self_ { .. }) {
+            // The generics are only ever self for our own instance, because Generics::Self_ is
+            // only used for the current class.
+            debug_assert_eq!(i_s.current_class().unwrap().node_ref, self.class.node_ref);
             Type::owned(DbType::Self_)
         } else {
             Type::Class(self.class)

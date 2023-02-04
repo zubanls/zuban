@@ -34,7 +34,10 @@ pub enum Generics<'a> {
     SimpleGenericSlices(&'a PythonFile, Slices<'a>),
     List(&'a GenericsList, Option<&'a Generics<'a>>),
     DbType(&'a DbType),
-    Self_,
+    Self_ {
+        class_definition: PointLink,
+        type_var_likes: Option<&'a TypeVarLikes>,
+    },
     None,
     Any,
 }
@@ -146,19 +149,18 @@ impl<'a> Generics<'a> {
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
             Self::Any => Generic::owned(type_var_like.as_any_generic_item()),
-            Self::Self_ => Generic::owned(
+            Self::Self_ {
+                class_definition, ..
+            } => Generic::owned(
                 type_var_like
-                    .as_type_var_like_usage(
-                        n.into(),
-                        i_s.current_class().unwrap().node_ref.as_link(),
-                    )
+                    .as_type_var_like_usage(n.into(), *class_definition)
                     .into_generic_item(),
             ),
             Self::None => unreachable!("No generics given, but {:?} was requested", n),
         }
     }
 
-    pub fn iter<'x, 'y>(&'y self, mut i_s: InferenceState<'x, 'y>) -> GenericsIterator<'x, 'y> {
+    pub fn iter<'x, 'y>(&'y self, i_s: InferenceState<'x, 'y>) -> GenericsIterator<'x, 'y> {
         let item = match self {
             Self::SimpleGenericExpression(file, expr) => {
                 GenericsIteratorItem::SimpleGenericExpression(file, *expr)
@@ -168,13 +170,13 @@ impl<'a> Generics<'a> {
             }
             Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
             Self::DbType(g) => GenericsIteratorItem::DbType(g),
-            Self::Self_ => {
-                let class = i_s.current_class().unwrap();
-                GenericsIteratorItem::TypeVarLikeIterator {
-                    iterator: class.type_vars(&mut i_s).unwrap().iter().enumerate(),
-                    definition: class.node_ref.as_link(),
-                }
-            }
+            Self::Self_ {
+                class_definition,
+                type_var_likes,
+            } => GenericsIteratorItem::TypeVarLikeIterator {
+                iterator: type_var_likes.unwrap().iter().enumerate(),
+                definition: *class_definition,
+            },
             Self::None | Self::Any => GenericsIteratorItem::None,
         };
         GenericsIterator::new(i_s, item)
@@ -215,7 +217,7 @@ impl<'a> Generics<'a> {
             Self::Any => GenericsList::new_generics(
                 type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
             ),
-            Self::Self_ => todo!(),
+            Self::Self_ { .. } => todo!(),
             Self::None => unreachable!(),
         })
     }

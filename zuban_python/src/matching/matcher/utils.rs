@@ -64,7 +64,10 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         // The generics of the class are Any, until we actually execute this function and check the
         // __init__.
         debug_assert!(matches!(class.generics, Generics::Any));
-        class.generics = Generics::Self_;
+        class.generics = Generics::Self_ {
+            class_definition: class.node_ref.as_link(),
+            type_var_likes: class.type_vars(i_s),
+        };
         let matches = Type::Class(class).is_super_type_of(
             &mut i_s.with_class_context(&class),
             &mut matcher,
