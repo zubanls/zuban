@@ -864,6 +864,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     .union(self.infer_expression(else_))
             }
         };
+        // We only save the result if nothing is there, yet. It could be that we pass this function
+        // twice, when for example a class F(List[X]) is created, where X = F and X is defined
+        // before F, this might happen.
         inferred.maybe_save_redirect(self.i_s.db, self.file, expr.index(), true)
     }
 
