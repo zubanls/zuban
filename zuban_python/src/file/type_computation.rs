@@ -2483,6 +2483,8 @@ fn check_type_name<'db: 'file, 'file>(
 }
 
 pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> PointType {
+    // This is needed to lookup names on a class and set the redirect there. It does not modify the
+    // class at all.
     let name_node_ref = NodeRef::new(file, name.index());
     let point = name_node_ref.point();
     if point.calculated() {
