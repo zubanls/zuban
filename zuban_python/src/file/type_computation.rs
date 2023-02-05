@@ -2437,6 +2437,12 @@ fn check_type_name<'db: 'file, 'file>(
                     _ => (),
                 }
             }
+            // At this point the class is not necessarily calculated and we therefore do this here.
+            let name_def = NodeRef::new(
+                name_node_ref.file,
+                new_name.name_definition().unwrap().index(),
+            );
+            name_def.file.inference(i_s).cache_class(name_def, c);
             TypeNameLookup::Class(Inferred::new_saved(
                 name_node_ref.file,
                 c.index(),
