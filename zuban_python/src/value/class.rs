@@ -129,16 +129,25 @@ impl<'db: 'a, 'a> Class<'a> {
         StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
+    pub fn use_calculated_type_vars(&self, db: &Database) -> Option<&'a TypeVarLikes> {
+        let node_ref = self.type_vars_node_ref();
+        let point = node_ref.point();
+        debug_assert!(point.calculated());
+        Self::get_calculated_type_vars(node_ref, point)
+    }
+
+    fn get_calculated_type_vars(node_ref: NodeRef, point: Point) -> Option<&TypeVarLikes> {
+        (point.type_() != PointType::NodeAnalysis).then(|| match node_ref.complex().unwrap() {
+            ComplexPoint::TypeVarLikes(type_vars) => type_vars,
+            _ => unreachable!(),
+        })
+    }
+
     pub fn type_vars(&self, i_s: &mut InferenceState) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
-            return (point.type_() != PointType::NodeAnalysis).then(|| {
-                match node_ref.complex().unwrap() {
-                    ComplexPoint::TypeVarLikes(type_vars) => type_vars,
-                    _ => unreachable!(),
-                }
-            });
+            return Self::get_calculated_type_vars(node_ref, point);
         }
 
         let type_vars = ClassTypeVarFinder::find(&mut self.node_ref.file.inference(i_s), self);
