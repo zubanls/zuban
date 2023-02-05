@@ -37,7 +37,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                     .db
                     .python_state
                     .literal_class(l.kind)
-                    .as_db_type(self.i_s);
+                    .as_db_type(self.i_s.db);
             }
             result.union_in_place(t);
         }
@@ -68,7 +68,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                 // the given and expected result context as a type.
                                 found = Some(
                                     list_cls
-                                        .as_db_type(i_s)
+                                        .as_db_type(i_s.db)
                                         .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                             tv.as_type_var_like().as_any_generic_item()
                                         }),

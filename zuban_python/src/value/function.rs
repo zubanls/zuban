@@ -436,7 +436,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::SelfParam) {
-                        i_s.current_class().unwrap().as_db_type(i_s)
+                        i_s.current_class().unwrap().as_db_type(i_s.db)
                     } else {
                         DbType::Any
                     }

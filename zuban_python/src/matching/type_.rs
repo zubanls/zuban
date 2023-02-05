@@ -39,7 +39,7 @@ impl<'a> Type<'a> {
 
     fn into_cow(self, i_s: &mut InferenceState) -> Cow<'a, DbType> {
         match self {
-            Self::Class(class) => Cow::Owned(class.as_db_type(i_s)),
+            Self::Class(class) => Cow::Owned(class.as_db_type(i_s.db)),
             Self::Type(t) => t,
         }
     }
@@ -50,7 +50,7 @@ impl<'a> Type<'a> {
 
     fn as_cow(&self, i_s: &mut InferenceState) -> Cow<DbType> {
         match self {
-            Self::Class(class) => Cow::Owned(class.as_db_type(i_s)),
+            Self::Class(class) => Cow::Owned(class.as_db_type(i_s.db)),
             Self::Type(t) => Cow::Borrowed(t),
         }
     }
@@ -1083,10 +1083,9 @@ impl<'a> Type<'a> {
         self_class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
     ) -> DbType {
-        let mut cloned_i_s = i_s.clone(); // TODO
         let mut replace_self = || {
             self_class
-                .map(|c| c.as_db_type(&mut cloned_i_s))
+                .map(|c| c.as_db_type(i_s.db))
                 .unwrap_or(DbType::Self_)
         };
         self.as_cow(i_s).replace_type_var_likes_and_self(
@@ -1155,7 +1154,7 @@ impl<'a> Type<'a> {
     pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
         match self {
             // TODO this does not not need to generate a db type
-            Self::Class(c) => c.as_db_type(i_s).has_any(i_s),
+            Self::Class(c) => c.as_db_type(i_s.db).has_any(i_s),
             Self::Type(t) => t.has_any(i_s),
         }
     }

@@ -517,7 +517,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::ClassWithoutTypeVar(i) => i
                 .maybe_class(self.inference.i_s)
                 .unwrap()
-                .as_db_type(self.inference.i_s),
+                .as_db_type(self.inference.i_s.db),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
                 self.add_typing_issue(

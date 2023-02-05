@@ -31,7 +31,7 @@ impl<'a> Instance<'a> {
         if let Some(inferred_link) = self.inferred_link {
             Inferred::from_saved_node_ref(inferred_link)
         } else {
-            let t = self.class.as_db_type(i_s);
+            let t = self.class.as_db_type(i_s.db);
             Inferred::execute_db_type(i_s, t)
         }
     }
