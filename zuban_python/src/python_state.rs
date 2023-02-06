@@ -132,43 +132,25 @@ impl PythonState {
         let builtins = s.builtins();
         let typing = s.typing();
 
-        let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
-        let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
-        let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
-        let dict_name_index = builtins.symbol_table.lookup_symbol("dict").unwrap();
-        let bool_name_index = builtins.symbol_table.lookup_symbol("bool").unwrap();
-        let int_name_index = builtins.symbol_table.lookup_symbol("int").unwrap();
-        let float_name_index = builtins.symbol_table.lookup_symbol("float").unwrap();
-        let complex_name_index = builtins.symbol_table.lookup_symbol("complex").unwrap();
-        let str_name_index = builtins.symbol_table.lookup_symbol("str").unwrap();
-        let bytes_name_index = builtins.symbol_table.lookup_symbol("bytes").unwrap();
-        let bytearray_name_index = builtins.symbol_table.lookup_symbol("bytearray").unwrap();
-        let memoryview_name_index = builtins.symbol_table.lookup_symbol("memoryview").unwrap();
-        let function_name_index = builtins.symbol_table.lookup_symbol("function").unwrap();
-        let base_exception_name_index = builtins
-            .symbol_table
-            .lookup_symbol("BaseException")
-            .unwrap();
-        let typing_mapping_name_index = typing.symbol_table.lookup_symbol("Mapping").unwrap();
-        let module_type_name_index = s.types().symbol_table.lookup_symbol("ModuleType").unwrap();
-
-        let class_of = |index| index - NAME_TO_CLASS_DIFF;
-        s.builtins_object_index = class_of(object_name_index);
-        s.builtins_list_index = class_of(list_name_index);
-        s.builtins_dict_index = class_of(dict_name_index);
-        s.builtins_bool_index = class_of(bool_name_index);
-        s.builtins_int_index = class_of(int_name_index);
-        s.builtins_float_index = class_of(float_name_index);
-        s.builtins_complex_index = class_of(complex_name_index);
-        s.builtins_tuple_index = class_of(tuple_name_index);
-        s.builtins_function_index = class_of(function_name_index);
-        s.builtins_base_exception_index = class_of(base_exception_name_index);
-        s.builtins_str_index = class_of(str_name_index);
-        s.builtins_bytes_index = class_of(bytes_name_index);
-        s.builtins_bytearray_index = class_of(bytearray_name_index);
-        s.builtins_memoryview_index = class_of(memoryview_name_index);
-        s.typing_mapping_index = class_of(typing_mapping_name_index);
-        s.types_module_type_index = class_of(module_type_name_index);
+        let class_of = |module: &PythonFile, name| {
+            module.symbol_table.lookup_symbol(name).unwrap() - NAME_TO_CLASS_DIFF
+        };
+        s.builtins_object_index = class_of(s.builtins(), "object");
+        s.builtins_list_index = class_of(s.builtins(), "list");
+        s.builtins_dict_index = class_of(s.builtins(), "dict");
+        s.builtins_bool_index = class_of(s.builtins(), "bool");
+        s.builtins_int_index = class_of(s.builtins(), "int");
+        s.builtins_float_index = class_of(s.builtins(), "float");
+        s.builtins_complex_index = class_of(s.builtins(), "complex");
+        s.builtins_tuple_index = class_of(s.builtins(), "tuple");
+        s.builtins_function_index = class_of(s.builtins(), "function");
+        s.builtins_base_exception_index = class_of(s.builtins(), "BaseException");
+        s.builtins_str_index = class_of(s.builtins(), "str");
+        s.builtins_bytes_index = class_of(s.builtins(), "bytes");
+        s.builtins_bytearray_index = class_of(s.builtins(), "bytearray");
+        s.builtins_memoryview_index = class_of(s.builtins(), "memoryview");
+        s.typing_mapping_index = class_of(s.typing(), "Mapping");
+        s.types_module_type_index = class_of(s.types(), "ModuleType");
 
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
