@@ -214,10 +214,20 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    pub fn use_cached_class_infos(&self, db: &'db Database) -> &'db ClassInfos {
+        let node_ref = self.class_info_node_ref();
+        debug_assert!(node_ref.point().calculated());
+        match node_ref.to_db_lifetime(db).complex().unwrap() {
+            ComplexPoint::ClassInfos(class_infos) => class_infos,
+            _ => unreachable!(),
+        }
+    }
+
     pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if point.calculated() {
+            self.use_cached_class_infos(i_s.db);
             match node_ref.to_db_lifetime(i_s.db).complex().unwrap() {
                 ComplexPoint::ClassInfos(class_infos) => class_infos,
                 _ => unreachable!(),
@@ -388,6 +398,8 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
         let class_infos = self.class_infos(i_s);
+        // TODO use this
+        // let class_infos = self.use_cached_class_infos(i_s.db);
         MroIterator::new(
             i_s.db,
             Type::Class(*self),
