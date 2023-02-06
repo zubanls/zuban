@@ -152,7 +152,7 @@ impl<'a> Generics<'a> {
         }
     }
 
-    pub fn iter<'x, 'y>(&'y self, i_s: InferenceState<'x, 'y>) -> GenericsIterator<'x, 'y> {
+    pub fn iter<'x>(&'x self, db: &'x Database) -> GenericsIterator<'x> {
         let item = match self {
             Self::SimpleGenericExpression(file, expr) => {
                 GenericsIteratorItem::SimpleGenericExpression(file, *expr)
@@ -171,7 +171,7 @@ impl<'a> Generics<'a> {
             },
             Self::None | Self::Any => GenericsIteratorItem::None,
         };
-        GenericsIterator::new(i_s, item)
+        GenericsIterator::new(db, item)
     }
 
     pub fn as_generics_list(
@@ -217,7 +217,7 @@ impl<'a> Generics<'a> {
     pub fn format(&self, format_data: &FormatData, expected: Option<usize>) -> String {
         // Returns something like [str] or [List[int], Set[Any]]
         let mut strings: Vec<_> = self
-            .iter(InferenceState::new(format_data.db))
+            .iter(format_data.db)
             .map(|g| g.format(format_data))
             .collect();
         if let Some(expected) = expected {
@@ -236,13 +236,9 @@ impl<'a> Generics<'a> {
         value_generics: Self,
         type_vars: &TypeVarLikes,
     ) -> Match {
-        let value_generics = value_generics.iter(i_s.clone());
+        let value_generics = value_generics.iter(i_s.db);
         let mut matches = Match::new_true();
-        for ((t1, t2), tv) in self
-            .iter(i_s.clone())
-            .zip(value_generics)
-            .zip(type_vars.iter())
-        {
+        for ((t1, t2), tv) in self.iter(i_s.db).zip(value_generics).zip(type_vars.iter()) {
             let v = match tv {
                 TypeVarLike::TypeVar(t) => t.variance,
                 TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
@@ -259,10 +255,10 @@ impl<'a> Generics<'a> {
         other_generics: Self,
         type_vars: Option<&TypeVarLikes>,
     ) -> bool {
-        let other_generics = other_generics.iter(i_s.clone());
+        let other_generics = other_generics.iter(i_s.db);
         let mut matches = true;
         let mut type_var_iterator = type_vars.map(|t| t.iter());
-        for (t1, t2) in self.iter(i_s.clone()).zip(other_generics) {
+        for (t1, t2) in self.iter(i_s.db).zip(other_generics) {
             if let Some(t) = type_var_iterator.as_mut().and_then(|t| t.next()) {
                 // TODO ?
             } else {
@@ -273,16 +269,16 @@ impl<'a> Generics<'a> {
     }
 }
 
-pub struct GenericsIterator<'a, 'b> {
-    i_s: InferenceState<'a, 'b>,
+pub struct GenericsIterator<'a> {
+    db: &'a Database,
     ended: bool,
-    item: GenericsIteratorItem<'b>,
+    item: GenericsIteratorItem<'a>,
 }
 
-impl<'a, 'b> GenericsIterator<'a, 'b> {
-    fn new(i_s: InferenceState<'a, 'b>, item: GenericsIteratorItem<'b>) -> Self {
+impl<'a> GenericsIterator<'a> {
+    fn new(db: &'a Database, item: GenericsIteratorItem<'a>) -> Self {
         Self {
-            i_s,
+            db,
             ended: false,
             item,
         }
@@ -301,8 +297,8 @@ enum GenericsIteratorItem<'a> {
     None,
 }
 
-impl<'b> Iterator for GenericsIterator<'_, 'b> {
-    type Item = Generic<'b>;
+impl<'a> Iterator for GenericsIterator<'a> {
+    type Item = Generic<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.item {
@@ -312,15 +308,13 @@ impl<'b> Iterator for GenericsIterator<'_, 'b> {
                 }
                 self.ended = true;
                 Some(Generic::TypeArgument(use_cached_simple_generic_type(
-                    self.i_s.db,
-                    file,
-                    *expr,
+                    self.db, file, *expr,
                 )))
             }
             GenericsIteratorItem::SimpleGenericSliceIterator(file, iter) => {
                 if let Some(SliceContent::NamedExpression(s)) = iter.next() {
                     Some(Generic::TypeArgument(use_cached_simple_generic_type(
-                        self.i_s.db,
+                        self.db,
                         file,
                         s.expression(),
                     )))
@@ -330,7 +324,7 @@ impl<'b> Iterator for GenericsIterator<'_, 'b> {
             }
             GenericsIteratorItem::GenericsList(iterator, type_var_generics) => iterator
                 .next()
-                .map(|g| replace_class_vars!(self.i_s.db, g, type_var_generics)),
+                .map(|g| replace_class_vars!(self.db, g, type_var_generics)),
             GenericsIteratorItem::DbType(g) => {
                 if self.ended {
                     return None;

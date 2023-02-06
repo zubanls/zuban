@@ -223,10 +223,7 @@ fn add_generics_from_result_context_class(
     result_class: &Class,
 ) {
     let mut calculating = matcher.iter_calculated_type_vars();
-    for (type_var_like, g) in type_vars
-        .iter()
-        .zip(result_class.generics().iter(i_s.clone()))
-    {
+    for (type_var_like, g) in type_vars.iter().zip(result_class.generics().iter(i_s.db)) {
         let calculated = calculating.next().unwrap();
         match g {
             Generic::TypeArgument(g) => {
