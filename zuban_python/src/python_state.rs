@@ -10,7 +10,7 @@ use crate::file::PythonFile;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, OverloadedFunction};
-use crate::PythonProject;
+use crate::{InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual
@@ -122,6 +122,8 @@ impl PythonState {
         typing_extensions: *const PythonFile,
         mypy_extensions: *const PythonFile,
     ) {
+        // TODO This transmute is probably not necessary.
+        let other_db: &Database = unsafe { &*(db as *const _) };
         let s = &mut db.python_state;
         s.builtins = builtins;
         s.typing = typing;
@@ -129,31 +131,6 @@ impl PythonState {
         s.types = types;
         s.typing_extensions = typing_extensions;
         s.mypy_extensions = mypy_extensions;
-        let builtins = s.builtins();
-        let typing = s.typing();
-
-        let class_of = |module: &PythonFile, name| {
-            module.symbol_table.lookup_symbol(name).unwrap() - NAME_TO_CLASS_DIFF
-        };
-        s.builtins_object_index = class_of(s.builtins(), "object");
-        s.builtins_list_index = class_of(s.builtins(), "list");
-        s.builtins_dict_index = class_of(s.builtins(), "dict");
-        s.builtins_bool_index = class_of(s.builtins(), "bool");
-        s.builtins_int_index = class_of(s.builtins(), "int");
-        s.builtins_float_index = class_of(s.builtins(), "float");
-        s.builtins_complex_index = class_of(s.builtins(), "complex");
-        s.builtins_tuple_index = class_of(s.builtins(), "tuple");
-        s.builtins_function_index = class_of(s.builtins(), "function");
-        s.builtins_base_exception_index = class_of(s.builtins(), "BaseException");
-        s.builtins_str_index = class_of(s.builtins(), "str");
-        s.builtins_bytes_index = class_of(s.builtins(), "bytes");
-        s.builtins_bytearray_index = class_of(s.builtins(), "bytearray");
-        s.builtins_memoryview_index = class_of(s.builtins(), "memoryview");
-        s.typing_mapping_index = class_of(s.typing(), "Mapping");
-        s.types_module_type_index = class_of(s.types(), "ModuleType");
-
-        let object_db_type = s.object_db_type();
-        s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
         typing_changes(
             s.typing(),
@@ -193,6 +170,37 @@ impl PythonState {
             set_mypy_extension_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
         s.mypy_extensions_kw_arg_func =
             set_mypy_extension_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
+
+        // Set class indexes and calculate the base types.
+        // This needs to be done before it gets accessed, because we expect the MRO etc. to be
+        // calculated when a class is accessed. Normally this happens on access, but here we access
+        // classes randomly via db.python_state. Therefore do the calculation here.
+        let class_of = |module: &PythonFile, name| {
+            let class_index = module.symbol_table.lookup_symbol(name).unwrap() - NAME_TO_CLASS_DIFF;
+            let class =
+                Class::from_position(NodeRef::new(module, class_index), Generics::Any, None);
+            class.ensure_calculated_class_infos(&mut InferenceState::new(other_db));
+            class_index
+        };
+        s.builtins_object_index = class_of(s.builtins(), "object");
+        s.builtins_list_index = class_of(s.builtins(), "list");
+        s.builtins_dict_index = class_of(s.builtins(), "dict");
+        s.builtins_bool_index = class_of(s.builtins(), "bool");
+        s.builtins_int_index = class_of(s.builtins(), "int");
+        s.builtins_float_index = class_of(s.builtins(), "float");
+        s.builtins_complex_index = class_of(s.builtins(), "complex");
+        s.builtins_tuple_index = class_of(s.builtins(), "tuple");
+        s.builtins_function_index = class_of(s.builtins(), "function");
+        s.builtins_base_exception_index = class_of(s.builtins(), "BaseException");
+        s.builtins_str_index = class_of(s.builtins(), "str");
+        s.builtins_bytes_index = class_of(s.builtins(), "bytes");
+        s.builtins_bytearray_index = class_of(s.builtins(), "bytearray");
+        s.builtins_memoryview_index = class_of(s.builtins(), "memoryview");
+        s.typing_mapping_index = class_of(s.typing(), "Mapping");
+        s.types_module_type_index = class_of(s.types(), "ModuleType");
+
+        let object_db_type = s.object_db_type();
+        s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
         // Set promotions
         s.int()
