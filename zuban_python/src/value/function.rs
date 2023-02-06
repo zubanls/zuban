@@ -330,7 +330,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         match self.class {
             Some(c) if c.node_ref.as_link() == usage.in_definition => match c
                 .generics()
-                .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+                .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
             {
                 Generic::ParamSpecArgument(p) => match p.into_owned().params {
                     CallableParams::Any => CallableParams::Any,
@@ -409,7 +409,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             params.next();
         }
         let as_db_type = |i_s: &mut InferenceState, t: Type| {
-            let t = t.as_db_type(i_s);
+            let t = t.as_db_type(i_s.db);
             let Some(class) = self.class else {
                 return t
             };
@@ -417,8 +417,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 if usage.in_definition() == class.node_ref.as_link() {
                     return class
                         .generics()
-                        .nth_usage(i_s, &usage)
-                        .into_generic_item(i_s);
+                        .nth_usage(i_s.db, &usage)
+                        .into_generic_item(i_s.db);
                 }
                 usage.into_generic_item()
             })
@@ -1092,7 +1092,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {
                     let type_vars = class.type_vars(i_s);
-                    class.generics.as_generics_list(i_s, type_vars) // TODO why not use generics_as_list
+                    class.generics.as_generics_list(i_s.db, type_vars) // TODO why not use generics_as_list
                 } else {
                     unreachable!();
                 }
@@ -1195,9 +1195,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut t: Option<DbType> = None;
         for link in self.overload.functions.iter() {
             let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let f_t = func.result_type(i_s).as_db_type(i_s);
+            let f_t = func.result_type(i_s).as_db_type(i_s.db);
             if let Some(old_t) = t.take() {
-                t = Some(old_t.merge_matching_parts(func.result_type(i_s).as_db_type(i_s)))
+                t = Some(old_t.merge_matching_parts(func.result_type(i_s).as_db_type(i_s.db)))
             } else {
                 t = Some(f_t);
             }
@@ -1304,12 +1304,12 @@ fn are_any_arguments_ambiguous_in_overload(
                     .file
                     .inference(i_s)
                     .use_cached_annotation_type(n1.as_annotation())
-                    .as_db_type(i_s);
+                    .as_db_type(i_s.db);
                 let t2 = n2
                     .file
                     .inference(i_s)
                     .use_cached_annotation_type(n2.as_annotation())
-                    .as_db_type(i_s);
+                    .as_db_type(i_s.db);
                 if t1 != t2 {
                     return true;
                 }

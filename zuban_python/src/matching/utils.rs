@@ -9,7 +9,10 @@ pub fn replace_class_type_vars(i_s: &mut InferenceState, t: &DbType, class: &Cla
         &mut |t| {
             if let Some(class) = i_s.current_class() {
                 if class.node_ref.as_link() == t.in_definition() {
-                    return class.generics().nth_usage(i_s, &t).into_generic_item(i_s);
+                    return class
+                        .generics()
+                        .nth_usage(i_s.db, &t)
+                        .into_generic_item(i_s.db);
                 }
             }
             t.into_generic_item()

@@ -431,8 +431,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn generics_as_list(&self, db: &Database) -> Option<GenericsList> {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
         let type_vars = self.type_vars(&mut InferenceState::new(db));
-        self.generics()
-            .as_generics_list(&mut InferenceState::new(db), type_vars)
+        self.generics().as_generics_list(db, type_vars)
     }
 
     pub fn as_db_type(&self, db: &Database) -> DbType {

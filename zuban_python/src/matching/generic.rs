@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use super::{
     match_tuple_type_arguments, matches_params, FormatData, Match, Matcher, ParamsStyle, Type,
 };
-use crate::database::{CallableParams, GenericItem, ParamSpecArgument, TypeArguments, Variance};
+use crate::database::{
+    CallableParams, Database, GenericItem, ParamSpecArgument, TypeArguments, Variance,
+};
 use crate::inference_state::InferenceState;
 
 #[derive(Debug)]
@@ -32,9 +34,9 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn into_generic_item(self, i_s: &mut InferenceState) -> GenericItem {
+    pub fn into_generic_item(self, db: &Database) -> GenericItem {
         match self {
-            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(i_s)),
+            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(db)),
             Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
             Self::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params.into_owned()),
         }

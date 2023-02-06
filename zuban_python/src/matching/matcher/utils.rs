@@ -139,7 +139,10 @@ impl CalculatedTypeArguments {
         }
         if let Some(c) = class {
             if usage.in_definition() == c.node_ref.as_link() {
-                return c.generics().nth_usage(i_s, &usage).into_generic_item(i_s);
+                return c
+                    .generics()
+                    .nth_usage(i_s.db, &usage)
+                    .into_generic_item(i_s.db);
             }
         }
         usage.into_generic_item()
@@ -229,7 +232,7 @@ fn add_generics_from_result_context_class(
             Generic::TypeArgument(g) => {
                 if !g.is_any() {
                     let mut bound = TypeVarBound::new(
-                        g.as_db_type(i_s),
+                        g.as_db_type(i_s.db),
                         match type_var_like {
                             TypeVarLike::TypeVar(t) => t.variance,
                             _ => unreachable!(),

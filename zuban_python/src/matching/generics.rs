@@ -4,24 +4,20 @@ use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slice
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, PointLink, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, Variance,
+    Database, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, PointLink,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
 use crate::file::{use_cached_simple_generic_type, PythonFile};
 use crate::inference_state::InferenceState;
 
 macro_rules! replace_class_vars {
-    ($i_s:expr, $g:ident, $type_var_generics:ident) => {
+    ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
             None | Some(Generics::None | Generics::Any) => Generic::new($g),
             Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(
-                $i_s.db,
-                &mut |t| {
-                    type_var_generics
-                        .nth_usage($i_s, &t)
-                        .into_generic_item($i_s)
-                },
+                $db,
+                &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
                 &mut || DbType::Self_,
             )),
         }
@@ -63,20 +59,16 @@ impl<'a> Generics<'a> {
             .unwrap_or(Generics::None)
     }
 
-    pub fn nth_usage<'db: 'a>(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        usage: &TypeVarLikeUsage,
-    ) -> Generic<'a> {
-        self.nth(i_s, &usage.as_type_var_like(), usage.index().as_usize())
+    pub fn nth_usage<'db: 'a>(&self, db: &'db Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
+        self.nth(db, &usage.as_type_var_like(), usage.index().as_usize())
     }
 
     pub fn nth_param_spec_usage<'db: 'a>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         usage: &ParamSpecUsage,
     ) -> Cow<'a, ParamSpecArgument> {
-        let generic = self.nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
+        let generic = self.nth_usage(db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)));
         if let Generic::ParamSpecArgument(p) = generic {
             p
         } else {
@@ -86,11 +78,11 @@ impl<'a> Generics<'a> {
 
     pub fn nth_type_argument<'db: 'a>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         type_var_like: &TypeVarLike,
         n: usize,
     ) -> Type<'a> {
-        let generic = self.nth(i_s, type_var_like, n);
+        let generic = self.nth(db, type_var_like, n);
         if let Generic::TypeArgument(p) = generic {
             p
         } else {
@@ -100,14 +92,14 @@ impl<'a> Generics<'a> {
 
     pub fn nth<'db: 'a>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        db: &'db Database,
         type_var_like: &TypeVarLike,
         n: usize,
     ) -> Generic<'a> {
         match self {
             Self::SimpleGenericExpression(file, expr) => {
                 if n == 0 {
-                    Generic::TypeArgument(use_cached_simple_generic_type(i_s.db, file, *expr))
+                    Generic::TypeArgument(use_cached_simple_generic_type(db, file, *expr))
                 } else {
                     debug!(
                         "Generic expr {:?} has one item, but {:?} was requested",
@@ -123,7 +115,7 @@ impl<'a> Generics<'a> {
                     .nth(n)
                     .map(|slice_content| match slice_content {
                         SliceContent::NamedExpression(n) => {
-                            use_cached_simple_generic_type(i_s.db, file, n.expression())
+                            use_cached_simple_generic_type(db, file, n.expression())
                         }
                         SliceContent::Slice(s) => todo!(),
                     })
@@ -131,11 +123,11 @@ impl<'a> Generics<'a> {
             ),
             Self::List(list, type_var_generics) => {
                 if let Some(g) = list.nth(n.into()) {
-                    replace_class_vars!(i_s, g, type_var_generics)
+                    replace_class_vars!(db, g, type_var_generics)
                 } else {
                     debug!(
                         "Generic list {} given, but item {:?} was requested",
-                        self.format(&FormatData::new_short(i_s.db), None),
+                        self.format(&FormatData::new_short(db), None),
                         n,
                     );
                     todo!()
@@ -184,13 +176,13 @@ impl<'a> Generics<'a> {
 
     pub fn as_generics_list(
         &self,
-        i_s: &mut InferenceState,
+        db: &Database,
         type_vars: Option<&TypeVarLikes>,
     ) -> Option<GenericsList> {
         type_vars.map(|type_vars| match self {
             Self::SimpleGenericExpression(file, expr) => {
                 GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
-                    use_cached_simple_generic_type(i_s.db, file, *expr).into_db_type(i_s),
+                    use_cached_simple_generic_type(db, file, *expr).into_db_type(db),
                 )]))
             }
             Self::SimpleGenericSlices(file, slices) => GenericsList::new_generics(
@@ -199,8 +191,8 @@ impl<'a> Generics<'a> {
                     .map(|slice| {
                         if let SliceContent::NamedExpression(n) = slice {
                             GenericItem::TypeArgument(
-                                use_cached_simple_generic_type(i_s.db, file, n.expression())
-                                    .into_db_type(i_s),
+                                use_cached_simple_generic_type(db, file, n.expression())
+                                    .into_db_type(db),
                             )
                         } else {
                             todo!()
@@ -211,7 +203,7 @@ impl<'a> Generics<'a> {
             Self::DbType(g) => todo!(),
             Self::List(l, type_var_generics) => GenericsList::new_generics(
                 l.iter()
-                    .map(|c| replace_class_vars!(i_s, c, type_var_generics).into_generic_item(i_s))
+                    .map(|c| replace_class_vars!(db, c, type_var_generics).into_generic_item(db))
                     .collect(),
             ),
             Self::Any => GenericsList::new_generics(
@@ -338,7 +330,7 @@ impl<'b> Iterator for GenericsIterator<'_, 'b> {
             }
             GenericsIteratorItem::GenericsList(iterator, type_var_generics) => iterator
                 .next()
-                .map(|g| replace_class_vars!(&mut self.i_s, g, type_var_generics)),
+                .map(|g| replace_class_vars!(self.i_s.db, g, type_var_generics)),
             GenericsIteratorItem::DbType(g) => {
                 if self.ended {
                     return None;

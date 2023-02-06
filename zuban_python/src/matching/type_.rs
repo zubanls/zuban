@@ -33,30 +33,30 @@ impl<'a> Type<'a> {
         Self::Type(Cow::Owned(t))
     }
 
-    pub fn union(self, i_s: &mut InferenceState, other: Self) -> Self {
-        Self::owned(self.into_db_type(i_s).union(other.into_db_type(i_s)))
+    pub fn union(self, db: &Database, other: Self) -> Self {
+        Self::owned(self.into_db_type(db).union(other.into_db_type(db)))
     }
 
-    fn into_cow(self, i_s: &mut InferenceState) -> Cow<'a, DbType> {
+    fn into_cow(self, db: &Database) -> Cow<'a, DbType> {
         match self {
-            Self::Class(class) => Cow::Owned(class.as_db_type(i_s.db)),
+            Self::Class(class) => Cow::Owned(class.as_db_type(db)),
             Self::Type(t) => t,
         }
     }
 
-    pub fn into_db_type(self, i_s: &mut InferenceState) -> DbType {
-        self.into_cow(i_s).into_owned()
+    pub fn into_db_type(self, db: &Database) -> DbType {
+        self.into_cow(db).into_owned()
     }
 
-    fn as_cow(&self, i_s: &mut InferenceState) -> Cow<DbType> {
+    fn as_cow(&self, db: &Database) -> Cow<DbType> {
         match self {
-            Self::Class(class) => Cow::Owned(class.as_db_type(i_s.db)),
+            Self::Class(class) => Cow::Owned(class.as_db_type(db)),
             Self::Type(t) => Cow::Borrowed(t),
         }
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState) -> DbType {
-        self.as_cow(i_s).into_owned()
+    pub fn as_db_type(&self, db: &Database) -> DbType {
+        self.as_cow(db).into_owned()
     }
 
     #[inline]
@@ -252,7 +252,7 @@ impl<'a> Type<'a> {
                             // the subclass
                             let lookup = cls.lookup_internal(i_s, None, "__init__");
                             if let LookupResult::GotoName(_, init) = lookup {
-                                let t2 = init.class_as_type(i_s).into_db_type(i_s);
+                                let t2 = init.class_as_type(i_s).into_db_type(i_s.db);
                                 if let DbType::Callable(c2) = t2 {
                                     let type_vars2 = cls.type_vars(i_s);
                                     // Since __init__ does not have a return, We need to check the params
@@ -325,7 +325,7 @@ impl<'a> Type<'a> {
                 DbType::RecursiveAlias(rec1) => {
                     if let Some(class) = value_type.maybe_class(i_s.db) {
                         let g = rec1.calculated_db_type(i_s.db);
-                        let cls_db_type = value_type.as_db_type(i_s);
+                        let cls_db_type = value_type.as_db_type(i_s.db);
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         if matcher.has_already_matched_recursive_alias(rec1, &cls_db_type) {
                             return Match::new_true();
@@ -505,7 +505,7 @@ impl<'a> Type<'a> {
         if let Type::Type(t2) = value_type {
             match t2.as_ref() {
                 DbType::Any => {
-                    let t1 = self.as_cow(i_s);
+                    let t1 = self.as_cow(i_s.db);
                     matcher.set_all_contained_type_vars_to_any(i_s, &t1);
                     return Match::True { with_any: true };
                 }
@@ -720,11 +720,11 @@ impl<'a> Type<'a> {
                     if !result.bool() {
                         let mut check = |i_s: &mut InferenceState, n| {
                             let type_var_like = &type_vars[n];
-                            let t1 = c1_generics.nth_type_argument(i_s, type_var_like, n);
+                            let t1 = c1_generics.nth_type_argument(i_s.db, type_var_like, n);
                             if t1.is_any() {
                                 return false;
                             }
-                            let t2 = c2_generics.nth_type_argument(i_s, type_var_like, n);
+                            let t2 = c2_generics.nth_type_argument(i_s.db, type_var_like, n);
                             if t2.is_any() {
                                 return false;
                             }
@@ -988,7 +988,7 @@ impl<'a> Type<'a> {
                     )
                     .bool()
                     {
-                        return value_type.into_db_type(i_s);
+                        return value_type.into_db_type(i_s.db);
                     }
                 }
             }
@@ -1049,7 +1049,7 @@ impl<'a> Type<'a> {
                 DbType::TypeVar(_) => {
                     if matcher.might_have_defined_type_vars() {
                         let t = Type::owned(
-                            matcher.replace_type_var_likes_for_nested_context(i_s, db_type),
+                            matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type),
                         );
                         return self.try_to_resemble_context(i_s, &mut Matcher::default(), &t);
                     }
@@ -1058,7 +1058,7 @@ impl<'a> Type<'a> {
                 _ => (),
             }
         }
-        self.into_db_type(i_s)
+        self.into_db_type(i_s.db)
     }
 
     pub fn execute_and_resolve_type_vars(
@@ -1088,7 +1088,7 @@ impl<'a> Type<'a> {
                 .map(|c| c.as_db_type(i_s.db))
                 .unwrap_or(DbType::Self_)
         };
-        self.as_cow(i_s).replace_type_var_likes_and_self(
+        self.as_cow(i_s.db).replace_type_var_likes_and_self(
             i_s.db,
             &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
             &mut replace_self,
@@ -1110,8 +1110,10 @@ impl<'a> Type<'a> {
                     .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
                 Some(db_type @ DbType::TypeVar(_)) => {
                     if matcher.might_have_defined_type_vars() {
-                        Type::owned(matcher.replace_type_var_likes_for_nested_context(i_s, db_type))
-                            .on_any_class(i_s, matcher, callable)
+                        Type::owned(
+                            matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type),
+                        )
+                        .on_any_class(i_s, matcher, callable)
                     } else {
                         false
                     }
@@ -1127,7 +1129,7 @@ impl<'a> Type<'a> {
                 for (_, c1) in c1.mro(i_s) {
                     for (_, c2) in c2.mro(i_s) {
                         if c1.is_simple_same_type(i_s, &c2).bool() {
-                            return c1.as_db_type(i_s);
+                            return c1.as_db_type(i_s.db);
                         }
                     }
                 }

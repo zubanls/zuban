@@ -60,7 +60,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             let type_vars = list_cls.type_vars(i_s).unwrap();
                             let generic_t = list_cls
                                 .generics()
-                                .nth(i_s, &type_vars[0], 0)
+                                .nth(i_s.db, &type_vars[0], 0)
                                 .expect_type_argument();
                             found = check_list_with_context(i_s, matcher, generic_t, file, list);
                             if found.is_none() {

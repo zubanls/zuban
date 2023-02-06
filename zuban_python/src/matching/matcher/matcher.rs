@@ -9,8 +9,8 @@ use super::type_var_matcher::{
 use super::utils::match_arguments_against_params;
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, DbType, GenericItem, ParamSpecArgument,
-    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
+    CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem,
+    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
     StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
     TypeVarLikes, TypeVarUsage, Variance,
 };
@@ -140,7 +140,7 @@ impl<'a> Matcher<'a> {
             if class.node_ref.as_link() == t1.in_definition {
                 let g = class
                     .generics
-                    .nth_usage(i_s, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
                     .expect_type_argument();
                 return g.simple_matches(i_s, value_type, t1.type_var.variance);
             }
@@ -325,7 +325,7 @@ impl<'a> Matcher<'a> {
             }
         } else if let Some(class) = self.class {
             if class.node_ref.as_link() == p1.in_definition {
-                class.generics().nth_param_spec_usage(i_s, p1)
+                class.generics().nth_param_spec_usage(i_s.db, p1)
             } else {
                 todo!()
             }
@@ -370,7 +370,7 @@ impl<'a> Matcher<'a> {
                 todo!("why?")
             }
         } else if let Some(class) = self.class {
-            class.generics().nth_param_spec_usage(i_s, usage)
+            class.generics().nth_param_spec_usage(i_s.db, usage)
         } else {
             todo!("When does this even happen?")
         };
@@ -460,7 +460,7 @@ impl<'a> Matcher<'a> {
                     if class.node_ref.as_link() == usage.in_definition() {
                         return class
                             .generics
-                            .nth_usage(i_s, usage)
+                            .nth_usage(format_data.db, usage)
                             .format(&format_data.remove_matcher());
                     }
                     let func_class = f.class.unwrap();
@@ -486,19 +486,15 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn replace_type_var_likes_for_nested_context(
-        &self,
-        i_s: &mut InferenceState,
-        t: &DbType,
-    ) -> DbType {
-        t.replace_type_var_likes(i_s.db, &mut |type_var_like_usage| {
+    pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &DbType) -> DbType {
+        t.replace_type_var_likes(db, &mut |type_var_like_usage| {
             if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
                     let current = &type_var_matcher.calculated_type_vars
                         [type_var_like_usage.index().as_usize()];
                     return match &current.type_ {
                         BoundKind::TypeVar(t) => {
-                            GenericItem::TypeArgument(t.clone().into_db_type(i_s.db))
+                            GenericItem::TypeArgument(t.clone().into_db_type(db))
                         }
                         BoundKind::TypeVarTuple(_) => todo!(),
                         BoundKind::ParamSpecArgument(param_spec) => {
@@ -515,8 +511,8 @@ impl<'a> Matcher<'a> {
                 if c.node_ref.as_link() == type_var_like_usage.in_definition() {
                     return c
                         .generics
-                        .nth_usage(i_s, &type_var_like_usage)
-                        .into_generic_item(i_s);
+                        .nth_usage(db, &type_var_like_usage)
+                        .into_generic_item(db);
                 }
                 match self.func_or_callable {
                     Some(FunctionOrCallable::Function(f)) => {
@@ -525,7 +521,7 @@ impl<'a> Matcher<'a> {
                             let type_var_remap = func_class.type_var_remap.unwrap();
                             match &type_var_remap[type_var_like_usage.index()] {
                                 GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                    self.replace_type_var_likes_for_nested_context(i_s, t),
+                                    self.replace_type_var_likes_for_nested_context(db, t),
                                 ),
                                 GenericItem::TypeArguments(_) => todo!(),
                                 GenericItem::ParamSpecArgument(_) => todo!(),
