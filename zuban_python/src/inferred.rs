@@ -149,13 +149,13 @@ impl<'db: 'slf, 'slf> Inferred {
         self.internal_run(
             i_s,
             &mut |i_s, v| v.as_type(i_s),
-            &|i_s, g1, g2| g1.union(i_s, g2),
+            &|i_s, g1, g2| g1.union(i_s.db, g2),
             &mut |i_s| Type::new(&DbType::Any),
         )
     }
 
     pub fn class_as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        self.class_as_type(i_s).into_db_type(i_s)
+        self.class_as_type(i_s).into_db_type(i_s.db)
     }
 
     pub fn format(&self, i_s: &mut InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {

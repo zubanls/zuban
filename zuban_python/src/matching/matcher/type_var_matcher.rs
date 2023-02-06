@@ -205,8 +205,9 @@ impl TypeVarMatcher {
                                 .bool()
                         })
                     }) {
-                        current.type_ =
-                            BoundKind::TypeVar(TypeVarBound::Invariant(value_type.as_db_type(i_s)));
+                        current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
+                            value_type.as_db_type(i_s.db),
+                        ));
                         return Match::new_true();
                     } else {
                         mismatch_constraints = true;
@@ -242,13 +243,14 @@ impl TypeVarMatcher {
         if mismatch_constraints {
             return Match::False {
                 reason: MismatchReason::ConstraintMismatch {
-                    expected: value_type.as_db_type(i_s),
+                    expected: value_type.as_db_type(i_s.db),
                     type_var: type_var_usage.type_var.clone(),
                 },
                 similar: false,
             };
         }
-        current.type_ = BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s), variance));
+        current.type_ =
+            BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s.db), variance));
         if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
             Match::True { with_any: true }
         } else {

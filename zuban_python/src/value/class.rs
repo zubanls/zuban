@@ -129,16 +129,25 @@ impl<'db: 'a, 'a> Class<'a> {
         StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
+    pub fn use_calculated_type_vars(&self, db: &Database) -> Option<&'a TypeVarLikes> {
+        let node_ref = self.type_vars_node_ref();
+        let point = node_ref.point();
+        debug_assert!(point.calculated());
+        Self::get_calculated_type_vars(node_ref, point)
+    }
+
+    fn get_calculated_type_vars(node_ref: NodeRef, point: Point) -> Option<&TypeVarLikes> {
+        (point.type_() != PointType::NodeAnalysis).then(|| match node_ref.complex().unwrap() {
+            ComplexPoint::TypeVarLikes(type_vars) => type_vars,
+            _ => unreachable!(),
+        })
+    }
+
     pub fn type_vars(&self, i_s: &mut InferenceState) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
-            return (point.type_() != PointType::NodeAnalysis).then(|| {
-                match node_ref.complex().unwrap() {
-                    ComplexPoint::TypeVarLikes(type_vars) => type_vars,
-                    _ => unreachable!(),
-                }
-            });
+            return Self::get_calculated_type_vars(node_ref, point);
         }
 
         let type_vars = ClassTypeVarFinder::find(&mut self.node_ref.file.inference(i_s), self);
@@ -419,13 +428,14 @@ impl<'db: 'a, 'a> Class<'a> {
         self.format(&FormatData::new_short(db))
     }
 
-    pub fn generics_as_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
-        let type_vars = self.type_vars(i_s);
-        self.generics().as_generics_list(i_s, type_vars)
+    pub fn generics_as_list(&self, db: &Database) -> Option<GenericsList> {
+        // TODO we instantiate, because we cannot use use_cached_type_vars?
+        let type_vars = self.type_vars(&mut InferenceState::new(db));
+        self.generics().as_generics_list(db, type_vars)
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        let lst = self.generics_as_list(i_s);
+    pub fn as_db_type(&self, db: &Database) -> DbType {
+        let lst = self.generics_as_list(db);
         let link = self.node_ref.as_link();
         DbType::Class(link, lst)
     }
@@ -551,7 +561,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s))))
+        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
     }
 }
 

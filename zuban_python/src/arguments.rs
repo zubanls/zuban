@@ -579,7 +579,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                             let type_vars = class.type_vars(i_s).unwrap();
                                             let key = class
                                                 .generics()
-                                                .nth(i_s, &type_vars[0], 0)
+                                                .nth(i_s.db, &type_vars[0], 0)
                                                 .expect_type_argument();
                                             let s = Type::Class(i_s.db.python_state.str());
                                             if !key.is_simple_same_type(i_s, &s).bool() {
@@ -593,9 +593,9 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                             value_type = Some(
                                                 class
                                                     .generics()
-                                                    .nth(i_s, &type_vars[1], 1)
+                                                    .nth(i_s.db, &type_vars[1], 1)
                                                     .expect_type_argument()
-                                                    .into_db_type(i_s),
+                                                    .into_db_type(i_s.db),
                                             );
                                             break;
                                         }

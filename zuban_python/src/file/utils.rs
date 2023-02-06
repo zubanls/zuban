@@ -37,7 +37,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                     .db
                     .python_state
                     .literal_class(l.kind)
-                    .as_db_type(self.i_s);
+                    .as_db_type(self.i_s.db);
             }
             result.union_in_place(t);
         }
@@ -60,7 +60,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             let type_vars = list_cls.type_vars(i_s).unwrap();
                             let generic_t = list_cls
                                 .generics()
-                                .nth(i_s, &type_vars[0], 0)
+                                .nth(i_s.db, &type_vars[0], 0)
                                 .expect_type_argument();
                             found = check_list_with_context(i_s, matcher, generic_t, file, list);
                             if found.is_none() {
@@ -68,7 +68,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                 // the given and expected result context as a type.
                                 found = Some(
                                     list_cls
-                                        .as_db_type(i_s)
+                                        .as_db_type(i_s.db)
                                         .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                             tv.as_type_var_like().as_any_generic_item()
                                         }),

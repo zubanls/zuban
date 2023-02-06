@@ -95,7 +95,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             result_context,
             on_type_error,
         );
-        type_arguments.type_arguments = class.generics_as_list(i_s);
+        type_arguments.type_arguments = class.generics_as_list(i_s.db);
         type_arguments
     } else {
         calculate_type_vars(
@@ -139,7 +139,10 @@ impl CalculatedTypeArguments {
         }
         if let Some(c) = class {
             if usage.in_definition() == c.node_ref.as_link() {
-                return c.generics().nth_usage(i_s, &usage).into_generic_item(i_s);
+                return c
+                    .generics()
+                    .nth_usage(i_s.db, &usage)
+                    .into_generic_item(i_s.db);
             }
         }
         usage.into_generic_item()
@@ -220,16 +223,13 @@ fn add_generics_from_result_context_class(
     result_class: &Class,
 ) {
     let mut calculating = matcher.iter_calculated_type_vars();
-    for (type_var_like, g) in type_vars
-        .iter()
-        .zip(result_class.generics().iter(i_s.clone()))
-    {
+    for (type_var_like, g) in type_vars.iter().zip(result_class.generics().iter(i_s.db)) {
         let calculated = calculating.next().unwrap();
         match g {
             Generic::TypeArgument(g) => {
                 if !g.is_any() {
                     let mut bound = TypeVarBound::new(
-                        g.as_db_type(i_s),
+                        g.as_db_type(i_s.db),
                         match type_var_like {
                             TypeVarLike::TypeVar(t) => t.variance,
                             _ => unreachable!(),

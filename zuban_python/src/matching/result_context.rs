@@ -23,8 +23,8 @@ impl<'a> ResultContext<'a, '_> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_)),
             Self::WithMatcher { matcher, type_ } => {
-                let t = type_.as_db_type(i_s);
-                let t = matcher.replace_type_var_likes_for_nested_context(i_s, &t);
+                let t = type_.as_db_type(i_s.db);
+                let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, &t);
                 Some(callable(i_s, &Type::new(&t)))
             }
             Self::Unknown | Self::ExpectLiteral => None,
