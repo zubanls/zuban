@@ -28,10 +28,10 @@ impl TypeVarBound {
         }
     }
 
-    pub fn format(&self, i_s: &mut InferenceState, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
         match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
-                t.format(&FormatData::with_style(i_s.db, style))
+                t.format(&FormatData::with_style(db, style))
             }
         }
     }

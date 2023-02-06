@@ -440,14 +440,13 @@ impl<'a> Matcher<'a> {
         format_data: &FormatData,
         params_style: ParamsStyle,
     ) -> Box<str> {
-        let i_s = &mut InferenceState::new(format_data.db);
         // In general this whole function should look very similar to the matches function, since
         // on mismatches this can be run.
         if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
             if type_var_matcher.match_in_definition == usage.in_definition() {
                 let current = &type_var_matcher.calculated_type_vars[usage.index().as_usize()];
                 return match &current.type_ {
-                    BoundKind::TypeVar(bound) => bound.format(i_s, format_data.style),
+                    BoundKind::TypeVar(bound) => bound.format(format_data.db, format_data.style),
                     BoundKind::TypeVarTuple(ts) => ts.format(format_data),
                     BoundKind::ParamSpecArgument(p) => p.params.format(format_data, params_style),
                     BoundKind::Uncalculated => DbType::Never.format(format_data),
