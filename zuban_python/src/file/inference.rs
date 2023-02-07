@@ -1009,7 +1009,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             .inference(&mut i_s)
                             .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = c.clone();
-                        c.result_type = result.class_as_type(&mut i_s).into_db_type(&mut i_s.db);
+                        c.result_type = result.class_as_type(&mut i_s).into_db_type(i_s.db);
                         Inferred::execute_db_type(&mut i_s, DbType::Callable(c))
                     } else {
                         todo!()
