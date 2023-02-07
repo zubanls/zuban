@@ -34,8 +34,8 @@ pub use file_state::{
 use inference::Inference;
 use name_binder::NameBinder;
 pub use type_computation::{
-    use_cached_simple_generic_type, BaseClass, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn,
+    use_cached_annotation_type, use_cached_simple_generic_type, BaseClass, TypeComputation,
+    TypeComputationOrigin, TypeVarCallbackReturn,
 };
 pub use utils::on_argument_type_error;
 

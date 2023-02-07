@@ -20,8 +20,8 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{
-    on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn,
+    on_argument_type_error, use_cached_annotation_type, File, PythonFile, TypeComputation,
+    TypeComputationOrigin, TypeVarCallbackReturn,
 };
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -805,11 +805,9 @@ pub struct FunctionParam<'x> {
 
 impl<'db: 'x, 'x> FunctionParam<'x> {
     pub fn annotation(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
-        self.param.annotation().map(|annotation| {
-            self.file
-                .inference(i_s)
-                .use_cached_annotation_type(annotation)
-        })
+        self.param
+            .annotation()
+            .map(|annotation| use_cached_annotation_type(i_s.db, self.file, annotation))
     }
 }
 
@@ -823,11 +821,10 @@ impl<'x> Param<'x> for FunctionParam<'x> {
     }
 
     fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x> {
-        let t = self.param.annotation().map(|annotation| {
-            self.file
-                .inference(i_s)
-                .use_cached_annotation_type(annotation)
-        });
+        let t = self
+            .param
+            .annotation()
+            .map(|annotation| use_cached_annotation_type(i_s.db, self.file, annotation));
         fn dbt<'a>(t: Option<&Type<'a>>) -> Option<&'a DbType> {
             t.and_then(|t| t.maybe_borrowed_db_type())
         }
@@ -1128,7 +1125,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
                         if are_any_arguments_ambiguous_in_overload(
-                            i_s,
+                            i_s.db,
                             old_indices,
                             &argument_indices,
                         ) {
@@ -1288,7 +1285,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
 }
 
 fn are_any_arguments_ambiguous_in_overload(
-    i_s: &mut InferenceState,
+    db: &Database,
     a: &[ArgumentIndexWithParam],
     b: &[ArgumentIndexWithParam],
 ) -> bool {
@@ -1298,18 +1295,11 @@ fn are_any_arguments_ambiguous_in_overload(
     for p1 in a {
         for p2 in b {
             if p1.argument_index == p2.argument_index {
-                let n1 = NodeRef::from_link(i_s.db, p1.param_annotation_link);
-                let n2 = NodeRef::from_link(i_s.db, p2.param_annotation_link);
-                let t1 = n1
-                    .file
-                    .inference(i_s)
-                    .use_cached_annotation_type(n1.as_annotation())
-                    .as_db_type(i_s.db);
-                let t2 = n2
-                    .file
-                    .inference(i_s)
-                    .use_cached_annotation_type(n2.as_annotation())
-                    .as_db_type(i_s.db);
+                let n1 = NodeRef::from_link(db, p1.param_annotation_link);
+                let n2 = NodeRef::from_link(db, p2.param_annotation_link);
+
+                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type(db);
+                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type(db);
                 if t1 != t2 {
                     return true;
                 }

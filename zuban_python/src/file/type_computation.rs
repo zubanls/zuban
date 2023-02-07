@@ -2548,3 +2548,12 @@ pub fn use_cached_simple_generic_type<'db>(
     let inferred = inference.check_point_cache(expr.index()).unwrap();
     Type::Class(inferred.maybe_class(i_s).unwrap())
 }
+
+pub fn use_cached_annotation_type<'db: 'file, 'file>(
+    db: &'db Database,
+    file: &'file PythonFile,
+    annotation: Annotation,
+) -> Type<'file> {
+    file.inference(&mut InferenceState::new(db))
+        .use_cached_annotation_type_internal(annotation.index(), annotation.expression())
+}
