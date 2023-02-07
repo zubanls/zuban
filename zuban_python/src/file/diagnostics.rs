@@ -476,7 +476,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             .infer_expression(exception)
                             .maybe_class(self.i_s)
                             .map(|class| {
-                                class.in_mro(self.i_s, &self.i_s.db.python_state.base_exception())
+                                class
+                                    .in_mro(self.i_s.db, &self.i_s.db.python_state.base_exception())
                             })
                             .unwrap_or(false)
                         {

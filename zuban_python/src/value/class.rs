@@ -234,7 +234,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         } else {
             self.ensure_calculated_class_infos(i_s);
-            self.class_infos(i_s)
+            self.use_cached_class_infos(i_s.db)
         }
     }
 
@@ -303,7 +303,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 IssueType::CyclicDefinition { name },
                                             );
                                     } else {
-                                        for base in class.class_infos(i_s).mro.iter() {
+                                        for base in class.use_cached_class_infos(i_s.db).mro.iter()
+                                        {
                                             mro.push(base.replace_type_var_likes(
                                                 i_s.db,
                                                 &mut |t| {
@@ -336,7 +337,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn check_protocol_match(&self, i_s: &mut InferenceState<'db, '_>, other: Self) -> bool {
-        for c in self.class_infos(i_s).mro.iter() {
+        for c in self.use_cached_class_infos(i_s.db).mro.iter() {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 if let Some(l) = other
@@ -406,13 +407,13 @@ impl<'db: 'a, 'a> Class<'a> {
         )
     }
 
-    pub fn in_mro(&self, i_s: &mut InferenceState<'db, '_>, t: &DbType) -> bool {
+    pub fn in_mro(&self, db: &'db Database, t: &DbType) -> bool {
         if let DbType::Class(link, _) = t {
             if self.node_ref.as_link() == *link {
                 return true;
             }
         }
-        let class_infos = self.class_infos(i_s);
+        let class_infos = self.use_cached_class_infos(db);
         class_infos.mro.contains(t)
     }
 
@@ -510,7 +511,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     }
 
     fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
-        !self.class_infos(i_s).incomplete_mro
+        !self.use_cached_class_infos(i_s.db).incomplete_mro
     }
 
     fn execute(
