@@ -398,7 +398,7 @@ impl<'a> Type<'a> {
         value_type: &Self,
     ) -> Match {
         // 1. Check if the type is part of the mro.
-        let m = match value_type.mro(i_s) {
+        let m = match value_type.mro(i_s.db) {
             Some(mro) => {
                 for (_, t2) in mro {
                     let m = self.matches_internal(i_s, matcher, &t2, Variance::Covariant);
@@ -579,25 +579,21 @@ impl<'a> Type<'a> {
         Match::new_false()
     }
 
-    pub fn mro<'db: 'x, 'x>(
-        &'x self,
-        i_s: &mut InferenceState<'db, '_>,
-    ) -> Option<MroIterator<'db, '_>> {
+    pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> Option<MroIterator<'db, '_>> {
         match self {
-            Self::Class(c) => Some(c.mro(i_s)),
+            Self::Class(c) => Some(c.mro(db)),
             Self::Type(t) => {
                 match t.as_ref() {
                     DbType::Class(link, generics) => {
-                        Some(Class::from_db_type(i_s.db, *link, generics).mro(i_s))
+                        Some(Class::from_db_type(db, *link, generics).mro(db))
                     }
                     DbType::Tuple(tup) => Some({
-                        let class_infos = i_s
-                            .db
+                        let class_infos = db
                             .python_state
                             .tuple_with_any_generics()
-                            .class_infos(i_s);
+                            .use_cached_class_infos(db);
                         MroIterator::new(
-                            i_s.db,
+                            db,
                             Type::new(t),
                             Some(Generics::DbType(match &tup.args {
                                 Some(TupleTypeArguments::FixedLength(ts)) => {
@@ -879,12 +875,12 @@ impl<'a> Type<'a> {
             }
         };
 
-        for (_, c1) in class1.mro(i_s) {
+        for (_, c1) in class1.mro(i_s.db) {
             if check(i_s, &c1, &Type::Class(class2)) {
                 return true;
             }
         }
-        for (_, c2) in class2.mro(i_s) {
+        for (_, c2) in class2.mro(i_s.db) {
             if check(i_s, &Type::Class(class1), &c2) {
                 return true;
             }
@@ -977,7 +973,7 @@ impl<'a> Type<'a> {
         t: &Self,
     ) -> DbType {
         if let Some(class) = t.maybe_class(i_s.db) {
-            if let Some(mro) = self.mro(i_s) {
+            if let Some(mro) = self.mro(i_s.db) {
                 for (_, value_type) in mro {
                     if Self::matches_class(
                         i_s,
@@ -1126,8 +1122,8 @@ impl<'a> Type<'a> {
     pub fn common_base_class(&self, i_s: &mut InferenceState, other: &Self) -> DbType {
         match (self.maybe_class(i_s.db), other.maybe_class(i_s.db)) {
             (Some(c1), Some(c2)) => {
-                for (_, c1) in c1.mro(i_s) {
-                    for (_, c2) in c2.mro(i_s) {
+                for (_, c1) in c1.mro(i_s.db) {
+                    for (_, c2) in c2.mro(i_s.db) {
                         if c1.is_simple_same_type(i_s, &c2).bool() {
                             return c1.as_db_type(i_s.db);
                         }

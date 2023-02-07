@@ -1346,7 +1346,12 @@ fn load_bound_method_instance<'db>(
 ) -> (Instance<'db>, Class<'db>) {
     let instance = inf.expect_instance(i_s);
 
-    let class_t = instance.class.mro(i_s).nth(mro_index.0 as usize).unwrap().1;
+    let class_t = instance
+        .class
+        .mro(i_s.db)
+        .nth(mro_index.0 as usize)
+        .unwrap()
+        .1;
     // Mro classes are never owned, because they are saved on classes.
     let class = class_t.expect_borrowed_class(i_s.db);
     (instance, class)

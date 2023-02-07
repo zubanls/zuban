@@ -571,7 +571,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let type_ = inf.class_as_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
                             let mut value_type = None;
-                            if let Some(mro) = type_.mro(i_s) {
+                            if let Some(mro) = type_.mro(i_s.db) {
                                 for (_, t) in mro {
                                     if let Some(class) = t.maybe_class(i_s.db) {
                                         if class.node_ref == i_s.db.python_state.mapping_node_ref()

@@ -275,7 +275,7 @@ fn calculate_type_vars<'db>(
                         i_s,
                         &mut Matcher::default(),
                         &mut |i_s, _, result_class| {
-                            for (_, t) in class.mro(i_s) {
+                            for (_, t) in class.mro(i_s.db) {
                                 if let Some(class) = t.maybe_class(i_s.db) {
                                     if result_class.node_ref == class.node_ref {
                                         add_generics_from_result_context_class(

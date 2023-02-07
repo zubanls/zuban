@@ -52,7 +52,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        for (mro_index, class) in self.class.mro(i_s) {
+        for (mro_index, class) in self.class.mro(i_s.db) {
             if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
                     let mut i_s = i_s.with_class_context(&c);
@@ -131,7 +131,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let mro_iterator = self.class.mro(i_s);
+        let mro_iterator = self.class.mro(i_s.db);
         let node_ref = slice_type.as_node_ref();
         let finder = ClassMroFinder {
             i_s,
@@ -178,7 +178,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        let mro_iterator = self.class.mro(i_s);
+        let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {
             i_s,
             instance: self,

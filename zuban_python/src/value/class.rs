@@ -374,7 +374,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
     ) -> (LookupResult, Option<Class>) {
-        for (mro_index, c) in self.mro(i_s) {
+        for (mro_index, c) in self.mro(i_s.db) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let Type::Class(c) = c {
@@ -396,12 +396,10 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
-        let class_infos = self.class_infos(i_s);
-        // TODO use this
-        // let class_infos = self.use_cached_class_infos(i_s.db);
+    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
+        let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
-            i_s.db,
+            db,
             Type::Class(*self),
             Some(self.generics),
             class_infos.mro.iter(),
