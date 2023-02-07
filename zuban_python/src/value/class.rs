@@ -495,8 +495,8 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         }
     }
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
-        !self.use_cached_class_infos(i_s.db).incomplete_mro
+    fn should_add_lookup_error(&self, db: &Database) -> bool {
+        !self.use_cached_class_infos(db).incomplete_mro
     }
 
     fn execute(

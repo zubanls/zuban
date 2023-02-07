@@ -4,7 +4,7 @@ use super::{
     Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
 };
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{DbType, PointLink};
+use crate::database::{Database, DbType, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::getitem::SliceType;
@@ -95,8 +95,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         LookupResult::None
     }
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
-        !self.class.use_cached_class_infos(i_s.db).incomplete_mro
+    fn should_add_lookup_error(&self, db: &Database) -> bool {
+        !self.class.use_cached_class_infos(db).incomplete_mro
     }
 
     fn execute(

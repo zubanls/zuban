@@ -266,7 +266,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         name: &str,
     ) -> LookupResult;
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
+    fn should_add_lookup_error(&self, db: &Database) -> bool {
         true
     }
 
@@ -278,7 +278,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         on_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
         let result = self.lookup_internal(i_s, node_ref, name);
-        if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s) {
+        if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s.db) {
             on_error(i_s);
         }
         result

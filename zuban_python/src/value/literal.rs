@@ -46,8 +46,8 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
         self.value.lookup_internal(i_s, node_ref, name)
     }
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
-        self.value.should_add_lookup_error(i_s)
+    fn should_add_lookup_error(&self, db: &Database) -> bool {
+        self.value.should_add_lookup_error(db)
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
