@@ -122,8 +122,6 @@ impl PythonState {
         typing_extensions: *const PythonFile,
         mypy_extensions: *const PythonFile,
     ) {
-        // TODO This transmute is probably not necessary.
-        let other_db: &Database = unsafe { &*(db as *const _) };
         let s = &mut db.python_state;
         s.builtins = builtins;
         s.typing = typing;
@@ -175,30 +173,40 @@ impl PythonState {
         // This needs to be done before it gets accessed, because we expect the MRO etc. to be
         // calculated when a class is accessed. Normally this happens on access, but here we access
         // classes randomly via db.python_state. Therefore do the calculation here.
-        let class_of = |module: &PythonFile, name| {
-            let class_index = module.symbol_table.lookup_symbol(name).unwrap() - NAME_TO_CLASS_DIFF;
-            let class =
-                Class::from_position(NodeRef::new(module, class_index), Generics::Any, None);
-            class.ensure_calculated_class_infos(&mut InferenceState::new(other_db));
-            class_index
-        };
-        s.builtins_object_index = class_of(s.builtins(), "object");
-        s.builtins_list_index = class_of(s.builtins(), "list");
-        s.builtins_dict_index = class_of(s.builtins(), "dict");
-        s.builtins_bool_index = class_of(s.builtins(), "bool");
-        s.builtins_int_index = class_of(s.builtins(), "int");
-        s.builtins_float_index = class_of(s.builtins(), "float");
-        s.builtins_complex_index = class_of(s.builtins(), "complex");
-        s.builtins_tuple_index = class_of(s.builtins(), "tuple");
-        s.builtins_function_index = class_of(s.builtins(), "function");
-        s.builtins_base_exception_index = class_of(s.builtins(), "BaseException");
-        s.builtins_str_index = class_of(s.builtins(), "str");
-        s.builtins_bytes_index = class_of(s.builtins(), "bytes");
-        s.builtins_bytearray_index = class_of(s.builtins(), "bytearray");
-        s.builtins_memoryview_index = class_of(s.builtins(), "memoryview");
-        s.typing_mapping_index = class_of(s.typing(), "Mapping");
-        s.types_module_type_index = class_of(s.types(), "ModuleType");
+        macro_rules! cache_index {
+            ($attr_name:ident, $db:expr, $module_name:ident, $name:literal) => {
+                let class_index = db
+                    .python_state
+                    .$module_name()
+                    .symbol_table
+                    .lookup_symbol($name)
+                    .unwrap()
+                    - NAME_TO_CLASS_DIFF;
+                $db.python_state.$attr_name = class_index;
+                let module = db.python_state.$module_name();
+                let class =
+                    Class::from_position(NodeRef::new(module, class_index), Generics::Any, None);
+                class.ensure_calculated_class_infos(&mut InferenceState::new(db));
+            };
+        }
+        cache_index!(builtins_object_index, db, builtins, "object");
+        cache_index!(builtins_list_index, db, builtins, "list");
+        cache_index!(builtins_dict_index, db, builtins, "dict");
+        cache_index!(builtins_bool_index, db, builtins, "bool");
+        cache_index!(builtins_int_index, db, builtins, "int");
+        cache_index!(builtins_float_index, db, builtins, "float");
+        cache_index!(builtins_complex_index, db, builtins, "complex");
+        cache_index!(builtins_tuple_index, db, builtins, "tuple");
+        cache_index!(builtins_function_index, db, builtins, "function");
+        cache_index!(builtins_base_exception_index, db, builtins, "BaseException");
+        cache_index!(builtins_str_index, db, builtins, "str");
+        cache_index!(builtins_bytes_index, db, builtins, "bytes");
+        cache_index!(builtins_bytearray_index, db, builtins, "bytearray");
+        cache_index!(builtins_memoryview_index, db, builtins, "memoryview");
+        cache_index!(typing_mapping_index, db, typing, "Mapping");
+        cache_index!(types_module_type_index, db, types, "ModuleType");
 
+        let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
         s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
