@@ -14,7 +14,7 @@ use crate::utils::Peekable;
 pub trait Param<'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
     fn name(&self, db: &'x Database) -> Option<&str>;
-    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x>;
+    fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamSpecific<'x>;
     fn kind(&self, db: &Database) -> ParamKind;
     fn func_annotation_link(&self) -> Option<PointLink> {
         // Can be None for Callable
@@ -107,8 +107,8 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
             if param1.has_default() && !param2.has_default() {
                 return Match::new_false();
             }
-            let specific1 = param1.specific(i_s);
-            let specific2 = param2.specific(i_s);
+            let specific1 = param1.specific(i_s.db);
+            let specific2 = param2.specific(i_s.db);
             match &specific1 {
                 WrappedParamSpecific::PositionalOnly(t1) => match &specific2 {
                     WrappedParamSpecific::PositionalOnly(t2)
@@ -132,7 +132,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                     }
                     WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(s2)) => {
                         params2.next();
-                        match params2.next().map(|p| p.specific(i_s)) {
+                        match params2.next().map(|p| p.specific(i_s.db)) {
                             Some(WrappedParamSpecific::DoubleStarred(
                                 WrappedDoubleStarred::ValueType(ref d2),
                             )) => {
@@ -140,7 +140,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                                     match_with_variance(i_s, matcher, s2, d2, Variance::Invariant);
                                 matches &= match_(i_s, matcher, t1, s2);
                                 for param1 in params1 {
-                                    match &param1.specific(i_s) {
+                                    match &param1.specific(i_s.db) {
                                         WrappedParamSpecific::PositionalOnly(t1)
                                         | WrappedParamSpecific::PositionalOrKeyword(t1)
                                         | WrappedParamSpecific::KeywordOnly(t1)
@@ -177,7 +177,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                         let mut found = false;
                         for (i, p2) in unused_keyword_params.iter().enumerate() {
                             if param1.name(i_s.db) == p2.name(i_s.db) {
-                                match unused_keyword_params.remove(i).specific(i_s) {
+                                match unused_keyword_params.remove(i).specific(i_s.db) {
                                     WrappedParamSpecific::KeywordOnly(t2)
                                     | WrappedParamSpecific::PositionalOrKeyword(t2) => {
                                         matches &= match_(i_s, matcher, t1, &t2);
@@ -200,7 +200,7 @@ pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
                             } {
                                 param2 = *params2.peek().unwrap();
                                 if param1.name(i_s.db) == param2.name(i_s.db) {
-                                    match &param2.specific(i_s) {
+                                    match &param2.specific(i_s.db) {
                                         WrappedParamSpecific::PositionalOrKeyword(t2)
                                         | WrappedParamSpecific::KeywordOnly(t2) => {
                                             matches &= match_(i_s, matcher, t1, t2);
@@ -304,7 +304,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
-    let to_type = |i_s: &mut _, p2: P2| match p2.specific(i_s) {
+    let to_type = |db: &'db _, p2: P2| match p2.specific(db) {
         WrappedParamSpecific::PositionalOnly(t2)
         | WrappedParamSpecific::PositionalOrKeyword(t2)
         | WrappedParamSpecific::KeywordOnly(t2)
@@ -313,9 +313,9 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
         WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
         WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => todo!(),
     };
-    let check_type = |i_s: &mut _, t1: Option<&Type>, p2: P2| {
+    let check_type = |i_s: &mut InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
-            if let Some(t2) = to_type(i_s, p2) {
+            if let Some(t2) = to_type(i_s.db, p2) {
                 return t1.overlaps(i_s, &t2);
             }
         }
@@ -330,7 +330,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
             if has_default {
                 // TODO it's weird that we are creating a new InferenceState, because of borrowing
                 // issues in this closure
-                if let Some(t) = to_type(&mut InferenceState::new(db), *p) {
+                if let Some(t) = to_type(db, *p) {
                     if matches!(t.maybe_db_type(), Some(DbType::Any)) {
                         had_any_fallback_with_default = true;
                     }
@@ -341,7 +341,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
         .peekable();
     let mut unused_keyword_params: Vec<P2> = vec![];
     for param1 in params1.filter(|p| !p.has_default()) {
-        match param1.specific(i_s) {
+        match param1.specific(i_s.db) {
             WrappedParamSpecific::PositionalOrKeyword(t1)
             | WrappedParamSpecific::PositionalOnly(t1) => {
                 if let Some(param2) = params2.peek() {
@@ -463,7 +463,7 @@ impl<'x> Param<'x> for &'x CallableParam {
         self.name.map(|n| n.as_str(db))
     }
 
-    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x> {
+    fn specific<'db: 'x>(&self, db: &Database) -> WrappedParamSpecific<'x> {
         match &self.param_specific {
             ParamSpecific::PositionalOnly(t) => {
                 WrappedParamSpecific::PositionalOnly(Some(Type::new(t)))
@@ -654,30 +654,27 @@ where
                         }
                     }
                 }
-                ParamKind::Starred => {
-                    let mut i_s = InferenceState::new(self.db); // TODO why this?
-                    match param.specific(&mut i_s) {
-                        WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
-                            debug_assert!(matches!(
-                                self.params.next().unwrap().specific(&mut i_s),
-                                WrappedParamSpecific::DoubleStarred(
-                                    WrappedDoubleStarred::ParamSpecKwargs(u)
-                                ),
-                            ));
-                            return Some(InferrableParam2 {
-                                param,
-                                argument: ParamArgument::ParamSpecArgs(
-                                    u.clone(),
-                                    self.arguments.by_ref().collect(),
-                                ),
-                            });
-                        }
-                        _ => {
-                            self.current_starred_param = Some(param);
-                            return self.next();
-                        }
+                ParamKind::Starred => match param.specific(self.db) {
+                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => {
+                        debug_assert!(matches!(
+                            self.params.next().unwrap().specific(self.db),
+                            WrappedParamSpecific::DoubleStarred(
+                                WrappedDoubleStarred::ParamSpecKwargs(u)
+                            ),
+                        ));
+                        return Some(InferrableParam2 {
+                            param,
+                            argument: ParamArgument::ParamSpecArgs(
+                                u.clone(),
+                                self.arguments.by_ref().collect(),
+                            ),
+                        });
                     }
-                }
+                    _ => {
+                        self.current_starred_param = Some(param);
+                        return self.next();
+                    }
+                },
                 ParamKind::DoubleStarred => {
                     self.current_double_starred_param = Some(param);
                     return self.next();

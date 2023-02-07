@@ -430,7 +430,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut had_param_spec_args = false;
         let file_index = self.node_ref.file_index();
         while let Some(p) = params.next() {
-            let specific = p.specific(i_s);
+            let specific = p.specific(i_s.db);
             let mut as_t = |t: Option<Type>| {
                 t.map(|t| as_db_type(i_s, t)).unwrap_or({
                     let name_ref =
@@ -452,7 +452,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_t(t)))
                 }
                 WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u1)) => {
-                    match params.peek().map(|p| p.specific(i_s)) {
+                    match params.peek().map(|p| p.specific(i_s.db)) {
                         Some(WrappedParamSpecific::DoubleStarred(
                             WrappedDoubleStarred::ParamSpecKwargs(u2),
                         )) if u1 == u2 => {
@@ -613,7 +613,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             .iter_params()
             .enumerate()
             .map(|(i, p)| {
-                let annotation_str = match p.specific(i_s) {
+                let annotation_str = match p.specific(i_s.db) {
                     WrappedParamSpecific::PositionalOnly(t)
                     | WrappedParamSpecific::PositionalOrKeyword(t)
                     | WrappedParamSpecific::KeywordOnly(t)
@@ -820,15 +820,15 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         Some(self.param.name_definition().as_code())
     }
 
-    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x> {
+    fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamSpecific<'x> {
         let t = self
             .param
             .annotation()
-            .map(|annotation| use_cached_annotation_type(i_s.db, self.file, annotation));
+            .map(|annotation| use_cached_annotation_type(db, self.file, annotation));
         fn dbt<'a>(t: Option<&Type<'a>>) -> Option<&'a DbType> {
             t.and_then(|t| t.maybe_borrowed_db_type())
         }
-        match self.kind(i_s.db) {
+        match self.kind(db) {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),

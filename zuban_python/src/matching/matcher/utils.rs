@@ -448,7 +448,7 @@ pub fn match_arguments_against_params<
         }
         match p.argument {
             ParamArgument::Argument(ref argument) => {
-                let specific = p.param.specific(i_s);
+                let specific = p.param.specific(i_s.db);
                 let annotation_type = match &specific {
                     WrappedParamSpecific::PositionalOnly(t)
                     | WrappedParamSpecific::PositionalOrKeyword(t)
