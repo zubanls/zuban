@@ -223,21 +223,6 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
-        let node_ref = self.class_info_node_ref();
-        let point = node_ref.point();
-        if point.calculated() {
-            self.use_cached_class_infos(i_s.db);
-            match node_ref.to_db_lifetime(i_s.db).complex().unwrap() {
-                ComplexPoint::ClassInfos(class_infos) => class_infos,
-                _ => unreachable!(),
-            }
-        } else {
-            self.ensure_calculated_class_infos(i_s);
-            self.use_cached_class_infos(i_s.db)
-        }
-    }
-
     fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         // Calculate all type vars beforehand
