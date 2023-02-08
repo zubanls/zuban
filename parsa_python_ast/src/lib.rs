@@ -2367,6 +2367,29 @@ impl<'db> Term<'db> {
     }
 }
 
+impl<'db> ShiftExpr<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        let mut iter = self.node.iter_children();
+        let left = ExpressionPart::new(iter.next().unwrap());
+        let op = iter.next().unwrap().as_code();
+        let right = ExpressionPart::new(iter.next().unwrap());
+        let (magic_method, reverse_magic_method, operand) = if op == ">>" {
+            ("__rshift__", "__rrshift__", ">>")
+        } else {
+            debug_assert_eq!(op, "<<");
+            ("__lshift__", "__rlshift__", "<<")
+        };
+        Operation {
+            left,
+            magic_method,
+            reverse_magic_method,
+            operand,
+            right,
+            index: self.node.index,
+        }
+    }
+}
+
 impl<'db> Disjunction<'db> {
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
         let mut iter = self.node.iter_children();

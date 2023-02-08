@@ -829,8 +829,6 @@ testDecoratorUpdateClassInFunction
 param_spec_with_generic_class
 self_valid_method
 
-testSelfTypeReallyTrickyExample
-
 # Self tests
 testTypingSelfBasic
 testTypingSelfConflict
