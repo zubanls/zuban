@@ -1,6 +1,8 @@
 # Next up
 testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
+testRemoveBaseClass
+testRemoveBaseClass2
 
 # Fails only without --release
 testModuleAsTypeNoCrash
@@ -29,18 +31,6 @@ testNoRecursiveExpandInstanceUnionCrashInference
 
 # Implement bitwise or
 testUnionOrSyntaxWithTypeAliasWorking
-
-# Generics self assignment
-testGenericTypeBodyWithMultipleVariables
-self_valid_method
-# generics issues
-testCompatibilityOfTypeVarWithObject
-# formatting Self
-testRemoveAttributeInBaseClass
-testRemoveBaseClass
-testRemoveBaseClass2
-testBaseClassDeleted
-testBaseClassOfNestedClassDeleted
 
 # Nicer Callable Errors
 testCallableParsingFromExpr
@@ -837,6 +827,7 @@ testIncompatibleVariance
 testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
 param_spec_with_generic_class
+self_valid_method
 
 testSelfTypeReallyTrickyExample
 
