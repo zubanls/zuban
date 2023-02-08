@@ -1,9 +1,11 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs::{read_dir, read_to_string};
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::time::Instant;
 
+use once_cell::unsync::OnceCell;
 use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
@@ -147,7 +149,7 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, projects: &mut HashMap<BaseConfig, Project>, mypy_compatible_override: bool) {
+    fn run(&self, projects: &mut HashMap<BaseConfig, LazyProject>, mypy_compatible_override: bool) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
@@ -503,6 +505,40 @@ struct BaseConfig {
     mypy_compatible: bool,
 }
 
+struct LazyProject {
+    project: OnceCell<Project>,
+    options: ProjectOptions,
+}
+
+impl LazyProject {
+    fn new(options: ProjectOptions) -> LazyProject {
+        LazyProject {
+            project: OnceCell::new(),
+            options,
+        }
+    }
+
+    fn init(&self) -> &Project {
+        self.project
+            .get_or_init(|| Project::new(self.options.clone()))
+    }
+}
+
+impl Deref for LazyProject {
+    type Target = Project;
+
+    fn deref(&self) -> &Self::Target {
+        self.init()
+    }
+}
+
+impl DerefMut for LazyProject {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.init();
+        self.project.get_mut().unwrap()
+    }
+}
+
 fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
@@ -518,7 +554,7 @@ fn main() {
                 };
                 projects.insert(
                     config,
-                    Project::new(ProjectOptions {
+                    LazyProject::new(ProjectOptions {
                         path: BASE_PATH.to_owned(),
                         implicit_optional: config.implicit_optional,
                         strict_optional: config.strict_optional,
