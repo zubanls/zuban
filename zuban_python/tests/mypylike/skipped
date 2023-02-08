@@ -153,6 +153,8 @@ testNoComplainInferredNoneStrict
 # Duplicate base class
 testIncludingBaseClassTwice
 
+# cycle for self.a = self.f(self.a) where f(T) -> T
+testGenericTypeBody1
 # Cycle for bytes -> ReadOnlyBuffer -> bytes?
 testPromoteBytearrayToByte
 # import cycle
@@ -834,7 +836,6 @@ testIncompatibleVariance
 # Self type variable type
 testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
-testGenericTypeBody1
 param_spec_with_generic_class
 
 testSelfTypeReallyTrickyExample
