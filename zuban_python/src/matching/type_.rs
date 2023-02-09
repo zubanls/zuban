@@ -1157,6 +1157,11 @@ impl<'a> Type<'a> {
         }
     }
 
+    pub fn has_explicit_self_type(&self) -> bool {
+        // TODO
+        false
+    }
+
     pub fn lookup_symbol(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),

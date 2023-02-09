@@ -405,8 +405,18 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     pub fn as_db_type(&self, i_s: &mut InferenceState, first: FirstParamProperties) -> DbType {
         let type_vars = self.type_vars(i_s); // Cache annotation types
         let mut params = self.iter_params().peekable();
-        if matches!(first, FirstParamProperties::Skip) {
-            params.next();
+        let mut needs_self_type_variable = false;
+        match first {
+            FirstParamProperties::InClass(class) => {
+                needs_self_type_variable |= self.result_type(i_s).has_explicit_self_type();
+                for param in self.iter_params().skip(1) {
+                    needs_self_type_variable |= param.annotation(i_s).has_explicit_self_type();
+                }
+            }
+            FirstParamProperties::Skip => {
+                params.next();
+            }
+            FirstParamProperties::None => (),
         }
         let as_db_type = |i_s: &mut InferenceState, t: Type| {
             let t = t.as_db_type(i_s.db);
