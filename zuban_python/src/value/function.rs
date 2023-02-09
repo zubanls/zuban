@@ -5,6 +5,7 @@ use parsa_python_ast::{
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
+use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{
@@ -15,7 +16,8 @@ use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
     Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
-    StringSlice, TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    StringSlice, TupleTypeArguments, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -403,7 +405,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn as_db_type(&self, i_s: &mut InferenceState, first: FirstParamProperties) -> DbType {
-        let type_vars = self.type_vars(i_s); // Cache annotation types
+        let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
         let mut params = self.iter_params().peekable();
         let mut needs_self_type_variable = false;
         match first {
@@ -413,6 +415,23 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     if let Some(t) = param.annotation(i_s) {
                         needs_self_type_variable |= t.has_explicit_self_type(i_s.db);
                     }
+                }
+                if needs_self_type_variable {
+                    let mut vec = if let Some(type_vars) = type_vars.take() {
+                        type_vars.into_vec()
+                    } else {
+                        vec![]
+                    };
+                    vec.insert(
+                        0,
+                        TypeVarLike::TypeVar(Rc::new(TypeVar {
+                            name_string: todo!(),
+                            restrictions: Box::new([]),
+                            bound: Some(class.as_db_type(i_s.db)),
+                            variance: Variance::Invariant,
+                        })),
+                    );
+                    type_vars = Some(TypeVarLikes::from_vec(vec))
                 }
             }
             FirstParamProperties::Skip => {
@@ -496,7 +515,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         class_name: self.class.map(|c| c.name_string_slice()),
                         defined_at: self.node_ref.as_link(),
                         params: self.remap_param_spec(i_s, new_params, u),
-                        type_vars: type_vars.cloned(),
+                        type_vars,
                         result_type,
                     }));
                 }
@@ -515,7 +534,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
             params: CallableParams::Simple(new_params.into_boxed_slice()),
-            type_vars: type_vars.cloned(),
+            type_vars,
             result_type,
         }))
     }
