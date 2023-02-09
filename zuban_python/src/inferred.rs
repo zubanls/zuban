@@ -836,15 +836,16 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn bind_class_descriptors(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        class: &Class,
+        class: Class,
         from: Option<NodeRef>,
     ) -> Option<Self> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
                 PointType::Specific => {
                     if point.specific() == Specific::Function {
-                        let func = Function::new(NodeRef::from_link(i_s.db, *definition), None);
-                        let t = func.as_db_type(i_s, FirstParamProperties::InClass(class));
+                        let func =
+                            Function::new(NodeRef::from_link(i_s.db, *definition), Some(class));
+                        let t = func.as_db_type(i_s, FirstParamProperties::InClass(&class));
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                 }

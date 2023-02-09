@@ -484,9 +484,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         let result = lookup_result.and_then(|inf| {
             if let Some(in_class) = in_class {
                 let mut i_s = i_s.with_class_context(&in_class);
-                inf.bind_class_descriptors(&mut i_s, self, node_ref)
+                inf.bind_class_descriptors(&mut i_s, in_class, node_ref)
             } else {
-                inf.bind_class_descriptors(i_s, self, node_ref)
+                todo!()
             }
         });
         match result {
