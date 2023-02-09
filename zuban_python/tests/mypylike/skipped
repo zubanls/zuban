@@ -836,7 +836,6 @@ testTypingSelfBasic
 testTypingSelfConflict
 testTypingSelfNonAnnotationUses
 testTypingSelfInternalSafe
-testTypingSelfTypeVarClash
 testTypingSelfClashInBodies
 testTypingSelfFine
 testTypingSelfAttrOldVsNewStyle

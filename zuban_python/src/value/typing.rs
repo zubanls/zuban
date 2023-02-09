@@ -6,7 +6,7 @@ use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
-    TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
+    TypeVarLike, TypeVarName, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -674,10 +674,10 @@ fn maybe_type_var(
             return None;
         }
         return Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
-            name_string: PointLink {
+            name_string: TypeVarName::PointLink(PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
-            },
+            }),
             restrictions: restrictions.into_boxed_slice(),
             bound,
             variance: match (covariant, contravariant) {

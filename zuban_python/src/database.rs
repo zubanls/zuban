@@ -56,6 +56,10 @@ impl TypeVarIndex {
     pub fn as_usize(&self) -> usize {
         self.0 as usize
     }
+
+    pub fn increase(&mut self) {
+        self.0 += 1
+    }
 }
 
 impl From<usize> for TypeVarIndex {
@@ -2619,9 +2623,15 @@ impl TypeVarLike {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeVarName {
+    PointLink(PointLink),
+    Self_,
+}
+
 #[derive(Debug, Clone)]
 pub struct TypeVar {
-    pub name_string: PointLink,
+    pub name_string: TypeVarName,
     pub restrictions: Box<[DbType]>,
     pub bound: Option<DbType>,
     pub variance: Variance,
@@ -2635,20 +2645,27 @@ impl PartialEq for TypeVar {
 
 impl TypeVar {
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
-        NodeRef::from_link(db, self.name_string)
-            .maybe_str()
-            .unwrap()
-            .content()
+        match self.name_string {
+            TypeVarName::PointLink(link) => {
+                NodeRef::from_link(db, link).maybe_str().unwrap().content()
+            }
+            TypeVarName::Self_ => "Self",
+        }
     }
 
     pub fn qualified_name(&self, db: &Database) -> Box<str> {
-        let node_ref = NodeRef::from_link(db, self.name_string);
-        format!(
-            "{}.{}",
-            node_ref.in_module(db).qualified_name(db),
-            node_ref.maybe_str().unwrap().content()
-        )
-        .into()
+        match self.name_string {
+            TypeVarName::PointLink(link) => {
+                let node_ref = NodeRef::from_link(db, link);
+                format!(
+                    "{}.{}",
+                    node_ref.in_module(db).qualified_name(db),
+                    node_ref.maybe_str().unwrap().content()
+                )
+                .into()
+            }
+            TypeVarName::Self_ => Box::from("Self"),
+        }
     }
 }
 
@@ -2752,6 +2769,14 @@ impl<'a> TypeVarLikeUsage<'a> {
             Self::TypeVar(t) => t.in_definition,
             Self::TypeVarTuple(t) => t.in_definition,
             Self::ParamSpec(p) => p.in_definition,
+        }
+    }
+
+    pub fn increase_index(&mut self) {
+        match self {
+            Self::TypeVar(t) => t.to_mut().index.increase(),
+            Self::TypeVarTuple(t) => t.to_mut().index.increase(),
+            Self::ParamSpec(p) => p.to_mut().index.increase(),
         }
     }
 

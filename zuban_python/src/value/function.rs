@@ -17,7 +17,7 @@ use crate::database::{
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
     Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
     StringSlice, TupleTypeArguments, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, Variance,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -407,30 +407,34 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     pub fn as_db_type(&self, i_s: &mut InferenceState, first: FirstParamProperties) -> DbType {
         let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
         let mut params = self.iter_params().peekable();
-        let mut needs_self_type_variable = false;
+        let mut self_type_var_usage = None;
         match first {
             FirstParamProperties::InClass(class) => {
-                needs_self_type_variable |= self.result_type(i_s).has_explicit_self_type(i_s.db);
+                let mut needs_self_type_variable =
+                    self.result_type(i_s).has_explicit_self_type(i_s.db);
                 for param in self.iter_params().skip(1) {
                     if let Some(t) = param.annotation(i_s) {
                         needs_self_type_variable |= t.has_explicit_self_type(i_s.db);
                     }
                 }
                 if needs_self_type_variable {
+                    let self_type_var = Rc::new(TypeVar {
+                        name_string: TypeVarName::Self_,
+                        restrictions: Box::new([]),
+                        bound: Some(class.as_db_type(i_s.db)),
+                        variance: Variance::Invariant,
+                    });
+                    self_type_var_usage = Some(TypeVarUsage {
+                        in_definition: self.node_ref.as_link(),
+                        type_var: self_type_var.clone(),
+                        index: 0.into(),
+                    });
                     let mut vec = if let Some(type_vars) = type_vars.take() {
                         type_vars.into_vec()
                     } else {
                         vec![]
                     };
-                    vec.insert(
-                        0,
-                        TypeVarLike::TypeVar(Rc::new(TypeVar {
-                            name_string: todo!(),
-                            restrictions: Box::new([]),
-                            bound: Some(class.as_db_type(i_s.db)),
-                            variance: Variance::Invariant,
-                        })),
-                    );
+                    vec.insert(0, TypeVarLike::TypeVar(self_type_var));
                     type_vars = Some(TypeVarLikes::from_vec(vec))
                 }
             }
@@ -439,6 +443,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             }
             FirstParamProperties::None => (),
         }
+        let self_type_var_usage = self_type_var_usage.as_ref();
         let as_db_type = |i_s: &mut InferenceState, t: Type| {
             let t = t.as_db_type(i_s.db);
             let Some(class) = self.class else {
@@ -446,18 +451,26 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
-                &mut |usage| {
-                    if usage.in_definition() == class.node_ref.as_link() {
+                &mut |mut usage| {
+                    let in_definition = usage.in_definition();
+                    if in_definition == class.node_ref.as_link() {
                         return class
                             .generics()
                             .nth_usage(i_s.db, &usage)
                             .into_generic_item(i_s.db);
+                    } else if in_definition == self.node_ref.as_link() {
+                        if self_type_var_usage.is_some() {
+                            usage.increase_index();
+                        }
+                        usage.into_generic_item()
+                    } else {
+                        usage.into_generic_item()
+                        //todo!("Is this even reachable? {in_definition:?}, {:?}, {:?}", self.node_ref.as_link(), class.node_ref.as_link())
                     }
-                    usage.into_generic_item()
                 },
                 &mut || {
-                    if needs_self_type_variable {
-                        todo!()
+                    if let Some(self_type_var_usage) = self_type_var_usage {
+                        DbType::TypeVar(self_type_var_usage.clone())
                     } else {
                         DbType::Self_
                     }
@@ -477,7 +490,11 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::SelfParam) {
-                        i_s.current_class().unwrap().as_db_type(i_s.db)
+                        if let Some(self_type_var_usage) = self_type_var_usage {
+                            DbType::Self_
+                        } else {
+                            i_s.current_class().unwrap().as_db_type(i_s.db)
+                        }
                     } else {
                         DbType::Any
                     }
