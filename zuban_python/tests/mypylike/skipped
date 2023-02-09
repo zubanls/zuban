@@ -294,6 +294,7 @@ testNewAnalyzerNoCrashOnCustomProperty
 testOverloadNotConfusedForProperty
 testForwardReferenceToDynamicallyTypedProperty
 testForwardReferenceToStaticallyTypedProperty
+testTypingSelfProperty
 testSelfTypePropertyUnion
 testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
@@ -800,6 +801,7 @@ testRefreshGenericSubclass
 testConstrainedGenericSuper
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
+testMixinProtocolSuper
 testConstructorSignatureChanged3
 testRefreshSubclassNestedInFunction2
 
@@ -832,17 +834,11 @@ self_valid_method
 # Self tests
 testTypingSelfBasic
 testTypingSelfConflict
-testTypingSelfProperty
-testTypingSelfOverrideVar
-testTypingSelfOverrideVarMulti
-testTypingSelfRecursiveInit
-testTypingSelfCorrectName
 testTypingSelfNonAnnotationUses
 testTypingSelfInternalSafe
 testTypingSelfTypeVarClash
 testTypingSelfClashInBodies
 testTypingSelfFine
-testMixinProtocolSuper
 testTypingSelfAttrOldVsNewStyle
 # "Self argument missing for a non-static method"
 # "The erased type of self "None" is not a supertype of its class "__main__.A""
@@ -880,6 +876,8 @@ testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testAliasFineNormalClassBases
+testTypingSelfOverrideVar
+testTypingSelfOverrideVarMulti
 
 # class attributes
 testInferAttributeTypeAndAssignInInit
