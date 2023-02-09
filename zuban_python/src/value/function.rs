@@ -410,7 +410,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::InClass(class) => {
                 needs_self_type_variable |= self.result_type(i_s).has_explicit_self_type();
                 for param in self.iter_params().skip(1) {
-                    needs_self_type_variable |= param.annotation(i_s).has_explicit_self_type();
+                    if let Some(t) = param.annotation(i_s) {
+                        needs_self_type_variable |= t.has_explicit_self_type();
+                    }
                 }
             }
             FirstParamProperties::Skip => {
@@ -423,15 +425,25 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             let Some(class) = self.class else {
                 return t
             };
-            t.replace_type_var_likes(i_s.db, &mut |usage| {
-                if usage.in_definition() == class.node_ref.as_link() {
-                    return class
-                        .generics()
-                        .nth_usage(i_s.db, &usage)
-                        .into_generic_item(i_s.db);
-                }
-                usage.into_generic_item()
-            })
+            t.replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |usage| {
+                    if usage.in_definition() == class.node_ref.as_link() {
+                        return class
+                            .generics()
+                            .nth_usage(i_s.db, &usage)
+                            .into_generic_item(i_s.db);
+                    }
+                    usage.into_generic_item()
+                },
+                &mut || {
+                    if needs_self_type_variable {
+                        todo!()
+                    } else {
+                        DbType::Self_
+                    }
+                },
+            )
         };
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
