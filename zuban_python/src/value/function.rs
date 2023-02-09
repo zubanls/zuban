@@ -408,10 +408,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut needs_self_type_variable = false;
         match first {
             FirstParamProperties::InClass(class) => {
-                needs_self_type_variable |= self.result_type(i_s).has_explicit_self_type();
+                needs_self_type_variable |= self.result_type(i_s).has_explicit_self_type(i_s.db);
                 for param in self.iter_params().skip(1) {
                     if let Some(t) = param.annotation(i_s) {
-                        needs_self_type_variable |= t.has_explicit_self_type();
+                        needs_self_type_variable |= t.has_explicit_self_type(i_s.db);
                     }
                 }
             }

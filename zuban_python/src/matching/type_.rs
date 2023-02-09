@@ -1157,9 +1157,12 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn has_explicit_self_type(&self) -> bool {
-        // TODO
-        false
+    pub fn has_explicit_self_type(&self, db: &Database) -> bool {
+        match self {
+            // TODO this does not not need to generate a db type
+            Self::Class(c) => c.as_db_type(db).has_self_type(),
+            Self::Type(t) => t.has_self_type(),
+        }
     }
 
     pub fn lookup_symbol(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {

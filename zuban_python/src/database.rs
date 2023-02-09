@@ -1071,6 +1071,69 @@ impl DbType {
         }
     }
 
+    pub fn has_self_type(&self) -> bool {
+        match self {
+            Self::Class(_, Some(generics)) => generics.iter().any(|g| match g {
+                GenericItem::TypeArgument(t) => t.has_self_type(),
+                GenericItem::TypeArguments(_) => todo!(),
+                GenericItem::ParamSpecArgument(params) => todo!(),
+            }),
+            Self::Union(u) => u.iter().any(|t| t.has_self_type()),
+            Self::Intersection(intersection) => intersection.iter().any(|t| t.has_self_type()),
+            Self::Type(t) => t.has_self_type(),
+            Self::Tuple(content) => content
+                .args
+                .as_ref()
+                .map(|args| match args {
+                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
+                        TypeOrTypeVarTuple::Type(t) => t.has_self_type(),
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+                    }),
+                    TupleTypeArguments::ArbitraryLength(t) => t.has_self_type(),
+                })
+                .unwrap_or(false),
+            Self::Callable(content) => {
+                content.result_type.has_self_type()
+                    || match &content.params {
+                        CallableParams::Simple(params) => {
+                            params.iter().any(|param| match &param.param_specific {
+                                ParamSpecific::PositionalOnly(t)
+                                | ParamSpecific::PositionalOrKeyword(t)
+                                | ParamSpecific::KeywordOnly(t)
+                                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(
+                                    t,
+                                ))
+                                | ParamSpecific::DoubleStarred(
+                                    DoubleStarredParamSpecific::ValueType(t),
+                                ) => t.has_self_type(),
+                                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
+                                    false
+                                }
+                                ParamSpecific::DoubleStarred(
+                                    DoubleStarredParamSpecific::ParamSpecKwargs(_),
+                                ) => false,
+                            })
+                        }
+                        CallableParams::Any => false,
+                        CallableParams::WithParamSpec(types, param_spec) => {
+                            todo!()
+                        }
+                    }
+            }
+            Self::Self_ => true,
+            Self::Class(_, None)
+            | Self::None
+            | Self::Never
+            | Self::Literal { .. }
+            | Self::Any
+            | Self::NewType(_)
+            | Self::ParamSpecArgs(_)
+            | Self::ParamSpecKwargs(_)
+            | Self::RecursiveAlias(_)
+            | Self::TypeVar(_) => false,
+        }
+    }
+
     pub fn replace_type_var_likes(
         &self,
         db: &Database,
