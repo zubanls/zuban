@@ -707,10 +707,12 @@ pub fn create_signature_without_self(
 ) -> Option<DbType> {
     let type_vars = func.type_vars(i_s);
     let type_vars_len = type_vars.map(|t| t.len()).unwrap_or(0);
-    let mut matcher = Matcher::new_reverse_function_matcher(Some(&instance.class), func, type_vars);
+    let mut matcher = Matcher::new_function_matcher(Some(&instance.class), func, type_vars);
     let instance_t = instance.as_type(i_s);
-    let match_ = matcher.match_reverse(|m| expected_type.is_super_type_of(i_s, m, &instance_t));
-    if !match_.bool() {
+    if !expected_type
+        .is_super_type_of(i_s, &mut matcher, &instance_t)
+        .bool()
+    {
         return None;
     }
     let mut t = func.as_db_type(i_s, FirstParamProperties::Skip);

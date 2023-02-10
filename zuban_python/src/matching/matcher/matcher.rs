@@ -59,14 +59,13 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_reverse_function_matcher(
+    pub fn new_function_matcher(
         class: Option<&'a Class<'a>>,
         function: Function<'a, 'a>,
         type_vars: Option<&TypeVarLikes>,
     ) -> Self {
         if let Some(type_vars) = type_vars {
-            let mut m = TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len());
-            m.match_reverse = true;
+            let m = TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len());
             Self {
                 class,
                 type_var_matcher: Some(m),
@@ -76,6 +75,18 @@ impl<'a> Matcher<'a> {
         } else {
             Matcher::default()
         }
+    }
+
+    pub fn new_reverse_function_matcher(
+        class: Option<&'a Class<'a>>,
+        function: Function<'a, 'a>,
+        type_vars: Option<&TypeVarLikes>,
+    ) -> Self {
+        let mut m = Self::new_function_matcher(class, function, type_vars);
+        if let Some(type_vars) = type_vars {
+            m.type_var_matcher.as_mut().unwrap().match_reverse = true;
+        }
+        m
     }
 
     pub fn with_ignored_promotions() -> Self {
