@@ -7,8 +7,8 @@ pub enum Context<'db, 'a> {
     None,
     DiagnosticClass(&'a Class<'a>),
     Class(&'a Class<'a>),
-    DiagnosticExecution(&'a Function<'a>, &'a dyn Arguments<'db>),
-    Execution(&'a Function<'a>, &'a dyn Arguments<'db>),
+    DiagnosticExecution(&'a Function<'a, 'a>, &'a dyn Arguments<'db>),
+    Execution(&'a Function<'a, 'a>, &'a dyn Arguments<'db>),
     LambdaCallable(&'a CallableContent),
 }
 
@@ -33,7 +33,11 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn with_func_and_args(&self, func: &'a Function<'a>, args: &'a dyn Arguments<'db>) -> Self {
+    pub fn with_func_and_args(
+        &self,
+        func: &'a Function<'a, 'a>,
+        args: &'a dyn Arguments<'db>,
+    ) -> Self {
         Self {
             db: self.db,
             context: Context::Execution(func, args),
@@ -42,7 +46,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn with_diagnostic_func_and_args(
         &self,
-        func: &'a Function<'a>,
+        func: &'a Function<'a, 'a>,
         args: &'a dyn Arguments<'db>,
     ) -> Self {
         Self {
@@ -51,7 +55,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn with_annotation_instance(&self) -> Self {
+    pub fn with_simplified_annotation_instance(&self) -> Self {
         Self {
             db: self.db,
             context: Context::None,
@@ -79,14 +83,14 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         }
     }
 
-    pub fn current_function(&self) -> Option<&'a Function<'a>> {
+    pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
         match &self.context {
             Context::DiagnosticExecution(func, _) | Context::Execution(func, _) => Some(func),
             _ => None,
         }
     }
 
-    pub fn current_execution(&self) -> Option<(&'a Function<'a>, &'a dyn Arguments<'db>)> {
+    pub fn current_execution(&self) -> Option<(&'a Function<'a, 'a>, &'a dyn Arguments<'db>)> {
         match &self.context {
             Context::DiagnosticExecution(f, a) | Context::Execution(f, a) => Some((f, *a)),
             _ => None,

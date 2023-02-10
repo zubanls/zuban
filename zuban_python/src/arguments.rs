@@ -146,7 +146,7 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
 pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
     mro_index: MroIndex,
-    node_ref: Option<NodeRef<'a>>,
+    node_ref: NodeRef<'a>,
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
@@ -167,12 +167,12 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
     }
 
     fn as_node_ref(&self) -> NodeRef {
-        todo!()
+        self.node_ref
     }
 }
 
 impl<'a> KnownArguments<'a> {
-    pub fn new(inferred: &'a Inferred, node_ref: Option<NodeRef<'a>>) -> Self {
+    pub fn new(inferred: &'a Inferred, node_ref: NodeRef<'a>) -> Self {
         Self {
             inferred,
             node_ref,
@@ -183,7 +183,7 @@ impl<'a> KnownArguments<'a> {
     pub fn with_mro_index(
         inferred: &'a Inferred,
         mro_index: MroIndex,
-        node_ref: Option<NodeRef<'a>>,
+        node_ref: NodeRef<'a>,
     ) -> Self {
         Self {
             inferred,
@@ -241,7 +241,7 @@ pub enum ArgumentKind<'db, 'a> {
     Inferred {
         inferred: Inferred,
         position: usize, // The position as a 1-based index
-        node_ref: Option<NodeRef<'a>>,
+        node_ref: NodeRef<'a>,
         in_args_or_kwargs_and_arbitrary_len: bool,
         is_keyword: bool,
     },
@@ -258,6 +258,11 @@ pub enum ArgumentKind<'db, 'a> {
         usage: ParamSpecUsage,
         node_ref: NodeRef<'a>,
         position: usize,
+    },
+    Comprehension {
+        context: Context<'db, 'a>,
+        file: &'a PythonFile,
+        comprehension: Comprehension<'a>,
     },
 }
 
@@ -350,6 +355,14 @@ impl<'db, 'a> Argument<'db, 'a> {
                     TupleContent::new_fixed_length(parts),
                 ))))
             }
+            ArgumentKind::Comprehension {
+                file,
+                comprehension,
+                context,
+            } => {
+                let mut i_s = i_s.with_context(*context);
+                file.inference(&mut i_s).infer_comprehension(*comprehension)
+            }
             ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
             ),
@@ -360,10 +373,13 @@ impl<'db, 'a> Argument<'db, 'a> {
         match &self.kind {
             ArgumentKind::Positional { node_ref, .. }
             | ArgumentKind::Keyword { node_ref, .. }
-            | ArgumentKind::ParamSpec { node_ref, .. } => *node_ref,
-            ArgumentKind::Inferred { node_ref, .. } => node_ref.unwrap_or_else(|| {
-                todo!("Probably happens with something weird like def foo(self: int)")
-            }),
+            | ArgumentKind::ParamSpec { node_ref, .. }
+            | ArgumentKind::Inferred { node_ref, .. } => *node_ref,
+            ArgumentKind::Comprehension {
+                file,
+                comprehension,
+                ..
+            } => NodeRef::new(file, comprehension.index()),
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
         }
     }
@@ -375,6 +391,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             | ArgumentKind::ParamSpec { position, .. } => {
                 format!("{position}")
             }
+            ArgumentKind::Comprehension { .. } => "0".to_owned(),
             ArgumentKind::Keyword { key, .. } => format!("{key:?}"),
             ArgumentKind::SlicesTuple { .. } => todo!(),
         }
@@ -401,7 +418,7 @@ enum ArgumentIteratorBase<'db, 'a> {
         kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
     Comprehension(Context<'db, 'a>, &'a PythonFile, Comprehension<'a>),
-    Inferred(&'a Inferred, Option<NodeRef<'a>>),
+    Inferred(&'a Inferred, NodeRef<'a>),
     SliceType(Context<'db, 'a>, SliceType<'a>),
     Finished,
 }
@@ -554,7 +571,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let type_ = inf.class_as_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
                             let mut value_type = None;
-                            if let Some(mro) = type_.mro(i_s) {
+                            if let Some(mro) = type_.mro(i_s.db) {
                                 for (_, t) in mro {
                                     if let Some(class) = t.maybe_class(i_s.db) {
                                         if class.node_ref == i_s.db.python_state.mapping_node_ref()
@@ -562,7 +579,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                             let type_vars = class.type_vars(i_s).unwrap();
                                             let key = class
                                                 .generics()
-                                                .nth(i_s, &type_vars[0], 0)
+                                                .nth(i_s.db, &type_vars[0], 0)
                                                 .expect_type_argument();
                                             let s = Type::Class(i_s.db.python_state.str());
                                             if !key.is_simple_same_type(i_s, &s).bool() {
@@ -576,9 +593,9 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                             value_type = Some(
                                                 class
                                                     .generics()
-                                                    .nth(i_s, &type_vars[1], 1)
+                                                    .nth(i_s.db, &type_vars[1], 1)
                                                     .expect_type_argument()
-                                                    .into_db_type(i_s),
+                                                    .into_db_type(i_s.db),
                                             );
                                             break;
                                         }
@@ -627,9 +644,13 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 }
                 None
             }
-            Self::Comprehension(context, file, comprehension) => Some(
-                ArgumentKind::new_positional_return(*context, 1, file, comprehension.index()),
-            ),
+            Self::Comprehension(context, file, comprehension) => {
+                Some(BaseArgumentReturn::Argument(ArgumentKind::Comprehension {
+                    context: *context,
+                    file,
+                    comprehension: *comprehension,
+                }))
+            }
             Self::Finished => None,
             Self::SliceType(context, slice_type) => match slice_type.unpack() {
                 SliceTypeContent::Simple(s) => {
@@ -748,7 +769,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                         kind: ArgumentKind::Inferred {
                             inferred,
                             position: *position,
-                            node_ref: Some(*node_ref),
+                            node_ref: *node_ref,
                             in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
                             is_keyword: false,
                         },
@@ -770,7 +791,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                     kind: ArgumentKind::Inferred {
                         inferred: inferred_value.clone(),
                         position: *position,
-                        node_ref: Some(*node_ref),
+                        node_ref: *node_ref,
                         in_args_or_kwargs_and_arbitrary_len: true,
                         is_keyword: true,
                     },

@@ -56,6 +56,10 @@ impl TypeVarIndex {
     pub fn as_usize(&self) -> usize {
         self.0 as usize
     }
+
+    pub fn increase(&mut self) {
+        self.0 += 1
+    }
 }
 
 impl From<usize> for TypeVarIndex {
@@ -72,6 +76,7 @@ impl fmt::Display for FileIndex {
 
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
+type ReplaceSelf<'x> = &'x mut dyn FnMut() -> DbType;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
@@ -340,19 +345,20 @@ pub enum Specific {
     Calculating,
     Cycle,
     OverloadUnreachable,
+    Any,
 
     String,
     Float,
     Complex,
     Bytes,
-    Integer,
-    Boolean,
+    Int,
+    Bool,
     None,
     // Literals are used for things like Literal[42]
     StringLiteral,
     BytesLiteral,
-    IntegerLiteral,
-    BooleanLiteral,
+    IntLiteral,
+    BoolLiteral,
 
     Ellipsis,
     GeneratorComprehension,
@@ -360,7 +366,7 @@ pub enum Specific {
     ListComprehension,
     Dict,
 
-    // SelfParam, TODO Use maybe?
+    SelfParam,
     Param,
     LazyInferredClass,    // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.
@@ -391,8 +397,8 @@ pub enum Specific {
     TypingTypeAlias,
     TypingFinal,
     TypingLiteral,
-    // TODO reactivate these or remove
-    //TypingAnnotated,
+    TypingSelf,
+    TypingAnnotated,
     // TODO maybe NoReturn?
     TypingAny,
     TypedDict,
@@ -527,9 +533,12 @@ impl GenericItem {
         &self,
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+        replace_self: ReplaceSelf,
     ) -> Self {
         match self {
-            Self::TypeArgument(t) => Self::TypeArgument(t.replace_type_var_likes(db, callable)),
+            Self::TypeArgument(t) => {
+                Self::TypeArgument(t.replace_type_var_likes_and_self(db, callable, replace_self))
+            }
             Self::TypeArguments(_) => todo!(),
             Self::ParamSpecArgument(_) => todo!(),
         }
@@ -619,7 +628,18 @@ impl IntersectionType {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         if self.format_as_overload {
-            Box::from("overloaded function")
+            match format_data.style {
+                FormatStyle::MypyRevealType => format!(
+                    "Overload({})",
+                    self.entries
+                        .iter()
+                        .map(|t| t.format(format_data))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+                .into(),
+                _ => Box::from("overloaded function"),
+            }
         } else {
             todo!()
         }
@@ -730,6 +750,7 @@ pub enum DbType {
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
+    Self_,
     None,
     Any,
     Never,
@@ -869,6 +890,7 @@ impl DbType {
                     rec.calculated_db_type(format_data.db).format(&format_data)
                 }
             }
+            Self::Self_ => Box::from("Self"),
             Self::ParamSpecArgs(usage) => {
                 format!("{}.args", usage.param_spec.name(format_data.db)).into()
             }
@@ -955,12 +977,12 @@ impl DbType {
                 content.result_type.search_type_vars(found_type_var)
             }
             Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {}
-            Self::NewType(_) => todo!(),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
                     search_in_generics(found_type_var, generics)
                 }
             }
+            Self::Self_ | Self::NewType(_) => (),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }
@@ -972,37 +994,37 @@ impl DbType {
         result
     }
 
-    pub fn has_any(&self, db: &Database) -> bool {
-        self.has_any_internal(db, &mut Vec::new())
+    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+        self.has_any_internal(i_s, &mut Vec::new())
     }
 
     fn has_any_internal(
         &self,
-        db: &Database,
+        i_s: &mut InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
-        let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
+        let mut search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
             generics.iter().any(|g| match g {
-                GenericItem::TypeArgument(t) => t.has_any_internal(db, already_checked),
+                GenericItem::TypeArgument(t) => t.has_any_internal(i_s, already_checked),
                 GenericItem::TypeArguments(_) => todo!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             })
         };
         match self {
             Self::Class(_, Some(generics)) => search_in_generics(generics, already_checked),
-            Self::Union(u) => u.iter().any(|t| t.has_any_internal(db, already_checked)),
+            Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::Intersection(intersection) => intersection
                 .iter()
-                .any(|t| t.has_any_internal(db, already_checked)),
+                .any(|t| t.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
-            Self::Type(db_type) => db_type.has_any_internal(db, already_checked),
+            Self::Type(db_type) => db_type.has_any_internal(i_s, already_checked),
             Self::Tuple(content) => content
                 .args
                 .as_ref()
-                .map(|args| args.has_any_internal(db, already_checked))
+                .map(|args| args.has_any_internal(i_s, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => {
-                content.result_type.has_any_internal(db, already_checked)
+                content.result_type.has_any_internal(i_s, already_checked)
                     || match &content.params {
                         CallableParams::Simple(params) => {
                             params.iter().any(|param| match &param.param_specific {
@@ -1014,7 +1036,7 @@ impl DbType {
                                 ))
                                 | ParamSpecific::DoubleStarred(
                                     DoubleStarredParamSpecific::ValueType(t),
-                                ) => t.has_any_internal(db, already_checked),
+                                ) => t.has_any_internal(i_s, already_checked),
                                 ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
                                     false
                                 }
@@ -1031,7 +1053,7 @@ impl DbType {
             }
             Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,
-            Self::NewType(_) => todo!(),
+            Self::NewType(n) => n.type_(i_s).has_any(i_s),
             Self::RecursiveAlias(recursive_alias) => {
                 if let Some(generics) = &recursive_alias.generics {
                     if search_in_generics(generics, already_checked) {
@@ -1043,61 +1065,147 @@ impl DbType {
                 } else {
                     already_checked.push(recursive_alias.clone());
                     recursive_alias
-                        .type_alias(db)
+                        .type_alias(i_s.db)
                         .db_type
-                        .has_any_internal(db, already_checked)
+                        .has_any_internal(i_s, already_checked)
                 }
             }
+            Self::Self_ => todo!(),
             Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
         }
     }
 
-    pub fn replace_type_var_likes(&self, db: &Database, callable: ReplaceTypeVarLike) -> Self {
-        let remap_tuple_likes = |args: &TupleTypeArguments, callable: ReplaceTypeVarLike| match args
-        {
-            TupleTypeArguments::FixedLength(ts) => {
-                let mut new_args = vec![];
-                for g in ts.iter() {
-                    match g {
-                        TypeOrTypeVarTuple::Type(t) => new_args.push(TypeOrTypeVarTuple::Type(
-                            t.replace_type_var_likes(db, callable),
-                        )),
-                        TypeOrTypeVarTuple::TypeVarTuple(t) => {
-                            match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
-                                GenericItem::TypeArguments(new) => {
-                                    new_args.extend(match new.args {
-                                        TupleTypeArguments::FixedLength(fixed) => {
-                                            fixed.into_vec().into_iter()
-                                        }
-                                        TupleTypeArguments::ArbitraryLength(t) => match ts.len() {
-                                            // TODO this might be wrong with different data types??
-                                            1 => return TupleTypeArguments::ArbitraryLength(t),
-                                            _ => todo!(),
-                                        },
-                                    })
+    pub fn has_self_type(&self) -> bool {
+        match self {
+            Self::Class(_, Some(generics)) => generics.iter().any(|g| match g {
+                GenericItem::TypeArgument(t) => t.has_self_type(),
+                GenericItem::TypeArguments(_) => todo!(),
+                GenericItem::ParamSpecArgument(params) => todo!(),
+            }),
+            Self::Union(u) => u.iter().any(|t| t.has_self_type()),
+            Self::Intersection(intersection) => intersection.iter().any(|t| t.has_self_type()),
+            Self::Type(t) => t.has_self_type(),
+            Self::Tuple(content) => content
+                .args
+                .as_ref()
+                .map(|args| match args {
+                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
+                        TypeOrTypeVarTuple::Type(t) => t.has_self_type(),
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+                    }),
+                    TupleTypeArguments::ArbitraryLength(t) => t.has_self_type(),
+                })
+                .unwrap_or(false),
+            Self::Callable(content) => {
+                content.result_type.has_self_type()
+                    || match &content.params {
+                        CallableParams::Simple(params) => {
+                            params.iter().any(|param| match &param.param_specific {
+                                ParamSpecific::PositionalOnly(t)
+                                | ParamSpecific::PositionalOrKeyword(t)
+                                | ParamSpecific::KeywordOnly(t)
+                                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(
+                                    t,
+                                ))
+                                | ParamSpecific::DoubleStarred(
+                                    DoubleStarredParamSpecific::ValueType(t),
+                                ) => t.has_self_type(),
+                                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
+                                    false
                                 }
-                                x => unreachable!("{x:?}"),
+                                ParamSpecific::DoubleStarred(
+                                    DoubleStarredParamSpecific::ParamSpecKwargs(_),
+                                ) => false,
+                            })
+                        }
+                        CallableParams::Any => false,
+                        CallableParams::WithParamSpec(types, param_spec) => {
+                            todo!()
+                        }
+                    }
+            }
+            Self::Self_ => true,
+            Self::Class(_, None)
+            | Self::None
+            | Self::Never
+            | Self::Literal { .. }
+            | Self::Any
+            | Self::NewType(_)
+            | Self::ParamSpecArgs(_)
+            | Self::ParamSpecKwargs(_)
+            | Self::RecursiveAlias(_)
+            | Self::TypeVar(_) => false,
+        }
+    }
+
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+    ) -> DbType {
+        self.replace_type_var_likes_and_self(db, callable, &mut || DbType::Self_)
+    }
+
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        let remap_tuple_likes = |args: &TupleTypeArguments,
+                                 callable: ReplaceTypeVarLike,
+                                 replace_self: ReplaceSelf| {
+            match args {
+                TupleTypeArguments::FixedLength(ts) => {
+                    let mut new_args = vec![];
+                    for g in ts.iter() {
+                        match g {
+                            TypeOrTypeVarTuple::Type(t) => new_args.push(TypeOrTypeVarTuple::Type(
+                                t.replace_type_var_likes_and_self(db, callable, replace_self),
+                            )),
+                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                                match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
+                                    GenericItem::TypeArguments(new) => {
+                                        new_args.extend(match new.args {
+                                            TupleTypeArguments::FixedLength(fixed) => {
+                                                fixed.into_vec().into_iter()
+                                            }
+                                            TupleTypeArguments::ArbitraryLength(t) => {
+                                                match ts.len() {
+                                                    // TODO this might be wrong with different data types??
+                                                    1 => {
+                                                        return TupleTypeArguments::ArbitraryLength(
+                                                            t,
+                                                        )
+                                                    }
+                                                    _ => todo!(),
+                                                }
+                                            }
+                                        })
+                                    }
+                                    x => unreachable!("{x:?}"),
+                                }
                             }
                         }
                     }
+                    TupleTypeArguments::FixedLength(new_args.into())
                 }
-                TupleTypeArguments::FixedLength(new_args.into())
+                TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
+                    Box::new(t.replace_type_var_likes_and_self(db, callable, replace_self)),
+                ),
             }
-            TupleTypeArguments::ArbitraryLength(t) => TupleTypeArguments::ArbitraryLength(
-                Box::new(t.replace_type_var_likes(db, callable)),
-            ),
         };
         let remap_generics = |generics: &GenericsList| {
             GenericsList::new_generics(
                 generics
                     .iter()
                     .map(|g| match g {
-                        GenericItem::TypeArgument(t) => {
-                            GenericItem::TypeArgument(t.replace_type_var_likes(db, callable))
-                        }
+                        GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                            t.replace_type_var_likes_and_self(db, callable, replace_self),
+                        ),
                         GenericItem::TypeArguments(ts) => {
                             GenericItem::TypeArguments(TypeArguments {
-                                args: remap_tuple_likes(&ts.args, callable),
+                                args: remap_tuple_likes(&ts.args, callable, replace_self),
                             })
                         }
                         GenericItem::ParamSpecArgument(p) => {
@@ -1109,6 +1217,7 @@ impl DbType {
                                     &mut type_vars,
                                     p.type_vars.as_ref().map(|t| t.in_definition),
                                     callable,
+                                    replace_self,
                                 )
                                 .0,
                                 type_vars.map(|t| ParamSpecTypeVars {
@@ -1132,7 +1241,7 @@ impl DbType {
                 entries: intersection
                     .entries
                     .iter()
-                    .map(|e| e.replace_type_var_likes(db, callable))
+                    .map(|e| e.replace_type_var_likes_and_self(db, callable, replace_self))
                     .collect(),
                 format_as_overload: intersection.format_as_overload,
             }),
@@ -1148,7 +1257,7 @@ impl DbType {
                     let t = Type::new(&type_);
                     for entry in entries.iter_mut() {
                         let current = Type::new(&entry.type_);
-                        if entry.type_.has_any(db) || type_.has_any(db) {
+                        if entry.type_.has_any(&mut i_s) || type_.has_any(&mut i_s) {
                             if entry.type_ == type_ {
                                 return;
                             }
@@ -1186,7 +1295,10 @@ impl DbType {
                     })
                 };
                 for entry in u.entries.iter() {
-                    match entry.type_.replace_type_var_likes(db, callable) {
+                    match entry
+                        .type_
+                        .replace_type_var_likes_and_self(db, callable, replace_self)
+                    {
                         DbType::Union(inner) => {
                             for inner_entry in inner.entries.into_vec().into_iter() {
                                 match inner_entry.type_ {
@@ -1216,12 +1328,14 @@ impl DbType {
                 GenericItem::TypeArguments(ts) => unreachable!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
             },
-            Self::Type(db_type) => {
-                Self::Type(Rc::new(db_type.replace_type_var_likes(db, callable)))
-            }
+            Self::Type(db_type) => Self::Type(Rc::new(db_type.replace_type_var_likes_and_self(
+                db,
+                callable,
+                replace_self,
+            ))),
             Self::Tuple(content) => Self::Tuple(match &content.args {
                 Some(args) => TupleContent {
-                    args: Some(remap_tuple_likes(args, callable)),
+                    args: Some(remap_tuple_likes(args, callable, replace_self)),
                 },
                 None => TupleContent::new_empty(),
             }),
@@ -1233,12 +1347,20 @@ impl DbType {
                     &mut type_vars,
                     Some(content.defined_at),
                     callable,
+                    replace_self,
                 );
-                let mut result_type = content.result_type.replace_type_var_likes(db, callable);
+                let mut result_type =
+                    content
+                        .result_type
+                        .replace_type_var_likes_and_self(db, callable, replace_self);
                 if let Some(remap_data) = remap_data {
-                    result_type = result_type.replace_type_var_likes(db, &mut |usage| {
-                        Self::remap_param_spec_inner(usage, content.defined_at, remap_data)
-                    });
+                    result_type = result_type.replace_type_var_likes_and_self(
+                        db,
+                        &mut |usage| {
+                            Self::remap_param_spec_inner(usage, content.defined_at, remap_data)
+                        },
+                        replace_self,
+                    );
                 }
                 Self::Callable(Box::new(CallableContent {
                     name: content.name,
@@ -1255,6 +1377,7 @@ impl DbType {
                 rec.link,
                 rec.generics.as_ref().map(remap_generics),
             ))),
+            Self::Self_ => replace_self(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }
@@ -1266,6 +1389,7 @@ impl DbType {
         type_vars: &mut Option<Vec<TypeVarLike>>,
         in_definition: Option<PointLink>,
         callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
     ) -> (CallableParams, Option<(PointLink, usize)>) {
         let mut remap_data = None;
         let new_params = match params {
@@ -1275,20 +1399,24 @@ impl DbType {
                     .map(|p| CallableParam {
                         param_specific: match &p.param_specific {
                             ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
-                                t.replace_type_var_likes(db, callable),
+                                t.replace_type_var_likes_and_self(db, callable, replace_self),
                             ),
                             ParamSpecific::PositionalOrKeyword(t) => {
                                 ParamSpecific::PositionalOrKeyword(
-                                    t.replace_type_var_likes(db, callable),
+                                    t.replace_type_var_likes_and_self(db, callable, replace_self),
                                 )
                             }
-                            ParamSpecific::KeywordOnly(t) => {
-                                ParamSpecific::KeywordOnly(t.replace_type_var_likes(db, callable))
-                            }
+                            ParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(
+                                t.replace_type_var_likes_and_self(db, callable, replace_self),
+                            ),
                             ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
                                 StarredParamSpecific::ArbitraryLength(t) => {
                                     StarredParamSpecific::ArbitraryLength(
-                                        t.replace_type_var_likes(db, callable),
+                                        t.replace_type_var_likes_and_self(
+                                            db,
+                                            callable,
+                                            replace_self,
+                                        ),
                                     )
                                 }
                                 StarredParamSpecific::ParamSpecArgs(_) => todo!(),
@@ -1297,7 +1425,11 @@ impl DbType {
                                 ParamSpecific::DoubleStarred(match d {
                                     DoubleStarredParamSpecific::ValueType(t) => {
                                         DoubleStarredParamSpecific::ValueType(
-                                            t.replace_type_var_likes(db, callable),
+                                            t.replace_type_var_likes_and_self(
+                                                db,
+                                                callable,
+                                                replace_self,
+                                            ),
                                         )
                                     }
                                     DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
@@ -1332,6 +1464,7 @@ impl DbType {
                                     remap_data.unwrap(),
                                 )
                             },
+                            replace_self,
                         );
                         if let Some(type_vars) = type_vars.as_mut() {
                             type_vars.extend(new_spec_type_vars.type_vars.into_vec());
@@ -1355,7 +1488,11 @@ impl DbType {
                                 0..0,
                                 types.iter().map(|t| CallableParam {
                                     param_specific: ParamSpecific::PositionalOnly(
-                                        t.replace_type_var_likes(db, callable),
+                                        t.replace_type_var_likes_and_self(
+                                            db,
+                                            callable,
+                                            replace_self,
+                                        ),
                                     ),
                                     name: None,
                                     has_default: false,
@@ -1367,7 +1504,9 @@ impl DbType {
                         CallableParams::WithParamSpec(new_types, p) => {
                             let mut types: Vec<DbType> = types
                                 .iter()
-                                .map(|t| t.replace_type_var_likes(db, callable))
+                                .map(|t| {
+                                    t.replace_type_var_likes_and_self(db, callable, replace_self)
+                                })
                                 .collect();
                             types.extend(new_types.into_vec());
                             CallableParams::WithParamSpec(types.into(), p)
@@ -1554,6 +1693,7 @@ impl DbType {
             }
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(_) => todo!(),
+            Self::Self_ => Self::Self_,
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
         }
@@ -1704,21 +1844,21 @@ impl TupleTypeArguments {
         }
     }
 
-    pub fn has_any(&self, db: &Database) -> bool {
-        self.has_any_internal(db, &mut Vec::new())
+    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+        self.has_any_internal(i_s, &mut Vec::new())
     }
 
     fn has_any_internal(
         &self,
-        db: &Database,
+        i_s: &mut InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
         match self {
             Self::FixedLength(ts) => ts.iter().any(|t| match t {
-                TypeOrTypeVarTuple::Type(t) => t.has_any_internal(db, already_checked),
+                TypeOrTypeVarTuple::Type(t) => t.has_any_internal(i_s, already_checked),
                 TypeOrTypeVarTuple::TypeVarTuple(_) => false,
             }),
-            Self::ArbitraryLength(t) => t.has_any_internal(db, already_checked),
+            Self::ArbitraryLength(t) => t.has_any_internal(i_s, already_checked),
         }
     }
 
@@ -2042,84 +2182,55 @@ impl NewType {
 
 #[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub struct Literal {
-    pub definition: PointLink,
+    pub kind: LiteralKind,
     pub implicit: bool,
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, Copy, Clone, PartialEq, Eq)]
 pub enum LiteralKind {
-    String,
-    Integer,
-    Bytes,
-    Boolean,
+    String(PointLink),
+    Int(i64), // TODO this does not work for Python ints > usize
+    Bytes(PointLink),
+    Bool(bool),
 }
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum LiteralValue<'db> {
     String(Cow<'db, str>),
-    Integer(isize), // TODO this does not work for Python ints > usize
+    Int(i64),
     Bytes(Cow<'db, [u8]>),
-    Boolean(bool),
+    Bool(bool),
 }
 
 impl Literal {
-    fn node_ref(self, db: &Database) -> NodeRef {
-        NodeRef::from_link(db, self.definition)
-    }
-
-    pub fn kind(self, db: &Database) -> LiteralKind {
-        match self.node_ref(db).point().specific() {
-            Specific::IntegerLiteral => LiteralKind::Integer,
-            Specific::StringLiteral => LiteralKind::String,
-            Specific::BytesLiteral => LiteralKind::Bytes,
-            Specific::BooleanLiteral => LiteralKind::Boolean,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn value(self, db: &Database) -> LiteralValue {
-        let node_ref = self.node_ref(db);
-        match node_ref.point().specific() {
-            Specific::IntegerLiteral => {
-                let factor = node_ref.maybe_factor();
-                let to_be_parsed = factor
-                    .map(|f| f.unpack().1.as_code())
-                    .unwrap_or_else(|| node_ref.as_code());
-                let mut n: isize = if let Some(stripped) = to_be_parsed.strip_prefix("0x") {
-                    isize::from_str_radix(stripped, 16).unwrap_or_else(|_| todo!())
-                } else {
-                    if to_be_parsed.contains('_') {
-                        todo!("Stuff like 100_000")
-                    }
-                    to_be_parsed.parse().unwrap()
-                };
-                if factor.is_some() {
-                    n = -n;
-                }
-                LiteralValue::Integer(n)
+        match self.kind {
+            LiteralKind::Int(i) => LiteralValue::Int(i),
+            LiteralKind::String(link) => {
+                let node_ref = NodeRef::from_link(db, link);
+                LiteralValue::String(
+                    node_ref
+                        .maybe_str()
+                        .unwrap()
+                        .as_python_string()
+                        .into_cow()
+                        .unwrap(), // Can unwrap, because we know that there was never an f-string.
+                )
             }
-            Specific::StringLiteral => LiteralValue::String(
-                node_ref
-                    .maybe_str()
-                    .unwrap()
-                    .as_python_string()
-                    .into_cow()
-                    .unwrap(), // Can unwrap, because we know that there was never an f-string.
-            ),
-            Specific::BooleanLiteral => LiteralValue::Boolean(node_ref.as_code() == "True"),
-            Specific::BytesLiteral => {
+            LiteralKind::Bool(b) => LiteralValue::Bool(b),
+            LiteralKind::Bytes(link) => {
+                let node_ref = NodeRef::from_link(db, link);
                 LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
             }
-            _ => unreachable!(),
         }
     }
 
     fn format_inner(self, db: &Database) -> Cow<str> {
         match self.value(db) {
             LiteralValue::String(s) => Cow::Owned(str_repr(s)),
-            LiteralValue::Integer(i) => Cow::Owned(format!("{i}")),
-            LiteralValue::Boolean(true) => Cow::Borrowed("True"),
-            LiteralValue::Boolean(false) => Cow::Borrowed("False"),
+            LiteralValue::Int(i) => Cow::Owned(format!("{i}")),
+            LiteralValue::Bool(true) => Cow::Borrowed("True"),
+            LiteralValue::Bool(false) => Cow::Borrowed("False"),
             LiteralValue::Bytes(b) => Cow::Owned(bytes_repr(b)),
         }
     }
@@ -2399,7 +2510,7 @@ impl TypeVarLikes {
         Self(vec.into_boxed_slice())
     }
 
-    fn into_vec(self) -> Vec<TypeVarLike> {
+    pub fn into_vec(self) -> Vec<TypeVarLike> {
         self.0.into_vec()
     }
 
@@ -2444,7 +2555,7 @@ impl TypeVarLikes {
             })
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &TypeVarLike> {
+    pub fn iter(&self) -> std::slice::Iter<TypeVarLike> {
         self.0.iter()
     }
 }
@@ -2491,7 +2602,11 @@ impl TypeVarLike {
                     in_definition,
                 }))
             }
-            Self::ParamSpec(s) => todo!(),
+            Self::ParamSpec(p) => TypeVarLikeUsage::ParamSpec(Cow::Owned(ParamSpecUsage {
+                param_spec: p.clone(),
+                index,
+                in_definition,
+            })),
         }
     }
 
@@ -2508,9 +2623,15 @@ impl TypeVarLike {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub enum TypeVarName {
+    PointLink(PointLink),
+    Self_,
+}
+
 #[derive(Debug, Clone)]
 pub struct TypeVar {
-    pub name_string: PointLink,
+    pub name_string: TypeVarName,
     pub restrictions: Box<[DbType]>,
     pub bound: Option<DbType>,
     pub variance: Variance,
@@ -2524,20 +2645,27 @@ impl PartialEq for TypeVar {
 
 impl TypeVar {
     pub fn name<'db>(&self, db: &'db Database) -> &'db str {
-        NodeRef::from_link(db, self.name_string)
-            .maybe_str()
-            .unwrap()
-            .content()
+        match self.name_string {
+            TypeVarName::PointLink(link) => {
+                NodeRef::from_link(db, link).maybe_str().unwrap().content()
+            }
+            TypeVarName::Self_ => "Self",
+        }
     }
 
     pub fn qualified_name(&self, db: &Database) -> Box<str> {
-        let node_ref = NodeRef::from_link(db, self.name_string);
-        format!(
-            "{}.{}",
-            node_ref.in_module(db).qualified_name(db),
-            node_ref.maybe_str().unwrap().content()
-        )
-        .into()
+        match self.name_string {
+            TypeVarName::PointLink(link) => {
+                let node_ref = NodeRef::from_link(db, link);
+                format!(
+                    "{}.{}",
+                    node_ref.in_module(db).qualified_name(db),
+                    node_ref.maybe_str().unwrap().content()
+                )
+                .into()
+            }
+            TypeVarName::Self_ => Box::from("Self"),
+        }
     }
 }
 
@@ -2644,6 +2772,14 @@ impl<'a> TypeVarLikeUsage<'a> {
         }
     }
 
+    pub fn increase_index(&mut self) {
+        match self {
+            Self::TypeVar(t) => t.to_mut().index.increase(),
+            Self::TypeVarTuple(t) => t.to_mut().index.increase(),
+            Self::ParamSpec(p) => p.to_mut().index.increase(),
+        }
+    }
+
     pub fn index(&self) -> TypeVarIndex {
         match self {
             Self::TypeVar(t) => t.index,
@@ -2668,9 +2804,32 @@ impl<'a> TypeVarLikeUsage<'a> {
             TypeVarLikeUsage::TypeVarTuple(usage) => {
                 todo!()
             }
-            TypeVarLikeUsage::ParamSpec(param_spec) => {
+            TypeVarLikeUsage::ParamSpec(usage) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                    CallableParams::WithParamSpec(Box::new([]), param_spec.into_owned()),
+                    CallableParams::WithParamSpec(Box::new([]), usage.into_owned()),
+                    None,
+                ))
+            }
+        }
+    }
+
+    pub fn into_generic_item_with_new_index(self, index: TypeVarIndex) -> GenericItem {
+        match self {
+            TypeVarLikeUsage::TypeVar(usage) => {
+                let mut usage = usage.into_owned();
+                usage.index = index;
+                GenericItem::TypeArgument(DbType::TypeVar(usage))
+            }
+            TypeVarLikeUsage::TypeVarTuple(usage) => {
+                let mut usage = usage.into_owned();
+                usage.index = index;
+                todo!()
+            }
+            TypeVarLikeUsage::ParamSpec(usage) => {
+                let mut usage = usage.into_owned();
+                usage.index = index;
+                GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                    CallableParams::WithParamSpec(Box::new([]), usage),
                     None,
                 ))
             }
@@ -3195,7 +3354,7 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
-        assert_eq!(size_of::<ClassStorage>(), 104);
+        assert_eq!(size_of::<ClassStorage>(), 120);
         assert_eq!(size_of::<ClassInfos>(), 24);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<AnyLink>(), 16);

@@ -1,15 +1,12 @@
 use parsa_python_ast::*;
 
-use crate::arguments::{Arguments, KnownArguments, NoArguments};
+use crate::arguments::NoArguments;
 use crate::database::{
-    CallableParams, ComplexPoint, DbType, GenericItem, GenericsList, Locality, ParamSpecArgument,
-    ParamSpecUsage, Point, PointType, Specific, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
-    TypeVarTupleUsage, TypeVarUsage, Variance,
+    CallableParams, ComplexPoint, Locality, Point, PointType, Specific, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::Inference;
-use crate::inferred::Inferred;
 use crate::matching::{
     matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
     ResultContext, Type,
@@ -167,13 +164,22 @@ impl<'db> Inference<'db, '_, '_, '_> {
 
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
-        let class =
-            Class::from_position(NodeRef::new(self.file, class.index()), Generics::Any, None);
-        // Make sure the type vars are properly pre-calculated
-        class.class_infos(self.i_s);
+        let name_def = NodeRef::new(self.file, class.name_definition().index());
+        self.cache_class(name_def, class);
+        let class_node_ref = NodeRef::new(self.file, class.index());
+        let type_var_likes =
+            Class::from_position(class_node_ref, Generics::Any, None).type_vars(self.i_s);
+        let c = Class::from_position(
+            class_node_ref,
+            Generics::Self_ {
+                class_definition: class_node_ref.as_link(),
+                type_var_likes,
+            },
+            None,
+        );
         self.file
-            .inference(&mut self.i_s.with_diagnostic_class_context(&class))
-            .calc_block_diagnostics(block, Some(class), None)
+            .inference(&mut self.i_s.with_diagnostic_class_context(&c))
+            .calc_block_diagnostics(block, Some(c), None)
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
@@ -220,10 +226,9 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         if let Some(callable_content) = &implementation_callable_content {
                             match &callable_content.params {
                                 CallableParams::Simple(ps) => {
-                                    let mut calculated_type_vars = vec![];
                                     let mut matcher = Matcher::new_reverse_callable_matcher(
                                         callable_content,
-                                        &mut calculated_type_vars,
+                                        0, // TODO are there really no type vars?
                                     );
                                     self.calc_overload_implementation_diagnostics(
                                         name_def_node_ref,
@@ -251,11 +256,10 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         }
                     } else {
                         let impl_type_vars = implementation.type_vars(self.i_s);
-                        let mut calculated_type_vars = vec![];
                         let mut matcher = Matcher::new_reverse_function_matcher(
+                            class.as_ref(),
                             *implementation,
                             impl_type_vars,
-                            &mut calculated_type_vars,
                         );
                         let result_type = implementation.result_type(self.i_s);
                         self.calc_overload_implementation_diagnostics(
@@ -271,12 +275,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
                     let f2_type_vars = f2.type_vars(self.i_s);
-                    let mut calculated_type_vars = vec![];
-                    let mut matcher = Matcher::new_reverse_function_matcher(
-                        f1,
-                        f1_type_vars,
-                        &mut calculated_type_vars,
-                    );
+                    let mut matcher =
+                        Matcher::new_reverse_function_matcher(class.as_ref(), f1, f1_type_vars);
                     if matches!(
                         matches_simple_params(
                             self.i_s,
@@ -355,61 +355,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
             }
         }
 
-        let (i_a, a, i);
-        let node_ref = NodeRef::new(self.file, f.index());
-        let args: &dyn Arguments = if let Some(class) = class {
-            // TODO performancewise I don't like at all that this allocates
-            i = Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                class.node_ref.as_link(),
-                class.type_vars(self.i_s).map(|type_vars| {
-                    GenericsList::new_generics(
-                        type_vars
-                            .iter()
-                            .enumerate()
-                            .map(|(i, t)| match t {
-                                TypeVarLike::TypeVar(type_var) => {
-                                    GenericItem::TypeArgument(DbType::TypeVar(TypeVarUsage {
-                                        type_var: type_var.clone(),
-                                        index: i.into(),
-                                        in_definition: class.node_ref.as_link(),
-                                    }))
-                                }
-                                TypeVarLike::TypeVarTuple(type_var_tuple) => {
-                                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(
-                                        Box::new([TypeOrTypeVarTuple::TypeVarTuple(
-                                            TypeVarTupleUsage {
-                                                type_var_tuple: type_var_tuple.clone(),
-                                                index: i.into(),
-                                                in_definition: class.node_ref.as_link(),
-                                            },
-                                        )]),
-                                    ))
-                                }
-                                TypeVarLike::ParamSpec(param_spec) => {
-                                    GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                                        CallableParams::WithParamSpec(
-                                            Box::new([]),
-                                            ParamSpecUsage {
-                                                param_spec: param_spec.clone(),
-                                                index: i.into(),
-                                                in_definition: class.node_ref.as_link(),
-                                            },
-                                        ),
-                                        None,
-                                    ))
-                                }
-                            })
-                            .collect(),
-                    )
-                }),
-            ));
-            i_a = KnownArguments::new(&i, None);
-            &i_a
-        } else {
-            a = NoArguments::new(node_ref);
-            &a
-        };
-        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, args);
+        let args = NoArguments::new(NodeRef::new(self.file, f.index()));
+        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);
         inference.calc_block_diagnostics(block, None, Some(&function))
     }
@@ -417,7 +364,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
     fn calc_overload_implementation_diagnostics<'x, P1: Param<'x>>(
         &mut self,
         name_def_node_ref: NodeRef,
-        overload_item: Function<'x>,
+        overload_item: Function<'x, 'x>,
         matcher: &mut Matcher,
         implementation_params: impl Iterator<Item = P1>,
         implementation_type: &Type,
@@ -529,7 +476,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             .infer_expression(exception)
                             .maybe_class(self.i_s)
                             .map(|class| {
-                                class.in_mro(self.i_s, &self.i_s.db.python_state.base_exception())
+                                class
+                                    .in_mro(self.i_s.db, &self.i_s.db.python_state.base_exception())
                             })
                             .unwrap_or(false)
                         {

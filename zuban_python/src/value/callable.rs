@@ -6,6 +6,7 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{calculate_callable_type_vars_and_return, FormatData, ResultContext, Type};
+use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
@@ -35,7 +36,7 @@ impl<'a> Callable<'a> {
             on_type_error,
         );
         let g_o = Type::new(&self.content.result_type);
-        g_o.execute_and_resolve_type_vars(i_s, None, &calculated_type_vars)
+        g_o.execute_and_resolve_type_vars(i_s, None, None, &calculated_type_vars)
     }
 }
 
@@ -48,7 +49,12 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         "Callable"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         debug!("TODO callable lookups");
         LookupResult::None
     }

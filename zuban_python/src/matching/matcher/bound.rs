@@ -1,5 +1,5 @@
 use super::super::{FormatData, Match, Type};
-use crate::database::{DbType, FormatStyle, Variance};
+use crate::database::{Database, DbType, FormatStyle, Variance};
 use crate::inference_state::InferenceState;
 
 #[derive(Debug, Clone)]
@@ -28,16 +28,23 @@ impl TypeVarBound {
         }
     }
 
-    pub fn format(&self, i_s: &mut InferenceState, style: FormatStyle) -> Box<str> {
+    pub fn format(&self, db: &Database, style: FormatStyle) -> Box<str> {
         match self {
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => {
-                t.format(&FormatData::with_style(i_s.db, style))
+                t.format(&FormatData::with_style(db, style))
             }
         }
     }
 
-    pub fn into_db_type(self) -> DbType {
+    pub fn into_db_type(self, db: &Database) -> DbType {
         match self {
+            // If the lower bound is a literal, we do not want to lower the bound.
+            Self::LowerAndUpper(t @ DbType::Literal(_), _) => t,
+            Self::Upper(DbType::Literal(l)) | Self::LowerAndUpper(_, DbType::Literal(l))
+                if l.implicit =>
+            {
+                db.python_state.literal_db_type(l.kind)
+            }
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => t,
         }
     }
@@ -86,7 +93,7 @@ impl TypeVarBound {
         };
         if matches.bool() {
             // If we are between the bounds we might need to update lower/upper bounds
-            let db_other = other.as_db_type(i_s);
+            let db_other = other.as_db_type(i_s.db);
             match variance {
                 Variance::Invariant => *self = Self::Invariant(db_other),
                 Variance::Covariant => self.update_upper_bound(db_other),

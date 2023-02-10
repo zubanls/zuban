@@ -24,7 +24,7 @@ use crate::node_ref::NodeRef;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{Class, MroIterator};
-pub use function::{Function, InferrableParam, OverloadedFunction};
+pub use function::{FirstParamProperties, Function, InferrableParam, OverloadedFunction};
 pub use instance::Instance;
 pub use iterable::{DictLiteral, ListLiteral};
 pub use literal::Literal;
@@ -34,7 +34,7 @@ pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
     NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarInstance,
-    TypeVarTupleClass, TypingCast, TypingClass, TypingClassVar, TypingType,
+    TypeVarTupleClass, TypingAny, TypingCast, TypingClass, TypingClassVar, TypingType,
 };
 
 type OnOverloadMismatch<'a> = Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>;
@@ -92,7 +92,7 @@ pub enum ValueKind {
     Constant = 14,
     String = 15,
     Number = 16,
-    Boolean = 17,
+    Bool = 17,
     Array = 18,
     Object = 19, // From JavaScript objects -> Basically an instance
     //Key = 20,
@@ -228,6 +228,15 @@ impl LookupResult {
             _ => self,
         }
     }
+
+    fn and_then(self, c: impl FnOnce(Inferred) -> Option<Inferred>) -> Option<Self> {
+        match self {
+            Self::GotoName(link, inf) => c(inf).map(|inf| Self::GotoName(link, inf)),
+            Self::UnknownName(inf) => c(inf).map(|inf| Self::UnknownName(inf)),
+            // TODO is it ok that map does not include FileReference(_)?
+            _ => Some(self),
+        }
+    }
 }
 
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
@@ -250,20 +259,26 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         base_description!(self)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult;
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult;
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
+    fn should_add_lookup_error(&self, db: &Database) -> bool {
         true
     }
 
     fn lookup(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        node_ref: Option<NodeRef>,
         name: &str,
         on_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
-        let result = self.lookup_internal(i_s, name);
-        if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s) {
+        let result = self.lookup_internal(i_s, node_ref, name);
+        if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s.db) {
             on_error(i_s);
         }
         result
@@ -272,10 +287,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn lookup_implicit(
         &self,
         i_s: &mut InferenceState<'db, '_>,
+        node_ref: Option<NodeRef>,
         name: &str,
         on_error: OnLookupError<'db, '_>,
     ) -> Inferred {
-        match self.lookup(i_s, name, on_error) {
+        match self.lookup(i_s, node_ref, name, on_error) {
             LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
             LookupResult::FileReference(f) => todo!(),
             LookupResult::None => Inferred::new_unknown(),
@@ -320,7 +336,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn as_instance(&self) -> Option<&Instance<'a>> {
         None
     }
-    fn as_function(&self) -> Option<&Function<'a>> {
+    fn as_function(&self) -> Option<&Function<'a, '_>> {
         None
     }
     fn as_callable(&self) -> Option<Callable<'a>> {

@@ -5,6 +5,7 @@ use parsa_python_ast::{
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
+use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{
@@ -14,14 +15,15 @@ use crate::arguments::{
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, StarredParamSpecific, StringSlice,
-    TupleTypeArguments, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
+    StringSlice, TupleTypeArguments, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{
-    on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn,
+    on_argument_type_error, use_cached_annotation_type, File, PythonFile, TypeComputation,
+    TypeComputationOrigin, TypeVarCallbackReturn,
 };
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -38,12 +40,12 @@ use crate::node_ref::NodeRef;
 use crate::value::Class;
 
 #[derive(Clone, Copy)]
-pub struct Function<'a> {
+pub struct Function<'a, 'class> {
     pub node_ref: NodeRef<'a>,
-    pub class: Option<Class<'a>>,
+    pub class: Option<Class<'class>>,
 }
 
-impl fmt::Debug for Function<'_> {
+impl fmt::Debug for Function<'_, '_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("Function")
             .field("file", self.node_ref.file)
@@ -52,19 +54,19 @@ impl fmt::Debug for Function<'_> {
     }
 }
 
-impl<'db: 'a, 'a> Function<'a> {
+impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "function_def_parameters" to save calculated type vars
     // - "(" for decorator caching
-    pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'a>>) -> Self {
+    pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
         Self { node_ref, class }
     }
 
     pub fn from_execution(
         db: &'db Database,
         execution: &Execution,
-        class: Option<Class<'a>>,
+        class: Option<Class<'class>>,
     ) -> Self {
         let f_func = db.loaded_python_file(execution.function.file);
         Function::new(
@@ -182,7 +184,7 @@ impl<'db: 'a, 'a> Function<'a> {
                             .file
                             .inference(&mut inner_i_s)
                             .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
-                            .resolve_function_return(&mut inner_i_s);
+                            .resolve_untyped_function_return(&mut inner_i_s);
                     } else {
                         todo!()
                     }
@@ -330,7 +332,7 @@ impl<'db: 'a, 'a> Function<'a> {
         match self.class {
             Some(c) if c.node_ref.as_link() == usage.in_definition => match c
                 .generics()
-                .nth_usage(i_s, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
+                .nth_usage(i_s.db, &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)))
             {
                 Generic::ParamSpecArgument(p) => match p.into_owned().params {
                     CallableParams::Any => CallableParams::Any,
@@ -382,7 +384,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     i_s,
                     &KnownArguments::new(
                         &new_inf,
-                        Some(NodeRef::new(self.node_ref.file, decorator.index())),
+                        NodeRef::new(self.node_ref.file, decorator.index()),
                     ),
                     &mut ResultContext::Unknown,
                     OnTypeError::new(&on_argument_type_error),
@@ -402,26 +404,79 @@ impl<'db: 'a, 'a> Function<'a> {
         }
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState, skip_first_param: bool) -> DbType {
-        let type_vars = self.type_vars(i_s); // Cache annotation types
+    pub fn as_db_type(&self, i_s: &mut InferenceState, first: FirstParamProperties) -> DbType {
+        let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
         let mut params = self.iter_params().peekable();
-        if skip_first_param {
-            params.next();
+        let mut self_type_var_usage = None;
+        match first {
+            FirstParamProperties::InClass(class) => {
+                let mut needs_self_type_variable =
+                    self.result_type(i_s).has_explicit_self_type(i_s.db);
+                for param in self.iter_params().skip(1) {
+                    if let Some(t) = param.annotation(i_s) {
+                        needs_self_type_variable |= t.has_explicit_self_type(i_s.db);
+                    }
+                }
+                if needs_self_type_variable {
+                    let self_type_var = Rc::new(TypeVar {
+                        name_string: TypeVarName::Self_,
+                        restrictions: Box::new([]),
+                        bound: Some(class.as_db_type(i_s.db)),
+                        variance: Variance::Invariant,
+                    });
+                    self_type_var_usage = Some(TypeVarUsage {
+                        in_definition: self.node_ref.as_link(),
+                        type_var: self_type_var.clone(),
+                        index: 0.into(),
+                    });
+                    let mut vec = if let Some(type_vars) = type_vars.take() {
+                        type_vars.into_vec()
+                    } else {
+                        vec![]
+                    };
+                    vec.insert(0, TypeVarLike::TypeVar(self_type_var));
+                    type_vars = Some(TypeVarLikes::from_vec(vec))
+                }
+            }
+            FirstParamProperties::Skip => {
+                params.next();
+            }
+            FirstParamProperties::None => (),
         }
+        let self_type_var_usage = self_type_var_usage.as_ref();
         let as_db_type = |i_s: &mut InferenceState, t: Type| {
-            let t = t.as_db_type(i_s);
+            let t = t.as_db_type(i_s.db);
             let Some(class) = self.class else {
                 return t
             };
-            t.replace_type_var_likes(i_s.db, &mut |usage| {
-                if usage.in_definition() == class.node_ref.as_link() {
-                    return class
-                        .generics()
-                        .nth_usage(i_s, &usage)
-                        .into_generic_item(i_s);
-                }
-                usage.into_generic_item()
-            })
+            t.replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |mut usage| {
+                    let in_definition = usage.in_definition();
+                    if in_definition == class.node_ref.as_link() {
+                        return class
+                            .generics()
+                            .nth_usage(i_s.db, &usage)
+                            .into_generic_item(i_s.db);
+                    } else if in_definition == self.node_ref.as_link() {
+                        if self_type_var_usage.is_some() {
+                            usage.increase_index();
+                        }
+                        usage.into_generic_item()
+                    } else {
+                        // This can happen for example if the return value is a Callable with its
+                        // own type vars.
+                        usage.into_generic_item()
+                    }
+                },
+                &mut || {
+                    if let Some(self_type_var_usage) = self_type_var_usage {
+                        DbType::TypeVar(self_type_var_usage.clone())
+                    } else {
+                        DbType::Self_
+                    }
+                },
+            )
         };
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
@@ -430,8 +485,22 @@ impl<'db: 'a, 'a> Function<'a> {
         let mut had_param_spec_args = false;
         let file_index = self.node_ref.file_index();
         while let Some(p) = params.next() {
-            let specific = p.specific(i_s);
-            let mut as_t = |t: Option<Type>| t.map(|t| as_db_type(i_s, t)).unwrap_or(DbType::Any);
+            let specific = p.specific(i_s.db);
+            let mut as_t = |t: Option<Type>| {
+                t.map(|t| as_db_type(i_s, t)).unwrap_or({
+                    let name_ref =
+                        NodeRef::new(self.node_ref.file, p.param.name_definition().index());
+                    if name_ref.point().maybe_specific() == Some(Specific::SelfParam) {
+                        if let Some(self_type_var_usage) = self_type_var_usage {
+                            DbType::Self_
+                        } else {
+                            i_s.current_class().unwrap().as_db_type(i_s.db)
+                        }
+                    } else {
+                        DbType::Any
+                    }
+                })
+            };
             let param_specific = match specific {
                 WrappedParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(as_t(t)),
                 WrappedParamSpecific::PositionalOrKeyword(t) => {
@@ -442,7 +511,7 @@ impl<'db: 'a, 'a> Function<'a> {
                     ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(as_t(t)))
                 }
                 WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u1)) => {
-                    match params.peek().map(|p| p.specific(i_s)) {
+                    match params.peek().map(|p| p.specific(i_s.db)) {
                         Some(WrappedParamSpecific::DoubleStarred(
                             WrappedDoubleStarred::ParamSpecKwargs(u2),
                         )) if u1 == u2 => {
@@ -464,7 +533,7 @@ impl<'db: 'a, 'a> Function<'a> {
                         class_name: self.class.map(|c| c.name_string_slice()),
                         defined_at: self.node_ref.as_link(),
                         params: self.remap_param_spec(i_s, new_params, u),
-                        type_vars: type_vars.cloned(),
+                        type_vars,
                         result_type,
                     }));
                 }
@@ -483,7 +552,7 @@ impl<'db: 'a, 'a> Function<'a> {
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
             params: CallableParams::Simple(new_params.into_boxed_slice()),
-            type_vars: type_vars.cloned(),
+            type_vars,
             result_type,
         }))
     }
@@ -498,6 +567,10 @@ impl<'db: 'a, 'a> Function<'a> {
             file: self.node_ref.file,
             param,
         })
+    }
+
+    pub fn first_param_annotation_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type> {
+        self.iter_params().next().unwrap().annotation(i_s)
     }
 
     pub(super) fn execute_internal(
@@ -522,14 +595,12 @@ impl<'db: 'a, 'a> Function<'a> {
             Some(on_type_error),
         );
         if let Some(return_annotation) = return_annotation {
-            let i_s = &mut i_s.with_annotation_instance();
             // We check first if type vars are involved, because if they aren't we can reuse the
             // annotation expression cache instead of recalculating.
-            if func_type_vars.is_some()
-                || self
-                    .class
-                    .map(|c| c.type_vars(i_s).is_some())
-                    .unwrap_or(false)
+            if NodeRef::new(self.node_ref.file, return_annotation.index())
+                .point()
+                .maybe_specific()
+                == Some(Specific::AnnotationWithTypeVars)
             {
                 // TODO this could also be a tuple...
                 debug!(
@@ -543,7 +614,12 @@ impl<'db: 'a, 'a> Function<'a> {
                     .file
                     .inference(i_s)
                     .use_cached_return_annotation_type(return_annotation)
-                    .execute_and_resolve_type_vars(i_s, self.class.as_ref(), &calculated_type_vars)
+                    .execute_and_resolve_type_vars(
+                        i_s,
+                        self.class.as_ref(),
+                        class,
+                        &calculated_type_vars,
+                    )
             } else {
                 self.node_ref
                     .file
@@ -596,7 +672,7 @@ impl<'db: 'a, 'a> Function<'a> {
             .iter_params()
             .enumerate()
             .map(|(i, p)| {
-                let annotation_str = match p.specific(i_s) {
+                let annotation_str = match p.specific(i_s.db) {
                     WrappedParamSpecific::PositionalOnly(t)
                     | WrappedParamSpecific::PositionalOrKeyword(t)
                     | WrappedParamSpecific::KeywordOnly(t)
@@ -690,7 +766,7 @@ impl<'db: 'a, 'a> Function<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for Function<'a> {
+impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
@@ -700,7 +776,12 @@ impl<'db, 'a> Value<'db, 'a> for Function<'a> {
         func.name().as_str()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!("{name:?}")
     }
 
@@ -737,16 +818,23 @@ impl<'db, 'a> Value<'db, 'a> for Function<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, false))
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 
-    fn as_function(&self) -> Option<&Function<'a>> {
+    fn as_function(&self) -> Option<&Function<'a, 'class>> {
         Some(self)
     }
 
     fn module(&self, db: &'a Database) -> Module<'a> {
         Module::new(db, self.node_ref.file)
     }
+}
+
+#[derive(Copy, Clone)]
+pub enum FirstParamProperties<'a> {
+    Skip,
+    InClass(&'a Class<'a>),
+    None,
 }
 
 struct ReturnOrYieldIterator<'a> {
@@ -774,6 +862,14 @@ pub struct FunctionParam<'x> {
     param: ASTParam<'x>,
 }
 
+impl<'db: 'x, 'x> FunctionParam<'x> {
+    pub fn annotation(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Type<'x>> {
+        self.param
+            .annotation()
+            .map(|annotation| use_cached_annotation_type(i_s.db, self.file, annotation))
+    }
+}
+
 impl<'x> Param<'x> for FunctionParam<'x> {
     fn has_default(&self) -> bool {
         self.param.default().is_some()
@@ -783,16 +879,15 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         Some(self.param.name_definition().as_code())
     }
 
-    fn specific<'db: 'x>(&self, i_s: &mut InferenceState<'db, '_>) -> WrappedParamSpecific<'x> {
-        let t = self.param.annotation().map(|annotation| {
-            self.file
-                .inference(i_s)
-                .use_cached_annotation_type(annotation)
-        });
+    fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamSpecific<'x> {
+        let t = self
+            .param
+            .annotation()
+            .map(|annotation| use_cached_annotation_type(db, self.file, annotation));
         fn dbt<'a>(t: Option<&Type<'a>>) -> Option<&'a DbType> {
             t.and_then(|t| t.maybe_borrowed_db_type())
         }
-        match self.kind(i_s.db) {
+        match self.kind(db) {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
             ParamKind::PositionalOrKeyword => WrappedParamSpecific::PositionalOrKeyword(t),
             ParamKind::KeywordOnly => WrappedParamSpecific::KeywordOnly(t),
@@ -1020,8 +1115,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<(Function<'a>, Option<GenericsList>)> {
-        let mut match_signature = |i_s: &mut InferenceState<'db, '_>, function: Function<'a>| {
+    ) -> Option<(Function<'a, 'a>, Option<GenericsList>)> {
+        let mut match_signature = |i_s: &mut InferenceState<'db, '_>,
+                                   function: Function<'a, 'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
                 calculate_class_init_type_vars_and_return(
@@ -1052,7 +1148,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {
                     let type_vars = class.type_vars(i_s);
-                    class.generics.as_generics_list(i_s, type_vars) // TODO why not use generics_as_list
+                    class.generics.as_generics_list(i_s.db, type_vars) // TODO why not use generics_as_list
                 } else {
                     unreachable!();
                 }
@@ -1088,7 +1184,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         // without an error message, there is no clear choice, i.e. it's ambiguous,
                         // but there should also not be an error.
                         if are_any_arguments_ambiguous_in_overload(
-                            i_s,
+                            i_s.db,
                             old_indices,
                             &argument_indices,
                         ) {
@@ -1155,14 +1251,31 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut t: Option<DbType> = None;
         for link in self.overload.functions.iter() {
             let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let f_t = func.result_type(i_s).as_db_type(i_s);
+            let f_t = func.result_type(i_s).as_db_type(i_s.db);
             if let Some(old_t) = t.take() {
-                t = Some(old_t.merge_matching_parts(func.result_type(i_s).as_db_type(i_s)))
+                t = Some(old_t.merge_matching_parts(func.result_type(i_s).as_db_type(i_s.db)))
             } else {
                 t = Some(f_t);
             }
         }
         Inferred::execute_db_type(i_s, t.unwrap())
+    }
+
+    pub fn as_db_type(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        first: FirstParamProperties,
+    ) -> DbType {
+        DbType::Intersection(IntersectionType::new_overload(
+            self.overload
+                .functions
+                .iter()
+                .map(|link| {
+                    let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+                    function.as_db_type(i_s, first)
+                })
+                .collect(),
+        ))
     }
 
     pub(super) fn execute_internal(
@@ -1189,7 +1302,12 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         self.node_ref.as_code()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -1221,21 +1339,12 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Intersection(IntersectionType::new_overload(
-            self.overload
-                .functions
-                .iter()
-                .map(|link| {
-                    let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                    function.as_db_type(i_s, false)
-                })
-                .collect(),
-        )))
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 }
 
 fn are_any_arguments_ambiguous_in_overload(
-    i_s: &mut InferenceState,
+    db: &Database,
     a: &[ArgumentIndexWithParam],
     b: &[ArgumentIndexWithParam],
 ) -> bool {
@@ -1245,18 +1354,11 @@ fn are_any_arguments_ambiguous_in_overload(
     for p1 in a {
         for p2 in b {
             if p1.argument_index == p2.argument_index {
-                let n1 = NodeRef::from_link(i_s.db, p1.param_annotation_link);
-                let n2 = NodeRef::from_link(i_s.db, p2.param_annotation_link);
-                let t1 = n1
-                    .file
-                    .inference(i_s)
-                    .use_cached_annotation_type(n1.as_annotation())
-                    .as_db_type(i_s);
-                let t2 = n2
-                    .file
-                    .inference(i_s)
-                    .use_cached_annotation_type(n2.as_annotation())
-                    .as_db_type(i_s);
+                let n1 = NodeRef::from_link(db, p1.param_annotation_link);
+                let n2 = NodeRef::from_link(db, p2.param_annotation_link);
+
+                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type(db);
+                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type(db);
                 if t1 != t2 {
                     return true;
                 }

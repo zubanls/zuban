@@ -35,11 +35,16 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         "tuple"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         let tuple_cls = i_s.db.python_state.tuple_with_any_generics();
-        for (mro_index, class) in tuple_cls.mro(i_s) {
-            let result = class.lookup_symbol(i_s, name).map(|inf| {
-                inf.bind(
+        for (mro_index, class) in tuple_cls.mro(i_s.db) {
+            let result = class.lookup_symbol(i_s, name).and_then(|inf| {
+                inf.bind_instance_descriptors(
                     i_s,
                     |i_s| {
                         Inferred::new_unsaved_complex(ComplexPoint::Instance(
@@ -61,11 +66,14 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                             ]))),
                         ))
                     },
+                    node_ref,
                     mro_index,
                 )
             });
-            if !matches!(result, LookupResult::None) {
-                return result;
+            match result {
+                Some(LookupResult::None) => (),
+                None => return LookupResult::None,
+                Some(x) => return x,
             }
         }
         debug!("TODO tuple object lookups");
@@ -105,10 +113,10 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                         todo!()
                     }
                     let infer = |i_s: &mut InferenceState, literal: Literal| {
-                        if literal.kind(i_s.db) != LiteralKind::Integer {
+                        if !matches!(literal.kind, LiteralKind::Int(_)) {
                             return None;
                         }
-                        let LiteralValue::Integer(i) = literal.value(i_s.db) else {
+                        let LiteralValue::Int(i) = literal.value(i_s.db) else {
                             unreachable!();
                         };
                         let index = usize::try_from(i).ok().unwrap_or_else(|| todo!());

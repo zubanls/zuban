@@ -1,15 +1,17 @@
 use super::{
-    Callable, Function, Instance, LookupResult, OnTypeError, OverloadedFunction, Value, ValueKind,
+    Callable, FirstParamProperties, Function, Instance, LookupResult, OnTypeError,
+    OverloadedFunction, Value, ValueKind,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
+use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
-    Function(Function<'a>),
+    Function(Function<'a, 'a>),
     Overload(OverloadedFunction<'a>),
     Callable(Callable<'a>),
 }
@@ -54,8 +56,15 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
         self.function.as_value().name()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        self.function.as_value().lookup_internal(i_s, name)
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.function
+            .as_value()
+            .lookup_internal(i_s, node_ref, name)
     }
 
     fn execute(
@@ -66,7 +75,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let instance_inf = self.instance.as_inferred(i_s);
-        let instance_arg = KnownArguments::with_mro_index(&instance_inf, self.mro_index, None);
+        let instance_arg =
+            KnownArguments::with_mro_index(&instance_inf, self.mro_index, args.as_node_ref());
         let args = CombinedArguments::new(&instance_arg, args);
         let class = &self.instance.class;
         match &self.function {
@@ -95,10 +105,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(match &self.function {
-            BoundMethodFunction::Function(f) => f.as_db_type(i_s, true),
-            BoundMethodFunction::Overload(f) => f.as_type(i_s).into_db_type(i_s),
+        let t = match &self.function {
+            BoundMethodFunction::Function(f) => f.as_db_type(i_s, FirstParamProperties::Skip),
+            BoundMethodFunction::Overload(f) => f.as_db_type(i_s, FirstParamProperties::Skip),
             BoundMethodFunction::Callable(c) => return c.as_type(i_s),
-        })
+        };
+        // TODO performance: it may be questionable that we allocate here again.
+        Type::owned(t)
     }
 }

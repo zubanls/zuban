@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use super::{
     match_tuple_type_arguments, matches_params, FormatData, Match, Matcher, ParamsStyle, Type,
 };
-use crate::database::{CallableParams, GenericItem, ParamSpecArgument, TypeArguments, Variance};
+use crate::database::{
+    CallableParams, Database, GenericItem, ParamSpecArgument, TypeArguments, Variance,
+};
 use crate::inference_state::InferenceState;
 
 #[derive(Debug)]
@@ -32,9 +34,9 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn into_generic_item(self, i_s: &mut InferenceState) -> GenericItem {
+    pub fn into_generic_item(self, db: &Database) -> GenericItem {
         match self {
-            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(i_s)),
+            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(db)),
             Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
             Self::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params.into_owned()),
         }
@@ -69,11 +71,6 @@ impl<'a> Generic<'a> {
             },
             Self::TypeVarTuple(ts1) => match other {
                 Self::TypeVarTuple(ref ts2) => {
-                    if matcher.has_type_var_matcher() {
-                        if let Some(ts) = ts1.args.has_type_var_tuple() {
-                            return matcher.match_type_var_tuple(i_s, ts, &ts2.args, variance);
-                        }
-                    }
                     match_tuple_type_arguments(i_s, matcher, &ts1.args, &ts2.args, variance)
                 }
                 _ => todo!(),

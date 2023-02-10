@@ -4,13 +4,13 @@ use super::{
     Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
 };
 use crate::arguments::{Arguments, NoArguments};
-use crate::database::{DbType, PointLink};
+use crate::database::{Database, DbType, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -31,7 +31,7 @@ impl<'a> Instance<'a> {
         if let Some(inferred_link) = self.inferred_link {
             Inferred::from_saved_node_ref(inferred_link)
         } else {
-            let t = self.class.as_db_type(i_s);
+            let t = self.class.as_db_type(i_s.db);
             Inferred::execute_db_type(i_s, t)
         }
     }
@@ -46,8 +46,13 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         self.class.name()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        for (mro_index, class) in self.class.mro(i_s) {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        for (mro_index, class) in self.class.mro(i_s.db) {
             if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
                     let mut i_s = i_s.with_class_context(&c);
@@ -57,35 +62,41 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                             .file
                             .inference(&mut i_s)
                             .infer_name_by_index(self_symbol)
-                            .resolve_function_return(&mut i_s),
+                            .resolve_class_type_vars(&mut i_s, &self.class),
                     );
                 }
             }
-            let result = class.lookup_symbol(i_s, name).map(|inf| {
+            let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let Some(c) = class.maybe_class(i_s.db) {
                     let mut i_s = i_s.with_class_context(&c);
-                    inf.resolve_function_return(&mut i_s).bind(
-                        &mut i_s,
-                        |i_s| self.as_inferred(i_s),
-                        mro_index,
-                    )
+                    inf.resolve_class_type_vars(&mut i_s, &self.class)
+                        .bind_instance_descriptors(
+                            &mut i_s,
+                            |i_s| self.as_inferred(i_s),
+                            node_ref,
+                            mro_index,
+                        )
                 } else {
-                    inf.resolve_function_return(i_s).bind(
-                        i_s,
-                        |i_s| self.as_inferred(i_s),
-                        mro_index,
-                    )
+                    inf.resolve_class_type_vars(i_s, &self.class)
+                        .bind_instance_descriptors(
+                            i_s,
+                            |i_s| self.as_inferred(i_s),
+                            node_ref,
+                            mro_index,
+                        )
                 }
             });
-            if !matches!(result, LookupResult::None) {
-                return result;
+            match result {
+                Some(LookupResult::None) => (),
+                None => return LookupResult::None,
+                Some(x) => return x,
             }
         }
         LookupResult::None
     }
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
-        !self.class.class_infos(i_s).incomplete_mro
+    fn should_add_lookup_error(&self, db: &Database) -> bool {
+        !self.class.use_cached_class_infos(db).incomplete_mro
     }
 
     fn execute(
@@ -95,12 +106,16 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        if let Some(inf) = self.lookup_internal(i_s, "__call__").into_maybe_inferred() {
+        let node_ref = args.as_node_ref();
+        if let Some(inf) = self
+            .lookup_internal(i_s, Some(node_ref), "__call__")
+            .into_maybe_inferred()
+        {
             inf.run_on_value(i_s, &mut |i_s, value| {
                 value.execute(i_s, args, result_context, on_type_error)
             })
         } else {
-            args.as_node_ref().add_typing_issue(
+            node_ref.add_typing_issue(
                 i_s.db,
                 IssueType::NotCallable {
                     type_: format!("{:?}", self.name()).into(),
@@ -116,11 +131,13 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let mro_iterator = self.class.mro(i_s);
+        let mro_iterator = self.class.mro(i_s.db);
+        let node_ref = slice_type.as_node_ref();
         let finder = ClassMroFinder {
             i_s,
             instance: self,
             mro_iterator,
+            from: slice_type.as_node_ref(),
             name: "__getitem__",
         };
         for found_on_class in finder {
@@ -151,7 +168,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 _ => (),
             }
         }
-        slice_type.as_node_ref().add_typing_issue(
+        node_ref.add_typing_issue(
             i_s.db,
             IssueType::NotIndexable {
                 type_: self.class.format_short(i_s.db),
@@ -161,11 +178,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        let mro_iterator = self.class.mro(i_s);
+        let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {
             i_s,
             instance: self,
             mro_iterator,
+            from,
             name: "__iter__",
         };
         for found_on_class in finder {
@@ -202,7 +220,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::Class(self.class)
+        if matches!(self.class.generics, Generics::Self_ { .. }) {
+            // The generics are only ever self for our own instance, because Generics::Self_ is
+            // only used for the current class.
+            debug_assert_eq!(i_s.current_class().unwrap().node_ref, self.class.node_ref);
+            Type::owned(DbType::Self_)
+        } else {
+            Type::Class(self.class)
+        }
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
@@ -223,6 +248,7 @@ struct ClassMroFinder<'db, 'a, 'c, 'd> {
     i_s: &'d mut InferenceState<'db, 'c>,
     instance: &'d Instance<'d>,
     mro_iterator: MroIterator<'db, 'a>,
+    from: NodeRef<'d>,
     name: &'d str,
 }
 
@@ -234,14 +260,16 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_> {
             if let Some(class) = t.maybe_class(self.i_s.db) {
                 let result = class
                     .lookup_symbol(self.i_s, self.name)
-                    .map(|inf| {
-                        inf.resolve_function_return(self.i_s).bind(
-                            self.i_s,
-                            |i_s| self.instance.as_inferred(i_s),
-                            mro_index,
-                        )
+                    .and_then(|inf| {
+                        inf.resolve_class_type_vars(self.i_s, &self.instance.class)
+                            .bind_instance_descriptors(
+                                self.i_s,
+                                |i_s| self.instance.as_inferred(i_s),
+                                Some(self.from),
+                                mro_index,
+                            )
                     })
-                    .into_maybe_inferred();
+                    .and_then(|lookup_result| lookup_result.into_maybe_inferred());
                 if let Some(result) = result {
                     return Some(FoundOnClass::Attribute(result));
                 }

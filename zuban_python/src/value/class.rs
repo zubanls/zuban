@@ -120,23 +120,6 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn simple_init_func(
-        &self,
-        i_s: &mut InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-    ) -> Function {
-        let (init, class) = self.lookup_and_class(i_s, "__init__");
-        let class = class.unwrap_or_else(|| todo!());
-        match init
-            .into_maybe_inferred()
-            .unwrap()
-            .init_as_function(i_s.db, class)
-        {
-            Some(FunctionOrOverload::Function(func)) => func,
-            _ => unreachable!(),
-        }
-    }
-
     pub fn node(&self) -> ClassDef<'a> {
         ClassDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index)
     }
@@ -146,16 +129,25 @@ impl<'db: 'a, 'a> Class<'a> {
         StringSlice::new(self.node_ref.file_index(), name.start(), name.end())
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
+    fn use_cached_type_vars(&self, db: &Database) -> Option<&'a TypeVarLikes> {
+        let node_ref = self.type_vars_node_ref();
+        let point = node_ref.point();
+        debug_assert!(point.calculated());
+        Self::get_calculated_type_vars(node_ref, point)
+    }
+
+    fn get_calculated_type_vars(node_ref: NodeRef, point: Point) -> Option<&TypeVarLikes> {
+        (point.type_() != PointType::NodeAnalysis).then(|| match node_ref.complex().unwrap() {
+            ComplexPoint::TypeVarLikes(type_vars) => type_vars,
+            _ => unreachable!(),
+        })
+    }
+
+    pub fn type_vars(&self, i_s: &mut InferenceState) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
-            return (point.type_() != PointType::NodeAnalysis).then(|| {
-                match node_ref.complex().unwrap() {
-                    ComplexPoint::TypeVarLikes(type_vars) => type_vars,
-                    _ => unreachable!(),
-                }
-            });
+            return Self::get_calculated_type_vars(node_ref, point);
         }
 
         let type_vars = ClassTypeVarFinder::find(&mut self.node_ref.file.inference(i_s), self);
@@ -198,30 +190,36 @@ impl<'db: 'a, 'a> Class<'a> {
         self.class_info_node_ref().point().calculating()
     }
 
+    #[inline]
     fn type_vars_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(1)
     }
 
+    #[inline]
     fn class_info_node_ref(&self) -> NodeRef<'a> {
         self.node_ref.add_to_node_index(4)
     }
 
-    pub fn class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> &'db ClassInfos {
+    pub fn ensure_calculated_class_infos(&self, i_s: &mut InferenceState<'db, '_>) {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
-        if point.calculated() {
-            match node_ref.to_db_lifetime(i_s.db).complex().unwrap() {
-                ComplexPoint::ClassInfos(class_infos) => class_infos,
-                _ => unreachable!(),
-            }
-        } else {
+        if !point.calculated() {
+            let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             node_ref.insert_complex(
                 ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
                 Locality::Todo,
             );
             debug_assert!(node_ref.point().calculated());
-            self.class_infos(i_s)
+        }
+    }
+
+    pub fn use_cached_class_infos(&self, db: &'db Database) -> &'db ClassInfos {
+        let node_ref = self.class_info_node_ref();
+        debug_assert!(node_ref.point().calculated());
+        match node_ref.to_db_lifetime(db).complex().unwrap() {
+            ComplexPoint::ClassInfos(class_infos) => class_infos,
+            _ => unreachable!(),
         }
     }
 
@@ -234,13 +232,12 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut incomplete_mro = false;
         let mut is_protocol = false;
         if let Some(arguments) = self.node().arguments() {
-            let mut i_s = i_s.with_annotation_instance();
             // Calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
                         let db = i_s.db;
-                        let mut inference = self.node_ref.file.inference(&mut i_s);
+                        let mut inference = self.node_ref.file.inference(i_s);
                         let base = TypeComputation::new(
                             &mut inference,
                             self.node_ref.as_link(),
@@ -291,7 +288,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 IssueType::CyclicDefinition { name },
                                             );
                                     } else {
-                                        for base in class.class_infos(&mut i_s).mro.iter() {
+                                        for base in class.use_cached_class_infos(i_s.db).mro.iter()
+                                        {
                                             mro.push(base.replace_type_var_likes(
                                                 i_s.db,
                                                 &mut |t| {
@@ -324,10 +322,13 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn check_protocol_match(&self, i_s: &mut InferenceState<'db, '_>, other: Self) -> bool {
-        for c in self.class_infos(i_s).mro.iter() {
+        for c in self.use_cached_class_infos(i_s.db).mro.iter() {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
-                if let Some(l) = other.lookup_internal(i_s, class_name).into_maybe_inferred() {
+                if let Some(l) = other
+                    .lookup_internal(i_s, None, class_name)
+                    .into_maybe_inferred()
+                {
                     // TODO check signature details here!
                 } else {
                     return false;
@@ -359,7 +360,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
     ) -> (LookupResult, Option<Class>) {
-        for (mro_index, c) in self.mro(i_s) {
+        for (mro_index, c) in self.mro(i_s.db) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let Type::Class(c) = c {
@@ -381,23 +382,23 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn mro(&self, i_s: &mut InferenceState<'db, '_>) -> MroIterator<'db, 'a> {
-        let class_infos = self.class_infos(i_s);
+    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
+        let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
-            i_s.db,
+            db,
             Type::Class(*self),
             Some(self.generics),
             class_infos.mro.iter(),
         )
     }
 
-    pub fn in_mro(&self, i_s: &mut InferenceState<'db, '_>, t: &DbType) -> bool {
+    pub fn in_mro(&self, db: &'db Database, t: &DbType) -> bool {
         if let DbType::Class(link, _) = t {
             if self.node_ref.as_link() == *link {
                 return true;
             }
         }
-        let class_infos = self.class_infos(i_s);
+        let class_infos = self.use_cached_class_infos(db);
         class_infos.mro.contains(t)
     }
 
@@ -423,13 +424,14 @@ impl<'db: 'a, 'a> Class<'a> {
         self.format(&FormatData::new_short(db))
     }
 
-    pub fn generics_as_list(&self, i_s: &mut InferenceState<'db, '_>) -> Option<GenericsList> {
-        let type_vars = self.type_vars(i_s);
-        self.generics().as_generics_list(i_s, type_vars)
+    pub fn generics_as_list(&self, db: &Database) -> Option<GenericsList> {
+        // TODO we instantiate, because we cannot use use_cached_type_vars?
+        let type_vars = self.type_vars(&mut InferenceState::new(db));
+        self.generics().as_generics_list(db, type_vars)
     }
 
-    pub fn as_db_type(&self, i_s: &mut InferenceState<'db, '_>) -> DbType {
-        let lst = self.generics_as_list(i_s);
+    pub fn as_db_type(&self, db: &Database) -> DbType {
+        let lst = self.generics_as_list(db);
         let link = self.node_ref.as_link();
         DbType::Class(link, lst)
     }
@@ -472,12 +474,29 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         Module::new(db, self.node_ref.file)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
-        self.lookup_and_class(i_s, name).0
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        let (lookup_result, in_class) = self.lookup_and_class(i_s, name);
+        let result = lookup_result.and_then(|inf| {
+            if let Some(in_class) = in_class {
+                let mut i_s = i_s.with_class_context(&in_class);
+                inf.bind_class_descriptors(&mut i_s, in_class, node_ref)
+            } else {
+                todo!()
+            }
+        });
+        match result {
+            Some(LookupResult::None) | None => LookupResult::None,
+            Some(x) => x,
+        }
     }
 
-    fn should_add_lookup_error(&self, i_s: &mut InferenceState) -> bool {
-        !self.class_infos(i_s).incomplete_mro
+    fn should_add_lookup_error(&self, db: &Database) -> bool {
+        !self.use_cached_class_infos(db).incomplete_mro
     }
 
     fn execute(
@@ -538,7 +557,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s))))
+        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
     }
 }
 

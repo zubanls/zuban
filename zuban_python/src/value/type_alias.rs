@@ -7,6 +7,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
+use crate::node_ref::NodeRef;
 use parsa_python_ast::SliceType as ASTSliceType;
 
 #[derive(Debug)]
@@ -29,7 +30,12 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         "TypeAlias"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         debug!("TODO this should at least have the object results");
         LookupResult::None
     }
@@ -70,7 +76,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         args.as_node_ref().add_typing_issue(
             i_s.db,
             IssueType::NotCallable {
-                type_: Box::from("\"object\""),
+                type_: Box::from("\"<typing special form>\""),
             },
         );
         Inferred::new_any()

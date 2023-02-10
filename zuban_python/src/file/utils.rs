@@ -1,4 +1,4 @@
-use parsa_python_ast::{List, ListOrSetElementIterator, StarLikeExpression};
+use parsa_python_ast::{Int, List, ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::Argument;
 use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
@@ -17,7 +17,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
     ) -> GenericItem {
         let mut result = DbType::Never;
         for child in elements {
-            result.union_in_place(match child {
+            let mut t = match child {
                 StarLikeExpression::NamedExpression(named_expr) => self
                     .infer_named_expression(named_expr)
                     .class_as_db_type(self.i_s),
@@ -29,7 +29,17 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
                     unreachable!()
                 }
-            });
+            };
+            // Just because we defined a literal somewhere, we should probably not infer that.
+            if let DbType::Literal(l) = t {
+                t = self
+                    .i_s
+                    .db
+                    .python_state
+                    .literal_class(l.kind)
+                    .as_db_type(self.i_s.db);
+            }
+            result.union_in_place(t);
         }
         GenericItem::TypeArgument(result)
     }
@@ -50,7 +60,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             let type_vars = list_cls.type_vars(i_s).unwrap();
                             let generic_t = list_cls
                                 .generics()
-                                .nth(i_s, &type_vars[0], 0)
+                                .nth(i_s.db, &type_vars[0], 0)
                                 .expect_type_argument();
                             found = check_list_with_context(i_s, matcher, generic_t, file, list);
                             if found.is_none() {
@@ -58,7 +68,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                 // the given and expected result context as a type.
                                 found = Some(
                                     list_cls
-                                        .as_db_type(i_s)
+                                        .as_db_type(i_s.db)
                                         .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                             tv.as_type_var_like().as_any_generic_item()
                                         }),
@@ -76,6 +86,18 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 },
             )
             .flatten()
+    }
+
+    pub fn parse_int(&mut self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
+        if result_context.is_literal_context(self.i_s) {
+            let result = int.parse();
+            if result.is_none() {
+                todo!("Add diagnostic");
+            }
+            result
+        } else {
+            None
+        }
     }
 }
 

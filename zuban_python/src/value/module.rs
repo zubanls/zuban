@@ -10,6 +10,7 @@ use crate::imports::python_import;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
+use crate::node_ref::NodeRef;
 
 impl<'a> fmt::Debug for Module<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -70,7 +71,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
         self.name().to_owned()
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         self.file
             .symbol_table
             .lookup_symbol(name)

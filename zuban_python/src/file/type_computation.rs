@@ -4,11 +4,11 @@ use parsa_python_ast::*;
 
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
-    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, Locality, NewType,
-    ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
-    Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind, Locality,
+    NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType,
+    RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias,
+    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -21,6 +21,7 @@ use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
+#[derive(Debug)]
 pub enum TypeVarCallbackReturn {
     TypeVarLike(TypeVarLikeUsage<'static>),
     UnboundTypeVar,
@@ -55,6 +56,9 @@ pub(super) enum SpecialType {
     Unpack,
     Concatenate,
     TypeAlias,
+    Self_,
+    Final,
+    Annotated,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -64,11 +68,12 @@ pub(super) enum InvalidVariableType<'a> {
     List,
     Tuple { tuple_length: usize },
     Execution,
-    Function(Function<'a>),
+    Function(Function<'a, 'a>),
     Literal(&'a str),
     Variable(NodeRef<'a>),
     Float,
     Complex,
+    Ellipsis,
     Other,
 }
 
@@ -103,9 +108,6 @@ impl InvalidVariableType<'_> {
                 IssueType::Note(
                     Box::from("See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases"),
                 )
-            }
-            Self::Execution => {
-                IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
             }
             Self::Function(func) => {
                 add_typing_issue(IssueType::InvalidType(
@@ -142,8 +144,11 @@ impl InvalidVariableType<'_> {
             Self::Literal(s) => IssueType::InvalidType(
                 format!("Invalid type: try using Literal[{s}] instead?").into(),
             ),
-            Self::Other => match origin {
+            Self::Execution | Self::Other => match origin {
                 TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
+                TypeComputationOrigin::TypeAlias => IssueType::InvalidType(Box::from(
+                    "Invalid type alias: expression is not a valid type",
+                )),
                 _ => IssueType::InvalidType(Box::from("Invalid type comment or annotation")),
             },
             Self::Float => IssueType::InvalidType(
@@ -152,6 +157,7 @@ impl InvalidVariableType<'_> {
             Self::Complex => IssueType::InvalidType(
                 "Invalid type: complex literals cannot be used as a type".into(),
             ),
+            Self::Ellipsis => IssueType::InvalidType("Unexpected \"...\"".into()),
         })
     }
 }
@@ -172,6 +178,7 @@ enum TypeContent<'db, 'a> {
     Unknown,
 }
 
+#[derive(Debug)]
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Class(Inferred),
@@ -454,7 +461,26 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     );
                     return;
                 }
-                TypeContent::DbType(mut d) => {
+                TypeContent::SpecialType(
+                    special @ (SpecialType::TypeAlias | SpecialType::Final),
+                ) if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation => {
+                    debug_assert!(!is_implicit_optional);
+                    self.inference.file.points.set(
+                        annotation_index,
+                        Point::new_simple_specific(
+                            match special {
+                                SpecialType::TypeAlias => Specific::TypingTypeAlias,
+                                SpecialType::Final => Specific::TypingFinal,
+                                _ => unreachable!(),
+                            },
+                            Locality::Todo,
+                        ),
+                    );
+                    return;
+                }
+                _ => {
+                    let mut d =
+                        self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index()));
                     if self.has_type_vars {
                         if is_implicit_optional {
                             d.make_optional()
@@ -477,17 +503,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         d
                     }
                 }
-                TypeContent::SpecialType(SpecialType::TypeAlias)
-                    if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation =>
-                {
-                    debug_assert!(!is_implicit_optional);
-                    self.inference.file.points.set(
-                        annotation_index,
-                        Point::new_simple_specific(Specific::TypingTypeAlias, Locality::Todo),
-                    );
-                    return;
-                }
-                _ => self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index())),
             },
         };
         if is_implicit_optional {
@@ -502,7 +517,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::ClassWithoutTypeVar(i) => i
                 .maybe_class(self.inference.i_s)
                 .unwrap()
-                .as_db_type(self.inference.i_s),
+                .as_db_type(self.inference.i_s.db),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
                 self.add_typing_issue(
@@ -557,6 +572,33 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         node_ref,
                         IssueType::InvalidType(Box::from(
                             "Literal[...] must have at least one parameter",
+                        )),
+                    );
+                    DbType::Any
+                }
+                SpecialType::Self_
+                    if !matches!(
+                        self.origin,
+                        TypeComputationOrigin::Constraint | TypeComputationOrigin::BaseClass
+                    ) && self.inference.i_s.current_class().is_some() =>
+                {
+                    self.has_type_vars = true;
+                    DbType::Self_
+                }
+                SpecialType::Self_ => {
+                    self.add_typing_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from(
+                            "Self type is only allowed in annotations within class definition",
+                        )),
+                    );
+                    DbType::Any
+                }
+                SpecialType::Annotated => {
+                    self.add_typing_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from(
+                            "Annotated[...] must have exactly one type argument and at least one annotation",
                         )),
                     );
                     DbType::Any
@@ -786,8 +828,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         SpecialType::Literal => self.compute_get_item_on_literal(s),
                         SpecialType::LiteralString => todo!(),
                         SpecialType::TypeAlias => todo!(),
+                        SpecialType::Self_ => {
+                            self.add_typing_issue(
+                                s.as_node_ref(),
+                                IssueType::InvalidType(Box::from(
+                                    "Self type cannot have type arguments",
+                                )),
+                            );
+                            TypeContent::DbType(DbType::Any)
+                        }
+                        SpecialType::Final => self.compute_type_get_item_on_final(s),
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
+                        SpecialType::Annotated => self.compute_get_item_on_annotated(s),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -965,6 +1018,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             self.compute_slice_db_type(slice_content);
             given_count += 1;
         }
+        if given_count != expected_count && !had_valid_multi_type_arg {
+            self.add_typing_issue(
+                slice_type.as_node_ref(),
+                IssueType::TypeArgumentIssue {
+                    class: Box::from(class.name()),
+                    expected_count,
+                    given_count,
+                },
+            );
+            generics.clear();
+            given_count = 0;
+        }
         let result = if generics.is_empty()
             && given_count == expected_count
             && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation
@@ -999,16 +1064,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             })
         };
-        if given_count != expected_count && !had_valid_multi_type_arg {
-            self.add_typing_issue(
-                slice_type.as_node_ref(),
-                IssueType::TypeArgumentIssue {
-                    class: Box::from(class.name()),
-                    expected_count,
-                    given_count,
-                },
-            );
-        }
         result
     }
 
@@ -1265,9 +1320,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         if let Some(next) = iterator.next() {
             todo!()
         }
-        let mut t = self.compute_slice_db_type(first).union(DbType::None);
+        let t = self.compute_slice_db_type(first);
+        let was_union = matches!(t, DbType::Union(_));
+        let mut t = t.union(DbType::None);
         let DbType::Union(union_type) = &mut t else {unreachable!()};
-        union_type.format_as_optional = true;
+        if !was_union {
+            union_type.format_as_optional = true;
+        }
         union_type.sort_for_priority();
         TypeContent::DbType(t)
     }
@@ -1323,6 +1382,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 })
                 .into_owned(),
         )
+    }
+
+    fn compute_type_get_item_on_final(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.count() == 0 {
+            TypeContent::DbType(self.compute_slice_db_type(first))
+        } else {
+            todo!()
+        }
     }
 
     fn compute_type_get_item_on_unpack(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
@@ -1401,13 +1470,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             match s.named_expr.expression().unpack() {
                 ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) => {
                     let maybe = match atom.unpack() {
-                        AtomContent::Int(i) => Some((i.index(), Specific::IntegerLiteral)),
-                        AtomContent::Bytes(b) => Some((b.index(), Specific::BytesLiteral)),
-                        AtomContent::Strings(s) => s
-                            .maybe_single_string_literal()
-                            .map(|s| (s.index(), Specific::StringLiteral)),
-                        AtomContent::Boolean(keyword) => {
-                            Some((keyword.index(), Specific::BooleanLiteral))
+                        AtomContent::Int(i) => {
+                            Some(LiteralKind::Int(i.parse().unwrap_or_else(|| todo!())))
+                        }
+                        AtomContent::Bytes(b) => Some(LiteralKind::Bytes(
+                            NodeRef::new(self.inference.file, b.index()).as_link(),
+                        )),
+                        AtomContent::Strings(s) => s.maybe_single_string_literal().map(|s| {
+                            LiteralKind::String(
+                                NodeRef::new(self.inference.file, s.index()).as_link(),
+                            )
+                        }),
+                        AtomContent::Bool(keyword) => {
+                            Some(LiteralKind::Bool(keyword.as_code() == "True"))
                         }
                         AtomContent::Float(_) => {
                             self.add_typing_issue(
@@ -1438,11 +1513,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         AtomContent::Name(_) | AtomContent::NoneLiteral => None,
                         _ => return expr_not_allowed(self),
                     };
-                    if let Some((index, specific)) = maybe {
-                        let node_ref = NodeRef::new(self.inference.file, index);
-                        node_ref.set_point(Point::new_simple_specific(specific, Locality::Todo));
+                    if let Some(kind) = maybe {
                         return TypeContent::DbType(DbType::Literal(Literal {
-                            definition: node_ref.as_link(),
+                            kind,
                             implicit: false,
                         }));
                     }
@@ -1451,16 +1524,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     let (sign, e) = f.unpack();
                     if sign.as_code() == "-" {
                         if let ExpressionPart::Atom(atom) = e {
-                            if let AtomContent::Int(_) = atom.unpack() {
-                                let node_ref = NodeRef::new(self.inference.file, f.index());
-                                node_ref.set_point(Point::new_simple_specific(
-                                    Specific::IntegerLiteral,
-                                    Locality::Todo,
-                                ));
-                                return TypeContent::DbType(DbType::Literal(Literal {
-                                    definition: node_ref.as_link(),
-                                    implicit: false,
-                                }));
+                            if let AtomContent::Int(i) = atom.unpack() {
+                                if let Some(i) = i.parse() {
+                                    let node_ref = NodeRef::new(self.inference.file, f.index());
+                                    return TypeContent::DbType(DbType::Literal(Literal {
+                                        kind: LiteralKind::Int(-i),
+                                        implicit: false,
+                                    }));
+                                } else {
+                                    todo!()
+                                }
                             }
                         }
                     }
@@ -1479,11 +1552,17 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 self.add_typing_issue(
                     slice.as_node_ref(),
                     IssueType::InvalidType(
-                        format!(
-                            "Parameter {} of Literal[...] cannot be of type \"Any\"",
-                            index
-                        )
-                        .into(),
+                        format!("Parameter {index} of Literal[...] cannot be of type \"Any\"")
+                            .into(),
+                    ),
+                );
+                TypeContent::Unknown
+            }
+            TypeContent::InvalidVariable(_) => {
+                self.add_typing_issue(
+                    slice.as_node_ref(),
+                    IssueType::InvalidType(
+                        format!("Parameter {index} of Literal[...] is invalid").into(),
                     ),
                 );
                 TypeContent::Unknown
@@ -1509,6 +1588,22 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     TypeContent::Unknown
                 }
             },
+        }
+    }
+
+    fn compute_get_item_on_annotated(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_none() {
+            self.add_typing_issue(
+                slice_type.as_node_ref(),
+                IssueType::InvalidType(Box::from(
+                    "Annotated[...] must have exactly one type argument and at least one annotation",
+                )),
+            );
+            TypeContent::Unknown
+        } else {
+            TypeContent::DbType(self.compute_slice_db_type(first))
         }
     }
 
@@ -1559,7 +1654,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             AtomContent::Tuple(t) => TypeContent::InvalidVariable(InvalidVariableType::Tuple {
                 tuple_length: t.iter().count(),
             }),
-            AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Other),
+            AtomContent::Ellipsis => TypeContent::InvalidVariable(InvalidVariableType::Ellipsis),
             AtomContent::Float(_) => TypeContent::InvalidVariable(InvalidVariableType::Float),
             AtomContent::Complex(_) => TypeContent::InvalidVariable(InvalidVariableType::Complex),
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
@@ -1861,6 +1956,14 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     compute_get_item_on_literal(slice_type)
                 )
             }
+            Specific::TypingAnnotated => {
+                compute_type_application!(
+                    self,
+                    slice_type,
+                    from_alias_definition,
+                    compute_get_item_on_annotated(slice_type)
+                )
+            }
             _ => unreachable!("{:?}", specific),
         }
     }
@@ -1942,15 +2045,6 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         }
     }
 
-    pub fn use_cached_simple_generic_type(&mut self, expression: Expression) -> Type<'db> {
-        debug_assert_eq!(
-            self.file.points.get(expression.index()).type_(),
-            PointType::Redirect
-        );
-        let inferred = self.check_point_cache(expression.index()).unwrap();
-        Type::Class(inferred.maybe_class(self.i_s).unwrap())
-    }
-
     pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'file DbType {
         debug_assert_eq!(
             self.file.points.get(node_index).specific(),
@@ -1988,6 +2082,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     fn compute_type_assignment(
         &mut self,
         assignment: Assignment<'x>,
+        is_explicit: bool,
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
@@ -2005,8 +2100,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             debug_assert!(node_ref.point().calculated());
             return check_type_name(self.i_s, node_ref);
         }
-        if let Some((name_def, expr)) = assignment.maybe_simple_type_expression_assignment() {
-            debug_assert!(file.points.get(name_def.index()).calculated());
+        if let Some((name_def, annotation, expr)) =
+            assignment.maybe_simple_type_expression_assignment()
+        {
+            debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
             let in_definition = cached_type_node_ref.as_link();
             if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
@@ -2042,7 +2139,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
                         return TypeNameLookup::Class(i);
                     }
-                    TypeContent::InvalidVariable(t) => {
+                    TypeContent::InvalidVariable(t) if !is_explicit => {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                             NodeRef::new(file, name_def.index()),
@@ -2066,9 +2163,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 load_cached_type(cached_type_node_ref)
             }
         } else {
-            debug!("TODO invalid type def");
-            TypeNameLookup::Unknown
+            TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
         }
+    }
+
+    pub(super) fn compute_explicit_type_assignment(&mut self, assignment: Assignment) {
+        self.compute_type_assignment(assignment, true);
     }
 
     pub(super) fn lookup_type_name(&mut self, name: Name<'x>) -> TypeNameLookup<'db, 'x> {
@@ -2280,7 +2380,9 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingConcatenateClass => SpecialType::Concatenate,
                 Specific::TypingTypeAlias => SpecialType::TypeAlias,
                 Specific::TypingLiteral => SpecialType::Literal,
-                Specific::TypingFinal => todo!(),
+                Specific::TypingFinal => SpecialType::Final,
+                Specific::TypingSelf => SpecialType::Self_,
+                Specific::TypingAnnotated => SpecialType::Annotated,
                 _ => unreachable!(),
             })
         }
@@ -2327,9 +2429,20 @@ fn check_type_name<'db: 'file, 'file>(
                     Some(Specific::TypingTuple) => {
                         return TypeNameLookup::SpecialType(SpecialType::Tuple);
                     }
+                    Some(_) => {
+                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
+                            name_node_ref,
+                        ))
+                    }
                     _ => (),
                 }
             }
+            // At this point the class is not necessarily calculated and we therefore do this here.
+            let name_def = NodeRef::new(
+                name_node_ref.file,
+                new_name.name_definition().unwrap().index(),
+            );
+            name_def.file.inference(i_s).cache_class(name_def, c);
             TypeNameLookup::Class(Inferred::new_saved(
                 name_node_ref.file,
                 c.index(),
@@ -2350,7 +2463,7 @@ fn check_type_name<'db: 'file, 'file>(
             if !def_point.calculated() || def_point.maybe_specific() != Some(Specific::Cycle) {
                 inference.cache_assignment_nodes(assignment);
             }
-            inference.compute_type_assignment(assignment)
+            inference.compute_type_assignment(assignment, false)
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None),
@@ -2376,6 +2489,8 @@ fn check_type_name<'db: 'file, 'file>(
 }
 
 pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> PointType {
+    // This is needed to lookup names on a class and set the redirect there. It does not modify the
+    // class at all.
     let name_node_ref = NodeRef::new(file, name.index());
     let point = name_node_ref.point();
     if point.calculated() {
@@ -2416,4 +2531,29 @@ fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
             ]))),
         ),
     }
+}
+
+pub fn use_cached_simple_generic_type<'db>(
+    db: &'db Database,
+    file: &PythonFile,
+    expr: Expression,
+) -> Type<'db> {
+    // The context of inference state is not important, because this is only a simple generic type.
+    let i_s = &mut InferenceState::new(db);
+    let mut inference = file.inference(i_s);
+    debug_assert_eq!(
+        inference.file.points.get(expr.index()).type_(),
+        PointType::Redirect
+    );
+    let inferred = inference.check_point_cache(expr.index()).unwrap();
+    Type::Class(inferred.maybe_class(i_s).unwrap())
+}
+
+pub fn use_cached_annotation_type<'db: 'file, 'file>(
+    db: &'db Database,
+    file: &'file PythonFile,
+    annotation: Annotation,
+) -> Type<'file> {
+    file.inference(&mut InferenceState::new(db))
+        .use_cached_annotation_type_internal(annotation.index(), annotation.expression())
 }

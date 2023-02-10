@@ -6,7 +6,7 @@ use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
-    TypeVarLike, TypeVarTuple, TypeVarUsage, Variance,
+    TypeVarLike, TypeVarName, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -42,11 +42,17 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingOptional => "Optional",
             Specific::TypingType => "Type",
             Specific::TypingLiteral => "Literal",
+            Specific::TypingAnnotated => "Annotated",
             _ => unreachable!("{:?}", self.specific),
         }
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -75,6 +81,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
             Specific::TypingCallable => todo!(),
             Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
+            Specific::TypingAnnotated => todo!(),
             _ => unreachable!("{:?}", self.specific),
         }
     }
@@ -116,7 +123,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
         "ClassVar"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -166,7 +178,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         "Type"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
@@ -175,14 +192,13 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                         Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
                         bound,
                     )
-                    .lookup_internal(i_s, name)
+                    .lookup_internal(i_s, node_ref, name)
                 } else {
                     todo!("{t:?}")
                 }
             }
-            DbType::Class(link, generics_list) => {
-                Class::from_db_type(i_s.db, *link, generics_list).lookup_internal(i_s, name)
-            }
+            DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
+                .lookup_internal(i_s, node_ref, name),
             DbType::Callable(_) => LookupResult::None,
             _ => todo!("{:?}", self.db_type),
         }
@@ -227,7 +243,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                         Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
                         bound,
                     )
-                    .execute(i_s, args, result_context, on_type_error)
+                    .execute(i_s, args, result_context, on_type_error);
+                    Inferred::execute_db_type(i_s, self.db_type.clone())
                 } else {
                     todo!("{t:?}")
                 }
@@ -258,6 +275,44 @@ impl fmt::Debug for TypingType<'_> {
 }
 
 #[derive(Debug)]
+pub struct TypingAny();
+
+impl<'db, 'a> Value<'db, 'a> for TypingAny {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Class
+    }
+
+    fn name(&self) -> &str {
+        "Any"
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        todo!()
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        todo!()
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState,
+        args: &dyn Arguments,
+        _: &mut ResultContext,
+        _: OnTypeError,
+    ) -> Inferred {
+        args.as_node_ref()
+            .add_typing_issue(i_s.db, IssueType::AnyNotCallable);
+        Inferred::new_any()
+    }
+}
+
+#[derive(Debug)]
 pub struct TypingCast();
 
 impl<'db, 'a> Value<'db, 'a> for TypingCast {
@@ -269,7 +324,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         "cast"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -346,7 +406,12 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         "reveal_type"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 
@@ -401,7 +466,12 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
         self.type_var_usage.type_var.name(self.db)
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         let type_var = &self.type_var_usage.type_var;
         if !type_var.restrictions.is_empty() {
             debug!("TODO type var values");
@@ -423,8 +493,9 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
             run_on_db_type(
                 i_s,
                 db_type,
+                None,
                 &mut |i_s, v| {
-                    let result = v.lookup_internal(i_s, name);
+                    let result = v.lookup_internal(i_s, node_ref, name);
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
@@ -443,7 +514,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
             let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we
             // should just use a precreated object() from somewhere.
-            Instance::new(s.object_class(), None).lookup_internal(i_s, name)
+            Instance::new(s.object_class(), None).lookup_internal(i_s, node_ref, name)
         }
     }
 
@@ -523,6 +594,7 @@ fn maybe_type_var(
                     {
                         restrictions.push(t);
                     } else {
+                        // TODO this needs a lint?
                         return None;
                     }
                 }
@@ -586,6 +658,11 @@ fn maybe_type_var(
                         return None;
                     }
                 },
+                ArgumentKind::Comprehension { .. } => {
+                    arg.as_node_ref()
+                        .add_typing_issue(i_s.db, IssueType::UnexpectedComprehension);
+                    return None;
+                }
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
@@ -597,10 +674,10 @@ fn maybe_type_var(
             return None;
         }
         return Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
-            name_string: PointLink {
+            name_string: TypeVarName::PointLink(PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
-            },
+            }),
             restrictions: restrictions.into_boxed_slice(),
             bound,
             variance: match (covariant, contravariant) {
@@ -634,7 +711,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         "TypeVar"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         LookupResult::None
     }
 
@@ -669,7 +751,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
         "TypeVarTuple"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         LookupResult::None
     }
 
@@ -775,6 +862,11 @@ fn maybe_type_var_tuple(
                         return None;
                     }
                 },
+                ArgumentKind::Comprehension { .. } => {
+                    arg.as_node_ref()
+                        .add_typing_issue(i_s.db, IssueType::UnexpectedComprehension);
+                    return None;
+                }
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
@@ -810,7 +902,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
         "ParamSpec"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         LookupResult::None
     }
 
@@ -882,8 +979,22 @@ fn maybe_param_spec(
 
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Positional { node_ref, .. } => {
-                    node_ref.add_typing_issue(
+                ArgumentKind::Keyword { key, node_ref, .. } if key == "default" => {
+                    if let Some(t) = node_ref
+                        .file
+                        .inference(i_s)
+                        .compute_type_var_constraint(node_ref.as_expression())
+                    {
+                        todo!()
+                    } else {
+                        todo!()
+                    }
+                }
+                ArgumentKind::Inferred { .. }
+                | ArgumentKind::SlicesTuple { .. }
+                | ArgumentKind::ParamSpec { .. } => unreachable!(),
+                _ => {
+                    arg.as_node_ref().add_typing_issue(
                         i_s.db,
                         IssueType::TypeVarLikeTooManyArguments {
                             class_name: "ParamSpec",
@@ -891,31 +1002,6 @@ fn maybe_param_spec(
                     );
                     return None;
                 }
-                ArgumentKind::Keyword { key, node_ref, .. } => match key {
-                    "default" => {
-                        if let Some(t) = node_ref
-                            .file
-                            .inference(i_s)
-                            .compute_type_var_constraint(node_ref.as_expression())
-                        {
-                            todo!()
-                        } else {
-                            todo!()
-                        }
-                    }
-                    _ => {
-                        node_ref.add_typing_issue(
-                            i_s.db,
-                            IssueType::TypeVarLikeTooManyArguments {
-                                class_name: "ParamSpec",
-                            },
-                        );
-                        return None;
-                    }
-                },
-                ArgumentKind::Inferred { .. }
-                | ArgumentKind::SlicesTuple { .. }
-                | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }
         return Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {
@@ -947,7 +1033,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
         "NewType"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         // TODO?
         LookupResult::None
     }

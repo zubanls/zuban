@@ -4,19 +4,21 @@ use parsa_python_ast::*;
 
 use super::type_computation::type_computation_for_variable_annotation;
 use super::{on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin};
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
+use crate::arguments::{
+    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
+};
 use crate::database::{
     CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
-    Locality, ParamSpecific, Point, PointLink, PointType, Specific, TupleContent,
-    TypeOrTypeVarTuple,
+    Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType, Specific,
+    TupleContent, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::inferred::{Inferred, UnionValue};
+use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
 use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
@@ -99,15 +101,44 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             stmt.index(),
             stmt.short_debug().trim()
         );
-        name_def.set_point(Point::new_calculating());
         match stmt.unpack() {
             StmtContent::ForStmt(for_stmt) => {
+                name_def.set_point(Point::new_calculating());
                 let (star_targets, star_exprs, _, _) = for_stmt.unpack();
                 // Performance: We probably do not need to calculate diagnostics just for
                 // calculating the names.
                 self.cache_for_stmt_names(star_targets, star_exprs);
             }
+            StmtContent::ClassDef(cls) => self.cache_class(name_def, cls),
+            StmtContent::Decorated(decorated) => match decorated.decoratee() {
+                Decoratee::ClassDef(cls) => {
+                    // TODO this just ignores decorators? Should this even be reachable?
+                    self.cache_class(name_def, cls)
+                }
+                _ => unreachable!(),
+            },
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
+        }
+    }
+
+    pub fn cache_class(&mut self, name_def: NodeRef, class_node: ClassDef) {
+        if !name_def.point().calculated() {
+            let definition = NodeRef::new(self.file, class_node.index());
+            let ComplexPoint::Class(cls_storage) = definition.complex().unwrap() else {
+                unreachable!()
+            };
+
+            debug_assert!(!name_def.point().calculated());
+            // We can redirect now, because we are going to calculate the class infos.
+            name_def.set_point(Point::new_redirect(
+                self.file_index,
+                class_node.index(),
+                Locality::Todo,
+            ));
+
+            let class = Class::new(definition, cls_storage, Generics::Any, None);
+            // Make sure the type vars are properly pre-calculated
+            class.ensure_calculated_class_infos(self.i_s);
         }
     }
 
@@ -400,11 +431,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
                 let suffix = assignment.suffix();
-                const TYPE: &str = "# type: ";
+                const TYPE: &str = "# type:";
                 let mut type_comment_result = None;
                 if let Some(start) = suffix.find(TYPE) {
-                    let start = start + TYPE.len();
-                    let s = &suffix[start..];
+                    let mut start = start + TYPE.len();
+                    let with_spaces = &suffix[start..];
+                    let s = with_spaces.trim_start_matches(' ');
+                    start += with_spaces.len() - s.len();
                     debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
                     if s != "ignore" {
                         type_comment_result = Some(self.compute_type_comment(
@@ -445,28 +478,45 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 comp.into_type_vars(|inf, recalculate_type_vars| {
                     inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
                 });
-                if self.file.points.get(annotation.index()).maybe_specific()
-                    == Some(Specific::TypingTypeAlias)
-                {
-                    debug!("TODO TypeAlias calculation, does this make sense?");
-                } else {
-                    if let Some(right_side) = right_side {
-                        let t = self.use_cached_annotation_type(annotation);
-                        let right = self
-                            .infer_assignment_right_side(right_side, &mut ResultContext::Known(&t));
-                        t.error_if_not_matches(self.i_s, &right, on_type_error);
+                match self.file.points.get(annotation.index()).maybe_specific() {
+                    Some(Specific::TypingTypeAlias) => {
+                        debug!("TODO TypeAlias calculation, does this make sense?");
+                        self.compute_explicit_type_assignment(assignment)
                     }
-                    let inf_annot = self.use_cached_annotation(annotation);
-                    self.assign_single_target(target, &inf_annot, true, |index| {
-                        self.file.points.set(
-                            index,
-                            Point::new_redirect(
-                                self.file.file_index(),
-                                annotation.index(),
-                                Locality::Todo,
-                            ),
-                        );
-                    })
+                    Some(Specific::TypingFinal) => {
+                        if let Some(right_side) = right_side {
+                            let right = self.infer_assignment_right_side(
+                                right_side,
+                                &mut ResultContext::ExpectLiteral,
+                            );
+                            self.assign_single_target(target, &right.clone(), true, |index| {
+                                right.save_redirect(self.i_s.db, self.file, index);
+                            });
+                        } else {
+                            todo!()
+                        }
+                    }
+                    _ => {
+                        if let Some(right_side) = right_side {
+                            let t = self.use_cached_annotation_type(annotation);
+                            let right = self.infer_assignment_right_side(
+                                right_side,
+                                &mut ResultContext::Known(&t),
+                            );
+                            t.error_if_not_matches(self.i_s, &right, on_type_error);
+                        }
+                        let inf_annot = self.use_cached_annotation(annotation);
+                        self.assign_single_target(target, &inf_annot, true, |index| {
+                            self.file.points.set(
+                                index,
+                                Point::new_redirect(
+                                    self.file.file_index(),
+                                    annotation.index(),
+                                    Locality::Todo,
+                                ),
+                            );
+                        })
+                    }
                 }
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => {
@@ -476,11 +526,11 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
-                        .lookup_implicit(i_s, normal, &|i_s| todo!())
+                        .lookup_implicit(i_s, Some(node_ref), normal, &|i_s| todo!())
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
-                                &KnownArguments::new(&right, Some(node_ref)),
+                                &KnownArguments::new(&right, node_ref),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
                                     arg.as_node_ref().add_typing_issue(
@@ -542,7 +592,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         target: Target,
         value: &Inferred,
         is_definition: bool,
-        save: impl Fn(NodeIndex),
+        save: impl FnOnce(NodeIndex),
     ) {
         match target {
             Target::Name(name_def) => {
@@ -615,13 +665,16 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     let args = slice.as_args(self.i_s.context);
                     base.run_on_value(self.i_s, &mut |i_s, v| {
                         debug!("Set Item on {}", v.name());
-                        v.lookup_implicit(i_s, "__setitem__", &|i_s| {
+                        v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {
                             debug!("TODO __setitem__ not found");
                         })
                         .run_on_value(i_s, &mut |i_s, v| {
                             v.execute(
                                 i_s,
-                                &CombinedArguments::new(&args, &KnownArguments::new(value, None)),
+                                &CombinedArguments::new(
+                                    &args,
+                                    &KnownArguments::new(value, node_ref),
+                                ),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
                                     arg.as_node_ref().add_typing_issue(
@@ -733,7 +786,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 todo!("Star tuple unpack");
             }
             _ => self.assign_single_target(target, &value, is_definition, |index| {
-                value.clone().save_redirect(self.i_s.db, self.file, index);
+                value
+                    .clone()
+                    .maybe_save_redirect(self.i_s.db, self.file, index, true);
             }),
         };
     }
@@ -809,7 +864,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     .union(self.infer_expression(else_))
             }
         };
-        inferred.save_redirect(self.i_s.db, self.file, expr.index())
+        // We only save the result if nothing is there, yet. It could be that we pass this function
+        // twice, when for example a class F(List[X]) is created, where X = F and X is defined
+        // before F, this might happen.
+        inferred.maybe_save_redirect(self.i_s.db, self.file, expr.index(), true)
     }
 
     pub fn infer_expression_part(
@@ -822,6 +880,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             ExpressionPart::Primary(primary) => self.infer_primary(primary, result_context),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
+            ExpressionPart::ShiftExpr(shift) => self.infer_operation(shift.as_operation()),
+            ExpressionPart::BitwiseOr(or) => {
+                self.infer_expression_part(or.as_operation().left, &mut ResultContext::Unknown);
+                self.infer_expression_part(or.as_operation().right, &mut ResultContext::Unknown);
+                debug!("TODO Use: self.infer_operation(or.as_operation())");
+                Inferred::new_any()
+            }
             ExpressionPart::Inversion(inv) => Inferred::new_unsaved_complex(
                 ComplexPoint::Instance(self.i_s.db.python_state.builtins_point_link("bool"), None),
             ),
@@ -859,12 +924,19 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     "-" => {
                         if let ExpressionPart::Atom(atom) = right {
                             if let AtomContent::Int(i) = atom.unpack() {
-                                let specific = match result_context.is_literal_context(self.i_s) {
-                                    true => Specific::IntegerLiteral,
-                                    false => Specific::Integer,
+                                return if let Some(i) = self.parse_int(i, result_context) {
+                                    Inferred::execute_db_type(
+                                        self.i_s,
+                                        DbType::Literal(Literal {
+                                            kind: LiteralKind::Int(-i),
+                                            implicit: true,
+                                        }),
+                                    )
+                                } else {
+                                    let point =
+                                        Point::new_simple_specific(Specific::Int, Locality::Todo);
+                                    Inferred::new_and_save(self.file, f.index(), point)
                                 };
-                                let point = Point::new_simple_specific(specific, Locality::Todo);
-                                return Inferred::new_and_save(self.file, f.index(), point);
                             }
                         }
                         "__neg__"
@@ -873,8 +945,52 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     "~" => "__invert__",
                     _ => unreachable!(),
                 };
-                let right = self.infer_expression_part(right, &mut ResultContext::Unknown);
-                todo!()
+                let inf = self.infer_expression_part(right, &mut ResultContext::Unknown);
+                if operator.as_code() == "-" && result_context.is_literal_context(self.i_s) {
+                    match inf.maybe_literal(self.i_s.db) {
+                        UnionValue::Single(literal) => {
+                            if let LiteralKind::Int(i) = &literal.kind {
+                                return Inferred::execute_db_type(
+                                    self.i_s,
+                                    DbType::Literal(Literal {
+                                        kind: LiteralKind::Int(-i),
+                                        implicit: true,
+                                    }),
+                                );
+                            }
+                        }
+                        UnionValue::Multiple(literals) => todo!(),
+                        UnionValue::Any => (),
+                    }
+                }
+                let node_ref = NodeRef::new(self.file, f.index());
+                inf.run_on_value(self.i_s, &mut |i_s, value| {
+                    value.lookup_implicit(i_s, Some(node_ref), method_name, &|i_s| {
+                        todo!()
+                        /*
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::UnsupportedLeftOperand {
+                                operand: Box::from(op.operand),
+                                left: value.as_type(i_s).format_short(i_s.db),
+                                note: None,
+                            },
+                        )
+                        */
+                    })
+                })
+                .run_on_value(self.i_s, &mut |i_s, value| {
+                    value.execute(
+                        i_s,
+                        &NoArguments::new(node_ref),
+                        &mut ResultContext::Unknown,
+                        OnTypeError {
+                            on_overload_mismatch: None,
+                            // TODO is this unreachable correct with self: X[int]?
+                            callback: &|i_s, class, _, _, _, _| unreachable!(),
+                        },
+                    )
+                })
             }
             _ => todo!("Not handled yet {node:?}"),
         }
@@ -894,7 +1010,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             .inference(&mut i_s)
                             .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = c.clone();
-                        c.result_type = result.class_as_type(&mut i_s).into_db_type(&mut i_s);
+                        c.result_type = result.class_as_type(&mut i_s).into_db_type(i_s.db);
                         Inferred::execute_db_type(&mut i_s, DbType::Callable(c))
                     } else {
                         todo!()
@@ -926,15 +1042,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let added_note = Cell::new(false);
-        let on_error = |i_s: &mut InferenceState, class: Option<&Class>| {
-            node_ref.add_typing_issue(
-                i_s.db,
-                IssueType::UnsupportedOperand {
-                    operand: Box::from(op.operand),
-                    left: class.unwrap().format_short(i_s.db),
-                    right: right.format_short(i_s),
-                },
-            );
+        let maybe_add_union_note = |i_s: &mut InferenceState| {
             if left.is_union(i_s.db) && !added_note.get() {
                 added_note.set(true);
                 node_ref.add_typing_issue(
@@ -945,22 +1053,33 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 );
             }
         };
+        let on_error = |i_s: &mut InferenceState, class: Option<&Class>| {
+            node_ref.add_typing_issue(
+                i_s.db,
+                IssueType::UnsupportedOperand {
+                    operand: Box::from(op.operand),
+                    left: class.unwrap().format_short(i_s.db),
+                    right: right.format_short(i_s),
+                },
+            );
+            maybe_add_union_note(i_s)
+        };
         left.run_on_value(self.i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, op.magic_method, &|i_s| {
+            value.lookup_implicit(i_s, Some(node_ref), op.magic_method, &|i_s| {
                 node_ref.add_typing_issue(
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
                         left: value.as_type(i_s).format_short(i_s.db),
-                        note: None, // TODO check for unions and stuff
                     },
-                )
+                );
+                maybe_add_union_note(i_s)
             })
         })
         .run_on_value(self.i_s, &mut |i_s, value| {
             value.execute(
                 i_s,
-                &KnownArguments::new(&right, Some(node_ref)),
+                &KnownArguments::new(&right, node_ref),
                 &mut ResultContext::Unknown,
                 OnTypeError {
                     on_overload_mismatch: Some(&on_error),
@@ -998,16 +1117,17 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         is_target: bool,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        let node_ref = NodeRef::new(self.file, node_index);
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.lookup(i_s, name.as_str(), &|i_s| {
+                match value.lookup(i_s, Some(node_ref), name.as_str(), &|i_s| {
                     let object = if value.as_module().is_some() {
                         Box::from("Module")
                     } else {
                         format!("{:?}", value.as_type(i_s).format_short(self.i_s.db)).into()
                     };
-                    NodeRef::new(self.file, node_index).add_typing_issue(
+                    node_ref.add_typing_issue(
                         i_s.db,
                         IssueType::AttributeError {
                             object,
@@ -1100,14 +1220,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         use AtomContent::*;
         let specific = match atom.unpack() {
             Name(n) => return self.infer_name_reference(n),
-            Int(i) => {
-                return check_literal(
-                    self.i_s,
-                    i.index(),
-                    Specific::Integer,
-                    Specific::IntegerLiteral,
-                )
-            }
+            Int(i) => match self.parse_int(i, result_context) {
+                Some(_) => {
+                    let point = Point::new_simple_specific(Specific::IntLiteral, Locality::Todo);
+                    return Inferred::new_and_save(self.file, i.index(), point);
+                }
+                None => Specific::Int,
+            },
             Float(_) => Specific::Float,
             Complex(_) => Specific::Complex,
             Strings(s_o_b) => {
@@ -1131,13 +1250,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 return check_literal(self.i_s, b.index(), Specific::Bytes, Specific::BytesLiteral)
             }
             NoneLiteral => Specific::None,
-            Boolean(b) => {
-                return check_literal(
-                    self.i_s,
-                    b.index(),
-                    Specific::Boolean,
-                    Specific::BooleanLiteral,
-                )
+            Bool(b) => {
+                return check_literal(self.i_s, b.index(), Specific::Bool, Specific::BoolLiteral)
             }
             Ellipsis => Specific::Ellipsis,
             List(list) => {
@@ -1414,7 +1528,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     }
                 }
                 PointType::Specific => match point.specific() {
-                    Specific::Param => {
+                    specific @ (Specific::Param | Specific::SelfParam) => {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         // Performance: This could be improved by not needing to lookup all the
                         // parents all the time.
@@ -1430,11 +1544,15 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     self.use_cached_annotation(annotation)
                                 } else if let Some((function, args)) = self.i_s.current_execution()
                                 {
-                                    function
-                                        .infer_param(self.i_s, node_index, args)
-                                        .resolve_function_return(self.i_s)
+                                    if specific == Specific::SelfParam {
+                                        Inferred::new_saved(self.file, node_index, point)
+                                    } else {
+                                        function.infer_param(self.i_s, node_index, args)
+                                    }
+                                } else if specific == Specific::SelfParam {
+                                    todo!("Inferred::new_saved(self.file, node_index, point)")
                                 } else {
-                                    todo!("{:?}", self.i_s.context)
+                                    todo!("{:?} {:?}", self.i_s.context, specific)
                                 }
                             }
                             FunctionOrLambda::Lambda(lambda) => {
@@ -1489,19 +1607,21 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             NodeRef::new(self.file, func.index()),
                             self.i_s.current_class().copied(),
                         );
+                        // Caches the decorated inference on properly
                         func.decorated(self.i_s)
                     }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators
-                        let name = Name::by_index(&self.file.tree, node_index);
-                        let class = name.expect_class_def();
+                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
+                        let class = name_def.expect_class_def();
                         // Avoid overwriting multi definitions
-                        let mut name_index = name.index();
-                        if self.file.points.get(name_index).type_() == PointType::MultiDefinition {
-                            name_index = name.name_definition().unwrap().index();
+                        if self.file.points.get(name_def.name().index()).type_()
+                            == PointType::MultiDefinition
+                        {
+                            todo!()
                         }
                         self.file.points.set(
-                            name_index,
+                            name_def.index(),
                             Point::new_redirect(self.file_index, class.index(), Locality::Todo),
                         );
                         debug_assert!(self.file.points.get(node_index).calculated());
@@ -1620,5 +1740,11 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     pub fn infer_by_node_index(&mut self, node_index: NodeIndex) -> Inferred {
         self.check_point_cache(node_index)
             .unwrap_or_else(|| todo!())
+    }
+
+    pub fn infer_comprehension(&mut self, comprehension: Comprehension) -> Inferred {
+        let (expr, for_if_clauses) = comprehension.unpack();
+        let clauses = for_if_clauses.iter();
+        todo!()
     }
 }

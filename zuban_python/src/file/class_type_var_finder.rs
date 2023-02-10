@@ -74,17 +74,20 @@ impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
         };
     }
 
-    fn find_in_expression_part(&mut self, node: ExpressionPart<'file>) -> BaseLookup<'file> {
+    fn find_in_expression_part(&mut self, node: ExpressionPart<'file>) {
         match node {
-            ExpressionPart::Atom(atom) => self.find_in_atom(atom),
-            ExpressionPart::Primary(primary) => self.find_in_primary(primary),
+            ExpressionPart::Atom(atom) => {
+                self.find_in_atom(atom);
+            }
+            ExpressionPart::Primary(primary) => {
+                self.find_in_primary(primary);
+            }
             ExpressionPart::BitwiseOr(bitwise_or) => {
                 let (a, b) = bitwise_or.unpack();
                 self.find_in_expression_part(a);
                 self.find_in_expression_part(b);
-                BaseLookup::Other
             }
-            _ => BaseLookup::Other,
+            _ => (),
         }
     }
 

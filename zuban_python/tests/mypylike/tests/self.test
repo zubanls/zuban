@@ -1,0 +1,107 @@
+[case self_as_base_class]
+from typing import Self
+class Foo(Self): ...  # E: Invalid base class "Self" \
+                      # E: Self type is only allowed in annotations within class definition
+class Foo(list[Self]): ...  # E: Self type is only allowed in annotations within class definition
+
+[case self_as_nested_base_class]
+from typing import Self
+class Foo:
+    class Bar(list[Self]): ...  # E: Self type is only allowed in annotations within class definition
+
+[case self_invalid_annotation]
+from typing import Self
+x: Self  # E: Self type is only allowed in annotations within class definition
+def foo(self):
+    x: Self  # E: Self type is only allowed in annotations within class definition
+
+[case self_valid_annotation]
+from typing import Self
+class Foo:
+    x: Self
+    def foo(self):
+        x: Self
+
+[case self_invalid_function]
+from typing import Self
+def foo(self: Self) -> None:  ...  # E: Self type is only allowed in annotations within class definition
+def foo() -> Self: ...  # E: Self type is only allowed in annotations within class definition
+
+[case self_valid_method]
+from typing import Self
+class Foo:
+    x: int
+    def return_self(self: Self) -> Self:
+        reveal_type(self.x)  # N: Revealed type is "int"
+        reveal_type(self)  # N: Revealed type is "Self"
+        return self
+
+reveal_type(Foo().return_self())  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo.return_self(Foo()))  # N: Revealed type is "__main__.Foo"
+
+[case self_valid_method_untyped_input]
+from typing import Self
+class Foo:
+    x: int
+    def return_self(self) -> Self:
+        reveal_type(self.x)  # N: Revealed type is "int"
+        reveal_type(self)  # N: Revealed type is "Self"
+        return self
+
+reveal_type(Foo().return_self())  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().return_self().x)  # N: Revealed type is "int"
+
+[case self_instance_variable1]
+from typing import Self
+class Foo:
+    x: Self
+    y: int
+    def foo(self) -> Self:
+        self.x = self
+        return self.x
+
+reveal_type(Foo().x)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().x.y)  # N: Revealed type is "int"
+
+[case self_instance_variable2]
+from typing import Self
+class Foo:
+    x: Self
+    y: int
+    def foo(self) -> None: ...
+
+reveal_type(Foo().x)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().x.y)  # N: Revealed type is "int"
+
+[case self_instance_variable3]
+from typing import Self
+class Foo:
+    x: Self
+    def foo(self) -> Self:
+        return self.x
+
+
+[case self_with_generics]
+from typing import Self, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Foo(Generic[T]):
+    def foo(self) -> Self:
+        x: Foo[T] = self
+        y: Foo[int] = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "Foo[int]")
+        z: Foo[str] = self  # E: Incompatible types in assignment (expression has type "Self", variable has type "Foo[str]")
+        return self
+
+reveal_type(Foo[int]().foo())  # N: Revealed type is "__main__.Foo[int]"
+
+[case self_with_generics_bound]
+from typing import Self, TypeVar, Generic
+
+T = TypeVar("T", bound=int)
+
+class Foo(Generic[T]):
+    value: T
+    def foo(self: Self):
+        reveal_type(self.value) # N: Revealed type is "T"
+        reveal_type(self.value + 1) # N: Revealed type is "int"

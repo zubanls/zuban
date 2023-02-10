@@ -348,10 +348,6 @@ impl<'db> Name<'db> {
         FunctionDef::new(self.node.parent().unwrap().parent().unwrap())
     }
 
-    pub fn expect_class_def(&self) -> ClassDef<'db> {
-        ClassDef::new(self.node.parent().unwrap().parent().unwrap())
-    }
-
     pub fn expect_type(&self) -> TypeLike<'db> {
         let node = self
             .node
@@ -375,14 +371,6 @@ impl<'db> Name<'db> {
         } else {
             TypeLike::Import
         }
-    }
-
-    pub fn has_self_param_position(&self) -> bool {
-        // Parents are name_definition/param_no_default/parameters
-        let param = self.node.parent().unwrap().parent().unwrap();
-        let params = param.parent().unwrap();
-        // Could also be a kwarg, which is never a self
-        params.is_type(Nonterminal(parameters)) && params.index + 1 == param.index
     }
 
     pub fn parent(&self) -> NameParent<'db> {
@@ -422,6 +410,18 @@ impl<'db> Int<'db> {
     #[inline]
     pub fn as_str(&self) -> &'db str {
         self.node.as_code()
+    }
+
+    pub fn parse(&self) -> Option<i64> {
+        let to_be_parsed = self.as_code();
+        if let Some(stripped) = to_be_parsed.strip_prefix("0x") {
+            i64::from_str_radix(stripped, 16).ok()
+        } else {
+            if to_be_parsed.contains('_') {
+                todo!("Stuff like 100_000")
+            }
+            to_be_parsed.parse().ok()
+        }
     }
 }
 
@@ -1878,7 +1878,11 @@ impl<'db> Assignment<'db> {
 
     pub fn maybe_simple_type_expression_assignment(
         &self,
-    ) -> Option<(NameDefinition<'db>, Expression<'db>)> {
+    ) -> Option<(
+        NameDefinition<'db>,
+        Option<Annotation<'db>>,
+        Expression<'db>,
+    )> {
         match self.unpack() {
             AssignmentContent::Normal(mut targets_, right) => {
                 let first_target = targets_.next().unwrap();
@@ -1893,12 +1897,12 @@ impl<'db> Assignment<'db> {
                 };
                 if let AssignmentRightSide::StarExpressions(star_exprs) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_def, expr));
+                        return Some((name_def, None, expr));
                     }
                 }
                 None
             }
-            AssignmentContent::WithAnnotation(t, _, right) => {
+            AssignmentContent::WithAnnotation(t, annotation_, right) => {
                 let name_def = if let Target::Name(name_def) = t {
                     name_def
                 } else {
@@ -1906,7 +1910,7 @@ impl<'db> Assignment<'db> {
                 };
                 if let Some(AssignmentRightSide::StarExpressions(star_exprs)) = right {
                     if let StarExpressionContent::Expression(expr) = star_exprs.unpack() {
-                        return Some((name_def, expr));
+                        return Some((name_def, Some(annotation_), expr));
                     }
                 }
                 None
@@ -1917,7 +1921,10 @@ impl<'db> Assignment<'db> {
 
     pub fn maybe_simple_type_reassignment(&self) -> Option<Name<'db>> {
         self.maybe_simple_type_expression_assignment()
-            .and_then(|(_, expr)| expr.maybe_name_or_last_primary_name())
+            .and_then(|(_, annot, expr)| match annot {
+                None => expr.maybe_name_or_last_primary_name(),
+                Some(_) => None,
+            })
     }
 }
 
@@ -2360,6 +2367,29 @@ impl<'db> Term<'db> {
     }
 }
 
+impl<'db> ShiftExpr<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        let mut iter = self.node.iter_children();
+        let left = ExpressionPart::new(iter.next().unwrap());
+        let op = iter.next().unwrap().as_code();
+        let right = ExpressionPart::new(iter.next().unwrap());
+        let (magic_method, reverse_magic_method, operand) = if op == ">>" {
+            ("__rshift__", "__rrshift__", ">>")
+        } else {
+            debug_assert_eq!(op, "<<");
+            ("__lshift__", "__rlshift__", "<<")
+        };
+        Operation {
+            left,
+            magic_method,
+            reverse_magic_method,
+            operand,
+            right,
+            index: self.node.index,
+        }
+    }
+}
+
 impl<'db> Disjunction<'db> {
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
         let mut iter = self.node.iter_children();
@@ -2468,7 +2498,7 @@ impl<'db> Iterator for SliceIterator<'db> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         let result = self.0.next().map(|n| {
-            if n.is_type(Nonterminal(slices)) {
+            if n.is_type(Nonterminal(slice)) {
                 SliceContent::Slice(Slice::new(n))
             } else {
                 SliceContent::NamedExpression(NamedExpression::new(n))
@@ -2666,6 +2696,10 @@ impl<'db> NameDefinition<'db> {
         }
     }
 
+    pub fn expect_class_def(&self) -> ClassDef<'db> {
+        ClassDef::new(self.node.parent().unwrap())
+    }
+
     pub fn maybe_primary_parent(&self) -> Option<Primary<'db>> {
         let parent = self.node.parent().unwrap();
         if parent.is_type(Nonterminal(primary)) {
@@ -2720,7 +2754,7 @@ impl<'db> Atom<'db> {
             Nonterminal(bytes) => AtomContent::Bytes(Bytes::new(first)),
             PyNodeType::Keyword => match first.as_code() {
                 "None" => AtomContent::NoneLiteral,
-                "True" | "False" => AtomContent::Boolean(Keyword::new(first)),
+                "True" | "False" => AtomContent::Bool(Keyword::new(first)),
                 "..." => AtomContent::Ellipsis,
                 "(" => {
                     let next_node = iter.next().unwrap();
@@ -2787,7 +2821,7 @@ pub enum AtomContent<'db> {
     Bytes(Bytes<'db>),
 
     NoneLiteral,
-    Boolean(Keyword<'db>),
+    Bool(Keyword<'db>),
     Ellipsis,
 
     List(List<'db>),
@@ -2880,7 +2914,7 @@ impl<'db> StringLiteral<'db> {
         self.node
             .parent_until(&[Nonterminal(assignment)])
             .and_then(|n| Assignment::new(n).maybe_simple_type_expression_assignment())
-            .map(|(name, _)| name)
+            .map(|(name, _, _)| name)
     }
 
     pub fn as_python_string(&self) -> PythonString<'db> {

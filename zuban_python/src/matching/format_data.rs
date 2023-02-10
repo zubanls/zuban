@@ -119,13 +119,11 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
     pub fn format_type_var_like(
         &self,
         type_var_usage: &TypeVarLikeUsage,
-        style: ParamsStyle,
+        params_style: ParamsStyle,
     ) -> Box<str> {
         if let Some(matcher) = self.matcher {
-            if matcher.has_type_var_matcher() {
-                return matcher.format_in_type_var_matcher(type_var_usage, self, style);
-            }
+            return matcher.format(type_var_usage, self, params_style);
         }
-        type_var_usage.format_without_matcher(self.db, self.style, style)
+        type_var_usage.format_without_matcher(self.db, self.style, params_style)
     }
 }

@@ -90,7 +90,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
         "list"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         Instance::new(
             Class::from_position(
                 NodeRef::from_link(i_s.db, i_s.db.python_state.builtins_point_link("list")),
@@ -99,7 +104,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
             ),
             Some(self.type_instance_ref(i_s)),
         )
-        .lookup_internal(i_s, name)
+        .lookup_internal(i_s, node_ref, name)
     }
 
     fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
@@ -277,7 +282,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for DictLiteral<'a> {
         "dict"
     }
 
-    fn lookup_internal(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
         todo!()
     }
 

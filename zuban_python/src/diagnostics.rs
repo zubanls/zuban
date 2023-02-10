@@ -28,11 +28,12 @@ pub(crate) enum IssueType {
     TypeArgumentIssue { class: Box<str>, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
     NotCallable { type_: Box<str> },
+    AnyNotCallable,
     NotIterable { type_: Box<str> },
     InvalidCallableParams,
     InvalidCallableArgCount,
     UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
-    UnsupportedLeftOperand { operand: Box<str>, left: Box<str>, note: Option<Box<str>> },
+    UnsupportedLeftOperand { operand: Box<str>, left: Box<str> },
     InvalidGetItem { actual: Box<str>, type_: Box<str>, expected: Box<str> },
     NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
@@ -68,6 +69,9 @@ pub(crate) enum IssueType {
     MultipleTypeVarTuplesInClassDef,
     BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
+    InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
+    UnexpectedComprehension,
+    AmbigousClassVariableAccess,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -194,10 +198,17 @@ impl<'db> Diagnostic<'db> {
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
             IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone().into(),
-            IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => format!(
-                "Incompatible default for argument \"{argument_name}\" \
-                 (default has type \"{got}\", argument has type \"{expected}\")"
-            ),
+            IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => {
+                let mut out = format!(
+                    "Incompatible default for argument \"{argument_name}\" \
+                     (default has type \"{got}\", argument has type \"{expected}\")"
+                );
+                if got.as_ref() == "None" {
+                    out += &format!("\n{path}:{line}: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True");
+                    out += &format!("\n{path}:{line}: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase");
+                }
+                out
+            },
             IssueType::TypeNotFound => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())
@@ -243,6 +254,7 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
             IssueType::NotCallable{type_} => format!("{type_} not callable"),
+            IssueType::AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_owned(),
             IssueType::NotIterable{type_} => format!("{type_} object is not iterable"),
             IssueType::InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
@@ -254,21 +266,15 @@ impl<'db> Diagnostic<'db> {
                     "Unsupported operand types for {operand} ({left:?} and {right:?})",
                 )
             }
-            IssueType::UnsupportedLeftOperand{operand, left, note} => {
-                let mut s = format!(
-                    "Unsupported left operand type for {operand} ({left:?})",
-                );
-                if let Some(note) = note {
-                    s += note;
-                }
-                s
-            }
+            IssueType::UnsupportedLeftOperand{operand, left} => format!(
+                "Unsupported left operand type for {operand} ({left:?})"
+            ),
             IssueType::InvalidGetItem{actual, type_, expected} => format!(
                 "Invalid index type {actual:?} for {type_:?}; expected type {expected:?}",
             ),
             IssueType::NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
             IssueType::MethodWithoutArguments => {
-                "Method must have at least one argument".to_owned()
+                "Method must have at least one argument. Did you forget the \"self\" argument?".to_owned()
             }
             IssueType::OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_owned()
@@ -352,6 +358,12 @@ impl<'db> Diagnostic<'db> {
                 format!("Can't use bound type variable \"{name}\" to define generic alias"),
             IssueType::NestedConcatenate =>
                 "Nested Concatenates are invalid".to_owned(),
+            IssueType::InvalidSelfArgument{argument_type, function_name, callable} => format!(
+                "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
+            ),
+            IssueType::UnexpectedComprehension => "Unexpected comprehension".to_owned(),
+            IssueType::AmbigousClassVariableAccess =>
+                "Access to generic instance variables via class is ambiguous".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

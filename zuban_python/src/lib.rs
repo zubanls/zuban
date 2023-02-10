@@ -33,6 +33,7 @@ pub struct Project {
     db: Database,
 }
 
+#[derive(Clone)]
 pub struct ProjectOptions {
     pub path: String,
     pub strict_optional: bool,

@@ -1,14 +1,16 @@
 use std::collections::HashMap;
 use std::env;
 use std::fs::{read_dir, read_to_string};
+use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::time::Instant;
 
+use once_cell::unsync::OnceCell;
 use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 25] = [
+const USE_MYPY_TEST_FILES: [&str; 29] = [
     "check-generics.test",
     "check-generic-alias.test",
     "check-typevar-unbound.test",
@@ -33,7 +35,7 @@ const USE_MYPY_TEST_FILES: [&str; 25] = [
     "check-overloading.test",
     "check-literal.test",
     "check-unions.test",
-    //"check-union-or-syntax.test",
+    "check-union-or-syntax.test",
     //"check-protocols.test",
     //"check-callable.test",
     "check-parameter-specification.test",
@@ -53,10 +55,10 @@ const USE_MYPY_TEST_FILES: [&str; 25] = [
     //"check-underscores.test",
     //"check-redefine.test",
     //"check-dynamic-typing.test",
-    //"check-selftype.test",
+    "check-selftype.test",
     "check-recursive-types.test",
     //"check-typeguard.test",
-    //"check-annotated.test",
+    "check-annotated.test",
     //"check-tuples.test",
     //"check-lists.test",
     //"check-enum.test",
@@ -71,16 +73,17 @@ const USE_MYPY_TEST_FILES: [&str; 25] = [
     //"check-newtype.test",
     //"check-unsupported.test",
     //"check-attr.test",
-    //"check-optional.test",
+    "check-optional.test",
     //"check-unreachable-code.test",
+    //"check-possibly-undefined.test",
     //"check-slots.test",
-    //"check-partially-defined.test",
     "check-typevar-tuple.test",
     //"check-newsyntax.test",
     //"check-fastparse.test",
     //"check-python38.test",
     //"check-python39.test",
     //"check-python310.test",
+    //"check-python311.test",
     //"check-custom-plugin.test",
     "fine-grained.test",
     //"fine-grained-modules.test",
@@ -122,6 +125,8 @@ lazy_static::lazy_static! {
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
+    // Mypy has this weird distinction for literals like Literal[1]?
+    static ref REPLACE_LITERAL_QUESTION_MARK: Regex = Regex::new(r"(Literal\[.*?\])\?").unwrap();
 }
 
 #[derive(Default, Clone, Debug)]
@@ -144,7 +149,7 @@ struct Steps<'code> {
 }
 
 impl<'name, 'code> TestCase<'name, 'code> {
-    fn run(&self, projects: &mut HashMap<BaseConfig, Project>, mypy_compatible_override: bool) {
+    fn run(&self, projects: &mut HashMap<BaseConfig, LazyProject>, mypy_compatible_override: bool) {
         let steps = self.calculate_steps();
         let mut diagnostics_config = DiagnosticConfig::default();
 
@@ -152,7 +157,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             diagnostics_config.ignore_missing_imports = true;
         }
         let mut config = BaseConfig::default();
-        if steps.flags.contains(&"--strict-optional") {
+        if steps.flags.contains(&"--strict-optional") || self.file_name == "check-optional" {
             config.strict_optional = true;
         }
         if steps.flags.contains(&"--implicit-optional") {
@@ -377,6 +382,13 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
         replace_unions(line)
     }
     wanted
+        .into_iter()
+        .map(|line| {
+            REPLACE_LITERAL_QUESTION_MARK
+                .replace_all(&line, r"$1")
+                .into()
+        })
+        .collect()
 }
 
 fn replace_unions(line: &mut String) {
@@ -493,6 +505,40 @@ struct BaseConfig {
     mypy_compatible: bool,
 }
 
+struct LazyProject {
+    project: OnceCell<Project>,
+    options: ProjectOptions,
+}
+
+impl LazyProject {
+    fn new(options: ProjectOptions) -> LazyProject {
+        LazyProject {
+            project: OnceCell::new(),
+            options,
+        }
+    }
+
+    fn init(&self) -> &Project {
+        self.project
+            .get_or_init(|| Project::new(self.options.clone()))
+    }
+}
+
+impl Deref for LazyProject {
+    type Target = Project;
+
+    fn deref(&self) -> &Self::Target {
+        self.init()
+    }
+}
+
+impl DerefMut for LazyProject {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        self.init();
+        self.project.get_mut().unwrap()
+    }
+}
+
 fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(cli_args);
@@ -508,7 +554,7 @@ fn main() {
                 };
                 projects.insert(
                     config,
-                    Project::new(ProjectOptions {
+                    LazyProject::new(ProjectOptions {
                         path: BASE_PATH.to_owned(),
                         implicit_optional: config.implicit_optional,
                         strict_optional: config.strict_optional,

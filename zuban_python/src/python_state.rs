@@ -3,15 +3,19 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, PointType, Specific,
-    TupleContent,
+    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, OverloadedFunction};
-use crate::PythonProject;
+use crate::{InferenceState, PythonProject};
+
+// This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
+// wrong. Basically it goes three nodes back: name_def class literal and then the actual
+// class.
+const NAME_TO_CLASS_DIFF: u32 = 3;
 
 macro_rules! builtins_attribute_node_ref {
     ($name:ident, $attr:ident) => {
@@ -125,73 +129,6 @@ impl PythonState {
         s.types = types;
         s.typing_extensions = typing_extensions;
         s.mypy_extensions = mypy_extensions;
-        let builtins = s.builtins();
-        let typing = s.typing();
-
-        let object_name_index = builtins.symbol_table.lookup_symbol("object").unwrap();
-        let list_name_index = builtins.symbol_table.lookup_symbol("list").unwrap();
-        let tuple_name_index = builtins.symbol_table.lookup_symbol("tuple").unwrap();
-        let dict_name_index = builtins.symbol_table.lookup_symbol("dict").unwrap();
-        let bool_name_index = builtins.symbol_table.lookup_symbol("bool").unwrap();
-        let int_name_index = builtins.symbol_table.lookup_symbol("int").unwrap();
-        let float_name_index = builtins.symbol_table.lookup_symbol("float").unwrap();
-        let complex_name_index = builtins.symbol_table.lookup_symbol("complex").unwrap();
-        let str_name_index = builtins.symbol_table.lookup_symbol("str").unwrap();
-        let bytes_name_index = builtins.symbol_table.lookup_symbol("bytes").unwrap();
-        let bytearray_name_index = builtins.symbol_table.lookup_symbol("bytearray").unwrap();
-        let memoryview_name_index = builtins.symbol_table.lookup_symbol("memoryview").unwrap();
-        let function_name_index = builtins.symbol_table.lookup_symbol("function").unwrap();
-        let base_exception_name_index = builtins
-            .symbol_table
-            .lookup_symbol("BaseException")
-            .unwrap();
-        let typing_mapping_name_index = typing.symbol_table.lookup_symbol("Mapping").unwrap();
-        let module_type_name_index = s.types().symbol_table.lookup_symbol("ModuleType").unwrap();
-
-        s.builtins_object_index = s.builtins().points.get(object_name_index - 1).node_index();
-        s.builtins_list_index = s.builtins().points.get(list_name_index - 1).node_index();
-        s.builtins_dict_index = s.builtins().points.get(dict_name_index - 1).node_index();
-        s.builtins_bool_index = s.builtins().points.get(bool_name_index - 1).node_index();
-        s.builtins_int_index = s.builtins().points.get(int_name_index - 1).node_index();
-        s.builtins_float_index = s.builtins().points.get(float_name_index - 1).node_index();
-        s.builtins_complex_index = s.builtins().points.get(complex_name_index - 1).node_index();
-        s.builtins_tuple_index = s.builtins().points.get(tuple_name_index - 1).node_index();
-        s.builtins_function_index = s
-            .builtins()
-            .points
-            .get(function_name_index - 1)
-            .node_index();
-        s.builtins_base_exception_index = s
-            .builtins()
-            .points
-            .get(base_exception_name_index - 1)
-            .node_index();
-        s.builtins_str_index = s.builtins().points.get(str_name_index - 1).node_index();
-        s.builtins_bytes_index = s.builtins().points.get(bytes_name_index - 1).node_index();
-        s.builtins_bytearray_index = s
-            .builtins()
-            .points
-            .get(bytearray_name_index - 1)
-            .node_index();
-        s.builtins_memoryview_index = s
-            .builtins()
-            .points
-            .get(memoryview_name_index - 1)
-            .node_index();
-
-        s.typing_mapping_index = s
-            .typing()
-            .points
-            .get(typing_mapping_name_index - 1)
-            .node_index();
-        s.types_module_type_index = s
-            .types()
-            .points
-            .get(module_type_name_index - 1)
-            .node_index();
-
-        let object_db_type = s.object_db_type();
-        s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
         typing_changes(
             s.typing(),
@@ -231,6 +168,47 @@ impl PythonState {
             set_mypy_extension_specific(mypy_extensions, "VarArg", Specific::MypyExtensionsVarArg);
         s.mypy_extensions_kw_arg_func =
             set_mypy_extension_specific(mypy_extensions, "KwArg", Specific::MypyExtensionsKwArg);
+
+        // Set class indexes and calculate the base types.
+        // This needs to be done before it gets accessed, because we expect the MRO etc. to be
+        // calculated when a class is accessed. Normally this happens on access, but here we access
+        // classes randomly via db.python_state. Therefore do the calculation here.
+        macro_rules! cache_index {
+            ($attr_name:ident, $db:expr, $module_name:ident, $name:literal) => {
+                let class_index = db
+                    .python_state
+                    .$module_name()
+                    .symbol_table
+                    .lookup_symbol($name)
+                    .unwrap()
+                    - NAME_TO_CLASS_DIFF;
+                $db.python_state.$attr_name = class_index;
+                let module = db.python_state.$module_name();
+                let class =
+                    Class::from_position(NodeRef::new(module, class_index), Generics::Any, None);
+                class.ensure_calculated_class_infos(&mut InferenceState::new(db));
+            };
+        }
+        cache_index!(builtins_object_index, db, builtins, "object");
+        cache_index!(builtins_list_index, db, builtins, "list");
+        cache_index!(builtins_dict_index, db, builtins, "dict");
+        cache_index!(builtins_bool_index, db, builtins, "bool");
+        cache_index!(builtins_int_index, db, builtins, "int");
+        cache_index!(builtins_float_index, db, builtins, "float");
+        cache_index!(builtins_complex_index, db, builtins, "complex");
+        cache_index!(builtins_tuple_index, db, builtins, "tuple");
+        cache_index!(builtins_function_index, db, builtins, "function");
+        cache_index!(builtins_base_exception_index, db, builtins, "BaseException");
+        cache_index!(builtins_str_index, db, builtins, "str");
+        cache_index!(builtins_bytes_index, db, builtins, "bytes");
+        cache_index!(builtins_bytearray_index, db, builtins, "bytearray");
+        cache_index!(builtins_memoryview_index, db, builtins, "memoryview");
+        cache_index!(typing_mapping_index, db, typing, "Mapping");
+        cache_index!(types_module_type_index, db, types, "ModuleType");
+
+        let s = &mut db.python_state;
+        let object_db_type = s.object_db_type();
+        s.type_of_object = DbType::Type(Rc::new(object_db_type));
 
         // Set promotions
         s.int()
@@ -320,10 +298,8 @@ impl PythonState {
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
         let builtins = self.builtins();
-        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap() - 1;
-        let point = builtins.points.get(node_index);
-        debug_assert_eq!(point.type_(), PointType::Redirect);
-        PointLink::new(builtins.file_index(), point.node_index())
+        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
+        PointLink::new(builtins.file_index(), node_index - NAME_TO_CLASS_DIFF)
     }
 
     pub fn function_point_link(&self) -> PointLink {
@@ -374,12 +350,25 @@ impl PythonState {
     pub fn literal_class(&self, literal_kind: LiteralKind) -> Class {
         Class::from_position(
             match literal_kind {
-                LiteralKind::Integer => self.int_node_ref(),
-                LiteralKind::String => self.str_node_ref(),
-                LiteralKind::Boolean => self.bool_node_ref(),
-                LiteralKind::Bytes => self.bytes_node_ref(),
+                LiteralKind::Int(_) => self.int_node_ref(),
+                LiteralKind::String(_) => self.str_node_ref(),
+                LiteralKind::Bool(_) => self.bool_node_ref(),
+                LiteralKind::Bytes(_) => self.bytes_node_ref(),
             },
             Generics::None,
+            None,
+        )
+    }
+
+    pub fn literal_db_type(&self, literal_kind: LiteralKind) -> DbType {
+        DbType::Class(
+            match literal_kind {
+                LiteralKind::Int(_) => self.int_node_ref(),
+                LiteralKind::String(_) => self.str_node_ref(),
+                LiteralKind::Bool(_) => self.bool_node_ref(),
+                LiteralKind::Bytes(_) => self.bytes_node_ref(),
+            }
+            .as_link(),
             None,
         )
     }
@@ -411,6 +400,8 @@ fn typing_changes(
     set_typing_inference(typing, "TypedDict", Specific::TypedDict);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
+    set_typing_inference(typing, "Self", Specific::TypingSelf);
+    set_typing_inference(typing, "Annotated", Specific::TypingAnnotated);
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
@@ -438,9 +429,12 @@ fn typing_changes(
     set_typing_inference(t, "TypedDict", Specific::TypedDict);
     set_typing_inference(t, "Unpack", Specific::TypingUnpack);
     set_typing_inference(t, "ParamSpec", Specific::TypingParamSpecClass);
+    set_typing_inference(t, "TypeVar", Specific::TypingTypeVarClass);
     set_typing_inference(t, "TypeVarTuple", Specific::TypingTypeVarTupleClass);
     set_typing_inference(t, "Concatenate", Specific::TypingConcatenateClass);
     set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
+    set_typing_inference(t, "Self", Specific::TypingSelf);
+    set_typing_inference(t, "Annotated", Specific::TypingAnnotated);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
@@ -457,6 +451,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "ParamSpec",
         "Unpack",
         "TypeAlias",
+        "Self",
     ]
     .contains(&name)
     {

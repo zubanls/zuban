@@ -2,8 +2,8 @@ use std::fmt;
 
 use parsa_python_ast::{
     Annotation, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression, Expression, Factor,
-    ImportFrom, Int, Name, NamedExpression, NodeIndex, Primary, PythonString, StarredExpression,
-    StringLiteral,
+    ImportFrom, Int, Name, NameDefinition, NamedExpression, NodeIndex, Primary, PythonString,
+    StarredExpression, StringLiteral,
 };
 
 use crate::database::{
@@ -30,6 +30,7 @@ impl<'file> std::cmp::PartialEq for NodeRef<'file> {
 }
 
 impl<'file> NodeRef<'file> {
+    #[inline]
     pub fn new(file: &'file PythonFile, node_index: NodeIndex) -> Self {
         Self { file, node_index }
     }
@@ -55,6 +56,7 @@ impl<'file> NodeRef<'file> {
         unsafe { std::mem::transmute(self) }
     }
 
+    #[inline]
     pub fn add_to_node_index(&self, add: NodeIndex) -> Self {
         Self::new(self.file, self.node_index + add)
     }
@@ -105,6 +107,10 @@ impl<'file> NodeRef<'file> {
         Name::by_index(&self.file.tree, self.node_index)
     }
 
+    pub fn as_name_def(&self) -> NameDefinition<'file> {
+        NameDefinition::by_index(&self.file.tree, self.node_index)
+    }
+
     pub fn as_annotation(&self) -> Annotation<'file> {
         Annotation::by_index(&self.file.tree, self.node_index)
     }
@@ -144,6 +150,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn maybe_str(&self) -> Option<StringLiteral<'file>> {
         StringLiteral::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_int(&self) -> Int<'file> {
+        Int::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn maybe_class(&self) -> Option<ClassDef<'file>> {
