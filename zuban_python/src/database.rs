@@ -1445,7 +1445,8 @@ impl DbType {
             ),
             CallableParams::Any => CallableParams::Any,
             CallableParams::WithParamSpec(types, param_spec) => {
-                let GenericItem::ParamSpecArgument(mut new) = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec))) else {
+                let result = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec)));
+                let GenericItem::ParamSpecArgument(mut new) = result else {
                     unreachable!()
                 };
                 if let Some(new_spec_type_vars) = new.type_vars {
