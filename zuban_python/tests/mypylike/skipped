@@ -871,11 +871,10 @@ testTypingSelfOverrideVar
 testTypingSelfOverrideVarMulti
 
 # class attributes
-testInferAttributeTypeAndAssignInInit
 self_instance_variable1
-self_instance_variable3
 
 # verify class definitions when setting self
+testInferAttributeTypeAndAssignInInit
 testTypingSelfInternalSafe
 testTypingSelfClashInBodies
 

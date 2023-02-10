@@ -326,6 +326,9 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn resolve_class_type_vars(self, i_s: &mut InferenceState<'db, '_>, class: &Class) -> Self {
+        if matches!(class.generics, Generics::Self_ { .. }) {
+            return self;
+        }
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific {
                 match point.specific() {
