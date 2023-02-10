@@ -6,7 +6,7 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{replace_class_type_vars, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
@@ -111,6 +111,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
             BoundMethodFunction::Callable(c) => return c.as_type(i_s),
         };
         // TODO performance: it may be questionable that we allocate here again.
-        Type::owned(replace_class_type_vars(i_s, &t, &self.instance.class))
+        Type::owned(t)
     }
 }

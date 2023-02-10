@@ -465,7 +465,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         usage.into_generic_item()
                     } else {
                         usage.into_generic_item()
-                        //todo!("Is this even reachable? {in_definition:?}, {:?}, {:?}", self.node_ref.as_link(), class.node_ref.as_link())
                     }
                 },
                 &mut || {
