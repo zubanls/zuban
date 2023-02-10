@@ -787,10 +787,6 @@ testLiteralSubtypeContext
 testLiteralSubtypeContextNested
 testLiteralSubtypeContextGeneric
 
-# "Access to generic instance variables via class is ambiguous"
-testGenericClassAttrUnboundOnClass
-testGenericClassAttrUnboundOnSubClass
-
 # super()
 testSuperExpressionsWhenInheritingFromGenericType
 testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy
@@ -832,7 +828,6 @@ param_spec_with_generic_class
 self_valid_method
 
 # Self tests
-testTypingSelfBasic
 testTypingSelfConflict
 testTypingSelfNonAnnotationUses
 testTypingSelfInternalSafe

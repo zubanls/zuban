@@ -71,6 +71,7 @@ pub(crate) enum IssueType {
     NestedConcatenate,
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     UnexpectedComprehension,
+    AmbigousClassVariableAccess,
 
     BaseExceptionExpected,
     UnsupportedClassScopedImport,
@@ -361,6 +362,8 @@ impl<'db> Diagnostic<'db> {
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
             ),
             IssueType::UnexpectedComprehension => "Unexpected comprehension".to_owned(),
+            IssueType::AmbigousClassVariableAccess =>
+                "Access to generic instance variables via class is ambiguous".to_owned(),
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),

@@ -48,7 +48,7 @@ impl<'a> Type<'a> {
         self.into_cow(db).into_owned()
     }
 
-    fn as_cow(&self, db: &Database) -> Cow<DbType> {
+    pub fn as_cow(&self, db: &Database) -> Cow<DbType> {
         match self {
             Self::Class(class) => Cow::Owned(class.as_db_type(db)),
             Self::Type(t) => Cow::Borrowed(t),

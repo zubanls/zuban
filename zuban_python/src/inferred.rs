@@ -9,8 +9,7 @@ use crate::database::{
     Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
-use crate::file::File;
-use crate::file::PythonFile;
+use crate::file::{use_cached_annotation_type, File, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{
     create_signature_without_self, replace_class_type_vars, FormatData, Generics, ResultContext,
@@ -841,14 +840,25 @@ impl<'db: 'slf, 'slf> Inferred {
     ) -> Option<Self> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
-                PointType::Specific => {
-                    if point.specific() == Specific::Function {
+                PointType::Specific => match point.specific() {
+                    Specific::Function => {
                         let func =
                             Function::new(NodeRef::from_link(i_s.db, *definition), Some(class));
                         let t = func.as_db_type(i_s, FirstParamProperties::InClass(&class));
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
-                }
+                    Specific::AnnotationWithTypeVars => {
+                        if let Some(from) = from {
+                            from.add_typing_issue(i_s.db, IssueType::AmbigousClassVariableAccess);
+                        }
+                        let node_ref = NodeRef::from_link(i_s.db, *definition);
+                        let annotation = node_ref.as_annotation();
+                        let t = use_cached_annotation_type(i_s.db, node_ref.file, annotation);
+                        let t = replace_class_type_vars(i_s, t.as_cow(i_s.db).as_ref(), &class);
+                        return Some(Inferred::execute_db_type(i_s, t));
+                    }
+                    _ => (),
+                },
                 PointType::Complex => {
                     let file = i_s.db.loaded_python_file(definition.file);
                     match file.complex_points.get(point.complex_index()) {
