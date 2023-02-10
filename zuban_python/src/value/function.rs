@@ -464,6 +464,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         }
                         usage.into_generic_item()
                     } else {
+                        // This can happen for example if the return value is a Callable with its
+                        // own type vars.
                         usage.into_generic_item()
                     }
                 },
