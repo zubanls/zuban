@@ -826,7 +826,6 @@ testIncompatibleVariance
 testDecoratorUpdateNestedClass
 testDecoratorUpdateClassInFunction
 param_spec_with_generic_class
-self_valid_method
 
 # Self tests
 testTypingSelfAttrOldVsNewStyle

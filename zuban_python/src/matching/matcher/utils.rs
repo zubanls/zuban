@@ -709,11 +709,14 @@ pub fn create_signature_without_self(
     let type_vars_len = type_vars.map(|t| t.len()).unwrap_or(0);
     let mut matcher = Matcher::new_function_matcher(Some(&instance.class), func, type_vars);
     let instance_t = instance.as_type(i_s);
-    if !expected_type
-        .is_super_type_of(i_s, &mut matcher, &instance_t)
-        .bool()
-    {
-        return None;
+    if !matches!(expected_type.maybe_db_type(), Some(DbType::Self_)) {
+        // TODO It is questionable that we do not match Self here
+        if !expected_type
+            .is_super_type_of(i_s, &mut matcher, &instance_t)
+            .bool()
+        {
+            return None;
+        }
     }
     let mut t = func.as_db_type(i_s, FirstParamProperties::Skip);
     if let Some(type_vars) = type_vars {
