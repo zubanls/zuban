@@ -275,6 +275,7 @@ testParamSpecApplyConcatenateTwice
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 testSelfTypeMultipleTypeVars
+testTypingSelfNonAnnotationUses
 
 # base class: type alias
 testDontSimplifyNoneUnionsWithStrictOptional
@@ -828,12 +829,9 @@ param_spec_with_generic_class
 self_valid_method
 
 # Self tests
-testTypingSelfConflict
-testTypingSelfNonAnnotationUses
-testTypingSelfInternalSafe
-testTypingSelfClashInBodies
-testTypingSelfFine
 testTypingSelfAttrOldVsNewStyle
+# "Method cannot have explicit self annotation and Self type"
+testTypingSelfConflict
 # "Self argument missing for a non-static method"
 # "The erased type of self "None" is not a supertype of its class "__main__.A""
 testSelfTypeNotSelfType
@@ -877,6 +875,10 @@ testTypingSelfOverrideVarMulti
 testInferAttributeTypeAndAssignInInit
 self_instance_variable1
 self_instance_variable3
+
+# verify class definitions when setting self
+testTypingSelfInternalSafe
+testTypingSelfClashInBodies
 
 # untyped (inferred?) instance attributes
 testChangeBaseClassAttributeType
