@@ -8,7 +8,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
-use parsa_python_ast::SliceType as ASTSliceType;
 
 #[derive(Debug)]
 pub struct TypeAlias<'a> {
@@ -46,11 +45,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        let count_given = match slice_type.ast_node {
-            ASTSliceType::Slices(s) => s.iter().count(),
-            _ => 1,
-        };
-        let expected = self.alias.type_vars.len();
         slice_type
             .file
             .inference(i_s)
