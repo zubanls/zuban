@@ -2972,7 +2972,7 @@ impl CallableParams {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
-    pub type_vars: TypeVarLikes,
+    pub type_vars: Option<TypeVarLikes>,
     pub location: PointLink,
     pub name: Option<PointLink>,
     // This is intentionally private, it should not be used anywhere else, because the behavior of
@@ -2984,7 +2984,7 @@ pub struct TypeAlias {
 
 impl TypeAlias {
     pub fn new(
-        type_vars: TypeVarLikes,
+        type_vars: Option<TypeVarLikes>,
         location: PointLink,
         name: Option<PointLink>,
         db_type: Rc<DbType>,
@@ -3002,9 +3002,9 @@ impl TypeAlias {
         if self.is_recursive {
             return DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
-                (!self.type_vars.is_empty()).then(|| {
+                self.type_vars.as_ref().map(|type_vars| {
                     GenericsList::new_generics(
-                        self.type_vars
+                        type_vars
                             .iter()
                             .map(|tv| tv.as_any_generic_item())
                             .collect(),
@@ -3012,7 +3012,7 @@ impl TypeAlias {
                 }),
             )));
         }
-        if self.type_vars.is_empty() {
+        if self.type_vars.is_none() {
             self.db_type.as_ref().clone()
         } else {
             self.db_type
@@ -3032,9 +3032,9 @@ impl TypeAlias {
         if self.is_recursive && !remove_recursive_wrapper {
             return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
-                (!self.type_vars.is_empty()).then(|| {
+                self.type_vars.as_ref().map(|type_vars| {
                     GenericsList::new_generics(
-                        self.type_vars
+                        type_vars
                             .iter()
                             .enumerate()
                             .map(|(i, type_var_like)| match type_var_like {
@@ -3052,7 +3052,7 @@ impl TypeAlias {
                 }),
             ))));
         }
-        if self.type_vars.is_empty() {
+        if self.type_vars.is_none() {
             Cow::Borrowed(self.db_type.as_ref())
         } else {
             Cow::Owned(self.db_type.replace_type_var_likes(db, callable))

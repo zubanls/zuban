@@ -251,7 +251,7 @@ macro_rules! compute_type_application {
                 });
                 if type_vars.len() > 0 {
                     ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
-                        type_vars,
+                        Some(type_vars),
                         $slice_type.as_node_ref().as_link(),
                         None,
                         Rc::new(db_type),
@@ -1348,13 +1348,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         alias: &TypeAlias,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
-        let expected_count = alias.type_vars.len();
+        let expected_count = alias.type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
         let mut given_count = 0;
         let mut generics = vec![];
-        for type_var_like in alias.type_vars.iter() {
-            match type_var_like {
-                TypeVarLike::TypeVar(_) => (),
-                _ => todo!(),
+        if let Some(type_vars) = &alias.type_vars {
+            for type_var_like in type_vars.iter() {
+                match type_var_like {
+                    TypeVarLike::TypeVar(_) => (),
+                    _ => todo!(),
+                }
             }
         }
         for slice_or_simple in slice_type.iter() {
@@ -2153,8 +2155,9 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         let db_type = comp.as_db_type(t, node_ref);
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let is_recursive = comp.is_recursive_alias;
+                        let type_var_likes = type_var_manager.into_type_vars();
                         ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
-                            type_var_manager.into_type_vars(),
+                            (!type_var_likes.is_empty()).then(|| type_var_likes),
                             in_definition,
                             Some(PointLink::new(file.file_index(), name_def.name().index())),
                             Rc::new(db_type),
