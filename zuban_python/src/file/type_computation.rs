@@ -935,14 +935,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut iterator = slice_type.iter();
 
         if let Some(type_vars) = type_vars {
-            let backfill = |comp: &mut Self, generics: &mut Vec<_>, count| {
-                for slice_content in slice_type.iter().take(count) {
-                    generics.push(GenericItem::TypeArgument(
-                        comp.compute_slice_db_type(slice_content),
-                    ));
-                }
-            };
-
             // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
             // ClassWithoutTypeVar.
             let mut done = primary.is_some()
@@ -960,11 +952,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         let t = self.compute_slice_type(slice_content);
                         self.check_restrictions(class, type_var, &slice_content, &t);
                         if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
-                            backfill(self, &mut generics, given_count - 1);
+                            // Backfill the generics
+                            for slice_content in slice_type.iter().take(given_count - 1) {
+                                generics.push(GenericItem::TypeArgument(
+                                    self.compute_slice_db_type(slice_content),
+                                ));
+                            }
                             generics.push(GenericItem::TypeArgument(
                                 self.as_db_type(t, slice_content.as_node_ref()),
                             ));
-                            dbg!(&generics);
                             done = false;
                             break;
                         }
