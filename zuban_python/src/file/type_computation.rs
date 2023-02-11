@@ -953,7 +953,23 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 iterator = slice_type.iter();
             }
         };
-        self.calculate_type_arguments(class, slice_type, &mut generics, iterator, type_var_likes);
+        self.calculate_type_arguments(
+            slice_type,
+            &mut generics,
+            iterator,
+            type_var_likes,
+            &|| Box::from(class.name()),
+            |slf: &mut Self, given_count, expected_count| {
+                slf.add_typing_issue(
+                    slice_type.as_node_ref(),
+                    IssueType::TypeArgumentIssue {
+                        class: Box::from(class.name()),
+                        given_count,
+                        expected_count,
+                    },
+                );
+            },
+        );
         TypeContent::DbType(match type_var_likes {
             None => DbType::Class(class.node_ref.as_link(), None),
             Some(type_vars) => {
@@ -1027,11 +1043,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     #[inline]
     fn calculate_type_arguments(
         &mut self,
-        class: Class,
         slice_type: SliceType,
         generics: &mut Vec<GenericItem>,
         mut iterator: impl Iterator<Item = SliceOrSimple<'x>>,
         type_var_likes: Option<&TypeVarLikes>,
+        get_of: &impl Fn() -> Box<str>,
+        on_count_mismatch: impl FnOnce(&mut Self, usize, usize),
     ) {
         let mut given_count = generics.len();
         let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
@@ -1041,9 +1058,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     TypeVarLike::TypeVar(type_var) => {
                         if let Some(slice_content) = iterator.next() {
                             let t = self.compute_slice_type(slice_content);
-                            self.check_restrictions(type_var, &slice_content, &t, || {
-                                Box::from(class.name())
-                            });
+                            self.check_restrictions(type_var, &slice_content, &t, get_of);
                             given_count += 1;
                             GenericItem::TypeArgument(
                                 self.as_db_type(t, slice_content.as_node_ref()),
@@ -1097,14 +1112,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             given_count += 1;
         }
         if given_count != expected_count {
-            self.add_typing_issue(
-                slice_type.as_node_ref(),
-                IssueType::TypeArgumentIssue {
-                    class: Box::from(class.name()),
-                    expected_count,
-                    given_count,
-                },
-            );
+            on_count_mismatch(self, given_count, expected_count);
             generics.clear();
         }
     }
