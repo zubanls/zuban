@@ -930,7 +930,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let type_vars = class.type_vars(self.inference.i_s);
         let expected_count = type_vars.map(|t| t.len()).unwrap_or(0);
         let mut given_count = 0;
-        let mut had_valid_multi_type_arg = false;
         let mut generics = vec![];
         let mut iterator = slice_type.iter();
 
@@ -990,7 +989,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 slice_type.iter().count() as isize + 1 - expected_count as isize;
                             GenericItem::TypeArguments(TypeArguments::new_fixed_length(
                                 if let Ok(fetch) = fetch.try_into() {
-                                    had_valid_multi_type_arg = true;
+                                    given_count += 1;
                                     iterator
                                         .by_ref()
                                         .take(fetch)
@@ -1030,7 +1029,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             self.compute_slice_db_type(slice_content);
             given_count += 1;
         }
-        if given_count != expected_count && !had_valid_multi_type_arg {
+        if given_count != expected_count {
             self.add_typing_issue(
                 slice_type.as_node_ref(),
                 IssueType::TypeArgumentIssue {
