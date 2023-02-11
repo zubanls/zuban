@@ -873,6 +873,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         GenericsList::generics_from_vec(generics.collect())
     }
 
+    #[inline]
     fn check_restrictions(
         &mut self,
         class: Class,
@@ -973,14 +974,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             }
             if !done {
-                let mut given = generics.len();
                 self.calculate_type_arguments(
                     class,
                     slice_type,
                     &mut generics,
                     iterator,
                     type_var_likes,
-                    &mut given,
                 );
             }
         } else {
@@ -990,7 +989,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 &mut generics,
                 iterator,
                 type_var_likes,
-                &mut 0,
             );
         };
         if done {
@@ -1031,8 +1029,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         generics: &mut Vec<GenericItem>,
         mut iterator: impl Iterator<Item = SliceOrSimple<'x>>,
         type_var_likes: Option<&TypeVarLikes>,
-        given_count: &mut usize,
     ) {
+        let mut given_count = generics.len();
         let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
         if let Some(type_var_likes) = type_var_likes {
             for type_var_like in type_var_likes.iter().skip(generics.len()) {
@@ -1041,7 +1039,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         if let Some(slice_content) = iterator.next() {
                             let t = self.compute_slice_type(slice_content);
                             self.check_restrictions(class, type_var, &slice_content, &t);
-                            *given_count += 1;
+                            given_count += 1;
                             GenericItem::TypeArgument(
                                 self.as_db_type(t, slice_content.as_node_ref()),
                             )
@@ -1054,7 +1052,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             slice_type.iter().count() as isize + 1 - expected_count as isize;
                         GenericItem::TypeArguments(TypeArguments::new_fixed_length(
                             if let Ok(fetch) = fetch.try_into() {
-                                *given_count += 1;
+                                given_count += 1;
                                 iterator
                                     .by_ref()
                                     .take(fetch)
@@ -1067,7 +1065,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         ))
                     }
                     TypeVarLike::ParamSpec(_) => {
-                        *given_count += 1;
+                        given_count += 1;
                         if expected_count == 1 && slice_type.iter().count() != 1 {
                             // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
                             // because "for aesthetic purposes we allow these to be omitted".
@@ -1091,19 +1089,18 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             // Still calculate errors for the rest of the types given. After all they are still
             // expected to be types.
             self.compute_slice_db_type(slice_content);
-            *given_count += 1;
+            given_count += 1;
         }
-        if *given_count != expected_count {
+        if given_count != expected_count {
             self.add_typing_issue(
                 slice_type.as_node_ref(),
                 IssueType::TypeArgumentIssue {
                     class: Box::from(class.name()),
                     expected_count,
-                    given_count: *given_count,
+                    given_count,
                 },
             );
             generics.clear();
-            *given_count = 0;
         }
     }
 
