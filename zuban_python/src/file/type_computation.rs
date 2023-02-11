@@ -939,7 +939,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
             // ClassWithoutTypeVar.
             if done {
-                for type_var_like in tvs.iter() {
+                for (i, type_var_like) in tvs.iter().enumerate() {
                     let TypeVarLike::TypeVar(type_var) = type_var_like else {
                         done = false;
                         given_count = 0;
@@ -952,7 +952,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         self.check_restrictions(class, type_var, &slice_content, &t);
                         if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
                             // Backfill the generics
-                            for slice_content in slice_type.iter().take(given_count - 1) {
+                            for slice_content in slice_type.iter().take(i) {
                                 generics.push(GenericItem::TypeArgument(
                                     self.compute_slice_db_type(slice_content),
                                 ));
@@ -1012,7 +1012,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     // Need to fill the generics, because we might have been in a
                     // ClassWithoutTypeVar case where the generic count is wrong.
                     if generics.is_empty() {
-                        for missing_type_var in type_vars.iter().skip(given_count) {
+                        for missing_type_var in type_vars.iter().skip(generics.len()) {
                             generics.push(missing_type_var.as_any_generic_item())
                         }
                         let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
