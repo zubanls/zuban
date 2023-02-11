@@ -876,10 +876,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     #[inline]
     fn check_restrictions(
         &mut self,
-        class: Class,
         type_var: &TypeVar,
         s: &SliceOrSimple,
         type_: &TypeContent,
+        get_of: impl FnOnce() -> Box<str>,
     ) {
         if let Some(bound) = &type_var.bound {
             // Performance: This could be optimized to not create new objects all the time.
@@ -892,7 +892,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     i_s.db,
                     IssueType::TypeVarBoundViolation {
                         actual: actual.format_short(i_s.db),
-                        of: Box::from(class.name()),
+                        of: get_of(),
                         expected: expected.format_short(i_s.db),
                     },
                 );
@@ -910,7 +910,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     i_s.db,
                     IssueType::InvalidTypeVarValue {
                         type_var_name: Box::from(type_var.name(i_s.db)),
-                        of: format!("{:?}", class.name()).into(),
+                        of: format!("\"{}\"", get_of()).into(),
                         actual: t2.format_short(i_s.db),
                     },
                 );
@@ -993,7 +993,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             };
             if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type(slice_content);
-                self.check_restrictions(class, type_var, &slice_content, &t);
+                self.check_restrictions(type_var, &slice_content, &t, || Box::from(class.name()));
                 if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
                     // Backfill the generics
                     for slice_content in slice_type.iter().take(i) {
@@ -1041,7 +1041,9 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     TypeVarLike::TypeVar(type_var) => {
                         if let Some(slice_content) = iterator.next() {
                             let t = self.compute_slice_type(slice_content);
-                            self.check_restrictions(class, type_var, &slice_content, &t);
+                            self.check_restrictions(type_var, &slice_content, &t, || {
+                                Box::from(class.name())
+                            });
                             given_count += 1;
                             GenericItem::TypeArgument(
                                 self.as_db_type(t, slice_content.as_node_ref()),
