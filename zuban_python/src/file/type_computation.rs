@@ -930,14 +930,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         }
         let type_var_likes = class.type_vars(self.inference.i_s);
 
-        let mut done =
-            primary.is_some() && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation;
         let mut iterator = slice_type.iter();
         let mut generics = vec![];
 
         if let Some(tvs) = type_var_likes {
             // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
             // ClassWithoutTypeVar.
+            let mut done = primary.is_some()
+                && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation;
             if done {
                 for (i, type_var_like) in tvs.iter().enumerate() {
                     let TypeVarLike::TypeVar(type_var) = type_var_like else {
@@ -967,10 +967,21 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         break;
                     }
                 }
-                if done && iterator.next().is_some() {
-                    // We have an unfinished iterator and therefore should abort.
-                    done = false;
-                    iterator = slice_type.iter();
+                if done {
+                    if iterator.next().is_some() {
+                        // We have an unfinished iterator and therefore should abort.
+                        done = false;
+                        iterator = slice_type.iter();
+                    } else {
+                        return TypeContent::ClassWithoutTypeVar(
+                            Inferred::new_unsaved_specific(Specific::SimpleGeneric)
+                                .save_if_unsaved(
+                                    self.inference.i_s.db,
+                                    self.inference.file,
+                                    primary.unwrap().index(),
+                                ),
+                        );
+                    }
                 }
             }
             if !done {
@@ -991,34 +1002,24 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 type_var_likes,
             );
         };
-        if done {
-            TypeContent::ClassWithoutTypeVar(
-                Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
-                    self.inference.i_s.db,
-                    self.inference.file,
-                    primary.unwrap().index(),
-                ),
-            )
-        } else {
-            TypeContent::DbType(match type_var_likes {
-                None => DbType::Class(class.node_ref.as_link(), None),
-                Some(type_vars) => {
-                    // Need to fill the generics, because we might have been in a
-                    // ClassWithoutTypeVar case where the generic count is wrong.
-                    if generics.is_empty() {
-                        for missing_type_var in type_vars.iter().skip(generics.len()) {
-                            generics.push(missing_type_var.as_any_generic_item())
-                        }
-                        let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
-                        generics.truncate(expected_count);
+        TypeContent::DbType(match type_var_likes {
+            None => DbType::Class(class.node_ref.as_link(), None),
+            Some(type_vars) => {
+                // Need to fill the generics, because we might have been in a
+                // ClassWithoutTypeVar case where the generic count is wrong.
+                if generics.is_empty() {
+                    for missing_type_var in type_vars.iter().skip(generics.len()) {
+                        generics.push(missing_type_var.as_any_generic_item())
                     }
-                    DbType::Class(
-                        class.node_ref.as_link(),
-                        Some(GenericsList::generics_from_vec(generics)),
-                    )
+                    let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
+                    generics.truncate(expected_count);
                 }
-            })
-        }
+                DbType::Class(
+                    class.node_ref.as_link(),
+                    Some(GenericsList::generics_from_vec(generics)),
+                )
+            }
+        })
     }
 
     #[inline]
