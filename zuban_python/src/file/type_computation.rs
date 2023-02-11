@@ -933,83 +933,99 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut had_valid_multi_type_arg = false;
         let mut generics = vec![];
         let mut iterator = slice_type.iter();
-        let backfill = |inference: &mut Self, generics: &mut Vec<_>, count| {
-            for slice_content in slice_type.iter().take(count) {
-                generics.push(GenericItem::TypeArgument(
-                    inference.compute_slice_db_type(slice_content),
-                ));
-            }
-        };
+
         if let Some(type_vars) = type_vars {
-            for type_var_like in type_vars.iter() {
-                let generic_item = match type_var_like {
-                    TypeVarLike::TypeVar(type_var) => {
-                        if let Some(slice_content) = iterator.next() {
-                            let t = self.compute_slice_type(slice_content);
-                            self.check_restrictions(class, type_var, &slice_content, &t);
-                            given_count += 1;
-                            if generics.is_empty() {
-                                if matches!(t, TypeContent::ClassWithoutTypeVar(_))
-                                    && primary.is_some()
-                                {
-                                    continue;
-                                } else {
-                                    backfill(self, &mut generics, given_count - 1)
-                                }
-                            }
-                            GenericItem::TypeArgument(
+            let backfill = |comp: &mut Self, generics: &mut Vec<_>, count| {
+                for slice_content in slice_type.iter().take(count) {
+                    generics.push(GenericItem::TypeArgument(
+                        comp.compute_slice_db_type(slice_content),
+                    ));
+                }
+            };
+
+            // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
+            // ClassWithoutTypeVar.
+            let mut done = primary.is_some()
+                && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation;
+            if done {
+                for type_var_like in type_vars.iter() {
+                    let TypeVarLike::TypeVar(type_var) = type_var_like else {
+                        done = false;
+                        given_count = 0;
+                        iterator = slice_type.iter();
+                        break
+                    };
+                    if let Some(slice_content) = iterator.next() {
+                        given_count += 1;
+                        let t = self.compute_slice_type(slice_content);
+                        self.check_restrictions(class, type_var, &slice_content, &t);
+                        if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
+                            backfill(self, &mut generics, given_count - 1);
+                            generics.push(GenericItem::TypeArgument(
                                 self.as_db_type(t, slice_content.as_node_ref()),
-                            )
-                        } else {
-                            if generics.is_empty() {
-                                backfill(self, &mut generics, given_count);
-                            }
-                            type_var_like.as_any_generic_item()
+                            ));
+                            dbg!(&generics);
+                            done = false;
+                            break;
                         }
+                    } else {
+                        break;
                     }
-                    TypeVarLike::TypeVarTuple(_) => {
-                        if generics.is_empty() {
-                            backfill(self, &mut generics, given_count);
-                        }
-                        let fetch =
-                            slice_type.iter().count() as isize + 1 - expected_count as isize;
-                        GenericItem::TypeArguments(TypeArguments::new_fixed_length(
-                            if let Ok(fetch) = fetch.try_into() {
-                                had_valid_multi_type_arg = true;
-                                iterator
-                                    .by_ref()
-                                    .take(fetch)
-                                    .map(|s| self.compute_slice_type_or_type_var_tuple(s))
-                                    .collect()
+                }
+            }
+            if !done {
+                for type_var_like in type_vars.iter().skip(generics.len()) {
+                    let generic_item = match type_var_like {
+                        TypeVarLike::TypeVar(type_var) => {
+                            if let Some(slice_content) = iterator.next() {
+                                let t = self.compute_slice_type(slice_content);
+                                self.check_restrictions(class, type_var, &slice_content, &t);
+                                given_count += 1;
+                                GenericItem::TypeArgument(
+                                    self.as_db_type(t, slice_content.as_node_ref()),
+                                )
                             } else {
-                                // If not enough type arguments are given, an error is raised elsewhere.
-                                Box::new([])
-                            },
-                        ))
-                    }
-                    TypeVarLike::ParamSpec(_) => {
-                        if generics.is_empty() {
-                            backfill(self, &mut generics, given_count);
+                                type_var_like.as_any_generic_item()
+                            }
                         }
-                        if expected_count == 1 && slice_type.iter().count() != 1 {
-                            // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
-                            // because "for aesthetic purposes we allow these to be omitted".
-                            let params =
-                                self.calculate_simplified_param_spec_generics(&mut iterator);
-                            had_valid_multi_type_arg = true;
-                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
-                        } else {
-                            let params = self.calculate_callable_params(
-                                iterator.next().unwrap(),
-                                true,
-                                expected_count == 1,
-                            );
-                            given_count += 1;
-                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                        TypeVarLike::TypeVarTuple(_) => {
+                            let fetch =
+                                slice_type.iter().count() as isize + 1 - expected_count as isize;
+                            GenericItem::TypeArguments(TypeArguments::new_fixed_length(
+                                if let Ok(fetch) = fetch.try_into() {
+                                    had_valid_multi_type_arg = true;
+                                    iterator
+                                        .by_ref()
+                                        .take(fetch)
+                                        .map(|s| self.compute_slice_type_or_type_var_tuple(s))
+                                        .collect()
+                                } else {
+                                    // If not enough type arguments are given, an error is raised elsewhere.
+                                    Box::new([])
+                                },
+                            ))
                         }
-                    }
-                };
-                generics.push(generic_item);
+                        TypeVarLike::ParamSpec(_) => {
+                            if expected_count == 1 && slice_type.iter().count() != 1 {
+                                // PEP 612 allows us to write C[int, str] instead of C[[int, str]],
+                                // because "for aesthetic purposes we allow these to be omitted".
+                                let params =
+                                    self.calculate_simplified_param_spec_generics(&mut iterator);
+                                had_valid_multi_type_arg = true;
+                                GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                            } else {
+                                let params = self.calculate_callable_params(
+                                    iterator.next().unwrap(),
+                                    true,
+                                    expected_count == 1,
+                                );
+                                given_count += 1;
+                                GenericItem::ParamSpecArgument(ParamSpecArgument::new(params, None))
+                            }
+                        }
+                    };
+                    generics.push(generic_item);
+                }
             }
         }
         for slice_content in iterator {
@@ -1030,10 +1046,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             generics.clear();
             given_count = 0;
         }
-        let result = if generics.is_empty()
-            && given_count == expected_count
-            && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation
-        {
+        let result = if generics.is_empty() && expected_count > 0 && given_count == expected_count {
             match primary {
                 Some(primary) => TypeContent::ClassWithoutTypeVar(
                     Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
@@ -1051,7 +1064,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     // Need to fill the generics, because we might have been in a
                     // ClassWithoutTypeVar case where the generic count is wrong.
                     if generics.is_empty() {
-                        backfill(self, &mut generics, given_count);
                         for missing_type_var in type_vars.iter().skip(given_count) {
                             generics.push(missing_type_var.as_any_generic_item())
                         }

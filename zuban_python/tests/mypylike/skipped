@@ -3,6 +3,7 @@ testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
 testRemoveBaseClass
 testRemoveBaseClass2
+overload_not_overlapping_optional
 
 # Fails only without --release
 testModuleAsTypeNoCrash
