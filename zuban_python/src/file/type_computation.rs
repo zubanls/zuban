@@ -934,11 +934,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut generics = vec![];
         let mut iterator = slice_type.iter();
 
+        let mut done =
+            primary.is_some() && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation;
+
         if let Some(type_vars) = type_vars {
             // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
             // ClassWithoutTypeVar.
-            let mut done = primary.is_some()
-                && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation;
             if done {
                 for type_var_like in type_vars.iter() {
                     let TypeVarLike::TypeVar(type_var) = type_var_like else {
@@ -1042,17 +1043,14 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             generics.clear();
             given_count = 0;
         }
-        let result = if generics.is_empty() && expected_count > 0 && given_count == expected_count {
-            match primary {
-                Some(primary) => TypeContent::ClassWithoutTypeVar(
-                    Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
-                        self.inference.i_s.db,
-                        self.inference.file,
-                        primary.index(),
-                    ),
+        if done {
+            TypeContent::ClassWithoutTypeVar(
+                Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
+                    self.inference.i_s.db,
+                    self.inference.file,
+                    primary.unwrap().index(),
                 ),
-                None => unreachable!(),
-            }
+            )
         } else {
             TypeContent::DbType(match type_vars {
                 None => DbType::Class(class.node_ref.as_link(), None),
@@ -1071,8 +1069,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     )
                 }
             })
-        };
-        result
+        }
     }
 
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
