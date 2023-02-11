@@ -47,7 +47,7 @@ pub(crate) enum IssueType {
     UnboundTypeVarLike { type_var_like: TypeVarLike },
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
-    TypeVarBoundViolation { actual: Box<str>, executable: Box<str>, expected: Box<str> },
+    TypeVarBoundViolation { actual: Box<str>, of: Box<str>, expected: Box<str> },
     InvalidTypeVarValue { type_var_name: Box<str>, func: Box<str>, actual: Box<str> },
     CannotInferTypeArgument { index: TypeVarIndex, callable: Box<str> },
     TypeVarCoAndContravariant,
@@ -319,8 +319,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
             IssueType::TypeVarExpected{class} => format!("Free type variable expected in {class}[...]"),
-            IssueType::TypeVarBoundViolation{actual, executable, expected} => format!(
-                "Type argument \"{actual}\" of \"{executable}\" must be a subtype of \"{expected}\"",
+            IssueType::TypeVarBoundViolation{actual, of, expected} => format!(
+                "Type argument \"{actual}\" of \"{of}\" must be a subtype of \"{expected}\"",
             ),
             IssueType::InvalidTypeVarValue{type_var_name, func, actual} =>
                 format!("Value of type variable {type_var_name:?} of {func} cannot be {actual:?}"),

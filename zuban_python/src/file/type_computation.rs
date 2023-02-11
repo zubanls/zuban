@@ -892,7 +892,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     i_s.db,
                     IssueType::TypeVarBoundViolation {
                         actual: actual.format_short(i_s.db),
-                        executable: Box::from(class.name()),
+                        of: Box::from(class.name()),
                         expected: expected.format_short(i_s.db),
                     },
                 );
