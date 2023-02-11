@@ -934,7 +934,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let mut iterator = slice_type.iter();
         let mut generics = vec![];
 
-        let mut given_count = 0;
         if let Some(tvs) = type_var_likes {
             // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
             // ClassWithoutTypeVar.
@@ -942,12 +941,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 for (i, type_var_like) in tvs.iter().enumerate() {
                     let TypeVarLike::TypeVar(type_var) = type_var_like else {
                         done = false;
-                        given_count = 0;
                         iterator = slice_type.iter();
                         break
                     };
                     if let Some(slice_content) = iterator.next() {
-                        given_count += 1;
                         let t = self.compute_slice_type(slice_content);
                         self.check_restrictions(class, type_var, &slice_content, &t);
                         if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
@@ -965,26 +962,26 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         }
                     } else {
                         done = false;
+                        iterator = slice_type.iter();
                         break;
                     }
                 }
                 if done && iterator.next().is_some() {
                     // We have an unfinished iterator and therefore should abort.
                     done = false;
-                    given_count = 0;
                     iterator = slice_type.iter();
                 }
             }
             if !done {
+                let mut given = generics.len();
                 self.calculate_type_arguments(
                     class,
                     slice_type,
                     &mut generics,
                     iterator,
                     type_var_likes,
-                    &mut given_count,
+                    &mut given,
                 );
-                given_count = generics.len();
             }
         } else {
             self.calculate_type_arguments(
@@ -993,9 +990,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 &mut generics,
                 iterator,
                 type_var_likes,
-                &mut given_count,
+                &mut 0,
             );
-            given_count = generics.len();
         };
         if done {
             TypeContent::ClassWithoutTypeVar(
