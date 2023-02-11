@@ -524,7 +524,7 @@ pub fn match_arguments_against_params<
                                         i_s.db,
                                         IssueType::InvalidTypeVarValue {
                                             type_var_name: Box::from(type_var.name(i_s.db)),
-                                            func: diagnostic_string("")
+                                            of: diagnostic_string("")
                                                 .unwrap_or_else(|| Box::from("function")),
                                             actual: expected.format(&FormatData::new_short(i_s.db)),
                                         },

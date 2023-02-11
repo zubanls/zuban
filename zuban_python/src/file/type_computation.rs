@@ -910,7 +910,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     i_s.db,
                     IssueType::InvalidTypeVarValue {
                         type_var_name: Box::from(type_var.name(i_s.db)),
-                        func: format!("{:?}", class.name()).into(),
+                        of: format!("{:?}", class.name()).into(),
                         actual: t2.format_short(i_s.db),
                     },
                 );

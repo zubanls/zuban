@@ -48,7 +48,7 @@ pub(crate) enum IssueType {
     IncompleteGenericOrProtocolTypeVars,
     TypeVarExpected { class: &'static str },
     TypeVarBoundViolation { actual: Box<str>, of: Box<str>, expected: Box<str> },
-    InvalidTypeVarValue { type_var_name: Box<str>, func: Box<str>, actual: Box<str> },
+    InvalidTypeVarValue { type_var_name: Box<str>, of: Box<str>, actual: Box<str> },
     CannotInferTypeArgument { index: TypeVarIndex, callable: Box<str> },
     TypeVarCoAndContravariant,
     TypeVarValuesAndUpperBound,
@@ -322,8 +322,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::TypeVarBoundViolation{actual, of, expected} => format!(
                 "Type argument \"{actual}\" of \"{of}\" must be a subtype of \"{expected}\"",
             ),
-            IssueType::InvalidTypeVarValue{type_var_name, func, actual} =>
-                format!("Value of type variable {type_var_name:?} of {func} cannot be {actual:?}"),
+            IssueType::InvalidTypeVarValue{type_var_name, of, actual} =>
+                format!("Value of type variable {type_var_name:?} of {of} cannot be {actual:?}"),
             IssueType::InvalidCastTarget => "Cast target is not a type".to_owned(),
             IssueType::CannotInferTypeArgument{index, callable} =>
                 format!("Cannot infer type argument {} of {callable}", index.as_usize() + 1),
