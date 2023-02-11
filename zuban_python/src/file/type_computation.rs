@@ -936,72 +936,24 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         if let Some(tvs) = type_var_likes {
             // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
             // ClassWithoutTypeVar.
-            let mut done = primary.is_some()
-                && self.origin == TypeComputationOrigin::ParamTypeCommentOrAnnotation;
-            if done {
-                for (i, type_var_like) in tvs.iter().enumerate() {
-                    let TypeVarLike::TypeVar(type_var) = type_var_like else {
-                        done = false;
-                        iterator = slice_type.iter();
-                        break
-                    };
-                    if let Some(slice_content) = iterator.next() {
-                        let t = self.compute_slice_type(slice_content);
-                        self.check_restrictions(class, type_var, &slice_content, &t);
-                        if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
-                            // Backfill the generics
-                            for slice_content in slice_type.iter().take(i) {
-                                generics.push(GenericItem::TypeArgument(
-                                    self.compute_slice_db_type(slice_content),
-                                ));
-                            }
-                            generics.push(GenericItem::TypeArgument(
-                                self.as_db_type(t, slice_content.as_node_ref()),
-                            ));
-                            done = false;
-                            break;
-                        }
-                    } else {
-                        done = false;
-                        iterator = slice_type.iter();
-                        break;
-                    }
-                }
-                if done {
-                    if iterator.next().is_some() {
-                        // We have an unfinished iterator and therefore should abort.
-                        done = false;
-                        iterator = slice_type.iter();
-                    } else {
-                        return TypeContent::ClassWithoutTypeVar(
-                            Inferred::new_unsaved_specific(Specific::SimpleGeneric)
-                                .save_if_unsaved(
-                                    self.inference.i_s.db,
-                                    self.inference.file,
-                                    primary.unwrap().index(),
-                                ),
-                        );
-                    }
-                }
-            }
-            if !done {
-                self.calculate_type_arguments(
-                    class,
-                    slice_type,
-                    &mut generics,
-                    iterator,
-                    type_var_likes,
-                );
-            }
-        } else {
-            self.calculate_type_arguments(
+            if let Some(result) = self.maybe_class_without_type_var(
                 class,
                 slice_type,
                 &mut generics,
-                iterator,
-                type_var_likes,
-            );
+                &mut iterator,
+                tvs,
+                primary,
+            ) {
+                return result;
+            }
+            if generics.is_empty() {
+                // If some generics are given we just continue the iterator, otherwise we start
+                // fresh. This is a bit weird but helps us avoid recalculating db types that have
+                // already been calculated.
+                iterator = slice_type.iter();
+            }
         };
+        self.calculate_type_arguments(class, slice_type, &mut generics, iterator, type_var_likes);
         TypeContent::DbType(match type_var_likes {
             None => DbType::Class(class.node_ref.as_link(), None),
             Some(type_vars) => {
@@ -1020,6 +972,56 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 )
             }
         })
+    }
+
+    #[inline]
+    fn maybe_class_without_type_var(
+        &mut self,
+        class: Class,
+        slice_type: SliceType<'x>,
+        generics: &mut Vec<GenericItem>,
+        iterator: &mut impl Iterator<Item = SliceOrSimple<'x>>,
+        tvs: &TypeVarLikes,
+        primary: Option<Primary>,
+    ) -> Option<TypeContent<'db, 'db>> {
+        if primary.is_none() || self.origin != TypeComputationOrigin::ParamTypeCommentOrAnnotation {
+            return None;
+        }
+        for (i, type_var_like) in tvs.iter().enumerate() {
+            let TypeVarLike::TypeVar(type_var) = type_var_like else {
+                return None
+            };
+            if let Some(slice_content) = iterator.next() {
+                let t = self.compute_slice_type(slice_content);
+                self.check_restrictions(class, type_var, &slice_content, &t);
+                if !matches!(t, TypeContent::ClassWithoutTypeVar(_)) {
+                    // Backfill the generics
+                    for slice_content in slice_type.iter().take(i) {
+                        generics.push(GenericItem::TypeArgument(
+                            self.compute_slice_db_type(slice_content),
+                        ));
+                    }
+                    generics.push(GenericItem::TypeArgument(
+                        self.as_db_type(t, slice_content.as_node_ref()),
+                    ));
+                    return None;
+                }
+            } else {
+                return None;
+            }
+        }
+        if iterator.next().is_none() {
+            // We have no unfinished iterator and can therefore safely return.
+            Some(TypeContent::ClassWithoutTypeVar(
+                Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
+                    self.inference.i_s.db,
+                    self.inference.file,
+                    primary.unwrap().index(),
+                ),
+            ))
+        } else {
+            None
+        }
     }
 
     #[inline]
