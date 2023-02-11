@@ -1395,33 +1395,27 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         alias: &TypeAlias,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
-        let expected_count = alias.type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
-        let mut given_count = 0;
+        let mut iterator = slice_type.iter();
         let mut generics = vec![];
-        if let Some(type_vars) = &alias.type_vars {
-            for type_var_like in type_vars.iter() {
-                match type_var_like {
-                    TypeVarLike::TypeVar(_) => (),
-                    _ => todo!(),
-                }
-            }
-        }
-        for slice_or_simple in slice_type.iter() {
-            given_count += 1;
-            generics.push(GenericItem::TypeArgument(
-                self.compute_slice_db_type(slice_or_simple),
-            ))
-        }
-        let mismatch = given_count != expected_count;
-        if mismatch {
-            self.add_typing_issue(
-                slice_type.as_node_ref(),
-                IssueType::TypeAliasArgumentIssue {
-                    expected_count,
-                    given_count,
-                },
-            );
-        }
+        let mut mismatch = false;
+        self.calculate_type_arguments(
+            slice_type,
+            &mut generics,
+            iterator,
+            alias.type_vars.as_ref(),
+            &|| Box::from("TODO alias name"),
+            |slf: &mut Self, given_count, expected_count| {
+                mismatch = true;
+                slf.add_typing_issue(
+                    slice_type.as_node_ref(),
+                    IssueType::TypeAliasArgumentIssue {
+                        expected_count,
+                        given_count,
+                    },
+                );
+            },
+        );
+
         self.is_recursive_alias |= alias.is_recursive;
         TypeContent::DbType(
             alias

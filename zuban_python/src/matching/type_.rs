@@ -528,8 +528,7 @@ impl<'a> Type<'a> {
                                     self.simple_matches(i_s, &Type::new(r), variance).bool()
                                 });
                             if m {
-                                todo!();
-                                //return Match::new_true();
+                                return Match::new_true();
                             }
                         }
                     }
