@@ -1693,7 +1693,12 @@ impl DbType {
                 }))
             }
             Self::NewType(_) => todo!(),
-            Self::RecursiveAlias(_) => todo!(),
+            Self::RecursiveAlias(recursive_alias) => {
+                Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                    recursive_alias.link,
+                    recursive_alias.generics.as_ref().map(rewrite_generics),
+                )))
+            }
             Self::Self_ => Self::Self_,
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
