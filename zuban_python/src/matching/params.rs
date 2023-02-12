@@ -708,6 +708,7 @@ pub struct InferrableParam2<'db, 'a, P> {
     pub argument: ParamArgument<'db, 'a>,
 }
 
+#[derive(Debug)]
 pub enum WrappedParamSpecific<'a> {
     PositionalOnly(Option<Type<'a>>),
     PositionalOrKeyword(Option<Type<'a>>),
@@ -716,11 +717,13 @@ pub enum WrappedParamSpecific<'a> {
     DoubleStarred(WrappedDoubleStarred<'a>),
 }
 
+#[derive(Debug)]
 pub enum WrappedStarred<'a> {
     ArbitraryLength(Option<Type<'a>>),
     ParamSpecArgs(&'a ParamSpecUsage),
 }
 
+#[derive(Debug)]
 pub enum WrappedDoubleStarred<'a> {
     ValueType(Option<Type<'a>>),
     ParamSpecKwargs(&'a ParamSpecUsage),

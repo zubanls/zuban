@@ -3045,7 +3045,20 @@ impl TypeAlias {
                                         in_definition: self.location,
                                     })))
                                 }
-                                _ => todo!(),
+                                TypeVarLike::TypeVarTuple(t) => callable(
+                                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
+                                        type_var_tuple: t.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    })),
+                                ),
+                                TypeVarLike::ParamSpec(p) => callable(TypeVarLikeUsage::ParamSpec(
+                                    Cow::Owned(ParamSpecUsage {
+                                        param_spec: p.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    }),
+                                )),
                             })
                             .collect(),
                     )
