@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{ComplexPoint, DbType, TypeAlias as DbTypeAlias};
@@ -52,7 +54,9 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(self.alias.db_type.clone()))
+        Type::owned(DbType::Type(Rc::new(
+            self.alias.as_db_type_and_set_type_vars_any(i_s.db),
+        )))
     }
 
     fn execute(
