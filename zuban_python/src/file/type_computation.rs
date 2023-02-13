@@ -848,6 +848,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                             link,
                             Some(self.compute_generics(s.iter())),
                         ))))
+                        // TODO use this instead!
+                        /*
+                        let type_vars = RecursiveAlias::new(link, None).type_alias(self.inference.i_s.db).type_vars.as_ref();
+                        let generics = self.compute_generics_for_alias(s, type_vars);
+                        TypeContent::DbType(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                            link,
+                            Some(generics),
+                        ))))
+                        */
                     }
                     TypeContent::InvalidVariable(t) => {
                         t.add_issue(
@@ -871,6 +880,44 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let generics = s.map(|c| GenericItem::TypeArgument(self.compute_slice_db_type(c)));
         // TODO use type vars
         GenericsList::generics_from_vec(generics.collect())
+    }
+
+    fn compute_generics_for_alias(
+        &mut self,
+        slice_type: SliceType,
+        type_var_likes: Option<&TypeVarLikes>,
+    ) -> GenericsList {
+        let mut generics = vec![];
+        let mut mismatch = false;
+        self.calculate_type_arguments(
+            slice_type,
+            &mut generics,
+            slice_type.iter(),
+            type_var_likes,
+            &|| Box::from("TODO alias name"),
+            |slf: &mut Self, given_count, expected_count| {
+                mismatch = true;
+                slf.add_typing_issue(
+                    slice_type.as_node_ref(),
+                    IssueType::TypeAliasArgumentIssue {
+                        expected_count,
+                        given_count,
+                    },
+                );
+            },
+        );
+        // TODO merge this with class stuff
+        if mismatch {
+            if let Some(type_var_likes) = type_var_likes {
+                generics.clear();
+                for missing_type_var in type_var_likes.iter().skip(generics.len()) {
+                    generics.push(missing_type_var.as_any_generic_item())
+                }
+            } else {
+                generics.clear();
+            }
+        }
+        GenericsList::generics_from_vec(generics)
     }
 
     #[inline]
@@ -1395,36 +1442,12 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         alias: &TypeAlias,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
-        let mut iterator = slice_type.iter();
-        let mut generics = vec![];
-        let mut mismatch = false;
-        self.calculate_type_arguments(
-            slice_type,
-            &mut generics,
-            iterator,
-            alias.type_vars.as_ref(),
-            &|| Box::from("TODO alias name"),
-            |slf: &mut Self, given_count, expected_count| {
-                mismatch = true;
-                slf.add_typing_issue(
-                    slice_type.as_node_ref(),
-                    IssueType::TypeAliasArgumentIssue {
-                        expected_count,
-                        given_count,
-                    },
-                );
-            },
-        );
-
+        let generics = self.compute_generics_for_alias(slice_type, alias.type_vars.as_ref());
         self.is_recursive_alias |= alias.is_recursive;
         TypeContent::DbType(
             alias
                 .replace_type_var_likes(self.inference.i_s.db, false, &mut |usage| {
-                    if mismatch {
-                        usage.as_type_var_like().as_any_generic_item()
-                    } else {
-                        generics[usage.index().as_usize()].clone()
-                    }
+                    generics[usage.index()].clone()
                 })
                 .into_owned(),
         )
