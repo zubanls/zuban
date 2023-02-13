@@ -2204,9 +2204,13 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 comp.errors_already_calculated = p.calculated();
                 let t = comp.compute_type(expr);
                 let complex = match t {
-                    TypeContent::ClassWithoutTypeVar(i) => {
+                    TypeContent::ClassWithoutTypeVar(i)
+                        if !comp.inference.i_s.db.python_state.project.mypy_compatible =>
+                    {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
-                        return TypeNameLookup::Class(i);
+                        //return TypeNameLookup::Class(i);
+                        // TODO should we really only do this without mypy compatible? why?
+                        todo!()
                     }
                     TypeContent::InvalidVariable(t) if !is_explicit => {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
