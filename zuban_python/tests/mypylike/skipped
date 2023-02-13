@@ -4,6 +4,7 @@ testParamSpecLiteralEllipsis
 testRemoveBaseClass
 testRemoveBaseClass2
 overload_not_overlapping_optional
+recursive_alias_incorrect_generics_inside_no_restrictions
 
 # Fails only without --release
 testModuleAsTypeNoCrash
