@@ -1066,7 +1066,7 @@ impl DbType {
                     already_checked.push(recursive_alias.clone());
                     recursive_alias
                         .type_alias(i_s.db)
-                        .db_type
+                        .db_type()
                         .has_any_internal(i_s, already_checked)
                 }
             }
@@ -2273,7 +2273,7 @@ impl RecursiveAlias {
     pub fn calculated_db_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf DbType {
         let alias = self.type_alias(db);
         if self.generics.is_none() {
-            alias.db_type.as_ref()
+            alias.db_type()
         } else {
             self.calculated_db_type.get_or_init(|| {
                 self.type_alias(db)
@@ -2976,14 +2976,27 @@ impl CallableParams {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+struct CalculatedTypeAlias {
+    // This is intentionally private, it should not be used anywhere else, because the behavior of
+    // a type alias that has `is_recursive` is different.
+    db_type: Rc<DbType>,
+    is_recursive: bool,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+enum TypeAliasState {
+    Valid(CalculatedTypeAlias),
+    Invalid,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct TypeAlias {
     pub type_vars: Option<TypeVarLikes>,
     pub location: PointLink,
     pub name: Option<PointLink>,
-    // This is intentionally private, it should not be used anywhere else, because the behavior of
-    // a type alias that has `is_recursive` is different.
-    db_type: Rc<DbType>,
-    pub is_recursive: bool,
+    // The two attributes around is_recursive are calculated after the TypeAlias is
+    // added to the DB.
+    state: OnceCell<TypeAliasState>,
 }
 
 impl TypeAlias {
@@ -2991,19 +3004,64 @@ impl TypeAlias {
         type_vars: Option<TypeVarLikes>,
         location: PointLink,
         name: Option<PointLink>,
-        db_type: Rc<DbType>,
-        is_recursive: bool,
     ) -> Self {
         Self {
             type_vars,
             location,
             name,
-            db_type,
-            is_recursive,
+            state: OnceCell::new(),
         }
     }
+
+    pub fn new_valid(
+        type_vars: Option<TypeVarLikes>,
+        location: PointLink,
+        name: Option<PointLink>,
+        db_type: Rc<DbType>,
+        is_recursive: bool,
+    ) -> Self {
+        let slf = Self::new(type_vars, location, name);
+        slf.state.set(TypeAliasState::Valid(CalculatedTypeAlias {
+            db_type,
+            is_recursive,
+        }));
+        slf
+    }
+
+    pub fn is_recursive(&self) -> bool {
+        match self.state.get().unwrap() {
+            TypeAliasState::Invalid => unreachable!(),
+            TypeAliasState::Valid(a) => a.is_recursive,
+        }
+    }
+
+    // Should be private!
+    fn db_type(&self) -> &DbType {
+        match self.state.get().unwrap() {
+            TypeAliasState::Invalid => unreachable!(),
+            TypeAliasState::Valid(a) => a.db_type.as_ref(),
+        }
+    }
+
+    pub fn calculating(&self) -> bool {
+        self.state.get().is_none()
+    }
+
+    pub fn set_valid(&self, db_type: DbType, is_recursive: bool) {
+        self.state
+            .set(TypeAliasState::Valid(CalculatedTypeAlias {
+                db_type: Rc::new(db_type),
+                is_recursive,
+            }))
+            .unwrap()
+    }
+
+    pub fn set_invalid(&self) {
+        self.state.set(TypeAliasState::Invalid).unwrap()
+    }
+
     pub fn as_db_type_and_set_type_vars_any(&self, db: &Database) -> DbType {
-        if self.is_recursive {
+        if self.is_recursive() {
             return DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
                 self.type_vars.as_ref().map(|type_vars| {
@@ -3016,14 +3074,14 @@ impl TypeAlias {
                 }),
             )));
         }
+        let db_type = self.db_type();
         if self.type_vars.is_none() {
-            self.db_type.as_ref().clone()
+            db_type.clone()
         } else {
-            self.db_type
-                .replace_type_var_likes(db, &mut |t| match t.in_definition() == self.location {
-                    true => t.as_type_var_like().as_any_generic_item(),
-                    false => t.into_generic_item(),
-                })
+            db_type.replace_type_var_likes(db, &mut |t| match t.in_definition() == self.location {
+                true => t.as_type_var_like().as_any_generic_item(),
+                false => t.into_generic_item(),
+            })
         }
     }
 
@@ -3033,7 +3091,7 @@ impl TypeAlias {
         remove_recursive_wrapper: bool,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> Cow<DbType> {
-        if self.is_recursive && !remove_recursive_wrapper {
+        if self.is_recursive() && !remove_recursive_wrapper {
             return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 self.location,
                 self.type_vars.as_ref().map(|type_vars| {
@@ -3069,10 +3127,11 @@ impl TypeAlias {
                 }),
             ))));
         }
+        let db_type = self.db_type();
         if self.type_vars.is_none() {
-            Cow::Borrowed(self.db_type.as_ref())
+            Cow::Borrowed(db_type)
         } else {
-            Cow::Owned(self.db_type.replace_type_var_likes(db, callable))
+            Cow::Owned(db_type.replace_type_var_likes(db, callable))
         }
     }
 
@@ -3081,7 +3140,7 @@ impl TypeAlias {
     }
 
     pub fn is_class(&self) -> bool {
-        matches!(self.db_type.as_ref(), DbType::Class(_, _))
+        matches!(self.db_type(), DbType::Class(_, _))
     }
 }
 

@@ -250,7 +250,7 @@ macro_rules! compute_type_application {
                     db_type = recalculate_type_vars(&db_type);
                 });
                 if type_vars.len() > 0 {
-                    ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
+                    ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
                         Some(type_vars),
                         $slice_type.as_node_ref().as_link(),
                         None,
@@ -540,7 +540,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 DbType::Any
             }
             TypeContent::TypeAlias(a) => {
-                self.is_recursive_alias = a.is_recursive;
+                self.is_recursive_alias |= a.is_recursive();
                 a.as_db_type_and_set_type_vars_any(self.inference.i_s.db)
             }
             TypeContent::SpecialType(m) => match m {
@@ -1443,7 +1443,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         slice_type: SliceType,
     ) -> TypeContent<'db, 'db> {
         let generics = self.compute_generics_for_alias(slice_type, alias.type_vars.as_ref());
-        self.is_recursive_alias |= alias.is_recursive;
+        self.is_recursive_alias |= alias.is_recursive();
         TypeContent::DbType(
             alias
                 .replace_type_var_likes(self.inference.i_s.db, false, &mut |usage| {
@@ -2157,11 +2157,15 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         let file = self.file;
         let cached_type_node_ref = NodeRef::new(file, assignment.index() + 1);
         let point = cached_type_node_ref.point();
+        debug_assert!(!point.calculating());
         if point.calculated() {
-            return load_cached_type(cached_type_node_ref);
-        } else if point.calculating() {
-            // This means it's a recursive type definition.
-            return TypeNameLookup::RecursiveAlias(cached_type_node_ref.as_link());
+            return match load_cached_type(cached_type_node_ref) {
+                TypeNameLookup::TypeAlias(a) if a.calculating() => {
+                    // This means it's a recursive type definition.
+                    return TypeNameLookup::RecursiveAlias(cached_type_node_ref.as_link());
+                }
+                x => x,
+            };
         }
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
@@ -2180,7 +2184,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
                 TypeNameLookup::NewType(n)
             } else {
-                cached_type_node_ref.set_point(Point::new_calculating());
+                let complex = ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
+                    (!type_var_likes.is_empty()).then(|| type_var_likes),
+                    in_definition,
+                    Some(PointLink::new(file.file_index(), name_def.name().index())),
+                )));
+                cached_type_node_ref.insert_complex(complex, Locality::Todo);
                 let mut type_var_manager = TypeVarManager::default();
                 let mut type_var_callback =
                     |_: &mut InferenceState, _: &_, type_var_like: TypeVarLike, _| {
@@ -2203,7 +2212,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 );
                 comp.errors_already_calculated = p.calculated();
                 let t = comp.compute_type(expr);
-                let complex = match t {
+                let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
+                    unreachable!()
+                };
+                match t {
                     TypeContent::ClassWithoutTypeVar(i)
                         if !comp.inference.i_s.db.python_state.project.mypy_compatible =>
                     {
@@ -2213,7 +2225,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         todo!()
                     }
                     TypeContent::InvalidVariable(t) if !is_explicit => {
-                        cached_type_node_ref.set_point(Point::new_uncalculated());
+                        alias.set_invalid();
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                             NodeRef::new(file, name_def.index()),
                         ));
@@ -2224,16 +2236,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         debug_assert!(!comp.type_var_manager.has_type_vars());
                         let is_recursive = comp.is_recursive_alias;
                         let type_var_likes = type_var_manager.into_type_vars();
-                        ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
-                            (!type_var_likes.is_empty()).then(|| type_var_likes),
-                            in_definition,
-                            Some(PointLink::new(file.file_index(), name_def.name().index())),
-                            Rc::new(db_type),
-                            is_recursive,
-                        )))
+                        let ComplexPoint::TypeAlias(alias) = cached_type_node_ref.complex().unwrap() else {
+                            unreachable!()
+                        };
+                        alias.set_valid(db_type, is_recursive);
                     }
                 };
-                cached_type_node_ref.insert_complex(complex, Locality::Todo);
                 load_cached_type(cached_type_node_ref)
             }
         } else {
