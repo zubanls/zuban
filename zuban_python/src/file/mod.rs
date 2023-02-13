@@ -1,9 +1,9 @@
-mod class_type_var_finder;
 mod diagnostics;
 mod file_state;
 mod inference;
 mod name_binder;
 mod type_computation;
+mod type_var_finder;
 mod utils;
 
 use std::cell::{Cell, RefCell};
@@ -26,7 +26,6 @@ use crate::node_ref::NodeRef;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use crate::workspaces::DirContent;
 use crate::PythonProject;
-pub use class_type_var_finder::ClassTypeVarFinder;
 pub use file_state::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, Leaf, PythonFileLoader,
     Vfs,
@@ -37,6 +36,7 @@ pub use type_computation::{
     use_cached_annotation_type, use_cached_simple_generic_type, BaseClass, TypeComputation,
     TypeComputationOrigin, TypeVarCallbackReturn,
 };
+pub use type_var_finder::TypeVarFinder;
 pub use utils::on_argument_type_error;
 
 #[derive(Default, Debug)]

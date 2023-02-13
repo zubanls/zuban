@@ -13,8 +13,8 @@ use crate::database::{
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::{
-    BaseClass, ClassTypeVarFinder, PythonFile, TypeComputation, TypeComputationOrigin,
-    TypeVarCallbackReturn,
+    BaseClass, PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
+    TypeVarFinder,
 };
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -150,7 +150,7 @@ impl<'db: 'a, 'a> Class<'a> {
             return Self::get_calculated_type_vars(node_ref, point);
         }
 
-        let type_vars = ClassTypeVarFinder::find(&mut self.node_ref.file.inference(i_s), self);
+        let type_vars = TypeVarFinder::find(&mut self.node_ref.file.inference(i_s), self);
         if type_vars.is_empty() {
             self.type_vars_node_ref()
                 .set_point(Point::new_node_analysis(Locality::Todo));

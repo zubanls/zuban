@@ -22,7 +22,7 @@ enum BaseLookup<'file> {
     Other,
 }
 
-pub struct ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
+pub struct TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
     class: &'c Class<'c>,
     type_var_manager: TypeVarManager,
@@ -31,7 +31,7 @@ pub struct ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     had_generic_or_protocol_issue: bool,
 }
 
-impl<'db, 'file, 'i_s, 'b, 'c> ClassTypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
+impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     pub fn find(
         inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
         class: &'c Class<'file>,
