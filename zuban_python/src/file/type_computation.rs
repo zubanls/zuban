@@ -79,7 +79,7 @@ pub(super) enum InvalidVariableType<'a> {
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum TypeComputationOrigin {
-    TypeAliasTypeCommentOrAnnotation,
+    AssignmentTypeCommentOrAnnotation,
     ParamTypeCommentOrAnnotation,
     TypeApplication,
     TypeAlias,
@@ -463,7 +463,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
                 TypeContent::SpecialType(
                     special @ (SpecialType::TypeAlias | SpecialType::Final),
-                ) if self.origin == TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation => {
+                ) if self.origin == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation => {
                     debug_assert!(!is_implicit_optional);
                     self.inference.file.points.set(
                         annotation_index,
@@ -2289,7 +2289,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                             &mut inference,
                             assignment_node_ref.as_link(),
                             &mut x,
-                            TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
+                            TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
                         );
                         comp.cache_annotation_internal(index, expr, false, None);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
@@ -2351,7 +2351,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                         self,
                         assignment_node_ref.as_link(),
                         &mut x,
-                        TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
+                        TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
                     );
                     let t = comp.compute_type(expr);
                     let mut db_type = comp.as_db_type(t, expr_node_ref);

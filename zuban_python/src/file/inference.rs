@@ -472,7 +472,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     self,
                     node_ref.as_link(),
                     &mut x,
-                    TypeComputationOrigin::TypeAliasTypeCommentOrAnnotation,
+                    TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
                 );
                 comp.cache_annotation(annotation, false);
                 comp.into_type_vars(|inf, recalculate_type_vars| {
