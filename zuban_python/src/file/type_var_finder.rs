@@ -24,7 +24,7 @@ enum BaseLookup<'file> {
 
 pub struct TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
-    class: &'c Class<'c>,
+    class: Option<&'c Class<'c>>,
     type_var_manager: TypeVarManager,
     generic_or_protocol_slice: Option<SliceType<'file>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
@@ -32,13 +32,13 @@ pub struct TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
 }
 
 impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
-    pub fn find(
+    pub fn find_class_type_vars(
         inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
         class: &'c Class<'file>,
     ) -> TypeVarLikes {
         let mut finder = Self {
             inference,
-            class,
+            class: Some(class),
             type_var_manager: TypeVarManager::default(),
             generic_or_protocol_slice: None,
             current_generic_or_protocol_index: None,
@@ -184,7 +184,9 @@ impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 if self
                     .class
-                    .maybe_type_var_like_in_parent(self.inference.i_s, &type_var_like)
+                    .and_then(|c| {
+                        c.maybe_type_var_like_in_parent(self.inference.i_s, &type_var_like)
+                    })
                     .is_none()
                 {
                     if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
