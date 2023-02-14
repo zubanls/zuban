@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::*;
 
+use super::TypeVarFinder;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
     DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind, Locality,
@@ -20,6 +21,8 @@ use crate::inferred::Inferred;
 use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
+
+pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {
@@ -2155,17 +2158,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     ) -> TypeNameLookup<'file, 'file> {
         // Use the node star_targets or single_target, because they are not used otherwise.
         let file = self.file;
-        let cached_type_node_ref = NodeRef::new(file, assignment.index() + 1);
+        let cached_type_node_ref =
+            NodeRef::new(file, assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET);
         let point = cached_type_node_ref.point();
         debug_assert!(!point.calculating());
         if point.calculated() {
-            return match load_cached_type(cached_type_node_ref) {
-                TypeNameLookup::TypeAlias(a) if a.calculating() => {
-                    // This means it's a recursive type definition.
-                    return TypeNameLookup::RecursiveAlias(cached_type_node_ref.as_link());
-                }
-                x => x,
-            };
+            return load_cached_type(cached_type_node_ref);
         }
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
@@ -2184,8 +2182,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
                 TypeNameLookup::NewType(n)
             } else {
+                cached_type_node_ref.set_point(Point::new_calculating());
+                let type_var_likes = TypeVarFinder::find_alias_type_vars(self, expr);
                 let complex = ComplexPoint::TypeAlias(Box::new(TypeAlias::new(
-                    (!type_var_likes.is_empty()).then(|| type_var_likes),
+                    (!type_var_likes.is_empty()).then_some(type_var_likes),
                     in_definition,
                     Some(PointLink::new(file.file_index(), name_def.name().index())),
                 )));
@@ -2226,9 +2226,6 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     }
                     TypeContent::InvalidVariable(t) if !is_explicit => {
                         alias.set_invalid();
-                        return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
-                            NodeRef::new(file, name_def.index()),
-                        ));
                     }
                     _ => {
                         let node_ref = NodeRef::new(file, expr.index());
@@ -2443,7 +2440,28 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
 fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
     if let Some(complex) = node_ref.complex() {
         match complex {
-            ComplexPoint::TypeAlias(t) => TypeNameLookup::TypeAlias(t),
+            ComplexPoint::TypeAlias(a) => {
+                if a.calculating() {
+                    // This means it's a recursive type definition.
+                    TypeNameLookup::RecursiveAlias(node_ref.as_link())
+                } else if a.is_invalid() {
+                    let assignment = NodeRef::new(
+                        node_ref.file,
+                        node_ref.node_index - ASSIGNMENT_TYPE_CACHE_OFFSET,
+                    )
+                    .expect_assignment();
+                    let name_def = assignment
+                        .maybe_simple_type_expression_assignment()
+                        .unwrap()
+                        .0;
+                    TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
+                        node_ref.file,
+                        name_def.index(),
+                    )))
+                } else {
+                    TypeNameLookup::TypeAlias(a)
+                }
+            }
             ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
             _ => unreachable!(),
         }

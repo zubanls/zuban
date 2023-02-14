@@ -3021,10 +3021,12 @@ impl TypeAlias {
         is_recursive: bool,
     ) -> Self {
         let slf = Self::new(type_vars, location, name);
-        slf.state.set(TypeAliasState::Valid(CalculatedTypeAlias {
-            db_type,
-            is_recursive,
-        }));
+        slf.state
+            .set(TypeAliasState::Valid(CalculatedTypeAlias {
+                db_type,
+                is_recursive,
+            }))
+            .unwrap();
         slf
     }
 
@@ -3033,6 +3035,10 @@ impl TypeAlias {
             TypeAliasState::Invalid => unreachable!(),
             TypeAliasState::Valid(a) => a.is_recursive,
         }
+    }
+
+    pub fn is_invalid(&self) -> bool {
+        matches!(self.state.get().unwrap(), TypeAliasState::Invalid)
     }
 
     // Should be private!

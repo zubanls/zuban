@@ -1,8 +1,11 @@
 use parsa_python_ast::*;
 
-use super::type_computation::{cache_name_on_class, SpecialType, TypeNameLookup};
+use super::type_computation::{
+    cache_name_on_class, SpecialType, TypeNameLookup, ASSIGNMENT_TYPE_CACHE_OFFSET,
+};
 use crate::database::{
-    Locality, Point, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager,
+    ComplexPoint, Locality, Point, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes,
+    TypeVarManager,
 };
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;
@@ -22,19 +25,19 @@ enum BaseLookup<'file> {
     Other,
 }
 
-pub struct TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
+pub struct TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, 'd> {
     inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
     class: Option<&'c Class<'c>>,
     type_var_manager: TypeVarManager,
-    generic_or_protocol_slice: Option<SliceType<'file>>,
+    generic_or_protocol_slice: Option<SliceType<'d>>,
     current_generic_or_protocol_index: Option<TypeVarIndex>,
     had_generic_or_protocol_issue: bool,
 }
 
-impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
+impl<'db, 'file: 'd, 'i_s, 'b, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, 'd> {
     pub fn find_class_type_vars(
         inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
-        class: &'c Class<'file>,
+        class: &'c Class<'d>,
     ) -> TypeVarLikes {
         let mut finder = Self {
             inference,
@@ -64,7 +67,23 @@ impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
         finder.type_var_manager.into_type_vars()
     }
 
-    fn find_in_expr(&mut self, expr: Expression<'file>) {
+    pub fn find_alias_type_vars(
+        inference: &'c mut Inference<'db, 'file, 'i_s, 'b>,
+        expr: Expression<'d>,
+    ) -> TypeVarLikes {
+        let mut finder = Self {
+            inference,
+            class: None,
+            type_var_manager: TypeVarManager::default(),
+            generic_or_protocol_slice: None,
+            current_generic_or_protocol_index: None,
+            had_generic_or_protocol_issue: false,
+        };
+        finder.find_in_expr(expr);
+        finder.type_var_manager.into_type_vars()
+    }
+
+    fn find_in_expr(&mut self, expr: Expression<'d>) {
         match expr.unpack() {
             ExpressionContent::ExpressionPart(n) => {
                 self.find_in_expression_part(n);
@@ -74,7 +93,7 @@ impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
         };
     }
 
-    fn find_in_expression_part(&mut self, node: ExpressionPart<'file>) {
+    fn find_in_expression_part(&mut self, node: ExpressionPart<'d>) {
         match node {
             ExpressionPart::Atom(atom) => {
                 self.find_in_atom(atom);
@@ -91,7 +110,7 @@ impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
         }
     }
 
-    fn find_in_primary(&mut self, primary: Primary<'file>) -> BaseLookup<'db> {
+    fn find_in_primary(&mut self, primary: Primary<'d>) -> BaseLookup<'db> {
         let base = self.find_in_primary_or_atom(primary.first());
         match primary.second() {
             PrimaryContent::Attribute(name) => {
@@ -167,10 +186,11 @@ impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
                 PythonString::Ref(start, s) => {
-                    todo!()
+                    //todo!()
+                    BaseLookup::Other
                     //self.compute_forward_reference(start, s.to_owned())
                 }
-                PythonString::String(start, s) => todo!(),
+                PythonString::String(start, s) => BaseLookup::Other, // TODO this is wrong
                 PythonString::FString => todo!(),
             },
             _ => BaseLookup::Other,
@@ -178,6 +198,25 @@ impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
     }
 
     fn find_in_name(&mut self, name: Name) -> BaseLookup<'db> {
+        // TODO this whole check is way too hacky.
+        let point = self.inference.file.points.get(name.index());
+        if point.calculated() && point.type_() == PointType::Redirect {
+            let node_ref = point.as_redirected_node_ref(self.inference.i_s.db);
+            if node_ref.file_index() == self.inference.file_index {
+                let redirected_name = node_ref.as_name();
+                if let TypeLike::Assignment(assignment) = redirected_name.expect_type() {
+                    let node_ref = NodeRef::new(
+                        self.inference.file,
+                        assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET,
+                    );
+                    if node_ref.point().calculating() {
+                        // This means that this is probably a recursive type alias being calculated. Just
+                        // ignore.
+                        return BaseLookup::Other;
+                    }
+                }
+            }
+        }
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
             TypeNameLookup::Class(i) => BaseLookup::Class(i),
@@ -219,14 +258,14 @@ impl<'db, 'file, 'i_s, 'b, 'c> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c> {
         }
     }
 
-    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'file>) -> BaseLookup<'db> {
+    fn find_in_primary_or_atom(&mut self, p: PrimaryOrAtom<'d>) -> BaseLookup<'db> {
         match p {
             PrimaryOrAtom::Primary(primary) => self.find_in_primary(primary),
             PrimaryOrAtom::Atom(atom) => self.find_in_atom(atom),
         }
     }
 
-    fn find_in_callable(&mut self, slice_type: SliceType<'file>) {
+    fn find_in_callable(&mut self, slice_type: SliceType<'d>) {
         if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {

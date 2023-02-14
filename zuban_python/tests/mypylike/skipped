@@ -5,6 +5,10 @@ testRemoveBaseClass
 testRemoveBaseClass2
 overload_not_overlapping_optional
 recursive_alias_incorrect_generics_inside_no_restrictions
+testNewAnalyzerAliasToNotReadyMixed
+testRecursiveAliasesMutual
+testRecursiveAliasesProhibited-skip
+testRecursiveAliasImported
 
 # Fails only without --release
 testModuleAsTypeNoCrash
@@ -16,6 +20,7 @@ testValidTypeAliasValuesMoreRestrictive
 testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
+testParamSpecInTypeAliasBasic
 testParamSpecInTypeAliasConcatenate
 testParamSpecInTypeAliasRecursive
 testParamSpecAliasInRuntimeContext

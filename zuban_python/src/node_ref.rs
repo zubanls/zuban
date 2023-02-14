@@ -1,9 +1,9 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Annotation, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression, Expression, Factor,
-    ImportFrom, Int, Name, NameDefinition, NamedExpression, NodeIndex, Primary, PythonString,
-    StarredExpression, StringLiteral,
+    Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression,
+    Expression, Factor, ImportFrom, Int, Name, NameDefinition, NamedExpression, NodeIndex, Primary,
+    PythonString, StarredExpression, StringLiteral,
 };
 
 use crate::database::{
@@ -166,6 +166,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn as_named_expression(&self) -> NamedExpression<'file> {
         NamedExpression::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn expect_assignment(&self) -> Assignment<'file> {
+        Assignment::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn expect_import_from(&self) -> ImportFrom<'file> {
