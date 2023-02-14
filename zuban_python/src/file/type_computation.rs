@@ -2161,10 +2161,14 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         let cached_type_node_ref =
             NodeRef::new(file, assignment.index() + ASSIGNMENT_TYPE_CACHE_OFFSET);
         let point = cached_type_node_ref.point();
-        debug_assert!(!point.calculating());
         if point.calculated() {
             return load_cached_type(cached_type_node_ref);
         }
+        // It is a little bit special that at this point we can have point.calculating(), but this
+        // is due to weird alias recursions where an alias is inferred normally and the type
+        // computation is kind of invoked as a type application. So in some very weird and
+        // recursive cases the calculation is done twice.
+
         if let Some(name) = assignment.maybe_simple_type_reassignment() {
             // For very simple cases like `Foo = int`. Not sure yet if this going to stay.
             let node_ref = NodeRef::new(file, name.index());
