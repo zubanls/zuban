@@ -4,7 +4,6 @@ testParamSpecLiteralEllipsis
 testRemoveBaseClass
 testRemoveBaseClass2
 overload_not_overlapping_optional
-recursive_alias_incorrect_generics_inside_no_restrictions
 
 # Type var finder recursion is not handled, because imports are involved.
 testRecursiveAliasImported

@@ -847,19 +847,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
-                        TypeContent::DbType(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
-                            link,
-                            Some(self.compute_generics(s.iter())),
-                        ))))
-                        // TODO use this instead!
-                        /*
-                        let type_vars = RecursiveAlias::new(link, None).type_alias(self.inference.i_s.db).type_vars.as_ref();
+                        let type_vars = RecursiveAlias::new(link, None)
+                            .type_alias(self.inference.i_s.db)
+                            .type_vars
+                            .as_ref();
                         let generics = self.compute_generics_for_alias(s, type_vars);
                         TypeContent::DbType(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                             link,
                             Some(generics),
                         ))))
-                        */
                     }
                     TypeContent::InvalidVariable(t) => {
                         t.add_issue(
@@ -877,12 +873,6 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 }
             }
         }
-    }
-
-    fn compute_generics(&mut self, s: SliceTypeIterator) -> GenericsList {
-        let generics = s.map(|c| GenericItem::TypeArgument(self.compute_slice_db_type(c)));
-        // TODO use type vars
-        GenericsList::generics_from_vec(generics.collect())
     }
 
     fn compute_generics_for_alias(
