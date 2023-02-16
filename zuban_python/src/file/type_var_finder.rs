@@ -269,17 +269,22 @@ impl<'db, 'file: 'd, 'i_s, 'b, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, '
         if slice_type.iter().count() == 2 {
             let mut iterator = slice_type.iter();
             if let SliceOrSimple::Simple(n) = iterator.next().unwrap() {
+                let expression = n.named_expr.expression();
                 if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
-                    n.named_expr.expression().unpack()
+                    expression.unpack()
                 {
-                    if let AtomContent::List(list) = atom.unpack() {
-                        if let Some(iterator) = list.unpack() {
-                            for i in iterator {
-                                if let StarLikeExpression::NamedExpression(n) = i {
-                                    self.find_in_expr(n.expression());
+                    match atom.unpack() {
+                        AtomContent::List(list) => {
+                            if let Some(iterator) = list.unpack() {
+                                for i in iterator {
+                                    if let StarLikeExpression::NamedExpression(n) = i {
+                                        self.find_in_expr(n.expression());
+                                    }
                                 }
                             }
                         }
+                        AtomContent::Ellipsis => (),
+                        _ => self.find_in_expr(expression),
                     }
                 }
             }
