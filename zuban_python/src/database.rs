@@ -1007,7 +1007,9 @@ impl DbType {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.has_any_internal(i_s, already_checked),
                 GenericItem::TypeArguments(_) => todo!(),
-                GenericItem::ParamSpecArgument(params) => todo!(),
+                GenericItem::ParamSpecArgument(a) => {
+                    a.params.has_any_internal(i_s, already_checked)
+                }
             })
         };
         match self {
@@ -1025,31 +1027,7 @@ impl DbType {
                 .unwrap_or(true),
             Self::Callable(content) => {
                 content.result_type.has_any_internal(i_s, already_checked)
-                    || match &content.params {
-                        CallableParams::Simple(params) => {
-                            params.iter().any(|param| match &param.param_specific {
-                                ParamSpecific::PositionalOnly(t)
-                                | ParamSpecific::PositionalOrKeyword(t)
-                                | ParamSpecific::KeywordOnly(t)
-                                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(
-                                    t,
-                                ))
-                                | ParamSpecific::DoubleStarred(
-                                    DoubleStarredParamSpecific::ValueType(t),
-                                ) => t.has_any_internal(i_s, already_checked),
-                                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
-                                    false
-                                }
-                                ParamSpecific::DoubleStarred(
-                                    DoubleStarredParamSpecific::ParamSpecKwargs(_),
-                                ) => false,
-                            })
-                        }
-                        CallableParams::Any => true,
-                        CallableParams::WithParamSpec(types, param_spec) => {
-                            todo!()
-                        }
-                    }
+                    || content.params.has_any_internal(i_s, already_checked)
             }
             Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,
@@ -2971,6 +2949,32 @@ impl CallableParams {
         match style {
             ParamsStyle::CallableParams => format!("[{params}]").into(),
             _ => params.into(),
+        }
+    }
+
+    fn has_any_internal(
+        &self,
+        i_s: &mut InferenceState,
+        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+    ) -> bool {
+        match self {
+            Self::Simple(params) => params.iter().any(|param| match &param.param_specific {
+                ParamSpecific::PositionalOnly(t)
+                | ParamSpecific::PositionalOrKeyword(t)
+                | ParamSpecific::KeywordOnly(t)
+                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
+                | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => {
+                    t.has_any_internal(i_s, already_checked)
+                }
+                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
+                ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(_)) => {
+                    false
+                }
+            }),
+            Self::WithParamSpec(pre_types, usage) => pre_types
+                .iter()
+                .any(|t| t.has_any_internal(i_s, already_checked)),
+            Self::Any => true,
         }
     }
 }
