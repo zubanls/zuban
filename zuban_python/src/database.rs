@@ -1232,36 +1232,48 @@ impl DbType {
                     // Simplify duplicates & subclass removal
                     let mut i_s = InferenceState::new(db);
                     let mut matcher = Matcher::with_ignored_promotions();
-                    let t = Type::new(&type_);
-                    for entry in entries.iter_mut() {
-                        let current = Type::new(&entry.type_);
-                        if entry.type_.has_any(&mut i_s) || type_.has_any(&mut i_s) {
-                            if entry.type_ == type_ {
-                                return;
-                            }
-                        } else {
-                            match &entry.type_ {
-                                DbType::RecursiveAlias(r1) if r1.generics.is_some() => {
-                                    // Recursive aliases need special handling, because the normal
-                                    // subtype checking will call this function again if generics are
-                                    // available to cache the type. In that case we just avoid
-                                    // complex matching and use a simple heuristic. This won't
-                                    // affect correctness, it might just display a bigger union
-                                    // than necessary.
-                                    if let DbType::RecursiveAlias(r2) = &type_ {
-                                        if r1 == r2 {
-                                            return;
-                                        }
+                    match &type_ {
+                        DbType::RecursiveAlias(r1) if r1.generics.is_some() => {
+                            // Recursive aliases need special handling, because the normal subtype
+                            // checking will call this function again if generics are available to
+                            // cache the type. In that case we just avoid complex matching and use
+                            // a simple heuristic. This won't affect correctness, it might just
+                            // display a bigger union than necessary.
+                            for entry in entries.iter() {
+                                if let DbType::RecursiveAlias(r2) = &entry.type_ {
+                                    if r1 == r2 {
+                                        return;
                                     }
                                 }
-                                _ => {
-                                    if current.is_super_type_of(&mut i_s, &mut matcher, &t).bool() {
-                                        return; // Type is already in the union
-                                    }
-                                    if current.is_sub_type_of(&mut i_s, &mut matcher, &t).bool() {
-                                        // The new type is more general and therefore needs to be used.
-                                        entry.type_ = type_;
+                            }
+                        }
+                        _ => {
+                            let t = Type::new(&type_);
+                            for entry in entries.iter_mut() {
+                                let current = Type::new(&entry.type_);
+                                if entry.type_.has_any(&mut i_s) || type_.has_any(&mut i_s) {
+                                    if entry.type_ == type_ {
                                         return;
+                                    }
+                                } else {
+                                    match &entry.type_ {
+                                        DbType::RecursiveAlias(r) if r.generics.is_some() => (),
+                                        _ => {
+                                            if current
+                                                .is_super_type_of(&mut i_s, &mut matcher, &t)
+                                                .bool()
+                                            {
+                                                return; // Type is already in the union
+                                            }
+                                            if current
+                                                .is_sub_type_of(&mut i_s, &mut matcher, &t)
+                                                .bool()
+                                            {
+                                                // The new type is more general and therefore needs to be used.
+                                                entry.type_ = type_;
+                                                return;
+                                            }
+                                        }
                                     }
                                 }
                             }
