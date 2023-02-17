@@ -17,8 +17,6 @@ testValidTypeAliasValuesMoreRestrictive
 testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
-testTrivialParametersHandledCorrectly
-testParamSpecAliasNested
 testGenericUnionMemberWithTypeVarConstraints
 
 # No recursion tests
@@ -219,6 +217,11 @@ testTypeVarTupleIsNotValidAliasTarget
 # (Hint: Use "T" in function signature to bind "T" inside a function)
 testGenericTypeAliasesRuntimeExpressionsInstance
 testNestedGenericFunctionTypeApplication
+# An unbound ParamSpec in type application
+testParamSpecAliasNested
+
+# ParamSpec is not unbound if working like a T in Callable?
+testTrivialParametersHandledCorrectly
 
 # type var backtracking
 testUnionInference
