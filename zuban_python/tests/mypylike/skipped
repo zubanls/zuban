@@ -3,7 +3,6 @@ testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
 testRemoveBaseClass
 testRemoveBaseClass2
-overload_not_overlapping_optional
 
 # Type var finder recursion is not handled, because imports are involved.
 testRecursiveAliasImported
@@ -19,7 +18,6 @@ testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
 testParamSpecInTypeAliasConcatenate
-testParamSpecAliasInRuntimeContext
 testParamSpecAliasInvalidLocations
 testTrivialParametersHandledCorrectly
 testParamSpecAliasNested
