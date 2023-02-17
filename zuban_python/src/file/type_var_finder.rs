@@ -285,6 +285,8 @@ impl<'db, 'file: 'd, 'i_s, 'b, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, '
                         AtomContent::Ellipsis => (),
                         _ => self.find_in_expr(expression),
                     }
+                } else {
+                    self.find_in_expr(expression)
                 }
             }
             let slice_or_simple = iterator.next().unwrap();
