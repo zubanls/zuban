@@ -254,6 +254,7 @@ testParamSpecInvalidCalls
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
+# https://github.com/python/mypy/issues/14729
 testSelfTypeBadTypeIgnoredInConstructorGeneric
 testSelfTypeRestrictedMethodOverloadInit
 
