@@ -390,6 +390,7 @@ impl<'db: 'a, 'a> Class<'a> {
             Type::Class(*self),
             Some(self.generics),
             class_infos.mro.iter(),
+            self.node_ref == db.python_state.object_node_ref(),
         )
     }
 
@@ -609,6 +610,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
         class: Type<'a>,
         generics: Option<Generics<'a>>,
         iterator: std::slice::Iter<'a, DbType>,
+        returned_object: bool,
     ) -> Self {
         Self {
             db,
@@ -616,7 +618,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
             class: Some(class),
             iterator,
             mro_index: 0,
-            returned_object: false,
+            returned_object,
         }
     }
 }

@@ -612,6 +612,7 @@ impl<'a> Type<'a> {
                                 None => &DbType::Any,
                             })),
                             class_infos.mro.iter(),
+                            false,
                         )
                     }),
                     _ => None,
