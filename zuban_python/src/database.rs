@@ -2944,11 +2944,12 @@ impl CallableParams {
                 if matches!(style, ParamsStyle::CallableParams) {
                     return spec;
                 }
-                pre_types
-                    .iter()
-                    .map(|t| t.format(format_data))
-                    .chain(std::iter::once(spec))
-                    .collect()
+                let parts = pre_types.iter().map(|t| t.format(format_data));
+                if spec.is_empty() {
+                    parts.collect()
+                } else {
+                    parts.chain(std::iter::once(spec)).collect()
+                }
             }
             Self::Any => {
                 return match style {
