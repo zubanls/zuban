@@ -324,33 +324,25 @@ impl<'a> Type<'a> {
                 },
                 DbType::RecursiveAlias(rec1) => {
                     if let Some(class) = value_type.maybe_class(i_s.db) {
-                        let g = rec1.calculated_db_type(i_s.db);
                         let cls_db_type = value_type.as_db_type(i_s.db);
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
-                        if matcher.has_already_matched_recursive_alias(rec1, &cls_db_type) {
-                            return Match::new_true();
-                        } else {
-                            matcher.add_checked_type_recursion(rec1.clone(), cls_db_type);
-                            return Type::new(g)
-                                .matches_internal(i_s, matcher, value_type, variance);
-                        }
+                        return matcher.avoid_recursion(rec1, cls_db_type, |matcher| {
+                            let g = rec1.calculated_db_type(i_s.db);
+                            Type::new(g).matches_internal(i_s, matcher, value_type, variance)
+                        });
                     }
                     match value_type.maybe_db_type() {
                         Some(t @ DbType::RecursiveAlias(rec2)) => {
-                            if matcher.has_already_matched_recursive_alias(rec1, t) {
-                                Match::new_true()
-                            } else {
-                                // We are going to check it, so we mark it as checked.
+                            matcher.avoid_recursion(rec1, t.clone(), |matcher| {
                                 let t1 = rec1.calculated_db_type(i_s.db);
                                 let t2 = rec2.calculated_db_type(i_s.db);
-                                matcher.add_checked_type_recursion(rec1.clone(), t.clone());
                                 Type::new(t1).matches_internal(
                                     i_s,
                                     matcher,
                                     &Type::new(t2),
                                     variance,
                                 )
-                            }
+                            })
                         }
                         _ => {
                             let g = rec1.calculated_db_type(i_s.db);

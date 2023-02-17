@@ -18,15 +18,16 @@ use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, OnTypeError};
 
-struct CheckedTypeRecursion {
+struct CheckedTypeRecursion<'a> {
     recursive_alias1: Rc<RecursiveAlias>,
     type2: DbType,
+    previously_checked: Option<&'a CheckedTypeRecursion<'a>>,
 }
 
 #[derive(Default)]
 pub struct Matcher<'a> {
     pub(super) type_var_matcher: Option<TypeVarMatcher>,
-    checked_type_recursions: Vec<CheckedTypeRecursion>,
+    checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
@@ -555,28 +556,34 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn has_already_matched_recursive_alias(
-        &self,
-        rec1: &RecursiveAlias,
-        rec2: &DbType,
-    ) -> bool {
-        for checked in &self.checked_type_recursions {
-            if rec1 == checked.recursive_alias1.as_ref() && rec2 == &checked.type2 {
-                return true;
-            }
-        }
-        false
-    }
-
-    pub fn add_checked_type_recursion(
+    pub fn avoid_recursion(
         &mut self,
-        recursive_alias1: Rc<RecursiveAlias>,
+        recursive_alias1: &Rc<RecursiveAlias>,
         type2: DbType,
-    ) {
-        self.checked_type_recursions.push(CheckedTypeRecursion {
-            recursive_alias1,
-            type2,
-        })
+        callable: impl FnOnce(&mut Matcher) -> Match,
+    ) -> Match {
+        let mut type_recursion = self.checking_type_recursion.as_ref();
+        while let Some(tr) = type_recursion {
+            if recursive_alias1 == &tr.recursive_alias1 && type2 == tr.type2 {
+                return Match::new_true();
+            }
+            type_recursion = tr.previously_checked;
+        }
+        let mut inner_matcher = Matcher {
+            type_var_matcher: self.type_var_matcher.take(),
+            checking_type_recursion: Some(CheckedTypeRecursion {
+                recursive_alias1: recursive_alias1.clone(),
+                type2,
+                previously_checked: self.checking_type_recursion.as_ref(),
+            }),
+            class: self.class,
+            func_or_callable: self.func_or_callable,
+            ignore_promotions: self.ignore_promotions,
+        };
+        let result = callable(&mut inner_matcher);
+        // Need to move back, because it was moved previously.
+        self.type_var_matcher = inner_matcher.type_var_matcher.take();
+        result
     }
 
     pub fn unwrap_calculated_type_args(self) -> Vec<CalculatedTypeVarLike> {
