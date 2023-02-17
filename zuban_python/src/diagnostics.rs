@@ -30,7 +30,6 @@ pub(crate) enum IssueType {
     NotCallable { type_: Box<str> },
     AnyNotCallable,
     NotIterable { type_: Box<str> },
-    InvalidCallableParams,
     InvalidCallableArgCount,
     UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
     UnsupportedLeftOperand { operand: Box<str>, left: Box<str> },
@@ -42,6 +41,8 @@ pub(crate) enum IssueType {
     DuplicateBaseClass { name: Box<str> },
     CyclicDefinition { name: Box<str> },
     EnsureSingleGenericOrProtocol,
+    InvalidCallableParams,
+    InvalidParamSpecGenerics { got: Box<str> },
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -256,10 +257,6 @@ impl<'db> Diagnostic<'db> {
             IssueType::NotCallable{type_} => format!("{type_} not callable"),
             IssueType::AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_owned(),
             IssueType::NotIterable{type_} => format!("{type_} object is not iterable"),
-            IssueType::InvalidCallableParams => format!(
-                "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
-                 {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"
-            ),
             IssueType::InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_owned(),
             IssueType::UnsupportedOperand{operand, left, right} => {
                 format!(
@@ -294,6 +291,13 @@ impl<'db> Diagnostic<'db> {
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             IssueType::EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
+            IssueType::InvalidCallableParams => format!(
+                "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
+                 {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"
+            ),
+            IssueType::InvalidParamSpecGenerics{got} => format!(
+                "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
+            ),
 
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),

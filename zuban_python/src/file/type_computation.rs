@@ -1302,7 +1302,16 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 slf.check_param(t, first.as_node_ref().node_index)
             ])),
             _ => {
-                slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
+                if from_class_generics {
+                    slf.add_typing_issue(
+                        n.as_node_ref(),
+                        IssueType::InvalidParamSpecGenerics {
+                            got: Box::from(n.named_expr.as_code()),
+                        },
+                    );
+                } else {
+                    slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
+                }
                 CallableParams::Any
             }
         };
