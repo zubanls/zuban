@@ -341,9 +341,9 @@ impl<'a> Type<'a> {
                                 Match::new_true()
                             } else {
                                 // We are going to check it, so we mark it as checked.
-                                matcher.add_checked_type_recursion(rec1.clone(), t.clone());
                                 let t1 = rec1.calculated_db_type(i_s.db);
                                 let t2 = rec2.calculated_db_type(i_s.db);
+                                matcher.add_checked_type_recursion(rec1.clone(), t.clone());
                                 Type::new(t1).matches_internal(
                                     i_s,
                                     matcher,
