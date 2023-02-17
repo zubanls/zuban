@@ -1497,7 +1497,8 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 self.add_typing_issue(slice_type.as_node_ref(), IssueType::NestedConcatenate);
                 TypeContent::Unknown
             }
-            _ => todo!(),
+            TypeContent::Unknown => TypeContent::Unknown,
+            t => todo!("{t:?}"),
         }
     }
 
@@ -1761,7 +1762,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                                 type_var_like: type_var_like.clone(),
                             },
                         );
-                        Some(TypeContent::DbType(DbType::Any))
+                        Some(TypeContent::Unknown)
                     }
                     TypeVarCallbackReturn::NotFound => None,
                 }
