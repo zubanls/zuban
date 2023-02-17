@@ -3,6 +3,9 @@ testSolveParamSpecWithSelfType
 testParamSpecLiteralEllipsis
 testRemoveBaseClass
 testRemoveBaseClass2
+testGenericUnionMemberWithTypeVarConstraints
+testValidTypeAliasValues
+testValidTypeAliasValuesMoreRestrictive
 
 # Type var finder recursion is not handled, because imports are involved.
 testRecursiveAliasImported
@@ -10,14 +13,6 @@ testRecursiveAliasImported
 # Fails only without --release
 testModuleAsTypeNoCrash
 testNonStrictOptional
-
-# new param spec in aliases etc changes
-testValidTypeAliasValues
-testValidTypeAliasValuesMoreRestrictive
-testInvalidParamSpecDefinitionsWithArgsKwargs
-testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
-testUnboundParamSpec
-testGenericUnionMemberWithTypeVarConstraints
 
 # No recursion tests
 testRecursiveDoubleUnionNoCrash
@@ -250,6 +245,10 @@ testUnpackingParamsSpecArgsAndKwargs
 testParamSpecConcatenateFromPep
 param_spec_with_identity_mypy_issue_12278
 
+# Param spec invalid definitions
+testInvalidParamSpecDefinitionsWithArgsKwargs
+testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
+testUnboundParamSpec
 # Param spec invalid calls
 testParamSpecInvalidCalls
 
