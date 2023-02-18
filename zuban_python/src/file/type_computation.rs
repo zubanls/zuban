@@ -940,6 +940,21 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         } else if !type_var.restrictions.is_empty() {
             let t2 = self.as_db_type(type_.clone(), s.as_node_ref());
             let i_s = &mut self.inference.i_s;
+            if let DbType::TypeVar(usage) = &t2 {
+                let type_var2 = &usage.type_var;
+                if !type_var2.restrictions.is_empty()
+                    && type_var2.restrictions.iter().all(|t2| {
+                        type_var.restrictions.iter().any(|t| {
+                            Type::new(t)
+                                .is_simple_super_type_of(i_s, &Type::new(t2))
+                                .bool()
+                        })
+                    })
+                {
+                    // The provided type_var2 is a subset of the type_var restrictions.
+                    return;
+                }
+            }
             let t2 = Type::new(&t2);
             if !type_var
                 .restrictions
