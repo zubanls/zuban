@@ -221,7 +221,7 @@ impl<'a> Type<'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        match self {
+        let result = match self {
             Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type, variance),
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => Self::matches_class(
@@ -363,7 +363,14 @@ impl<'a> Type<'a> {
                     _ => Match::new_false(),
                 },
             },
-        }
+        };
+        debug!(
+            "Match {} against {} -> {:?}",
+            self.format_short(i_s.db),
+            value_type.format_short(i_s.db),
+            result
+        );
+        result
     }
 
     pub fn is_sub_type_of(
