@@ -10,10 +10,6 @@ testValidTypeAliasValuesMoreRestrictive
 # Type var finder recursion is not handled, because imports are involved.
 testRecursiveAliasImported
 
-# Fails only without --release
-testModuleAsTypeNoCrash
-testNonStrictOptional
-
 # No recursion tests
 testRecursiveDoubleUnionNoCrash
 testNoRecursiveExpandInstanceUnionCrashGeneric
