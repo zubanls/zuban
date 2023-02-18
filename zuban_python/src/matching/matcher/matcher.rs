@@ -527,27 +527,25 @@ impl<'a> Matcher<'a> {
                         .nth_usage(db, &type_var_like_usage)
                         .into_generic_item(db);
                 }
-                match self.func_or_callable {
-                    Some(FunctionOrCallable::Function(f)) => {
-                        let func_class = f.class.unwrap();
-                        if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
-                            let type_var_remap = func_class.type_var_remap.unwrap();
-                            match &type_var_remap[type_var_like_usage.index()] {
-                                GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                    self.replace_type_var_likes_for_nested_context(db, t),
-                                ),
-                                GenericItem::TypeArguments(_) => todo!(),
-                                GenericItem::ParamSpecArgument(_) => todo!(),
-                            }
-                        } else {
-                            type_var_like_usage.into_generic_item()
+            }
+            match self.func_or_callable {
+                Some(FunctionOrCallable::Function(f)) => {
+                    let func_class = f.class.unwrap();
+                    if type_var_like_usage.in_definition() == func_class.node_ref.as_link() {
+                        let type_var_remap = func_class.type_var_remap.unwrap();
+                        match &type_var_remap[type_var_like_usage.index()] {
+                            GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                                self.replace_type_var_likes_for_nested_context(db, t),
+                            ),
+                            GenericItem::TypeArguments(_) => todo!(),
+                            GenericItem::ParamSpecArgument(_) => todo!(),
                         }
+                    } else {
+                        type_var_like_usage.into_generic_item()
                     }
-                    Some(FunctionOrCallable::Callable(c)) => todo!(),
-                    None => unreachable!(),
                 }
-            } else {
-                todo!()
+                Some(FunctionOrCallable::Callable(c)) => todo!(),
+                None => unreachable!(),
             }
         })
     }
