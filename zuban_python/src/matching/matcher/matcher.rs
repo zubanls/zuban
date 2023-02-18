@@ -168,18 +168,12 @@ impl<'a> Matcher<'a> {
                         // The remapping of type vars needs to be checked now. In a lot of
                         // cases this is T -> T and S -> S, but it could also be T -> S and S
                         // -> List[T] or something completely arbitrary.
-                        g.matches(i_s, self, value_type, t1.type_var.variance)
-                    } else {
-                        // Happens e.g. for testInvalidNumberOfTypeArgs
-                        // class C:  # Forgot to add type params here
-                        //     def __init__(self, t: T) -> None: pass
-                        if let Some(DbType::TypeVar(v)) = value_type.maybe_db_type() {
-                            if v == t1 {
-                                return Match::new_true();
-                            }
-                        }
-                        Match::new_false()
+                        return g.matches(i_s, self, value_type, t1.type_var.variance);
                     }
+                    // The case that the if does not hit happens e.g. for
+                    // testInvalidNumberOfTypeArgs:
+                    // class C:  # Forgot to add type params here
+                    //     def __init__(self, t: T) -> None: pass
                 } else {
                     todo!(
                         "Probably nested generic functions??? {:?}",
@@ -188,14 +182,16 @@ impl<'a> Matcher<'a> {
                 }
             }
             Some(FunctionOrCallable::Callable(c)) => {
-                Type::owned(DbType::TypeVar(t1.clone())).simple_matches(i_s, value_type, variance)
+                return Type::owned(DbType::TypeVar(t1.clone()))
+                    .simple_matches(i_s, value_type, variance)
             }
-            None => match value_type.maybe_db_type() {
-                Some(DbType::TypeVar(t2)) => {
-                    (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
-                }
-                _ => Match::new_false(),
-            },
+            _ => (),
+        };
+        match value_type.maybe_db_type() {
+            Some(DbType::TypeVar(t2)) => {
+                (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
+            }
+            _ => Match::new_false(),
         }
     }
 
