@@ -255,9 +255,6 @@ testCallConditionalMethodInClassBody
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 
-# Nested class / class in class
-testGenericClassInsideOtherGenericClass
-
 # Class: generic access from outside
 # Type application vs. type declaration
 testGenericTypeAliasesTypeVarBinding
