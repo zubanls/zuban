@@ -14,6 +14,7 @@ use crate::database::{
     StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
     TypeVarLikes, TypeVarUsage, Variance,
 };
+use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, OnTypeError};
@@ -316,35 +317,7 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
-            return Match::new_false()
-        };
-        let params1 = if tv_matcher.match_in_definition == p1.in_definition {
-            let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
-            match &mut calc.type_ {
-                BoundKind::ParamSpecArgument(p) => Cow::Borrowed(p),
-                BoundKind::Uncalculated => {
-                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
-                        CallableParams::Simple(params2_iterator.cloned().collect()),
-                        type_vars2.map(|type_vars| ParamSpecTypeVars {
-                            type_vars: type_vars.0.clone(),
-                            in_definition: type_vars.1,
-                        }),
-                    ));
-                    return matches;
-                }
-                _ => unreachable!(),
-            }
-        } else if let Some(class) = self.class {
-            if class.node_ref.as_link() == p1.in_definition {
-                class.generics().nth_param_spec_usage(i_s.db, p1)
-            } else {
-                todo!()
-            }
-        } else {
-            todo!()
-        };
-        match &params1.params {
+        let match_params = |i_s, matches, params: &_, params2_iterator| match params {
             CallableParams::Simple(params1) => {
                 matches
                     & matches_simple_params(
@@ -357,6 +330,45 @@ impl<'a> Matcher<'a> {
             }
             CallableParams::Any => matches,
             CallableParams::WithParamSpec(_, _) => todo!(),
+        };
+        if let Some(class) = self.class {
+            if self
+                .type_var_matcher
+                .as_ref()
+                .filter(|tvm| tvm.match_in_definition == p1.in_definition)
+                .is_some()
+            {
+                // TODO wtf why is this branch necessary?
+            } else if class.node_ref.as_link() == p1.in_definition {
+                let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
+                return match_params(i_s, matches, &usage.params, params2_iterator);
+            } else {
+                todo!()
+            }
+        }
+        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+            return Match::new_false()
+        };
+        if tv_matcher.match_in_definition == p1.in_definition {
+            let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+            match &mut calc.type_ {
+                BoundKind::ParamSpecArgument(p) => {
+                    match_params(i_s, matches, &p.params, params2_iterator)
+                }
+                BoundKind::Uncalculated => {
+                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
+                        CallableParams::Simple(params2_iterator.cloned().collect()),
+                        type_vars2.map(|type_vars| ParamSpecTypeVars {
+                            type_vars: type_vars.0.clone(),
+                            in_definition: type_vars.1,
+                        }),
+                    ));
+                    matches
+                }
+                _ => unreachable!(),
+            }
+        } else {
+            todo!()
         }
     }
 
