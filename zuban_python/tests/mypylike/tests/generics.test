@@ -694,3 +694,19 @@ class C(B[str, float]): ...
 reveal_type(A[int, str]().x)  # N: Revealed type is "tuple[str, int]"
 reveal_type(B[int, str]().x)  # N: Revealed type is "tuple[tuple[str], list[int]]"
 reveal_type(C().x)  # N: Revealed type is "tuple[tuple[float], list[str]]"
+
+[case self_attribute_inheritance_access]
+from typing import TypeVar, Generic
+
+T = TypeVar("T")
+U = TypeVar("U")
+
+class A(Generic[T, U]):
+    def foo(self):
+        self.x: tuple[U, T]
+class B(A[list[U], tuple[T]]): ...
+class C(B[str, float]): ...
+
+reveal_type(A[int, str]().x)  # N: Revealed type is "tuple[str, int]"
+reveal_type(B[int, str]().x)  # N: Revealed type is "tuple[tuple[str], list[int]]"
+reveal_type(C().x)  # N: Revealed type is "tuple[tuple[float], list[str]]"
