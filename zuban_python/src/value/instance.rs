@@ -77,13 +77,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                             mro_index,
                         )
                 } else {
-                    inf.resolve_class_type_vars(i_s, &self.class)
-                        .bind_instance_descriptors(
-                            i_s,
-                            |i_s| self.as_inferred(i_s),
-                            node_ref,
-                            mro_index,
-                        )
+                    todo!()
                 }
             });
             match result {
