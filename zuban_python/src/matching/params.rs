@@ -73,7 +73,7 @@ pub fn matches_params(
     }
 }
 
-pub fn matches_simple_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
+pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
     i_s: &mut InferenceState<'db, '_>,
     matcher: &mut Matcher,
     mut params1: impl Iterator<Item = P1>,
