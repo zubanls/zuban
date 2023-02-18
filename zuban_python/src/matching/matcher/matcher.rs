@@ -66,19 +66,13 @@ impl<'a> Matcher<'a> {
         function: Function<'a, 'a>,
         type_vars: Option<&TypeVarLikes>,
     ) -> Self {
-        if let Some(type_vars) = type_vars {
-            let m = TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len());
-            Self {
-                class,
-                type_var_matcher: Some(m),
-                func_or_callable: Some(FunctionOrCallable::Function(function)),
-                ..Self::default()
-            }
-        } else {
-            Self {
-                class,
-                ..Self::default()
-            }
+        let type_var_matcher = type_vars
+            .map(|type_vars| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len()));
+        Self {
+            class,
+            type_var_matcher,
+            func_or_callable: Some(FunctionOrCallable::Function(function)),
+            ..Self::default()
         }
     }
 
@@ -184,10 +178,7 @@ impl<'a> Matcher<'a> {
                                 return Match::new_true();
                             }
                         }
-                        todo!(
-                            "TODO free type param annotations; found {:?}",
-                            t1.in_definition,
-                        )
+                        Match::new_false()
                     }
                 } else {
                     todo!(
