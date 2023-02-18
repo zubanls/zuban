@@ -365,12 +365,6 @@ impl<'a> Type<'a> {
                 },
             },
         };
-        debug!(
-            "Match {} against {} -> {:?}",
-            self.format_short(i_s.db),
-            value_type.format_short(i_s.db),
-            result
-        );
         result
     }
 
@@ -419,7 +413,10 @@ impl<'a> Type<'a> {
                 m.or(|| self.matches_object_class(i_s.db, value_type))
             }
         };
-        m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant))
+        let result = m
+            .or(|| {
+                self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Covariant)
+            })
             .or(|| {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
                     if !matcher.ignore_promotions() {
@@ -427,7 +424,14 @@ impl<'a> Type<'a> {
                     }
                 }
                 Match::new_false()
-            })
+            });
+        debug!(
+            "Match covariant {} against {} -> {:?}",
+            self.format_short(i_s.db),
+            value_type.format_short(i_s.db),
+            result
+        );
+        result
     }
 
     #[inline]
@@ -458,7 +462,16 @@ impl<'a> Type<'a> {
         value_type: &Self,
     ) -> Match {
         let m = self.matches_internal(i_s, matcher, value_type, Variance::Invariant);
-        m.or(|| self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant))
+        let result = m.or(|| {
+            self.check_protocol_and_other_side(i_s, matcher, value_type, Variance::Invariant)
+        });
+        debug!(
+            "Match invariant {} against {} -> {:?}",
+            self.format_short(i_s.db),
+            value_type.format_short(i_s.db),
+            result
+        );
+        result
     }
 
     pub fn simple_matches(
