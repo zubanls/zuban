@@ -51,12 +51,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         )
     } else {
         match_in_definition = class.node_ref.as_link();
-        get_matcher(
-            Some(class),
-            func_or_callable,
-            match_in_definition,
-            type_vars,
-        )
+        get_matcher(None, func_or_callable, match_in_definition, type_vars)
     };
 
     if let Some(t) = function.first_param_annotation_type(i_s) {

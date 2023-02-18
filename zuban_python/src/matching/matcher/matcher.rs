@@ -322,14 +322,7 @@ impl<'a> Matcher<'a> {
             CallableParams::WithParamSpec(_, _) => todo!(),
         };
         if let Some(class) = self.class {
-            if self
-                .type_var_matcher
-                .as_ref()
-                .filter(|tvm| tvm.match_in_definition == p1.in_definition)
-                .is_some()
-            {
-                // TODO wtf why is this branch necessary?
-            } else if class.node_ref.as_link() == p1.in_definition {
+            if class.node_ref.as_link() == p1.in_definition {
                 let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
                 return match_params(i_s, matches, &usage.params, params2_iterator);
             } else {
@@ -476,11 +469,11 @@ impl<'a> Matcher<'a> {
                             .nth_usage(format_data.db, usage)
                             .format(&format_data.remove_matcher());
                     }
-                    let func_class = f.class.unwrap();
-                    if usage.in_definition() == func_class.node_ref.as_link() {
-                        let type_var_remap = func_class.type_var_remap.unwrap();
-                        return Generic::new(&type_var_remap[usage.index()]).format(format_data);
-                    }
+                }
+                let func_class = f.class.unwrap();
+                if usage.in_definition() == func_class.node_ref.as_link() {
+                    let type_var_remap = func_class.type_var_remap.unwrap();
+                    return Generic::new(&type_var_remap[usage.index()]).format(format_data);
                 } else {
                     todo!("Probably nested generic functions???")
                 }
