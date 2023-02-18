@@ -128,8 +128,6 @@ testIncludingBaseClassTwice
 
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
-# Cycle for bytes -> ReadOnlyBuffer -> bytes?
-testPromoteBytearrayToByte
 # import cycle
 testBoundGenericMethodParamSpecFine
 # Cycles
@@ -138,7 +136,6 @@ testCyclicUndefinedImportWithStar1
 testCyclicUndefinedImportWithStar2
 testCyclicUndefinedImportWithStar3
 testNewAnalyzerTypeAnnotationCycle4
-testNewAnalyzerVarTypeVarNoCrashImportCycle
 testBoundGenericMethodFine
 testSelfReferentialSubscriptExpression
 testOverrideByIdemAliasCorrectType
