@@ -56,24 +56,33 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
 
     if let Some(t) = function.first_param_annotation_type(i_s) {
         let mut class = *class;
-        // The generics of the class are Any, until we actually execute this function and check the
-        // __init__.
-        debug_assert!(matches!(class.generics, Generics::Any));
-        class.generics = Generics::Self_ {
-            class_definition: class.node_ref.as_link(),
-            type_var_likes: class.type_vars(i_s),
-        };
-        let matches = Type::Class(class).is_super_type_of(
-            &mut i_s.with_class_context(&class),
-            &mut matcher,
-            &t,
-        );
-        if let Match::False { similar, .. } = matches {
-            return CalculatedTypeArguments {
-                in_definition: match_in_definition,
-                matches: SignatureMatch::False { similar },
-                type_arguments: None,
+        if matches!(class.generics, Generics::Any) {
+            class.generics = Generics::Self_ {
+                class_definition: class.node_ref.as_link(),
+                type_var_likes: class.type_vars(i_s),
             };
+            let matches = Type::Class(class).is_super_type_of(
+                &mut i_s.with_class_context(&class),
+                &mut matcher,
+                &t,
+            );
+            if let Match::False { similar, .. } = matches {
+                return CalculatedTypeArguments {
+                    in_definition: match_in_definition,
+                    matches: SignatureMatch::False { similar },
+                    type_arguments: None,
+                };
+            }
+        } else {
+            // Typicall this happens when a class is used with type application, but when a self
+            // type is also available on __init__, e.g.
+            //
+            //      class Foo(Generic[T]):
+            //          def __init__(self: Foo[T], var: T): ...
+            //
+            //      Foo[int](1)
+            //
+            debug!("TODO weird case like testParamSpecLiteralEllipsis");
         }
     }
     if has_generics {
