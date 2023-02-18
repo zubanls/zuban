@@ -1,6 +1,4 @@
 # Next up
-testRemoveBaseClass
-testRemoveBaseClass2
 testGenericUnionMemberWithTypeVarConstraints
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
