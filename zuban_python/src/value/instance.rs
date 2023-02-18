@@ -69,7 +69,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let Some(c) = class.maybe_class(i_s.db) {
                     let mut i_s = i_s.with_class_context(&self.class);
-                    inf.resolve_class_type_vars(&mut i_s, &self.class)
+                    inf.resolve_class_type_vars(&mut i_s.with_class_context(&c), &self.class)
                         .bind_instance_descriptors(
                             &mut i_s,
                             |i_s| self.as_inferred(i_s),

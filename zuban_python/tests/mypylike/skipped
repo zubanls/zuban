@@ -1,5 +1,7 @@
 # Next up
 testGenericUnionMemberWithTypeVarConstraints
+
+# Type var contstraints not enforced in type alias
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
 
