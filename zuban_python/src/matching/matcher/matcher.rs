@@ -75,7 +75,10 @@ impl<'a> Matcher<'a> {
                 ..Self::default()
             }
         } else {
-            Matcher::default()
+            Self {
+                class,
+                ..Self::default()
+            }
         }
     }
 
