@@ -718,6 +718,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn bind_instance_descriptors(
         self,
         i_s: &mut InferenceState<'db, '_>,
+        func_class: Class,
         get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
         mro_index: MroIndex,
@@ -767,7 +768,14 @@ impl<'db: 'slf, 'slf> Inferred {
                             };
                         return Some(Self::new_unsaved_complex(complex));
                     }
-                    Specific::ClassMethod => todo!(),
+                    Specific::ClassMethod => {
+                        let func = Function::new(
+                            NodeRef::from_link(i_s.db, *definition),
+                            Some(func_class),
+                        );
+                        let t = func.as_db_type(i_s, FirstParamProperties::InClass(&func_class));
+                        return Some(Inferred::execute_db_type(i_s, t));
+                    }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
                     _ => (),
@@ -854,7 +862,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = func.as_db_type(i_s, FirstParamProperties::InClass(&class));
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
-                    Specific::ClassMethod => todo!(),
+                    Specific::ClassMethod => {
+                        let func =
+                            Function::new(NodeRef::from_link(i_s.db, *definition), Some(class));
+                        let t = func.as_db_type(i_s, FirstParamProperties::InClass(&class));
+                        return Some(Inferred::execute_db_type(i_s, t));
+                    }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
                     Specific::AnnotationWithTypeVars => {
