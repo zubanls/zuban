@@ -61,6 +61,9 @@ fn calculate_filters(args: &[String]) -> Vec<Filter> {
 fn main() {
     let cli_args: Vec<String> = env::args().collect();
     let filters = calculate_filters(&cli_args);
+    if cli_args.iter().any(|s| s.as_str() == "mypy") {
+        return;
+    }
 
     let mut project = Project::new(ProjectOptions {
         path: "tests/blackbox/".to_owned(),
