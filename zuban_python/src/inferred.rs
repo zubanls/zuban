@@ -724,8 +724,8 @@ impl<'db: 'slf, 'slf> Inferred {
     ) -> Option<Self> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
-                PointType::Specific => {
-                    if point.specific() == Specific::Function {
+                PointType::Specific => match point.specific() {
+                    Specific::Function => {
                         let node_ref = NodeRef::from_link(i_s.db, *definition);
                         let instance_inf = get_inferred(i_s);
                         let (instance, func_class) =
@@ -767,7 +767,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             };
                         return Some(Self::new_unsaved_complex(complex));
                     }
-                }
+                    Specific::ClassMethod => todo!(),
+                    Specific::StaticMethod => todo!(),
+                    Specific::Property => todo!(),
+                    _ => (),
+                },
                 PointType::Complex => {
                     let file = i_s.db.loaded_python_file(definition.file);
                     match file.complex_points.get(point.complex_index()) {
@@ -850,6 +854,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = func.as_db_type(i_s, FirstParamProperties::InClass(&class));
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
+                    Specific::ClassMethod => todo!(),
+                    Specific::StaticMethod => todo!(),
+                    Specific::Property => todo!(),
                     Specific::AnnotationWithTypeVars => {
                         if let Some(from) = from {
                             from.add_typing_issue(i_s.db, IssueType::AmbigousClassVariableAccess);
@@ -1283,6 +1290,9 @@ fn run_on_specific<'db: 'a, 'a, T>(
             callable(i_s, &literal)
         }
         Specific::Function => callable(i_s, &Function::new(definition, None)),
+        Specific::ClassMethod => todo!(),
+        Specific::StaticMethod => todo!(),
+        Specific::Property => todo!(),
         Specific::AnnotationClassInstance => {
             let expr_def = definition.add_to_node_index(2);
             let inferred = expr_def

@@ -14,7 +14,6 @@ use crate::database::{
     StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
     TypeVarLikes, TypeVarUsage, Variance,
 };
-use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, OnTypeError};

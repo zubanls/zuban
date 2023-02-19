@@ -950,7 +950,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     || self.type_ != NameBinderType::Function
                     || return_annotation.is_some()
                 {
-                    Specific::Function
+                    match function_type {
+                        FunctionType::Function => Specific::Function,
+                        FunctionType::ClassMethod => Specific::ClassMethod,
+                        FunctionType::StaticMethod => Specific::StaticMethod,
+                        FunctionType::Property => Specific::Property,
+                    }
                 } else {
                     Specific::Closure
                 },

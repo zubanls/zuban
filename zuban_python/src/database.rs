@@ -371,6 +371,9 @@ pub enum Specific {
     LazyInferredClass,    // A class that will be inferred later.
     LazyInferredFunction, // A function that will be inferred later.
     Function,             // The node point so the index of the result
+    ClassMethod,
+    StaticMethod,
+    Property,
     Closure,
     // NoReturnFunction,  // TODO Remove or use?
     // BoundMethod,       // TODO Remove or use?
