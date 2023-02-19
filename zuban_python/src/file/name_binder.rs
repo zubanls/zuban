@@ -926,7 +926,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 if let Some(decorators) = decorators {
                     // TODO this filtering is wrong and should be deleted
                     if decorators.iter().any(|d| {
-                        ["abstractmethod", "classmethod"]
+                        ["abstractmethod", "classmethod", "staticmethod", "property"]
                             .iter()
                             .any(|s| d.as_code().contains(s))
                     }) {
