@@ -1144,11 +1144,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         };
         let has_already_calculated_class_generics =
             search_init && !matches!(class.unwrap().generics(), Generics::None | Generics::Any);
-        let handle_result = |i_s: &mut _, calculated_type_vars, function| {
+        let handle_result = |calculated_type_vars, function| {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {
-                    let type_vars = class.type_vars(i_s);
-                    class.generics.as_generics_list(i_s.db, type_vars) // TODO why not use generics_as_list
+                    class.generics_as_list(i_s.db)
                 } else {
                     unreachable!();
                 }
@@ -1173,7 +1172,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             self.name(),
                             function.node().short_debug()
                         );
-                        return handle_result(i_s, calculated_type_args.type_arguments, function);
+                        return handle_result(calculated_type_args.type_arguments, function);
                     }
                 }
                 SignatureMatch::TrueWithAny { argument_indices } => {
@@ -1207,14 +1206,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
         }
         if let Some((type_arguments, function, _)) = multi_any_match {
-            return handle_result(i_s, type_arguments, function);
+            return handle_result(type_arguments, function);
         }
         if let Some(function) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
             let calculated_type_args = match_signature(i_s, function);
-            return handle_result(i_s, calculated_type_args.type_arguments, function);
+            return handle_result(calculated_type_args.type_arguments, function);
         } else {
             let function = Function::new(
                 NodeRef::from_link(i_s.db, self.overload.functions[0]),
