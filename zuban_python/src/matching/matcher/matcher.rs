@@ -477,7 +477,11 @@ impl<'a> Matcher<'a> {
                     todo!("Probably nested generic functions???")
                 }
             }
-            Some(FunctionOrCallable::Callable(c)) => todo!(),
+            Some(FunctionOrCallable::Callable(c)) => {
+                if usage.in_definition() == c.defined_at {
+                    todo!()
+                }
+            }
             None => (),
         }
         usage.format_without_matcher(format_data.db, format_data.style, params_style)
