@@ -180,49 +180,12 @@ impl<'a> Generics<'a> {
         type_vars: Option<&TypeVarLikes>,
     ) -> Option<GenericsList> {
         type_vars.map(|type_vars| match self {
-            Self::SimpleGenericExpression(file, expr) => {
-                GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
-                    use_cached_simple_generic_type(db, file, *expr).into_db_type(db),
-                )]))
-            }
-            Self::SimpleGenericSlices(file, slices) => GenericsList::new_generics(
-                slices
-                    .iter()
-                    .map(|slice| {
-                        if let SliceContent::NamedExpression(n) = slice {
-                            GenericItem::TypeArgument(
-                                use_cached_simple_generic_type(db, file, n.expression())
-                                    .into_db_type(db),
-                            )
-                        } else {
-                            todo!()
-                        }
-                    })
-                    .collect(),
-            ),
-            Self::DbType(g) => todo!(),
-            Self::List(l, type_var_generics) => GenericsList::new_generics(
-                l.iter()
-                    .map(|c| replace_class_vars!(db, c, type_var_generics).into_generic_item(db))
-                    .collect(),
-            ),
             Self::Any => GenericsList::new_generics(
                 type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
             ),
-            Self::Self_ {
-                class_definition, ..
-            } => GenericsList::new_generics(
-                type_vars
-                    .iter()
-                    .enumerate()
-                    .map(|(i, type_var)| {
-                        type_var
-                            .as_type_var_like_usage(i.into(), *class_definition)
-                            .into_generic_item()
-                    })
-                    .collect(),
-            ),
-            Self::None => unreachable!(),
+            _ => {
+                GenericsList::new_generics(self.iter(db).map(|g| g.into_generic_item(db)).collect())
+            }
         })
     }
 
