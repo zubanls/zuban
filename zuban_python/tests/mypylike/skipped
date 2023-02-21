@@ -314,7 +314,6 @@ testOverloadClassMethodImplementation
 testOverloadWithSwappedDecorators
 # classmethod rest
 testGenericClassInGenericFunction
-testNoGenericAccessOnImplicitAttributes
 testForwardReferenceToDecoratedClassMethod
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
