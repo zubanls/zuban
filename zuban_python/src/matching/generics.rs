@@ -209,7 +209,19 @@ impl<'a> Generics<'a> {
             Self::Any => GenericsList::new_generics(
                 type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
             ),
-            Self::Self_ { .. } => todo!(),
+            Self::Self_ {
+                class_definition, ..
+            } => GenericsList::new_generics(
+                type_vars
+                    .iter()
+                    .enumerate()
+                    .map(|(i, type_var)| {
+                        type_var
+                            .as_type_var_like_usage(i.into(), *class_definition)
+                            .into_generic_item()
+                    })
+                    .collect(),
+            ),
             Self::None => unreachable!(),
         })
     }

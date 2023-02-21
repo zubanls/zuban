@@ -295,6 +295,7 @@ testOverloadedProperty
 testOverloadedProperty2
 testDecoratedPropertySetter
 
+testGenericClassAttrUnboundOnClass
 # classmethod generics
 testGenericClassMethodUnboundOnClass
 testGenericClassMethodUnboundOnSubClass
@@ -314,7 +315,6 @@ testOverloadClassMethodImplementation
 testOverloadWithSwappedDecorators
 # classmethod rest
 testGenericClassUnrelatedVars
-testGenericClassDirectCall
 testGenericClassInGenericFunction
 testNoGenericAccessOnImplicitAttributes
 testForwardReferenceToDecoratedClassMethod

@@ -111,7 +111,8 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn execute_db_type(i_s: &mut InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
             DbType::Class(l, g) => InferredState::UnsavedComplex(ComplexPoint::Instance(l, g)),
-            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, _)) => match c.as_ref() {
+            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, None)) => match c.as_ref()
+            {
                 DbType::Class(link, None) => {
                     let node_ref = NodeRef::from_link(i_s.db, *link);
                     InferredState::Saved(*link, node_ref.point())
