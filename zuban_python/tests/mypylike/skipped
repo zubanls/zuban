@@ -256,13 +256,15 @@ testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 
 # Class: generic access from outside
-# Type application vs. type declaration
+# Type application vs. type declaration (type alias)
 testGenericTypeAliasesTypeVarBinding
 testParamSpecApplyConcatenateTwice
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 testSelfTypeMultipleTypeVars
 testTypingSelfNonAnnotationUses
+# type application when no type alias can use generics
+testGenericClassInGenericFunction
 
 # base class: type alias
 testDontSimplifyNoneUnionsWithStrictOptional
@@ -312,9 +314,6 @@ testGenericClassInGenericFunctionOverloadedConstructor-skip
 testGenericClassAlternativeConstructorPreciseOverloaded
 testOverloadClassMethodImplementation
 testOverloadWithSwappedDecorators
-# classmethod rest
-testGenericClassInGenericFunction
-testForwardReferenceToDecoratedClassMethod
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
 # classmethod name redirect name binding issue
@@ -1329,6 +1328,7 @@ testAccessGlobalVarBeforeItsTypeIsAvailable
 testAccessDataAttributeBeforeItsTypeIsAvailable
 testMultipassAndTopLevelVariable
 testMultipassAndCircularDependency
+testForwardReferenceToDecoratedClassMethod
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
