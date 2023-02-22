@@ -770,12 +770,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Self::new_unsaved_complex(complex));
                     }
                     Specific::ClassMethod => {
-                        let func = Function::new(
-                            NodeRef::from_link(i_s.db, *definition),
-                            Some(func_class),
-                        );
-                        let t = func.as_db_type(i_s, FirstParamProperties::Skip);
-                        return Some(Inferred::execute_db_type(i_s, t));
+                        return Some(infer_class_method(i_s, func_class, *definition))
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
@@ -865,10 +860,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::ClassMethod => {
                         // TODO this should probably use the func class instead, right?
-                        let func =
-                            Function::new(NodeRef::from_link(i_s.db, *definition), Some(class));
-                        let t = func.as_db_type(i_s, FirstParamProperties::Skip);
-                        return Some(Inferred::execute_db_type(i_s, t));
+                        return Some(infer_class_method(i_s, class, *definition));
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
@@ -1565,4 +1557,14 @@ mod tests {
         use std::mem::size_of;
         assert_eq!(size_of::<Inferred>(), 32);
     }
+}
+
+fn infer_class_method(
+    i_s: &mut InferenceState,
+    func_class: Class,
+    definition: PointLink,
+) -> Inferred {
+    let func = Function::new(NodeRef::from_link(i_s.db, definition), Some(func_class));
+    let t = func.as_db_type(i_s, FirstParamProperties::Skip);
+    Inferred::execute_db_type(i_s, t)
 }
