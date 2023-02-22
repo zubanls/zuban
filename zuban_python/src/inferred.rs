@@ -864,6 +864,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     Specific::ClassMethod => {
+                        // TODO this should probably use the func class instead, right?
                         let func =
                             Function::new(NodeRef::from_link(i_s.db, *definition), Some(class));
                         let t = func.as_db_type(i_s, FirstParamProperties::Skip);
