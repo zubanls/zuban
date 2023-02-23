@@ -319,10 +319,7 @@ testClassmethodAndNonMethod
 # classmethod name redirect name binding issue
 testAliasToClassMethod
 # Self type classmethod (used Self)
-testTypingSelfClassMethod
 testTypingSelfAlternativeGenericConstructor
-testTypingSelfRedundantAllowed
-testTypingSelfDifferentImport
 # Self type classmethod (no Self)
 testSelfTypeClass
 testSelfTypeVarIndexExpr
@@ -349,6 +346,7 @@ testTypingSelfAllowAliasUseInFinalClasses
 # staticmethod
 testStaticmethodAndNonMethod
 testBoundStaticMethod
+testTypingSelfClassMethod
 testForwardReferenceToDynamicallyTypedStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
