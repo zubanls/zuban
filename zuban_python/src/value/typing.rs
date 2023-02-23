@@ -200,6 +200,10 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
             DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
                 .lookup_internal(i_s, node_ref, name),
             DbType::Callable(_) => LookupResult::None,
+            DbType::Self_ => i_s
+                .current_class()
+                .unwrap()
+                .lookup_internal(i_s, node_ref, name),
             _ => todo!("{:?}", self.db_type),
         }
     }
@@ -261,6 +265,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                     todo!()
                 }
             }
+            DbType::Self_ => Inferred::execute_db_type(i_s, DbType::Self_),
             _ => todo!("{:?}", self.db_type),
         }
     }

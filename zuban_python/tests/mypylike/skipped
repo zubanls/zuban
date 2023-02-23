@@ -297,6 +297,7 @@ testOverloadedProperty
 testOverloadedProperty2
 testDecoratedPropertySetter
 
+testGenericClassDirectCall
 # classmethod generics
 testGenericClassMethodUnboundOnClass
 testGenericClassMethodUnboundOnSubClass

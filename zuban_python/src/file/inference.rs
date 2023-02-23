@@ -1549,14 +1549,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                         if func.node_ref.point().maybe_specific().unwrap()
                                             == Specific::ClassMethod
                                         {
-                                            let t = self
-                                                .i_s
-                                                .current_class()
-                                                .unwrap()
-                                                .as_db_type(self.i_s.db);
                                             Inferred::execute_db_type(
                                                 self.i_s,
-                                                DbType::Type(Rc::new(t)),
+                                                DbType::Type(Rc::new(DbType::Self_)),
                                             )
                                         } else {
                                             Inferred::new_saved(self.file, node_index, point)
