@@ -322,7 +322,6 @@ testAliasToClassMethod
 testTypingSelfClassMethod
 testTypingSelfAlternativeGenericConstructor
 testTypingSelfRedundantAllowed
-testTypingSelfRedundantWarning
 testTypingSelfDifferentImport
 # Self type classmethod (no Self)
 testSelfTypeClass
@@ -1549,6 +1548,10 @@ testStrictOptionalCovarianceCrossModule
 testFlexibleAlias1
 testFlexibleAlias2
 testFlexibleAlias3
+
+# enable-error-code="redundant-self"
+# "Redundant Self annotation on method first argument"
+testTypingSelfRedundantWarning
 
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
