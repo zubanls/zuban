@@ -265,7 +265,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                     todo!()
                 }
             }
-            DbType::Self_ => Inferred::execute_db_type(i_s, DbType::Self_),
+            DbType::Self_ => {
+                i_s.current_class()
+                    .unwrap()
+                    .execute(i_s, args, result_context, on_type_error);
+                Inferred::execute_db_type(i_s, DbType::Self_)
+            }
             _ => todo!("{:?}", self.db_type),
         }
     }
