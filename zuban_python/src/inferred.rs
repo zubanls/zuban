@@ -719,6 +719,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn bind_instance_descriptors(
         self,
         i_s: &mut InferenceState<'db, '_>,
+        //instance: &Instance,
         func_class: Class,
         get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
@@ -730,7 +731,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::Function => {
                         let node_ref = NodeRef::from_link(i_s.db, *definition);
                         let instance_inf = get_inferred(i_s);
-                        let (instance, func_class) =
+                        let (instance, _) =
                             load_bound_method_instance(i_s, &instance_inf, mro_index);
                         let func = Function::new(node_ref, Some(func_class));
                         func.type_vars(i_s); // Cache annotations
