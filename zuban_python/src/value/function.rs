@@ -408,6 +408,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
+        let mut class_method_type_var_usage = None;
         match first {
             FirstParamProperties::MethodAccessedOnClass(class) => {
                 let mut needs_self_type_variable =
@@ -441,6 +442,21 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::Skip => {
                 params.next();
             }
+            FirstParamProperties::SkipBecauseClassMethod(_) => {
+                if let Some(param) = params.next() {
+                    if let Some(t) = param.annotation(i_s) {
+                        match t.maybe_borrowed_db_type() {
+                            Some(DbType::Type(t)) => match t.as_ref() {
+                                DbType::TypeVar(usage) => {
+                                    class_method_type_var_usage = Some(usage);
+                                }
+                                _ => todo!(),
+                            },
+                            _ => todo!(),
+                        }
+                    }
+                }
+            }
             FirstParamProperties::None => (),
         }
         let self_type_var_usage = self_type_var_usage.as_ref();
@@ -459,10 +475,17 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                             .nth_usage(i_s.db, &usage)
                             .into_generic_item(i_s.db);
                     } else if in_definition == self.node_ref.as_link() {
-                        if self_type_var_usage.is_some() {
-                            usage.increase_index();
+                        if let Some(class_method_type_var_usage) = class_method_type_var_usage {
+                            let FirstParamProperties::SkipBecauseClassMethod(class) = first else {
+                                unreachable!()
+                            };
+                            GenericItem::TypeArgument(class.as_db_type(i_s.db))
+                        } else {
+                            if self_type_var_usage.is_some() {
+                                usage.increase_index();
+                            }
+                            usage.into_generic_item()
                         }
-                        usage.into_generic_item()
                     } else {
                         // This can happen for example if the return value is a Callable with its
                         // own type vars.
@@ -833,6 +856,7 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
 #[derive(Copy, Clone)]
 pub enum FirstParamProperties<'a> {
     Skip,
+    SkipBecauseClassMethod(&'a Class<'a>),
     MethodAccessedOnClass(&'a Class<'a>),
     None,
 }

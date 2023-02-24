@@ -1562,10 +1562,14 @@ mod tests {
 
 fn infer_class_method(
     i_s: &mut InferenceState,
+    //class: &Class,
     func_class: Class,
     definition: PointLink,
 ) -> Inferred {
     let func = Function::new(NodeRef::from_link(i_s.db, definition), Some(func_class));
-    let t = func.as_db_type(i_s, FirstParamProperties::Skip);
+    let t = func.as_db_type(
+        i_s,
+        FirstParamProperties::SkipBecauseClassMethod(&func_class),
+    );
     Inferred::execute_db_type(i_s, t)
 }
