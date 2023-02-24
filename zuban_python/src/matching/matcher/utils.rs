@@ -706,7 +706,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
 pub fn create_signature_without_self(
     i_s: &mut InferenceState,
     func: Function,
-    instance: Instance,
+    instance: &Instance,
     expected_type: &Type,
 ) -> Option<DbType> {
     let type_vars = func.type_vars(i_s);

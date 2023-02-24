@@ -602,7 +602,7 @@ impl<'a> Type<'a> {
                     DbType::Tuple(tup) => Some({
                         let class_infos = db
                             .python_state
-                            .tuple_with_any_generics()
+                            .tuple_with_generics(Generics::Any)
                             .use_cached_class_infos(db);
                         MroIterator::new(
                             db,

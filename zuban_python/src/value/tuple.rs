@@ -1,14 +1,15 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{
-    ComplexPoint, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
+    DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, UnionValue};
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::value::Instance;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
@@ -41,33 +42,30 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        // TODO any here sounds wrong
-        let tuple_cls = i_s.db.python_state.tuple_with_any_generics();
+        // TODO performance this could probably be a OnceCell on tuple
+        let generics = GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
+            match &self.content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => match ts.as_ref() {
+                    [] => DbType::Never,
+                    [TypeOrTypeVarTuple::Type(t)] => t.clone(),
+                    _ => i_s.db.python_state.object_db_type(),
+                },
+                Some(TupleTypeArguments::ArbitraryLength(t)) => t.as_ref().clone(),
+                None => DbType::Any,
+            },
+        )]));
+        let tuple_cls = i_s
+            .db
+            .python_state
+            .tuple_with_generics(Generics::List(&generics, None));
+        let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class) in tuple_cls.mro(i_s.db) {
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 inf.bind_instance_descriptors(
                     i_s,
+                    &tuple_instance,
                     class.maybe_class(i_s.db).unwrap(),
-                    |i_s| {
-                        Inferred::new_unsaved_complex(ComplexPoint::Instance(
-                            tuple_cls.node_ref.as_link(),
-                            Some(GenericsList::new_generics(Box::new([
-                                GenericItem::TypeArgument(match &self.content.args {
-                                    Some(TupleTypeArguments::FixedLength(ts)) => {
-                                        match ts.as_ref() {
-                                            [] => DbType::Never,
-                                            [TypeOrTypeVarTuple::Type(t)] => t.clone(),
-                                            _ => i_s.db.python_state.object_db_type(),
-                                        }
-                                    }
-                                    Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                                        t.as_ref().clone()
-                                    }
-                                    None => DbType::Any,
-                                }),
-                            ]))),
-                        ))
-                    },
+                    |i_s| tuple_instance.as_inferred(i_s),
                     node_ref,
                     mro_index,
                 )

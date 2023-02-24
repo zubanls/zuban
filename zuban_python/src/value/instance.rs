@@ -72,6 +72,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                     inf.resolve_class_type_vars(&mut i_s.with_class_context(&c), &self.class)
                         .bind_instance_descriptors(
                             &mut i_s,
+                            self,
                             c,
                             |i_s| self.as_inferred(i_s),
                             node_ref,
@@ -259,6 +260,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_> {
                         inf.resolve_class_type_vars(self.i_s, &self.instance.class)
                             .bind_instance_descriptors(
                                 self.i_s,
+                                self.instance,
                                 class,
                                 |i_s| self.instance.as_inferred(i_s),
                                 Some(self.from),

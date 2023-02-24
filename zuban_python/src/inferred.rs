@@ -719,7 +719,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn bind_instance_descriptors(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        //instance: &Instance,
+        instance: &Instance,
         func_class: Class,
         get_inferred: impl Fn(&mut InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
@@ -730,9 +730,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 PointType::Specific => match point.specific() {
                     Specific::Function => {
                         let node_ref = NodeRef::from_link(i_s.db, *definition);
-                        let instance_inf = get_inferred(i_s);
-                        let (instance, _) =
-                            load_bound_method_instance(i_s, &instance_inf, mro_index);
                         let func = Function::new(node_ref, Some(func_class));
                         func.type_vars(i_s); // Cache annotations
                         let complex =
@@ -763,7 +760,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                             } else {
                                 ComplexPoint::BoundMethod(
-                                    instance_inf.as_any_link(i_s),
+                                    get_inferred(i_s).as_any_link(i_s),
                                     mro_index,
                                     *definition,
                                 )
@@ -781,9 +778,6 @@ impl<'db: 'slf, 'slf> Inferred {
                     let file = i_s.db.loaded_python_file(definition.file);
                     match file.complex_points.get(point.complex_index()) {
                         ComplexPoint::FunctionOverload(o) => {
-                            let instance_inf = get_inferred(i_s);
-                            let (instance, func_class) =
-                                load_bound_method_instance(i_s, &instance_inf, mro_index);
                             let has_self_arguments = o.functions.iter().any(|func_link| {
                                 let node_ref = NodeRef::from_link(i_s.db, *func_link);
                                 let func = Function::new(node_ref, Some(func_class));
