@@ -59,9 +59,9 @@ impl TypeVarIndex {
     }
 }
 
-impl AddAssign<u32> for TypeVarIndex {
-    fn add_assign(&mut self, other: u32) {
-        self.0 += other
+impl AddAssign<i32> for TypeVarIndex {
+    fn add_assign(&mut self, other: i32) {
+        self.0 = (self.0 as i32 + other) as u32;
     }
 }
 
@@ -2774,7 +2774,7 @@ impl<'a> TypeVarLikeUsage<'a> {
         }
     }
 
-    pub fn add_to_index(&mut self, amount: u32) {
+    pub fn add_to_index(&mut self, amount: i32) {
         match self {
             Self::TypeVar(t) => t.to_mut().index += amount,
             Self::TypeVarTuple(t) => t.to_mut().index += amount,

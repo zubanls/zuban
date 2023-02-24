@@ -449,6 +449,17 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                             Some(DbType::Type(t)) => match t.as_ref() {
                                 DbType::TypeVar(usage) => {
                                     class_method_type_var_usage = Some(usage);
+                                    let mut vec = if let Some(type_vars) = type_vars.take() {
+                                        type_vars.into_vec()
+                                    } else {
+                                        vec![]
+                                    };
+                                    if vec.len() == 1 {
+                                        type_vars = None
+                                    } else {
+                                        vec.remove(0);
+                                        type_vars = Some(TypeVarLikes::from_vec(vec))
+                                    }
                                 }
                                 _ => todo!(),
                             },
@@ -475,17 +486,18 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                             .nth_usage(i_s.db, &usage)
                             .into_generic_item(i_s.db);
                     } else if in_definition == self.node_ref.as_link() {
-                        if let Some(class_method_type_var_usage) = class_method_type_var_usage {
-                            let FirstParamProperties::SkipBecauseClassMethod(class) = first else {
-                                unreachable!()
-                            };
-                            GenericItem::TypeArgument(class.as_db_type(i_s.db))
-                        } else {
-                            if self_type_var_usage.is_some() {
-                                usage.add_to_index(1);
+                        if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
+                            if let Some(u) = class_method_type_var_usage {
+                                if u.index == usage.index() {
+                                    return GenericItem::TypeArgument(class.as_db_type(i_s.db));
+                                }
                             }
-                            usage.into_generic_item()
+                            usage.add_to_index(-1);
+                            todo!();
+                        } else if self_type_var_usage.is_some() {
+                            usage.add_to_index(1);
                         }
+                        usage.into_generic_item()
                     } else {
                         // This can happen for example if the return value is a Callable with its
                         // own type vars.

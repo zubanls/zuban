@@ -321,7 +321,6 @@ testAliasToClassMethod
 # Self type classmethod (used Self)
 testTypingSelfAlternativeGenericConstructor
 # Self type classmethod (no Self)
-testSelfTypeClass
 testSelfTypeVarIndexExpr
 testNewAnalyzerTypeVarBoundInCycle
 testGenericClassAlternativeConstructorPrecise
@@ -331,12 +330,7 @@ testSelfTypeNoTypeVars
 testSelfTypeRecursiveBinding
 testSelfTypeRestrictedClassMethod
 testSelfTypeProtocolClassmethodMatch
-testSelfTypeOnUnionClassMethod
-testSelfTypeClassMethodOnUnion
-testSelfTypeClassMethodOnUnionGeneric
-testSelfTypeClassMethodOnUnionList
 testSelfTypeClassMethodOverloadedOnInstance
-testSelfTypeGenericClassNoClashClassMethod
 testSelfTypeGenericClassNoClashClassMethodClassObject
 testSelfTypeLambdaDefault
 SelfTypeOverloadedClassMethod
