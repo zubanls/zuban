@@ -841,22 +841,24 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn bind_class_descriptors(
         self,
         i_s: &mut InferenceState<'db, '_>,
-        class: Class,
+        class: &Class,
+        attribute_class: Class, // The (sub-)class in which an attribute is defined
         from: Option<NodeRef>,
     ) -> Option<Self> {
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
                 PointType::Specific => match point.specific() {
                     Specific::Function => {
-                        let func =
-                            Function::new(NodeRef::from_link(i_s.db, *definition), Some(class));
+                        let func = Function::new(
+                            NodeRef::from_link(i_s.db, *definition),
+                            Some(attribute_class),
+                        );
                         let t = func
-                            .as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass(&class));
+                            .as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass(class));
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     Specific::ClassMethod => {
-                        // TODO this should probably use the func class instead, right?
-                        return Some(infer_class_method(i_s, class, *definition));
+                        return Some(infer_class_method(i_s, attribute_class, *definition));
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
@@ -867,7 +869,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let node_ref = NodeRef::from_link(i_s.db, *definition);
                         let annotation = node_ref.as_annotation();
                         let t = use_cached_annotation_type(i_s.db, node_ref.file, annotation);
-                        let t = replace_class_type_vars(i_s, t.as_cow(i_s.db).as_ref(), &class);
+                        let t = replace_class_type_vars(i_s, t.as_cow(i_s.db).as_ref(), class);
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     _ => (),
