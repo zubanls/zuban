@@ -3,6 +3,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
+use std::ops::AddAssign;
 use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
@@ -56,9 +57,11 @@ impl TypeVarIndex {
     pub fn as_usize(&self) -> usize {
         self.0 as usize
     }
+}
 
-    pub fn increase(&mut self) {
-        self.0 += 1
+impl AddAssign<u32> for TypeVarIndex {
+    fn add_assign(&mut self, other: u32) {
+        self.0 += other
     }
 }
 
@@ -2771,11 +2774,11 @@ impl<'a> TypeVarLikeUsage<'a> {
         }
     }
 
-    pub fn increase_index(&mut self) {
+    pub fn add_to_index(&mut self, amount: u32) {
         match self {
-            Self::TypeVar(t) => t.to_mut().index.increase(),
-            Self::TypeVarTuple(t) => t.to_mut().index.increase(),
-            Self::ParamSpec(p) => p.to_mut().index.increase(),
+            Self::TypeVar(t) => t.to_mut().index += amount,
+            Self::TypeVarTuple(t) => t.to_mut().index += amount,
+            Self::ParamSpec(p) => p.to_mut().index += amount,
         }
     }
 

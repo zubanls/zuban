@@ -482,7 +482,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                             GenericItem::TypeArgument(class.as_db_type(i_s.db))
                         } else {
                             if self_type_var_usage.is_some() {
-                                usage.increase_index();
+                                usage.add_to_index(1);
                             }
                             usage.into_generic_item()
                         }
