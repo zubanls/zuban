@@ -768,7 +768,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Self::new_unsaved_complex(complex));
                     }
                     Specific::ClassMethod => {
-                        return Some(infer_class_method(i_s, func_class, *definition))
+                        return Some(infer_class_method(
+                            i_s,
+                            &instance.class,
+                            func_class,
+                            *definition,
+                        ))
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
@@ -858,7 +863,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     Specific::ClassMethod => {
-                        return Some(infer_class_method(i_s, attribute_class, *definition));
+                        return Some(infer_class_method(i_s, class, attribute_class, *definition));
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
@@ -1559,14 +1564,11 @@ mod tests {
 
 fn infer_class_method(
     i_s: &mut InferenceState,
-    //class: &Class,
+    class: &Class,
     func_class: Class,
     definition: PointLink,
 ) -> Inferred {
     let func = Function::new(NodeRef::from_link(i_s.db, definition), Some(func_class));
-    let t = func.as_db_type(
-        i_s,
-        FirstParamProperties::SkipBecauseClassMethod(&func_class),
-    );
+    let t = func.as_db_type(i_s, FirstParamProperties::SkipBecauseClassMethod(class));
     Inferred::execute_db_type(i_s, t)
 }
