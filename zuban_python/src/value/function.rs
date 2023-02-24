@@ -409,7 +409,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
         match first {
-            FirstParamProperties::InClass(class) => {
+            FirstParamProperties::MethodAccessedOnClass(class) => {
                 let mut needs_self_type_variable =
                     self.result_type(i_s).has_explicit_self_type(i_s.db);
                 for param in self.iter_params().skip(1) {
@@ -833,7 +833,7 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
 #[derive(Copy, Clone)]
 pub enum FirstParamProperties<'a> {
     Skip,
-    InClass(&'a Class<'a>),
+    MethodAccessedOnClass(&'a Class<'a>),
     None,
 }
 

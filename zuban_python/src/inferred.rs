@@ -855,7 +855,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::Function => {
                         let func =
                             Function::new(NodeRef::from_link(i_s.db, *definition), Some(class));
-                        let t = func.as_db_type(i_s, FirstParamProperties::InClass(&class));
+                        let t = func
+                            .as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass(&class));
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     Specific::ClassMethod => {
