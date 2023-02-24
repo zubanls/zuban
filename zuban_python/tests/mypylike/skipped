@@ -1,5 +1,4 @@
 # Next up
-testTypeVariableWithContainerAndTuple
 
 # Type var contstraints not enforced in type alias
 testValidTypeAliasValues

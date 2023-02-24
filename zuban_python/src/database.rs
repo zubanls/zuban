@@ -16,7 +16,9 @@ use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
-use crate::matching::{FormatData, Generic, Generics, Matcher, ParamsStyle, Type};
+use crate::matching::{
+    common_base_class, FormatData, Generic, Generics, Matcher, ParamsStyle, Type,
+};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
@@ -1865,6 +1867,13 @@ impl TupleTypeArguments {
         }
     }
 
+    fn common_base_class(&self, i_s: &mut InferenceState) -> DbType {
+        match self {
+            Self::FixedLength(ts) => common_base_class(i_s, ts.iter()),
+            Self::ArbitraryLength(t) => t.as_ref().clone(),
+        }
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
             Self::FixedLength(ts) => ts
@@ -1908,15 +1917,12 @@ impl TupleContent {
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
-            GenericsList::new_generics(Box::new([GenericItem::TypeArgument(match &self.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => match ts.as_ref() {
-                    [] => DbType::Never,
-                    [TypeOrTypeVarTuple::Type(t)] => t.clone(),
-                    _ => db.python_state.object_db_type(),
-                },
-                Some(TupleTypeArguments::ArbitraryLength(t)) => t.as_ref().clone(),
-                None => DbType::Any,
-            })]))
+            GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
+                self.args
+                    .as_ref()
+                    .map(|args| args.common_base_class(&mut InferenceState::new(db)))
+                    .unwrap_or(DbType::Any),
+            )]))
         })
     }
 

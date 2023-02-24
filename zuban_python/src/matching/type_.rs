@@ -1248,3 +1248,25 @@ pub fn match_tuple_type_arguments(
         (_, _, _) => unreachable!(),
     }
 }
+
+pub fn common_base_class<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
+    i_s: &mut InferenceState,
+    mut ts: I,
+) -> DbType {
+    if let Some(first) = ts.next() {
+        let mut result = match first {
+            TypeOrTypeVarTuple::Type(t) => Cow::Borrowed(t),
+            TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
+        };
+        for t in ts {
+            let t = match t {
+                TypeOrTypeVarTuple::Type(t) => t,
+                TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
+            };
+            result = Cow::Owned(Type::Type(result).common_base_class(i_s, &Type::new(t)));
+        }
+        result.into_owned()
+    } else {
+        DbType::Never
+    }
+}
