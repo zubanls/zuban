@@ -1,7 +1,7 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::{
-    DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple,
+    DbType, Literal, LiteralKind, LiteralValue, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
@@ -42,22 +42,11 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        // TODO performance this could probably be a OnceCell on tuple
-        let generics = GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
-            match &self.content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => match ts.as_ref() {
-                    [] => DbType::Never,
-                    [TypeOrTypeVarTuple::Type(t)] => t.clone(),
-                    _ => i_s.db.python_state.object_db_type(),
-                },
-                Some(TupleTypeArguments::ArbitraryLength(t)) => t.as_ref().clone(),
-                None => DbType::Any,
-            },
-        )]));
+        let generics = self.content.tuple_class_generics(i_s.db);
         let tuple_cls = i_s
             .db
             .python_state
-            .tuple_with_generics(Generics::List(&generics, None));
+            .tuple_with_generics(Generics::List(generics, None));
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class) in tuple_cls.mro(i_s.db) {
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {

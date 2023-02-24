@@ -594,43 +594,25 @@ impl<'a> Type<'a> {
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> Option<MroIterator<'db, '_>> {
         match self {
             Self::Class(c) => Some(c.mro(db)),
-            Self::Type(t) => {
-                match t.as_ref() {
-                    DbType::Class(link, generics) => {
-                        Some(Class::from_db_type(db, *link, generics).mro(db))
-                    }
-                    DbType::Tuple(tup) => Some({
-                        let class_infos = db
-                            .python_state
-                            .tuple_with_generics(Generics::Any)
-                            .use_cached_class_infos(db);
-                        MroIterator::new(
-                            db,
-                            Type::new(t),
-                            Some(Generics::DbType(match &tup.args {
-                                Some(TupleTypeArguments::FixedLength(ts)) => {
-                                    debug!(
-                                        "TODO Only used TypeVarIndex #0 for tuple, \
-                                         and not all of them {ts:?}",
-                                    );
-                                    match ts.get(0) {
-                                        Some(TypeOrTypeVarTuple::Type(t)) => t,
-                                        Some(TypeOrTypeVarTuple::TypeVarTuple(_)) => {
-                                            &DbType::Never // TODO ?!
-                                        }
-                                        None => &DbType::Never,
-                                    }
-                                }
-                                Some(TupleTypeArguments::ArbitraryLength(t)) => t.as_ref(),
-                                None => &DbType::Any,
-                            })),
-                            class_infos.mro.iter(),
-                            false,
-                        )
-                    }),
-                    _ => None,
+            Self::Type(t) => match t.as_ref() {
+                DbType::Class(link, generics) => {
+                    Some(Class::from_db_type(db, *link, generics).mro(db))
                 }
-            }
+                DbType::Tuple(tup) => Some({
+                    let class_infos = db
+                        .python_state
+                        .tuple_with_generics(Generics::Any)
+                        .use_cached_class_infos(db);
+                    MroIterator::new(
+                        db,
+                        Type::new(t),
+                        Some(Generics::List(tup.tuple_class_generics(db), None)),
+                        class_infos.mro.iter(),
+                        false,
+                    )
+                }),
+                _ => None,
+            },
         }
     }
 

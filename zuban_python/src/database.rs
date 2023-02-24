@@ -1332,6 +1332,7 @@ impl DbType {
             Self::Tuple(content) => Self::Tuple(match &content.args {
                 Some(args) => TupleContent {
                     args: Some(remap_tuple_likes(args, callable, replace_self)),
+                    tuple_class_generics: OnceCell::new(),
                 },
                 None => TupleContent::new_empty(),
             }),
@@ -1880,23 +1881,43 @@ impl TupleTypeArguments {
 #[derive(Debug, Clone, PartialEq)]
 pub struct TupleContent {
     pub args: Option<TupleTypeArguments>,
+    tuple_class_generics: OnceCell<GenericsList>,
 }
 
 impl TupleContent {
     pub fn new_fixed_length(args: Box<[TypeOrTypeVarTuple]>) -> Self {
         Self {
             args: Some(TupleTypeArguments::FixedLength(args)),
+            tuple_class_generics: OnceCell::new(),
         }
     }
 
     pub fn new_arbitrary_length(arg: DbType) -> Self {
         Self {
             args: Some(TupleTypeArguments::ArbitraryLength(Box::new(arg))),
+            tuple_class_generics: OnceCell::new(),
         }
     }
 
     pub fn new_empty() -> Self {
-        Self { args: None }
+        Self {
+            args: None,
+            tuple_class_generics: OnceCell::new(),
+        }
+    }
+
+    pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
+        self.tuple_class_generics.get_or_init(|| {
+            GenericsList::new_generics(Box::new([GenericItem::TypeArgument(match &self.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => match ts.as_ref() {
+                    [] => DbType::Never,
+                    [TypeOrTypeVarTuple::Type(t)] => t.clone(),
+                    _ => db.python_state.object_db_type(),
+                },
+                Some(TupleTypeArguments::ArbitraryLength(t)) => t.as_ref().clone(),
+                None => DbType::Any,
+            })]))
+        })
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
