@@ -12,8 +12,8 @@ use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    create_signature_without_self, replace_class_type_vars, FormatData, Generics, ResultContext,
-    Type,
+    create_signature_without_self, replace_class_type_vars, FormatData, Generics, Matcher,
+    ResultContext, Type,
 };
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
@@ -766,12 +766,26 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Self::new_unsaved_complex(complex));
                     }
                     Specific::ClassMethod => {
-                        return Some(infer_class_method(
-                            i_s,
-                            &instance.class,
-                            func_class,
-                            *definition,
-                        ))
+                        let result =
+                            infer_class_method(i_s, &instance.class, func_class, *definition);
+                        if result.is_none() {
+                            if let Some(from) = from {
+                                let func = prepare_func(i_s, *definition, func_class);
+                                from.add_typing_issue(
+                                    i_s.db,
+                                    IssueType::InvalidClassMethodFirstArgument {
+                                        argument_type: instance
+                                            .class
+                                            .as_type(i_s)
+                                            .format_short(i_s.db),
+                                        function_name: Box::from(func.name()),
+                                        callable: func.as_type(i_s).format_short(i_s.db),
+                                    },
+                                );
+                                return Some(Self::new_any());
+                            }
+                        }
+                        return result;
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
@@ -859,7 +873,22 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     Specific::ClassMethod => {
-                        return Some(infer_class_method(i_s, class, attribute_class, *definition));
+                        let result = infer_class_method(i_s, class, attribute_class, *definition);
+                        if result.is_none() {
+                            if let Some(from) = from {
+                                let func = prepare_func(i_s, *definition, attribute_class);
+                                from.add_typing_issue(
+                                    i_s.db,
+                                    IssueType::InvalidSelfArgument {
+                                        argument_type: class.as_type(i_s).format_short(i_s.db),
+                                        function_name: Box::from(func.name()),
+                                        callable: func.as_type(i_s).format_short(i_s.db),
+                                    },
+                                );
+                                return Some(Self::new_any());
+                            }
+                        }
+                        return result;
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
@@ -1574,8 +1603,23 @@ fn infer_class_method(
     class: &Class,
     func_class: Class,
     definition: PointLink,
-) -> Inferred {
+) -> Option<Inferred> {
     let func = prepare_func(i_s, definition, func_class);
+    if let Some(first_type) = func.first_param_annotation_type(i_s) {
+        let type_vars = func.type_vars(i_s);
+        let mut matcher = Matcher::new_function_matcher(Some(class), func, type_vars);
+        let instance_t = class.as_type(i_s);
+        if !matches!(first_type.maybe_db_type(), Some(DbType::Self_)) {
+            // TODO It is questionable that we do not match Self here
+            if !first_type
+                .is_super_type_of(i_s, &mut matcher, &instance_t)
+                .bool()
+            {
+                return None;
+            }
+        }
+        dbg!(first_type);
+    }
     let t = func.as_db_type(i_s, FirstParamProperties::SkipBecauseClassMethod(class));
-    Inferred::execute_db_type(i_s, t)
+    Some(Inferred::execute_db_type(i_s, t))
 }
