@@ -528,6 +528,26 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
         }
     }
 
+    fn get_item(
+        &self,
+        i_s: &mut InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        if let Some(db_type) = &self.type_var_usage.type_var.bound {
+            run_on_db_type(
+                i_s,
+                db_type,
+                None,
+                &mut |i_s, v| v.get_item(i_s, slice_type, result_context),
+                &|i_s, a, b| a.union(b),
+                &mut |i_s| todo!(),
+            )
+        } else {
+            todo!()
+        }
+    }
+
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }

@@ -311,7 +311,6 @@ testAliasToClassMethod
 # Self type classmethod (used Self)
 testTypingSelfAlternativeGenericConstructor
 # Self type classmethod (no Self)
-testSelfTypeVarIndexExpr
 testGenericClassAlternativeConstructorPrecise
 testGenericClassAlternativeConstructorPrecise2
 testSelfTypeGenericClassNoClashClassMethodClassObject
@@ -319,6 +318,7 @@ testSelfTypeLambdaDefault
 # Self type classmethod access with type vars(no Self)
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
+testSelfTypeVarIndexExpr
 # Self type with final
 testTypingSelfAllowAliasUseInFinalClasses
 
