@@ -313,7 +313,6 @@ testTypingSelfAlternativeGenericConstructor
 # Self type classmethod (no Self)
 testGenericClassAlternativeConstructorPrecise2
 testSelfTypeGenericClassNoClashClassMethodClassObject
-testSelfTypeLambdaDefault
 # Self type classmethod access with type vars(no Self)
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
@@ -514,6 +513,7 @@ testLambdaVarargContext
 testLambdaDeferredSpecialCase
 testErasedTypeRuntimeCoverage
 testLambdaJoinWithDynamicConstructor
+testSelfTypeLambdaDefault
 # Lambda with defined return types (inferred context)
 testInferLambdaTypeUsingContext
 testLambdaWithoutContext
