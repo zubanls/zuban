@@ -2442,7 +2442,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             node_ref.add_typing_issue(comp.inference.i_s.db, IssueType::TypeVarTypeExpected);
             return None;
         }
-        (!comp.has_type_vars).then(|| comp.as_db_type(t, node_ref))
+        Some(comp.as_db_type(t, node_ref))
     }
 }
 
