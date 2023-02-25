@@ -446,8 +446,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 if let Some(param) = params.next() {
                     if let Some(t) = param.annotation(i_s) {
                         match t.maybe_borrowed_db_type() {
-                            Some(DbType::Type(t)) => match t.as_ref() {
-                                DbType::TypeVar(usage) => {
+                            Some(DbType::Type(t)) => {
+                                if let DbType::TypeVar(usage) = t.as_ref() {
                                     class_method_type_var_usage = Some(usage);
                                     let mut vec = if let Some(type_vars) = type_vars.take() {
                                         type_vars.into_vec()
@@ -461,8 +461,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                                         type_vars = Some(TypeVarLikes::from_vec(vec))
                                     }
                                 }
-                                _ => todo!(),
-                            },
+                            }
                             _ => todo!(),
                         }
                     }
