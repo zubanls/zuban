@@ -2414,7 +2414,21 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
-        let mut on_type_var = |_: &mut InferenceState, _: &_, type_var, current_callable| todo!();
+        let mut on_type_var =
+            |i_s: &mut InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
+                if let Some(class) = i_s.current_class() {
+                    if let Some(type_var_likes) = class.type_vars(i_s) {
+                        for (i, tvl) in type_var_likes.iter().enumerate() {
+                            if type_var_like == *tvl {
+                                return TypeVarCallbackReturn::TypeVarLike(
+                                    tvl.as_type_var_like_usage(i.into(), class.node_ref.as_link()),
+                                );
+                            }
+                        }
+                    }
+                }
+                todo!()
+            };
         let node_ref = NodeRef::new(self.file, expr.index());
         let mut comp = TypeComputation::new(
             self,
