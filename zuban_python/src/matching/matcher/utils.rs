@@ -710,7 +710,6 @@ pub fn create_signature_without_self(
     expected_type: &Type,
 ) -> Option<DbType> {
     let type_vars = func.type_vars(i_s);
-    let type_vars_len = type_vars.map(|t| t.len()).unwrap_or(0);
     let mut matcher = Matcher::new_function_matcher(Some(&instance.class), func, type_vars);
     let instance_t = instance.as_type(i_s);
     if !matches!(expected_type.maybe_db_type(), Some(DbType::Self_)) {
