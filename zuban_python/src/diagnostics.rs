@@ -71,6 +71,7 @@ pub(crate) enum IssueType {
     BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
+    InvalidClassMethodFirstArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     UnexpectedComprehension,
     AmbigousClassVariableAccess,
 
@@ -364,6 +365,9 @@ impl<'db> Diagnostic<'db> {
                 "Nested Concatenates are invalid".to_owned(),
             IssueType::InvalidSelfArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
+            ),
+            IssueType::InvalidClassMethodFirstArgument{argument_type, function_name, callable} => format!(
+                "Invalid self argument \"{argument_type}\" to class attribute function \"{function_name}\" with type \"{callable}\""
             ),
             IssueType::UnexpectedComprehension => "Unexpected comprehension".to_owned(),
             IssueType::AmbigousClassVariableAccess =>
