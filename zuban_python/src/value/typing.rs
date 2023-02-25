@@ -583,6 +583,7 @@ fn maybe_type_var(
                 .maybe_single_string_literal()
                 .map(|py_string| (node_ref, py_string))
         } else {
+            debug!("TODO this should probably add an error");
             None
         };
         let (name_node, py_string) = match result {
@@ -625,7 +626,8 @@ fn maybe_type_var(
                     {
                         restrictions.push(t);
                     } else {
-                        // TODO this needs a lint?
+                        //
+                        debug!("TODO invalid type var restriction, this needs a lint?");
                         return None;
                     }
                 }
@@ -675,6 +677,7 @@ fn maybe_type_var(
                         {
                             bound = Some(t)
                         } else {
+                            debug!("TODO invalid type var bound, this needs a lint?");
                             return None;
                         }
                     }
@@ -704,7 +707,7 @@ fn maybe_type_var(
                 .add_typing_issue(i_s.db, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
-        return Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
+        Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
             name_string: TypeVarName::PointLink(PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
@@ -721,7 +724,7 @@ fn maybe_type_var(
                     return None;
                 }
             },
-        })));
+        })))
     } else {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -729,8 +732,8 @@ fn maybe_type_var(
                 class_name: "TypeVar",
             },
         );
+        None
     }
-    None
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
@@ -828,6 +831,7 @@ fn maybe_type_var_tuple(
                 .maybe_single_string_literal()
                 .map(|py_string| (node_ref, py_string))
         } else {
+            debug!("TODO type var tuple why does this not need an error?");
             None
         };
         let (name_node, py_string) = match result {
@@ -903,13 +907,13 @@ fn maybe_type_var_tuple(
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }
-        return Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
+        Some(TypeVarLike::TypeVarTuple(Rc::new(TypeVarTuple {
             name_string: PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
             default,
-        })));
+        })))
     } else {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -917,8 +921,8 @@ fn maybe_type_var_tuple(
                 class_name: "TypeVarTuple",
             },
         );
+        None
     }
-    None
 }
 
 #[derive(Debug)]
@@ -979,6 +983,7 @@ fn maybe_param_spec(
                 .maybe_single_string_literal()
                 .map(|py_string| (node_ref, py_string))
         } else {
+            debug!("TODO param spec why does this not need an error?");
             None
         };
         let (name_node, py_string) = match result {
@@ -1035,12 +1040,12 @@ fn maybe_param_spec(
                 }
             }
         }
-        return Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {
+        Some(TypeVarLike::ParamSpec(Rc::new(ParamSpec {
             name_string: PointLink {
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             },
-        })));
+        })))
     } else {
         args.as_node_ref().add_typing_issue(
             i_s.db,
@@ -1048,8 +1053,8 @@ fn maybe_param_spec(
                 class_name: "ParamSpec",
             },
         );
+        None
     }
-    None
 }
 
 #[derive(Debug)]
