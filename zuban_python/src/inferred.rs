@@ -1609,16 +1609,13 @@ fn infer_class_method(
         let type_vars = func.type_vars(i_s);
         let mut matcher = Matcher::new_function_matcher(Some(class), func, type_vars);
         let instance_t = class.as_type(i_s);
-        if !matches!(first_type.maybe_db_type(), Some(DbType::Self_)) {
-            // TODO It is questionable that we do not match Self here
-            if !first_type
-                .is_super_type_of(i_s, &mut matcher, &instance_t)
-                .bool()
-            {
-                return None;
-            }
+        // TODO It is questionable that we do not match Self here
+        if !first_type
+            .is_super_type_of(i_s, &mut matcher, &instance_t)
+            .bool()
+        {
+            return None;
         }
-        dbg!(first_type);
     }
     let t = func.as_db_type(i_s, FirstParamProperties::SkipBecauseClassMethod(class));
     Some(Inferred::execute_db_type(i_s, t))
