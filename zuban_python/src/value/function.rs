@@ -490,10 +490,11 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                             if let Some(u) = class_method_type_var_usage {
                                 if u.index == usage.index() {
                                     return GenericItem::TypeArgument(class.as_db_type(i_s.db));
+                                } else {
+                                    usage.add_to_index(-1);
+                                    todo!()
                                 }
                             }
-                            usage.add_to_index(-1);
-                            todo!();
                         } else if self_type_var_usage.is_some() {
                             usage.add_to_index(1);
                         }
