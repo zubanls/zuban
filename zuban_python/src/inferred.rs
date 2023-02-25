@@ -729,9 +729,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Saved(definition, point) => match point.type_() {
                 PointType::Specific => match point.specific() {
                     Specific::Function => {
-                        let node_ref = NodeRef::from_link(i_s.db, *definition);
-                        let func = Function::new(node_ref, Some(func_class));
-                        func.type_vars(i_s); // Cache annotations
+                        let func = prepare_func(i_s, *definition, func_class);
                         let complex =
                             if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 if let Some(t) =
@@ -784,9 +782,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     match file.complex_points.get(point.complex_index()) {
                         ComplexPoint::FunctionOverload(o) => {
                             let has_self_arguments = o.functions.iter().any(|func_link| {
-                                let node_ref = NodeRef::from_link(i_s.db, *func_link);
-                                let func = Function::new(node_ref, Some(func_class));
-                                func.type_vars(i_s); // Cache annotations
+                                let func = prepare_func(i_s, *func_link, func_class);
                                 func.first_param_annotation_type(i_s).is_some()
                             });
                             if has_self_arguments {
@@ -1546,6 +1542,17 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
     }
 }
 
+fn prepare_func<'db, 'class>(
+    i_s: &mut InferenceState<'db, '_>,
+    definition: PointLink,
+    func_class: Class<'class>,
+) -> Function<'db, 'class> {
+    let node_ref = NodeRef::from_link(i_s.db, definition);
+    let func = Function::new(node_ref, Some(func_class));
+    func.type_vars(i_s); // Cache annotations
+    func
+}
+
 pub enum UnionValue<T, I: Iterator<Item = T>> {
     Single(T),
     Multiple(I),
@@ -1568,7 +1575,7 @@ fn infer_class_method(
     func_class: Class,
     definition: PointLink,
 ) -> Inferred {
-    let func = Function::new(NodeRef::from_link(i_s.db, definition), Some(func_class));
+    let func = prepare_func(i_s, definition, func_class);
     let t = func.as_db_type(i_s, FirstParamProperties::SkipBecauseClassMethod(class));
     Inferred::execute_db_type(i_s, t)
 }
