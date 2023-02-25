@@ -2487,6 +2487,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                         .maybe_simple_type_expression_assignment()
                         .unwrap()
                         .0;
+                    debug!("Found invalid type alias: {}", name_def.as_code());
                     TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(NodeRef::new(
                         node_ref.file,
                         name_def.index(),
@@ -2562,10 +2563,14 @@ fn check_type_name<'db: 'file, 'file>(
                     Some(Specific::TypingTuple) => {
                         return TypeNameLookup::SpecialType(SpecialType::Tuple);
                     }
-                    Some(_) => {
+                    Some(s) => {
+                        debug!(
+                            "Found an unexpected specific {s:?} for {}",
+                            new_name.as_code()
+                        );
                         return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                             name_node_ref,
-                        ))
+                        ));
                     }
                     _ => (),
                 }
