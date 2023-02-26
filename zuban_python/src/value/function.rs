@@ -443,28 +443,28 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 params.next();
             }
             FirstParamProperties::SkipBecauseClassMethod(_) => {
+                let mut vec = if let Some(type_vars) = type_vars.take() {
+                    type_vars.into_vec()
+                } else {
+                    vec![]
+                };
                 if let Some(param) = params.next() {
                     if let Some(t) = param.annotation(i_s) {
                         match t.maybe_borrowed_db_type() {
                             Some(DbType::Type(t)) => {
                                 if let DbType::TypeVar(usage) = t.as_ref() {
                                     class_method_type_var_usage = Some(usage);
-                                    let mut vec = if let Some(type_vars) = type_vars.take() {
-                                        type_vars.into_vec()
-                                    } else {
-                                        vec![]
-                                    };
-                                    if vec.len() == 1 {
-                                        type_vars = None
-                                    } else {
-                                        vec.remove(0);
-                                        type_vars = Some(TypeVarLikes::from_vec(vec))
-                                    }
+                                    vec.remove(0);
                                 }
                             }
                             _ => todo!(),
                         }
                     }
+                }
+                if vec.is_empty() {
+                    type_vars = None
+                } else {
+                    type_vars = Some(TypeVarLikes::from_vec(vec))
                 }
             }
             FirstParamProperties::None => (),
