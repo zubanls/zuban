@@ -274,8 +274,13 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn tuple_with_generics<'db: 'a, 'a>(&'db self, generics: Generics<'a>) -> Class<'a> {
-        Class::from_position(self.tuple_node_ref(), generics, None)
+    pub fn tuple_class<'db: 'a, 'a>(
+        &'db self,
+        db: &'db Database,
+        tuple: &'a TupleContent,
+    ) -> Class<'a> {
+        let generics = tuple.tuple_class_generics(db);
+        Class::from_position(self.tuple_node_ref(), Generics::List(generics, None), None)
     }
 
     builtins_attribute_node_ref!(object_node_ref, builtins_object_index);

@@ -599,16 +599,12 @@ impl<'a> Type<'a> {
                     Some(Class::from_db_type(db, *link, generics).mro(db))
                 }
                 DbType::Tuple(tup) => Some({
-                    let class_infos = db
-                        .python_state
-                        // TODO is this Not Defined Yet correct? at least comment
-                        .tuple_with_generics(Generics::NotDefinedYet)
-                        .use_cached_class_infos(db);
+                    let tuple_class = db.python_state.tuple_class(db, tup);
                     MroIterator::new(
                         db,
                         Type::new(t),
-                        Some(Generics::List(tup.tuple_class_generics(db), None)),
-                        class_infos.mro.iter(),
+                        Some(tuple_class.generics),
+                        tuple_class.use_cached_class_infos(db).mro.iter(),
                         false,
                     )
                 }),

@@ -7,7 +7,7 @@ use crate::debug;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, UnionValue};
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::Instance;
 
@@ -42,11 +42,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        let generics = self.content.tuple_class_generics(i_s.db);
-        let tuple_cls = i_s
-            .db
-            .python_state
-            .tuple_with_generics(Generics::List(generics, None));
+        let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class) in tuple_cls.mro(i_s.db) {
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
