@@ -305,8 +305,6 @@ testAliasToClassMethod
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
 testSelfTypeVarIndexExpr
-# Self type with final
-testTypingSelfAllowAliasUseInFinalClasses
 
 # classmethod overloads
 testGenericClassMethodOverloaded
@@ -1005,6 +1003,7 @@ testFinalAddFinalPropertyWithVarFine
 testFinalBodyReprocessedAndStillFinal
 testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
 testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
+testTypingSelfAllowAliasUseInFinalClasses
 # Final: Cannot assign to final name "x"
 testNewAnalyzerFinalReassignModuleReexport
 testNewAnalyzerFinalOverrideInSubclass
