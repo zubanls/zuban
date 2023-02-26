@@ -406,6 +406,11 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 
     pub fn as_db_type(&self, i_s: &mut InferenceState, first: FirstParamProperties) -> DbType {
         let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
+        let mut type_vars = if let Some(type_vars) = type_vars.take() {
+            type_vars.into_vec()
+        } else {
+            vec![]
+        };
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
         let mut class_method_type_var_usage = None;
@@ -430,13 +435,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         type_var: self_type_var.clone(),
                         index: 0.into(),
                     });
-                    let mut vec = if let Some(type_vars) = type_vars.take() {
-                        type_vars.into_vec()
-                    } else {
-                        vec![]
-                    };
-                    vec.insert(0, TypeVarLike::TypeVar(self_type_var));
-                    type_vars = Some(TypeVarLikes::from_vec(vec))
+                    type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
                 }
             }
             FirstParamProperties::Skip => {
@@ -451,28 +450,18 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     };
                     return new_func.as_db_type(i_s, first);
                 }
-                let mut vec = if let Some(type_vars) = type_vars.take() {
-                    type_vars.into_vec()
-                } else {
-                    vec![]
-                };
                 if let Some(param) = params.next() {
                     if let Some(t) = param.annotation(i_s) {
                         match t.maybe_borrowed_db_type() {
                             Some(DbType::Type(t)) => {
                                 if let DbType::TypeVar(usage) = t.as_ref() {
                                     class_method_type_var_usage = Some(usage);
-                                    vec.remove(0);
+                                    type_vars.remove(0);
                                 }
                             }
                             _ => todo!(),
                         }
                     }
-                }
-                if vec.is_empty() {
-                    type_vars = None
-                } else {
-                    type_vars = Some(TypeVarLikes::from_vec(vec))
                 }
             }
             FirstParamProperties::None => (),
@@ -530,13 +519,13 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
 
-        let return_result = |params, type_vars| {
+        let return_result = |params, type_vars: Vec<_>| {
             DbType::Callable(Box::new(CallableContent {
                 name: Some(self.name_string_slice()),
                 class_name: self.class.map(|c| c.name_string_slice()),
                 defined_at: self.node_ref.as_link(),
                 params,
-                type_vars,
+                type_vars: (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars)),
                 result_type,
             }))
         };
