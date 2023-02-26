@@ -454,12 +454,19 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::SkipBecauseClassMethod(class) => {
                 if matches!(self.class.unwrap().generics, Generics::NotDefinedYet) {
                     let mut new_func = *self;
-                    new_func.class.as_mut().unwrap().generics = Generics::Self_ {
+                    let self_generics = Generics::Self_ {
                         type_var_likes: class.type_vars(i_s),
                         class_definition: class.node_ref.as_link(),
                     };
+                    let mut new_class = *class;
+                    new_class.generics = self_generics;
+                    new_func.class.as_mut().unwrap().generics = self_generics;
                     // Check why this is necessary by following class_generics_not_defined_yet.
-                    return new_func.internal_as_db_type(i_s, first, true);
+                    return new_func.internal_as_db_type(
+                        i_s,
+                        FirstParamProperties::SkipBecauseClassMethod(&new_class),
+                        true,
+                    );
                 }
                 if let Some(param) = params.next() {
                     if let Some(t) = param.annotation(i_s) {
@@ -478,6 +485,14 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::None => (),
         }
         let self_type_var_usage = self_type_var_usage.as_ref();
+        let mut ensure_classmethod_type_var_like = |tvl| {
+            let position = type_vars.iter().position(|t| t == &tvl).unwrap_or_else(|| {
+                type_vars.push(tvl.clone());
+                type_vars.len() - 1
+            });
+            tvl.as_type_var_like_usage(position.into(), defined_at)
+                .into_generic_item()
+        };
         let mut as_db_type = |i_s: &mut InferenceState, t: Type| {
             let t = t.as_db_type(i_s.db);
             let Some(func_class) = self.class else {
@@ -502,15 +517,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                                     &mut |usage| {
                                         if usage.in_definition() == class.node_ref.as_link() {
                                             let tvl = usage.as_type_var_like();
-                                            let position = type_vars
-                                                .iter()
-                                                .position(|t| t == &tvl)
-                                                .unwrap_or_else(|| {
-                                                    type_vars.push(tvl.clone());
-                                                    type_vars.len() - 1
-                                                });
-                                            tvl.as_type_var_like_usage(position.into(), defined_at)
-                                                .into_generic_item()
+                                            ensure_classmethod_type_var_like(tvl)
                                         } else {
                                             usage.into_generic_item()
                                         }
@@ -524,7 +531,24 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
                             if let Some(u) = class_method_type_var_usage {
                                 if u.index == usage.index() {
-                                    return GenericItem::TypeArgument(class.as_db_type(i_s.db));
+                                    return if class_generics_not_defined_yet {
+                                        GenericItem::TypeArgument(DbType::Class(
+                                            class.node_ref.as_link(),
+                                            class.type_vars(i_s).map(|tvls| {
+                                                GenericsList::new_generics(
+                                                    tvls.iter()
+                                                        .map(|tvl| {
+                                                            ensure_classmethod_type_var_like(
+                                                                tvl.clone(),
+                                                            )
+                                                        })
+                                                        .collect(),
+                                                )
+                                            }),
+                                        ))
+                                    } else {
+                                        GenericItem::TypeArgument(class.as_db_type(i_s.db))
+                                    };
                                 } else {
                                     usage.add_to_index(-1);
                                     todo!()
