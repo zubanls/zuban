@@ -2652,7 +2652,7 @@ impl TypeVarLike {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum TypeVarName {
     PointLink(PointLink),
     Self_,
