@@ -304,15 +304,14 @@ testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric
 testGenericClassMethodInGenericFunction
 testGenericClassMethodAnnotationDecorator
 testGenericClassClsNonGeneric
+testSelfTypeGenericClassNoClashClassMethodClassObject
+testGenericClassAlternativeConstructorPrecise2
+# Self type classmethod (used Self)
+testTypingSelfAlternativeGenericConstructor
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
 # classmethod name redirect name binding issue
 testAliasToClassMethod
-# Self type classmethod (used Self)
-testTypingSelfAlternativeGenericConstructor
-# Self type classmethod (no Self)
-testGenericClassAlternativeConstructorPrecise2
-testSelfTypeGenericClassNoClashClassMethodClassObject
 # Self type classmethod access with type vars(no Self)
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
