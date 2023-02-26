@@ -530,6 +530,17 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
 
+        let return_result = |params, type_vars| {
+            DbType::Callable(Box::new(CallableContent {
+                name: Some(self.name_string_slice()),
+                class_name: self.class.map(|c| c.name_string_slice()),
+                defined_at: self.node_ref.as_link(),
+                params,
+                type_vars,
+                result_type,
+            }))
+        };
+
         let mut new_params = vec![];
         let mut had_param_spec_args = false;
         let file_index = self.node_ref.file_index();
@@ -577,14 +588,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     if !had_param_spec_args {
                         todo!()
                     }
-                    return DbType::Callable(Box::new(CallableContent {
-                        name: Some(self.name_string_slice()),
-                        class_name: self.class.map(|c| c.name_string_slice()),
-                        defined_at: self.node_ref.as_link(),
-                        params: self.remap_param_spec(i_s, new_params, u),
-                        type_vars,
-                        result_type,
-                    }));
+                    return return_result(self.remap_param_spec(i_s, new_params, u), type_vars);
                 }
             };
             new_params.push(CallableParam {
@@ -596,14 +600,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 }),
             });
         }
-        DbType::Callable(Box::new(CallableContent {
-            name: Some(self.name_string_slice()),
-            class_name: self.class.map(|c| c.name_string_slice()),
-            defined_at: self.node_ref.as_link(),
-            params: CallableParams::Simple(new_params.into_boxed_slice()),
+        return_result(
+            CallableParams::Simple(new_params.into_boxed_slice()),
             type_vars,
-            result_type,
-        }))
+        )
     }
 
     pub fn name_string_slice(&self) -> StringSlice {
