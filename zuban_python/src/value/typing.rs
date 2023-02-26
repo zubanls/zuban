@@ -69,7 +69,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         slice_type
             .file
             .inference(i_s)
-            .compute_type_application_on_typing_class(self.specific, *slice_type)
+            .compute_type_application_on_typing_class(
+                self.specific,
+                *slice_type,
+                matches!(result_context, ResultContext::AssignmentNewDefinition),
+            )
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {

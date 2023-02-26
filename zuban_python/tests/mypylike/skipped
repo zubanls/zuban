@@ -263,8 +263,6 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 testSelfTypeMultipleTypeVars
 testTypingSelfNonAnnotationUses
-# type application when no type alias can use generics
-testGenericClassInGenericFunction
 
 # base class: type alias
 testDontSimplifyNoneUnionsWithStrictOptional
@@ -298,6 +296,7 @@ testOverloadedProperty2
 testDecoratedPropertySetter
 
 # classmethod generics
+testGenericClassInGenericFunction
 testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric
 testGenericClassMethodInGenericFunction
 testGenericClassClsNonGeneric

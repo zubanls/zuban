@@ -1954,9 +1954,8 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         class: Class,
         slice_type: SliceType,
-        //from_alias_definition: bool,
+        from_alias_definition: bool,
     ) -> Inferred {
-        let from_alias_definition = true; // TODO add this
         compute_type_application!(
             self,
             slice_type,
@@ -1988,9 +1987,8 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         specific: Specific,
         slice_type: SliceType,
-        //from_alias_definition: bool,
+        from_alias_definition: bool,
     ) -> Inferred {
-        let from_alias_definition = true; // TODO add this
         match specific {
             Specific::TypingGeneric | Specific::TypingProtocol => {
                 todo!()

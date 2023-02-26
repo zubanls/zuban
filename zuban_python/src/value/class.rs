@@ -540,7 +540,11 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         slice_type
             .file
             .inference(i_s)
-            .compute_type_application_on_class(*self, *slice_type)
+            .compute_type_application_on_class(
+                *self,
+                *slice_type,
+                matches!(result_context, ResultContext::AssignmentNewDefinition),
+            )
     }
 
     fn description(&self, i_s: &mut InferenceState) -> String {
