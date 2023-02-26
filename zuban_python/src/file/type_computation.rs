@@ -255,6 +255,9 @@ macro_rules! compute_type_application {
                     db_type = recalculate_type_vars(&db_type);
                 });
                 if type_vars.len() > 0 {
+                    if !$from_alias_definition {
+                        todo!("{type_vars:?}")
+                    }
                     ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
                         Some(type_vars),
                         $slice_type.as_node_ref().as_link(),
@@ -1970,6 +1973,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         alias: &TypeAlias,
         slice_type: SliceType,
+        from_alias_definition: bool,
     ) -> Inferred {
         if !alias.is_class() {
             slice_type
@@ -1980,7 +1984,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         compute_type_application!(
             self,
             slice_type,
-            false,
+            from_alias_definition,
             compute_type_get_item_on_alias(alias, slice_type)
         )
     }

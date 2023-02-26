@@ -50,7 +50,11 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         slice_type
             .file
             .inference(i_s)
-            .compute_type_application_on_alias(self.alias, *slice_type)
+            .compute_type_application_on_alias(
+                self.alias,
+                *slice_type,
+                matches!(result_context, ResultContext::AssignmentNewDefinition),
+            )
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
