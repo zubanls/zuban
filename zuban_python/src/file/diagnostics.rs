@@ -168,7 +168,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
         let type_var_likes =
-            Class::from_position(class_node_ref, Generics::Any, None).type_vars(self.i_s);
+            Class::from_position(class_node_ref, Generics::NotDefinedYet, None).type_vars(self.i_s);
         let c = Class::from_position(
             class_node_ref,
             Generics::Self_ {

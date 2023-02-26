@@ -601,7 +601,8 @@ impl<'a> Type<'a> {
                 DbType::Tuple(tup) => Some({
                     let class_infos = db
                         .python_state
-                        .tuple_with_generics(Generics::Any)
+                        // TODO is this Not Defined Yet correct? at least comment
+                        .tuple_with_generics(Generics::NotDefinedYet)
                         .use_cached_class_infos(db);
                     MroIterator::new(
                         db,

@@ -397,7 +397,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         i_s,
                         &use_instance_with_ref(
                             definition,
-                            generics.unwrap_or(Generics::Any),
+                            generics.unwrap_or(Generics::NotDefinedYet),
                             Some(instance),
                         ),
                     )
@@ -456,7 +456,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 generics = Self::expect_generics(definition, *point);
             }
         }
-        self.maybe_class_internal(i_s, generics.unwrap_or(Generics::Any))
+        self.maybe_class_internal(i_s, generics.unwrap_or(Generics::NotDefinedYet))
     }
 
     fn maybe_class_internal<'a>(
@@ -1105,7 +1105,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
             let definition = NodeRef::from_link(i_s.db, definition);
             let complex = definition.file.complex_points.get(point.complex_index());
             if let ComplexPoint::Class(cls_storage) = complex {
-                let class = Class::new(definition, cls_storage, Generics::Any, None);
+                let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
                 callable(i_s, &class)
             } else {
                 run_on_complex(

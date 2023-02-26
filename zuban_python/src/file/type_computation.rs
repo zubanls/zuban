@@ -979,7 +979,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         slice_type: SliceType,
         primary: Option<Primary>,
     ) -> TypeContent<'db, 'db> {
-        if !matches!(class.generics(), Generics::None | Generics::Any) {
+        if !matches!(class.generics(), Generics::None | Generics::NotDefinedYet) {
             todo!();
             //return TypeContent::InvalidVariable(InvalidVariableType::Other);
         }

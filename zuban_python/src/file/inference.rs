@@ -137,7 +137,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 Locality::Todo,
             ));
 
-            let class = Class::new(definition, cls_storage, Generics::Any, None);
+            let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
             // Make sure the type vars are properly pre-calculated
             class.ensure_calculated_class_infos(self.i_s);
         }

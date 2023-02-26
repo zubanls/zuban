@@ -443,7 +443,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 params.next();
             }
             FirstParamProperties::SkipBecauseClassMethod(class) => {
-                if matches!(self.class.unwrap().generics, Generics::Any) {
+                if matches!(self.class.unwrap().generics, Generics::NotDefinedYet) {
                     let mut new_func = *self;
                     new_func.class.as_mut().unwrap().generics = Generics::Self_ {
                         type_var_likes: class.type_vars(i_s),
@@ -1190,8 +1190,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 )
             }
         };
-        let has_already_calculated_class_generics =
-            search_init && !matches!(class.unwrap().generics(), Generics::None | Generics::Any);
+        let has_already_calculated_class_generics = search_init
+            && !matches!(
+                class.unwrap().generics(),
+                Generics::None | Generics::NotDefinedYet
+            );
         let handle_result = |calculated_type_vars, function| {
             let calculated = if has_already_calculated_class_generics {
                 if let Some(class) = class {

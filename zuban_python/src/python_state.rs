@@ -184,8 +184,11 @@ impl PythonState {
                     - NAME_TO_CLASS_DIFF;
                 $db.python_state.$attr_name = class_index;
                 let module = db.python_state.$module_name();
-                let class =
-                    Class::from_position(NodeRef::new(module, class_index), Generics::Any, None);
+                let class = Class::from_position(
+                    NodeRef::new(module, class_index),
+                    Generics::NotDefinedYet,
+                    None,
+                );
                 class.ensure_calculated_class_infos(&mut InferenceState::new(db));
             };
         }

@@ -14,7 +14,7 @@ use crate::inference_state::InferenceState;
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
         match $type_var_generics {
-            None | Some(Generics::None | Generics::Any) => Generic::new($g),
+            None | Some(Generics::None | Generics::NotDefinedYet) => Generic::new($g),
             Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(
                 $db,
                 &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
@@ -35,7 +35,7 @@ pub enum Generics<'a> {
         type_var_likes: Option<&'a TypeVarLikes>,
     },
     None,
-    Any,
+    NotDefinedYet,
 }
 
 impl<'a> Generics<'a> {
@@ -140,7 +140,7 @@ impl<'a> Generics<'a> {
                 // TODO TypeVarTuple is this correct?
                 Generic::TypeArgument(Type::owned((*g).clone()))
             }
-            Self::Any => Generic::owned(type_var_like.as_any_generic_item()),
+            Self::NotDefinedYet => Generic::owned(type_var_like.as_any_generic_item()),
             Self::Self_ {
                 class_definition, ..
             } => Generic::owned(
@@ -169,7 +169,7 @@ impl<'a> Generics<'a> {
                 iterator: type_var_likes.unwrap().iter().enumerate(),
                 definition: *class_definition,
             },
-            Self::None | Self::Any => GenericsIteratorItem::None,
+            Self::None | Self::NotDefinedYet => GenericsIteratorItem::None,
         };
         GenericsIterator::new(db, item)
     }
@@ -180,7 +180,7 @@ impl<'a> Generics<'a> {
         type_vars: Option<&TypeVarLikes>,
     ) -> Option<GenericsList> {
         type_vars.map(|type_vars| match self {
-            Self::Any => GenericsList::new_generics(
+            Self::NotDefinedYet => GenericsList::new_generics(
                 type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
             ),
             _ => {

@@ -34,7 +34,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         class.name(),
         function.name(),
     );
-    let has_generics = !matches!(class.generics, Generics::None | Generics::Any);
+    let has_generics = !matches!(class.generics, Generics::None | Generics::NotDefinedYet);
     let type_vars = class.type_vars(i_s);
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = function.type_vars(i_s);
@@ -56,7 +56,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
 
     if let Some(t) = function.first_param_annotation_type(i_s) {
         let mut class = *class;
-        if matches!(class.generics, Generics::Any) {
+        if matches!(class.generics, Generics::NotDefinedYet) {
             class.generics = Generics::Self_ {
                 class_definition: class.node_ref.as_link(),
                 type_var_likes: class.type_vars(i_s),

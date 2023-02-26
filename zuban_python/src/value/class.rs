@@ -165,7 +165,7 @@ impl<'db: 'a, 'a> Class<'a> {
             ParentScope::Class(node_index) => {
                 let parent_class = Self::from_position(
                     NodeRef::new(self.node_ref.file, node_index),
-                    Generics::Any, // TODO is this correct?
+                    Generics::NotDefinedYet, // TODO is this correct?
                     None,
                 );
                 parent_class
@@ -447,7 +447,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
             ParentScope::Class(node_index) => {
                 let parent_class = Self::from_position(
                     NodeRef::new(self.node_ref.file, node_index),
-                    Generics::Any,
+                    Generics::NotDefinedYet,
                     None,
                 );
                 format!("{}.{}", parent_class.qualified_name(db), self.name())

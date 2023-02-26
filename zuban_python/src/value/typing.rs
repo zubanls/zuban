@@ -490,7 +490,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
             for db_type in self.type_var_usage.type_var.restrictions.iter() {
                 return match db_type {
                     DbType::Class(link) => Instance::new(
-                        Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::Any, None)
+                        Class::from_position(NodeRef::from_link(i_s.db, *link), Generics::NotDefinedYet, None)
                             .unwrap(),
                         &Inferred::new_unsaved_complex(ComplexPoint::Instance(*link, None)),
                     )
