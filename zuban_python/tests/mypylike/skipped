@@ -296,10 +296,7 @@ testOverloadedProperty2
 testDecoratedPropertySetter
 
 # classmethod generics
-testGenericClassInGenericFunction
 testGenericClassMethodUnboundOnClassNonMatchingIdNonGeneric
-testGenericClassMethodInGenericFunction
-testGenericClassClsNonGeneric
 testSelfTypeGenericClassNoClashClassMethodClassObject
 testGenericClassAlternativeConstructorPrecise2
 # Self type classmethod (used Self)
