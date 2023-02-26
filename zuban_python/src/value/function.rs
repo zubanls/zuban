@@ -567,6 +567,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 &mut || {
                     if let Some(self_type_var_usage) = self_type_var_usage {
                         DbType::TypeVar(self_type_var_usage.clone())
+                    } else if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
+                        todo!()
                     } else {
                         DbType::Self_
                     }
