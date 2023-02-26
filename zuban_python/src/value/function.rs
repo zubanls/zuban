@@ -442,7 +442,15 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::Skip => {
                 params.next();
             }
-            FirstParamProperties::SkipBecauseClassMethod(_) => {
+            FirstParamProperties::SkipBecauseClassMethod(class) => {
+                if matches!(self.class.unwrap().generics, Generics::Any) {
+                    let mut new_func = *self;
+                    new_func.class.as_mut().unwrap().generics = Generics::Self_ {
+                        type_var_likes: class.type_vars(i_s),
+                        class_definition: class.node_ref.as_link(),
+                    };
+                    return new_func.as_db_type(i_s, first);
+                }
                 let mut vec = if let Some(type_vars) = type_vars.take() {
                     type_vars.into_vec()
                 } else {
@@ -480,10 +488,14 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 &mut |mut usage| {
                     let in_definition = usage.in_definition();
                     if in_definition == class.node_ref.as_link() {
+                        //if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
+                        //    todo!()
+                        //} else {
                         return class
                             .generics()
                             .nth_usage(i_s.db, &usage)
                             .into_generic_item(i_s.db);
+                        //}
                     } else if in_definition == self.node_ref.as_link() {
                         if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
                             if let Some(u) = class_method_type_var_usage {
