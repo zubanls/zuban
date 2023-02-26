@@ -570,7 +570,7 @@ fn maybe_type_var(
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::Unknown) {
+    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
         args.as_node_ref()
             .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
         return None;
@@ -818,7 +818,7 @@ fn maybe_type_var_tuple(
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::Unknown) {
+    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
         args.as_node_ref()
             .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
         return None;
@@ -970,7 +970,7 @@ fn maybe_param_spec(
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::Unknown) {
+    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
         args.as_node_ref()
             .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
         return None;
