@@ -1602,23 +1602,21 @@ mod tests {
 
 fn infer_class_method(
     i_s: &mut InferenceState,
-    class: Class,
+    mut class: Class,
     func_class: Class,
     definition: PointLink,
 ) -> Option<Inferred> {
-    if matches!(class.generics, Generics::NotDefinedYet) && class.type_vars(i_s).is_some() {
+    let mut func_class = func_class;
+    let class_generics_not_defined_yet =
+        matches!(class.generics, Generics::NotDefinedYet) && class.type_vars(i_s).is_some();
+    if class_generics_not_defined_yet {
         // Check why this is necessary by following class_generics_not_defined_yet.
         let self_generics = Generics::Self_ {
             type_var_likes: class.type_vars(i_s),
             class_definition: class.node_ref.as_link(),
         };
-        let mut new_class = class;
-        new_class.generics = self_generics;
-        let mut func_class = func_class;
+        class.generics = self_generics;
         func_class.generics = self_generics;
-        let func = prepare_func(i_s, definition, func_class);
-        let t = func.classmethod_as_db_type(i_s, &new_class, true);
-        return Some(Inferred::execute_db_type(i_s, t));
     }
     let func = prepare_func(i_s, definition, func_class);
     if let Some(first_type) = func.first_param_annotation_type(i_s) {
@@ -1633,6 +1631,6 @@ fn infer_class_method(
             return None;
         }
     }
-    let t = func.classmethod_as_db_type(i_s, &class, false);
+    let t = func.classmethod_as_db_type(i_s, &class, class_generics_not_defined_yet);
     Some(Inferred::execute_db_type(i_s, t))
 }
