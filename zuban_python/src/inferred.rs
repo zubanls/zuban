@@ -1617,11 +1617,7 @@ fn infer_class_method(
         let mut func_class = func_class;
         func_class.generics = self_generics;
         let func = prepare_func(i_s, definition, func_class);
-        let t = func.classmethod_as_db_type(
-            i_s,
-            FirstParamProperties::SkipBecauseClassMethod(&new_class),
-            true,
-        );
+        let t = func.classmethod_as_db_type(i_s, &new_class, true);
         return Some(Inferred::execute_db_type(i_s, t));
     }
     let func = prepare_func(i_s, definition, func_class);
@@ -1637,10 +1633,6 @@ fn infer_class_method(
             return None;
         }
     }
-    let t = func.classmethod_as_db_type(
-        i_s,
-        FirstParamProperties::SkipBecauseClassMethod(&class),
-        false,
-    );
+    let t = func.classmethod_as_db_type(i_s, &class, false);
     Some(Inferred::execute_db_type(i_s, t))
 }

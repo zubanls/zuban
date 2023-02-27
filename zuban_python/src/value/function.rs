@@ -411,10 +411,14 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     pub fn classmethod_as_db_type(
         &self,
         i_s: &mut InferenceState,
-        first: FirstParamProperties,
+        class: &Class,
         class_generics_not_defined_yet: bool,
     ) -> DbType {
-        self.internal_as_db_type(i_s, first, class_generics_not_defined_yet)
+        self.internal_as_db_type(
+            i_s,
+            FirstParamProperties::SkipBecauseClassMethod(class),
+            class_generics_not_defined_yet,
+        )
     }
 
     fn internal_as_db_type(
