@@ -405,28 +405,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn as_db_type(&self, i_s: &mut InferenceState, first: FirstParamProperties) -> DbType {
-        self.internal_as_db_type(i_s, first, false)
-    }
-
-    pub fn classmethod_as_db_type(
-        &self,
-        i_s: &mut InferenceState,
-        class: &Class,
-        class_generics_not_defined_yet: bool,
-    ) -> DbType {
-        self.internal_as_db_type(
-            i_s,
-            FirstParamProperties::SkipBecauseClassMethod(class),
-            class_generics_not_defined_yet,
-        )
-    }
-
-    fn internal_as_db_type(
-        &self,
-        i_s: &mut InferenceState,
-        first: FirstParamProperties,
-        class_generics_not_defined_yet: bool,
-    ) -> DbType {
+        let mut params = self.iter_params().peekable();
+        let mut self_type_var_usage = None;
         let defined_at = self.node_ref.as_link();
         let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
         let mut type_vars = if let Some(type_vars) = type_vars.take() {
@@ -434,9 +414,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         } else {
             vec![]
         };
-        let mut params = self.iter_params().peekable();
-        let mut self_type_var_usage = None;
-        let mut class_method_type_var_usage = None;
         match first {
             FirstParamProperties::MethodAccessedOnClass(class) => {
                 let mut needs_self_type_variable =
@@ -464,25 +441,81 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::Skip => {
                 params.next();
             }
-            FirstParamProperties::SkipBecauseClassMethod(class) => {
-                if let Some(param) = params.next() {
-                    if let Some(t) = param.annotation(i_s) {
-                        match t.maybe_borrowed_db_type() {
-                            Some(DbType::Type(t)) => {
-                                if let DbType::TypeVar(usage) = t.as_ref() {
-                                    class_method_type_var_usage = Some(usage);
-                                    type_vars.remove(0);
-                                }
-                            }
-                            _ => todo!(),
-                        }
-                    }
-                }
-            }
             FirstParamProperties::None => (),
         }
         let self_type_var_usage = self_type_var_usage.as_ref();
+
+        let as_db_type = |i_s: &mut InferenceState, t: Type| {
+            let t = t.as_db_type(i_s.db);
+            let Some(func_class) = self.class else {
+                return t
+            };
+            t.replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |mut usage| {
+                    let in_definition = usage.in_definition();
+                    if in_definition == func_class.node_ref.as_link() {
+                        func_class
+                            .generics()
+                            .nth_usage(i_s.db, &usage)
+                            .into_generic_item(i_s.db)
+                    } else if in_definition == defined_at {
+                        if self_type_var_usage.is_some() {
+                            usage.add_to_index(1);
+                        }
+                        usage.into_generic_item()
+                    } else {
+                        // This can happen for example if the return value is a Callable with its
+                        // own type vars.
+                        usage.into_generic_item()
+                    }
+                },
+                &mut || {
+                    if let Some(self_type_var_usage) = self_type_var_usage {
+                        DbType::TypeVar(self_type_var_usage.clone())
+                    } else {
+                        DbType::Self_
+                    }
+                },
+            )
+        };
+        let mut callable =
+            self.internal_as_db_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
+        callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
+        DbType::Callable(Box::new(callable))
+    }
+
+    pub fn classmethod_as_db_type(
+        &self,
+        i_s: &mut InferenceState,
+        class: &Class,
+        class_generics_not_defined_yet: bool,
+    ) -> DbType {
+        let mut class_method_type_var_usage = None;
+        let mut params = self.iter_params().peekable();
+        let defined_at = self.node_ref.as_link();
+        let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
+        let mut type_vars = if let Some(type_vars) = type_vars.take() {
+            type_vars.into_vec()
+        } else {
+            vec![]
+        };
+        if let Some(param) = params.next() {
+            if let Some(t) = param.annotation(i_s) {
+                match t.maybe_borrowed_db_type() {
+                    Some(DbType::Type(t)) => {
+                        if let DbType::TypeVar(usage) = t.as_ref() {
+                            class_method_type_var_usage = Some(usage);
+                            type_vars.remove(0);
+                        }
+                    }
+                    _ => todo!(),
+                }
+            }
+        }
+
         let type_vars = RefCell::new(type_vars);
+
         let ensure_classmethod_type_var_like = |tvl| {
             let pos = type_vars.borrow().iter().position(|t| t == &tvl);
             let position = pos.unwrap_or_else(|| {
@@ -522,40 +555,32 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                             .generics()
                             .nth_usage(i_s.db, &usage)
                             .into_generic_item(i_s.db);
-                        if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
-                            // We need to remap again, because in generics of classes will be
-                            // generic in the function of the classmethod, see for example
-                            // `testGenericClassMethodUnboundOnClass`.
-                            if class_generics_not_defined_yet {
-                                return result.replace_type_var_likes(
-                                    i_s.db,
-                                    &mut |usage| {
-                                        if usage.in_definition() == class.node_ref.as_link() {
-                                            let tvl = usage.as_type_var_like();
-                                            ensure_classmethod_type_var_like(tvl)
-                                        } else {
-                                            usage.into_generic_item()
-                                        }
-                                    },
-                                    &mut || todo!(),
-                                );
-                            }
+                        // We need to remap again, because in generics of classes will be
+                        // generic in the function of the classmethod, see for example
+                        // `testGenericClassMethodUnboundOnClass`.
+                        if class_generics_not_defined_yet {
+                            return result.replace_type_var_likes(
+                                i_s.db,
+                                &mut |usage| {
+                                    if usage.in_definition() == class.node_ref.as_link() {
+                                        let tvl = usage.as_type_var_like();
+                                        ensure_classmethod_type_var_like(tvl)
+                                    } else {
+                                        usage.into_generic_item()
+                                    }
+                                },
+                                &mut || todo!(),
+                            );
                         }
                         result
                     } else if in_definition == defined_at {
-                        if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
-                            if let Some(u) = class_method_type_var_usage {
-                                if u.index == usage.index() {
-                                    return GenericItem::TypeArgument(get_class_method_class(
-                                        class,
-                                    ));
-                                } else {
-                                    usage.add_to_index(-1);
-                                    todo!()
-                                }
+                        if let Some(u) = class_method_type_var_usage {
+                            if u.index == usage.index() {
+                                return GenericItem::TypeArgument(get_class_method_class(class));
+                            } else {
+                                usage.add_to_index(-1);
+                                todo!()
                             }
-                        } else if self_type_var_usage.is_some() {
-                            usage.add_to_index(1);
                         }
                         usage.into_generic_item()
                     } else {
@@ -564,30 +589,32 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         usage.into_generic_item()
                     }
                 },
-                &mut || {
-                    if let Some(self_type_var_usage) = self_type_var_usage {
-                        DbType::TypeVar(self_type_var_usage.clone())
-                    } else if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
-                        get_class_method_class(class)
-                    } else {
-                        DbType::Self_
-                    }
-                },
+                &mut || get_class_method_class(class),
             )
         };
+        let mut callable = self.internal_as_db_type(i_s, params, false, as_db_type);
+        let type_vars = type_vars.into_inner();
+        callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
+        DbType::Callable(Box::new(callable))
+    }
+
+    fn internal_as_db_type(
+        &self,
+        i_s: &mut InferenceState,
+        mut params: std::iter::Peekable<impl Iterator<Item = FunctionParam<'a>>>,
+        has_self_type_var_usage: bool,
+        mut as_db_type: impl FnMut(&mut InferenceState, Type) -> DbType,
+    ) -> CallableContent {
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
 
-        let return_result = |params, type_vars: RefCell<Vec<_>>| {
-            let type_vars = type_vars.into_inner();
-            DbType::Callable(Box::new(CallableContent {
-                name: Some(self.name_string_slice()),
-                class_name: self.class.map(|c| c.name_string_slice()),
-                defined_at,
-                params,
-                type_vars: (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars)),
-                result_type,
-            }))
+        let return_result = |params| CallableContent {
+            name: Some(self.name_string_slice()),
+            class_name: self.class.map(|c| c.name_string_slice()),
+            defined_at: self.node_ref.as_link(),
+            params,
+            type_vars: None,
+            result_type,
         };
 
         let mut new_params = vec![];
@@ -600,7 +627,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::SelfParam) {
-                        if let Some(self_type_var_usage) = self_type_var_usage {
+                        if has_self_type_var_usage {
                             DbType::Self_
                         } else {
                             i_s.current_class().unwrap().as_db_type(i_s.db)
@@ -637,7 +664,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     if !had_param_spec_args {
                         todo!()
                     }
-                    return return_result(self.remap_param_spec(i_s, new_params, u), type_vars);
+                    return return_result(self.remap_param_spec(i_s, new_params, u));
                 }
             };
             new_params.push(CallableParam {
@@ -649,10 +676,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 }),
             });
         }
-        return_result(
-            CallableParams::Simple(new_params.into_boxed_slice()),
-            type_vars,
-        )
+        return_result(CallableParams::Simple(new_params.into_boxed_slice()))
     }
 
     pub fn name_string_slice(&self) -> StringSlice {
@@ -931,7 +955,6 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
 #[derive(Copy, Clone)]
 pub enum FirstParamProperties<'a> {
     Skip,
-    SkipBecauseClassMethod(&'a Class<'a>),
     MethodAccessedOnClass(&'a Class<'a>),
     None,
 }
