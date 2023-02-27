@@ -769,7 +769,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::ClassMethod => {
                         let result =
-                            infer_class_method(i_s, &instance.class, func_class, *definition);
+                            infer_class_method(i_s, instance.class, func_class, *definition);
                         if result.is_none() {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, func_class);
@@ -875,7 +875,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     Specific::ClassMethod => {
-                        let result = infer_class_method(i_s, class, attribute_class, *definition);
+                        let result = infer_class_method(i_s, *class, attribute_class, *definition);
                         if result.is_none() {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, attribute_class);
@@ -1602,14 +1602,32 @@ mod tests {
 
 fn infer_class_method(
     i_s: &mut InferenceState,
-    class: &Class,
+    class: Class,
     func_class: Class,
     definition: PointLink,
 ) -> Option<Inferred> {
+    if matches!(class.generics, Generics::NotDefinedYet) && class.type_vars(i_s).is_some() {
+        // Check why this is necessary by following class_generics_not_defined_yet.
+        let self_generics = Generics::Self_ {
+            type_var_likes: class.type_vars(i_s),
+            class_definition: class.node_ref.as_link(),
+        };
+        let mut new_class = class;
+        new_class.generics = self_generics;
+        let mut func_class = func_class;
+        func_class.generics = self_generics;
+        let func = prepare_func(i_s, definition, func_class);
+        let t = func.classmethod_as_db_type(
+            i_s,
+            FirstParamProperties::SkipBecauseClassMethod(&new_class),
+            true,
+        );
+        return Some(Inferred::execute_db_type(i_s, t));
+    }
     let func = prepare_func(i_s, definition, func_class);
     if let Some(first_type) = func.first_param_annotation_type(i_s) {
         let type_vars = func.type_vars(i_s);
-        let mut matcher = Matcher::new_function_matcher(Some(class), func, type_vars);
+        let mut matcher = Matcher::new_function_matcher(Some(&class), func, type_vars);
         let instance_t = class.as_type(i_s);
         // TODO It is questionable that we do not match Self here
         if !first_type
@@ -1619,6 +1637,10 @@ fn infer_class_method(
             return None;
         }
     }
-    let t = func.as_db_type(i_s, FirstParamProperties::SkipBecauseClassMethod(class));
+    let t = func.classmethod_as_db_type(
+        i_s,
+        FirstParamProperties::SkipBecauseClassMethod(&class),
+        false,
+    );
     Some(Inferred::execute_db_type(i_s, t))
 }

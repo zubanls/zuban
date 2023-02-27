@@ -408,6 +408,15 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         self.internal_as_db_type(i_s, first, false)
     }
 
+    pub fn classmethod_as_db_type(
+        &self,
+        i_s: &mut InferenceState,
+        first: FirstParamProperties,
+        class_generics_not_defined_yet: bool,
+    ) -> DbType {
+        self.internal_as_db_type(i_s, first, class_generics_not_defined_yet)
+    }
+
     fn internal_as_db_type(
         &self,
         i_s: &mut InferenceState,
@@ -452,22 +461,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 params.next();
             }
             FirstParamProperties::SkipBecauseClassMethod(class) => {
-                if matches!(self.class.unwrap().generics, Generics::NotDefinedYet) {
-                    let mut new_func = *self;
-                    let self_generics = Generics::Self_ {
-                        type_var_likes: class.type_vars(i_s),
-                        class_definition: class.node_ref.as_link(),
-                    };
-                    let mut new_class = *class;
-                    new_class.generics = self_generics;
-                    new_func.class.as_mut().unwrap().generics = self_generics;
-                    // Check why this is necessary by following class_generics_not_defined_yet.
-                    return new_func.internal_as_db_type(
-                        i_s,
-                        FirstParamProperties::SkipBecauseClassMethod(&new_class),
-                        true,
-                    );
-                }
                 if let Some(param) = params.next() {
                     if let Some(t) = param.annotation(i_s) {
                         match t.maybe_borrowed_db_type() {
