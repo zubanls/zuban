@@ -295,8 +295,6 @@ testOverloadedProperty
 testOverloadedProperty2
 testDecoratedPropertySetter
 
-# Self type classmethod (used Self)
-testTypingSelfAlternativeGenericConstructor
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
 # classmethod name redirect name binding issue

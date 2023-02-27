@@ -3,7 +3,7 @@ use parsa_python_ast::{
     ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
@@ -485,15 +485,33 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             FirstParamProperties::None => (),
         }
         let self_type_var_usage = self_type_var_usage.as_ref();
-        let mut ensure_classmethod_type_var_like = |tvl| {
-            let position = type_vars.iter().position(|t| t == &tvl).unwrap_or_else(|| {
-                type_vars.push(tvl.clone());
-                type_vars.len() - 1
+        let type_vars = RefCell::new(type_vars);
+        let ensure_classmethod_type_var_like = |tvl| {
+            let pos = type_vars.borrow().iter().position(|t| t == &tvl);
+            let position = pos.unwrap_or_else(|| {
+                type_vars.borrow_mut().push(tvl.clone());
+                type_vars.borrow().len() - 1
             });
             tvl.as_type_var_like_usage(position.into(), defined_at)
                 .into_generic_item()
         };
-        let mut as_db_type = |i_s: &mut InferenceState, t: Type| {
+        let get_class_method_class = |class: &Class| {
+            if class_generics_not_defined_yet {
+                DbType::Class(
+                    class.node_ref.as_link(),
+                    class.use_cached_type_vars(i_s.db).map(|tvls| {
+                        GenericsList::new_generics(
+                            tvls.iter()
+                                .map(|tvl| ensure_classmethod_type_var_like(tvl.clone()))
+                                .collect(),
+                        )
+                    }),
+                )
+            } else {
+                class.as_db_type(i_s.db)
+            }
+        };
+        let as_db_type = |i_s: &mut InferenceState, t: Type| {
             let t = t.as_db_type(i_s.db);
             let Some(func_class) = self.class else {
                 return t
@@ -531,24 +549,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
                             if let Some(u) = class_method_type_var_usage {
                                 if u.index == usage.index() {
-                                    return if class_generics_not_defined_yet {
-                                        GenericItem::TypeArgument(DbType::Class(
-                                            class.node_ref.as_link(),
-                                            class.type_vars(i_s).map(|tvls| {
-                                                GenericsList::new_generics(
-                                                    tvls.iter()
-                                                        .map(|tvl| {
-                                                            ensure_classmethod_type_var_like(
-                                                                tvl.clone(),
-                                                            )
-                                                        })
-                                                        .collect(),
-                                                )
-                                            }),
-                                        ))
-                                    } else {
-                                        GenericItem::TypeArgument(class.as_db_type(i_s.db))
-                                    };
+                                    return GenericItem::TypeArgument(get_class_method_class(
+                                        class,
+                                    ));
                                 } else {
                                     usage.add_to_index(-1);
                                     todo!()
@@ -568,7 +571,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     if let Some(self_type_var_usage) = self_type_var_usage {
                         DbType::TypeVar(self_type_var_usage.clone())
                     } else if let FirstParamProperties::SkipBecauseClassMethod(class) = first {
-                        todo!()
+                        get_class_method_class(class)
                     } else {
                         DbType::Self_
                     }
@@ -578,7 +581,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
 
-        let return_result = |params, type_vars: Vec<_>| {
+        let return_result = |params, type_vars: RefCell<Vec<_>>| {
+            let type_vars = type_vars.into_inner();
             DbType::Callable(Box::new(CallableContent {
                 name: Some(self.name_string_slice()),
                 class_name: self.class.map(|c| c.name_string_slice()),
