@@ -363,7 +363,7 @@ impl<'db: 'slf, 'slf> Inferred {
     fn with_instance<'a, T>(
         &self,
         i_s: &mut InferenceState<'db, '_>,
-        instance: NodeRef<'db>,
+        instance_reference: NodeRef<'db>,
         generics: Option<Generics<'a>>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Instance<'a>) -> T,
     ) -> T
@@ -382,7 +382,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             .infer_primary_or_atom(p.first());
                         cls.with_instance(
                             i_s,
-                            instance,
+                            instance_reference,
                             Some(Generics::new_simple_generic_slice(
                                 definition.file,
                                 p.expect_slice(),
@@ -393,14 +393,16 @@ impl<'db: 'slf, 'slf> Inferred {
                         unreachable!("{point:?}")
                     }
                 } else {
-                    callable(
-                        i_s,
-                        &use_instance_with_ref(
-                            definition,
-                            generics.unwrap_or(Generics::NotDefinedYet),
-                            Some(instance),
-                        ),
-                    )
+                    let g = generics.unwrap_or(Generics::NotDefinedYet);
+                    let class = Class::from_position(definition, g, None);
+                    if std::cfg!(debug_assertions) {
+                        // Hmmm, maybe enable this.
+                        if generics.is_none() && class.type_vars(i_s).is_some() {
+                            // TODO It's questionable that these generics are called NotDefinedYet,
+                            // because that's just wrong, it's defined as Any at this point. AFAIK.
+                        }
+                    }
+                    callable(i_s, &Instance::new(class, Some(instance_reference)))
                 }
             }
             _ => unreachable!("{:?}", self.state),
