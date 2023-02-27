@@ -525,7 +525,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             tvl.as_type_var_like_usage(position.into(), defined_at)
                 .into_generic_item()
         };
-        let get_class_method_class = |class: &Class| {
+        let get_class_method_class = || {
             if class_generics_not_defined_yet {
                 DbType::Class(
                     class.node_ref.as_link(),
@@ -576,7 +576,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     } else if in_definition == defined_at {
                         if let Some(u) = class_method_type_var_usage {
                             if u.index == usage.index() {
-                                return GenericItem::TypeArgument(get_class_method_class(class));
+                                return GenericItem::TypeArgument(get_class_method_class());
                             } else {
                                 usage.add_to_index(-1);
                                 todo!()
@@ -589,7 +589,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         usage.into_generic_item()
                     }
                 },
-                &mut || get_class_method_class(class),
+                #[allow(clippy::redundant_closure)] // This is a clippy bug
+                &mut || get_class_method_class(),
             )
         };
         let mut callable = self.internal_as_db_type(i_s, params, false, as_db_type);
