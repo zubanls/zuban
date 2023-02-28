@@ -1,4 +1,41 @@
 # Next up
+testBuiltinClassMethod
+testBinaryOpeartorMethodPositionalArgumentsOnly
+testOperatorWithInference
+testErrorMapToSupertype
+testClassMethodUnannotated
+testIsSubClassNarrowDownTypesOfTypeVariables
+
+# Random from check-classes.test
+testMethodRefInClassBody
+testAccessingGenericClassAttribute
+testAccessingNestedGenericClassAttribute
+testTypeEquivalentTypeAny
+testTypeEquivalentTypeAny2
+testTypeEquivalentTypeAnyEdgeCase
+testExtremeForwardReferencing
+# Name "?" is not defined
+testClassWithinFunction
+testGenericClassWithInvalidTypevarUseWithinFunction
+testDeclareVariableWithNestedClassType
+testForwardReferenceToNestedClassWithinClass
+
+# Wrong Self Arg formatting
+testSelfArgument
+testClassMethodCalledInClassMethod
+# Wrong Type formatting
+testInnerClassPropertyAccess
+testClassValuedAttributesAlias
+
+# Union struggles
+testOperatorDoubleUnionIntFloat
+testOperatorDoubleUnionStandardSubtyping
+testOperatorDoubleUnionNoRelationship1
+testOperatorDoubleUnionNoRelationship2
+testOperatorDoubleUnionNaiveAdd
+testOperatorDoubleUnionInterwovenUnionAdd
+testOperatorDoubleUnionDivision
+testOperatorWithEmptyListAndSum
 
 # Type var contstraints not enforced in type alias
 testValidTypeAliasValues
@@ -42,7 +79,28 @@ testFunctionForwardRefAlias
 
 # Maybe implement reverse operator
 testFlattenTypeAliasWhenAliasedAsUnion
+testReverseOperatorOrderingCase2
+testReverseOperatorOrderingCase3
+testReverseOperatorOrderingCase4
+testReverseOperatorOrderingCase6
+testReverseOperatorOrderingCase7
+testReverseOperatorWithOverloads1
+testReverseOperatorWithOverloads2
+testDivReverseOperator
+# "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
+testReverseOperatorTypeVar1
+testReverseOperatorTypeVar2a
+testReverseOperatorTypeVar2b
+testReverseOperatorTypeVar3
+testReverseOperatorTypeType
+testUnsafeOverlappingWithOperatorMethodsAndOverloading2
+testUnsafeOverlappingWithLineNo
+# "Forward operator "__add__" is not callable"
+testReverseOperatorMethodForwardIsAny3
 
+# Overload
+testTypeCovarianceWithOverloadedFunctions
+testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 # Overloads should not promote
 testOverloadWithOverlappingItemsAndAnyArgument5
 # Overloading
@@ -123,8 +181,13 @@ testMisguidedSetItem
 testJoinUnionWithUnionAndAny
 testNoComplainInferredNoneStrict
 
-# Duplicate base class
+# "Duplicate base class "I""
 testIncludingBaseClassTwice
+testMroSetAfterError
+
+# "Cannot determine consistent method resolution order (MRO) for "B""
+testCannotDetermineMro
+testInconsistentMroLocalRef
 
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
@@ -164,6 +227,8 @@ testIterableBoundUnpacking
 # Bound not respected
 testLiteralAndGenericsRespectsUpperBound
 testWideOuterContextEmptyError
+# Value of type variable "P" of "new_pro" cannot be "U"
+testTypeUsingTypeCTwoTypeVars
 
 # *args on TypeVar
 testInvalidTypevarValues
@@ -254,6 +319,7 @@ testCallConditionalMethodInClassBody
 # Class in function special cases
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
+testGenericClassWithinFunction
 
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)
@@ -269,10 +335,44 @@ testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
 
 # descriptors
+testAccessingNonDataDescriptor
+testSettingNonDataDescriptor
+testSettingDataDescriptor
+testSettingDescriptorWithOverloadedDunderSet1
+testSettingDescriptorWithOverloadedDunderSet2
+testReadingDescriptorWithoutDunderGet
+testAccessingDescriptorFromClass
+testAccessingDescriptorFromClassWrongBase
+testAccessingGenericNonDataDescriptor
+testSettingGenericDataDescriptor
+testAccessingGenericDescriptorFromClass
+testAccessingGenericDescriptorFromInferredClass
+testAccessingGenericDescriptorFromClassBadOverload
+testAccessingNonDataDescriptorSubclass
+testSettingDataDescriptorSubclass
+testReadingDescriptorSubclassWithoutDunderGet
+testAccessingGenericNonDataDescriptorSubclass
+testSettingGenericDataDescriptorSubclass
+testSetDescriptorOnClass
+testSetDescriptorOnInferredClass
+testDescriptorUncallableDunderSet
+testDescriptorDunderGetTooFewArgs
+testDescriptorDunderGetTooManyArgs
+testDescriptorDunderSetTooFewArgs
+testDescriptorDunderSetTooManyArgs
+testDescriptorDunderSetWrongArgTypes
+testDescriptorUncallableDunderGet
+testDescriptorDunderGetWrongArgTypeForInstance
+testDescriptorDunderGetWrongArgTypeForOwner
+testDescriptorGetSetDifferentTypes
+testDescriptorGetUnion
 testOverloadWithNonGenericDescriptor
 testOverloadWithNonGenericDescriptorLookalike
 testOverloadWithGenericDescriptor
 testOverloadWithGenericDescriptorLookalike
+testClassCustomPropertyWorks
+testDecoratedDunderGet
+testDecoratedDunderSet
 
 # Property
 testBoundMethodUsage
@@ -290,6 +390,20 @@ testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
 testUnionPropertyField
+testAccessingReadOnlyProperty
+testAssigningToReadOnlyProperty
+testAssigningToInheritedReadOnlyProperty
+testPropertyGetterBody
+testDynamicallyTypedProperty
+testPropertyWithSetter
+testPropertyWithDeleterButNoSetter
+testAllowPropertyAndInit1
+testAllowPropertyAndInit2
+testPropertyWithExtraMethod
+testOverrideAttrWithSettableProperty
+testOverrideAttrWithSettablePropertyAnnotation
+testOverrideMethodProperty
+testOverridePropertyMethod
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -314,6 +428,8 @@ testGenericClassInGenericFunctionOverloadedConstructor-skip
 testGenericClassAlternativeConstructorPreciseOverloaded
 testOverloadClassMethodImplementation
 testOverloadWithSwappedDecorators
+testClassMethodBeforeInit3
+testRefMethodWithOverloadDecorator
 # classmethod self type with overload
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
@@ -327,6 +443,11 @@ testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
 testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
+testSimpleStaticMethod
+testBuiltinStaticMethod
+testAssignStaticMethodOnInstance
+testTypeConstructorReturnsTypeType
+testRefMethodWithDecorator
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical
@@ -340,6 +461,9 @@ testInvalidAssertType
 testLiteralWithFinalPropagation
 testLiteralWithFinalPropagationIsNotLeaking
 
+# Tuple Super Class
+testGenericTupleTypeCreation
+testGenericTupleTypeSubclassing
 # NamedTuple
 *NamedTuple*
 testNewAnalyzerTupleIteration
@@ -422,6 +546,18 @@ testLiteralIntelligentIndexingMultiTypedDict
 testUnpackKwargsNonIdentifier
 testTypedDictNestedClassRecheck
 testLiteralIntelligentIndexingUsingFinal
+testCrashOnSelfRecursiveTypedDictVar
+testCorrectJoinOfSelfRecursiveTypedDicts
+testCrashInForwardRefToTypedDictWithIsinstance
+testNewTypeFromForwardTypedDict
+testCorrectItemTypeInForwardRefToTypedDict
+testCrashOnDoubleForwardTypedDict
+testCrashOnForwardUnionOfTypedDicts
+testCrashInvalidArgsSyntheticClassSyntax
+testCrashInvalidArgsSyntheticClassSyntaxReveals
+testCrashInvalidArgsSyntheticFunctionSyntax
+testCrashForwardSyntheticClassSyntax
+testCrashForwardSyntheticFunctionSyntax
 
 # NoReturn
 testNoReturnTypeAlias
@@ -498,6 +634,8 @@ testLambdaDeferredSpecialCase
 testErasedTypeRuntimeCoverage
 testLambdaJoinWithDynamicConstructor
 testSelfTypeLambdaDefault
+testEnclosingScopeLambdaNoCrash
+testEnclosingScopeLambdaNoCrashExplicit
 # Lambda with defined return types (inferred context)
 testInferLambdaTypeUsingContext
 testLambdaWithoutContext
@@ -715,6 +853,56 @@ testImplementingOverloadedMethod
 testTypingSelfMetaClassDisabled
 testSelfTypeStructureMetaclassMatch
 testSelfTypeProtocolMetaclassMatch
+testConstructorJoinsWithCustomMetaclass
+testDynamicMetaclass
+testDynamicMetaclassCrash
+testInvalidMetaclassStructure
+testMetaclassNoTypeReveal
+testMetaclassTypeReveal
+testSubclassMetaclass
+testMetaclassSubclass
+testMetaclassAsAny
+testMetaclassAsAnyWithAFlag
+testMetaclassIterable
+testMetaclassTuple
+testMetaclassOperatorBeforeReversed
+testMetaclassOperatorTypeVar
+testMetaclassGetitem
+testMetaclassSelfType
+testMetaclassAndSkippedImport
+testValidTypeAliasAsMetaclass
+testValidTypeAliasOfTypeAliasAsMetaclass
+testTypeAliasWithArgsAsMetaclass
+testTypeAliasNonTypeAsMetaclass
+testInvalidVariableAsMetaclass
+testAnyAsBaseOfMetaclass
+testMetaclassTypeCallable
+testMetaclassStrictSupertypeOfTypeWithClassmethods
+testMetaclassOverloadResolution
+testSixMetaclass
+testFromSixMetaclass
+testSixMetaclassImportFrom
+testSixMetaclassImport
+testSixMetaclassAndBase
+testSixMetaclassGenerics
+testSixMetaclassErrors
+testSixMetaclassAny
+testFutureMetaclass
+testFromFutureMetaclass
+testFutureMetaclassImportFrom
+testFutureMetaclassImport
+testFutureMetaclassAndBase
+testFutureMetaclassGenerics
+testFutureMetaclassErrors
+testFutureMetaclassAny
+testMetaclassMemberAccessViaType
+testMetaclassMemberAccessViaType2
+testMetaclassMemberAccessViaType3
+testMetaclassPlaceholderNode
+testMetaclassSubclassSelf
+testMetaclassConflict
+testInitSubclassWithMetaclassOK
+testInitSubclassWithCustomMetaclassOK
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -728,6 +916,8 @@ testAbstractBodyTurnsEmptyProtocol
 testAbstractGlobalFunction
 testAbstractNestedFunction
 testInferenceWithAbstractClassContext3
+testAbstractClasses
+testAbstractInit
 
 # Signature of "???" incompatible with supertype "???"
 testKeywordOnlyArgumentOrderInsensitivity
@@ -738,6 +928,19 @@ testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
 testOverloadedInitSupertype
 testIncompatibleOverrideFromCachedModuleIncremental
+testOverrideAttributeWithMethod
+testMethodOverridingWithIncompatibleArgumentCount
+testOverrideWithDecorator
+testOverrideDecorated
+testOverrideWithDecoratorReturningInstance
+testClassMethodSubclassing
+testOverloadedOperatorMethodOverrideWithSwitchedItemOrder
+testVariableMethod
+testClassStaticMethodSubclassing
+testCyclicOverrideChecked
+testCyclicOverrideCheckedDecorator
+testCyclicOverrideCheckedDecoratorDeferred
+testParentClassWithTypeAliasAndSubclassWithMethod
 
 # supertype context inference
 testUseSupertypeAsInferenceContext
@@ -763,6 +966,8 @@ testSelfTypeSuper
 testMixinProtocolSuper
 testConstructorSignatureChanged3
 testRefreshSubclassNestedInFunction2
+testCyclicDecoratorSuper
+testCyclicDecoratorSuperDeferred
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -771,6 +976,7 @@ testInheritanceFromGenericWithImplicitDynamic
 testInvalidMethodAsDataAttributeInGenericClass
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
 testMethodWithInvalidMethodAsDataAttribute
+testClassValuedAttributesBasics
 
 # ClassVar
 testMethodAsDataAttribute
@@ -820,19 +1026,57 @@ testOverridingMethodInGenericTypeInheritingGenericType
 testSubclassingGenericABC1
 testSubclassingGenericABCWithDeepHierarchy
 testSubclassingGenericABCWithDeepHierarchy2
+testMethodOverridingWithIncompatibleTypes
+testEqMethodsOverridingWithNonObjects
+testMethodOverridingAcrossDeepInheritanceHierarchy1
+testOverrideStaticMethodWithStaticMethod
+testOverrideClassMethodWithClassMethod
+testOverrideClassMethodWithStaticMethod
+testOverrideStaticMethodWithClassMethod
+testIntroducingInplaceOperatorInSubclass
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride
 testAddBaseClassMethodCausingInvalidOverride
 testModifyBaseClassMethodCausingInvalidOverride
 testSelfTypeBound
+testMethodOverridingAcrossDeepInheritanceHierarchy2
+testMethodOverridingWithVoidReturnValue
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
+testOverlappingNormalAndInplaceOperatorMethod
+testOverloadedNormalAndInplaceOperatorMethod
 #  Incompatible types in assignment (expression has type "int", base class "BaseS" defined the type as "str")
 testAliasFineNormalClassBases
 testTypingSelfOverrideVar
 testTypingSelfOverrideVarMulti
+testOverrideMethodWithAttribute
+testVariableSubclassAssignMismatch
+testVariableSubclassAssignment
+testVariableSubclassTypeOverwrite
+testVariableSubclassTypeOverwriteImplicit
+testClassAllBases
+testVariableTypeVarInvalid
+testVariableTypeVarIndirectly
+testVariableProperty
+testInstanceMethodOverwriteError
+testClassMethodOverwriteError
+testClassSpecError
+testClassStaticMethod
+testClassStaticMethodIndirect
+testClassMemberObject
+testClassOrderOfError
+testClassOneErrorPerLine
+testClassIgnoreType_RedefinedAttributeAndGrandparentAttributeTypesNotIgnored
+testCheckForPrivateMethodsWhenPublicCheck
+testAttributeDefOrder1
+testAttributeDefOrder2
+testGenericOverridePreciseInvalid
+testGenericOverrideGeneric
+testGenericOverrideGenericChained
+# List item 0 has incompatible type "str"; expected "int"
+testVariableTypeVarList
 
 # setting class attributes on self
 self_instance_variable1
@@ -848,8 +1092,36 @@ testChangeBaseClassAttributeType
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
 
+# Base class any
+testAnyBaseClassUnconstrainedConstructor
+testNoneAnyFallback
+testNoneAnyFallbackDescriptor
+testOpWithInheritedFromAny-xfail
+testAllowArgumentAsBaseClass
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
+
+# `class type` stuff
+testObfuscatedTypeConstructorReturnsTypeType
+testOtherTypeConstructorsSucceed
+testTypeTypeComparisonWorks
+# type vs type[object]
+testGeneralTypeMatchesSpecificTypeInOverloadedFunctions
+testNonTypeDoesNotMatchOverloadedFunctions
+testTypeConstructorLookalikeFails
+# `class type` access on class
+testTypeUsingTypeCTypeAnyMember
+testTypeUsingTypeCTypeAnyMemberFallback
+testTypeUsingTypeCTypeNoArg
+testTypeUsingTypeCClassMethod
+testTypeUsingTypeCClassMethodUnion
+testTypeUsingTypeCClassMethodFromTypeVar
+testTypeUsingTypeCClassMethodFromTypeVarUnionBound
+testTypeUsingTypeCClassMethodFromTypeVarUnionBound
+testTypeUsingTypeCErrorUnsupportedType
+testTypeUsingTypeCOverloadedClass
+testTypeUsingTypeCTuple
+testTypeUsingTypeCJoin
 
 # __new__
 testDunderNewUpdatedMethod
@@ -859,6 +1131,102 @@ testDunderNewUpdatedCallable
 testDunderNewDefine
 testDunderNewInsteadOfInit
 testSelfTypeInGenericClassUsedFromAnotherGenericClass1
+testOverride__new__AndCallObject
+testConstructInstanceWith__new__
+testConstructInstanceWithDynamicallyTyped__new__
+testClassWith__new__AndCompatibilityWithType
+testClassWith__new__AndCompatibilityWithType2
+testGenericClassWith__new__
+testOverloaded__new__
+testNewAndInit1
+testNewAndInit2
+testNewAndInit3
+testNewReturnType1
+testNewReturnType3
+testNewReturnType4
+testNewReturnType5
+testNewReturnType6
+testNewReturnType7
+testNewReturnType8
+testNewReturnType10
+testNewReturnType11
+testNewReturnType12
+testNewAndInitNoReturn
+testOverloadedNewAndInitNoReturn
+
+# __init_subclass__
+testOverride__init_subclass__WithDifferentSignature
+# "The return type of "__init_subclass__" must be None"
+testInitSubclassWithReturnValueType
+testInitSubclassWithAnyReturnValueType
+testDecoratedInitSubclassWithAnyReturnValueType
+testOverloadedInitSubclassWithAnyReturnValueType
+testInitSubclassWrongType
+testInitSubclassTooFewArgs
+testInitSubclassTooFewArgs2
+testInitSubclassOK
+testInitSubclassWithMetaclassOK
+testInitSubclassWithCustomMetaclassOK
+testInitSubclassWithImports
+testInitSubclassWithImportsOK
+testInitSubclassUnannotated
+testInitSubclassUnannotatedMulti
+testTooManyArgsForObject
+
+# __getattribute__
+testGetattribute
+testDecoratedGetAttribute
+testGetattributeSignature
+
+# __getattr__
+testGetattr
+testDecoratedGetattr
+testGetattrWithCall
+testGetattrSignature
+
+# __setattr__
+testSetattr
+testDecoratedSetattr
+testSetattrSignature
+testGetattrAndSetattr
+
+# "The return type of "__init__" must be None"
+testConstructorWithReturnValueType
+testConstructorWithAnyReturnValueType
+testDecoratedConstructorWithAnyReturnValueType
+testOverloadedConstructorWithAnyReturnValueType
+
+# "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
+testAccessingInit
+
+# Decorated constructors
+testDecoratedConstructors
+# "Unsupported decorated constructor type"
+testDecoratedConstructorsBad
+
+# "Cannot assign to a method"
+testAssignToMethodViaInstance
+testAssignToMethodViaClass
+testAssignClassMethodOnClass
+testAssignClassMethodOnInstance
+
+# "Cannot assign to a type"
+testAssignToNestedClassViaClass
+
+# Invalid signature "Callable[[B], A]"
+testReverseOperatorMethodInvalid
+
+# Unsupported class scoped import
+testClassScopeImports
+testClassScopeImportModule
+testClassScopeImportAlias
+testClassScopeImportModuleStar
+testClassScopeImportFunctionNested
+testClassScopeImportUndefined
+testClassScopeImportWithFollowImports
+testClassScopeImportVarious
+testClassScopeImportWithError
+testClassScopeImportWithWrapperAndError
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
@@ -957,11 +1325,16 @@ testLiteralInferredInOverloadContextWithTypevars
 testLiteralSubtypeOverlap
 testOverloadsAndNoneWithoutStrictOptional
 testOverloadsAndNoneWithStrictOptional
+testTypeTypeOverlapsWithObjectAndType
+testTypeOverlapsWithObject
 overload_overlapping_any
 
 # - Signature of "f" incompatible with supertype "Parent"
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityTypeVar-xfail
+# Overloaded operator methods cannot have wider argument types in overrides
+testOperatorMethodOverrideIntroducingOverloading
+testOverloadedOperatorMethodOverrideWithNewItem
 #     Overload variants must be defined in the same order as they are in "Parent"
 testOverrideOverloadSwapped
 testOverrideOverloadSwappedWithExtraVariants
@@ -1002,6 +1375,9 @@ testFinalBodyReprocessedAndStillFinal
 testFinalBodyReprocessedAndStillFinalOverloaded-only_when_cache
 testFinalBodyReprocessedAndStillFinalOverloaded2-only_when_nocache
 testTypingSelfAllowAliasUseInFinalClasses
+testFinalClassWithAbstractAttributes
+testFinalClassWithoutABCMeta
+testFinalClassInheritedAbstractAttributes
 # Final: Cannot assign to final name "x"
 testNewAnalyzerFinalReassignModuleReexport
 testNewAnalyzerFinalOverrideInSubclass
@@ -1040,7 +1416,7 @@ testFineGrainedCallable
 
 # isinstance
 testLiteralErrorsWithIsInstanceAndIsSubclass
-# isinstance flow analysis
+# isinstance narrowing
 testUnionGenericWithBoundedVariable
 testIsinstanceAndTypeVarValues*
 testIsinstanceWithUserDefinedTypeAndTypeVarValues
@@ -1056,6 +1432,11 @@ testIntersectionUsingPromotion5
 testIntersectionUsingPromotion6
 testIntersectionUsingPromotion7
 testIntersectionUsingPromotion8
+testCorrectIsinstanceWithForwardUnion
+# issubclass narrowing
+testIsInstanceTypeIsSubclass
+testIsInstanceTypeTypeVar
+testIsInstanceTypeSubclass
 # isinstance & union
 testUnion1
 testUnion2
@@ -1121,6 +1502,9 @@ testRegression11705_Strict
 # narrowing with assert
 testNarrowOptionalOutsideLambda
 testNarrowOptionalOutsideLambdaWithDeferred
+testIsInstanceTypeVsUnionOfType
+testIsInstanceTypeByAssert
+testIsInstanceTypeVsMetaclass
 # narrowing assignments
 testNarrowingFromObjectToOptional
 
@@ -1245,6 +1629,9 @@ testUnconditionalRedefinitionOfConditionalMethod
 testRedefineFunction2
 testMissingOverloadDecorator
 testDecoratedRedefinitionIsNotOverload
+testMultipleClassDefinition
+testMemberRedefinition
+testMemberRedefinitionDefinedInClass
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
@@ -1304,6 +1691,7 @@ testAccessDataAttributeBeforeItsTypeIsAvailable
 testMultipassAndTopLevelVariable
 testMultipassAndCircularDependency
 testForwardReferenceToDecoratedClassMethod
+testAccessingClassAttributeWithTypeInferenceIssue
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
@@ -1331,13 +1719,17 @@ testGenericClassPropertyBound
 testOverloadDeferredNode
 # Class decorator
 testDecoratingClassesThatUseParamSpec
+testClassDecoratorIsTypeChecked
+testClassDecoratorIncorrect
 
 # "Decorators on top of @property are not supported"
 testDecoratedProperty
 
-# Function Not checked, missing return annotations (check-untyped)
+# Function Not checked, missing return annotations (--check-untyped-defs)
 testPositionalAndKeywordForSameArg
 testTypeCheckOverloadWithImplementationError
+testCheckUntypedDefsSelf2
+testCheckUntypedDefsSelf3
 
 # function type mismatch when untyped
 testSubtypingFunctionsImplicitNames
@@ -1377,6 +1769,10 @@ testLocalVariableInferenceFromEmptyList
 testNoPartialInSupertypeAsContext
 testSuggestPep604AnnotationForPartialNone
 testSelfTypeRestrictedMethodOverloadInitFallBacks
+testOverridePartialAttributeWithMethod
+testInheritanceAndAttributeAssignment
+testAssignmentToAttributeInMultipleMethods
+testAccessingClassAttributeWithTypeInferenceIssue2
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -1399,6 +1795,9 @@ testNewAnalyzerModuleGetattrSerialize_incremental
 testModuleLevelGetattr*
 testModuleGetattr*
 testModuleGetAttr*
+testGetAttrImportAnnotation
+testGetAttrImportBaseClass
+testGetAttrDescriptor
 
 # attrs
 testAttrs*
@@ -1481,6 +1880,9 @@ testUnionWithEllipsis
 testEllipsisDefaultArgValueInNonStub
 testEllipsisDefaultArgValueInNonStubsMethods
 
+# NotImplemented
+testOperatorMethodAgainstSameType
+
 # The type "Type[type]" is not generic and not indexable
 testTypeApplicationCrash
 
@@ -1489,6 +1891,8 @@ testTestExtendPrimitives
 
 # "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
 testContextForAttributeDeclaredInInit
+testDeclareAttributeTypeInInit
+testAccessAttributeDeclaredInInitBeforeDeclaration
 
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
@@ -1528,6 +1932,9 @@ testFlexibleAlias3
 # enable-error-code="redundant-self"
 # "Redundant Self annotation on method first argument"
 testTypingSelfRedundantWarning
+
+# --show-column-numbers
+testForwardInstanceWithBound
 
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
@@ -1593,6 +2000,8 @@ testExpressionRefersToTypeVariable
 # Probably won't support: typing._promote
 testListWithDucktypeCompatibility
 testListWithDucktypeCompatibilityAndTransitivity
+testSimpleDucktypeDecorator
+testDucktypeTransitivityDecorator
 
 # Probably won't support Type Var formatting
 testQualifiedTypeVariableName
@@ -1621,6 +2030,7 @@ testLiteralInvalidTypeComment
 testLiteralInvalidTypeComment2
 testInferOptionalFromDefaultNoneComment
 testNoInferOptionalFromDefaultNoneComment
+testCheckUntypedDefsSelf1
 
 # --scripts-are-modules
 testScriptsAreModules
@@ -1636,6 +2046,7 @@ testMagicMethodPositionalOnlyArgFastparse
 
 # Won't support: reveal_locals
 testRevealLocalsFunction
+testRevealLocalsOnClassVars
 
 # Won't support: Warning about wrong usage of type var values
 testObsoleteTypevarValuesSyntax
