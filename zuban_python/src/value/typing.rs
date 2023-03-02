@@ -159,17 +159,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 
 pub struct TypingType<'a> {
     db: &'a Database,
-    full_db_type: Cow<'a, DbType>,
     pub db_type: &'a DbType,
 }
 
 impl<'a> TypingType<'a> {
-    pub fn new(db: &'a Database, full_db_type: Cow<'a, DbType>, db_type: &'a DbType) -> Self {
-        Self {
-            db,
-            full_db_type,
-            db_type,
-        }
+    pub fn new(db: &'a Database, db_type: &'a DbType) -> Self {
+        Self { db, db_type }
     }
 }
 
@@ -191,12 +186,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(
-                        self.db,
-                        Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
-                        bound,
-                    )
-                    .lookup_internal(i_s, node_ref, name)
+                    TypingType::new(self.db, bound).lookup_internal(i_s, node_ref, name)
                 } else {
                     todo!("{t:?}")
                 }
@@ -271,12 +261,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 .execute(i_s, args, result_context, on_type_error),
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(
-                        self.db,
-                        Cow::Owned(DbType::Type(Rc::new(bound.clone()))),
-                        bound,
-                    )
-                    .execute(i_s, args, result_context, on_type_error);
+                    TypingType::new(self.db, bound).execute(
+                        i_s,
+                        args,
+                        result_context,
+                        on_type_error,
+                    );
                     Inferred::execute_db_type(i_s, self.db_type.clone())
                 } else {
                     todo!("{t:?}")

@@ -1506,7 +1506,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
             let t = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
             callable(i_s, &Literal::new(*literal, &t))
         }
-        DbType::Type(t) => run_on_db_type_type(i_s, db_type, t, callable, reducer),
+        DbType::Type(t) => run_on_db_type_type(i_s, t, callable, reducer),
         DbType::NewType(n) => {
             let t = n.type_(i_s);
             run_on_db_type(i_s, t, None, callable, reducer, on_missing)
@@ -1544,7 +1544,6 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
 
 fn run_on_db_type_type<'db: 'a, 'a, T>(
     i_s: &mut InferenceState<'db, '_>,
-    db_type: &'a DbType,
     type_: &'a DbType,
     callable: &mut impl FnMut(&mut InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&mut InferenceState<'db, '_>, T, T) -> T,
@@ -1561,15 +1560,15 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
         DbType::Union(lst) => lst
             .iter()
             .fold(None, |input, t| match input {
-                None => Some(run_on_db_type_type(i_s, db_type, t, callable, reducer)),
+                None => Some(run_on_db_type_type(i_s, t, callable, reducer)),
                 Some(t1) => {
-                    let t2 = run_on_db_type_type(i_s, db_type, t, callable, reducer);
+                    let t2 = run_on_db_type_type(i_s, t, callable, reducer);
                     Some(reducer(i_s, t1, t2))
                 }
             })
             .unwrap(),
         DbType::Never => todo!(),
-        _ => callable(i_s, &TypingType::new(i_s.db, Cow::Borrowed(db_type), type_)),
+        _ => callable(i_s, &TypingType::new(i_s.db, type_)),
     }
 }
 
