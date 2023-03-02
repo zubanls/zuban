@@ -7,8 +7,6 @@ testClassMethodUnannotated
 testIsSubClassNarrowDownTypesOfTypeVariables
 
 # NewType fails
-testNewTypePEP484Example2
-testNewTypeInLocalScope
 testNewTypeInMultipleFiles
 testNewTypeBadInitializationFails
 testNewTypeWithAnyFails
@@ -334,6 +332,8 @@ testCallConditionalMethodInClassBody
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 testGenericClassWithinFunction
+# NewType in function "A@6" as qualified name
+testNewTypeInLocalScope
 
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)
