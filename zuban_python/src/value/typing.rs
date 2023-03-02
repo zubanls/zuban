@@ -1106,9 +1106,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if let Some(n) = maybe_new_type(i_s, args) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-                Rc::new(DbType::NewType(n)),
-            ))))
+            Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
         } else {
             Inferred::new_unknown()
         }
@@ -1172,5 +1170,61 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
     } else {
         todo!();
         //None
+    }
+}
+
+#[derive(Debug)]
+pub struct NewTypeInstance<'a> {
+    db: &'a Database,
+    new_type: &'a Rc<NewType>,
+}
+
+impl<'a> NewTypeInstance<'a> {
+    pub fn new(db: &'a Database, new_type: &'a Rc<NewType>) -> Self {
+        Self { db, new_type }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
+    fn kind(&self) -> ValueKind {
+        ValueKind::TypeParameter
+    }
+
+    fn name(&self) -> &'a str {
+        self.new_type.name(self.db)
+    }
+
+    fn execute(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        let mut iterator = args.iter_arguments();
+        if let Some(first) = iterator.next() {
+            let t = self.new_type.type_(i_s);
+            first.infer(i_s, &mut ResultContext::Known(&Type::new(t)));
+            debug!("TODO NewType param checking");
+        } else {
+            todo!()
+        }
+        if iterator.next().is_some() {
+            todo!()
+        }
+        Inferred::execute_db_type(i_s, DbType::NewType(self.new_type.clone()))
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        todo!()
+    }
+
+    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(DbType::NewType(self.new_type.clone()))
     }
 }

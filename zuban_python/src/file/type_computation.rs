@@ -187,7 +187,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     Class(Inferred),
     TypeVarLike(TypeVarLike),
     TypeAlias(&'db TypeAlias),
-    NewType(NewType),
+    NewType(Rc<NewType>),
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
     RecursiveAlias(PointLink),

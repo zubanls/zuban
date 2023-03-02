@@ -481,6 +481,7 @@ pub enum ComplexPoint {
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
+    NewTypeDefinition(Rc<NewType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
@@ -754,7 +755,7 @@ pub enum DbType {
     Tuple(TupleContent),
     Callable(Box<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
-    NewType(NewType),
+    NewType(Rc<NewType>),
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
@@ -2164,7 +2165,7 @@ impl CallableContent {
 pub struct NewType {
     pub name_string: PointLink,
     type_expression: PointLink,
-    type_: Rc<OnceCell<DbType>>,
+    type_: OnceCell<DbType>,
 }
 
 impl NewType {
@@ -2172,12 +2173,12 @@ impl NewType {
         Self {
             name_string,
             type_expression,
-            type_: Rc::new(OnceCell::new()),
+            type_: OnceCell::new(),
         }
     }
 
     pub fn type_(&self, i_s: &mut InferenceState) -> &DbType {
-        self.type_.as_ref().get_or_init(|| {
+        self.type_.get_or_init(|| {
             NodeRef::from_link(i_s.db, self.type_expression).compute_type_constraint(i_s)
         })
     }
@@ -2191,7 +2192,7 @@ impl NewType {
         }
     }
 
-    fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
         NodeRef::from_link(db, self.name_string)
             .maybe_str()
             .unwrap()

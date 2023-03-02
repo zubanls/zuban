@@ -1,6 +1,7 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::fmt;
+use std::rc::Rc;
 
 use crate::arguments::{NoArguments, SimpleArguments};
 use crate::database::{
@@ -19,10 +20,10 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, FirstParamProperties, Function,
-    Instance, IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NoneInstance,
-    OnTypeError, OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple, TypeAlias,
-    TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast, TypingClass,
-    TypingClassVar, TypingType, Value,
+    Instance, IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NewTypeInstance,
+    NoneInstance, OnTypeError, OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple,
+    TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast,
+    TypingClass, TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -296,15 +297,11 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn maybe_new_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<NewType> {
+    pub fn maybe_new_type(&self, i_s: &mut InferenceState<'db, '_>) -> Option<Rc<NewType>> {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
-            if let Some(ComplexPoint::TypeInstance(t)) = node_ref.complex() {
-                if let DbType::Type(t) = t.as_ref() {
-                    if let DbType::NewType(n) = t.as_ref() {
-                        return Some(n.clone());
-                    }
-                }
+            if let Some(ComplexPoint::NewTypeDefinition(n)) = node_ref.complex() {
+                return Some(n.clone());
             }
         }
         None
@@ -1265,6 +1262,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
             i_s,
             &Instance::new(i_s.db.python_state.object_class(), None),
         ),
+        ComplexPoint::NewTypeDefinition(n) => callable(i_s, &NewTypeInstance::new(i_s.db, n)),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
