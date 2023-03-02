@@ -236,8 +236,33 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         match self.db_type {
-            DbType::Tuple(_) => {
+            DbType::Tuple(tuple_content) => {
                 debug!("TODO this does not check the arguments");
+                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                    self.db_type.clone(),
+                )));
+                // TODO reenable this
+                let mut args_iterator = args.iter_arguments();
+                let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
+                    let inf = arg.infer(i_s, &mut ResultContext::Known(&Type::new(self.db_type)));
+                    (arg, inf)
+                } else {
+                    debug!("TODO this does not check the arguments");
+                    return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                        self.db_type.clone(),
+                    )));
+                };
+                if args_iterator.next().is_some() {
+                    todo!()
+                }
+                Type::new(self.db_type).error_if_not_matches(
+                    i_s,
+                    &inferred_tup,
+                    |i_s: &mut InferenceState<'db, '_>, t1, t2| {
+                        (on_type_error.callback)(i_s, None, &|_| todo!(), &arg, t1, t2);
+                        args.as_node_ref().to_db_lifetime(i_s.db)
+                    },
+                );
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                     self.db_type.clone(),
                 )))
