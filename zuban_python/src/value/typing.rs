@@ -1199,12 +1199,23 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
         i_s: &mut InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let mut iterator = args.iter_arguments();
-        if let Some(first) = iterator.next() {
-            let t = self.new_type.type_(i_s);
-            first.infer(i_s, &mut ResultContext::Known(&Type::new(t)));
+        if let Some(first_arg) = iterator.next() {
+            let t = Type::new(self.new_type.type_(i_s));
+            let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
+            t.error_if_not_matches(i_s, &inf, |i_s: &mut InferenceState<'db, '_>, t1, t2| {
+                (on_type_error.callback)(
+                    i_s,
+                    None,
+                    &|_| Some(format!(" to \"{}\"", self.name()).into()),
+                    &first_arg,
+                    t1,
+                    t2,
+                );
+                args.as_node_ref().to_db_lifetime(i_s.db)
+            });
             debug!("TODO NewType param checking");
         } else {
             todo!()

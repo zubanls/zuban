@@ -7,11 +7,7 @@ testClassMethodUnannotated
 testIsSubClassNarrowDownTypesOfTypeVariables
 
 # NewType fails
-testNewTypePEP484Example1
 testNewTypePEP484Example2
-testNewTypeWithTuples
-testNewTypeWithLists
-testNewTypeWithGenerics
 testNewTypeInLocalScope
 testNewTypeInMultipleFiles
 testNewTypeBadInitializationFails
@@ -19,7 +15,6 @@ testNewTypeWithAnyFails
 testNewTypeWithUnionsFails
 testNewTypeWithTypeTypeFails
 testNewTypeWithTypeVarsFails
-testNewTypeRedefiningVariablesFails
 testNewTypeTestSubclassingFails
 testCannotUseNewTypeWithProtocols
 testNewTypeWithIsInstanceAndIsSubclass
@@ -1651,6 +1646,7 @@ testDecoratedRedefinitionIsNotOverload
 testMultipleClassDefinition
 testMemberRedefinition
 testMemberRedefinitionDefinedInClass
+testNewTypeRedefiningVariablesFails
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
