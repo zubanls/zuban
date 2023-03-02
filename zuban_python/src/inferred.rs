@@ -186,7 +186,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => callable(i_s, &NoneInstance()),
-                Specific::Any => on_missing(i_s),
+                Specific::Any | Specific::Cycle => on_missing(i_s),
                 _ => todo!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {

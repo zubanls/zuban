@@ -1090,18 +1090,19 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         })
     }
 
-    check_point_cache_with!(pub infer_primary, Self::_infer_primary, Primary, result_context);
-    fn _infer_primary(&mut self, primary: Primary, result_context: &mut ResultContext) -> Inferred {
+    pub fn infer_primary(
+        &mut self,
+        primary: Primary,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
         let base = self.infer_primary_or_atom(primary.first());
-        let result = self
-            .infer_primary_or_primary_t_content(
-                base,
-                primary.index(),
-                primary.second(),
-                false,
-                result_context,
-            )
-            .save_redirect(self.i_s.db, self.file, primary.index());
+        let result = self.infer_primary_or_primary_t_content(
+            base,
+            primary.index(),
+            primary.second(),
+            false,
+            result_context,
+        );
         debug!(
             "Infer primary {} as {}",
             primary.short_debug(),
