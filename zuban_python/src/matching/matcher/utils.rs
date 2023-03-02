@@ -628,9 +628,8 @@ pub fn match_arguments_against_params<
                 }
             }
             if too_many {
-                let mut s = "Too many arguments".to_owned();
-                s += diagnostic_string(" for ").as_deref().unwrap_or("");
-                args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                let s = diagnostic_string(" for ").unwrap_or(Box::from(""));
+                args_node_ref().add_typing_issue(i_s.db, IssueType::TooManyArguments(s));
             }
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {

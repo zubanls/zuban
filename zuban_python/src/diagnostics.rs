@@ -13,6 +13,7 @@ pub(crate) enum IssueType {
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
+    TooManyArguments(Box<str>),
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidType(Box<str>),
     InvalidCastTarget,
@@ -200,6 +201,7 @@ impl<'db> Diagnostic<'db> {
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
             IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone().into(),
+            IssueType::TooManyArguments(rest) => format!("Too many arguments{rest}"),
             IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => {
                 let mut out = format!(
                     "Incompatible default for argument \"{argument_name}\" \

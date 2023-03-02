@@ -1220,9 +1220,10 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
             todo!()
         }
         if iterator.next().is_some() {
-            let s = format!("Too many arguments for \"{}\"", self.name());
-            args.as_node_ref()
-                .add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args.as_node_ref().add_typing_issue(
+                i_s.db,
+                IssueType::TooManyArguments(format!(" for \"{}\"", self.name()).into()),
+            );
         }
         Inferred::execute_db_type(i_s, DbType::NewType(self.new_type.clone()))
     }
