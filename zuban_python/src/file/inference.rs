@@ -1681,12 +1681,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         result
     }
 
-    check_point_cache_with!(
-        infer_multi_definition,
-        Self::_infer_multi_definition,
-        NameDefinition
-    );
-    fn _infer_multi_definition(&mut self, name_def: NameDefinition) -> Inferred {
+    fn infer_multi_definition(&mut self, name_def: NameDefinition) -> Inferred {
         self.infer_name_definition(name_def)
     }
 
