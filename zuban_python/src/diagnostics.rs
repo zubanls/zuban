@@ -13,6 +13,7 @@ pub(crate) enum IssueType {
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
+    TooFewArguments(Box<str>),
     TooManyArguments(Box<str>),
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
     InvalidType(Box<str>),
@@ -202,6 +203,7 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone().into(),
             IssueType::TooManyArguments(rest) => format!("Too many arguments{rest}"),
+            IssueType::TooFewArguments(rest) => format!("Too few arguments{rest}"),
             IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => {
                 let mut out = format!(
                     "Incompatible default for argument \"{argument_name}\" \

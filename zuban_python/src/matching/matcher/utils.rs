@@ -653,9 +653,8 @@ pub fn match_arguments_against_params<
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
-                let mut s = "Too few arguments".to_owned();
-                s += diagnostic_string(" for ").as_deref().unwrap_or("");
-                args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                let s = diagnostic_string(" for ").unwrap_or(Box::from(""));
+                args_node_ref().add_typing_issue(i_s.db, IssueType::TooFewArguments(s.into()));
             }
         }
         if let Some(mut s) = match &missing_positional[..] {
