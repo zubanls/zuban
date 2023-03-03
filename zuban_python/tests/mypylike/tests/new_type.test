@@ -1,0 +1,10 @@
+[case new_type_wrong_arguments]
+from typing import NewType
+
+X = NewType("X", float)
+
+X() # E: Too few arguments for "X"
+X(1.0)
+X(1)
+X("") # E: Argument 1 to "X" has incompatible type "str"; expected "float"
+X(1.0, 2.0) # E: Too many arguments for "X"

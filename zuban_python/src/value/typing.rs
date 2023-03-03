@@ -1217,7 +1217,10 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
                 args.as_node_ref().to_db_lifetime(i_s.db)
             });
         } else {
-            todo!()
+            args.as_node_ref().add_typing_issue(
+                i_s.db,
+                IssueType::TooFewArguments(format!(" for \"{}\"", self.name()).into()),
+            );
         }
         if iterator.next().is_some() {
             args.as_node_ref().add_typing_issue(
