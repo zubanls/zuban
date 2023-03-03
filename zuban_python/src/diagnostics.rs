@@ -45,6 +45,7 @@ pub(crate) enum IssueType {
     EnsureSingleGenericOrProtocol,
     InvalidCallableParams,
     InvalidParamSpecGenerics { got: Box<str> },
+    NewTypeMustBeSubclassable { got: Box<str> },
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -302,6 +303,9 @@ impl<'db> Diagnostic<'db> {
             ),
             IssueType::InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
+            ),
+            IssueType::NewTypeMustBeSubclassable{got} => format!(
+                "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
             ),
 
             IssueType::DuplicateTypeVar =>

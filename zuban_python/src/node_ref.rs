@@ -191,6 +191,22 @@ impl<'file> NodeRef<'file> {
             .unwrap_or(DbType::Any)
     }
 
+    pub fn compute_new_type_constraint(&self, i_s: &mut InferenceState) -> DbType {
+        let t = self.compute_type_constraint(i_s);
+        if !matches!(
+            t,
+            DbType::Class(..) | DbType::Tuple(..) | DbType::NewType(..)
+        ) {
+            self.add_typing_issue(
+                i_s.db,
+                IssueType::NewTypeMustBeSubclassable {
+                    got: t.format_short(i_s.db),
+                },
+            );
+        }
+        t
+    }
+
     pub fn as_code(&self) -> &'file str {
         self.file.tree.code_of_index(self.node_index)
     }

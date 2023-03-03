@@ -65,6 +65,10 @@ impl ComplexValues {
             Point::new_complex_point(complex_index, locality),
         );
     }
+
+    pub unsafe fn iter(&self) -> impl Iterator<Item = &ComplexPoint> {
+        self.0.iter()
+    }
 }
 
 impl File for PythonFile {

@@ -17,6 +17,12 @@ use crate::value::{Class, Function};
 impl<'db> Inference<'db, '_, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
+        for complex_point in unsafe { self.file.complex_points.iter() } {
+            if let ComplexPoint::NewTypeDefinition(n) = complex_point {
+                // Make sure types are calculated and the errors are generated.
+                n.type_(self.i_s);
+            }
+        }
     }
 
     fn calc_simple_stmts_diagnostics(

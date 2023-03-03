@@ -846,6 +846,9 @@ impl DbType {
         *self = mem::replace(self, Self::Never).union(other);
     }
 
+    pub fn format_short(&self, db: &Database) -> Box<str> {
+        self.format(&FormatData::new_short(db))
+    }
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let class_name = |link| {
             let class = Class::from_position(
@@ -2179,7 +2182,9 @@ impl NewType {
 
     pub fn type_(&self, i_s: &mut InferenceState) -> &DbType {
         self.type_.get_or_init(|| {
-            NodeRef::from_link(i_s.db, self.type_expression).compute_type_constraint(i_s)
+            let t =
+                NodeRef::from_link(i_s.db, self.type_expression).compute_new_type_constraint(i_s);
+            t
         })
     }
 

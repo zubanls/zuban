@@ -7,16 +7,14 @@ testClassMethodUnannotated
 testIsSubClassNarrowDownTypesOfTypeVariables
 
 # NewType fails
-testNewTypeInMultipleFiles
 testNewTypeBadInitializationFails
-testNewTypeWithAnyFails
-testNewTypeWithUnionsFails
-testNewTypeWithTypeTypeFails
 testNewTypeWithTypeVarsFails
 testNewTypeTestSubclassingFails
 testCannotUseNewTypeWithProtocols
 testNewTypeWithIsInstanceAndIsSubclass
-testInvalidNewTypeCrash
+
+# qualified name for NewType for different module
+testNewTypeInMultipleFiles
 
 # Random from check-classes.test
 testMethodRefInClassBody
