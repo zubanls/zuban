@@ -2274,6 +2274,12 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 load_cached_type(cached_type_node_ref)
             }
         } else {
+            if let Some(annotation) = assignment.maybe_annotation() {
+                self.cache_assignment_nodes(assignment);
+                if self.use_cached_annotation_type(annotation).is_any() {
+                    return TypeNameLookup::Unknown;
+                }
+            }
             TypeNameLookup::InvalidVariable(InvalidVariableType::Other)
         }
     }

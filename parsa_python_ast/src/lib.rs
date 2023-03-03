@@ -1876,6 +1876,11 @@ impl<'db> Assignment<'db> {
         }
     }
 
+    pub fn maybe_annotation(&self) -> Option<Annotation<'db>> {
+        let annot = self.node.iter_children().skip(1).next().unwrap();
+        (annot.is_type(Nonterminal(annotation))).then(|| Annotation::new(annot))
+    }
+
     pub fn maybe_simple_type_expression_assignment(
         &self,
     ) -> Option<(
