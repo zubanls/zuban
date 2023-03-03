@@ -1100,8 +1100,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState,
-        args: &dyn Arguments,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
@@ -1117,8 +1117,19 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
     }
 }
 
-fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewType> {
+fn maybe_new_type<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+) -> Option<NewType> {
     let mut iterator = args.iter_arguments();
+    let Some((first, second)) = args.maybe_two_positional_args(i_s.db) else {
+        args.as_node_ref().add_typing_issue(
+            i_s.db,
+            IssueType::ArgumentIssue(Box::from(
+                    "NewType(...) expects exactly two positional arguments")),
+        );
+        return None
+    };
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
@@ -1131,7 +1142,13 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                todo!();
+                first_arg.as_node_ref().add_typing_issue(
+                    i_s.db,
+                    IssueType::ArgumentIssue(Box::from(
+                        "Argument 1 to NewType(...) must be a string literal",
+                    )),
+                );
+                return None;
             }
         };
         if let Some(name) = py_string.in_simple_assignment() {
@@ -1155,7 +1172,7 @@ fn maybe_new_type(i_s: &mut InferenceState, args: &dyn Arguments) -> Option<NewT
                     node_ref.as_named_expression().expression().index(),
                 )
             } else {
-                todo!()
+                return None;
             }
         } else {
             todo!()

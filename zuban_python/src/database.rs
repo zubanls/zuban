@@ -2168,6 +2168,7 @@ impl CallableContent {
 pub struct NewType {
     pub name_string: PointLink,
     type_expression: PointLink,
+    // TODO locality needs to be checked, because this is lazily calculated.
     type_: OnceCell<DbType>,
 }
 

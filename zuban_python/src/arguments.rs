@@ -40,6 +40,26 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> NodeRef;
+
+    fn maybe_two_positional_args(&self, db: &'db Database) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
+        let mut iterator = self.iter_arguments();
+        let Some(first_arg) = iterator.next() else {
+            return None
+        };
+        let ArgumentKind::Positional { node_ref: node_ref1, .. } = first_arg.kind else {
+            return None
+        };
+        let Some(second_arg) = iterator.next() else {
+            return None
+        };
+        let ArgumentKind::Positional { node_ref: node_ref2, .. } = second_arg.kind else {
+            return None
+        };
+        if iterator.next().is_some() {
+            return None;
+        }
+        Some((node_ref1.to_db_lifetime(db), node_ref2.to_db_lifetime(db)))
+    }
 }
 
 #[derive(Debug)]
