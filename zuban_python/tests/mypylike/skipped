@@ -6,9 +6,6 @@ testErrorMapToSupertype
 testClassMethodUnannotated
 testIsSubClassNarrowDownTypesOfTypeVariables
 
-# NewType fails
-testCannotUseNewTypeWithProtocols
-
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
 
@@ -688,6 +685,7 @@ testModuleAsProtocolImplementationFine
 testMixinAllowedWithProtocol
 testBadClassLevelDecoratorHack
 testSelfTypeProtocolClassmethodMatch
+testCannotUseNewTypeWithProtocols
 # Duck typing
 testOverloadingAndDucktypeCompatibility
 
