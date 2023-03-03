@@ -1240,6 +1240,8 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::NewType(self.new_type.clone()))
+        Type::owned(DbType::Type(Rc::new(DbType::NewType(
+            self.new_type.clone(),
+        ))))
     }
 }
