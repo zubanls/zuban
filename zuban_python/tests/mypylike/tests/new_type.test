@@ -8,3 +8,36 @@ X(1.0)
 X(1)
 X("") # E: Argument 1 to "X" has incompatible type "str"; expected "float"
 X(1.0, 2.0) # E: Too many arguments for "X"
+
+[case new_type_with_class_generics]
+from typing import NewType, TypeVar, Generic
+
+T = TypeVar("T")
+
+class Y(Generic[T]):
+    X = NewType("X", list[T])
+
+    def __init__(self, x: T):
+
+        reveal_type(Y.X([x])) # N: Revealed type is "__main__.X"
+        reveal_type(Y.X(1)) # N: Revealed type is "__main__.X" \
+                            # E: Argument 1 to "X" has incompatible type "int"; expected "list[T]"
+
+reveal_type(Y.X)  # N: Revealed type is "__main__.X"
+Y.X(1) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]"
+Y.X([1]) # E: List item 0 has incompatible type "int"; expected "T"
+Y[int].X([1]) # E: List item 0 has incompatible type "int"; expected "T"
+
+[case new_type_with_function_generics]
+from typing import NewType, TypeVar
+
+T = TypeVar("T")
+
+def y(a: T) -> T:
+    X = NewType("X", list[T])
+
+    reveal_type(X)  # N: Revealed type is "__main__.X"
+    reveal_type(X(1)) # E: Argument 1 to "X" has incompatible type "int"; expected "List[T]" \
+                      # N: Revealed type is "__main__.X"
+    reveal_type(X([a]))  # N: Revealed type is "__main__.X"
+    return a

@@ -7,7 +7,6 @@ testClassMethodUnannotated
 testIsSubClassNarrowDownTypesOfTypeVariables
 
 # NewType fails
-testNewTypeWithTypeVarsFails
 testCannotUseNewTypeWithProtocols
 
 # qualified name for NewType for different module
