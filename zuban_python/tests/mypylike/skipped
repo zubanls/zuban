@@ -8,9 +8,7 @@ testIsSubClassNarrowDownTypesOfTypeVariables
 
 # NewType fails
 testNewTypeWithTypeVarsFails
-testNewTypeTestSubclassingFails
 testCannotUseNewTypeWithProtocols
-testNewTypeWithIsInstanceAndIsSubclass
 
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
@@ -1444,6 +1442,7 @@ testIntersectionUsingPromotion6
 testIntersectionUsingPromotion7
 testIntersectionUsingPromotion8
 testCorrectIsinstanceWithForwardUnion
+testNewTypeWithIsInstanceAndIsSubclass
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar

@@ -394,11 +394,19 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
-                if matches!(db_type, DbType::Class(_, _) | DbType::Tuple(_)) {
-                    BaseClass::DbType(db_type)
-                } else {
-                    self.add_typing_issue_for_index(expr.index(), IssueType::InvalidBaseClass);
-                    BaseClass::Invalid
+                match db_type {
+                    DbType::Class(_, _) | DbType::Tuple(_) => BaseClass::DbType(db_type),
+                    DbType::NewType(_) => {
+                        self.add_typing_issue_for_index(
+                            expr.index(),
+                            IssueType::CannotSubclassNewType,
+                        );
+                        BaseClass::Invalid
+                    }
+                    _ => {
+                        self.add_typing_issue_for_index(expr.index(), IssueType::InvalidBaseClass);
+                        BaseClass::Invalid
+                    }
                 }
             }
         }

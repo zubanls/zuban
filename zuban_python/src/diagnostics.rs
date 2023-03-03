@@ -40,6 +40,7 @@ pub(crate) enum IssueType {
     TooFewValuesToUnpack { actual: usize, expected: usize },
     OnlyClassTypeApplication,
     InvalidBaseClass,
+    CannotSubclassNewType,
     DuplicateBaseClass { name: Box<str> },
     CyclicDefinition { name: Box<str> },
     EnsureSingleGenericOrProtocol,
@@ -290,6 +291,7 @@ impl<'db> Diagnostic<'db> {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
             }
+            IssueType::CannotSubclassNewType => "Cannot subclass \"NewType\"".to_owned(),
             IssueType::DuplicateBaseClass{name} => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Duplicate base class \"{name}\"")
