@@ -7,7 +7,6 @@ testClassMethodUnannotated
 testIsSubClassNarrowDownTypesOfTypeVariables
 
 # NewType fails
-testNewTypeBadInitializationFails
 testNewTypeWithTypeVarsFails
 testNewTypeTestSubclassingFails
 testCannotUseNewTypeWithProtocols
@@ -1644,7 +1643,6 @@ testDecoratedRedefinitionIsNotOverload
 testMultipleClassDefinition
 testMemberRedefinition
 testMemberRedefinitionDefinedInClass
-testNewTypeRedefiningVariablesFails
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
@@ -1665,6 +1663,7 @@ testRedefineFunctionDefinedAsVariableWithInvalidSignature
 testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 # NewType Redefinition
 testNewAnalyzerNewTypeRedefinition
+testNewTypeRedefiningVariablesFails
 
 # syntax errors
 testPreferPackageOverFile

@@ -184,27 +184,10 @@ impl<'file> NodeRef<'file> {
         )
     }
 
-    pub fn compute_type_constraint(&self, i_s: &mut InferenceState) -> DbType {
+    pub fn compute_new_type_constraint(&self, i_s: &mut InferenceState) -> DbType {
         self.file
             .inference(i_s)
-            .compute_type_var_constraint(self.as_expression())
-            .unwrap_or(DbType::Any)
-    }
-
-    pub fn compute_new_type_constraint(&self, i_s: &mut InferenceState) -> DbType {
-        let t = self.compute_type_constraint(i_s);
-        if !matches!(
-            t,
-            DbType::Class(..) | DbType::Tuple(..) | DbType::NewType(..)
-        ) {
-            self.add_typing_issue(
-                i_s.db,
-                IssueType::NewTypeMustBeSubclassable {
-                    got: t.format_short(i_s.db),
-                },
-            );
-        }
-        t
+            .compute_new_type_constraint(self.as_expression())
     }
 
     pub fn as_code(&self) -> &'file str {

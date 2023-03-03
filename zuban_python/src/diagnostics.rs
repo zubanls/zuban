@@ -46,6 +46,7 @@ pub(crate) enum IssueType {
     InvalidCallableParams,
     InvalidParamSpecGenerics { got: Box<str> },
     NewTypeMustBeSubclassable { got: Box<str> },
+    NewTypeInvalidType,
 
     DuplicateTypeVar,
     UnboundTypeVarLike { type_var_like: TypeVarLike },
@@ -307,6 +308,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::NewTypeMustBeSubclassable{got} => format!(
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
             ),
+            IssueType::NewTypeInvalidType => format!("Argument 2 to NewType(...) must be a valid type"),
 
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),

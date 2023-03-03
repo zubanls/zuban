@@ -2448,6 +2448,40 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         }
         Some(comp.as_db_type(t, node_ref))
     }
+
+    pub fn compute_new_type_constraint(&mut self, expr: Expression) -> DbType {
+        let mut on_type_var =
+            |i_s: &mut InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| todo!();
+        let node_ref = NodeRef::new(self.file, expr.index());
+        let mut comp = TypeComputation::new(
+            self,
+            node_ref.as_link(),
+            &mut on_type_var,
+            TypeComputationOrigin::Constraint,
+        );
+        let t = comp.compute_type(expr);
+        match comp.compute_type(expr) {
+            TypeContent::InvalidVariable(_) => {
+                node_ref.add_typing_issue(self.i_s.db, IssueType::NewTypeInvalidType);
+                DbType::Any
+            }
+            t => {
+                let t = comp.as_db_type(t, node_ref);
+                if !matches!(
+                    t,
+                    DbType::Class(..) | DbType::Tuple(..) | DbType::NewType(..)
+                ) {
+                    node_ref.add_typing_issue(
+                        self.i_s.db,
+                        IssueType::NewTypeMustBeSubclassable {
+                            got: t.format_short(self.i_s.db),
+                        },
+                    );
+                }
+                t
+            }
+        }
+    }
 }
 
 #[inline]
