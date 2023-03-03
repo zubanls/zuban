@@ -396,6 +396,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
                 match db_type {
                     DbType::Class(_, _) | DbType::Tuple(_) => BaseClass::DbType(db_type),
+                    DbType::Any => BaseClass::Invalid,
                     DbType::NewType(_) => {
                         self.add_typing_issue_for_index(
                             expr.index(),
