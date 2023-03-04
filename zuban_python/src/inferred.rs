@@ -901,10 +901,11 @@ impl<'db: 'slf, 'slf> Inferred {
                         } else {
                             todo!()
                         }
-                        let node_ref = NodeRef::from_link(i_s.db, *definition);
-                        let annotation = node_ref.as_annotation();
-                        let t = use_cached_annotation_type(i_s.db, node_ref.file, annotation);
-                        let t = replace_class_type_vars(i_s, t.as_cow(i_s.db).as_ref(), class);
+                        let file = i_s.db.loaded_python_file(definition.file);
+                        let t = file
+                            .inference(i_s)
+                            .use_db_type_of_annotation(definition.node_index);
+                        let t = replace_class_type_vars(i_s, t, class);
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
                     _ => (),

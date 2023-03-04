@@ -7,7 +7,6 @@ testNewTypeInMultipleFiles
 testMethodRefInClassBody
 
 # Random from check-classes.test
-testAccessingGenericClassAttribute
 testAccessingNestedGenericClassAttribute
 testTypeEquivalentTypeAny
 testTypeEquivalentTypeAny2
