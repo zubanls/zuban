@@ -6,10 +6,6 @@ testNewTypeInMultipleFiles
 # function types in class body
 testMethodRefInClassBody
 
-# Random from check-classes.test
-testTypeEquivalentTypeAny2
-testTypeEquivalentTypeAnyEdgeCase
-testExtremeForwardReferencing
 # Name "?" is not defined
 testClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
@@ -900,6 +896,8 @@ testMetaclassSubclassSelf
 testMetaclassConflict
 testInitSubclassWithMetaclassOK
 testInitSubclassWithCustomMetaclassOK
+# type base class
+testTypeEquivalentTypeAnyEdgeCase
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -1249,6 +1247,8 @@ testGenericJoinContravariant
 testGenericJoinRecursiveTypes
 testGenericJoinRecursiveInvariant
 testGenericJoinNestedInvariantAny
+testTypeEquivalentTypeAny2
+testExtremeForwardReferencing
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
