@@ -23,13 +23,6 @@ testGenericClassWithInvalidTypevarUseWithinFunction
 testDeclareVariableWithNestedClassType
 testForwardReferenceToNestedClassWithinClass
 
-# Wrong Self Arg formatting
-testSelfArgument
-testClassMethodCalledInClassMethod
-# Wrong Type formatting
-testInnerClassPropertyAccess
-testClassValuedAttributesAlias
-
 # Union struggles
 testOperatorDoubleUnionIntFloat
 testOperatorDoubleUnionStandardSubtyping
