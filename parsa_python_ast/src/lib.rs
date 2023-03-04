@@ -2305,9 +2305,9 @@ impl<'db> AugAssign<'db> {
             }
             b'/' => {
                 if code.as_bytes().get(1).unwrap() == &b'/' {
-                    ("__itruediv__", "__truediv__", "__rtruediv__")
+                    ("__ifloordiv__", "__floordiv__", "__rfloordiv__")
                 } else {
-                    ("__idiv__", "__div__", "__rdiv__")
+                    ("__itruediv__", "__truediv__", "__rtruediv__")
                 }
             }
             b'%' => ("__imod__", "__mod__", "__rmod__"),

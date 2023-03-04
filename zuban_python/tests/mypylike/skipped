@@ -1,5 +1,4 @@
 # Next up
-testOperatorWithInference
 testErrorMapToSupertype
 testClassMethodUnannotated
 testIsSubClassNarrowDownTypesOfTypeVariables
