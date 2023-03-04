@@ -723,7 +723,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             if NodeRef::new(self.node_ref.file, return_annotation.index())
                 .point()
                 .maybe_specific()
-                == Some(Specific::AnnotationWithTypeVars)
+                == Some(Specific::AnnotationOrTypeCommentWithTypeVars)
             {
                 // TODO this could also be a tuple...
                 debug!(

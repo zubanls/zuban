@@ -383,7 +383,7 @@ pub enum Specific {
     // NoReturnFunction,  // TODO Remove or use?
     // BoundMethod,       // TODO Remove or use?
     AnnotationOrTypeCommentClassInstance,
-    AnnotationWithTypeVars,
+    AnnotationOrTypeCommentWithTypeVars,
     SimpleGeneric, // primary: primary '[' slices ']'
 
     TypingProtocol,

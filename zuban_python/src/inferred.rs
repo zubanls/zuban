@@ -340,7 +340,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         todo!("might not even happen - remove")
                         //return i_s.infer_param(&definition);
                     }
-                    Specific::AnnotationWithTypeVars => {
+                    Specific::AnnotationOrTypeCommentWithTypeVars => {
                         let file = i_s.db.loaded_python_file(definition.file);
                         let t = file
                             .inference(i_s)
@@ -895,7 +895,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
-                    Specific::AnnotationWithTypeVars => {
+                    Specific::AnnotationOrTypeCommentWithTypeVars => {
                         if let Some(from) = from {
                             from.add_typing_issue(i_s.db, IssueType::AmbigousClassVariableAccess);
                         } else {
@@ -1348,7 +1348,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         }
         Specific::List => callable(i_s, &ListLiteral::new(definition)),
         Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
-        Specific::AnnotationWithTypeVars => {
+        Specific::AnnotationOrTypeCommentWithTypeVars => {
             let db_type = definition
                 .file
                 .inference(i_s)

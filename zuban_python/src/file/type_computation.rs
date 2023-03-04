@@ -524,7 +524,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                         self.inference.file.points.set(
                             annotation_index,
                             Point::new_simple_specific(
-                                Specific::AnnotationWithTypeVars,
+                                Specific::AnnotationOrTypeCommentWithTypeVars,
                                 Locality::Todo,
                             ),
                         );
@@ -2086,7 +2086,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             let point = self.file.points.get(annotation.index());
             if point.type_() == PointType::Specific {
                 if point.specific() != Specific::AnnotationOrTypeCommentClassInstance {
-                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                    debug_assert_eq!(
+                        point.specific(),
+                        Specific::AnnotationOrTypeCommentWithTypeVars
+                    );
                 }
             } else {
                 debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
@@ -2105,7 +2108,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             assert!(point.calculated());
             if point.type_() == PointType::Specific {
                 if point.specific() != Specific::AnnotationOrTypeCommentClassInstance {
-                    debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                    debug_assert_eq!(
+                        point.specific(),
+                        Specific::AnnotationOrTypeCommentWithTypeVars
+                    );
                 }
             } else {
                 debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
@@ -2140,7 +2146,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             if point.specific() == Specific::AnnotationOrTypeCommentClassInstance {
                 return Type::Class(self.infer_expression(expr).maybe_class(self.i_s).unwrap());
             } else {
-                debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
+                debug_assert_eq!(
+                    point.specific(),
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                );
                 self.file.points.get(expr.index()).complex_index()
             }
         } else {
@@ -2164,7 +2173,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     ) -> &'file DbType {
         debug_assert_eq!(
             self.file.points.get(node_index).specific(),
-            Specific::AnnotationWithTypeVars
+            Specific::AnnotationOrTypeCommentWithTypeVars
         );
         // annotations look like `":" expr`
         let complex_index = self
@@ -2184,7 +2193,9 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         node_index: NodeIndex,
         recalculate: impl Fn(&DbType) -> DbType,
     ) {
-        if self.file.points.get(node_index).specific() == Specific::AnnotationWithTypeVars {
+        if self.file.points.get(node_index).specific()
+            == Specific::AnnotationOrTypeCommentWithTypeVars
+        {
             let new_t = recalculate(self.use_db_type_of_annotation_or_type_comment(node_index));
             self.file.complex_points.insert(
                 &self.file.points,
