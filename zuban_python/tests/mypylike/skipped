@@ -8,9 +8,7 @@ testMethodRefInClassBody
 
 # Name "?" is not defined
 testClassWithinFunction
-testGenericClassWithInvalidTypevarUseWithinFunction
 testDeclareVariableWithNestedClassType
-testForwardReferenceToNestedClassWithinClass
 
 # Union struggles
 testOperatorDoubleUnionIntFloat
@@ -308,8 +306,11 @@ testCallConditionalMethodInClassBody
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 testGenericClassWithinFunction
+testGenericClassWithInvalidTypevarUseWithinFunction
 # NewType in function "A@6" as qualified name
 testNewTypeInLocalScope
+# class in class forward reference
+testForwardReferenceToNestedClassWithinClass
 
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)
