@@ -225,10 +225,13 @@ impl<'a> DictLiteral<'a> {
     fn db_type(&self, i_s: &mut InferenceState) -> &'a GenericsList {
         let reference = self.node_ref.add_to_node_index(1);
         if reference.point().calculated() {
-            match reference.complex().unwrap() {
-                ComplexPoint::GenericClass(_, list) => list,
-                _ => unreachable!(),
-            }
+            let ComplexPoint::TypeInstance(t) = reference.complex().unwrap() else {
+                unreachable!()
+            };
+            let DbType::Class(_, Some(list)) = t.as_ref() else {
+                unreachable!()
+            };
+            list
         } else {
             let mut keys: Option<DbType> = None;
             let mut values: Option<DbType> = None;
@@ -254,13 +257,13 @@ impl<'a> DictLiteral<'a> {
                 }
             }
             reference.insert_complex(
-                ComplexPoint::GenericClass(
+                ComplexPoint::TypeInstance(Box::new(DbType::Class(
                     i_s.db.python_state.builtins_point_link("list"),
-                    GenericsList::new_generics(Box::new([
+                    Some(GenericsList::new_generics(Box::new([
                         GenericItem::TypeArgument(keys.unwrap_or(DbType::Any)),
                         GenericItem::TypeArgument(values.unwrap_or(DbType::Any)),
-                    ])),
-                ),
+                    ]))),
+                ))),
                 Locality::Todo,
             );
             debug!(

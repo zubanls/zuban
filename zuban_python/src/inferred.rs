@@ -1277,14 +1277,6 @@ fn run_on_complex<'db: 'a, 'a, T>(
             i_s,
             &OverloadedFunction::new(definition.unwrap(), overload, None),
         ),
-        ComplexPoint::GenericClass(link, generics) => {
-            let class = Class::from_position(
-                NodeRef::from_link(i_s.db, *link),
-                Generics::new_list(generics),
-                None,
-            );
-            callable(i_s, &class)
-        }
         ComplexPoint::TypeInstance(t) => {
             run_on_db_type(i_s, t, definition, callable, reducer, on_missing)
         }
