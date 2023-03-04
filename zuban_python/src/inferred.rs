@@ -9,6 +9,7 @@ use crate::database::{
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
     Specific, TypeVarLike,
 };
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{File, PythonFile};
 use crate::inference_state::InferenceState;
@@ -830,8 +831,8 @@ impl<'db: 'slf, 'slf> Inferred {
                             );
                             return Some(Self::new_unsaved_complex(complex));
                         }
-                        ComplexPoint::TypeInstance(t) => {
-                            if let DbType::Callable(c) = t.as_ref() {
+                        ComplexPoint::TypeInstance(t) => match t.as_ref() {
+                            DbType::Callable(c) => {
                                 // TODO should use create_signature_without_self!
                                 let complex = ComplexPoint::BoundMethod(
                                     get_inferred(i_s).as_any_link(i_s),
@@ -840,13 +841,36 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                                 return Some(Self::new_unsaved_complex(complex));
                             }
+                            DbType::Class(link, generics) => {
+                                let inst = use_instance_with_ref(
+                                    NodeRef::from_link(i_s.db, *link),
+                                    Generics::new_maybe_list(generics),
+                                    Some(NodeRef::from_link(i_s.db, *definition)),
+                                );
+                                let result = inst.lookup_internal(i_s, from, "__get__");
+                                debug!("TODO bind get");
+                                //todo!()
+                            }
+                            _ => (),
+                        },
+                        ComplexPoint::Class(cls_storage) => {
+                            let node_ref = NodeRef::from_link(i_s.db, *definition);
+                            let class =
+                                Class::new(node_ref, cls_storage, Generics::NotDefinedYet, None);
+                            debug!("TODO class descriptors");
+                            ()
                         }
                         _ => (),
                     }
                 }
                 _ => (),
             },
-            InferredState::UnsavedComplex(complex) => (),
+            InferredState::UnsavedComplex(complex) => match complex {
+                ComplexPoint::TypeInstance(t) => {
+                    debug!("TODO type instances");
+                }
+                _ => (),
+            },
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::Unknown => (),
