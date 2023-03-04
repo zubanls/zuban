@@ -348,7 +348,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
         let f: &'db PythonFile =
             self.inference
                 .file
-                .new_annotation_file(self.inference.i_s, start, string);
+                .new_annotation_file(self.inference.i_s.db, start, string);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
                 |comp: &mut TypeComputation<'db, '_, '_, '_, '_>| match star_exprs.unpack() {
@@ -2335,7 +2335,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
     ) -> (Inferred, Type<'db>) {
         let f: &'db PythonFile =
             self.file
-                .new_annotation_file(self.i_s, start, s.trim_end_matches('\\').to_owned());
+                .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').to_owned());
         let mut inference = f.inference(self.i_s);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {

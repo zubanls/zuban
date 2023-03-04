@@ -141,7 +141,7 @@ impl File for PythonFile {
         config: &DiagnosticConfig,
     ) -> Box<[Diagnostic<'db>]> {
         let mut i_s = InferenceState::new(db);
-        if self.super_file_with_scopes.is_none() {
+        if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
             self.inference(&mut i_s).calculate_diagnostics();
@@ -207,7 +207,7 @@ pub struct PythonFile {
     pub star_imports: RefCell<Vec<StarImport>>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
-    pub(crate) super_file_with_scopes: Option<(FileIndex, Box<[NodeIndex]>)>,
+    pub(crate) super_file: Option<FileIndex>,
 
     newline_indices: NewlineIndices,
 }
@@ -234,7 +234,7 @@ impl<'db> PythonFile {
             issues: Default::default(),
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
-            super_file_with_scopes: None,
+            super_file: None,
             package_dir,
         }
     }
@@ -280,22 +280,15 @@ impl<'db> PythonFile {
 
     fn new_annotation_file(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        db: &'db Database,
         start: CodeIndex,
         code: String, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
-        let mut scopes = vec![];
-        if let Some(func) = i_s.current_function() {
-            scopes.push(func.node_ref.node_index)
-        } else if let Some(class) = i_s.current_class() {
-            scopes.push(class.node_ref.node_index)
-        }
-
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
-        file.super_file_with_scopes = Some((self.file_index(), scopes.into_boxed_slice()));
+        file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
-        let f = i_s.db.load_sub_file(file);
+        let f = db.load_sub_file(file);
         self.sub_files.borrow_mut().insert(start, f.file_index());
         f
     }

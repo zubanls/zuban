@@ -3,11 +3,6 @@
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
 
-# function types in class body
-testMethodRefInClassBody
-
-# Name "?" is not defined
-
 # Union struggles
 testOperatorDoubleUnionIntFloat
 testOperatorDoubleUnionStandardSubtyping
@@ -312,6 +307,8 @@ testDeclareVariableWithNestedClassType
 testNewTypeInLocalScope
 # class in class forward reference
 testForwardReferenceToNestedClassWithinClass
+# function types in class body
+testMethodRefInClassBody
 
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)

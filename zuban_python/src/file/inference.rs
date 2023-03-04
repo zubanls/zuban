@@ -1460,14 +1460,14 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 }
             }
         }
-        if let Some(super_file_with_scopes) = &self.file.super_file_with_scopes {
-            for &node_index in super_file_with_scopes.1.iter() {
-                if let Some(func) = NodeRef::new(self.file, node_index).maybe_function() {
-                    todo!()
-                }
-                todo!("Implement classes")
+        if let Some(super_file) = &self.file.super_file {
+            if let Some(func) = self.i_s.current_function() {
+                debug!("TODO lookup in func of sub file")
+            } else if let Some(class) = self.i_s.current_class() {
+                debug!("TODO lookup in class of sub file")
             }
-            let super_file = self.i_s.db.loaded_python_file(super_file_with_scopes.0);
+
+            let super_file = self.i_s.db.loaded_python_file(*super_file);
             if let Some(symbol) = super_file.symbol_table.lookup_symbol(name) {
                 return Some(PointLink::new(super_file.file_index(), symbol));
             }
