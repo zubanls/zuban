@@ -7,7 +7,6 @@ testNewTypeInMultipleFiles
 testMethodRefInClassBody
 
 # Random from check-classes.test
-testTypeEquivalentTypeAny
 testTypeEquivalentTypeAny2
 testTypeEquivalentTypeAnyEdgeCase
 testExtremeForwardReferencing
