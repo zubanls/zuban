@@ -1,13 +1,12 @@
 # Next up
-testErrorMapToSupertype
-testClassMethodUnannotated
-testIsSubClassNarrowDownTypesOfTypeVariables
 
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
 
-# Random from check-classes.test
+# function types in class body
 testMethodRefInClassBody
+
+# Random from check-classes.test
 testAccessingGenericClassAttribute
 testAccessingNestedGenericClassAttribute
 testTypeEquivalentTypeAny
@@ -1095,6 +1094,7 @@ testAddBaseClassAttributeCausingErrorInSubclass
 
 # Base class any
 testAnyBaseClassUnconstrainedConstructor
+testErrorMapToSupertype
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
 
@@ -1121,6 +1121,7 @@ testTypeUsingTypeCTuple
 testTypeUsingTypeCJoin
 
 # __new__
+testClassMethodUnannotated
 testDunderNewUpdatedMethod
 testDunderNewUpdatedSubclass
 testDunderNewUpdatedAlias
@@ -1435,6 +1436,7 @@ testNewTypeWithIsInstanceAndIsSubclass
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
 testIsInstanceTypeSubclass
+testIsSubClassNarrowDownTypesOfTypeVariables
 # isinstance & union
 testUnion1
 testUnion2
