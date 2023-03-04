@@ -782,6 +782,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                     },
                                 );
                                 return Some(Self::new_any());
+                            } else {
+                                todo!()
                             }
                         }
                         return result;
@@ -885,6 +887,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                     },
                                 );
                                 return Some(Self::new_any());
+                            } else {
+                                todo!()
                             }
                         }
                         return result;
