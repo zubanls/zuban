@@ -421,10 +421,13 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     pub fn cache_annotation(&mut self, annotation: Annotation, is_implicit_optional: bool) {
         let expr = annotation.expression();
         match annotation.simple_param_kind() {
-            Some(SimpleParamKind::Normal) | None => {
-                self.cache_annotation_internal(annotation.index(), expr, is_implicit_optional, None)
-            }
-            Some(SimpleParamKind::Starred) => self.cache_annotation_internal(
+            Some(SimpleParamKind::Normal) | None => self.cache_annotation_or_type_comment(
+                annotation.index(),
+                expr,
+                is_implicit_optional,
+                None,
+            ),
+            Some(SimpleParamKind::Starred) => self.cache_annotation_or_type_comment(
                 annotation.index(),
                 expr,
                 false,
@@ -432,7 +435,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     wrap_starred(slf.as_db_type(t, NodeRef::new(self.inference.file, expr.index())))
                 }),
             ),
-            Some(SimpleParamKind::DoubleStarred) => self.cache_annotation_internal(
+            Some(SimpleParamKind::DoubleStarred) => self.cache_annotation_or_type_comment(
                 annotation.index(),
                 expr,
                 false,
@@ -447,10 +450,15 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     }
 
     pub fn cache_return_annotation(&mut self, annotation: ReturnAnnotation) {
-        self.cache_annotation_internal(annotation.index(), annotation.expression(), false, None);
+        self.cache_annotation_or_type_comment(
+            annotation.index(),
+            annotation.expression(),
+            false,
+            None,
+        );
     }
 
-    fn cache_annotation_internal(
+    fn cache_annotation_or_type_comment(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
@@ -2346,7 +2354,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                             &mut x,
                             TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
                         );
-                        comp.cache_annotation_internal(index, expr, false, None);
+                        comp.cache_annotation_or_type_comment(index, expr, false, None);
                         let type_vars = comp.into_type_vars(|inf, recalculate_type_vars| {
                             inf.recalculate_annotation_type_vars(index, recalculate_type_vars);
                         });
