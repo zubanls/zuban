@@ -485,7 +485,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     self.inference.file.points.set(
                         annotation_index,
                         Point::new_simple_specific(
-                            Specific::AnnotationClassInstance,
+                            Specific::AnnotationOrTypeCommentClassInstance,
                             Locality::Todo,
                         ),
                     );
@@ -2085,7 +2085,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         if std::cfg!(debug_assertions) {
             let point = self.file.points.get(annotation.index());
             if point.type_() == PointType::Specific {
-                if point.specific() != Specific::AnnotationClassInstance {
+                if point.specific() != Specific::AnnotationOrTypeCommentClassInstance {
                     debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
                 }
             } else {
@@ -2104,7 +2104,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
             let point = self.file.points.get(annotation.index());
             assert!(point.calculated());
             if point.type_() == PointType::Specific {
-                if point.specific() != Specific::AnnotationClassInstance {
+                if point.specific() != Specific::AnnotationOrTypeCommentClassInstance {
                     debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);
                 }
             } else {
@@ -2137,7 +2137,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
-            if point.specific() == Specific::AnnotationClassInstance {
+            if point.specific() == Specific::AnnotationOrTypeCommentClassInstance {
                 return Type::Class(self.infer_expression(expr).maybe_class(self.i_s).unwrap());
             } else {
                 debug_assert_eq!(point.specific(), Specific::AnnotationWithTypeVars);

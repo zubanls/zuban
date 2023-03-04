@@ -1335,7 +1335,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         Specific::ClassMethod => todo!(),
         Specific::StaticMethod => todo!(),
         Specific::Property => todo!(),
-        Specific::AnnotationClassInstance => {
+        Specific::AnnotationOrTypeCommentClassInstance => {
             let expr_def = definition.add_to_node_index(2);
             let inferred = expr_def
                 .file
