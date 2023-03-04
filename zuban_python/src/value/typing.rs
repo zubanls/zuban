@@ -788,6 +788,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        debug!("Type of TypeVarClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
@@ -828,6 +829,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        debug!("Type of TypeVarTupleClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
@@ -980,6 +982,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        debug!("Type of ParamSpecClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
@@ -1113,6 +1116,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+        debug!("Type of NewTypeClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
