@@ -5,3 +5,17 @@ a: list[TypeVarTuple]  # E: Variable "typing.TypeVarTuple" is not valid as a typ
                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
 b: list[ParamSpec]  # E: Variable "typing.ParamSpec" is not valid as a type \
                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+[case invalid_base_class_in_param]
+# Checked mypy for this.
+
+def x(a: int):
+    class Foo(a): pass  # E: Variable "__main__.a" is not valid as a type \
+                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases
+
+def y(a: type):  
+    class Foo(a): pass
+
+def z(a: type[int]) -> None:
+    class Foo(a): pass  # E: Variable "__main__.a" is not valid as a type \
+                        # N: See https://mypy.readthedocs.io/en/stable/common_issues.html#variables-vs-type-aliases

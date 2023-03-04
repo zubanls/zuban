@@ -72,6 +72,7 @@ pub(super) enum InvalidVariableType<'a> {
     Tuple { tuple_length: usize },
     Execution,
     Function(Function<'a, 'a>),
+    ParamNameAsBaseClassAny(NodeRef<'a>),
     Literal(&'a str),
     Variable(NodeRef<'a>),
     Float,
@@ -126,6 +127,7 @@ impl InvalidVariableType<'_> {
                     _ => "Perhaps you need \"Callable[...]\" or a callback protocol?",
                 }))
             }
+            Self::ParamNameAsBaseClassAny(_) => todo!(),
             Self::List => {
                 add_typing_issue(IssueType::InvalidType(Box::from(
                     "Bracketed expression \"[...]\" is not valid as a type",
@@ -386,7 +388,10 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::SpecialType(SpecialType::Type) => {
                 BaseClass::DbType(self.inference.i_s.db.python_state.type_of_any.clone())
             }
-            TypeContent::Unknown => BaseClass::Invalid,
+            TypeContent::Unknown
+            | TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
+                BaseClass::Invalid
+            }
             TypeContent::ParamSpec(_) => {
                 self.add_typing_issue_for_index(expr.index(), IssueType::InvalidBaseClass);
                 BaseClass::Invalid
@@ -2671,6 +2676,29 @@ fn check_type_name<'db: 'file, 'file>(
                 check_type_name(i_s, name_node_ref)
             }
         }
+        TypeLike::ParamName(annotation) => TypeNameLookup::InvalidVariable({
+            let as_base_class_any = annotation
+                .map(|a| {
+                    match use_cached_annotation_type(i_s.db, name_node_ref.file, a).maybe_db_type()
+                    {
+                        Some(DbType::Any) => true,
+                        Some(DbType::Type(t)) => match t.as_ref() {
+                            DbType::Any => true,
+                            DbType::Class(c, None) => {
+                                *c == i_s.db.python_state.object_node_ref().as_link()
+                            }
+                            _ => false,
+                        },
+                        _ => false,
+                    }
+                })
+                .unwrap_or(true);
+            if as_base_class_any {
+                InvalidVariableType::ParamNameAsBaseClassAny(name_node_ref)
+            } else {
+                InvalidVariableType::Variable(name_node_ref)
+            }
+        }),
         TypeLike::Other => {
             todo!()
         }

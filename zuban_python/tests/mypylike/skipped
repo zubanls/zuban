@@ -1101,8 +1101,6 @@ testAddBaseClassAttributeCausingErrorInSubclass
 
 # Base class any
 testAnyBaseClassUnconstrainedConstructor
-testOpWithInheritedFromAny-xfail
-testAllowArgumentAsBaseClass
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
 
@@ -2090,6 +2088,8 @@ testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 # Recursive class inheritance
 testNewAnalyzerAliasToNotReadyNestedClass
 
+# xfail
+testOpWithInheritedFromAny-xfail
 # Skips
 testSubtypingWithTypeImplementingGenericABCViaInheritance2-skip
 testOverloadInferringArgumentsUsingContext2-skip

@@ -358,6 +358,9 @@ impl<'db> Name<'db> {
                 Nonterminal(import_from_as_name),
                 Nonterminal(dotted_as_name),
                 Nonterminal(stmt),
+                Nonterminal(param_no_default),
+                Nonterminal(param_with_default),
+                Nonterminal(param_maybe_default),
             ])
             .expect("There should always be a stmt");
         if node.is_type(Nonterminal(class_def)) {
@@ -368,8 +371,12 @@ impl<'db> Name<'db> {
             TypeLike::Function(FunctionDef::new(node))
         } else if node.is_type(Nonterminal(stmt)) {
             TypeLike::Other
-        } else {
+        } else if node.is_type(Nonterminal(import_from_as_name))
+            || node.is_type(Nonterminal(dotted_as_name))
+        {
             TypeLike::Import
+        } else {
+            TypeLike::ParamName(node.iter_children().skip(1).next().map(Annotation::new))
         }
     }
 
@@ -452,6 +459,7 @@ pub enum TypeLike<'db> {
     Assignment(Assignment<'db>),
     ClassDef(ClassDef<'db>),
     Function(FunctionDef<'db>),
+    ParamName(Option<Annotation<'db>>),
     Import,
     Other,
 }
