@@ -141,7 +141,7 @@ impl File for PythonFile {
         config: &DiagnosticConfig,
     ) -> Box<[Diagnostic<'db>]> {
         let mut i_s = InferenceState::new(db);
-        if self.super_file.is_none() {
+        if self.super_file_with_scopes.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
             self.inference(&mut i_s).calculate_diagnostics();
@@ -207,7 +207,7 @@ pub struct PythonFile {
     pub star_imports: RefCell<Vec<StarImport>>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
-    pub(crate) super_file: Option<FileIndex>,
+    pub(crate) super_file_with_scopes: Option<(FileIndex, Box<[NodeIndex]>)>,
 
     newline_indices: NewlineIndices,
 }
@@ -234,7 +234,7 @@ impl<'db> PythonFile {
             issues: Default::default(),
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
-            super_file: None,
+            super_file_with_scopes: None,
             package_dir,
         }
     }
@@ -282,11 +282,13 @@ impl<'db> PythonFile {
         &self,
         db: &'db Database,
         start: CodeIndex,
+        //scopes: Box<[NodeIndex]>,
         code: String, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
+        let scopes = Box::new([]);
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
-        file.super_file = Some(self.file_index());
+        file.super_file_with_scopes = Some((self.file_index(), scopes));
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(file);
         self.sub_files.borrow_mut().insert(start, f.file_index());
