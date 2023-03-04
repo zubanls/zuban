@@ -10,7 +10,7 @@ use crate::database::{
     Specific, TypeVarLike,
 };
 use crate::diagnostics::IssueType;
-use crate::file::{use_cached_annotation_type, File, PythonFile};
+use crate::file::{File, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{
     create_signature_without_self, replace_class_type_vars, FormatData, Generics, Matcher,
@@ -344,7 +344,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let file = i_s.db.loaded_python_file(definition.file);
                         let t = file
                             .inference(i_s)
-                            .use_db_type_of_annotation(definition.node_index);
+                            .use_db_type_of_annotation_or_type_comment(definition.node_index);
                         let d = replace_class_type_vars(i_s, t, class);
                         return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                             Box::new(d),
@@ -904,7 +904,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let file = i_s.db.loaded_python_file(definition.file);
                         let t = file
                             .inference(i_s)
-                            .use_db_type_of_annotation(definition.node_index);
+                            .use_db_type_of_annotation_or_type_comment(definition.node_index);
                         let t = replace_class_type_vars(i_s, t, class);
                         return Some(Inferred::execute_db_type(i_s, t));
                     }
@@ -1352,7 +1352,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
             let db_type = definition
                 .file
                 .inference(i_s)
-                .use_db_type_of_annotation(definition.node_index);
+                .use_db_type_of_annotation_or_type_comment(definition.node_index);
             run_on_db_type(
                 i_s,
                 db_type,

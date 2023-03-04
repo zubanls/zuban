@@ -2150,7 +2150,10 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         }
     }
 
-    pub fn use_db_type_of_annotation(&self, node_index: NodeIndex) -> &'file DbType {
+    pub fn use_db_type_of_annotation_or_type_comment(
+        &self,
+        node_index: NodeIndex,
+    ) -> &'file DbType {
         debug_assert_eq!(
             self.file.points.get(node_index).specific(),
             Specific::AnnotationWithTypeVars
@@ -2174,7 +2177,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         recalculate: impl Fn(&DbType) -> DbType,
     ) {
         if self.file.points.get(node_index).specific() == Specific::AnnotationWithTypeVars {
-            let new_t = recalculate(self.use_db_type_of_annotation(node_index));
+            let new_t = recalculate(self.use_db_type_of_annotation_or_type_comment(node_index));
             self.file.complex_points.insert(
                 &self.file.points,
                 node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
