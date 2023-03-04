@@ -2128,14 +2128,20 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         &mut self,
         annotation: ReturnAnnotation,
     ) -> Type<'file> {
-        self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
+        self.use_cached_annotation_or_type_comment_type_internal(
+            annotation.index(),
+            annotation.expression(),
+        )
     }
 
     pub fn use_cached_annotation_type(&mut self, annotation: Annotation) -> Type<'file> {
-        self.use_cached_annotation_type_internal(annotation.index(), annotation.expression())
+        self.use_cached_annotation_or_type_comment_type_internal(
+            annotation.index(),
+            annotation.expression(),
+        )
     }
 
-    fn use_cached_annotation_type_internal(
+    fn use_cached_annotation_or_type_comment_type_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
@@ -2373,7 +2379,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     }
                     (
                         Inferred::new_saved2(f, index),
-                        inference.use_cached_annotation_type_internal(index, expr),
+                        inference.use_cached_annotation_or_type_comment_type_internal(index, expr),
                     )
                 }
                 StarExpressionContent::Tuple(t) => {
@@ -2794,5 +2800,8 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
     annotation: Annotation,
 ) -> Type<'file> {
     file.inference(&mut InferenceState::new(db))
-        .use_cached_annotation_type_internal(annotation.index(), annotation.expression())
+        .use_cached_annotation_or_type_comment_type_internal(
+            annotation.index(),
+            annotation.expression(),
+        )
 }
