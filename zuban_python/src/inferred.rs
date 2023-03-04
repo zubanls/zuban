@@ -894,6 +894,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::AnnotationWithTypeVars => {
                         if let Some(from) = from {
                             from.add_typing_issue(i_s.db, IssueType::AmbigousClassVariableAccess);
+                        } else {
+                            todo!()
                         }
                         let node_ref = NodeRef::from_link(i_s.db, *definition);
                         let annotation = node_ref.as_annotation();
