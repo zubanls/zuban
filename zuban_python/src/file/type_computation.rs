@@ -385,11 +385,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             TypeContent::SpecialType(SpecialType::GenericWithGenerics) => BaseClass::Generic,
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
-            TypeContent::SpecialType(SpecialType::Type) => {
-                BaseClass::DbType(self.inference.i_s.db.python_state.type_of_any.clone())
-            }
-            TypeContent::Unknown
-            | TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
+            TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
                 BaseClass::Invalid
             }
             TypeContent::ParamSpec(_) => {
