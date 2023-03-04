@@ -2,8 +2,8 @@ use std::fmt;
 
 use parsa_python_ast::{
     Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression,
-    Expression, Factor, ImportFrom, Int, Name, NameDefinition, NamedExpression, NodeIndex, Primary,
-    PythonString, StarredExpression, StringLiteral,
+    Expression, Factor, FunctionDef, ImportFrom, Int, Name, NameDefinition, NamedExpression,
+    NodeIndex, Primary, PythonString, StarredExpression, StringLiteral,
 };
 
 use crate::database::{
@@ -129,6 +129,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn maybe_double_starred_expression(&self) -> Option<DoubleStarredExpression<'file>> {
         DoubleStarredExpression::maybe_by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn maybe_function(&self) -> Option<FunctionDef<'file>> {
+        FunctionDef::maybe_by_index(&self.file.tree, self.node_index)
     }
 
     pub fn file_index(&self) -> FileIndex {

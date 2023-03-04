@@ -7,8 +7,6 @@ testNewTypeInMultipleFiles
 testMethodRefInClassBody
 
 # Name "?" is not defined
-testClassWithinFunction
-testDeclareVariableWithNestedClassType
 
 # Union struggles
 testOperatorDoubleUnionIntFloat
@@ -307,6 +305,9 @@ testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
+# Class in function type comment
+testClassWithinFunction
+testDeclareVariableWithNestedClassType
 # NewType in function "A@6" as qualified name
 testNewTypeInLocalScope
 # class in class forward reference

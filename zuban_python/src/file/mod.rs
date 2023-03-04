@@ -280,17 +280,22 @@ impl<'db> PythonFile {
 
     fn new_annotation_file(
         &self,
-        db: &'db Database,
+        i_s: &InferenceState<'db, '_>,
         start: CodeIndex,
-        //scopes: Box<[NodeIndex]>,
         code: String, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
-        let scopes = Box::new([]);
+        let mut scopes = vec![];
+        if let Some(func) = i_s.current_function() {
+            scopes.push(func.node_ref.node_index)
+        } else if let Some(class) = i_s.current_class() {
+            scopes.push(class.node_ref.node_index)
+        }
+
         // TODO should probably not need a newline
         let mut file = PythonFile::new(None, code + "\n");
-        file.super_file_with_scopes = Some((self.file_index(), scopes));
+        file.super_file_with_scopes = Some((self.file_index(), scopes.into_boxed_slice()));
         // TODO just saving this in the cache and forgetting about it is a bad idea
-        let f = db.load_sub_file(file);
+        let f = i_s.db.load_sub_file(file);
         self.sub_files.borrow_mut().insert(start, f.file_index());
         f
     }
