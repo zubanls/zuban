@@ -1,6 +1,4 @@
 # Next up
-testBuiltinClassMethod
-testBinaryOpeartorMethodPositionalArgumentsOnly
 testOperatorWithInference
 testErrorMapToSupertype
 testClassMethodUnannotated
@@ -93,6 +91,8 @@ testUnsafeOverlappingWithOperatorMethodsAndOverloading2
 testUnsafeOverlappingWithLineNo
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
+# Magic methods operator signatures (positional only self?)
+testBinaryOpeartorMethodPositionalArgumentsOnly
 
 # Overload
 testTypeCovarianceWithOverloadedFunctions
@@ -147,6 +147,7 @@ testOverloadedInIter
 testOverloadedLtAndGtMethods
 testOverloadedForwardMethodAndCallingReverseMethod
 testTypeInferenceSpecialCaseWithOverloading
+testBinaryOpeartorMethodPositionalArgumentsOnly
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -680,6 +681,7 @@ testMixinAllowedWithProtocol
 testBadClassLevelDecoratorHack
 testSelfTypeProtocolClassmethodMatch
 testCannotUseNewTypeWithProtocols
+testBuiltinClassMethod
 # Duck typing
 testOverloadingAndDucktypeCompatibility
 
