@@ -419,6 +419,13 @@ impl<'db: 'a, 'a> Class<'a> {
         self.format(&FormatData::new_short(db))
     }
 
+    pub fn as_inferred(&self, i_s: &mut InferenceState) -> Inferred {
+        match self.use_cached_type_vars(i_s.db).is_some() {
+            false => Inferred::from_saved_node_ref(self.node_ref),
+            true => Inferred::execute_db_type(i_s, DbType::Type(Rc::new(self.as_db_type(i_s.db)))),
+        }
+    }
+
     pub fn generics_as_list(&self, db: &Database) -> Option<GenericsList> {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
         let type_vars = self.type_vars(&mut InferenceState::new(db));
