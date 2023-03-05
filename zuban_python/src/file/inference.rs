@@ -724,12 +724,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             });
 
                             let generic = union.class_as_db_type(self.i_s);
-                            let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                            let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(GenericsList::new_generics(Box::new([
-                                    GenericItem::TypeArgument(generic),
-                                ]))),
-                            ));
+                                Some(Box::new([GenericItem::TypeArgument(generic)])),
+                            );
                             self.assign_targets(
                                 star_target.as_target(),
                                 list,
@@ -738,12 +736,12 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             );
                         } else if value_iterator.len().is_none() {
                             let value = value_iterator.next(self.i_s).unwrap();
-                            let list = Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                            let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(GenericsList::new_generics(Box::new([
-                                    GenericItem::TypeArgument(value.class_as_db_type(self.i_s)),
-                                ]))),
-                            ));
+                                Some(Box::new([GenericItem::TypeArgument(
+                                    value.class_as_db_type(self.i_s),
+                                )])),
+                            );
                             self.assign_targets(
                                 star_target.as_target(),
                                 list,
@@ -888,17 +886,18 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 debug!("TODO Use: self.infer_operation(or.as_operation())");
                 Inferred::new_any()
             }
-            ExpressionPart::Inversion(inv) => Inferred::new_unsaved_complex(
-                ComplexPoint::Instance(self.i_s.db.python_state.builtins_point_link("bool"), None),
+            ExpressionPart::Inversion(inv) => Inferred::create_instance(
+                self.i_s.db.python_state.builtins_point_link("bool"),
+                None,
             ),
             ExpressionPart::Disjunction(or) => {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
                 let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
-                Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                Inferred::create_instance(
                     self.i_s.db.python_state.builtins_point_link("bool"),
                     None,
-                ))
+                )
             }
             ExpressionPart::Comparison(cmp) => {
                 match cmp.unpack() {
@@ -914,10 +913,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     }
                     ComparisonContent::Operation(op) => return self.infer_operation(op),
                 }
-                Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                Inferred::create_instance(
                     self.i_s.db.python_state.builtins_point_link("bool"),
                     None,
-                ))
+                )
             }
             ExpressionPart::Factor(f) => {
                 let (operator, right) = f.unpack();
@@ -1279,12 +1278,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             DictComprehension(_) => todo!(),
             Set(set) => {
                 if let Some(elements) = set.unpack() {
-                    return Inferred::new_unsaved_complex(ComplexPoint::Instance(
+                    return Inferred::create_instance(
                         self.i_s.db.python_state.builtins_point_link("set"),
-                        Some(GenericsList::new_generics(Box::new([
-                            self.create_list_or_set_generics(elements)
-                        ]))),
-                    ))
+                        Some(Box::new([self.create_list_or_set_generics(elements)])),
+                    )
                     .save_redirect(self.i_s.db, self.file, atom.index());
                 } else {
                     todo!()

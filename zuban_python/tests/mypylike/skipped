@@ -1,4 +1,5 @@
 # Next up
+testUnificationMultipleInheritance
 
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles

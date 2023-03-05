@@ -112,7 +112,6 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn execute_db_type(i_s: &mut InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
-            DbType::Class(l, g) => InferredState::UnsavedComplex(ComplexPoint::Instance(l, g)),
             DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, None)) => match c.as_ref()
             {
                 DbType::Class(link, None) => {
@@ -128,11 +127,11 @@ impl<'db: 'slf, 'slf> Inferred {
         Self { state }
     }
 
-    pub fn create_instance(class: PointLink, generics: Option<&[GenericItem]>) -> Self {
-        Self::new_unsaved_complex(ComplexPoint::Instance(
+    pub fn create_instance(class: PointLink, generics: Option<Box<[GenericItem]>>) -> Self {
+        Self::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
             class,
-            generics.map(|lst| GenericsList::generics_from_vec(lst.to_vec())),
-        ))
+            generics.map(|lst| GenericsList::new_generics(lst)),
+        ))))
     }
 
     pub fn class_as_type(&'slf self, i_s: &mut InferenceState<'db, '_>) -> Type<'slf> {
@@ -1264,14 +1263,6 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 &mut i_s.with_func_and_args(&func, &args),
                 &Function::new(NodeRef::from_link(i_s.db, *function), None),
             )
-        }
-        ComplexPoint::Instance(cls, generics) => {
-            let instance = use_instance_with_ref(
-                NodeRef::from_link(i_s.db, *cls),
-                Generics::new_maybe_list(generics),
-                None,
-            );
-            callable(i_s, &instance)
         }
         ComplexPoint::FunctionOverload(overload) => callable(
             i_s,

@@ -475,7 +475,6 @@ pub enum ComplexPoint {
     ExecutionInstance(PointLink, Box<Execution>),
     BoundMethod(AnyLink, MroIndex, PointLink),
     Closure(PointLink, Box<Execution>),
-    Instance(PointLink, Option<GenericsList>),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
