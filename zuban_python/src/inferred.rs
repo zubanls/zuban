@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use crate::arguments::{NoArguments, SimpleArguments};
+use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
@@ -846,9 +846,24 @@ impl<'db: 'slf, 'slf> Inferred {
                                     Generics::new_maybe_list(generics),
                                     Some(NodeRef::from_link(i_s.db, *definition)),
                                 );
-                                let result = inst.lookup_internal(i_s, from, "__get__");
-                                debug!("TODO bind get");
-                                //todo!()
+                                if let Some(inf) = inst
+                                    .lookup_internal(i_s, from, "__get__")
+                                    .into_maybe_inferred()
+                                {
+                                    let from = from.unwrap_or_else(|| todo!());
+                                    return Some(inf.run_on_value(i_s, &mut |i_s, value| {
+                                        value.execute(
+                                            i_s,
+                                            &CombinedArguments::new(
+                                                &KnownArguments::new(&self, from),
+                                                // TODO should be a class.
+                                                &KnownArguments::new(&self, from),
+                                            ),
+                                            &mut ResultContext::Unknown,
+                                            OnTypeError::new(&|_, _, _, _, _, _| todo!()),
+                                        )
+                                    }));
+                                }
                             }
                             _ => (),
                         },
