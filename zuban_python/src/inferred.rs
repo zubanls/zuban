@@ -1194,7 +1194,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
                         run_on_saved(i_s, *link, reference.point(), callable, reducer, on_missing)
                     }
                     AnyLink::Complex(c) => {
-                        run_on_complex(i_s, c, definition, callable, reducer, on_missing)
+                        run_on_complex(i_s, c, None, callable, reducer, on_missing)
                     }
                     AnyLink::SimpleSpecific(specific) => match specific {
                         Specific::None => callable(i_s, &NoneInstance()),
