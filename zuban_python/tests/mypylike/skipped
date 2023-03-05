@@ -346,10 +346,7 @@ testDescriptorUncallableDunderGet
 testDescriptorDunderGetWrongArgTypeForInstance
 testDescriptorDunderGetWrongArgTypeForOwner
 testDescriptorGetSetDifferentTypes
-testDescriptorGetUnion
-testOverloadWithNonGenericDescriptorLookalike
 testOverloadWithGenericDescriptor
-testOverloadWithGenericDescriptorLookalike
 testClassCustomPropertyWorks
 testDecoratedDunderGet
 testDecoratedDunderSet
@@ -1312,6 +1309,7 @@ testOverloadsAndNoneWithStrictOptional
 testTypeTypeOverlapsWithObjectAndType
 testTypeOverlapsWithObject
 testAccessingGenericDescriptorFromInferredClass
+testOverloadWithNonGenericDescriptorLookalike
 overload_overlapping_any
 
 # - Signature of "f" incompatible with supertype "Parent"

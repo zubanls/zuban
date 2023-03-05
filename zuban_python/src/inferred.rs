@@ -851,11 +851,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                     .into_maybe_inferred()
                                 {
                                     let from = from.unwrap_or_else(|| todo!());
+                                    let instance = get_inferred(i_s);
                                     return Some(inf.run_on_value(i_s, &mut |i_s, value| {
                                         value.execute(
                                             i_s,
                                             &CombinedArguments::new(
-                                                &KnownArguments::new(&self, from),
+                                                &KnownArguments::new(&instance, from),
                                                 // TODO should be a class.
                                                 &KnownArguments::new(&self, from),
                                             ),
