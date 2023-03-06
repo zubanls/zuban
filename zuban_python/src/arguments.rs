@@ -167,11 +167,16 @@ pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
     mro_index: MroIndex,
     node_ref: NodeRef<'a>,
+    is_self: bool,
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
     fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
-        ArgumentIteratorImpl::new(ArgumentIteratorBase::Inferred(self.inferred, self.node_ref))
+        ArgumentIteratorImpl::new(ArgumentIteratorBase::Inferred {
+            inferred: self.inferred,
+            node_ref: self.node_ref,
+            is_self: self.is_self,
+        })
     }
 
     fn outer_execution(&self) -> Option<&Execution> {
@@ -197,18 +202,16 @@ impl<'a> KnownArguments<'a> {
             inferred,
             node_ref,
             mro_index: MroIndex(0),
+            is_self: false,
         }
     }
 
-    pub fn with_mro_index(
-        inferred: &'a Inferred,
-        mro_index: MroIndex,
-        node_ref: NodeRef<'a>,
-    ) -> Self {
+    pub fn new_self(inferred: &'a Inferred, mro_index: MroIndex, node_ref: NodeRef<'a>) -> Self {
         Self {
             inferred,
             node_ref,
             mro_index,
+            is_self: true,
         }
     }
 }
@@ -438,7 +441,11 @@ enum ArgumentIteratorBase<'db, 'a> {
         kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
     Comprehension(Context<'db, 'a>, &'a PythonFile, Comprehension<'a>),
-    Inferred(&'a Inferred, NodeRef<'a>),
+    Inferred {
+        inferred: &'a Inferred,
+        node_ref: NodeRef<'a>,
+        is_self: bool,
+    },
     SliceType(Context<'db, 'a>, SliceType<'a>),
     Finished,
 }
@@ -456,14 +463,14 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
             unreachable!()
         }
     }
-    fn into_argument_types(self) -> Vec<Box<str>> {
+    fn into_argument_types(self, i_s: &mut InferenceState) -> Vec<Box<str>> {
         match self {
-            Self::Inferred(inf, _) => {
-                // TODO for now we just skip this, because most of these are instances.
-                //      Shouldn't this be something like:
-                //      vec![inf.class_as_type(i_s).format(i_s, None, FormatStyle::Short)]
-                vec![]
-            }
+            Self::Inferred {
+                inferred, is_self, ..
+            } => match is_self {
+                false => vec![inferred.class_as_type(i_s).format_short(i_s.db)],
+                true => vec![],
+            },
             Self::Iterator {
                 mut i_s,
                 file,
@@ -515,10 +522,13 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         match self {
-            Self::Inferred(_, _) => {
-                if let Self::Inferred(inf, node_ref) = mem::replace(self, Self::Finished) {
+            Self::Inferred { .. } => {
+                if let Self::Inferred {
+                    inferred, node_ref, ..
+                } = mem::replace(self, Self::Finished)
+                {
                     Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
-                        inferred: inf.clone(),
+                        inferred: inferred.clone(),
                         position: 1, // TODO this is probably a bad assumption
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
@@ -724,10 +734,10 @@ impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
         }
     }
 
-    pub fn into_argument_types(mut self) -> Box<[Box<str>]> {
+    pub fn into_argument_types(mut self, i_s: &mut InferenceState) -> Box<[Box<str>]> {
         let mut result = vec![];
         loop {
-            result.extend(self.current.into_argument_types());
+            result.extend(self.current.into_argument_types(i_s));
             if let Some(next) = self.next {
                 self = next.iter_arguments();
             } else {

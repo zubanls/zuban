@@ -1352,7 +1352,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     i_s.db,
                     IssueType::OverloadMismatch {
                         name: function.diagnostic_string(self.class.as_ref()),
-                        args: args.iter_arguments().into_argument_types(),
+                        args: args.iter_arguments().into_argument_types(i_s),
                         variants: self.variants(i_s, search_init),
                     },
                 );

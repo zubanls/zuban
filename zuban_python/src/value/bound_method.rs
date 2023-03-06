@@ -76,7 +76,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
     ) -> Inferred {
         let instance_inf = self.instance.as_inferred(i_s);
         let instance_arg =
-            KnownArguments::with_mro_index(&instance_inf, self.mro_index, args.as_node_ref());
+            KnownArguments::new_self(&instance_inf, self.mro_index, args.as_node_ref());
         let args = CombinedArguments::new(&instance_arg, args);
         let class = &self.instance.class;
         match &self.function {
