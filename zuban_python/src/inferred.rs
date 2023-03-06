@@ -955,11 +955,37 @@ impl<'db: 'slf, 'slf> Inferred {
                         ComplexPoint::FunctionOverload(o) => {
                             todo!()
                         }
-                        ComplexPoint::TypeInstance(t) => {
-                            if let DbType::Callable(c) = t.as_ref() {
+                        ComplexPoint::TypeInstance(t) => match t.as_ref() {
+                            DbType::Callable(c) => {
                                 todo!()
                             }
-                        }
+                            DbType::Class(link, generics) => {
+                                let inst = use_instance_with_ref(
+                                    NodeRef::from_link(i_s.db, *link),
+                                    Generics::new_maybe_list(generics),
+                                    Some(NodeRef::from_link(i_s.db, *definition)),
+                                );
+                                if let Some(inf) = inst
+                                    .lookup_internal(i_s, from, "__get__")
+                                    .into_maybe_inferred()
+                                {
+                                    let from = from.unwrap_or_else(|| todo!());
+                                    let class_as_inferred = class.as_inferred(i_s);
+                                    return Some(inf.run_on_value(i_s, &mut |i_s, value| {
+                                        value.execute(
+                                            i_s,
+                                            &CombinedArguments::new(
+                                                &KnownArguments::new(&Inferred::new_none(), from),
+                                                &KnownArguments::new(&class_as_inferred, from),
+                                            ),
+                                            &mut ResultContext::Unknown,
+                                            OnTypeError::new(&|_, _, _, _, _, _| todo!()),
+                                        )
+                                    }));
+                                }
+                            }
+                            _ => (),
+                        },
                         _ => (),
                     }
                 }
