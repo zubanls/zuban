@@ -858,7 +858,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             i_s,
                                             &CombinedArguments::new(
                                                 &KnownArguments::new(&instance, from),
-                                                &KnownArguments::new(&self, from),
+                                                &KnownArguments::new(&class_as_inferred, from),
                                             ),
                                             &mut ResultContext::Unknown,
                                             OnTypeError::new(&|_, _, _, _, _, _| todo!()),
