@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{File, PythonFile};
+use crate::file::{on_argument_type_error, File, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{
     create_signature_without_self, replace_class_type_vars, FormatData, Generics, Matcher,
@@ -861,7 +861,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 &KnownArguments::new(&class_as_inferred, from),
                                             ),
                                             &mut ResultContext::Unknown,
-                                            OnTypeError::new(&|_, _, _, _, _, _| todo!()),
+                                            OnTypeError::new(&on_argument_type_error),
                                         )
                                     }));
                                 }
