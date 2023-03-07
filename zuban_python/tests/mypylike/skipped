@@ -327,15 +327,10 @@ testOptionalAndAnyBaseClass
 testDescriptorDunderGetTooFewArgs
 testDescriptorDunderGetTooManyArgs
 testDescriptorGetSetDifferentTypes
-# descriptors wrong decorator check
-testClassCustomPropertyWorks
-# __get__ not callable
-testDescriptorUncallableDunderGet
 # __set__ only descriptor
 testDescriptorDunderSetTooFewArgs
 testDescriptorDunderSetTooManyArgs
 testDescriptorDunderSetWrongArgTypes
-testDescriptorUncallableDunderSet
 testReadingDescriptorSubclassWithoutDunderGet
 testDecoratedDunderSet
 testSettingDescriptorWithOverloadedDunderSet1
@@ -379,10 +374,13 @@ testOverloadedProperty
 testOverloadedProperty2
 testDecoratedPropertySetter
 
-# classmethod not a valid classmethod
-testClassmethodAndNonMethod
+# descriptors wrong decorator check name binding issue
+testClassCustomPropertyWorks
 # classmethod name redirect name binding issue
 testAliasToClassMethod
+
+# classmethod not a valid classmethod
+testClassmethodAndNonMethod
 # Self type classmethod access with type vars(no Self)
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
@@ -1779,6 +1777,10 @@ testModuleGetAttr*
 testGetAttrImportAnnotation
 testGetAttrImportBaseClass
 testGetAttrDescriptor
+
+# __get__/__set__ not callable
+testDescriptorUncallableDunderGet
+testDescriptorUncallableDunderSet
 
 # attrs
 testAttrs*
