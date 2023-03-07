@@ -524,12 +524,14 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
         match self {
             Self::Inferred { .. } => {
                 if let Self::Inferred {
-                    inferred, node_ref, ..
+                    inferred,
+                    node_ref,
+                    is_self,
                 } = mem::replace(self, Self::Finished)
                 {
                     Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
                         inferred: inferred.clone(),
-                        position: 1, // TODO this is probably a bad assumption
+                        position: (!is_self).into(),
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
                         is_keyword: false,
@@ -769,10 +771,20 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
     fn next(&mut self) -> Option<Self::Item> {
         match &mut self.args_kwargs_iterator {
             ArgsKwargsIterator::None => match self.current.next() {
-                Some(BaseArgumentReturn::Argument(arg)) => {
+                Some(BaseArgumentReturn::Argument(mut kind)) => {
                     let index = self.counter;
-                    self.counter += 1;
-                    Some(Argument { kind: arg, index })
+                    if let ArgumentKind::Inferred { position, .. } = &mut kind {
+                        // This is a bit of a special case where 0 means that we're on a bound self
+                        // argument. In that case we do not want to increase the counter, because
+                        // the bound argument is not counted as an argument.
+                        if *position != 0 {
+                            self.counter += 1;
+                        }
+                        *position += index;
+                    } else {
+                        self.counter += 1;
+                    }
+                    Some(Argument { kind, index })
                 }
                 Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => {
                     self.args_kwargs_iterator = args_kwargs;
@@ -780,7 +792,9 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                 }
                 None => {
                     if let Some(next) = self.next {
+                        let old_counter = self.counter;
                         *self = next.iter_arguments();
+                        self.counter += old_counter;
                         self.next()
                     } else {
                         None

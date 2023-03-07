@@ -979,7 +979,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 &KnownArguments::new(&class_as_inferred, from),
                                             ),
                                             &mut ResultContext::Unknown,
-                                            OnTypeError::new(&|_, _, _, _, _, _| todo!()),
+                                            OnTypeError::new(&on_argument_type_error),
                                         )
                                     }));
                                 }
