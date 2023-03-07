@@ -782,12 +782,35 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
+        let format_type = |i_s: &mut InferenceState, t: Type| {
+            if let Some(func_class) = self.class {
+                let t = t.as_cow(i_s.db).replace_type_var_likes_and_self(
+                    i_s.db,
+                    &mut |usage| {
+                        let in_definition = usage.in_definition();
+                        if in_definition == func_class.node_ref.as_link() {
+                            func_class
+                                .generics()
+                                .nth_usage(i_s.db, &usage)
+                                .into_generic_item(i_s.db)
+                        } else {
+                            usage.into_generic_item()
+                        }
+                    },
+                    &mut || todo!(),
+                );
+                t.format(&FormatData::with_matcher(i_s.db, &Matcher::default()))
+            } else {
+                t.format(&FormatData::with_matcher(i_s.db, &Matcher::default()))
+            }
+        };
         let return_type = |i_s: &mut InferenceState, annotation| {
-            self.node_ref
+            let t = self
+                .node_ref
                 .file
                 .inference(i_s)
-                .use_cached_return_annotation_type(annotation)
-                .format(&FormatData::with_matcher(i_s.db, &Matcher::default()))
+                .use_cached_return_annotation_type(annotation);
+            format_type(i_s, t)
         };
         let node = self.node();
         let mut previous_kind = None;
@@ -801,7 +824,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     | WrappedParamSpecific::KeywordOnly(t)
                     | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
                     | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                        t.map(|t| t.format(&FormatData::with_matcher(i_s.db, &Matcher::default())))
+                        t.map(|t| format_type(i_s, t))
                     }
                     WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
                     WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(

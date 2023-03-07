@@ -324,7 +324,6 @@ testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
 
 # descriptors
-testAccessingGenericDescriptorFromClassBadOverload
 testDescriptorDunderGetTooFewArgs
 testDescriptorDunderGetTooManyArgs
 testDescriptorGetSetDifferentTypes

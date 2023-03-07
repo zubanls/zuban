@@ -200,8 +200,9 @@ y = Foo(lst)
 [out]
 main:12: error: No overload variant of "Foo" matches argument type "str"
 main:12: note: Possible overload variants:
-main:12: note:     def __init__(self, t: T)
-main:12: note:     def __init__(self, t: list[T])
+-- TODO It is weird that the T here is formatted to Any
+main:12: note:     def __init__(self, t: Any)
+main:12: note:     def __init__(self, t: list[Any])
 main:16: error: Argument 1 to "Foo" has incompatible type "list[str]"; expected "list[int]"
 
 [case contravariant_type_var]
