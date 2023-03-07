@@ -232,9 +232,9 @@ impl<'a> Type<'a> {
                     variance,
                 ),
                 DbType::Type(t1) => match value_type.maybe_db_type() {
-                    Some(DbType::Type(t2)) => {
-                        Type::new(t1).matches(i_s, matcher, &Type::new(t2), variance)
-                    }
+                    Some(DbType::Type(t2)) => Type::new(t1)
+                        .matches(i_s, matcher, &Type::new(t2), variance)
+                        .similar_if_false(),
                     _ => Match::new_false(),
                 },
                 DbType::TypeVar(t1) => {

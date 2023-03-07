@@ -324,12 +324,11 @@ testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
 
 # descriptors
-testAccessingDescriptorFromClassWrongBase
 testAccessingGenericDescriptorFromClassBadOverload
 testDescriptorDunderGetTooFewArgs
 testDescriptorDunderGetTooManyArgs
 testDescriptorGetSetDifferentTypes
-testOverloadWithGenericDescriptor
+# descriptors wrong decorator check
 testClassCustomPropertyWorks
 # __get__ not callable
 testDescriptorUncallableDunderGet
@@ -1306,6 +1305,7 @@ testTypeOverlapsWithObject
 testAccessingGenericDescriptorFromInferredClass
 testAccessingGenericDescriptorFromClass
 testOverloadWithNonGenericDescriptorLookalike
+testOverloadWithGenericDescriptor
 overload_overlapping_any
 
 # - Signature of "f" incompatible with supertype "Parent"
