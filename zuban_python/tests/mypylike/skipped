@@ -324,8 +324,6 @@ testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
 
 # descriptors
-testDescriptorDunderGetTooFewArgs
-testDescriptorDunderGetTooManyArgs
 testDescriptorGetSetDifferentTypes
 # __set__ only descriptor
 testDescriptorDunderSetTooFewArgs
