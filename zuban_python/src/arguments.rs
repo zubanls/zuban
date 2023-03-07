@@ -167,7 +167,7 @@ pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
     mro_index: MroIndex,
     node_ref: NodeRef<'a>,
-    is_self: bool,
+    is_bound_self: bool,
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
@@ -175,7 +175,7 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
         ArgumentIteratorImpl::new(ArgumentIteratorBase::Inferred {
             inferred: self.inferred,
             node_ref: self.node_ref,
-            is_self: self.is_self,
+            is_bound_self: self.is_bound_self,
         })
     }
 
@@ -202,7 +202,7 @@ impl<'a> KnownArguments<'a> {
             inferred,
             node_ref,
             mro_index: MroIndex(0),
-            is_self: false,
+            is_bound_self: false,
         }
     }
 
@@ -211,7 +211,7 @@ impl<'a> KnownArguments<'a> {
             inferred,
             node_ref,
             mro_index,
-            is_self: true,
+            is_bound_self: true,
         }
     }
 }
@@ -444,7 +444,7 @@ enum ArgumentIteratorBase<'db, 'a> {
     Inferred {
         inferred: &'a Inferred,
         node_ref: NodeRef<'a>,
-        is_self: bool,
+        is_bound_self: bool,
     },
     SliceType(Context<'db, 'a>, SliceType<'a>),
     Finished,
@@ -466,8 +466,10 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     fn into_argument_types(self, i_s: &mut InferenceState) -> Vec<Box<str>> {
         match self {
             Self::Inferred {
-                inferred, is_self, ..
-            } => match is_self {
+                inferred,
+                is_bound_self,
+                ..
+            } => match is_bound_self {
                 false => vec![inferred.class_as_type(i_s).format_short(i_s.db)],
                 true => vec![],
             },
@@ -526,12 +528,12 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 if let Self::Inferred {
                     inferred,
                     node_ref,
-                    is_self,
+                    is_bound_self,
                 } = mem::replace(self, Self::Finished)
                 {
                     Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
                         inferred: inferred.clone(),
-                        position: (!is_self).into(),
+                        position: (!is_bound_self).into(),
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
                         is_keyword: false,
