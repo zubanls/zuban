@@ -1643,16 +1643,6 @@ pub enum UnionValue<T, I: Iterator<Item = T>> {
     Any,
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_sizes() {
-        use super::*;
-        use std::mem::size_of;
-        assert_eq!(size_of::<Inferred>(), 32);
-    }
-}
-
 fn infer_class_method(
     i_s: &mut InferenceState,
     mut class: Class,
@@ -1686,4 +1676,14 @@ fn infer_class_method(
     }
     let t = func.classmethod_as_db_type(i_s, &class, class_generics_not_defined_yet);
     Some(Inferred::execute_db_type(i_s, t))
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn test_sizes() {
+        use super::*;
+        use std::mem::size_of;
+        assert_eq!(size_of::<Inferred>(), 32);
+    }
 }
