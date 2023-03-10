@@ -362,6 +362,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         }
                     }
                     Target::NameExpression(primary_target, name_def_node) => {
+                        /*
                         if let PrimaryTargetOrAtom::Atom(atom) = primary_target.first() {
                             // TODO this is completely wrong!!!
                             if atom.as_code() == "self" {
@@ -369,6 +370,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             }
                         }
                         return Some(self.infer_primary_target(primary_target));
+                        */
                     }
                     _ => (),
                 }
