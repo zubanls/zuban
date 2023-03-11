@@ -662,39 +662,35 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     NodeRef::new(self.file, primary_target.index())
                         .add_typing_issue(self.i_s.db, IssueType::UnexpectedTypeDeclaration);
                 }
-                if let PrimaryContent::GetItem(slice_type) = primary_target.second() {
-                    let node_ref = NodeRef::new(self.file, primary_target.index());
-                    let slice = SliceType::new(self.file, primary_target.index(), slice_type);
-                    let args = slice.as_args(self.i_s.context);
-                    base.run_on_value(self.i_s, &mut |i_s, v| {
-                        debug!("Set Item on {}", v.name());
-                        v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {
-                            debug!("TODO __setitem__ not found");
-                        })
-                        .run_on_value(i_s, &mut |i_s, v| {
-                            v.execute(
-                                i_s,
-                                &CombinedArguments::new(
-                                    &args,
-                                    &KnownArguments::new(value, node_ref),
-                                ),
-                                &mut ResultContext::Unknown,
-                                OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
-                                    arg.as_node_ref().add_typing_issue(
-                                        i_s.db,
-                                        IssueType::InvalidGetItem {
-                                            actual,
-                                            type_: class.unwrap().format_short(i_s.db),
-                                            expected,
-                                        },
-                                    )
-                                }),
-                            )
-                        })
-                    });
-                } else {
+                let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
                     unreachable!();
-                }
+                };
+                let node_ref = NodeRef::new(self.file, primary_target.index());
+                let slice = SliceType::new(self.file, primary_target.index(), slice_type);
+                let args = slice.as_args(self.i_s.context);
+                base.run_on_value(self.i_s, &mut |i_s, v| {
+                    debug!("Set Item on {}", v.name());
+                    v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {
+                        debug!("TODO __setitem__ not found");
+                    })
+                    .run_on_value(i_s, &mut |i_s, v| {
+                        v.execute(
+                            i_s,
+                            &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
+                            &mut ResultContext::Unknown,
+                            OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
+                                arg.as_node_ref().add_typing_issue(
+                                    i_s.db,
+                                    IssueType::InvalidGetItem {
+                                        actual,
+                                        type_: class.unwrap().format_short(i_s.db),
+                                        expected,
+                                    },
+                                )
+                            }),
+                        )
+                    })
+                });
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }
