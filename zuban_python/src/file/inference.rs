@@ -652,12 +652,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 save(name_def_node.index());
             }
             Target::IndexExpression(primary_target) => {
-                let base = match primary_target.first() {
-                    PrimaryTargetOrAtom::Atom(atom) => {
-                        self.infer_atom(atom, &mut ResultContext::Unknown)
-                    }
-                    PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
-                };
+                let base = self.infer_primary_target_or_atom(primary_target.first());
                 if is_definition {
                     NodeRef::new(self.file, primary_target.index())
                         .add_typing_issue(self.i_s.db, IssueType::UnexpectedTypeDeclaration);
@@ -1344,10 +1339,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
     fn _infer_primary_target(&mut self, primary_target: PrimaryTarget) -> Inferred {
-        let first = match primary_target.first() {
-            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
-            PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
-        };
+        let first = self.infer_primary_target_or_atom(primary_target.first());
         self.infer_primary_or_primary_t_content(
             first,
             primary_target.index(),
@@ -1356,6 +1348,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             &mut ResultContext::Unknown,
         )
         .save_redirect(self.i_s.db, self.file, primary_target.index())
+    }
+
+    fn infer_primary_target_or_atom(&mut self, t: PrimaryTargetOrAtom) -> Inferred {
+        match t {
+            PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
+            PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
+        }
     }
 
     check_point_cache_with!(pub infer_name_reference, Self::_infer_name_reference, Name);
