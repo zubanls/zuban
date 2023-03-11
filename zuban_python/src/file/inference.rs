@@ -628,7 +628,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 }
                 save(name_def.index());
             }
-            Target::NameExpression(primary_target, name_def_node) => {
+            Target::NameExpression(primary_target, name_definition) => {
                 if primary_target.as_code().contains("self") {
                     // TODO here we should do something as well.
                 } else {
@@ -636,20 +636,42 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         NodeRef::new(self.file, primary_target.index())
                             .add_typing_issue(self.i_s.db, IssueType::InvalidTypeDeclaration);
                     }
-                    self.infer_primary_target(primary_target)
-                        .class_as_type(self.i_s)
-                        .error_if_not_matches(self.i_s, value, |i_s, got, expected| {
-                            let node_ref = NodeRef::new(self.file, primary_target.index())
-                                .to_db_lifetime(i_s.db);
-                            node_ref.add_typing_issue(
-                                self.i_s.db,
-                                IssueType::IncompatibleAssignment { got, expected },
+                    let base = self.infer_primary_target_or_atom(primary_target.first());
+                    let node_ref = NodeRef::new(self.file, primary_target.index());
+                    base.run_mut(
+                        self.i_s,
+                        &mut |i_s, v| {
+                            v.lookup(i_s, Some(node_ref), name_definition.as_code(), &|i_s| {
+                                add_attribute_error(i_s, node_ref, v, name_definition.name())
+                            })
+                            .into_inferred()
+                            .class_as_type(i_s)
+                            .error_if_not_matches(
+                                i_s,
+                                value,
+                                |i_s, got, expected| {
+                                    let node_ref = NodeRef::new(self.file, primary_target.index())
+                                        .to_db_lifetime(i_s.db);
+                                    node_ref.add_typing_issue(
+                                        i_s.db,
+                                        IssueType::IncompatibleAssignment { got, expected },
+                                    );
+                                    node_ref
+                                },
                             );
-                            node_ref
-                        });
+                            /*
+                            if let Some(instance) = v.as_instance() {
+                                todo!()
+                            } else {
+                                todo!()
+                            }
+                            */
+                        },
+                        || (),
+                    );
                 }
                 // This mostly needs to be saved for self names
-                save(name_def_node.index());
+                save(name_definition.index());
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -1116,18 +1138,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
                 match value.lookup(i_s, Some(node_ref), name.as_str(), &|i_s| {
-                    let object = if value.as_module().is_some() {
-                        Box::from("Module")
-                    } else {
-                        format!("{:?}", value.as_type(i_s).format_short(self.i_s.db)).into()
-                    };
-                    node_ref.add_typing_issue(
-                        i_s.db,
-                        IssueType::AttributeError {
-                            object,
-                            name: Box::from(name.as_str()),
-                        },
-                    );
+                    add_attribute_error(i_s, node_ref, value, name)
                 }) {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting
@@ -1753,4 +1764,24 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let clauses = for_if_clauses.iter();
         todo!()
     }
+}
+
+fn add_attribute_error<'db>(
+    i_s: &mut InferenceState<'db, '_>,
+    node_ref: NodeRef,
+    value: &dyn Value<'db, '_>,
+    name: Name,
+) {
+    let object = if value.as_module().is_some() {
+        Box::from("Module")
+    } else {
+        format!("{:?}", value.as_type(i_s).format_short(i_s.db)).into()
+    };
+    node_ref.add_typing_issue(
+        i_s.db,
+        IssueType::AttributeError {
+            object,
+            name: Box::from(name.as_str()),
+        },
+    );
 }

@@ -211,6 +211,11 @@ impl LookupResult {
         }
     }
 
+    pub fn into_inferred(self) -> Inferred {
+        self.into_maybe_inferred()
+            .unwrap_or(Inferred::new_unknown())
+    }
+
     pub fn union(self, other: Self) -> Self {
         match self.into_maybe_inferred() {
             Some(self_) => match other.into_maybe_inferred() {
