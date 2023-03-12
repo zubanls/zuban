@@ -368,6 +368,31 @@ impl<'db: 'a, 'a> Class<'a> {
         (LookupResult::None, None)
     }
 
+    pub fn lookup_with_or_without_descriptors(
+        &self,
+        i_s: &mut InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+        use_descriptors: bool,
+    ) -> LookupResult {
+        let (lookup_result, in_class) = self.lookup_and_class(i_s, name);
+        if !use_descriptors {
+            return lookup_result;
+        }
+        let result = lookup_result.and_then(|inf| {
+            if let Some(in_class) = in_class {
+                let mut i_s = i_s.with_class_context(&in_class);
+                inf.bind_class_descriptors(&mut i_s, self, in_class, node_ref)
+            } else {
+                todo!()
+            }
+        });
+        match result {
+            Some(LookupResult::None) | None => LookupResult::None,
+            Some(x) => x,
+        }
+    }
+
     pub fn generics(&self) -> Generics {
         if let Some(type_var_remap) = self.type_var_remap {
             Generics::List(type_var_remap, Some(&self.generics))
@@ -482,19 +507,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        let (lookup_result, in_class) = self.lookup_and_class(i_s, name);
-        let result = lookup_result.and_then(|inf| {
-            if let Some(in_class) = in_class {
-                let mut i_s = i_s.with_class_context(&in_class);
-                inf.bind_class_descriptors(&mut i_s, self, in_class, node_ref)
-            } else {
-                todo!()
-            }
-        });
-        match result {
-            Some(LookupResult::None) | None => LookupResult::None,
-            Some(x) => x,
-        }
+        self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
     }
 
     fn should_add_lookup_error(&self, db: &Database) -> bool {
@@ -563,6 +576,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
             format!("{:?}", self.kind()).to_lowercase(),
             self.format_short(i_s.db),
         )
+    }
+
+    fn as_class(&self) -> Option<&Class> {
+        Some(self)
     }
 
     fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {

@@ -233,6 +233,9 @@ testListMultiplyInContext
 testDictionaryLiteralInContext
 testLiteralInferredInDictContext
 
+# context inference from class statement
+testSetDescriptorOnClass
+
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
 testLiteralAndGenericsNoMatch
@@ -322,10 +325,6 @@ testTypingSelfNonAnnotationUses
 # base class: type alias
 testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
-
-# Overwriting descriptors on class should not check __get__ 
-testSetDescriptorOnClass
-testSetDescriptorOnInferredClass
 
 # Property
 testBoundMethodUsage

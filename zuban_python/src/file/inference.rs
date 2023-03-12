@@ -649,15 +649,36 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     return;
                                 }
                             }
-                            v.lookup(i_s, Some(node_ref), name_definition.as_code(), &|i_s| {
-                                add_attribute_error(i_s, node_ref, v, name_definition.name())
-                            })
-                            .into_inferred()
-                            .class_as_type(i_s)
-                            .error_if_not_matches(
-                                i_s,
-                                value,
-                                |i_s, got, expected| {
+                            v.as_class()
+                                .and_then(|c| {
+                                    // We need to handle class descriptors separately, because
+                                    // there the __get__ descriptor should not be applied.
+                                    c.lookup_with_or_without_descriptors(
+                                        i_s,
+                                        Some(node_ref),
+                                        name_definition.as_code(),
+                                        false,
+                                    )
+                                    .into_maybe_inferred()
+                                })
+                                .unwrap_or_else(|| {
+                                    v.lookup(
+                                        i_s,
+                                        Some(node_ref),
+                                        name_definition.as_code(),
+                                        &|i_s| {
+                                            add_attribute_error(
+                                                i_s,
+                                                node_ref,
+                                                v,
+                                                name_definition.name(),
+                                            )
+                                        },
+                                    )
+                                    .into_inferred()
+                                })
+                                .class_as_type(i_s)
+                                .error_if_not_matches(i_s, value, |i_s, got, expected| {
                                     let node_ref = NodeRef::new(self.file, primary_target.index())
                                         .to_db_lifetime(i_s.db);
                                     node_ref.add_typing_issue(
@@ -665,8 +686,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                         IssueType::IncompatibleAssignment { got, expected },
                                     );
                                     node_ref
-                                },
-                            );
+                                });
                         },
                         || (),
                     );
