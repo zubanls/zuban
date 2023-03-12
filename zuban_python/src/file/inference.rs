@@ -1113,7 +1113,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     },
                 )
             } else {
-                right
+                let had_error = Cell::new(false);
+                let result = right
                     .run_on_value(i_s, &mut |i_s, rvalue| {
                         if let Some(left_instance) = lvalue.as_instance() {
                             if let Some(right_instance) = rvalue.as_instance() {
@@ -1135,11 +1136,14 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         // TODO shouldn't this be lvalue instead of left
                         &KnownArguments::new(&left, node_ref),
                         &mut ResultContext::Unknown,
-                        OnTypeError {
-                            on_overload_mismatch: Some(&on_error),
-                            callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
-                        },
-                    )
+                        OnTypeError::new(&|i_s, _, _, _, _, _| had_error.set(true)),
+                    );
+                if had_error.get() {
+                    unsupported_left_operand(i_s, lvalue);
+                    Inferred::new_unknown()
+                } else {
+                    result
+                }
             }
         })
     }
