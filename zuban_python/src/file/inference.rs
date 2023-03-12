@@ -1088,7 +1088,20 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             maybe_add_union_note(i_s)
         };
         left.run_on_value(self.i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, Some(node_ref), op.magic_method, &|i_s| {
+            if let Some(left) = value
+                .lookup_internal(i_s, Some(node_ref), op.magic_method)
+                .into_maybe_inferred()
+            {
+                left.execute_with_details(
+                    i_s,
+                    &KnownArguments::new(&right, node_ref),
+                    &mut ResultContext::Unknown,
+                    OnTypeError {
+                        on_overload_mismatch: Some(&on_error),
+                        callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
+                    },
+                )
+            } else {
                 node_ref.add_typing_issue(
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
@@ -1096,18 +1109,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         left: value.as_type(i_s).format_short(i_s.db),
                     },
                 );
-                maybe_add_union_note(i_s)
-            })
+                maybe_add_union_note(i_s);
+                Inferred::new_unknown()
+            }
         })
-        .execute_with_details(
-            self.i_s,
-            &KnownArguments::new(&right, node_ref),
-            &mut ResultContext::Unknown,
-            OnTypeError {
-                on_overload_mismatch: Some(&on_error),
-                callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
-            },
-        )
     }
 
     pub fn infer_primary(
