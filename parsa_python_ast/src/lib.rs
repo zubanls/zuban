@@ -2246,7 +2246,7 @@ pub enum PrimaryParent<'db> {
 
 impl<'db> BitwiseOr<'db> {
     pub fn as_operation(&self) -> Operation<'db> {
-        Operation::new(self.node, "__or__", "__ror__", "+", true)
+        Operation::new(self.node, "__or__", "__ror__", "|", true)
     }
 
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
@@ -2445,6 +2445,21 @@ impl<'db> Disjunction<'db> {
         let left = ExpressionPart::new(iter.next().unwrap());
         let _operand = iter.next().unwrap();
         (left, ExpressionPart::new(iter.next().unwrap()))
+    }
+}
+
+impl<'db> Conjunction<'db> {
+    pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
+        let mut iter = self.node.iter_children();
+        let left = ExpressionPart::new(iter.next().unwrap());
+        let _operand = iter.next().unwrap();
+        (left, ExpressionPart::new(iter.next().unwrap()))
+    }
+}
+
+impl<'db> Inversion<'db> {
+    pub fn expression(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.iter_children().skip(1).next().unwrap())
     }
 }
 

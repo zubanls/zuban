@@ -932,6 +932,23 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     None,
                 )
             }
+            ExpressionPart::Conjunction(and) => {
+                let (first, second) = and.unpack();
+                let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
+                let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
+                Inferred::create_instance(
+                    self.i_s.db.python_state.builtins_point_link("bool"),
+                    None,
+                )
+            }
+            ExpressionPart::Inversion(inversion) => {
+                let expr = inversion.expression();
+                self.infer_expression_part(expr, &mut ResultContext::Unknown);
+                Inferred::create_instance(
+                    self.i_s.db.python_state.builtins_point_link("bool"),
+                    None,
+                )
+            }
             ExpressionPart::Comparison(cmp) => {
                 match cmp.unpack() {
                     ComparisonContent::Equals(first, _, second)

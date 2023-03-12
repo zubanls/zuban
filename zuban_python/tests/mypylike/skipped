@@ -1,7 +1,6 @@
 # Next up
 testMiscBinaryOperators
 testBooleanAndOr
-testAndOr
 testRestrictedTypeAnd
 testRestrictedTypeOr
 testRestrictedBoolAndOrWithGenerics
