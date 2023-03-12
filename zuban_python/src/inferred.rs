@@ -3,7 +3,9 @@ use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
+use crate::arguments::{
+    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
+};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
@@ -1109,16 +1111,20 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
         from: NodeRef,
-    ) -> Inferred {
+    ) -> Self {
         self.run_on_value(i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, Some(from), name, &|i_s| todo!("{value:?}"))
         })
-        .run_on_value(i_s, &mut |i_s, value| {
+        .execute(i_s, &NoArguments::new(from))
+    }
+
+    pub fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
+        self.run_on_value(i_s, &mut |i_s, value| {
             value.execute(
                 i_s,
-                &NoArguments::new(from),
+                args,
                 &mut ResultContext::Unknown,
-                OnTypeError::new(&|_, _, _, _, _, _| todo!("currently only used for __next__")),
+                OnTypeError::new(&|_, _, _, _, _, _| todo!()),
             )
         })
     }
