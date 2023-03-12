@@ -156,6 +156,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             });
             match result {
                 Some(LookupResult::None) => (),
+                // TODO we should add tests for this. This is currently only None if the self
+                // annotation does not match and the node_ref is empty.
                 None => return LookupResult::None,
                 Some(x) => return x,
             }
