@@ -53,6 +53,13 @@ testInheritedConstructor2
 # Uses function context but is in fact in module context
 testFunctionForwardRefAlias
 
+# None lookup
+testTypeCheckNamedModule
+testTypeCheckNamedModule2
+testTypeCheckNamedModule3
+
+testGenericTypeAliasesRuntimeExpressionsOther
+testInferOptionalFromDefaultNone
 # Maybe implement reverse operator
 testFlattenTypeAliasWhenAliasedAsUnion
 testReverseOperatorOrderingCase2

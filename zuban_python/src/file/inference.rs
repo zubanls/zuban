@@ -1087,8 +1087,19 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             );
             maybe_add_union_note(i_s)
         };
-        left.run_on_value(self.i_s, &mut |i_s, value| {
-            if let Some(left) = value
+        let unsupported_left_operand =
+            |i_s: &mut InferenceState<'db, '_>, lvalue: &dyn Value<'db, '_>| {
+                node_ref.add_typing_issue(
+                    i_s.db,
+                    IssueType::UnsupportedLeftOperand {
+                        operand: Box::from(op.operand),
+                        left: lvalue.as_type(i_s).format_short(i_s.db),
+                    },
+                );
+                maybe_add_union_note(i_s);
+            };
+        left.run_on_value(self.i_s, &mut |i_s, lvalue| {
+            if let Some(left) = lvalue
                 .lookup_internal(i_s, Some(node_ref), op.magic_method)
                 .into_maybe_inferred()
             {
@@ -1102,15 +1113,33 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     },
                 )
             } else {
-                node_ref.add_typing_issue(
-                    i_s.db,
-                    IssueType::UnsupportedLeftOperand {
-                        operand: Box::from(op.operand),
-                        left: value.as_type(i_s).format_short(i_s.db),
-                    },
-                );
-                maybe_add_union_note(i_s);
-                Inferred::new_unknown()
+                right
+                    .run_on_value(i_s, &mut |i_s, rvalue| {
+                        if let Some(left_instance) = lvalue.as_instance() {
+                            if let Some(right_instance) = rvalue.as_instance() {
+                                if left_instance.class.node_ref == right_instance.class.node_ref {
+                                    unsupported_left_operand(i_s, lvalue);
+                                    return Inferred::new_unknown();
+                                }
+                            }
+                        }
+                        rvalue.lookup_implicit(
+                            i_s,
+                            Some(node_ref),
+                            op.reverse_magic_method,
+                            &|i_s| unsupported_left_operand(i_s, lvalue),
+                        )
+                    })
+                    .execute_with_details(
+                        i_s,
+                        // TODO shouldn't this be lvalue instead of left
+                        &KnownArguments::new(&left, node_ref),
+                        &mut ResultContext::Unknown,
+                        OnTypeError {
+                            on_overload_mismatch: Some(&on_error),
+                            callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
+                        },
+                    )
             }
         })
     }
