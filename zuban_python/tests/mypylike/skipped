@@ -324,10 +324,6 @@ testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
 
 # descriptors
-testSettingDataDescriptor
-testSettingGenericDataDescriptor
-testSettingDataDescriptorSubclass
-testSettingGenericDataDescriptorSubclass
 testSetDescriptorOnClass
 # __set__ only descriptor
 testReadingDescriptorSubclassWithoutDunderGet

@@ -53,7 +53,6 @@ impl<'a> Instance<'a> {
                     .lookup_symbol(i_s, name.as_str())
                     .into_maybe_inferred()
                 {
-                    dbg!(&inf);
                     inf.resolve_class_type_vars(i_s, &self.class).run_mut(
                         i_s,
                         &mut |i_s, v| {
@@ -74,15 +73,24 @@ impl<'a> Instance<'a> {
                                             &KnownArguments::new(value, from),
                                         ),
                                         &mut ResultContext::Unknown,
-                                        OnTypeError::new(&on_argument_type_error),
-                                        /*
-                                        OnTypeError::new(&|i_s: &mut InferenceState, _, _, _, got, expected| {
-                                            from.add_typing_issue(
-                                                i_s.db,
-                                                IssueType::IncompatibleAssignment { got, expected },
-                                            );
-                                        })
-                                        */
+                                        OnTypeError::new(
+                                            &|i_s, class, error_text, argument, got, expected| {
+                                                if argument.index == 2 {
+                                                    from.add_typing_issue(
+                                                        i_s.db,
+                                                        IssueType::IncompatibleAssignment {
+                                                            got,
+                                                            expected,
+                                                        },
+                                                    );
+                                                } else {
+                                                    on_argument_type_error(
+                                                        i_s, class, error_text, argument, got,
+                                                        expected,
+                                                    )
+                                                }
+                                            },
+                                        ),
                                     );
                                 }
                             } else {

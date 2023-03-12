@@ -786,7 +786,10 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                     } else {
                         self.counter += 1;
                     }
-                    Some(Argument { kind, index })
+                    Some(Argument {
+                        kind,
+                        index: self.counter,
+                    })
                 }
                 Some(BaseArgumentReturn::ArgsKwargs(args_kwargs)) => {
                     self.args_kwargs_iterator = args_kwargs;
