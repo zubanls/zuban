@@ -2409,6 +2409,24 @@ impl<'db> ShiftExpr<'db> {
     }
 }
 
+impl<'db> Power<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        let mut iter = self.node.iter_children();
+        let left = ExpressionPart::new(iter.next().unwrap());
+        iter.next().unwrap();
+        let right = ExpressionPart::new(iter.next().unwrap());
+        Operation {
+            left,
+            magic_method: "__pow__",
+            reverse_magic_method: "__rpow__",
+            operand: "**",
+            right,
+            index: self.node.index,
+            shortcut_when_same_type: true,
+        }
+    }
+}
+
 impl<'db> Disjunction<'db> {
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
         let mut iter = self.node.iter_children();

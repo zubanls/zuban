@@ -913,6 +913,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             ExpressionPart::Primary(primary) => self.infer_primary(primary, result_context),
             ExpressionPart::Sum(sum) => self.infer_operation(sum.as_operation()),
             ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
+            ExpressionPart::Power(power) => self.infer_operation(power.as_operation()),
             ExpressionPart::ShiftExpr(shift) => self.infer_operation(shift.as_operation()),
             ExpressionPart::BitwiseOr(or) => {
                 self.infer_expression_part(or.as_operation().left, &mut ResultContext::Unknown);
