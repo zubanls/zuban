@@ -125,19 +125,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         name: &str,
     ) -> LookupResult {
         for (mro_index, class) in self.class.mro(i_s.db) {
-            if let Some(c) = class.maybe_class(i_s.db) {
-                if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
-                    let mut i_s = i_s.with_class_context(&c);
-                    return LookupResult::GotoName(
-                        PointLink::new(c.node_ref.file.file_index(), self_symbol),
-                        c.node_ref
-                            .file
-                            .inference(&mut i_s)
-                            .infer_name_by_index(self_symbol)
-                            .resolve_class_type_vars(&mut i_s, &self.class),
-                    );
-                }
-            }
+            // First check class infos
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let Some(c) = class.maybe_class(i_s.db) {
                     let mut i_s = i_s.with_class_context(&self.class);
@@ -160,6 +148,20 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 // annotation does not match and the node_ref is empty.
                 None => return LookupResult::None,
                 Some(x) => return x,
+            }
+            // Then check self attributes
+            if let Some(c) = class.maybe_class(i_s.db) {
+                if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
+                    let mut i_s = i_s.with_class_context(&c);
+                    return LookupResult::GotoName(
+                        PointLink::new(c.node_ref.file.file_index(), self_symbol),
+                        c.node_ref
+                            .file
+                            .inference(&mut i_s)
+                            .infer_name_by_index(self_symbol)
+                            .resolve_class_type_vars(&mut i_s, &self.class),
+                    );
+                }
             }
         }
         LookupResult::None

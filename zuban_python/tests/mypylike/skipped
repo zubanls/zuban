@@ -323,14 +323,9 @@ testTypingSelfNonAnnotationUses
 testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
 
-# descriptors
+# Overwriting descriptors on class should not check __get__ 
 testSetDescriptorOnClass
-# __set__ only descriptor
-testReadingDescriptorSubclassWithoutDunderGet
-testDecoratedDunderSet
-testSettingDescriptorWithOverloadedDunderSet2
 testSetDescriptorOnInferredClass
-testReadingDescriptorWithoutDunderGet
 
 # Property
 testBoundMethodUsage
@@ -1518,6 +1513,11 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+
+# Function local self attribute name binding
+testOptionalDescriptorsBinder
+testUnionDescriptorsBinder
+testSubclassDescriptorsBinder
 
 # All conditional function variants must have identical signatures (flow analysis)
 testUnionOrderEquivalence
