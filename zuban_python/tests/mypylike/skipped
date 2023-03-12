@@ -1,4 +1,89 @@
 # Next up
+testMul
+testMatMul
+testPow
+testMiscBinaryOperators
+testBooleanAndOr
+testAndOr
+testRestrictedTypeAnd
+testRestrictedTypeOr
+testRestrictedBoolAndOrWithGenerics
+testNonBooleanOr
+testInOperator
+testNotInOperator
+testInWithInvalidArgs
+testChainedComp
+testChainedCompBoolRes
+testChainedCompResTyp
+testReverseBinaryOperator
+testReverseBinaryOperator2
+testReverseBinaryOperator3
+testDivmod
+testUnaryMinus
+testUnaryPlus
+testUnaryBitwiseNeg
+testIndexingAsLvalue
+testOverloadedIndexing
+testNoneReturnTypeBasics
+testNoneReturnTypeWithStatements
+testNoneReturnTypeWithExpressions
+testNoneReturnTypeWithExpressions2
+testTrivialLambda
+testNoCrashOnLambdaGenerator
+testLambdaAndReachability
+testSimpleListComprehension
+testSimpleListComprehensionNestedTuples
+testSimpleListComprehensionNestedTuples2
+testListComprehensionWithNonDirectMapping
+testErrorInListComprehensionCondition
+testTypeInferenceOfListComprehension
+testSimpleListComprehensionInClassBody
+testSimpleSetComprehension
+testSimpleDictionaryComprehension
+testDictionaryComprehensionWithNonDirectMapping
+testSimpleGeneratorExpression
+testGeneratorIncompatibleErrorMessage
+testConditionalExpressionWithEmptyCondition
+testConditionalExpressionWithSubtyping
+testConditionalExpressionUnion
+testConditionalExpressionUnionWithAny
+testConditionalExpressionStatementNoReturn
+testOperationsWithNonInstanceTypes
+testOperatorMethodAsVar2
+testEllipsis
+testYieldExpression
+testYieldExpressionWithNone
+testYieldFromIteratorHasNoValue
+testYieldFromGeneratorHasValue
+testYieldFromTupleExpression
+testRevealType
+testTypingRevealType
+testTypingExtensionsRevealType
+testUnimportedHintAny
+testUnimportedHintAnyLower
+
+# dict specialities
+testDictWithKeywordArgsOnly
+testDictWithoutKeywordArgs
+testDictFromList
+testDictFromIterableAndKeywordArg
+testDictFromIterableAndKeywordArg2
+testDictFromIterableAndKeywordArg3
+testDictFromIterableAndStarStarArgs
+testDictFromIterableAndStarStarArgs2
+testSpecialSignatureForSubclassOfDict
+testSpecialSignatureForSubclassOfDict2
+testOverridingSpecialSignatureInSubclassOfDict
+testDictWithStarStarExpr
+testDictIncompatibleTypeErrorMessage
+testDictIncompatibleKeyVerbosity
+testDictIncompatibleValueVerbosity
+
+# slices
+testGetSlice
+testSlicingWithInvalidBase
+testSlicingWithNonindexable
+testNonIntSliceBounds
 
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
@@ -76,6 +161,7 @@ testReverseOperatorTypeVar3
 testReverseOperatorTypeType
 testUnsafeOverlappingWithOperatorMethodsAndOverloading2
 testUnsafeOverlappingWithLineNo
+testReverseComparisonOperator
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 # Magic methods operator signatures (positional only self?)
@@ -416,6 +502,10 @@ testSelfTypeNew
 # typing assert_type
 testTypingSelfAssertType
 testInvalidAssertType
+testAssertType
+testAssertTypeGeneric
+testAssertTypeUncheckedFunction
+testAssertTypeUncheckedFunctionWithUntypedCheck
 
 # Final literal issues
 testLiteralWithFinalPropagation
@@ -576,8 +666,11 @@ testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
 testDynamicallyTypedNestedFunction
 testInferringImplicitDynamicTypeForLvar
 testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue
+testLambdaUnypedContext
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
+# "'reveal_type' always outputs 'Any' in unchecked functions"
+testRevealUncheckedFunction
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -692,6 +785,7 @@ testTypeAliasWithNewStyleUnionChangedToVariable
 
 # "Missing return statement"
 testWarnNoReturnWorksWithStrictOptional
+testAssertCurrentFrameIsNotUnreachable
 
 # ""f" does not return a value"
 testUseOfNoneReturningFunction
@@ -1634,6 +1728,7 @@ testPreferPackageOverFile
 testPreferPackageOverFile2
 testTrailingCommaParsing
 testTrailingCommaInIfParsing
+testDictWithStarExpr
 
 # Yield
 testYieldOutsideFunction
@@ -1749,6 +1844,7 @@ testOverridePartialAttributeWithMethod
 testInheritanceAndAttributeAssignment
 testAssignmentToAttributeInMultipleMethods
 testAccessingClassAttributeWithTypeInferenceIssue2
+testTypeAnnotationNeededMultipleAssignment
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -1913,6 +2009,23 @@ testFlexibleAlias3
 # "Redundant Self annotation on method first argument"
 testTypingSelfRedundantWarning
 
+# --strict-equality strict equality
+testStrictEqualityEq
+testStrictEqualityIs
+testStrictEqualityContains
+testStrictEqualityUnions
+testStrictEqualityNoPromotePy3
+testStrictEqualityEqNoOptionalOverlap
+testCustomEqCheckStrictEquality
+testCustomEqCheckStrictEqualityTuple
+testCustomEqCheckStrictEqualityMeta
+testCustomContainsCheckStrictEquality
+testStrictEqualityTypeVsCallable
+testStrictEqualityMetaclass
+testStrictEqualityWithALiteral
+testStrictEqualityWithALiteralNewType
+testStrictEqualityWithFixedLengthTupleInCheck
+
 # --show-column-numbers
 testForwardInstanceWithBound
 
@@ -2027,6 +2140,7 @@ testMagicMethodPositionalOnlyArgFastparse
 # Won't support: reveal_locals
 testRevealLocalsFunction
 testRevealLocalsOnClassVars
+testRevealLocals
 
 # Won't support: Warning about wrong usage of type var values
 testObsoleteTypevarValuesSyntax
