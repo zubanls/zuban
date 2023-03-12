@@ -1031,7 +1031,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 })
                 .execute(self.i_s, &NoArguments::new(node_ref))
             }
-            _ => todo!("Not handled yet {node:?}"),
+            ExpressionPart::AwaitPrimary(_) => todo!(),
         }
     }
 
