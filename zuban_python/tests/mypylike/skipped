@@ -59,12 +59,12 @@ testTypeCheckNamedModule2
 testTypeCheckNamedModule3
 testInferOptionalFromDefaultNone
 
-# Maybe implement reverse operator
-testFlattenTypeAliasWhenAliasedAsUnion
+# In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
 testReverseOperatorOrderingCase6
 testReverseOperatorOrderingCase7
 testReverseOperatorWithOverloads2
+testFlattenTypeAliasWhenAliasedAsUnion
 # "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
 testReverseOperatorOrderingCase3
 testReverseOperatorWithOverloads1
