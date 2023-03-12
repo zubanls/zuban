@@ -1,12 +1,14 @@
 use std::borrow::Cow;
 
+use parsa_python_ast::Name;
+
 use super::{
     Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
 };
-use crate::arguments::{Arguments, NoArguments};
+use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{Database, DbType, PointLink};
 use crate::diagnostics::IssueType;
-use crate::file::File;
+use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -34,6 +36,68 @@ impl<'a> Instance<'a> {
             let t = self.class.as_db_type(i_s.db);
             Inferred::execute_db_type(i_s, t)
         }
+    }
+
+    pub fn checked_set_descriptor(
+        &self,
+        i_s: &mut InferenceState,
+        from: NodeRef,
+        name: Name,
+        value: &Inferred,
+    ) -> bool {
+        let mut had_set = false;
+        let mut had_no_set = false;
+        for (mro_index, t) in self.class.mro(i_s.db) {
+            if let Some(class) = t.maybe_class(i_s.db) {
+                if let Some(inf) = class
+                    .lookup_symbol(i_s, name.as_str())
+                    .into_maybe_inferred()
+                {
+                    dbg!(&inf);
+                    inf.resolve_class_type_vars(i_s, &self.class).run_mut(
+                        i_s,
+                        &mut |i_s, v| {
+                            if had_no_set {
+                                todo!()
+                            }
+                            if let Some(descriptor) = v.as_instance() {
+                                if let Some(set) = descriptor
+                                    .lookup_internal(i_s, Some(from), "__set__")
+                                    .into_maybe_inferred()
+                                {
+                                    had_set = true;
+                                    let inst = self.as_inferred(i_s);
+                                    set.execute_with_details(
+                                        i_s,
+                                        &CombinedArguments::new(
+                                            &KnownArguments::new(&inst, from),
+                                            &KnownArguments::new(value, from),
+                                        ),
+                                        &mut ResultContext::Unknown,
+                                        OnTypeError::new(&on_argument_type_error),
+                                        /*
+                                        OnTypeError::new(&|i_s: &mut InferenceState, _, _, _, got, expected| {
+                                            from.add_typing_issue(
+                                                i_s.db,
+                                                IssueType::IncompatibleAssignment { got, expected },
+                                            );
+                                        })
+                                        */
+                                    );
+                                }
+                            } else {
+                                if had_set {
+                                    todo!()
+                                }
+                                had_no_set = true;
+                            }
+                        },
+                        || (),
+                    );
+                }
+            }
+        }
+        had_set
     }
 }
 

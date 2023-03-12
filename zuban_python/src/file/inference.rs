@@ -639,6 +639,16 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     base.run_mut(
                         self.i_s,
                         &mut |i_s, v| {
+                            if let Some(instance) = v.as_instance() {
+                                if instance.checked_set_descriptor(
+                                    i_s,
+                                    node_ref,
+                                    name_definition.name(),
+                                    value,
+                                ) {
+                                    return;
+                                }
+                            }
                             v.lookup(i_s, Some(node_ref), name_definition.as_code(), &|i_s| {
                                 add_attribute_error(i_s, node_ref, v, name_definition.name())
                             })
@@ -657,13 +667,6 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     node_ref
                                 },
                             );
-                            /*
-                            if let Some(instance) = v.as_instance() {
-                                todo!()
-                            } else {
-                                todo!()
-                            }
-                            */
                         },
                         || (),
                     );
