@@ -530,23 +530,21 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
                         .lookup_implicit(i_s, Some(node_ref), normal, &|i_s| todo!())
-                        .run_on_value(i_s, &mut |i_s, v| {
-                            v.execute(
-                                i_s,
-                                &KnownArguments::new(&right, node_ref),
-                                &mut ResultContext::Unknown,
-                                OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
-                                    arg.as_node_ref().add_typing_issue(
-                                        i_s.db,
-                                        IssueType::UnsupportedOperand {
-                                            operand: Box::from(aug_assign.operand()),
-                                            left: class.unwrap().format_short(i_s.db),
-                                            right,
-                                        },
-                                    )
-                                }),
-                            )
-                        })
+                        .execute_with_details(
+                            i_s,
+                            &KnownArguments::new(&right, node_ref),
+                            &mut ResultContext::Unknown,
+                            OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
+                                arg.as_node_ref().add_typing_issue(
+                                    i_s.db,
+                                    IssueType::UnsupportedOperand {
+                                        operand: Box::from(aug_assign.operand()),
+                                        left: class.unwrap().format_short(i_s.db),
+                                        right,
+                                    },
+                                )
+                            }),
+                        )
                 });
                 if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
                     self.assign_single_target(target, &result, false, |index| {
@@ -690,23 +688,21 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {
                         debug!("TODO __setitem__ not found");
                     })
-                    .run_on_value(i_s, &mut |i_s, v| {
-                        v.execute(
-                            i_s,
-                            &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
-                            &mut ResultContext::Unknown,
-                            OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
-                                arg.as_node_ref().add_typing_issue(
-                                    i_s.db,
-                                    IssueType::InvalidGetItem {
-                                        actual,
-                                        type_: class.unwrap().format_short(i_s.db),
-                                        expected,
-                                    },
-                                )
-                            }),
-                        )
-                    })
+                    .execute_with_details(
+                        i_s,
+                        &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
+                        &mut ResultContext::Unknown,
+                        OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
+                            arg.as_node_ref().add_typing_issue(
+                                i_s.db,
+                                IssueType::InvalidGetItem {
+                                    actual,
+                                    type_: class.unwrap().format_short(i_s.db),
+                                    expected,
+                                },
+                            )
+                        }),
+                    )
                 });
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
@@ -994,18 +990,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         */
                     })
                 })
-                .run_on_value(self.i_s, &mut |i_s, value| {
-                    value.execute(
-                        i_s,
-                        &NoArguments::new(node_ref),
-                        &mut ResultContext::Unknown,
-                        OnTypeError {
-                            on_overload_mismatch: None,
-                            // TODO is this unreachable correct with self: X[int]?
-                            callback: &|i_s, class, _, _, _, _| unreachable!(),
-                        },
-                    )
-                })
+                .execute(self.i_s, &NoArguments::new(node_ref))
             }
             _ => todo!("Not handled yet {node:?}"),
         }
@@ -1091,17 +1076,15 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 maybe_add_union_note(i_s)
             })
         })
-        .run_on_value(self.i_s, &mut |i_s, value| {
-            value.execute(
-                i_s,
-                &KnownArguments::new(&right, node_ref),
-                &mut ResultContext::Unknown,
-                OnTypeError {
-                    on_overload_mismatch: Some(&on_error),
-                    callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
-                },
-            )
-        })
+        .execute_with_details(
+            self.i_s,
+            &KnownArguments::new(&right, node_ref),
+            &mut ResultContext::Unknown,
+            OnTypeError {
+                on_overload_mismatch: Some(&on_error),
+                callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
+            },
+        )
     }
 
     pub fn infer_primary(

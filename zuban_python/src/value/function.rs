@@ -22,8 +22,8 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{
-    on_argument_type_error, use_cached_annotation_type, File, PythonFile, TypeComputation,
-    TypeComputationOrigin, TypeVarCallbackReturn,
+    use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
+    TypeVarCallbackReturn,
 };
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;

@@ -1111,13 +1111,23 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
+        self.execute_with_details(
+            i_s,
+            args,
+            &mut ResultContext::Unknown,
+            OnTypeError::new(&on_argument_type_error),
+        )
+    }
+
+    pub fn execute_with_details(
+        &self,
+        i_s: &mut InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Self {
         self.run_on_value(i_s, &mut |i_s, value| {
-            value.execute(
-                i_s,
-                args,
-                &mut ResultContext::Unknown,
-                OnTypeError::new(&on_argument_type_error),
-            )
+            value.execute(i_s, args, result_context, on_type_error)
         })
     }
 

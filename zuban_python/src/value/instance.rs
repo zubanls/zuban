@@ -107,9 +107,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             .lookup_internal(i_s, Some(node_ref), "__call__")
             .into_maybe_inferred()
         {
-            inf.run_on_value(i_s, &mut |i_s, value| {
-                value.execute(i_s, args, result_context, on_type_error)
-            })
+            inf.execute_with_details(i_s, args, result_context, on_type_error)
         } else {
             node_ref.add_typing_issue(
                 i_s.db,
@@ -140,23 +138,21 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
                     let args = slice_type.as_args(i_s.context);
-                    return inf.run_on_value(i_s, &mut |i_s, v| {
-                        v.execute(
-                            i_s,
-                            &args,
-                            &mut ResultContext::Unknown,
-                            OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
-                                arg.as_node_ref().add_typing_issue(
-                                    i_s.db,
-                                    IssueType::InvalidGetItem {
-                                        actual,
-                                        type_: class.unwrap().format_short(i_s.db),
-                                        expected,
-                                    },
-                                )
-                            }),
-                        )
-                    });
+                    return inf.execute_with_details(
+                        i_s,
+                        &args,
+                        &mut ResultContext::Unknown,
+                        OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
+                            arg.as_node_ref().add_typing_issue(
+                                i_s.db,
+                                IssueType::InvalidGetItem {
+                                    actual,
+                                    type_: class.unwrap().format_short(i_s.db),
+                                    expected,
+                                },
+                            )
+                        }),
+                    );
                 }
                 FoundOnClass::UnresolvedDbType(db_type @ DbType::Tuple(t)) => {
                     return Tuple::new(db_type, t).get_item(i_s, slice_type, result_context);
