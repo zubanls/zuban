@@ -969,17 +969,13 @@ impl<'db: 'slf, 'slf> Inferred {
                                 {
                                     let from = from.unwrap_or_else(|| todo!());
                                     let class_as_inferred = class.as_inferred(i_s);
-                                    return Some(inf.run_on_value(i_s, &mut |i_s, value| {
-                                        value.execute(
-                                            i_s,
-                                            &CombinedArguments::new(
-                                                &KnownArguments::new(&Inferred::new_none(), from),
-                                                &KnownArguments::new(&class_as_inferred, from),
-                                            ),
-                                            &mut ResultContext::Unknown,
-                                            OnTypeError::new(&on_argument_type_error),
-                                        )
-                                    }));
+                                    return Some(inf.execute(
+                                        i_s,
+                                        &CombinedArguments::new(
+                                            &KnownArguments::new(&Inferred::new_none(), from),
+                                            &KnownArguments::new(&class_as_inferred, from),
+                                        ),
+                                    ));
                                 }
                             }
                             _ => (),

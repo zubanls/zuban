@@ -185,16 +185,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         for found_on_class in finder {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
-                    return IteratorContent::Inferred(inf.run_on_value(i_s, &mut |i_s, value| {
-                        value
-                            .execute(
-                                i_s,
-                                &NoArguments::new(from),
-                                &mut ResultContext::Unknown,
-                                OnTypeError::new(&|_, _, _, _, _, _| todo!()),
-                            )
-                            .execute_function(i_s, "__next__", from)
-                    }));
+                    return IteratorContent::Inferred(
+                        inf.execute(i_s, &NoArguments::new(from))
+                            .execute_function(i_s, "__next__", from),
+                    );
                 }
                 FoundOnClass::UnresolvedDbType(db_type @ DbType::Tuple(t)) => {
                     return Tuple::new(db_type, t).iter(i_s, from);

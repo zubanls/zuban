@@ -379,17 +379,13 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 .infer_named_expression(decorator.named_expression());
             // TODO check if it's an function without a return annotation and
             // abort in that case.
-            new_inf = i.run_on_value(i_s, &mut |i_s, v| {
-                v.execute(
-                    i_s,
-                    &KnownArguments::new(
-                        &new_inf,
-                        NodeRef::new(self.node_ref.file, decorator.index()),
-                    ),
-                    &mut ResultContext::Unknown,
-                    OnTypeError::new(&on_argument_type_error),
-                )
-            });
+            new_inf = i.execute(
+                i_s,
+                &KnownArguments::new(
+                    &new_inf,
+                    NodeRef::new(self.node_ref.file, decorator.index()),
+                ),
+            );
         }
         if let Some(callable_content) = new_inf.maybe_callable(i_s, false) {
             let mut callable_content = callable_content.into_owned();
