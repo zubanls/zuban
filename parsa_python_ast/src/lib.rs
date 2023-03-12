@@ -2362,7 +2362,7 @@ impl<'db> Term<'db> {
         let op = iter.next().unwrap().as_code();
         let right = ExpressionPart::new(iter.next().unwrap());
         let (magic_method, reverse_magic_method, operand) = if op == "*" {
-            ("__mul__", "__rmul__", "+")
+            ("__mul__", "__rmul__", "*")
         } else if op == "/" {
             ("__truediv__", "__rtruediv__", "/")
         } else if op == "//" {
