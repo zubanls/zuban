@@ -2259,6 +2259,18 @@ impl<'db> BitwiseOr<'db> {
     }
 }
 
+impl<'db> BitwiseAnd<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        Operation::new(self.node, "__and__", "__rand__", "&", true)
+    }
+}
+
+impl<'db> BitwiseXor<'db> {
+    pub fn as_operation(&self) -> Operation<'db> {
+        Operation::new(self.node, "__xor__", "__rxor__", "^", true)
+    }
+}
+
 pub struct Operation<'db> {
     pub left: ExpressionPart<'db>,
     pub magic_method: &'static str,

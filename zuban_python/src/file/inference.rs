@@ -921,10 +921,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 debug!("TODO Use: self.infer_operation(or.as_operation())");
                 Inferred::new_any()
             }
-            ExpressionPart::Inversion(inv) => Inferred::create_instance(
-                self.i_s.db.python_state.builtins_point_link("bool"),
-                None,
-            ),
+            ExpressionPart::BitwiseAnd(and) => self.infer_operation(and.as_operation()),
+            ExpressionPart::BitwiseXor(xor) => self.infer_operation(xor.as_operation()),
             ExpressionPart::Disjunction(or) => {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
