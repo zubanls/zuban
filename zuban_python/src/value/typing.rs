@@ -226,6 +226,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         match self.db_type {
+            #![allow(unreachable_code)]
+            // TODO remove this
             DbType::Tuple(tuple_content) => {
                 debug!("TODO this does not check the arguments");
                 return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
