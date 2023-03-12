@@ -2370,8 +2370,8 @@ impl<'db> Term<'db> {
         } else if op == "%" {
             ("__mod__", "__rmod__", "%")
         } else {
-            debug_assert_eq!(op, "%");
-            ("__matmul__", "__rmatmul__", "%")
+            debug_assert_eq!(op, "@");
+            ("__matmul__", "__rmatmul__", "@")
         };
         Operation {
             left,

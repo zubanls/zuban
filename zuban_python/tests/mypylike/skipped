@@ -1,5 +1,4 @@
 # Next up
-testMatMul
 testPow
 testMiscBinaryOperators
 testBooleanAndOr
