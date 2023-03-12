@@ -61,15 +61,14 @@ testInferOptionalFromDefaultNone
 
 # Maybe implement reverse operator
 testFlattenTypeAliasWhenAliasedAsUnion
-testReverseOperatorOrderingCase2
-testReverseOperatorOrderingCase3
 testReverseOperatorOrderingCase4
 testReverseOperatorOrderingCase6
 testReverseOperatorOrderingCase7
-testReverseOperatorWithOverloads1
 testReverseOperatorWithOverloads2
-testDivReverseOperator
 # "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
+testReverseOperatorOrderingCase3
+testReverseOperatorWithOverloads1
+testDivReverseOperator
 testReverseOperatorTypeVar1
 testReverseOperatorTypeVar2a
 testReverseOperatorTypeVar2b

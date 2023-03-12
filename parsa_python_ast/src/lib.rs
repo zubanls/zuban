@@ -2246,7 +2246,7 @@ pub enum PrimaryParent<'db> {
 
 impl<'db> BitwiseOr<'db> {
     pub fn as_operation(&self) -> Operation<'db> {
-        Operation::new(self.node, "__add__", "__radd__", "+")
+        Operation::new(self.node, "__or__", "__ror__", "+", true)
     }
 
     pub fn unpack(&self) -> (ExpressionPart<'db>, ExpressionPart<'db>) {
@@ -2266,6 +2266,7 @@ pub struct Operation<'db> {
     pub operand: &'static str,
     pub right: ExpressionPart<'db>,
     pub index: NodeIndex,
+    pub shortcut_when_same_type: bool,
 }
 
 impl<'db> Operation<'db> {
@@ -2274,6 +2275,7 @@ impl<'db> Operation<'db> {
         magic_method: &'static str,
         reverse_magic_method: &'static str,
         operand: &'static str,
+        shortcut_when_same_type: bool,
     ) -> Self {
         let mut iter = node.iter_children();
         let left = ExpressionPart::new(iter.next().unwrap());
@@ -2286,6 +2288,7 @@ impl<'db> Operation<'db> {
             operand,
             right,
             index: node.index,
+            shortcut_when_same_type,
         }
     }
 }
@@ -2347,6 +2350,7 @@ impl<'db> Sum<'db> {
             operand,
             right,
             index: self.node.index,
+            shortcut_when_same_type: true,
         }
     }
 }
@@ -2376,6 +2380,7 @@ impl<'db> Term<'db> {
             operand,
             right,
             index: self.node.index,
+            shortcut_when_same_type: true,
         }
     }
 }
@@ -2399,6 +2404,7 @@ impl<'db> ShiftExpr<'db> {
             operand,
             right,
             index: self.node.index,
+            shortcut_when_same_type: true,
         }
     }
 }
@@ -2464,6 +2470,7 @@ impl<'db> Comparison<'db> {
             operand,
             right,
             index: self.node.index,
+            shortcut_when_same_type: false,
         })
     }
 }

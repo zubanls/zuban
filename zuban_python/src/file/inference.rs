@@ -1116,11 +1116,14 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let had_error = Cell::new(false);
                 let result = right
                     .run_on_value(i_s, &mut |i_s, rvalue| {
-                        if let Some(left_instance) = lvalue.as_instance() {
-                            if let Some(right_instance) = rvalue.as_instance() {
-                                if left_instance.class.node_ref == right_instance.class.node_ref {
-                                    unsupported_left_operand(i_s, lvalue);
-                                    return Inferred::new_unknown();
+                        if op.shortcut_when_same_type {
+                            if let Some(left_instance) = lvalue.as_instance() {
+                                if let Some(right_instance) = rvalue.as_instance() {
+                                    if left_instance.class.node_ref == right_instance.class.node_ref
+                                    {
+                                        unsupported_left_operand(i_s, lvalue);
+                                        return Inferred::new_unknown();
+                                    }
                                 }
                             }
                         }
