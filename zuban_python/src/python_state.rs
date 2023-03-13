@@ -410,6 +410,7 @@ fn typing_changes(
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
     set_typing_inference(typing, "Self", Specific::TypingSelf);
     set_typing_inference(typing, "Annotated", Specific::TypingAnnotated);
+    set_typing_inference(typing, "reveal_type", Specific::RevealTypeFunction);
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
@@ -443,6 +444,7 @@ fn typing_changes(
     set_typing_inference(t, "TypeAlias", Specific::TypingTypeAlias);
     set_typing_inference(t, "Self", Specific::TypingSelf);
     set_typing_inference(t, "Annotated", Specific::TypingAnnotated);
+    set_typing_inference(t, "reveal_type", Specific::RevealTypeFunction);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
@@ -460,6 +462,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "Unpack",
         "TypeAlias",
         "Self",
+        "reveal_type",
     ]
     .contains(&name)
     {
