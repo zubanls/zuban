@@ -11,12 +11,9 @@ testReverseBinaryOperator3
 testDivmod
 testIndexingAsLvalue
 testOverloadedIndexing
-testLambdaAndReachability
-testConditionalExpressionWithEmptyCondition
 testConditionalExpressionWithSubtyping
 testConditionalExpressionUnion
 testConditionalExpressionUnionWithAny
-testConditionalExpressionStatementNoReturn
 testOperationsWithNonInstanceTypes
 testOperatorMethodAsVar2
 testEllipsis
@@ -662,6 +659,7 @@ testLambdaJoinWithDynamicConstructor
 testSelfTypeLambdaDefault
 testEnclosingScopeLambdaNoCrash
 testEnclosingScopeLambdaNoCrashExplicit
+testLambdaAndReachability
 # Lambda with defined return types (inferred context)
 testInferLambdaTypeUsingContext
 testLambdaWithoutContext
@@ -766,6 +764,8 @@ testNoneReturnTypeBasics
 testNoneReturnTypeWithStatements
 testNoneReturnTypeWithExpressions
 testNoneReturnTypeWithExpressions2
+testConditionalExpressionWithEmptyCondition
+testConditionalExpressionStatementNoReturn
 
 # stdlib imports
 testOverloadSpecialCase
