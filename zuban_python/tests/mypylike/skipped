@@ -1,13 +1,7 @@
 # Next up
 testMiscBinaryOperators
 testBooleanAndOr
-testRestrictedTypeAnd
-testRestrictedTypeOr
-testRestrictedBoolAndOrWithGenerics
 testNonBooleanOr
-testInOperator
-testNotInOperator
-testInWithInvalidArgs
 testChainedComp
 testChainedCompBoolRes
 testChainedCompResTyp
@@ -1547,6 +1541,9 @@ testIsinstanceAndOptionalAndAnyBase
 testGenericTypeAliasesOptional
 testCastConfusion
 # narrowing with or/and
+testRestrictedTypeAnd
+testRestrictedTypeOr
+testRestrictedBoolAndOrWithGenerics
 testOptionalTypeOrTypeBothOptional
 testOptionalTypeOrTypeComplexUnion
 testOptionalTypeOrTypeNoTriggerPlain
@@ -1750,6 +1747,11 @@ testAwaitAndAsyncDef-only_when_nocache
 testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
+
+# In operator
+testInOperator
+testNotInOperator
+testInWithInvalidArgs
 
 # "Cannot determine type of"
 testThreePassesRequired
