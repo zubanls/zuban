@@ -11,11 +11,6 @@ testReverseBinaryOperator3
 testDivmod
 testIndexingAsLvalue
 testOverloadedIndexing
-testNoneReturnTypeBasics
-testNoneReturnTypeWithStatements
-testNoneReturnTypeWithExpressions
-testNoneReturnTypeWithExpressions2
-testTrivialLambda
 testNoCrashOnLambdaGenerator
 testLambdaAndReachability
 testSimpleListComprehension
@@ -776,6 +771,10 @@ testAssertCurrentFrameIsNotUnreachable
 
 # ""f" does not return a value"
 testUseOfNoneReturningFunction
+testNoneReturnTypeBasics
+testNoneReturnTypeWithStatements
+testNoneReturnTypeWithExpressions
+testNoneReturnTypeWithExpressions2
 
 # stdlib imports
 testOverloadSpecialCase
