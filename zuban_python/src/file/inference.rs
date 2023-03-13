@@ -969,8 +969,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 )
             }
             ExpressionPart::Factor(f) => {
-                let (operator, right) = f.unpack();
-                let method_name = match operator.as_code() {
+                let (operand, right) = f.unpack();
+                let method_name = match operand.as_code() {
                     "-" => {
                         if let ExpressionPart::Atom(atom) = right {
                             if let AtomContent::Int(i) = atom.unpack() {
@@ -996,7 +996,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     _ => unreachable!(),
                 };
                 let inf = self.infer_expression_part(right, &mut ResultContext::Unknown);
-                if operator.as_code() == "-" && result_context.is_literal_context(self.i_s) {
+                if operand.as_code() == "-" && result_context.is_literal_context(self.i_s) {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
                             if let LiteralKind::Int(i) = &literal.kind {
@@ -1016,17 +1016,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 let node_ref = NodeRef::new(self.file, f.index());
                 inf.run_on_value(self.i_s, &mut |i_s, value| {
                     value.lookup_implicit(i_s, Some(node_ref), method_name, &|i_s| {
-                        todo!()
-                        /*
                         node_ref.add_typing_issue(
                             i_s.db,
-                            IssueType::UnsupportedLeftOperand {
-                                operand: Box::from(op.operand),
-                                left: value.as_type(i_s).format_short(i_s.db),
-                                note: None,
+                            IssueType::UnsupportedOperandForUnary {
+                                operand: Box::from(operand.as_code()),
+                                got: value.as_type(i_s).format_short(i_s.db),
                             },
                         )
-                        */
                     })
                 })
                 .execute(self.i_s, &NoArguments::new(node_ref))
