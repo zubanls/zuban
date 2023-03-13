@@ -14,7 +14,6 @@ testOverloadedIndexing
 testConditionalExpressionWithSubtyping
 testConditionalExpressionUnion
 testConditionalExpressionUnionWithAny
-testOperationsWithNonInstanceTypes
 testEllipsis
 testUnimportedHintAny
 testUnimportedHintAnyLower

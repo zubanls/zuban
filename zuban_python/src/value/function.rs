@@ -924,7 +924,8 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        todo!("{name:?}")
+        debug!("TODO Function lookup");
+        LookupResult::None
     }
 
     fn execute(
