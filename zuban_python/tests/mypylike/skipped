@@ -15,7 +15,6 @@ testConditionalExpressionWithSubtyping
 testConditionalExpressionUnion
 testConditionalExpressionUnionWithAny
 testOperationsWithNonInstanceTypes
-testOperatorMethodAsVar2
 testEllipsis
 testUnimportedHintAny
 testUnimportedHintAnyLower
