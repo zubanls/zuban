@@ -9,7 +9,6 @@ testReverseBinaryOperator
 testReverseBinaryOperator2
 testReverseBinaryOperator3
 testDivmod
-testUnaryBitwiseNeg
 testIndexingAsLvalue
 testOverloadedIndexing
 testNoneReturnTypeBasics

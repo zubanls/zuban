@@ -35,7 +35,7 @@ pub(crate) enum IssueType {
     InvalidCallableArgCount,
     UnsupportedOperand { operand: Box<str>, left: Box<str>, right: Box<str> },
     UnsupportedLeftOperand { operand: Box<str>, left: Box<str> },
-    UnsupportedOperandForUnary { operand: Box<str>, got: Box<str>},
+    UnsupportedOperandForUnary { operand: &'static str, got: Box<str>},
     InvalidGetItem { actual: Box<str>, type_: Box<str>, expected: Box<str> },
     NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
@@ -276,7 +276,7 @@ impl<'db> Diagnostic<'db> {
                 "Unsupported left operand type for {operand} ({left:?})"
             ),
             IssueType::UnsupportedOperandForUnary{operand, got} => {
-                format!("Unsupported operand type for unary {operand} ({got:?})")
+                format!("Unsupported operand type for {operand} ({got:?})")
             }
             IssueType::InvalidGetItem{actual, type_, expected} => format!(
                 "Invalid index type {actual:?} for {type_:?}; expected type {expected:?}",
