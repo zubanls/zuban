@@ -457,7 +457,12 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         let mut iterator = args.iter_arguments();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
-        let inferred = arg.infer(i_s, result_context);
+        let inferred = if matches!(result_context, ResultContext::Unknown) {
+            // For some reason mypy wants to generate a literal here if possible.
+            arg.infer(i_s, &mut ResultContext::ExpectLiteral)
+        } else {
+            arg.infer(i_s, result_context)
+        };
         let s = inferred.format(
             i_s,
             &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),

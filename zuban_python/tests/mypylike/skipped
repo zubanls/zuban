@@ -20,7 +20,6 @@ testConditionalExpressionStatementNoReturn
 testOperationsWithNonInstanceTypes
 testOperatorMethodAsVar2
 testEllipsis
-testRevealType
 testTypingRevealType
 testTypingExtensionsRevealType
 testUnimportedHintAny
