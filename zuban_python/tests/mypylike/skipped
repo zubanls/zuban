@@ -14,9 +14,6 @@ testOverloadedIndexing
 testConditionalExpressionWithSubtyping
 testConditionalExpressionUnion
 testConditionalExpressionUnionWithAny
-testEllipsis
-testUnimportedHintAny
-testUnimportedHintAnyLower
 
 # dict specialities
 testDictWithKeywordArgsOnly
@@ -403,6 +400,7 @@ testOverrideAttrWithSettableProperty
 testOverrideAttrWithSettablePropertyAnnotation
 testOverrideMethodProperty
 testOverridePropertyMethod
+testEllipsis
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -843,6 +841,8 @@ testMissingGenericImport
 testStubFixupIssues
 testNoReExportUnrelatedModule
 testNoReExportUnrelatedSiblingPrefix
+testUnimportedHintAny
+testUnimportedHintAnyLower
 
 # Metaclass
 testInvalidMetaclass
