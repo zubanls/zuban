@@ -1111,7 +1111,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn common_base_class(&self, i_s: &mut InferenceState, other: &Self) -> DbType {
+    pub fn common_base_type(&self, i_s: &mut InferenceState, other: &Self) -> DbType {
         match (self.maybe_class(i_s.db), other.maybe_class(i_s.db)) {
             (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s.db) {
@@ -1246,7 +1246,7 @@ pub fn match_tuple_type_arguments(
     }
 }
 
-pub fn common_base_class<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
+pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
     i_s: &mut InferenceState,
     mut ts: I,
 ) -> DbType {
@@ -1260,7 +1260,7 @@ pub fn common_base_class<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
                 TypeOrTypeVarTuple::Type(t) => t,
                 TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
             };
-            result = Cow::Owned(Type::Type(result).common_base_class(i_s, &Type::new(t)));
+            result = Cow::Owned(Type::Type(result).common_base_type(i_s, &Type::new(t)));
         }
         result.into_owned()
     } else {

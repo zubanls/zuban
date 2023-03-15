@@ -17,7 +17,7 @@ use crate::file::{
 };
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    common_base_class, FormatData, Generic, Generics, Matcher, ParamsStyle, Type,
+    common_base_type, FormatData, Generic, Generics, Matcher, ParamsStyle, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -1869,9 +1869,9 @@ impl TupleTypeArguments {
         }
     }
 
-    fn common_base_class(&self, i_s: &mut InferenceState) -> DbType {
+    fn common_base_type(&self, i_s: &mut InferenceState) -> DbType {
         match self {
-            Self::FixedLength(ts) => common_base_class(i_s, ts.iter()),
+            Self::FixedLength(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLength(t) => t.as_ref().clone(),
         }
     }
@@ -1922,7 +1922,7 @@ impl TupleContent {
             GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
                 self.args
                     .as_ref()
-                    .map(|args| args.common_base_class(&mut InferenceState::new(db)))
+                    .map(|args| args.common_base_type(&mut InferenceState::new(db)))
                     .unwrap_or(DbType::Any),
             )]))
         })

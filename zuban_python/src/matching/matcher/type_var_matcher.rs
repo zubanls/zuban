@@ -1,4 +1,4 @@
-use super::super::{common_base_class, Match, MismatchReason, Type};
+use super::super::{common_base_type, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
     CallableContent, Database, DbType, GenericItem, ParamSpecArgument, PointLink,
@@ -52,7 +52,7 @@ impl CalculatedTypeVarLike {
                         for (t1, t2) in calc_ts.iter_mut().zip(items) {
                             match (t1, t2) {
                                 (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                                    *t1 = Type::new(t1).common_base_class(i_s, &Type::new(t2));
+                                    *t1 = Type::new(t1).common_base_type(i_s, &Type::new(t2));
                                 }
                                 _ => todo!(),
                             }
@@ -60,12 +60,12 @@ impl CalculatedTypeVarLike {
                     } else {
                         // We use map to make an iterator with covariant lifetimes.
                         #[allow(clippy::map_identity)]
-                        let t = common_base_class(i_s, calc_ts.iter().chain(items.map(|x| x)));
+                        let t = common_base_type(i_s, calc_ts.iter().chain(items.map(|x| x)));
                         ts.args = TupleTypeArguments::ArbitraryLength(Box::new(t));
                     }
                 }
                 TupleTypeArguments::ArbitraryLength(calc_t) => {
-                    let base = common_base_class(i_s, items);
+                    let base = common_base_type(i_s, items);
                     //self.merge_arbitrary_length_type_var_tuple(i_s, &base)
                 }
             },
