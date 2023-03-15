@@ -11,9 +11,6 @@ testReverseBinaryOperator3
 testDivmod
 testIndexingAsLvalue
 testOverloadedIndexing
-testConditionalExpressionWithSubtyping
-testConditionalExpressionUnion
-testConditionalExpressionUnionWithAny
 
 # dict specialities
 testDictWithKeywordArgsOnly
@@ -1287,6 +1284,9 @@ testGenericJoinRecursiveInvariant
 testGenericJoinNestedInvariantAny
 testTypeEquivalentTypeAny2
 testExtremeForwardReferencing
+
+# union creation / vs. object / vs. any from ternary
+testConditionalExpressionUnionWithAny
 
 # __setitem__
 testInferOptionalDictKeyValueTypes

@@ -58,6 +58,15 @@ impl<'a> ResultContext<'a, '_> {
         )
         .unwrap_or(false)
     }
+
+    pub fn expects_union<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+        match self {
+            Self::Known(type_) | Self::WithMatcher { type_, .. } => {
+                matches!(type_.maybe_db_type(), Some(DbType::Union(_)))
+            }
+            Self::Unknown | Self::ExpectLiteral | Self::AssignmentNewDefinition => false,
+        }
+    }
 }
 
 impl fmt::Debug for ResultContext<'_, '_> {

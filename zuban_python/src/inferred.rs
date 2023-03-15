@@ -675,6 +675,21 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn types_union(
+        self,
+        i_s: &mut InferenceState<'db, '_>,
+        other: Self,
+        result_context: &mut ResultContext,
+    ) -> Self {
+        if result_context.expects_union(i_s) || self.is_union(i_s.db) || other.is_union(i_s.db) {
+            self.union(other)
+        } else {
+            let second = other.class_as_type(i_s);
+            let t = self.class_as_type(i_s).common_base_type(i_s, &second);
+            Inferred::execute_db_type(i_s, t)
+        }
+    }
+
     pub fn union(self, other: Self) -> Self {
         if self.state == other.state {
             self

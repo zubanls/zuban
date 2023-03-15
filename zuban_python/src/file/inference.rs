@@ -893,8 +893,9 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             ExpressionContent::Lambda(l) => self.infer_lambda(l, result_context),
             ExpressionContent::Ternary(t) => {
                 let (if_, condition, else_) = t.unpack();
+                let else_inf = self.infer_expression(else_);
                 self.infer_expression_part(if_, &mut ResultContext::Unknown)
-                    .union(self.infer_expression(else_))
+                    .types_union(self.i_s, else_inf, result_context)
             }
         };
         // We only save the result if nothing is there, yet. It could be that we pass this function
