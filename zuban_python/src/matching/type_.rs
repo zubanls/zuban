@@ -559,7 +559,7 @@ impl<'a> Type<'a> {
                 DbType::Union(u2)
                     if variance == Variance::Covariant
                     // Union matching was already done.
-                    && !matches!(self.maybe_db_type(), Some(DbType::Union(_))) =>
+                    && !self.is_union() =>
                 {
                     if matcher.is_matching_reverse() {
                         debug!("TODO matching reverse?");
@@ -1135,6 +1135,10 @@ impl<'a> Type<'a> {
             _ => (),
         }
         i_s.db.python_state.object_db_type()
+    }
+
+    pub fn is_union(&self) -> bool {
+        matches!(self.maybe_db_type(), Some(DbType::Union(_)))
     }
 
     pub fn is_any(&self) -> bool {

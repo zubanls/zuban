@@ -1082,7 +1082,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn is_union(&self, db: &'db Database) -> bool {
         let check_complex_point = |c: &_| match c {
             ComplexPoint::Union(_) => true,
-            ComplexPoint::TypeInstance(t) => matches!(t.as_ref(), DbType::Union(_)),
+            ComplexPoint::TypeInstance(t) => Type::new(t).is_union(),
             _ => false,
         };
         match &self.state {

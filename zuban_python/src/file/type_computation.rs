@@ -1450,7 +1450,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             todo!()
         }
         let t = self.compute_slice_db_type(first);
-        let was_union = matches!(t, DbType::Union(_));
+        let was_union = Type::new(&t).is_union();
         let mut t = t.union(DbType::None);
         let DbType::Union(union_type) = &mut t else {unreachable!()};
         if !was_union {
