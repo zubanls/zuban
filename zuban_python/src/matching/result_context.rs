@@ -17,7 +17,7 @@ pub enum ResultContext<'a, 'b> {
 
 impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists_and_replace_type_var_likes<'db, T>(
-        &mut self,
+        &self,
         i_s: &mut InferenceState<'db, '_>,
         callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'_>) -> T,
     ) -> Option<T> {
@@ -44,7 +44,7 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn is_literal_context<'db>(&mut self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn is_literal_context<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
         if matches!(self, Self::ExpectLiteral) {
             return true;
         }
