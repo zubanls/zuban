@@ -2,8 +2,6 @@
 testMiscBinaryOperators
 testBooleanAndOr
 testNonBooleanOr
-testChainedComp
-testChainedCompBoolRes
 testChainedCompResTyp
 testDivmod
 testIndexingAsLvalue

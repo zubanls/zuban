@@ -962,7 +962,17 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         let second =
                             self.infer_expression_part(second, &mut ResultContext::Unknown);
                     }
-                    ComparisonContent::Operation(op) => return self.infer_operation(op),
+                    ComparisonContent::Operation(op) => {
+                        let left = match op.left {
+                            ExpressionPart::Comparison(cmp) => {
+                                self.infer_expression_part(op.left, &mut ResultContext::Unknown);
+                                cmp.right()
+                            }
+                            _ => op.left,
+                        };
+                        let left = self.infer_expression_part(left, &mut ResultContext::Unknown);
+                        return self.infer_detailed_operation(op, left);
+                    }
                 }
                 Inferred::create_instance(
                     self.i_s.db.python_state.builtins_point_link("bool"),
@@ -1081,6 +1091,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     fn infer_operation(&mut self, op: Operation) -> Inferred {
         let left = self.infer_expression_part(op.left, &mut ResultContext::Unknown);
+        self.infer_detailed_operation(op, left)
+    }
+
+    fn infer_detailed_operation(&mut self, op: Operation, left: Inferred) -> Inferred {
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let added_note = Cell::new(false);

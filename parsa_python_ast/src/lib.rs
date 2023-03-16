@@ -2518,6 +2518,10 @@ impl<'db> Comparison<'db> {
             shortcut_when_same_type: false,
         })
     }
+
+    pub fn right(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.nth_child(2))
+    }
 }
 
 pub enum PrimaryOrAtom<'db> {
