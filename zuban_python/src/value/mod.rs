@@ -38,12 +38,12 @@ pub use typing::{
     TypingType,
 };
 
-type OnOverloadMismatch<'a> = Option<&'a dyn Fn(&mut InferenceState, Option<&Class>)>;
+type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&mut InferenceState<'db, '_>, Option<&Class>)>;
 
 #[derive(Clone, Copy)]
 pub struct OnTypeError<'db, 'a> {
     pub callback: OnTypeErrorCallback<'db, 'a>,
-    pub on_overload_mismatch: OnOverloadMismatch<'a>,
+    pub on_overload_mismatch: OnOverloadMismatch<'db, 'a>,
 }
 
 impl<'db, 'a> OnTypeError<'db, 'a> {

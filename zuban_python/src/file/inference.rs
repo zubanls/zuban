@@ -1095,24 +1095,24 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 );
             }
         };
-        let on_error = |i_s: &mut InferenceState, class: Option<&Class>| {
+        let on_error = |i_s: &mut InferenceState<'db, '_>, left: &dyn Value<'db, '_>| {
             node_ref.add_typing_issue(
                 i_s.db,
                 IssueType::UnsupportedOperand {
                     operand: Box::from(op.operand),
-                    left: class.unwrap().format_short(i_s.db),
+                    left: left.as_type(i_s).format_short(i_s.db),
                     right: right.format_short(i_s),
                 },
             );
             maybe_add_union_note(i_s)
         };
         let unsupported_left_operand =
-            |i_s: &mut InferenceState<'db, '_>, lvalue: &dyn Value<'db, '_>| {
+            |i_s: &mut InferenceState<'db, '_>, left: &dyn Value<'db, '_>| {
                 node_ref.add_typing_issue(
                     i_s.db,
                     IssueType::UnsupportedLeftOperand {
                         operand: Box::from(op.operand),
-                        left: lvalue.as_type(i_s).format_short(i_s.db),
+                        left: left.as_type(i_s).format_short(i_s.db),
                     },
                 );
                 maybe_add_union_note(i_s);
@@ -1127,8 +1127,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     &KnownArguments::new(&right, node_ref),
                     &mut ResultContext::Unknown,
                     OnTypeError {
-                        on_overload_mismatch: Some(&on_error),
-                        callback: &|i_s, class, _, _, _, _| on_error(i_s, class),
+                        on_overload_mismatch: Some(&|i_s, _| on_error(i_s, lvalue)),
+                        callback: &|i_s, class, _, _, _, _| on_error(i_s, lvalue),
                     },
                 )
             } else {
