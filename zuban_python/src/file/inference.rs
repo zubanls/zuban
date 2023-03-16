@@ -1275,7 +1275,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 
     check_point_cache_with!(pub infer_atom, Self::_infer_atom, Atom, result_context);
     fn _infer_atom(&mut self, atom: Atom, result_context: &mut ResultContext) -> Inferred {
-        let mut check_literal = |i_s, index, non_literal: Specific, literal| {
+        let check_literal = |i_s, index, non_literal: Specific, literal| {
             let specific = if result_context.is_literal_context(i_s) {
                 literal
             } else {
