@@ -1084,7 +1084,27 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let added_note = Cell::new(false);
-        let maybe_add_union_note = |i_s: &mut InferenceState| {
+        let had_left_error = Cell::new(false);
+        let unsupported_operand = |i_s: &mut InferenceState<'db, '_>,
+                                   lvalue: &dyn Value<'db, '_>| {
+            if had_left_error.get() {
+                node_ref.add_typing_issue(
+                    i_s.db,
+                    IssueType::UnsupportedOperand {
+                        operand: Box::from(op.operand),
+                        left: lvalue.as_type(i_s).format_short(i_s.db),
+                        right: right.format_short(i_s),
+                    },
+                );
+            } else {
+                node_ref.add_typing_issue(
+                    i_s.db,
+                    IssueType::UnsupportedLeftOperand {
+                        operand: Box::from(op.operand),
+                        left: lvalue.as_type(i_s).format_short(i_s.db),
+                    },
+                );
+            }
             if left.is_union(i_s.db) && !added_note.get() {
                 added_note.set(true);
                 node_ref.add_typing_issue(
@@ -1095,77 +1115,54 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 );
             }
         };
-        let on_error = |i_s: &mut InferenceState<'db, '_>, left: &dyn Value<'db, '_>| {
-            node_ref.add_typing_issue(
-                i_s.db,
-                IssueType::UnsupportedOperand {
-                    operand: Box::from(op.operand),
-                    left: left.as_type(i_s).format_short(i_s.db),
-                    right: right.format_short(i_s),
-                },
-            );
-            maybe_add_union_note(i_s)
-        };
-        let unsupported_left_operand =
-            |i_s: &mut InferenceState<'db, '_>, left: &dyn Value<'db, '_>| {
-                node_ref.add_typing_issue(
-                    i_s.db,
-                    IssueType::UnsupportedLeftOperand {
-                        operand: Box::from(op.operand),
-                        left: left.as_type(i_s).format_short(i_s.db),
-                    },
-                );
-                maybe_add_union_note(i_s);
-            };
         left.run_on_value(self.i_s, &mut |i_s, lvalue| {
-            if let Some(left) = lvalue
+            had_left_error.set(false);
+            let left_op_method = lvalue
                 .lookup_internal(i_s, Some(node_ref), op.magic_method)
-                .into_maybe_inferred()
-            {
-                left.execute_with_details(
+                .into_maybe_inferred();
+            if let Some(left) = left_op_method {
+                let result = left.execute_with_details(
                     i_s,
                     &KnownArguments::new(&right, node_ref),
                     &mut ResultContext::Unknown,
                     OnTypeError {
-                        on_overload_mismatch: Some(&|i_s, _| on_error(i_s, lvalue)),
-                        callback: &|i_s, class, _, _, _, _| on_error(i_s, lvalue),
+                        on_overload_mismatch: Some(&|i_s, _| had_left_error.set(true)),
+                        callback: &|i_s, class, _, _, _, _| had_left_error.set(true),
                     },
-                )
-            } else {
-                let had_error = Cell::new(false);
-                let result = right
-                    .run_on_value(i_s, &mut |i_s, rvalue| {
-                        if op.shortcut_when_same_type {
-                            if let Some(left_instance) = lvalue.as_instance() {
-                                if let Some(right_instance) = rvalue.as_instance() {
-                                    if left_instance.class.node_ref == right_instance.class.node_ref
-                                    {
-                                        unsupported_left_operand(i_s, lvalue);
-                                        return Inferred::new_unknown();
-                                    }
+                );
+                if !had_left_error.get() {
+                    return result;
+                }
+            }
+            let had_right_error = Cell::new(false);
+            let result = right
+                .run_on_value(i_s, &mut |i_s, rvalue| {
+                    if op.shortcut_when_same_type {
+                        if let Some(left_instance) = lvalue.as_instance() {
+                            if let Some(right_instance) = rvalue.as_instance() {
+                                if left_instance.class.node_ref == right_instance.class.node_ref {
+                                    unsupported_operand(i_s, lvalue);
+                                    return Inferred::new_unknown();
                                 }
                             }
                         }
-                        rvalue.lookup_implicit(
-                            i_s,
-                            Some(node_ref),
-                            op.reverse_magic_method,
-                            &|i_s| unsupported_left_operand(i_s, lvalue),
-                        )
+                    }
+                    rvalue.lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
+                        unsupported_operand(i_s, lvalue)
                     })
-                    .execute_with_details(
-                        i_s,
-                        // TODO shouldn't this be lvalue instead of left
-                        &KnownArguments::new(&left, node_ref),
-                        &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, _, _, _, _, _| had_error.set(true)),
-                    );
-                if had_error.get() {
-                    unsupported_left_operand(i_s, lvalue);
-                    Inferred::new_unknown()
-                } else {
-                    result
-                }
+                })
+                .execute_with_details(
+                    i_s,
+                    // TODO shouldn't this be lvalue instead of left
+                    &KnownArguments::new(&left, node_ref),
+                    &mut ResultContext::Unknown,
+                    OnTypeError::new(&|i_s, _, _, _, _, _| had_right_error.set(true)),
+                );
+            if had_right_error.get() {
+                unsupported_operand(i_s, lvalue);
+                Inferred::new_unknown()
+            } else {
+                result
             }
         })
     }

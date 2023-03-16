@@ -5,9 +5,6 @@ testNonBooleanOr
 testChainedComp
 testChainedCompBoolRes
 testChainedCompResTyp
-testReverseBinaryOperator
-testReverseBinaryOperator2
-testReverseBinaryOperator3
 testDivmod
 testIndexingAsLvalue
 testOverloadedIndexing
