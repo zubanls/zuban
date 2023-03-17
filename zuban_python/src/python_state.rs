@@ -60,6 +60,7 @@ pub struct PythonState {
     builtins_bytes_index: NodeIndex,
     builtins_bytearray_index: NodeIndex,
     builtins_memoryview_index: NodeIndex,
+    builtins_slice_index: NodeIndex,
     typing_mapping_index: NodeIndex,
     types_module_type_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
@@ -97,6 +98,7 @@ impl PythonState {
             builtins_bytes_index: 0,
             builtins_bytearray_index: 0,
             builtins_memoryview_index: 0,
+            builtins_slice_index: 0,
             types_module_type_index: 0,
             typing_mapping_index: 0,
             mypy_extensions_arg_func: 0,
@@ -206,6 +208,7 @@ impl PythonState {
         cache_index!(builtins_bytes_index, db, builtins, "bytes");
         cache_index!(builtins_bytearray_index, db, builtins, "bytearray");
         cache_index!(builtins_memoryview_index, db, builtins, "memoryview");
+        cache_index!(builtins_slice_index, db, builtins, "slice");
         cache_index!(typing_mapping_index, db, typing, "Mapping");
         cache_index!(types_module_type_index, db, types, "ModuleType");
 
@@ -274,6 +277,11 @@ impl PythonState {
     }
 
     #[inline]
+    pub fn slice_db_type(&self) -> DbType {
+        DbType::Class(self.slice_node_ref().as_link(), None)
+    }
+
+    #[inline]
     pub fn tuple_class<'db: 'a, 'a>(
         &'db self,
         db: &'db Database,
@@ -295,6 +303,7 @@ impl PythonState {
     builtins_attribute_node_ref!(bytes_node_ref, builtins_bytes_index);
     builtins_attribute_node_ref!(bytearray_node_ref, builtins_bytearray_index);
     builtins_attribute_node_ref!(memoryview_node_ref, builtins_memoryview_index);
+    builtins_attribute_node_ref!(slice_node_ref, builtins_slice_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(pub str, str_node_ref);

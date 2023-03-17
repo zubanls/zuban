@@ -18,7 +18,6 @@ testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
 
 # slices
-testSlicingWithInvalidBase
 testNonIntSliceBounds
 
 # qualified name for NewType for different module

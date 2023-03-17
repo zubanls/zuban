@@ -705,7 +705,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 };
                 let node_ref = NodeRef::new(self.file, primary_target.index());
                 let slice = SliceType::new(self.file, primary_target.index(), slice_type);
-                let args = slice.as_args(self.i_s.context);
+                let args = slice.as_args(self.i_s.clone());
                 base.run_on_value(self.i_s, &mut |i_s, v| {
                     debug!("Set Item on {}", v.name());
                     v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {

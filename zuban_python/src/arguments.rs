@@ -4,7 +4,6 @@ use crate::database::{
     ComplexPoint, Database, DbType, Execution, MroIndex, ParamSpecUsage, PointLink, TupleContent,
     TypeOrTypeVarTuple,
 };
-use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::PythonFile;
@@ -447,7 +446,7 @@ enum ArgumentIteratorBase<'db, 'a> {
         node_ref: NodeRef<'a>,
         is_bound_self: bool,
     },
-    SliceType(Context<'db, 'a>, SliceType<'a>),
+    SliceType(InferenceState<'db, 'a>, SliceType<'a>),
     Finished,
 }
 
@@ -507,9 +506,12 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 todo!()
             }
             Self::Finished => vec![],
-            Self::SliceType(_, slice_type) => slice_type
+            Self::SliceType(mut i_s, slice_type) => slice_type
                 .iter()
-                .map(|x| x.infer(i_s, &mut ResultContext::Unknown).format_short(i_s))
+                .map(|x| {
+                    x.infer(&mut i_s, &mut ResultContext::Unknown)
+                        .format_short(&mut i_s)
+                })
                 .collect(),
         }
     }
@@ -683,7 +685,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
             }
             Self::Finished => None,
             Self::SliceType(..) => {
-                let Self::SliceType(context, slice_type) = mem::replace(self, Self::Finished) else {
+                let Self::SliceType(mut i_s, slice_type) = mem::replace(self, Self::Finished) else {
                     unreachable!()
                 };
                 match slice_type.unpack() {
@@ -691,7 +693,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         let file = s.file;
                         let named_expr = s.named_expr;
                         Some(ArgumentKind::new_positional_return(
-                            context,
+                            i_s.context,
                             1,
                             file,
                             named_expr.index(),
@@ -699,14 +701,14 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     }
                     SliceTypeContent::Slices(slices) => {
                         Some(BaseArgumentReturn::Argument(ArgumentKind::SlicesTuple {
-                            context,
+                            context: i_s.context,
                             slices,
                         }))
                     }
                     SliceTypeContent::Slice(slices) => {
-                        debug!("TODO inferred is unknown when it should be a slice");
+                        let t = i_s.db.python_state.slice_db_type();
                         Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
-                            inferred: Inferred::new_unknown(),
+                            inferred: Inferred::execute_db_type(&mut i_s, t),
                             position: 1,
                             node_ref: slices.as_node_ref(),
                             in_args_or_kwargs_and_arbitrary_len: false,
@@ -737,9 +739,9 @@ impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
         }
     }
 
-    pub fn new_slice(slice_type: SliceType<'a>, context: Context<'db, 'a>) -> Self {
+    pub fn new_slice(slice_type: SliceType<'a>, i_s: InferenceState<'db, 'a>) -> Self {
         Self {
-            current: ArgumentIteratorBase::SliceType(context, slice_type),
+            current: ArgumentIteratorBase::SliceType(i_s, slice_type),
             args_kwargs_iterator: ArgsKwargsIterator::None,
             next: None,
             counter: 0,
