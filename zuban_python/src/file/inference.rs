@@ -1278,7 +1278,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     &|i_s, i1, i2| i1.union(i2),
                     &mut |i_s| {
                         // Still need to calculate diagnostics for all the arguments
-                        args.iter_arguments().calculate_diagnostics(i_s);
+                        args.iter().calculate_diagnostics(i_s);
                         Inferred::new_unknown()
                     },
                 )

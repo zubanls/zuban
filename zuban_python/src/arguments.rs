@@ -36,14 +36,14 @@ pub enum ArgumentsType<'a> {
 pub trait Arguments<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
-    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_>;
+    fn iter(&self) -> ArgumentIteratorImpl<'db, '_>;
     fn outer_execution(&self) -> Option<&Execution>;
     fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> NodeRef;
 
     fn maybe_two_positional_args(&self, db: &'db Database) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
-        let mut iterator = self.iter_arguments();
+        let mut iterator = self.iter();
         let Some(first_arg) = iterator.next() else {
             return None
         };
@@ -75,7 +75,7 @@ pub struct SimpleArguments<'db, 'a> {
 }
 
 impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+    fn iter(&self) -> ArgumentIteratorImpl<'db, '_> {
         ArgumentIteratorImpl::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator {
                 i_s: self.i_s.clone(),
@@ -172,7 +172,7 @@ pub struct KnownArguments<'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
-    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+    fn iter(&self) -> ArgumentIteratorImpl<'db, '_> {
         ArgumentIteratorImpl::new(ArgumentIteratorBase::Inferred {
             inferred: self.inferred,
             node_ref: self.node_ref,
@@ -224,8 +224,8 @@ pub struct CombinedArguments<'db, 'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
-    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
-        let mut iterator = self.args1.iter_arguments();
+    fn iter(&self) -> ArgumentIteratorImpl<'db, '_> {
+        let mut iterator = self.args1.iter();
         debug_assert!(iterator.next.is_none()); // For now this is not supported
         iterator.next = Some(self.args2);
         iterator
@@ -751,7 +751,7 @@ impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
         loop {
             result.extend(self.current.into_argument_types(i_s));
             if let Some(next) = self.next {
-                self = next.iter_arguments();
+                self = next.iter();
             } else {
                 break;
             }
@@ -806,7 +806,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                 None => {
                     if let Some(next) = self.next {
                         let old_counter = self.counter;
-                        *self = next.iter_arguments();
+                        *self = next.iter();
                         self.counter += old_counter;
                         self.next()
                     } else {
@@ -884,7 +884,7 @@ impl<'a> NoArguments<'a> {
 }
 
 impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
-    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+    fn iter(&self) -> ArgumentIteratorImpl<'db, '_> {
         ArgumentIteratorImpl::new(ArgumentIteratorBase::Finished)
     }
 

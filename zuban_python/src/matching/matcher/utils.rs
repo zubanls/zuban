@@ -349,11 +349,11 @@ fn calculate_type_vars<'db>(
                 func_or_callable,
                 args,
                 on_type_error,
-                InferrableParamIterator2::new(i_s.db, params.iter(), args.iter_arguments()),
+                InferrableParamIterator2::new(i_s.db, params.iter(), args.iter()),
             ),
             CallableParams::Any => SignatureMatch::True,
             CallableParams::WithParamSpec(pre_types, param_spec) => {
-                let mut args = args.iter_arguments();
+                let mut args = args.iter();
                 if !pre_types.is_empty() {
                     dbg!(pre_types, args.collect::<Vec<_>>());
                     todo!()

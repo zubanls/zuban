@@ -99,7 +99,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator::new(db, self.node_ref.file, params, args.iter_arguments())
+        InferrableParamIterator::new(db, self.node_ref.file, params, args.iter())
     }
 
     pub fn iter_args_with_params<'b>(
@@ -121,7 +121,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(db, params, args.iter_arguments())
+        InferrableParamIterator2::new(db, params, args.iter())
     }
 
     pub fn infer_param(
@@ -1372,7 +1372,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     i_s.db,
                     IssueType::OverloadMismatch {
                         name: function.diagnostic_string(self.class.as_ref()),
-                        args: args.iter_arguments().into_argument_types(i_s),
+                        args: args.iter().into_argument_types(i_s),
                         variants: self.variants(i_s, search_init),
                     },
                 );

@@ -19,7 +19,6 @@ testDictIncompatibleValueVerbosity
 
 # slices
 testSlicingWithInvalidBase
-testSlicingWithNonindexable
 testNonIntSliceBounds
 
 # qualified name for NewType for different module

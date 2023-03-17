@@ -197,7 +197,7 @@ pub struct SliceArguments<'db, 'a> {
 }
 
 impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
-    fn iter_arguments(&self) -> ArgumentIteratorImpl<'db, '_> {
+    fn iter(&self) -> ArgumentIteratorImpl<'db, '_> {
         ArgumentIteratorImpl::new_slice(*self.slice_type, self.context)
     }
 

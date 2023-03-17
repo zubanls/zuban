@@ -97,7 +97,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        let mut iterator = args.iter_arguments();
+        let mut iterator = args.iter();
         let first = iterator.next();
         if let Some(x) = iterator.next() {
             todo!()
@@ -234,7 +234,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                     self.db_type.clone(),
                 )));
                 // TODO reenable this
-                let mut args_iterator = args.iter_arguments();
+                let mut args_iterator = args.iter();
                 let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
                     let inf = arg.infer(i_s, &mut ResultContext::Known(&Type::new(self.db_type)));
                     (arg, inf)
@@ -275,7 +275,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 }
             }
             DbType::NewType(n) => {
-                let mut iterator = args.iter_arguments();
+                let mut iterator = args.iter();
                 if let Some(first) = iterator.next() {
                     if iterator.next().is_some() {
                         todo!()
@@ -379,7 +379,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         let mut result = None;
         let mut count = 0;
         let mut had_non_positional = false;
-        for arg in args.iter_arguments() {
+        for arg in args.iter() {
             // TODO something like *Iterable[str] looped forever and then we put in this hack
             if arg.in_args_or_kwargs_and_arbitrary_len() {
                 count = 2;
@@ -454,7 +454,7 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        let mut iterator = args.iter_arguments();
+        let mut iterator = args.iter();
         let arg = iterator.next().unwrap_or_else(|| todo!());
 
         let inferred = if matches!(result_context, ResultContext::Unknown) {
@@ -601,7 +601,7 @@ fn maybe_type_var(
             .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
         return None;
     }
-    let mut iterator = args.iter_arguments();
+    let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
@@ -851,7 +851,7 @@ fn maybe_type_var_tuple(
             .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
         return None;
     }
-    let mut iterator = args.iter_arguments();
+    let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
@@ -1004,7 +1004,7 @@ fn maybe_param_spec(
             .add_typing_issue(i_s.db, IssueType::UnexpectedTypeForTypeVar);
         return None;
     }
-    let mut iterator = args.iter_arguments();
+    let mut iterator = args.iter();
     if let Some(first_arg) = iterator.next() {
         let result = if let ArgumentKind::Positional { node_ref, .. } = first_arg.kind {
             node_ref
@@ -1211,7 +1211,7 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        let mut iterator = args.iter_arguments();
+        let mut iterator = args.iter();
         if let Some(first_arg) = iterator.next() {
             let t = Type::new(self.new_type.type_(i_s));
             let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
