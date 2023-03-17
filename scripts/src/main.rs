@@ -3,6 +3,7 @@ use std::fs;
 use std::path::PathBuf;
 
 fn main() -> std::io::Result<()> {
+    /*
     let mut project = zuban_python::Project::new("foo".to_owned());
     let script = zuban_python::Script::new(
         &mut project,
@@ -16,6 +17,7 @@ fn main() -> std::io::Result<()> {
     for (kind, name) in defs {
         dbg!(kind, name);
     }
+    */
 
     return Ok(());
 
