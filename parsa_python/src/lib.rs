@@ -238,7 +238,7 @@ create_grammar!(
     disjunction:? [disjunction "or"] conjunction
     conjunction:? [conjunction "and"] inversion
     inversion:? "not" inversion | comparison
-    comparison:? [comparison comp_op] bitwise_or
+    comparison:? bitwise_or (comp_op bitwise_or)*
     comp_op: "<"|">"|"=="|">="|"<="|"!="|"in"|"not" "in"|"is"|"is" "not"
     bitwise_or:?   [bitwise_or "|"] bitwise_xor
     bitwise_xor:? [bitwise_xor "^"] bitwise_and

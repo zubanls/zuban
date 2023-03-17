@@ -950,28 +950,23 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     None,
                 )
             }
-            ExpressionPart::Comparison(cmp) => {
-                match cmp.unpack() {
-                    ComparisonContent::Equals(first, _, second)
-                    | ComparisonContent::NotEquals(first, _, second)
-                    | ComparisonContent::Is(first, _, second)
-                    | ComparisonContent::IsNot(first, _, second)
-                    | ComparisonContent::In(first, _, second)
-                    | ComparisonContent::NotIn(first, _, second) => {
-                        let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
-                        let second =
-                            self.infer_expression_part(second, &mut ResultContext::Unknown);
-                    }
-                    ComparisonContent::Operation(op) => {
-                        let left = match op.left {
-                            ExpressionPart::Comparison(cmp) => {
-                                self.infer_expression_part(op.left, &mut ResultContext::Unknown);
-                                cmp.right()
-                            }
-                            _ => op.left,
-                        };
-                        let left = self.infer_expression_part(left, &mut ResultContext::Unknown);
-                        return self.infer_detailed_operation(op, left);
+            ExpressionPart::Comparisons(cmps) => {
+                for cmp in cmps.iter() {
+                    match cmp {
+                        ComparisonContent::Equals(first, _, second)
+                        | ComparisonContent::NotEquals(first, _, second)
+                        | ComparisonContent::Is(first, _, second)
+                        | ComparisonContent::IsNot(first, _, second)
+                        | ComparisonContent::In(first, _, second)
+                        | ComparisonContent::NotIn(first, _, second) => {
+                            let first =
+                                self.infer_expression_part(first, &mut ResultContext::Unknown);
+                            let second =
+                                self.infer_expression_part(second, &mut ResultContext::Unknown);
+                        }
+                        ComparisonContent::Operation(op) => {
+                            self.infer_operation(op);
+                        }
                     }
                 }
                 Inferred::create_instance(

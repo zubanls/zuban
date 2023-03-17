@@ -248,7 +248,7 @@ create_nonterminal_structs!(
     Disjunction: disjunction
     Conjunction: conjunction
     Inversion: inversion
-    Comparison: comparison
+    Comparisons: comparison
     Operand: comp_op
     BitwiseOr: bitwise_or
     BitwiseXor: bitwise_xor
@@ -735,7 +735,7 @@ pub enum ExpressionPart<'db> {
     BitwiseAnd(BitwiseAnd<'db>),
     BitwiseXor(BitwiseXor<'db>),
     BitwiseOr(BitwiseOr<'db>),
-    Comparison(Comparison<'db>),
+    Comparisons(Comparisons<'db>),
     Inversion(Inversion<'db>),
     Conjunction(Conjunction<'db>),
     Disjunction(Disjunction<'db>),
@@ -767,7 +767,7 @@ impl<'db> ExpressionPart<'db> {
         } else if node.is_type(Nonterminal(bitwise_or)) {
             Self::BitwiseOr(BitwiseOr::new(node))
         } else if node.is_type(Nonterminal(comparison)) {
-            Self::Comparison(Comparison::new(node))
+            Self::Comparisons(Comparisons::new(node))
         } else if node.is_type(Nonterminal(inversion)) {
             Self::Inversion(Inversion::new(node))
         } else if node.is_type(Nonterminal(conjunction)) {
@@ -792,7 +792,7 @@ impl<'db> ExpressionPart<'db> {
             Self::BitwiseAnd(n) => n.index(),
             Self::BitwiseXor(n) => n.index(),
             Self::BitwiseOr(n) => n.index(),
-            Self::Comparison(n) => n.index(),
+            Self::Comparisons(n) => n.index(),
             Self::Inversion(n) => n.index(),
             Self::Conjunction(n) => n.index(),
             Self::Disjunction(n) => n.index(),
@@ -812,7 +812,7 @@ impl<'db> ExpressionPart<'db> {
             Self::BitwiseAnd(n) => n.as_code(),
             Self::BitwiseXor(n) => n.as_code(),
             Self::BitwiseOr(n) => n.as_code(),
-            Self::Comparison(n) => n.as_code(),
+            Self::Comparisons(n) => n.as_code(),
             Self::Inversion(n) => n.as_code(),
             Self::Conjunction(n) => n.as_code(),
             Self::Disjunction(n) => n.as_code(),
@@ -834,7 +834,7 @@ impl<'db> InterestingNodeSearcher<'db> for ExpressionPart<'db> {
             Self::BitwiseAnd(n) => n.search_interesting_nodes(),
             Self::BitwiseXor(n) => n.search_interesting_nodes(),
             Self::BitwiseOr(n) => n.search_interesting_nodes(),
-            Self::Comparison(n) => n.search_interesting_nodes(),
+            Self::Comparisons(n) => n.search_interesting_nodes(),
             Self::Inversion(n) => n.search_interesting_nodes(),
             Self::Conjunction(n) => n.search_interesting_nodes(),
             Self::Disjunction(n) => n.search_interesting_nodes(),
@@ -2482,45 +2482,63 @@ pub enum ComparisonContent<'db> {
     Operation(Operation<'db>),
 }
 
-impl<'db> Comparison<'db> {
-    pub fn unpack(&self) -> ComparisonContent<'db> {
-        let mut iter = self.node.iter_children();
-        let left = ExpressionPart::new(iter.next().unwrap());
-        let operand = iter.next().unwrap();
-        let first_operand = operand.nth_child(0);
-        let right = ExpressionPart::new(iter.next().unwrap());
+impl<'db> Comparisons<'db> {
+    pub fn iter(&self) -> ComparisonIterator<'db> {
+        let mut iterator = self.node.iter_children();
+        ComparisonIterator {
+            left: ExpressionPart::new(iterator.next().unwrap()),
+            iterator,
+        }
+    }
+
+    pub fn right(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.nth_child(2))
+    }
+}
+
+pub struct ComparisonIterator<'db> {
+    left: ExpressionPart<'db>,
+    iterator: SiblingIterator<'db>,
+}
+
+impl<'db> Iterator for ComparisonIterator<'db> {
+    type Item = ComparisonContent<'db>;
+    #[inline]
+    fn next(&mut self) -> Option<Self::Item> {
+        let Some(op) = self.iterator.next() else {
+            return None;
+        };
+        let right = ExpressionPart::new(self.iterator.next().unwrap());
+        let left = std::mem::replace(&mut self.left, right);
+        let first_operand = op.nth_child(0);
         let (magic_method, reverse_magic_method, operand) = match first_operand.as_code() {
-            "==" => return ComparisonContent::Equals(left, Operand::new(operand), right),
-            "!=" => return ComparisonContent::NotEquals(left, Operand::new(operand), right),
+            "==" => return Some(ComparisonContent::Equals(left, Operand::new(op), right)),
+            "!=" => return Some(ComparisonContent::NotEquals(left, Operand::new(op), right)),
             "is" => {
                 if let Some(s) = first_operand.next_sibling() {
                     debug_assert_eq!(s.as_code(), "not");
-                    return ComparisonContent::IsNot(left, Operand::new(operand), right);
+                    return Some(ComparisonContent::IsNot(left, Operand::new(op), right));
                 } else {
-                    return ComparisonContent::Is(left, Operand::new(operand), right);
+                    return Some(ComparisonContent::Is(left, Operand::new(op), right));
                 }
             }
             "<" => ("__lt__", "__gt__", "<"),
             ">" => ("__gt__", "__lt__", ">"),
             "<=" => ("__le__", "__ge__", "<="),
             ">=" => ("__ge__", "__le__", ">="),
-            "in" => return ComparisonContent::In(left, Operand::new(operand), right),
-            "not" => return ComparisonContent::NotIn(left, Operand::new(operand), right),
+            "in" => return Some(ComparisonContent::In(left, Operand::new(op), right)),
+            "not" => return Some(ComparisonContent::NotIn(left, Operand::new(op), right)),
             _ => unreachable!(),
         };
-        ComparisonContent::Operation(Operation {
+        Some(ComparisonContent::Operation(Operation {
             left,
             magic_method,
             reverse_magic_method,
             operand,
             right,
-            index: self.node.index,
+            index: op.index,
             shortcut_when_same_type: false,
-        })
-    }
-
-    pub fn right(&self) -> ExpressionPart<'db> {
-        ExpressionPart::new(self.node.nth_child(2))
+        }))
     }
 }
 
