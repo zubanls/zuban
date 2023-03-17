@@ -1,10 +1,4 @@
 # Next up
-testMiscBinaryOperators
-testBooleanAndOr
-testNonBooleanOr
-testDivmod
-testIndexingAsLvalue
-testOverloadedIndexing
 
 # dict specialities
 testDictWithKeywordArgsOnly
@@ -696,6 +690,7 @@ testBadClassLevelDecoratorHack
 testSelfTypeProtocolClassmethodMatch
 testCannotUseNewTypeWithProtocols
 testBuiltinClassMethod
+testDivmod
 # Duck typing
 testOverloadingAndDucktypeCompatibility
 
@@ -767,6 +762,9 @@ testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
 testPrecedenceOfFirstBaseAsInferenceResult
 type_var_with_co_and_contra_real_life
+
+# Binary or implementation missing
+testMiscBinaryOperators
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
@@ -1287,6 +1285,8 @@ testConditionalExpressionUnionWithAny
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
+testIndexingAsLvalue
+testOverloadedIndexing
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
 testInferSetInitializedToEmpty
@@ -1538,6 +1538,9 @@ testNoneAndStringIsNone
 testInferInWithErasedTypes
 testUnionTruthinessTracking
 testRegression11705_Strict
+# or/and
+testBooleanAndOr
+testNonBooleanOr
 # narrowing with assert
 testNarrowOptionalOutsideLambda
 testNarrowOptionalOutsideLambdaWithDeferred
