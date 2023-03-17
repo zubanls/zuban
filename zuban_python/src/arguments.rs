@@ -4,6 +4,7 @@ use crate::database::{
     ComplexPoint, Database, DbType, Execution, MroIndex, ParamSpecUsage, PointLink, TupleContent,
     TypeOrTypeVarTuple,
 };
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::PythonFile;
@@ -700,7 +701,16 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         slices,
                     }))
                 }
-                _ => todo!(),
+                SliceTypeContent::Slice(slices) => {
+                    debug!("TODO inferred is unknown when it should be a slice");
+                    Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
+                        inferred: Inferred::new_unknown(),
+                        position: 1,
+                        node_ref: slices.as_node_ref(),
+                        in_args_or_kwargs_and_arbitrary_len: false,
+                        is_keyword: false,
+                    }))
+                }
             },
         }
     }
