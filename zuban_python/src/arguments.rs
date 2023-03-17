@@ -682,36 +682,39 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 }))
             }
             Self::Finished => None,
-            Self::SliceType(context, slice_type) => match slice_type.unpack() {
-                SliceTypeContent::Simple(s) => {
-                    let file = s.file;
-                    let named_expr = s.named_expr;
-                    let context = *context;
-                    *self = Self::Finished;
-                    Some(ArgumentKind::new_positional_return(
-                        context,
-                        1,
-                        file,
-                        named_expr.index(),
-                    ))
+            Self::SliceType(..) => {
+                let Self::SliceType(context, slice_type) = mem::replace(self, Self::Finished) else {
+                    unreachable!()
+                };
+                match slice_type.unpack() {
+                    SliceTypeContent::Simple(s) => {
+                        let file = s.file;
+                        let named_expr = s.named_expr;
+                        Some(ArgumentKind::new_positional_return(
+                            context,
+                            1,
+                            file,
+                            named_expr.index(),
+                        ))
+                    }
+                    SliceTypeContent::Slices(slices) => {
+                        Some(BaseArgumentReturn::Argument(ArgumentKind::SlicesTuple {
+                            context,
+                            slices,
+                        }))
+                    }
+                    SliceTypeContent::Slice(slices) => {
+                        debug!("TODO inferred is unknown when it should be a slice");
+                        Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
+                            inferred: Inferred::new_unknown(),
+                            position: 1,
+                            node_ref: slices.as_node_ref(),
+                            in_args_or_kwargs_and_arbitrary_len: false,
+                            is_keyword: false,
+                        }))
+                    }
                 }
-                SliceTypeContent::Slices(slices) => {
-                    Some(BaseArgumentReturn::Argument(ArgumentKind::SlicesTuple {
-                        context: *context,
-                        slices,
-                    }))
-                }
-                SliceTypeContent::Slice(slices) => {
-                    debug!("TODO inferred is unknown when it should be a slice");
-                    Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
-                        inferred: Inferred::new_unknown(),
-                        position: 1,
-                        node_ref: slices.as_node_ref(),
-                        in_args_or_kwargs_and_arbitrary_len: false,
-                        is_keyword: false,
-                    }))
-                }
-            },
+            }
         }
     }
 }

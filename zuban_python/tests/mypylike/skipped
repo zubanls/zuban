@@ -18,7 +18,6 @@ testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
 
 # slices
-testGetSlice
 testSlicingWithInvalidBase
 testSlicingWithNonindexable
 testNonIntSliceBounds
