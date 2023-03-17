@@ -213,7 +213,7 @@ impl LookupResult {
 
     pub fn into_inferred(self) -> Inferred {
         self.into_maybe_inferred()
-            .unwrap_or(Inferred::new_unknown())
+            .unwrap_or_else(Inferred::new_unknown)
     }
 
     pub fn union(self, other: Self) -> Self {

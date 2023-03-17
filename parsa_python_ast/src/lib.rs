@@ -376,7 +376,7 @@ impl<'db> Name<'db> {
         {
             TypeLike::Import
         } else {
-            TypeLike::ParamName(node.iter_children().skip(1).next().map(Annotation::new))
+            TypeLike::ParamName(node.iter_children().nth(1).map(Annotation::new))
         }
     }
 
@@ -1885,7 +1885,7 @@ impl<'db> Assignment<'db> {
     }
 
     pub fn maybe_annotation(&self) -> Option<Annotation<'db>> {
-        let annot = self.node.iter_children().skip(1).next().unwrap();
+        let annot = self.node.iter_children().nth(1).unwrap();
         (annot.is_type(Nonterminal(annotation))).then(|| Annotation::new(annot))
     }
 
@@ -2459,7 +2459,7 @@ impl<'db> Conjunction<'db> {
 
 impl<'db> Inversion<'db> {
     pub fn expression(&self) -> ExpressionPart<'db> {
-        ExpressionPart::new(self.node.iter_children().skip(1).next().unwrap())
+        ExpressionPart::new(self.node.iter_children().nth(1).unwrap())
     }
 }
 

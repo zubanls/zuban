@@ -314,7 +314,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::NewTypeMustBeSubclassable{got} => format!(
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
             ),
-            IssueType::NewTypeInvalidType => format!("Argument 2 to NewType(...) must be a valid type"),
+            IssueType::NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
 
             IssueType::DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),

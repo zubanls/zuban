@@ -628,7 +628,7 @@ pub fn match_arguments_against_params<
                 }
             }
             if too_many {
-                let s = diagnostic_string(" for ").unwrap_or(Box::from(""));
+                let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
                 args_node_ref().add_typing_issue(i_s.db, IssueType::TooManyArguments(s));
             }
         }
@@ -653,8 +653,8 @@ pub fn match_arguments_against_params<
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
-                let s = diagnostic_string(" for ").unwrap_or(Box::from(""));
-                args_node_ref().add_typing_issue(i_s.db, IssueType::TooFewArguments(s.into()));
+                let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
+                args_node_ref().add_typing_issue(i_s.db, IssueType::TooFewArguments(s));
             }
         }
         if let Some(mut s) = match &missing_positional[..] {

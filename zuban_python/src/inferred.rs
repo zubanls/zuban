@@ -130,7 +130,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn create_instance(class: PointLink, generics: Option<Box<[GenericItem]>>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
             class,
-            generics.map(|lst| GenericsList::new_generics(lst)),
+            generics.map(GenericsList::new_generics),
         ))))
     }
 
@@ -899,19 +899,17 @@ impl<'db: 'slf, 'slf> Inferred {
                             let class =
                                 Class::new(node_ref, cls_storage, Generics::NotDefinedYet, None);
                             debug!("TODO class descriptors");
-                            ()
                         }
                         _ => (),
                     }
                 }
                 _ => (),
             },
-            InferredState::UnsavedComplex(complex) => match complex {
-                ComplexPoint::TypeInstance(t) => {
+            InferredState::UnsavedComplex(complex) => {
+                if let ComplexPoint::TypeInstance(t) = complex {
                     debug!("TODO type instances");
                 }
-                _ => (),
-            },
+            }
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::Unknown => (),
