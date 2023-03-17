@@ -12,7 +12,7 @@ pub enum Context<'db, 'a> {
     LambdaCallable(&'a CallableContent),
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
     pub context: Context<'db, 'a>,

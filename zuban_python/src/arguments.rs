@@ -77,7 +77,7 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
     fn iter(&self) -> ArgumentIteratorImpl<'db, '_> {
         ArgumentIteratorImpl::new(match self.details {
             ArgumentsDetails::Node(arguments) => ArgumentIteratorBase::Iterator {
-                i_s: self.i_s.clone(),
+                i_s: self.i_s,
                 file: self.file,
                 iterator: arguments.iter().enumerate(),
                 kwargs_before_star_args: {

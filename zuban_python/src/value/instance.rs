@@ -213,7 +213,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         for found_on_class in finder {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
-                    let args = slice_type.as_args(i_s.clone());
+                    let args = slice_type.as_args(*i_s);
                     return inf.execute_with_details(
                         i_s,
                         &args,
