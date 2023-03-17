@@ -506,15 +506,10 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 todo!()
             }
             Self::Finished => vec![],
-            Self::SliceType(_, slice_type) => match slice_type.unpack() {
-                SliceTypeContent::Simple(s) => {
-                    let file = s.file;
-                    let named_expr = s.named_expr;
-                    todo!()
-                }
-                SliceTypeContent::Slices(slices) => todo!(),
-                _ => todo!(),
-            },
+            Self::SliceType(_, slice_type) => slice_type
+                .iter()
+                .map(|x| x.infer(i_s, &mut ResultContext::Unknown).format_short(i_s))
+                .collect(),
         }
     }
 }

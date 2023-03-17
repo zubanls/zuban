@@ -1286,7 +1286,6 @@ testConditionalExpressionUnionWithAny
 # __setitem__
 testInferOptionalDictKeyValueTypes
 testIndexingAsLvalue
-testOverloadedIndexing
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
 testInferSetInitializedToEmpty
