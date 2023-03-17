@@ -951,28 +951,52 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 )
             }
             ExpressionPart::Comparisons(cmps) => {
-                for cmp in cmps.iter() {
-                    match cmp {
-                        ComparisonContent::Equals(first, _, second)
-                        | ComparisonContent::NotEquals(first, _, second)
-                        | ComparisonContent::Is(first, _, second)
-                        | ComparisonContent::IsNot(first, _, second)
-                        | ComparisonContent::In(first, _, second)
-                        | ComparisonContent::NotIn(first, _, second) => {
-                            let first =
-                                self.infer_expression_part(first, &mut ResultContext::Unknown);
-                            let second =
-                                self.infer_expression_part(second, &mut ResultContext::Unknown);
-                        }
-                        ComparisonContent::Operation(op) => {
-                            self.infer_operation(op);
-                        }
+                Inferred::gather_types_union(|gather| {
+                    for cmp in cmps.iter() {
+                        let result = match cmp {
+                            ComparisonContent::Equals(first, op, second)
+                            | ComparisonContent::NotEquals(first, op, second) => {
+                                let first =
+                                    self.infer_expression_part(first, &mut ResultContext::Unknown);
+                                let second =
+                                    self.infer_expression_part(second, &mut ResultContext::Unknown);
+                                let from = NodeRef::new(self.file, op.index());
+                                // TODO this does not implement __ne__ for NotEquals
+                                first.execute_function(
+                                    self.i_s,
+                                    "__eq__",
+                                    from,
+                                    &KnownArguments::new(&second, from),
+                                )
+                            }
+                            ComparisonContent::Is(first, _, second)
+                            | ComparisonContent::IsNot(first, _, second) => {
+                                let first =
+                                    self.infer_expression_part(first, &mut ResultContext::Unknown);
+                                let second =
+                                    self.infer_expression_part(second, &mut ResultContext::Unknown);
+                                Inferred::create_instance(
+                                    self.i_s.db.python_state.builtins_point_link("bool"),
+                                    None,
+                                )
+                            }
+                            ComparisonContent::In(first, _, second)
+                            | ComparisonContent::NotIn(first, _, second) => {
+                                let first =
+                                    self.infer_expression_part(first, &mut ResultContext::Unknown);
+                                let second =
+                                    self.infer_expression_part(second, &mut ResultContext::Unknown);
+                                // TODO this is wrong and should call __contains__
+                                Inferred::create_instance(
+                                    self.i_s.db.python_state.builtins_point_link("bool"),
+                                    None,
+                                )
+                            }
+                            ComparisonContent::Operation(op) => self.infer_operation(op),
+                        };
+                        gather(self.i_s, result)
                     }
-                }
-                Inferred::create_instance(
-                    self.i_s.db.python_state.builtins_point_link("bool"),
-                    None,
-                )
+                })
             }
             ExpressionPart::Factor(f) => {
                 let (operand, right) = f.unpack();

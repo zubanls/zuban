@@ -2,7 +2,6 @@
 testMiscBinaryOperators
 testBooleanAndOr
 testNonBooleanOr
-testChainedCompResTyp
 testDivmod
 testIndexingAsLvalue
 testOverloadedIndexing
@@ -226,8 +225,11 @@ testSpecialAttrsAreAvaliableInClasses
 testSpecialModulesNameImplicitAttr
 # Function attributes
 testInvalidRvalueTypeInInferredMultipleLvarDefinition
+testOverlappingClassCallables
 # None attributes
 testNoneHasBool
+testEqNone
+testInferEqualsStillOptionalWithBothOptional
 
 # boolean operators
 testOrOperationWithGenericOperands

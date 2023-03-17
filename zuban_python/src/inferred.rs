@@ -3,9 +3,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use crate::arguments::{
-    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
-};
+use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
@@ -675,6 +673,21 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    #[inline]
+    pub fn gather_types_union(
+        callable: impl FnOnce(&mut dyn FnMut(&mut InferenceState<'db, '_>, Self)),
+    ) -> Self {
+        let mut result: Option<Self> = None;
+        let r = &mut result;
+        callable(&mut |i_s, inferred| {
+            *r = Some(match r.take() {
+                Some(i) => i.types_union(i_s, inferred, &mut ResultContext::Unknown),
+                None => inferred,
+            });
+        });
+        result.unwrap_or_else(|| todo!())
+    }
+
     pub fn types_union(
         self,
         i_s: &mut InferenceState<'db, '_>,
@@ -1118,11 +1131,12 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &mut InferenceState<'db, '_>,
         name: &str,
         from: NodeRef,
+        args: &dyn Arguments<'db>,
     ) -> Self {
         self.run_on_value(i_s, &mut |i_s, value| {
             value.lookup_implicit(i_s, Some(from), name, &|i_s| todo!("{value:?}"))
         })
-        .execute(i_s, &NoArguments::new(from))
+        .execute(i_s, args)
     }
 
     pub fn execute(&self, i_s: &mut InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
