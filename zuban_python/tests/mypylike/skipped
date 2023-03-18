@@ -172,10 +172,6 @@ testOperatorWithEmptyListAndSum
 testJoinUnionWithUnionAndAny
 testNoComplainInferredNoneStrict
 
-# "Duplicate base class "I""
-testIncludingBaseClassTwice
-testMroSetAfterError
-
 # "Cannot determine consistent method resolution order (MRO) for "B""
 testCannotDetermineMro
 testInconsistentMroLocalRef

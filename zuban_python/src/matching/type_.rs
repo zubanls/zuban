@@ -1137,6 +1137,19 @@ impl<'a> Type<'a> {
         i_s.db.python_state.object_db_type()
     }
 
+    pub fn check_duplicate_base_class(&self, db: &Database, other: &Self) -> Option<Box<str>> {
+        if let (Some(c1), Some(c2)) = (self.maybe_class(db), other.maybe_class(db)) {
+            (c1.node_ref == c2.node_ref).then(|| Box::from(c1.name()))
+        } else {
+            match (self.maybe_db_type(), other.maybe_db_type()) {
+                (Some(DbType::Type(_)), Some(DbType::Type(_))) => todo!(), // Some(Box::from("type")),
+                (Some(DbType::Tuple(_)), Some(DbType::Tuple(_))) => todo!(), // Some(Box::from("tuple")),
+                (Some(DbType::Callable(_)), Some(DbType::Callable(_))) => todo!(), // Some(Box::from("callable")),
+                _ => None,
+            }
+        }
+    }
+
     pub fn is_union(&self) -> bool {
         matches!(self.maybe_db_type(), Some(DbType::Union(_)))
     }

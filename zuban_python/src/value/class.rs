@@ -256,6 +256,15 @@ impl<'db: 'a, 'a> Class<'a> {
                         match base {
                             BaseClass::DbType(t) => {
                                 let mro_index = mro.len();
+                                if let Some(name) = mro.iter().find_map(|base| {
+                                    Type::new(base).check_duplicate_base_class(db, &Type::new(&t))
+                                }) {
+                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
+                                        db,
+                                        IssueType::DuplicateBaseClass { name },
+                                    );
+                                    continue;
+                                }
                                 mro.push(t);
                                 let class = match &mro.last().unwrap() {
                                     DbType::Class(link, generics) => Some(Class::from_position(
