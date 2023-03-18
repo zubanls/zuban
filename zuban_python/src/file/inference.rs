@@ -1117,39 +1117,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let added_note = Cell::new(false);
-        let had_left_error = Cell::new(false);
-        let unsupported_operand = |i_s: &mut InferenceState<'db, '_>,
-                                   lvalue: &dyn Value<'db, '_>| {
-            if had_left_error.get() {
-                node_ref.add_typing_issue(
-                    i_s.db,
-                    IssueType::UnsupportedOperand {
-                        operand: Box::from(op.operand),
-                        left: lvalue.as_type(i_s).format_short(i_s.db),
-                        right: right.format_short(i_s),
-                    },
-                );
-            } else {
-                node_ref.add_typing_issue(
-                    i_s.db,
-                    IssueType::UnsupportedLeftOperand {
-                        operand: Box::from(op.operand),
-                        left: lvalue.as_type(i_s).format_short(i_s.db),
-                    },
-                );
-            }
-            if left.is_union(i_s.db) && !added_note.get() {
-                added_note.set(true);
-                node_ref.add_typing_issue(
-                    i_s.db,
-                    IssueType::Note(
-                        format!("Left operand is of type {:?}", left.format_short(i_s),).into(),
-                    ),
-                );
-            }
-        };
         left.run_on_value(self.i_s, &mut |i_s, lvalue| {
-            had_left_error.set(false);
+            let had_left_error = Cell::new(false);
             let left_op_method = lvalue
                 .lookup_internal(i_s, Some(node_ref), op.magic_method)
                 .into_maybe_inferred();
@@ -1174,14 +1143,13 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         if let Some(left_instance) = lvalue.as_instance() {
                             if let Some(right_instance) = rvalue.as_instance() {
                                 if left_instance.class.node_ref == right_instance.class.node_ref {
-                                    unsupported_operand(i_s, lvalue);
-                                    return Inferred::new_unknown();
+                                    had_right_error.set(true);
                                 }
                             }
                         }
                     }
                     rvalue.lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
-                        unsupported_operand(i_s, lvalue)
+                        had_right_error.set(true);
                     })
                 })
                 .execute_with_details(
@@ -1192,7 +1160,33 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     OnTypeError::new(&|i_s, _, _, _, _, _| had_right_error.set(true)),
                 );
             if had_right_error.get() {
-                unsupported_operand(i_s, lvalue);
+                if had_left_error.get() {
+                    node_ref.add_typing_issue(
+                        i_s.db,
+                        IssueType::UnsupportedOperand {
+                            operand: Box::from(op.operand),
+                            left: lvalue.as_type(i_s).format_short(i_s.db),
+                            right: right.format_short(i_s),
+                        },
+                    );
+                } else {
+                    node_ref.add_typing_issue(
+                        i_s.db,
+                        IssueType::UnsupportedLeftOperand {
+                            operand: Box::from(op.operand),
+                            left: lvalue.as_type(i_s).format_short(i_s.db),
+                        },
+                    );
+                }
+                if left.is_union(i_s.db) && !added_note.get() {
+                    added_note.set(true);
+                    node_ref.add_typing_issue(
+                        i_s.db,
+                        IssueType::Note(
+                            format!("Left operand is of type {:?}", left.format_short(i_s),).into(),
+                        ),
+                    );
+                }
                 Inferred::new_unknown()
             } else {
                 result
