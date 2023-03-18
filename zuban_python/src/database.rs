@@ -3479,7 +3479,7 @@ impl std::cmp::PartialEq for ClassStorage {
     }
 }
 
-#[derive(PartialEq, Eq, Copy, Clone)]
+#[derive(Debug, PartialEq, Eq, Copy, Clone)]
 pub enum FormatStyle {
     Short,
     Qualified,
