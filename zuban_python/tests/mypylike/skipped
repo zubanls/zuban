@@ -1,8 +1,5 @@
 # Next up
-testUnionOfSimilarCallablesCrash
-testNewAnalyzerNewTypeForwardClassAliasReversed
 testKeywordArgumentWithFunctionObject
-testIterableUnpackingWithGetAttr
 testUnionIterableContainer
 testConcatDeferralNoCrash
 testNoParamSpecDoubling
@@ -45,6 +42,8 @@ testNoRecursiveExpandInstanceUnionCrashInference
 # Implement bitwise or
 testUnionOrSyntaxWithTypeAliasWorking
 
+# Callable formatting varargs
+testUnionOfSimilarCallablesCrash
 # Nicer Callable Errors
 testCallableParsingFromExpr
 testCallableParsing
@@ -1199,6 +1198,7 @@ testGetattr
 testDecoratedGetattr
 testGetattrWithCall
 testGetattrSignature
+testIterableUnpackingWithGetAttr
 
 # __setattr__
 testSetattr
@@ -1614,6 +1614,9 @@ testIsInstanceAdHocIntersectionFineGrainedIncrementalIsInstanceChange
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnderlyingObjChang
 testIsInstanceAdHocIntersectionFineGrainedIncrementalIntersectionToUnreachable
 testIsInstanceAdHocIntersectionFineGrainedIncrementalUnreachaableToIntersection
+
+# "Name "C" is used before definition"
+testNewAnalyzerNewTypeForwardClassAliasReversed
 
 # Import Redefinition
 testRedefineTypeViaImport
