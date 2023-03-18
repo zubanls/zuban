@@ -816,6 +816,7 @@ testUnimportedHintAny
 testUnimportedHintAnyLower
 
 # Metaclass
+duplicate_base_class_of_type
 testInvalidMetaclass
 testInvalidQualifiedMetaclass
 testNonClassMetaclass

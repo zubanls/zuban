@@ -1142,7 +1142,7 @@ impl<'a> Type<'a> {
             (c1.node_ref == c2.node_ref).then(|| Box::from(c1.name()))
         } else {
             match (self.maybe_db_type(), other.maybe_db_type()) {
-                (Some(DbType::Type(_)), Some(DbType::Type(_))) => todo!(), // Some(Box::from("type")),
+                (Some(DbType::Type(_)), Some(DbType::Type(_))) => Some(Box::from("type")),
                 (Some(DbType::Tuple(_)), Some(DbType::Tuple(_))) => Some(Box::from("tuple")),
                 (Some(DbType::Callable(_)), Some(DbType::Callable(_))) => todo!(), // Some(Box::from("callable")),
                 _ => None,
