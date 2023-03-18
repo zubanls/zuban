@@ -20,11 +20,6 @@ testDictIncompatibleValueVerbosity
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
 
-# Union struggles
-testOperatorDoubleUnionNaiveAdd
-testOperatorDoubleUnionDivision
-testOperatorWithEmptyListAndSum
-
 # Type var contstraints not enforced in type alias
 testValidTypeAliasValues
 testValidTypeAliasValuesMoreRestrictive
@@ -174,6 +169,7 @@ testUnificationEmptyDictRight
 testUnificationDictWithEmptyListLeft
 testUnificationDictWithEmptyListRight
 testMisguidedSetItem
+testOperatorWithEmptyListAndSum
 
 # Union Not matching type vars
 testJoinUnionWithUnionAndAny
@@ -2105,6 +2101,7 @@ testLiteralInvalidTypeComment2
 testInferOptionalFromDefaultNoneComment
 testNoInferOptionalFromDefaultNoneComment
 testCheckUntypedDefsSelf1
+testOperatorDoubleUnionDivision
 
 # --scripts-are-modules
 testScriptsAreModules

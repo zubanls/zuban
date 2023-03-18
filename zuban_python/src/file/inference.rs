@@ -1114,6 +1114,14 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     }
 
     fn infer_detailed_operation(&mut self, op: Operation, left: Inferred) -> Inferred {
+        #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+        enum LookupError {
+            NoError,
+            LeftError,
+            ShortCircuit,
+            BothSidesError,
+        }
+
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let mut had_error = false;
@@ -1122,17 +1130,17 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 .lookup_internal(i_s, Some(node_ref), op.magic_method)
                 .into_maybe_inferred();
             right.run_on_value(i_s, &mut |i_s, rvalue| {
-                let had_left_error = Cell::new(false);
-                let had_right_error = Cell::new(false);
+                let error = Cell::new(LookupError::NoError);
                 if let Some(left) = left_op_method.as_ref() {
+                    let had_left_error = Cell::new(false);
                     let left_inf = Inferred::execute_db_type_allocation_todo(i_s, rvalue);
                     let result = left.execute_with_details(
                         i_s,
                         &KnownArguments::new(&left_inf, node_ref),
                         &mut ResultContext::Unknown,
                         OnTypeError {
-                            on_overload_mismatch: Some(&|i_s, _| had_left_error.set(true)),
-                            callback: &|i_s, class, _, _, _, _| had_left_error.set(true),
+                            on_overload_mismatch: Some(&|_, _| had_left_error.set(true)),
+                            callback: &|_, _, _, _, _, _| had_left_error.set(true),
                         },
                     );
                     if !had_left_error.get() {
@@ -1143,29 +1151,41 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     if let Some(left_instance) = lvalue.as_instance() {
                         if let Some(right_instance) = rvalue.as_instance() {
                             if left_instance.class.node_ref == right_instance.class.node_ref {
-                                had_right_error.set(true);
+                                error.set(LookupError::ShortCircuit);
                             }
                         }
                     }
                 }
-                let result = if !had_right_error.get() {
+                let result = if error.get() != LookupError::ShortCircuit {
                     let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
                     rvalue
                         .lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
-                            had_right_error.set(true);
+                            if left_op_method.as_ref().is_some() {
+                                error.set(LookupError::BothSidesError);
+                            } else {
+                                error.set(LookupError::LeftError);
+                            }
                         })
                         .execute_with_details(
                             i_s,
                             &KnownArguments::new(&right_inf, node_ref),
                             &mut ResultContext::Unknown,
-                            OnTypeError::new(&|_, _, _, _, _, _| had_right_error.set(true)),
+                            OnTypeError {
+                                on_overload_mismatch: Some(&|_, _| {
+                                    error.set(LookupError::BothSidesError)
+                                }),
+                                callback: &|_, _, _, _, _, _| {
+                                    error.set(LookupError::BothSidesError)
+                                },
+                            },
                         )
                 } else {
                     Inferred::new_unknown()
                 };
-                if had_right_error.get() {
-                    had_error = true;
-                    if had_left_error.get() {
+                match error.get() {
+                    LookupError::NoError => result,
+                    LookupError::BothSidesError => {
+                        had_error = true;
                         node_ref.add_typing_issue(
                             i_s.db,
                             IssueType::UnsupportedOperand {
@@ -1174,7 +1194,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 right: rvalue.as_type(i_s).format_short(i_s.db),
                             },
                         );
-                    } else {
+                        Inferred::new_unknown()
+                    }
+                    LookupError::LeftError | LookupError::ShortCircuit => {
+                        had_error = true;
                         node_ref.add_typing_issue(
                             i_s.db,
                             IssueType::UnsupportedLeftOperand {
@@ -1182,10 +1205,8 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 left: lvalue.as_type(i_s).format_short(i_s.db),
                             },
                         );
+                        Inferred::new_unknown()
                     }
-                    Inferred::new_unknown()
-                } else {
-                    result
                 }
             })
         });
