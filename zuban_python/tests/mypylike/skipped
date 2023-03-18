@@ -1,4 +1,17 @@
 # Next up
+testUnionOfSimilarCallablesCrash
+testNewAnalyzerNewTypeForwardClassAliasReversed
+testKeywordArgumentWithFunctionObject
+testIterableUnpackingWithGetAttr
+testUnionIterableContainer
+testConcatDeferralNoCrash
+testNoParamSpecDoubling
+testCopiedParamSpecComparison
+testInferringLvarTypesUnpackedFromIterableClassObject
+testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
+testJoinWithAnyFallback
+testSelfTypeOverrideCompatibilityGeneric
+testTypingSelfWithValuesExpansion
 
 # dict specialities
 testDictWithKeywordArgsOnly
@@ -467,6 +480,7 @@ testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts
 testAliasForEnumTypeAsLiteral
 testInvariance
+testStrictEqualityAndEnumWithCustomEq
 
 # TypedDict
 testNewAnalyzerTypedDictClass
@@ -522,6 +536,7 @@ testCrashInvalidArgsSyntheticClassSyntaxReveals
 testCrashInvalidArgsSyntheticFunctionSyntax
 testCrashForwardSyntheticClassSyntax
 testCrashForwardSyntheticFunctionSyntax
+testRecursiveTypedDictWithList
 
 # NoReturn
 testNoReturnTypeAlias
@@ -679,6 +694,7 @@ testTypeVarTuplePep646TypeVarStarArgs
 testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 testTypeVarTuplePep646Callable
+testTypeVarTuplePep646CallableWithPrefixSuffix
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
 testUnpackKwargsReveal
@@ -809,7 +825,6 @@ testUnimportedHintAny
 testUnimportedHintAnyLower
 
 # Metaclass
-duplicate_base_class_of_type
 testInvalidMetaclass
 testInvalidQualifiedMetaclass
 testNonClassMetaclass
@@ -899,8 +914,11 @@ testMetaclassSubclassSelf
 testMetaclassConflict
 testInitSubclassWithMetaclassOK
 testInitSubclassWithCustomMetaclassOK
+testSixMetaclassGenericBase
 # type base class
 testTypeEquivalentTypeAnyEdgeCase
+testClassObjectsNotUnpackableWithoutIterableMetaclass
+duplicate_base_class_of_type
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -1032,6 +1050,8 @@ testOverrideClassMethodWithClassMethod
 testOverrideClassMethodWithStaticMethod
 testOverrideStaticMethodWithClassMethod
 testIntroducingInplaceOperatorInSubclass
+testMethodOverridingWithIncompatibleTypesOnMultipleLines
+testMultiLineMethodOverridingWithIncompatibleTypesWrongIgnore
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride
@@ -1333,6 +1353,7 @@ testAccessingGenericDescriptorFromInferredClass
 testAccessingGenericDescriptorFromClass
 testOverloadWithNonGenericDescriptorLookalike
 testOverloadWithGenericDescriptor
+testUnpackIterableClassWithOverloadedIter2
 overload_overlapping_any
 
 # - Signature of "f" incompatible with supertype "Parent"

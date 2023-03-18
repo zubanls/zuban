@@ -78,6 +78,8 @@ const USE_MYPY_TEST_FILES: [&str; 32] = [
     //"check-possibly-undefined.test",
     //"check-slots.test",
     "check-typevar-tuple.test",
+    //"check-dataclass-transform.test",
+    //"fine-grained-dataclass-transform.test",
     //"check-newsyntax.test",
     //"check-fastparse.test",
     //"check-python38.test",
