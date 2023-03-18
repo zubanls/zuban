@@ -277,7 +277,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     )),
                                     DbType::Tuple(content) => None,
                                     DbType::Type(_) => todo!(),
-                                    DbType::Callable(content) => todo!(),
+                                    DbType::Callable(content) => None,
                                     _ => unreachable!(),
                                 };
                                 if let Some(class) = class {

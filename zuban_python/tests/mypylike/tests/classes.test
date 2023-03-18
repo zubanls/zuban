@@ -11,11 +11,22 @@ class A(tuple): ...
 
 [case duplicate_base_class_of_type]
 
-class A(type, type): ...  # E: Duplicate base class "tuple"
-class A(type[int], type): ...  # E: Duplicate base class "tuple"
-class A(type, type[int]): ...  # E: Duplicate base class "tuple"
-class A(type[str], type[int]): ...  # E: Duplicate base class "tuple"
+class A(type, type): ...  # E: Duplicate base class "type"
+class A(type[int], type): ...  # E: Duplicate base class "type"
+class A(type, type[int]): ...  # E: Duplicate base class "type"
+class A(type[str], type[int]): ...  # E: Duplicate base class "type"
 
 class A(type[str]): ...
 class A(type): ...
 
+[case duplicate_base_class_of_callable]
+from typing import Callable
+
+class A(Callable, Callable): ...  # E: Duplicate base class "Callable"
+class A(Callable[[], int], Callable): ...  # E: Duplicate base class "Callable"
+class A(Callable, Callable[..., str]): ...  # E: Duplicate base class "Callable"
+class A(Callable[..., str], Callable[..., str]): ...  # E: Duplicate base class "Callable"
+
+class A(Callable[[str], int]): ...
+class A(Callable[..., int], tuple): ...
+class A(Callable): ...
