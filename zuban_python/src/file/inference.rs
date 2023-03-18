@@ -1116,14 +1116,14 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
     fn infer_detailed_operation(&mut self, op: Operation, left: Inferred) -> Inferred {
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
-        let added_note = Cell::new(false);
-        left.run_on_value(self.i_s, &mut |i_s, lvalue| {
-            let had_left_error = Cell::new(false);
-            let had_right_error = Cell::new(false);
+        let mut had_error = false;
+        let result = left.run_on_value(self.i_s, &mut |i_s, lvalue| {
             let left_op_method = lvalue
                 .lookup_internal(i_s, Some(node_ref), op.magic_method)
                 .into_maybe_inferred();
-            let result = right.run_on_value(i_s, &mut |i_s, rvalue| {
+            right.run_on_value(i_s, &mut |i_s, rvalue| {
+                let had_left_error = Cell::new(false);
+                let had_right_error = Cell::new(false);
                 if let Some(left) = left_op_method.as_ref() {
                     let left_inf = Inferred::execute_db_type_allocation_todo(i_s, rvalue);
                     let result = left.execute_with_details(
@@ -1142,59 +1142,69 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                 if op.shortcut_when_same_type {
                     if let Some(left_instance) = lvalue.as_instance() {
                         if let Some(right_instance) = rvalue.as_instance() {
-                            dbg!(left_instance, right_instance);
                             if left_instance.class.node_ref == right_instance.class.node_ref {
                                 had_right_error.set(true);
-                                return Inferred::new_unknown();
                             }
                         }
                     }
                 }
-                let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
-                rvalue
-                    .lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
-                        had_right_error.set(true);
-                    })
-                    .execute_with_details(
-                        i_s,
-                        &KnownArguments::new(&right_inf, node_ref),
-                        &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, _, _, _, _, _| had_right_error.set(true)),
-                    )
-            });
-            if had_right_error.get() {
-                if had_left_error.get() {
-                    node_ref.add_typing_issue(
-                        i_s.db,
-                        IssueType::UnsupportedOperand {
-                            operand: Box::from(op.operand),
-                            left: lvalue.as_type(i_s).format_short(i_s.db),
-                            right: right.format_short(i_s),
-                        },
-                    );
+                let result = if !had_right_error.get() {
+                    let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
+                    rvalue
+                        .lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
+                            had_right_error.set(true);
+                        })
+                        .execute_with_details(
+                            i_s,
+                            &KnownArguments::new(&right_inf, node_ref),
+                            &mut ResultContext::Unknown,
+                            OnTypeError::new(&|_, _, _, _, _, _| had_right_error.set(true)),
+                        )
                 } else {
-                    node_ref.add_typing_issue(
-                        i_s.db,
-                        IssueType::UnsupportedLeftOperand {
-                            operand: Box::from(op.operand),
-                            left: lvalue.as_type(i_s).format_short(i_s.db),
-                        },
-                    );
+                    Inferred::new_unknown()
+                };
+                if had_right_error.get() {
+                    had_error = true;
+                    if had_left_error.get() {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::UnsupportedOperand {
+                                operand: Box::from(op.operand),
+                                left: lvalue.as_type(i_s).format_short(i_s.db),
+                                right: rvalue.as_type(i_s).format_short(i_s.db),
+                            },
+                        );
+                    } else {
+                        node_ref.add_typing_issue(
+                            i_s.db,
+                            IssueType::UnsupportedLeftOperand {
+                                operand: Box::from(op.operand),
+                                left: lvalue.as_type(i_s).format_short(i_s.db),
+                            },
+                        );
+                    }
+                    Inferred::new_unknown()
+                } else {
+                    result
                 }
-                if left.is_union(i_s.db) && !added_note.get() {
-                    added_note.set(true);
-                    node_ref.add_typing_issue(
-                        i_s.db,
-                        IssueType::Note(
-                            format!("Left operand is of type {:?}", left.format_short(i_s),).into(),
-                        ),
-                    );
+            })
+        });
+        if had_error {
+            let note = match (left.is_union(self.i_s.db), right.is_union(self.i_s.db)) {
+                (false, false) => return result,
+                (true, false) => {
+                    format!("Left operand is of type {:?}", left.format_short(self.i_s),).into()
                 }
-                Inferred::new_unknown()
-            } else {
-                result
-            }
-        })
+                (false, true) => format!(
+                    "Right operand is of type {:?}",
+                    right.format_short(self.i_s),
+                )
+                .into(),
+                (true, true) => Box::from("Both left and right operands are unions"),
+            };
+            node_ref.add_typing_issue(self.i_s.db, IssueType::Note(note));
+        }
+        result
     }
 
     pub fn infer_primary(

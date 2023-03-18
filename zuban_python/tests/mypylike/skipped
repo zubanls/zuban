@@ -21,10 +21,7 @@ testDictIncompatibleValueVerbosity
 testNewTypeInMultipleFiles
 
 # Union struggles
-testOperatorDoubleUnionStandardSubtyping
-testOperatorDoubleUnionNoRelationship1
 testOperatorDoubleUnionNaiveAdd
-testOperatorDoubleUnionInterwovenUnionAdd
 testOperatorDoubleUnionDivision
 testOperatorWithEmptyListAndSum
 
@@ -80,6 +77,7 @@ testReverseOperatorOrderingCase6
 testReverseOperatorOrderingCase7
 testReverseOperatorWithOverloads2
 testFlattenTypeAliasWhenAliasedAsUnion
+testOperatorDoubleUnionStandardSubtyping
 # "Signatures of "__radd__" of "Fraction" and "__add__" of "T" are unsafely overlapping"
 testReverseOperatorOrderingCase3
 testReverseOperatorWithOverloads1
