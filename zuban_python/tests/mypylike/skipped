@@ -84,8 +84,6 @@ testUnsafeOverlappingWithLineNo
 testReverseComparisonOperator
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
-# Magic methods operator signatures (positional only self?)
-testBinaryOpeartorMethodPositionalArgumentsOnly
 
 # Overload
 testTypeCovarianceWithOverloadedFunctions
@@ -136,11 +134,6 @@ testOverloadOverlapWithTypeVarsWithValues
 testOverloadMultipleVarargDefinitionComplex
 # overloading for loop
 testOverloadedInIter
-# overload operator
-testOverloadedLtAndGtMethods
-testOverloadedForwardMethodAndCallingReverseMethod
-testTypeInferenceSpecialCaseWithOverloading
-testBinaryOpeartorMethodPositionalArgumentsOnly
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
