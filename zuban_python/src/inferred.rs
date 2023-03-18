@@ -110,6 +110,15 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn execute_db_type_allocation_todo(
+        i_s: &mut InferenceState<'db, '_>,
+        v: &dyn Value<'db, '_>,
+    ) -> Self {
+        // Everything that calls this should probably not allocate.
+        let t = v.as_type(i_s).into_db_type(i_s.db);
+        Self::execute_db_type(i_s, t)
+    }
+
     pub fn execute_db_type(i_s: &mut InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
             DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, None)) => match c.as_ref()

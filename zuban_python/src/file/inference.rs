@@ -1119,46 +1119,49 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         let added_note = Cell::new(false);
         left.run_on_value(self.i_s, &mut |i_s, lvalue| {
             let had_left_error = Cell::new(false);
+            let had_right_error = Cell::new(false);
             let left_op_method = lvalue
                 .lookup_internal(i_s, Some(node_ref), op.magic_method)
                 .into_maybe_inferred();
-            if let Some(left) = left_op_method {
-                let result = left.execute_with_details(
-                    i_s,
-                    &KnownArguments::new(&right, node_ref),
-                    &mut ResultContext::Unknown,
-                    OnTypeError {
-                        on_overload_mismatch: Some(&|i_s, _| had_left_error.set(true)),
-                        callback: &|i_s, class, _, _, _, _| had_left_error.set(true),
-                    },
-                );
-                if !had_left_error.get() {
-                    return result;
+            let result = right.run_on_value(i_s, &mut |i_s, rvalue| {
+                if let Some(left) = left_op_method.as_ref() {
+                    let left_inf = Inferred::execute_db_type_allocation_todo(i_s, rvalue);
+                    let result = left.execute_with_details(
+                        i_s,
+                        &KnownArguments::new(&left_inf, node_ref),
+                        &mut ResultContext::Unknown,
+                        OnTypeError {
+                            on_overload_mismatch: Some(&|i_s, _| had_left_error.set(true)),
+                            callback: &|i_s, class, _, _, _, _| had_left_error.set(true),
+                        },
+                    );
+                    if !had_left_error.get() {
+                        return result;
+                    }
                 }
-            }
-            let had_right_error = Cell::new(false);
-            let result = right
-                .run_on_value(i_s, &mut |i_s, rvalue| {
-                    if op.shortcut_when_same_type {
-                        if let Some(left_instance) = lvalue.as_instance() {
-                            if let Some(right_instance) = rvalue.as_instance() {
-                                if left_instance.class.node_ref == right_instance.class.node_ref {
-                                    had_right_error.set(true);
-                                }
+                if op.shortcut_when_same_type {
+                    if let Some(left_instance) = lvalue.as_instance() {
+                        if let Some(right_instance) = rvalue.as_instance() {
+                            dbg!(left_instance, right_instance);
+                            if left_instance.class.node_ref == right_instance.class.node_ref {
+                                had_right_error.set(true);
+                                return Inferred::new_unknown();
                             }
                         }
                     }
-                    rvalue.lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
+                }
+                let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
+                rvalue
+                    .lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
                         had_right_error.set(true);
                     })
-                })
-                .execute_with_details(
-                    i_s,
-                    // TODO shouldn't this be lvalue instead of left
-                    &KnownArguments::new(&left, node_ref),
-                    &mut ResultContext::Unknown,
-                    OnTypeError::new(&|i_s, _, _, _, _, _| had_right_error.set(true)),
-                );
+                    .execute_with_details(
+                        i_s,
+                        &KnownArguments::new(&right_inf, node_ref),
+                        &mut ResultContext::Unknown,
+                        OnTypeError::new(&|i_s, _, _, _, _, _| had_right_error.set(true)),
+                    )
+            });
             if had_right_error.get() {
                 if had_left_error.get() {
                     node_ref.add_typing_issue(
