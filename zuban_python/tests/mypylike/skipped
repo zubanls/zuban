@@ -1,14 +1,10 @@
 # Next up
 testKeywordArgumentWithFunctionObject
 testUnionIterableContainer
-testConcatDeferralNoCrash
+
+# New ParamSpec tests
 testNoParamSpecDoubling
 testCopiedParamSpecComparison
-testInferringLvarTypesUnpackedFromIterableClassObject
-testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
-testJoinWithAnyFallback
-testSelfTypeOverrideCompatibilityGeneric
-testTypingSelfWithValuesExpansion
 
 # dict specialities
 testDictWithKeywordArgsOnly
@@ -304,6 +300,9 @@ testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
 # Param spec invalid calls
 testParamSpecInvalidCalls
+
+# Callable type alias definition
+testConcatDeferralNoCrash
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
@@ -914,6 +913,8 @@ testMetaclassConflict
 testInitSubclassWithMetaclassOK
 testInitSubclassWithCustomMetaclassOK
 testSixMetaclassGenericBase
+testInferringLvarTypesUnpackedFromIterableClassObject
+testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 # type base class
 testTypeEquivalentTypeAnyEdgeCase
 testClassObjectsNotUnpackableWithoutIterableMetaclass
@@ -1326,6 +1327,7 @@ testLiteralAndGenericsRespectsValueRestriction
 testTypeVarValuesFunction
 testTypeVarValuesMethod1
 testTypeVarValuesMethod2
+testTypingSelfWithValuesExpansion
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
@@ -1354,6 +1356,7 @@ testAccessingGenericDescriptorFromClass
 testOverloadWithNonGenericDescriptorLookalike
 testOverloadWithGenericDescriptor
 testUnpackIterableClassWithOverloadedIter2
+testSelfTypeOverrideCompatibilityGeneric
 overload_overlapping_any
 
 # - Signature of "f" incompatible with supertype "Parent"
@@ -1965,6 +1968,8 @@ testDecoratorTypeAfterReprocessing
 
 # type: ignore leads to Any type?
 testDunderCallAddition
+# type: ignore[...]
+testJoinWithAnyFallback
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
