@@ -371,9 +371,9 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
             for comment in comment.split(" # E: ") {
                 for (i, comment) in comment.split(" # N: ").enumerate() {
                     if i == 0 {
-                        wanted.push(format!("{p}:{line_nr}: {type_}: {comment}"))
+                        wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
                     } else {
-                        wanted.push(format!("{p}:{line_nr}: note: {comment}"))
+                        wanted.push(format!("{p}:{line_nr}: note: {}", comment.trim_end()))
                     }
                 }
             }
