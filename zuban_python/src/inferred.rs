@@ -22,9 +22,9 @@ use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, FirstParamProperties, Function,
     Instance, IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NewTypeInstance,
-    NoneInstance, OnTypeError, OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple,
-    TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast,
-    TypingClass, TypingClassVar, TypingType, Value,
+    NoneInstance, OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass,
+    RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass,
+    TypingAny, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -1139,9 +1139,10 @@ impl<'db: 'slf, 'slf> Inferred {
         name: &str,
         from: NodeRef,
         args: &dyn Arguments<'db>,
+        on_lookup_error: OnLookupError<'db, '_>,
     ) -> Self {
         self.run_on_value(i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, Some(from), name, &|i_s| todo!("{value:?}"))
+            value.lookup_implicit(i_s, Some(from), name, on_lookup_error)
         })
         .execute(i_s, args)
     }

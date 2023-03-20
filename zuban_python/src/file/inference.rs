@@ -967,6 +967,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     "__eq__",
                                     from,
                                     &KnownArguments::new(&second, from),
+                                    &|_| todo!(),
                                 )
                             }
                             ComparisonContent::Is(first, _, second)
@@ -992,6 +993,14 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     "__contains__",
                                     from,
                                     &KnownArguments::new(&first, from),
+                                    &|i_s| {
+                                        from.add_typing_issue(
+                                            i_s.db,
+                                            IssueType::UnsupportedIn {
+                                                right: second.format_short(i_s),
+                                            },
+                                        )
+                                    },
                                 );
                                 Inferred::create_instance(
                                     self.i_s.db.python_state.builtins_point_link("bool"),

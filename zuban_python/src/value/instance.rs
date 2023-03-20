@@ -263,6 +263,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                             "__next__",
                             from,
                             &NoArguments::new(from),
+                            &|_| todo!(),
                         ),
                     );
                 }

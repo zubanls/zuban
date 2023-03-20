@@ -1,5 +1,4 @@
 # Next up
-testUnionIterableContainer
 
 # New ParamSpec tests
 testNoParamSpecDoubling
@@ -1096,6 +1095,7 @@ testGenericOverrideGeneric
 testGenericOverrideGenericChained
 # List item 0 has incompatible type "str"; expected "int"
 testVariableTypeVarList
+testInWithInvalidArgs
 
 # setting class attributes on self
 self_instance_variable1
@@ -1704,7 +1704,6 @@ testNewTypeRedefiningVariablesFails
 # syntax errors
 testPreferPackageOverFile
 testPreferPackageOverFile2
-testTrailingCommaParsing
 testTrailingCommaInIfParsing
 testDictWithStarExpr
 
@@ -1740,9 +1739,9 @@ testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 
 # In operator
+testUnionIterableContainer
 testInOperator
 testNotInOperator
-testInWithInvalidArgs
 
 # "Cannot determine type of"
 testThreePassesRequired
