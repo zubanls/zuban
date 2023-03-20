@@ -988,20 +988,63 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 let second =
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
                                 let from = NodeRef::new(self.file, op.index());
-                                second.execute_function(
-                                    self.i_s,
-                                    "__contains__",
-                                    from,
-                                    &KnownArguments::new(&first, from),
-                                    &|i_s| {
-                                        from.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::UnsupportedIn {
-                                                right: second.format_short(i_s),
-                                            },
+                                second.run_on_value(self.i_s, &mut |i_s, rvalue| {
+                                    if let Some(method) = rvalue
+                                        .lookup_internal(i_s, Some(from), "__contains__")
+                                        .into_maybe_inferred()
+                                    {
+                                        method.execute_with_details(
+                                            i_s,
+                                            &KnownArguments::new(&first, from),
+                                            &mut ResultContext::Unknown,
+                                            OnTypeError::new(&|i_s, _, _, _, got, _| {
+                                                from.add_typing_issue(
+                                                    i_s.db,
+                                                    IssueType::UnsupportedOperand {
+                                                        operand: Box::from("in"),
+                                                        left: got,
+                                                        right: rvalue
+                                                            .as_type(i_s)
+                                                            .format_short(i_s.db),
+                                                    },
+                                                );
+                                            }),
                                         )
-                                    },
-                                );
+                                    } else {
+                                        let t = rvalue
+                                            .lookup_implicit(i_s, Some(from), "__iter__", &|i_s| {
+                                                from.add_typing_issue(
+                                                    i_s.db,
+                                                    IssueType::UnsupportedIn {
+                                                        right: second.format_short(i_s),
+                                                    },
+                                                )
+                                            })
+                                            .execute(i_s, &NoArguments::new(from))
+                                            .execute_function(
+                                                i_s,
+                                                "__next__",
+                                                from,
+                                                &NoArguments::new(from),
+                                                &|_| todo!(),
+                                            )
+                                            .class_as_type(i_s)
+                                            .error_if_not_matches(i_s, &first, |i_s, got, _| {
+                                                from.add_typing_issue(
+                                                    i_s.db,
+                                                    IssueType::UnsupportedOperand {
+                                                        operand: Box::from("in"),
+                                                        left: got,
+                                                        right: rvalue
+                                                            .as_type(i_s)
+                                                            .format_short(i_s.db),
+                                                    },
+                                                );
+                                                from.to_db_lifetime(i_s.db)
+                                            });
+                                        Inferred::new_unknown()
+                                    }
+                                });
                                 Inferred::create_instance(
                                     self.i_s.db.python_state.builtins_point_link("bool"),
                                     None,
