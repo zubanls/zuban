@@ -69,6 +69,8 @@ testTypeCheckNamedModule
 testTypeCheckNamedModule2
 testTypeCheckNamedModule3
 testInferOptionalFromDefaultNone
+# __contains__ on None (no-strict-optional)
+testOptionalIterator
 
 # In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
@@ -2019,6 +2021,7 @@ testStrictEqualityMetaclass
 testStrictEqualityWithALiteral
 testStrictEqualityWithALiteralNewType
 testStrictEqualityWithFixedLengthTupleInCheck
+testStrictEqualityBytesSpecialUnion
 
 # --show-column-numbers
 testForwardInstanceWithBound

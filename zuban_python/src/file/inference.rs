@@ -980,13 +980,19 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                     None,
                                 )
                             }
-                            ComparisonContent::In(first, _, second)
-                            | ComparisonContent::NotIn(first, _, second) => {
+                            ComparisonContent::In(first, op, second)
+                            | ComparisonContent::NotIn(first, op, second) => {
                                 let first =
                                     self.infer_expression_part(first, &mut ResultContext::Unknown);
                                 let second =
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
-                                // TODO this is wrong and should call __contains__
+                                let from = NodeRef::new(self.file, op.index());
+                                second.execute_function(
+                                    self.i_s,
+                                    "__contains__",
+                                    from,
+                                    &KnownArguments::new(&first, from),
+                                );
                                 Inferred::create_instance(
                                     self.i_s.db.python_state.builtins_point_link("bool"),
                                     None,
