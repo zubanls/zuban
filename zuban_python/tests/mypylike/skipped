@@ -1,8 +1,5 @@
 # Next up
 
-# New ParamSpec tests
-testNoParamSpecDoubling
-
 # dict specialities
 testDictWithKeywordArgsOnly
 testDictWithoutKeywordArgs

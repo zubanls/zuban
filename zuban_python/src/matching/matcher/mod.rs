@@ -20,6 +20,7 @@ use crate::database::{
     StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
     TypeVarLikes, TypeVarUsage, Variance,
 };
+use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, OnTypeError};
@@ -309,15 +310,30 @@ impl<'a> Matcher<'a> {
                 return matches;
             }
         }
-        let match_params = |i_s, matches, params: &_| match params {
-            CallableParams::Simple(params1) => todo!(),
-            CallableParams::Any => matches,
-            CallableParams::WithParamSpec(_, _) => todo!(),
-        };
+        let match_params =
+            |i_s: &mut _,
+             matches,
+             params: &ParamSpecArgument,
+             p2_pre_iterator: std::slice::Iter<_>| match &params.params {
+                CallableParams::Simple(params1) => todo!(),
+                CallableParams::Any => matches,
+                CallableParams::WithParamSpec(pre, usage) => {
+                    if pre.len() != p2_pre_iterator.len() {
+                        todo!()
+                    } else {
+                        debug!("TODO should maybe use type vars?");
+                        let mut matches = matches;
+                        for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
+                            matches &= Type::new(t1).simple_matches(i_s, &Type::new(t2), variance);
+                        }
+                        matches & (usage == p2).into()
+                    }
+                }
+            };
         if let Some(class) = self.class {
             if class.node_ref.as_link() == p1.in_definition {
                 let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
-                return match_params(i_s, matches, &usage.params);
+                return match_params(i_s, matches, &usage, p2_pre_iterator);
             } else {
                 todo!()
             }
@@ -328,10 +344,7 @@ impl<'a> Matcher<'a> {
         if tv_matcher.match_in_definition == p1.in_definition {
             let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
             match &mut calc.type_ {
-                BoundKind::ParamSpecArgument(p) => {
-                    // match_params(i_s, matches, &p.params, params2_iterator)
-                    todo!()
-                }
+                BoundKind::ParamSpecArgument(p) => match_params(i_s, matches, &p, p2_pre_iterator),
                 BoundKind::Uncalculated => {
                     calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
                         CallableParams::WithParamSpec(

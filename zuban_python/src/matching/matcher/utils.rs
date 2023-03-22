@@ -314,7 +314,13 @@ fn calculate_type_vars<'db>(
                             t1.has_any(i_s) | t2.has_any(i_s)
                         }
                         BoundKind::TypeVarTuple(ts) => ts.args.has_any(i_s),
-                        BoundKind::ParamSpecArgument(params) => todo!(),
+                        BoundKind::ParamSpecArgument(params) => match &params.params {
+                            CallableParams::Simple(params) => todo!(),
+                            CallableParams::WithParamSpec(pre, _) => {
+                                pre.iter().any(|t| t.has_any(i_s))
+                            }
+                            CallableParams::Any => true,
+                        },
                         BoundKind::Uncalculated => continue,
                     };
                     if has_any {
