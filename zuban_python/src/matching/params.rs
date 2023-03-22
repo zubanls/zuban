@@ -63,14 +63,14 @@ pub fn matches_params(
                 matches_simple_params(i_s, matcher, params1.iter(), params2.iter(), variance)
             }
         }
-        (WithParamSpec(pre1, usage1), WithParamSpec(pre2, usage2)) => (pre1.len() == pre2.len()
-            && pre1.iter().zip(pre2.iter()).all(|(p1, p2)| {
-                Type::new(p1)
-                    .matches(i_s, matcher, &Type::new(p2), variance)
-                    .bool()
-            })
-            && usage1 == usage2)
-            .into(),
+        (WithParamSpec(pre1, usage1), WithParamSpec(pre2, usage2)) => {
+            if skip_first_of_params2 {
+                todo!()
+            }
+            matcher.match_or_add_param_spec_against_param_spec(
+                i_s, pre1, usage1, pre2, usage2, type_vars2, variance,
+            )
+        }
         (Any, _) | (_, Any) => Match::new_true(),
         (WithParamSpec(types, param_spec), Simple(params2)) => {
             let mut params2 = params2.iter();

@@ -2,7 +2,6 @@
 
 # New ParamSpec tests
 testNoParamSpecDoubling
-testCopiedParamSpecComparison
 
 # dict specialities
 testDictWithKeywordArgsOnly

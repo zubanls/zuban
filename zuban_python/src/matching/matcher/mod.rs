@@ -288,6 +288,70 @@ impl<'a> Matcher<'a> {
         matches
     }
 
+    pub fn match_or_add_param_spec_against_param_spec(
+        &mut self,
+        i_s: &mut InferenceState,
+        p1_pre_param_spec: &[DbType],
+        p1: &ParamSpecUsage,
+        p2_pre_param_spec: &[DbType],
+        p2: &ParamSpecUsage,
+        type_vars2: Option<(&TypeVarLikes, PointLink)>,
+        variance: Variance,
+    ) -> Match {
+        let mut p2_pre_iterator = p2_pre_param_spec.iter();
+        let mut matches = Match::new_true();
+        for t1 in p1_pre_param_spec {
+            let Some(t2) = p2_pre_iterator.next() else {
+                return Match::new_false()
+            };
+            matches &= Type::new(t1).matches(i_s, self, &Type::new(t2), variance);
+            if !matches.bool() {
+                return matches;
+            }
+        }
+        let match_params = |i_s, matches, params: &_| match params {
+            CallableParams::Simple(params1) => todo!(),
+            CallableParams::Any => matches,
+            CallableParams::WithParamSpec(_, _) => todo!(),
+        };
+        if let Some(class) = self.class {
+            if class.node_ref.as_link() == p1.in_definition {
+                let usage = class.generics().nth_param_spec_usage(i_s.db, p1);
+                return match_params(i_s, matches, &usage.params);
+            } else {
+                todo!()
+            }
+        }
+        let Some(tv_matcher) = self.type_var_matcher.as_mut() else {
+            return (p2_pre_iterator.next().is_none() && p1 == p2).into()
+        };
+        if tv_matcher.match_in_definition == p1.in_definition {
+            let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
+            match &mut calc.type_ {
+                BoundKind::ParamSpecArgument(p) => {
+                    // match_params(i_s, matches, &p.params, params2_iterator)
+                    todo!()
+                }
+                BoundKind::Uncalculated => {
+                    calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
+                        CallableParams::WithParamSpec(
+                            p2_pre_iterator.cloned().collect(),
+                            p2.clone(),
+                        ),
+                        type_vars2.map(|type_vars| ParamSpecTypeVars {
+                            type_vars: type_vars.0.clone(),
+                            in_definition: type_vars.1,
+                        }),
+                    ));
+                    matches
+                }
+                _ => unreachable!(),
+            }
+        } else {
+            (p2_pre_iterator.next().is_none() && p1 == p2).into()
+        }
+    }
+
     pub fn match_or_add_param_spec(
         &mut self,
         i_s: &mut InferenceState,
