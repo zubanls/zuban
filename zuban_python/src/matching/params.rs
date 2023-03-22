@@ -32,8 +32,20 @@ pub fn matches_params(
     skip_first_of_params2: bool,
 ) -> Match {
     if matcher.is_matching_reverse() {
-        debug!("TODO should probably be the line below");
-        //return matcher.match_reverse(|matcher| matches_params(i_s, matcher, params2, params1, variance.invert(), skip_first_of_params2))
+        if type_vars2.is_none() {
+            return matcher.match_reverse(|matcher| {
+                matches_params(
+                    i_s,
+                    matcher,
+                    params2,
+                    params1,
+                    type_vars2,
+                    variance.invert(),
+                    skip_first_of_params2,
+                )
+            });
+        }
+        debug!("TODO should probably be the line above");
     }
 
     use CallableParams::*;
