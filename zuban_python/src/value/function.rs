@@ -852,7 +852,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     if previous_kind == Some(ParamKind::PositionalOnly)
                         && current_kind != ParamKind::PositionalOnly
                     {
-                        out = format!(" /, {out}")
+                        out = format!("/, {out}")
                     }
                     out
                 };
