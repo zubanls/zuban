@@ -188,7 +188,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             node_ref.add_typing_issue(
                 i_s.db,
                 IssueType::NotCallable {
-                    type_: format!("{:?}", self.name()).into(),
+                    type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
                 },
             );
             Inferred::new_unknown()

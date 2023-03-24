@@ -4,7 +4,8 @@ use super::{
     match_tuple_type_arguments, matches_params, FormatData, Match, Matcher, ParamsStyle, Type,
 };
 use crate::database::{
-    CallableParams, Database, GenericItem, ParamSpecArgument, TypeArguments, Variance,
+    CallableParams, Database, DbType, GenericItem, ParamSpecArgument, TypeArguments, TypeVarLike,
+    Variance,
 };
 use crate::inference_state::InferenceState;
 
@@ -110,6 +111,22 @@ impl<'a> Generic<'a> {
         match self {
             Self::TypeArgument(t) => t,
             _ => todo!(),
+        }
+    }
+
+    pub fn maybe_simple_type_var_like(&self) -> Option<TypeVarLike> {
+        match self {
+            Self::TypeArgument(t) => match t.maybe_db_type() {
+                Some(DbType::TypeVar(t)) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
+                _ => None,
+            },
+            Self::TypeVarTuple(ts) => todo!(),
+            Self::ParamSpecArgument(params) => match &params.params {
+                CallableParams::WithParamSpec(_, p) => {
+                    Some(TypeVarLike::ParamSpec(p.param_spec.clone()))
+                }
+                _ => None,
+            },
         }
     }
 }

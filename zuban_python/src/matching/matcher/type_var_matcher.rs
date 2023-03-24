@@ -1,4 +1,4 @@
-use super::super::{common_base_type, Match, MismatchReason, Type};
+use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
     CallableContent, Database, DbType, GenericItem, ParamSpecArgument, PointLink,
@@ -97,6 +97,17 @@ impl CalculatedTypeVarLike {
                     GenericItem::ParamSpecArgument(ParamSpecArgument::new_any())
                 }
             },
+        }
+    }
+
+    pub fn update_uncalculated_with_generic_invariant(&mut self, db: &Database, g: Generic) {
+        debug_assert!(matches!(self.type_, BoundKind::Uncalculated));
+        self.type_ = match g {
+            Generic::TypeArgument(t) => {
+                BoundKind::TypeVar(TypeVarBound::Invariant(t.into_db_type(db)))
+            }
+            Generic::TypeVarTuple(t) => todo!(),
+            Generic::ParamSpecArgument(p) => todo!(),
         }
     }
 }

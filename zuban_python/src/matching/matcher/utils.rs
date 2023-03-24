@@ -58,21 +58,57 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
     if let Some(t) = function.first_param_annotation_type(i_s) {
         let mut class = *class;
         if matches!(class.generics, Generics::NotDefinedYet) {
+            // Special case for self argument in __init__ is necessary, because we do not yet know
+            // the generics and they need to be calculated. Something like `self: dict[int, U]`
+            // where T and U ar class type variables, means that T is defined as int, and U is not
+            // defined yet. So we have to filter that [1].
+            //
+            // Since you are however allowed to write weird arbitrary stuff like self: Any as well,
+            // we also have to check for that case [2].
             class.generics = Generics::Self_ {
                 class_definition: class.node_ref.as_link(),
                 type_var_likes: class.type_vars(i_s),
             };
-            let matches = Type::Class(class).is_super_type_of(
-                &mut i_s.with_class_context(&class),
-                &mut matcher,
-                &t,
-            );
-            if let Match::False { similar, .. } = matches {
-                return CalculatedTypeArguments {
-                    in_definition: match_in_definition,
-                    matches: SignatureMatch::False { similar },
-                    type_arguments: None,
-                };
+            let mut checked = false;
+            if let Some(self_class) = t.maybe_class(i_s.db) {
+                if self_class.node_ref == class.node_ref {
+                    // [1]
+                    checked = true;
+                    for (i, (type_var_like, g)) in type_vars
+                        .unwrap()
+                        .iter()
+                        .zip(self_class.generics().iter(i_s.db))
+                        .enumerate()
+                    {
+                        if !g
+                            .maybe_simple_type_var_like()
+                            .map(|tv2| type_var_like == &tv2)
+                            .unwrap_or(false)
+                        {
+                            matcher
+                                .type_var_matcher
+                                .as_mut()
+                                .unwrap()
+                                .calculated_type_vars[i]
+                                .update_uncalculated_with_generic_invariant(i_s.db, g)
+                        }
+                    }
+                }
+            }
+            if !checked {
+                // [2]
+                let matches = Type::Class(class).is_super_type_of(
+                    &mut i_s.with_class_context(&class),
+                    &mut matcher,
+                    &t,
+                );
+                if let Match::False { similar, .. } = matches {
+                    return CalculatedTypeArguments {
+                        in_definition: match_in_definition,
+                        matches: SignatureMatch::False { similar },
+                        type_arguments: None,
+                    };
+                }
             }
         } else {
             // Typicall this happens when a class is used with type application, but when a self
