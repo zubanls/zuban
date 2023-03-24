@@ -34,8 +34,9 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
         class.name(),
         function.name(),
     );
-    let has_generics = !matches!(class.generics, Generics::None | Generics::NotDefinedYet);
     let type_vars = class.type_vars(i_s);
+    let has_generics =
+        !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_none();
     // Function type vars need to be calculated, so annotations are used.
     let func_type_vars = function.type_vars(i_s);
 

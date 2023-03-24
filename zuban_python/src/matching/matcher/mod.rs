@@ -558,8 +558,6 @@ impl<'a> Matcher<'a> {
                 if usage.in_definition() == func_class.node_ref.as_link() {
                     let type_var_remap = func_class.type_var_remap.unwrap();
                     return Generic::new(&type_var_remap[usage.index()]).format(format_data);
-                } else {
-                    todo!("Probably nested generic functions???")
                 }
             }
             Some(FunctionOrCallable::Callable(c)) => {

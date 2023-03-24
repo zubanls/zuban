@@ -94,6 +94,18 @@ b: List[str]
 
 e: List[Union[int, str]] = add(a, b)
 
+[case init_type_var_on_self_issue_6520]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+class A:
+    def __init__(self, x: T) -> None:
+        self.x = x
+    def get(self) -> T:  # E: A function returning TypeVar should receive at least one argument containing the same Typevar
+        return self.x  # E: Incompatible return value type (got "T", expected "T")
+
+x: int = A('lol').get()
+
 [case nested_generic_mismatch_function]
 from typing import TypeVar
 T = TypeVar('T')
