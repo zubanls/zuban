@@ -110,16 +110,6 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
                     };
                 }
             }
-        } else {
-            // Typicall this happens when a class is used with type application, but when a self
-            // type is also available on __init__, e.g.
-            //
-            //      class Foo(Generic[T]):
-            //          def __init__(self: Foo[T], var: T): ...
-            //
-            //      Foo[int](1)
-            //
-            debug!("TODO weird case like testParamSpecLiteralEllipsis");
         }
     }
     if has_generics {
