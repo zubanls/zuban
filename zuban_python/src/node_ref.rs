@@ -203,18 +203,7 @@ impl<'file> NodeRef<'file> {
             type_: issue_type,
             node_index: self.node_index,
         };
-        if self.file.tree.node_has_type_ignore_comment(self.node_index) {
-            debug!(
-                "New ignored issue: {}",
-                Diagnostic::new(db, self.file, &issue).as_string()
-            );
-            return;
-        }
-        debug!(
-            "New issue: {}",
-            Diagnostic::new(db, self.file, &issue).as_string()
-        );
-        self.file.issues.push(Box::pin(issue));
+        self.file.add_typing_issue(db, issue)
     }
 
     pub fn into_inferred(self) -> Inferred {

@@ -12,6 +12,7 @@ use super::name_binder::NameBinder;
 use crate::database::{
     ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Points,
 };
+use crate::debug;
 use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -190,7 +191,7 @@ pub struct PythonFile {
     pub points: Points,
     pub complex_points: ComplexValues,
     file_index: Cell<Option<FileIndex>>,
-    pub issues: InsertOnlyVec<Issue>,
+    issues: InsertOnlyVec<Issue>,
     pub star_imports: RefCell<Vec<StarImport>>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
@@ -290,5 +291,20 @@ impl<'db> PythonFile {
                 self.points.set(i, Point::new_uncalculated())
             }
         }
+    }
+
+    pub fn add_typing_issue(&self, db: &Database, issue: Issue) {
+        if self.tree.node_has_type_ignore_comment(issue.node_index) {
+            debug!(
+                "New ignored issue: {}",
+                Diagnostic::new(db, self, &issue).as_string()
+            );
+            return;
+        }
+        debug!(
+            "New issue: {}",
+            Diagnostic::new(db, self, &issue).as_string()
+        );
+        self.issues.push(Box::pin(issue));
     }
 }
