@@ -1304,7 +1304,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         };
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
-        for link in self.overload.functions.iter() {
+        for (i, link) in self.overload.functions.iter().enumerate() {
+            if i != 0 {
+                args.reset_cache();
+            }
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let calculated_type_args = match_signature(i_s, function);
             match calculated_type_args.matches {

@@ -9,6 +9,7 @@ mod utils;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt;
+use std::ops::Range;
 use std::rc::Rc;
 
 use parsa_python_ast::*;
@@ -295,5 +296,13 @@ impl<'db> PythonFile {
 
     pub fn is_stub(&self, db: &Database) -> bool {
         db.file_path(self.file_index()).ends_with(".pyi")
+    }
+
+    pub fn reset_non_name_cache_between(&self, range: Range<NodeIndex>) {
+        for i in range {
+            if NodeRef::new(self, i).maybe_name().is_none() {
+                self.points.set(i, Point::new_uncalculated())
+            }
+        }
     }
 }

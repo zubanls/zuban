@@ -1328,10 +1328,8 @@ testTypingSelfWithValuesExpansion
 testOptionalLambdaInference
 
 # overload argument expression uses context inference multiple times
-testBadOverloadProbableMatch
 testLiteralAndGenericsWithOverloads
 testPreferExactSignatureMatchInOverload
-testOverloadInferringArgumentsUsingContext1
 
 # - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
 testOverloadPartialOverlapWithUnrestrictedTypeVar

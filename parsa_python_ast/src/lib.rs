@@ -2237,6 +2237,12 @@ impl<'db> Primary<'db> {
             _ => None,
         }
     }
+
+    pub fn expect_closing_bracket_index(&self) -> NodeIndex {
+        let last = self.node.iter_children().last().unwrap();
+        debug_assert_eq!(last.as_code(), ")");
+        last.index
+    }
 }
 
 pub enum PrimaryParent<'db> {

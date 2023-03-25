@@ -40,6 +40,10 @@ pub trait Arguments<'db>: std::fmt::Debug {
     fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> NodeRef;
+    fn reset_cache(&self) {
+        // This is a bit special, but we use this to reset the type cache of the expressions to
+        // avoid overload context inference issues.
+    }
 
     fn maybe_two_positional_args(&self, db: &'db Database) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
         let mut iterator = self.iter();
@@ -120,6 +124,15 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
 
     fn as_node_ref(&self) -> NodeRef {
         NodeRef::new(self.file, self.primary_node_index)
+    }
+
+    fn reset_cache(&self) {
+        // Details is empty when no arguments are provided (e.g. `foo()`), which means we do not
+        // have to reset the cache.
+        let primary = self.as_node_ref().as_primary();
+        let start = primary.index();
+        let end = primary.expect_closing_bracket_index();
+        self.file.reset_non_name_cache_between(start..end);
     }
 }
 
@@ -244,6 +257,11 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
 
     fn as_node_ref(&self) -> NodeRef {
         self.args2.as_node_ref()
+    }
+
+    fn reset_cache(&self) {
+        self.args1.reset_cache();
+        self.args2.reset_cache();
     }
 }
 

@@ -5,6 +5,7 @@ use parsa_python_ast::{
 
 use crate::arguments::{ArgumentIteratorImpl, Arguments, ArgumentsType};
 use crate::database::Execution;
+use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -227,5 +228,9 @@ impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
 
     fn as_node_ref(&self) -> NodeRef {
         self.slice_type.as_node_ref()
+    }
+
+    fn reset_cache(&self) {
+        debug!("TODO implement reset_cache for SliceArguments");
     }
 }
