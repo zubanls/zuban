@@ -6,7 +6,8 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
-use crate::file::{ComplexValues, StarImport};
+use crate::file::python_file::StarImport;
+use crate::file::ComplexValues;
 use crate::utils::{InsertOnlyVec, SymbolTable};
 use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, AtomContent, Block,
