@@ -88,10 +88,7 @@ testReverseComparisonOperator
 testReverseOperatorMethodForwardIsAny3
 
 # Overload
-testTypeCovarianceWithOverloadedFunctions
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
-# Overloads should not promote
-testOverloadWithOverlappingItemsAndAnyArgument5
 # Overloading
 testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
@@ -131,11 +128,13 @@ overload_union_math_on_class_init_constrained
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
 # Overloads maybe later
-testOverloadedCallWithVariableTypes
 testOverloadOverlapWithTypeVarsWithValues
 testOverloadMultipleVarargDefinitionComplex
 # overloading for loop
 testOverloadedInIter
+# overload argument expression uses context inference multiple times
+testLiteralAndGenericsWithOverloads
+testPreferExactSignatureMatchInOverload
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -214,6 +213,7 @@ testLiteralAndGenericsRespectsUpperBound
 testWideOuterContextEmptyError
 # Value of type variable "P" of "new_pro" cannot be "U"
 testTypeUsingTypeCTwoTypeVars
+testOverloadedCallWithVariableTypes
 
 # *args on TypeVar
 testInvalidTypevarValues
@@ -1327,16 +1327,13 @@ testTypingSelfWithValuesExpansion
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
 
-# overload argument expression uses context inference multiple times
-testLiteralAndGenericsWithOverloads
-testPreferExactSignatureMatchInOverload
-
 # - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
 testOverloadPartialOverlapWithUnrestrictedTypeVar
 testOverloadPartialOverlapWithUnrestrictedTypeVarNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion
 testOverloadingWithParamSpec
 # Overlapping general
+testOverloadWithOverlappingItemsAndAnyArgument5
 testIntersectionTypesAndVarArgs
 testLiteralInferredInOverloadContextWithTypevars
 testLiteralSubtypeOverlap
