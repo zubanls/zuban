@@ -124,7 +124,7 @@ fn check_list_with_context<'db>(
                         |i_s: &mut InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
                             let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
                             node_ref.add_typing_issue(
-                                i_s.db,
+                                i_s,
                                 IssueType::ListItemMismatch {
                                     item,
                                     got,
@@ -180,7 +180,7 @@ pub fn on_argument_type_error(
     t2: Box<str>,
 ) {
     arg.as_node_ref().add_typing_issue(
-        i_s.db,
+        i_s,
         IssueType::ArgumentIssue(
             format!(
                 "Argument {}{} has incompatible type \"{t1}\"; expected \"{t2}\"",

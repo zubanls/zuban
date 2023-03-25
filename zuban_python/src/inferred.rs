@@ -619,7 +619,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 if specific == Specific::Cycle {
                     let r = NodeRef::new(file, index);
                     r.add_typing_issue(
-                        i_s.db,
+                        i_s,
                         IssueType::CyclicDefinition {
                             name: Box::from(r.as_code()),
                         },
@@ -773,39 +773,36 @@ impl<'db: 'slf, 'slf> Inferred {
                 PointType::Specific => match point.specific() {
                     Specific::Function => {
                         let func = prepare_func(i_s, *definition, func_class);
-                        let complex =
-                            if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                if let Some(t) =
-                                    create_signature_without_self(i_s, func, instance, &first_type)
-                                {
-                                    ComplexPoint::TypeInstance(Box::new(t))
-                                } else {
-                                    return if let Some(from) = from {
-                                        from.add_typing_issue(
-                                            i_s.db,
-                                            IssueType::InvalidSelfArgument {
-                                                argument_type: instance
-                                                    .as_type(i_s)
-                                                    .format_short(i_s.db),
-                                                function_name: Box::from(func.name()),
-                                                callable: func.as_type(i_s).format_short(i_s.db),
-                                            },
-                                        );
-                                        Some(Self::new_any())
-                                    } else {
-                                        // In case there is no node ref, we do not want to just
-                                        // ignore the type error and we basically say that the
-                                        // attribute does not even exist.
-                                        None
-                                    };
-                                }
+                        let complex = if let Some(first_type) =
+                            func.first_param_annotation_type(i_s)
+                        {
+                            if let Some(t) =
+                                create_signature_without_self(i_s, func, instance, &first_type)
+                            {
+                                ComplexPoint::TypeInstance(Box::new(t))
                             } else {
-                                ComplexPoint::BoundMethod(
-                                    get_inferred(i_s).as_any_link(i_s),
-                                    mro_index,
-                                    *definition,
-                                )
-                            };
+                                return if let Some(from) = from {
+                                    let t = IssueType::InvalidSelfArgument {
+                                        argument_type: instance.as_type(i_s).format_short(i_s.db),
+                                        function_name: Box::from(func.name()),
+                                        callable: func.as_type(i_s).format_short(i_s.db),
+                                    };
+                                    from.add_typing_issue(i_s, t);
+                                    Some(Self::new_any())
+                                } else {
+                                    // In case there is no node ref, we do not want to just
+                                    // ignore the type error and we basically say that the
+                                    // attribute does not even exist.
+                                    None
+                                };
+                            }
+                        } else {
+                            ComplexPoint::BoundMethod(
+                                get_inferred(i_s).as_any_link(i_s),
+                                mro_index,
+                                *definition,
+                            )
+                        };
                         return Some(Self::new_unsaved_complex(complex));
                     }
                     Specific::ClassMethod => {
@@ -814,17 +811,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         if result.is_none() {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, func_class);
-                                from.add_typing_issue(
-                                    i_s.db,
-                                    IssueType::InvalidClassMethodFirstArgument {
-                                        argument_type: instance
-                                            .class
-                                            .as_type(i_s)
-                                            .format_short(i_s.db),
-                                        function_name: Box::from(func.name()),
-                                        callable: func.as_type(i_s).format_short(i_s.db),
-                                    },
-                                );
+                                let t = IssueType::InvalidClassMethodFirstArgument {
+                                    argument_type: instance.class.as_type(i_s).format_short(i_s.db),
+                                    function_name: Box::from(func.name()),
+                                    callable: func.as_type(i_s).format_short(i_s.db),
+                                };
+                                from.add_typing_issue(i_s, t);
                                 return Some(Self::new_any());
                             } else {
                                 todo!()
@@ -955,14 +947,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         if result.is_none() {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, attribute_class);
-                                from.add_typing_issue(
-                                    i_s.db,
-                                    IssueType::InvalidSelfArgument {
-                                        argument_type: class.as_type(i_s).format_short(i_s.db),
-                                        function_name: Box::from(func.name()),
-                                        callable: func.as_type(i_s).format_short(i_s.db),
-                                    },
-                                );
+                                let t = IssueType::InvalidSelfArgument {
+                                    argument_type: class.as_type(i_s).format_short(i_s.db),
+                                    function_name: Box::from(func.name()),
+                                    callable: func.as_type(i_s).format_short(i_s.db),
+                                };
+                                from.add_typing_issue(i_s, t);
                                 return Some(Self::new_any());
                             } else {
                                 todo!()
@@ -974,7 +964,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::Property => todo!(),
                     Specific::AnnotationOrTypeCommentWithTypeVars => {
                         if let Some(from) = from {
-                            from.add_typing_issue(i_s.db, IssueType::AmbigousClassVariableAccess);
+                            from.add_typing_issue(i_s, IssueType::AmbigousClassVariableAccess);
                         } else {
                             todo!()
                         }

@@ -197,12 +197,12 @@ impl<'file> NodeRef<'file> {
         self.file.tree.code_of_index(self.node_index)
     }
 
-    pub(crate) fn add_typing_issue(&self, db: &Database, issue_type: IssueType) {
+    pub(crate) fn add_typing_issue(&self, i_s: &InferenceState, issue_type: IssueType) {
         let issue = Issue {
             type_: issue_type,
             node_index: self.node_index,
         };
-        self.file.add_typing_issue(db, issue)
+        self.file.add_typing_issue(i_s, issue)
     }
 
     pub fn into_inferred(self) -> Inferred {

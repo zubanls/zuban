@@ -105,7 +105,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         args.as_node_ref().add_typing_issue(
-            i_s.db,
+            i_s,
             IssueType::NotCallable {
                 type_: Box::from("Module"),
             },

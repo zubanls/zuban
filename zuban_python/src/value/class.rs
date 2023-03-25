@@ -260,7 +260,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     Type::new(base).check_duplicate_base_class(db, &Type::new(&t))
                                 }) {
                                     NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
-                                        db,
+                                        i_s,
                                         IssueType::DuplicateBaseClass { name },
                                     );
                                     continue;
@@ -268,7 +268,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 mro.push(t);
                                 let class = match &mro.last().unwrap() {
                                     DbType::Class(link, generics) => Some(Class::from_position(
-                                        NodeRef::from_link(i_s.db, *link),
+                                        NodeRef::from_link(db, *link),
                                         generics
                                             .as_ref()
                                             .map(Generics::new_list)
@@ -287,20 +287,15 @@ impl<'db: 'a, 'a> Class<'a> {
                                         incomplete_mro = true;
                                         NodeRef::new(self.node_ref.file, n.index())
                                             .add_typing_issue(
-                                                db,
+                                                i_s,
                                                 IssueType::CyclicDefinition { name },
                                             );
                                     } else {
-                                        for base in class.use_cached_class_infos(i_s.db).mro.iter()
-                                        {
-                                            mro.push(base.replace_type_var_likes(
-                                                i_s.db,
-                                                &mut |t| {
-                                                    mro[mro_index].expect_class_generics()
-                                                        [t.index()]
+                                        for base in class.use_cached_class_infos(db).mro.iter() {
+                                            mro.push(base.replace_type_var_likes(db, &mut |t| {
+                                                mro[mro_index].expect_class_generics()[t.index()]
                                                     .clone()
-                                                },
-                                            ));
+                                            }));
                                         }
                                     }
                                 }

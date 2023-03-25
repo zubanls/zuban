@@ -311,10 +311,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
+        let t = self.as_type(i_s).format_short(i_s.db);
         args.as_node_ref().add_typing_issue(
-            i_s.db,
+            i_s,
             IssueType::NotCallable {
-                type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
+                type_: format!("\"{}\"", t).into(),
             },
         );
         Inferred::new_unknown()
@@ -330,10 +331,11 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     }
 
     fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
+        let t = self.as_type(i_s).format_short(i_s.db);
         from.add_typing_issue(
-            i_s.db,
+            i_s,
             IssueType::NotIterable {
-                type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
+                type_: format!("\"{}\"", t).into(),
             },
         );
         IteratorContent::Any

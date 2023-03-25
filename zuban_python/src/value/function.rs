@@ -292,10 +292,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         self.node_ref.file,
                         func_node.return_annotation().unwrap().expression().index(),
                     );
-                    node_ref.add_typing_issue(i_s.db, IssueType::TypeVarInReturnButNotArgument);
+                    node_ref.add_typing_issue(i_s, IssueType::TypeVarInReturnButNotArgument);
                     if let Some(bound) = t.type_var.bound.as_ref() {
                         node_ref.add_typing_issue(
-                            i_s.db,
+                            i_s,
                             IssueType::Note(
                                 format!(
                                     "Consider using the upper bound \"{}\" instead",
@@ -956,7 +956,7 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     ) -> Inferred {
         slice_type
             .as_node_ref()
-            .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
+            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
         Inferred::new_unknown()
     }
 
@@ -1371,14 +1371,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
                 on_overload_mismatch(i_s, class)
             } else {
-                args.as_node_ref().add_typing_issue(
-                    i_s.db,
-                    IssueType::OverloadMismatch {
-                        name: function.diagnostic_string(self.class.as_ref()),
-                        args: args.iter().into_argument_types(i_s),
-                        variants: self.variants(i_s, search_init),
-                    },
-                );
+                let t = IssueType::OverloadMismatch {
+                    name: function.diagnostic_string(self.class.as_ref()),
+                    args: args.iter().into_argument_types(i_s),
+                    variants: self.variants(i_s, search_init),
+                };
+                args.as_node_ref().add_typing_issue(i_s, t);
             }
         }
         None
@@ -1477,7 +1475,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     ) -> Inferred {
         slice_type
             .as_node_ref()
-            .add_typing_issue(i_s.db, IssueType::OnlyClassTypeApplication);
+            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
         todo!("Please write a test that checks this");
         //Inferred::new_unknown()
     }

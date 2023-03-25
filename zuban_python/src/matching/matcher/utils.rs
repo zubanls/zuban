@@ -548,7 +548,7 @@ pub fn match_arguments_against_params<
                             match reason {
                                 MismatchReason::CannotInferTypeArgument(index) => {
                                     node_ref.add_typing_issue(
-                                        i_s.db,
+                                        i_s,
                                         IssueType::CannotInferTypeArgument {
                                             index: *index,
                                             callable: diagnostic_string("")
@@ -558,7 +558,7 @@ pub fn match_arguments_against_params<
                                 }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
                                     node_ref.add_typing_issue(
-                                        i_s.db,
+                                        i_s,
                                         IssueType::InvalidTypeVarValue {
                                             type_var_name: Box::from(type_var.name(i_s.db)),
                                             of: diagnostic_string("")
@@ -635,7 +635,7 @@ pub fn match_arguments_against_params<
             debug!("TODO this keyword param could also exist");
             format!("Unexpected keyword argument {name:?}")
         };
-        reference.add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+        reference.add_typing_issue(i_s, IssueType::ArgumentIssue(s.into()));
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
@@ -643,7 +643,7 @@ pub fn match_arguments_against_params<
             // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();
             s += diagnostic_string(" for ").as_deref().unwrap_or("");
-            args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref().add_typing_issue(i_s, IssueType::ArgumentIssue(s.into()));
         }
     } else if args_with_params.has_unused_arguments() {
         matches = Match::new_false();
@@ -662,7 +662,7 @@ pub fn match_arguments_against_params<
             }
             if too_many {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                args_node_ref().add_typing_issue(i_s.db, IssueType::TooManyArguments(s));
+                args_node_ref().add_typing_issue(i_s, IssueType::TooManyArguments(s));
             }
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
@@ -681,13 +681,13 @@ pub fn match_arguments_against_params<
                 if param.kind(i_s.db) == ParamKind::KeywordOnly {
                     let mut s = format!("Missing named argument {:?}", param_name);
                     s += diagnostic_string(" for ").as_deref().unwrap_or("");
-                    args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+                    args_node_ref().add_typing_issue(i_s, IssueType::ArgumentIssue(s.into()));
                 } else {
                     missing_positional.push(format!("\"{param_name}\""));
                 }
             } else {
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
-                args_node_ref().add_typing_issue(i_s.db, IssueType::TooFewArguments(s));
+                args_node_ref().add_typing_issue(i_s, IssueType::TooFewArguments(s));
             }
         }
         if let Some(mut s) = match &missing_positional[..] {
@@ -702,7 +702,7 @@ pub fn match_arguments_against_params<
             )),
         } {
             s += diagnostic_string(" to ").as_deref().unwrap_or("");
-            args_node_ref().add_typing_issue(i_s.db, IssueType::ArgumentIssue(s.into()));
+            args_node_ref().add_typing_issue(i_s, IssueType::ArgumentIssue(s.into()));
         };
     }
     match matches {

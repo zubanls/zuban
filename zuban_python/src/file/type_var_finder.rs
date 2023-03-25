@@ -146,7 +146,7 @@ impl<'db, 'file: 'd, 'i_s, 'b, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, '
                         if self.generic_or_protocol_slice.is_some() {
                             self.had_generic_or_protocol_issue = true;
                             NodeRef::new(self.inference.file, primary.index()).add_typing_issue(
-                                self.inference.i_s.db,
+                                self.inference.i_s,
                                 IssueType::EnsureSingleGenericOrProtocol,
                             );
                         }
@@ -230,7 +230,7 @@ impl<'db, 'file: 'd, 'i_s, 'b, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, '
                     if let TypeVarLike::TypeVarTuple(t) = &type_var_like {
                         if self.type_var_manager.has_type_var_tuples() {
                             NodeRef::new(self.inference.file, name.index()).add_typing_issue(
-                                self.inference.i_s.db,
+                                self.inference.i_s,
                                 IssueType::MultipleTypeVarTuplesInClassDef,
                             )
                             // TODO this type var tuple should probably not be added
@@ -239,10 +239,8 @@ impl<'db, 'file: 'd, 'i_s, 'b, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, '
                     let old_index = self.type_var_manager.add(type_var_like, None);
                     if let Some(force_index) = self.current_generic_or_protocol_index {
                         if old_index < force_index {
-                            NodeRef::new(self.inference.file, name.index()).add_typing_issue(
-                                self.inference.i_s.db,
-                                IssueType::DuplicateTypeVar,
-                            )
+                            NodeRef::new(self.inference.file, name.index())
+                                .add_typing_issue(self.inference.i_s, IssueType::DuplicateTypeVar)
                         } else if old_index != force_index {
                             self.type_var_manager.move_index(old_index, force_index);
                         }
@@ -300,7 +298,7 @@ impl<'db, 'file: 'd, 'i_s, 'b, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'b, 'c, '
         // Reorder slices
         if slice_type.iter().count() < self.type_var_manager.len() {
             slice_type.as_node_ref().add_typing_issue(
-                self.inference.i_s.db,
+                self.inference.i_s,
                 IssueType::IncompleteGenericOrProtocolTypeVars,
             )
         }

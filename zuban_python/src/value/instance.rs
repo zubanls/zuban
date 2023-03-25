@@ -77,7 +77,7 @@ impl<'a> Instance<'a> {
                                             &|i_s, class, error_text, argument, got, expected| {
                                                 if argument.index == 2 {
                                                     from.add_typing_issue(
-                                                        i_s.db,
+                                                        i_s,
                                                         IssueType::IncompatibleAssignment {
                                                             got,
                                                             expected,
@@ -185,10 +185,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
         } else {
+            let t = self.as_type(i_s).format_short(i_s.db);
             node_ref.add_typing_issue(
-                i_s.db,
+                i_s,
                 IssueType::NotCallable {
-                    type_: format!("{:?}", self.as_type(i_s).format_short(i_s.db)).into(),
+                    type_: format!("{:?}", t).into(),
                 },
             );
             Inferred::new_unknown()
@@ -220,7 +221,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                         &mut ResultContext::Unknown,
                         OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
                             arg.as_node_ref().add_typing_issue(
-                                i_s.db,
+                                i_s,
                                 IssueType::InvalidGetItem {
                                     actual,
                                     type_: class.unwrap().format_short(i_s.db),
@@ -237,7 +238,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             }
         }
         node_ref.add_typing_issue(
-            i_s.db,
+            i_s,
             IssueType::NotIndexable {
                 type_: self.class.format_short(i_s.db),
             },
@@ -274,7 +275,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             }
         }
         from.add_typing_issue(
-            i_s.db,
+            i_s,
             IssueType::NotIterable {
                 type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
             },

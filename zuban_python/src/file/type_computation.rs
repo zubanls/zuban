@@ -214,7 +214,7 @@ macro_rules! compute_type_application {
                 {
                     if $from_alias_definition {
                         $slice_type.as_node_ref().add_typing_issue(
-                            i_s.db,
+                            i_s,
                             IssueType::BoundTypeVarInAlias{
                                 name: Box::from(type_var_like.name(i_s.db))
                             },
@@ -231,7 +231,7 @@ macro_rules! compute_type_application {
                 {
                     if $from_alias_definition {
                         $slice_type.as_node_ref().add_typing_issue(
-                            i_s.db,
+                            i_s,
                             IssueType::BoundTypeVarInAlias{
                                 name: Box::from(type_var_like.name(i_s.db))
                             },
@@ -942,7 +942,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
             let expected = Type::new(bound);
             if !expected.is_simple_super_type_of(i_s, &actual).bool() {
                 s.as_node_ref().add_typing_issue(
-                    i_s.db,
+                    i_s,
                     IssueType::TypeVarBoundViolation {
                         actual: actual.format_short(i_s.db),
                         of: get_of(),
@@ -975,7 +975,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
             {
                 s.as_node_ref().add_typing_issue(
-                    i_s.db,
+                    i_s,
                     IssueType::InvalidTypeVarValue {
                         type_var_name: Box::from(type_var.name(i_s.db)),
                         of: format!("\"{}\"", get_of()).into(),
@@ -1785,7 +1785,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                     TypeVarCallbackReturn::UnboundTypeVar => {
                         let node_ref = NodeRef::new(self.inference.file, name.index());
                         node_ref.add_typing_issue(
-                            self.inference.i_s.db,
+                            self.inference.i_s,
                             IssueType::UnboundTypeVarLike {
                                 type_var_like: type_var_like.clone(),
                             },
@@ -1953,7 +1953,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
 
     fn add_typing_issue(&self, node_ref: NodeRef, issue_type: IssueType) {
         if !self.errors_already_calculated {
-            node_ref.add_typing_issue(self.inference.i_s.db, issue_type)
+            node_ref.add_typing_issue(self.inference.i_s, issue_type)
         }
     }
 
@@ -1986,7 +1986,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         if !alias.is_class() {
             slice_type
                 .as_node_ref()
-                .add_typing_issue(self.i_s.db, IssueType::OnlyClassTypeApplication);
+                .add_typing_issue(self.i_s, IssueType::OnlyClassTypeApplication);
             return Inferred::new_any();
         }
         compute_type_application!(
@@ -2477,7 +2477,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         let t = comp.compute_type(expr);
         if matches!(t, TypeContent::InvalidVariable(_)) {
             // TODO this is a bit weird and should probably generate other errors
-            node_ref.add_typing_issue(comp.inference.i_s.db, IssueType::TypeVarTypeExpected);
+            node_ref.add_typing_issue(comp.inference.i_s, IssueType::TypeVarTypeExpected);
             return None;
         }
         Some(comp.as_db_type(t, node_ref))
@@ -2494,7 +2494,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
         );
         match comp.compute_type(expr) {
             TypeContent::InvalidVariable(_) => {
-                node_ref.add_typing_issue(self.i_s.db, IssueType::NewTypeInvalidType);
+                node_ref.add_typing_issue(self.i_s, IssueType::NewTypeInvalidType);
                 DbType::Any
             }
             t => {
@@ -2504,7 +2504,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                     DbType::Class(..) | DbType::Tuple(..) | DbType::NewType(..)
                 ) {
                     node_ref.add_typing_issue(
-                        self.i_s.db,
+                        self.i_s,
                         IssueType::NewTypeMustBeSubclassable {
                             got: t.format_short(self.i_s.db),
                         },

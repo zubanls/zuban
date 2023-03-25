@@ -634,7 +634,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                             let s = Type::Class(i_s.db.python_state.str());
                                             if !key.is_simple_same_type(i_s, &s).bool() {
                                                 node_ref.add_typing_issue(
-                                                    i_s.db,
+                                                    i_s,
                                                     IssueType::ArgumentIssue(Box::from(
                                                         "Keywords must be strings",
                                                     )),
@@ -656,7 +656,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             }
                             let value_type = value_type.unwrap_or_else(|| {
                                 node_ref.add_typing_issue(
-                                    i_s.db,
+                                    i_s,
                                     IssueType::ArgumentIssue(
                                         format!(
                                             "Argument after ** must be a mapping, not \"{}\"",

@@ -47,7 +47,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 SimpleStmtContent::ImportFrom(import_from) => {
                     if class.is_some() && func.is_none() {
                         NodeRef::new(self.file, simple_stmt.index())
-                            .add_typing_issue(self.i_s.db, IssueType::UnsupportedClassScopedImport);
+                            .add_typing_issue(self.i_s, IssueType::UnsupportedClassScopedImport);
                     }
                     self.cache_import_from(import_from);
                 }
@@ -198,14 +198,14 @@ impl<'db> Inference<'db, '_, '_, '_> {
             is_overload_member = o.implementing_function.is_none();
             if o.functions.len() < 2 {
                 NodeRef::from_link(self.i_s.db, o.functions[0])
-                    .add_typing_issue(self.i_s.db, IssueType::OverloadSingleNotAllowed);
+                    .add_typing_issue(self.i_s, IssueType::OverloadSingleNotAllowed);
             } else if o.implementing_function.is_none() && !self.file.is_stub(self.i_s.db) {
                 name_def_node_ref
-                    .add_typing_issue(self.i_s.db, IssueType::OverloadImplementationNeeded);
+                    .add_typing_issue(self.i_s, IssueType::OverloadImplementationNeeded);
             }
             if o.implementing_function.is_some() && self.file.is_stub(self.i_s.db) {
                 name_def_node_ref
-                    .add_typing_issue(self.i_s.db, IssueType::OverloadStubImplementationNotAllowed);
+                    .add_typing_issue(self.i_s, IssueType::OverloadStubImplementationNotAllowed);
             }
             let mut maybe_implementation = None;
             let mut implementation_callable_content = None;
@@ -249,14 +249,10 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                 CallableParams::WithParamSpec(_, _) => todo!(),
                             }
                         } else {
-                            implementation.node_ref.add_typing_issue(
-                                self.i_s.db,
-                                IssueType::NotCallable {
-                                    type_: implementation
-                                        .decorated(self.i_s)
-                                        .format_short(self.i_s),
-                                },
-                            );
+                            let type_ = implementation.decorated(self.i_s).format_short(self.i_s);
+                            implementation
+                                .node_ref
+                                .add_typing_issue(self.i_s, IssueType::NotCallable { type_ });
                             // Avoid multiple reports
                             maybe_implementation = None;
                         }
@@ -294,7 +290,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         Match::True { with_any: false }
                     ) {
                         f2.node_ref.add_typing_issue(
-                            self.i_s.db,
+                            self.i_s,
                             IssueType::OverloadUnmatchable {
                                 matchable_signature_index: i + 1,
                                 unmatchable_signature_index: i + k + 2,
@@ -313,7 +309,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             )
                         {
                             f1.node_ref.add_typing_issue(
-                                self.i_s.db,
+                                self.i_s,
                                 IssueType::OverloadIncompatibleReturnTypes {
                                     first_signature_index: i + 1,
                                     second_signature_index: i + k + 2,
@@ -347,7 +343,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                                     return node_ref;
                                 }
                                 node_ref.add_typing_issue(
-                                    i_s.db,
+                                    i_s,
                                     IssueType::IncompatibleDefaultArgument {
                                         argument_name: Box::from(param.name_definition().as_code()),
                                         got,
@@ -387,7 +383,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                 .bool()
         {
             name_def_node_ref.add_typing_issue(
-                self.i_s.db,
+                self.i_s,
                 IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
             );
         }
@@ -401,7 +397,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
         );
         if !match_.bool() {
             name_def_node_ref.add_typing_issue(
-                self.i_s.db,
+                self.i_s,
                 IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
             );
         }
@@ -416,10 +412,8 @@ impl<'db> Inference<'db, '_, '_, '_> {
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
                     t.error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
                         let node_ref = NodeRef::new(self.file, return_stmt.index());
-                        node_ref.add_typing_issue(
-                            i_s.db,
-                            IssueType::IncompatibleReturn { got, expected },
-                        );
+                        node_ref
+                            .add_typing_issue(i_s, IssueType::IncompatibleReturn { got, expected });
                         node_ref.to_db_lifetime(i_s.db)
                     });
                 } else {
@@ -488,7 +482,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
                             .unwrap_or(false)
                         {
                             NodeRef::new(self.file, exception.index())
-                                .add_typing_issue(self.i_s.db, IssueType::BaseExceptionExpected);
+                                .add_typing_issue(self.i_s, IssueType::BaseExceptionExpected);
                         }
                     }
                     self.calc_block_diagnostics(block, class, func)

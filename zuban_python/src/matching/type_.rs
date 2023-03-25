@@ -935,7 +935,7 @@ impl<'a> Type<'a> {
                 match reason {
                     MismatchReason::SequenceInsteadOfListNeeded => {
                         node_ref.add_typing_issue(
-                            i_s.db,
+                            i_s,
                             IssueType::InvariantNote {
                                 actual: "List",
                                 maybe: "Sequence",
@@ -944,7 +944,7 @@ impl<'a> Type<'a> {
                     }
                     MismatchReason::MappingInsteadOfDictNeeded => {
                         node_ref.add_typing_issue(
-                            i_s.db,
+                            i_s,
                             IssueType::InvariantNote {
                                 actual: "Dict",
                                 maybe: "Mapping",
