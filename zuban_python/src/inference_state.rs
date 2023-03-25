@@ -1,3 +1,5 @@
+use std::cell::Cell;
+
 use crate::arguments::{Arguments, SimpleArguments};
 use crate::database::{CallableContent, Database, Execution};
 use crate::value::{Class, Function};
@@ -13,9 +15,16 @@ pub enum Context<'db, 'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
+enum Mode<'a> {
+    Normal,
+    OverloadCheck { had_error: &'a Cell<bool> },
+}
+
+#[derive(Clone, Copy, Debug)]
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
     pub context: Context<'db, 'a>,
+    mode: Mode<'a>,
 }
 
 impl<'db, 'a> InferenceState<'db, 'a> {
@@ -23,6 +32,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db,
             context: Context::None,
+            mode: Mode::Normal,
         }
     }
 
@@ -30,6 +40,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context,
+            mode: Mode::Normal,
         }
     }
 
@@ -41,6 +52,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::Execution(func, args),
+            mode: Mode::Normal,
         }
     }
 
@@ -52,6 +64,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::DiagnosticExecution(func, args),
+            mode: Mode::Normal,
         }
     }
 
@@ -59,6 +72,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::None,
+            mode: Mode::Normal,
         }
     }
 
@@ -66,6 +80,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::Class(current_class),
+            mode: Mode::Normal,
         }
     }
 
@@ -73,6 +88,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::DiagnosticClass(current_class),
+            mode: Mode::Normal,
         }
     }
 
@@ -80,6 +96,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::LambdaCallable(callable),
+            mode: Mode::Normal,
         }
     }
 
