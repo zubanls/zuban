@@ -9,8 +9,7 @@ use parsa_python_ast::{
 use crate::database::{
     ComplexPoint, Database, DbType, FileIndex, Locality, Point, PointLink, PointType,
 };
-use crate::debug;
-use crate::diagnostics::{Diagnostic, Issue, IssueType};
+use crate::diagnostics::{Issue, IssueType};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;

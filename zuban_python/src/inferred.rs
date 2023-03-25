@@ -569,13 +569,13 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn save_redirect(self, db: &Database, file: &PythonFile, index: NodeIndex) -> Self {
-        self.maybe_save_redirect(db, file, index, false)
+    pub fn save_redirect(self, i_s: &InferenceState, file: &PythonFile, index: NodeIndex) -> Self {
+        self.maybe_save_redirect(i_s, file, index, false)
     }
 
     pub fn maybe_save_redirect(
         self,
-        db: &Database,
+        i_s: &InferenceState,
         file: &PythonFile,
         index: NodeIndex,
         ignore_if_already_saved: bool,
@@ -619,7 +619,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 if specific == Specific::Cycle {
                     let r = NodeRef::new(file, index);
                     r.add_typing_issue(
-                        db,
+                        i_s.db,
                         IssueType::CyclicDefinition {
                             name: Box::from(r.as_code()),
                         },
@@ -637,11 +637,16 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::new_saved(file, index, point)
     }
 
-    pub fn save_if_unsaved(self, db: &Database, file: &'db PythonFile, index: NodeIndex) -> Self {
+    pub fn save_if_unsaved(
+        self,
+        i_s: &InferenceState,
+        file: &'db PythonFile,
+        index: NodeIndex,
+    ) -> Self {
         if matches!(self.state, InferredState::Saved(_, _)) {
             self
         } else {
-            self.save_redirect(db, file, index)
+            self.save_redirect(i_s, file, index)
         }
     }
 
@@ -1173,7 +1178,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &mut InferenceState<'db, '_>,
         from: NodeRef,
     ) -> IteratorContent<'db> {
-        self.save_if_unsaved(i_s.db, from.file, from.node_index)
+        self.save_if_unsaved(i_s, from.file, from.node_index)
             .internal_run_after_save(
                 i_s,
                 &mut |i_s, v| v.iter(i_s, from),

@@ -492,9 +492,14 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                                 right_side,
                                 &mut ResultContext::ExpectLiteral,
                             );
-                            self.assign_single_target(target, &right.clone(), true, |index| {
-                                right.save_redirect(self.i_s.db, self.file, index);
-                            });
+                            self.assign_single_target(
+                                target,
+                                &right.clone(),
+                                true,
+                                |i_s, index| {
+                                    right.save_redirect(i_s, self.file, index);
+                                },
+                            );
                         } else {
                             todo!()
                         }
@@ -509,7 +514,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                             t.error_if_not_matches(self.i_s, &right, on_type_error);
                         }
                         let inf_annot = self.use_cached_annotation(annotation);
-                        self.assign_single_target(target, &inf_annot, true, |index| {
+                        self.assign_single_target(target, &inf_annot, true, |_, index| {
                             self.file.points.set(
                                 index,
                                 Point::new_redirect(
@@ -547,7 +552,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         )
                 });
                 if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
-                    self.assign_single_target(target, &result, false, |index| {
+                    self.assign_single_target(target, &result, false, |_, index| {
                         // There is no need to save this, because it's never used
                     })
                 } else {
@@ -593,7 +598,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         target: Target,
         value: &Inferred,
         is_definition: bool,
-        save: impl FnOnce(NodeIndex),
+        save: impl FnOnce(&InferenceState, NodeIndex),
     ) {
         match target {
             Target::Name(name_def) => {
@@ -624,7 +629,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         },
                     );
                 }
-                save(name_def.index());
+                save(self.i_s, name_def.index());
             }
             Target::NameExpression(primary_target, name_definition) => {
                 if primary_target.as_code().contains("self") {
@@ -692,7 +697,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                     );
                 }
                 // This mostly needs to be saved for self names
-                save(name_definition.index());
+                save(self.i_s, name_definition.index());
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -818,10 +823,10 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             Target::Starred(n) => {
                 todo!("Star tuple unpack");
             }
-            _ => self.assign_single_target(target, &value, is_definition, |index| {
+            _ => self.assign_single_target(target, &value, is_definition, |i_s, index| {
                 value
                     .clone()
-                    .maybe_save_redirect(self.i_s.db, self.file, index, true);
+                    .maybe_save_redirect(i_s, self.file, index, true);
             }),
         };
     }
@@ -852,7 +857,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             }
             StarExpressionContent::Tuple(tuple) => self
                 .infer_tuple_iterator(tuple.iter())
-                .save_redirect(self.i_s.db, self.file, tuple.index()),
+                .save_redirect(self.i_s, self.file, tuple.index()),
         }
     }
 
@@ -901,7 +906,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         // We only save the result if nothing is there, yet. It could be that we pass this function
         // twice, when for example a class F(List[X]) is created, where X = F and X is defined
         // before F, this might happen.
-        inferred.maybe_save_redirect(self.i_s.db, self.file, expr.index(), true)
+        inferred.maybe_save_redirect(self.i_s, self.file, expr.index(), true)
     }
 
     pub fn infer_expression_part(
@@ -1442,7 +1447,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             Ellipsis => Specific::Ellipsis,
             List(list) => {
                 if let Some(result) = self.infer_list_literal_from_context(list, result_context) {
-                    return result.save_redirect(self.i_s.db, self.file, atom.index());
+                    return result.save_redirect(self.i_s, self.file, atom.index());
                 }
                 let result = match list.unpack() {
                     Some(elements) => self
@@ -1467,7 +1472,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
                         self.i_s.db.python_state.builtins_point_link("set"),
                         Some(Box::new([self.create_list_or_set_generics(elements)])),
                     )
-                    .save_redirect(self.i_s.db, self.file, atom.index());
+                    .save_redirect(self.i_s, self.file, atom.index());
                 } else {
                     todo!()
                 }
@@ -1475,7 +1480,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             SetComprehension(_) => todo!(),
             Tuple(tuple) => {
                 return self.infer_tuple_iterator(tuple.iter()).save_redirect(
-                    self.i_s.db,
+                    self.i_s,
                     self.file,
                     atom.index(),
                 )
@@ -1539,7 +1544,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             true,
             &mut ResultContext::Unknown,
         )
-        .save_redirect(self.i_s.db, self.file, primary_target.index())
+        .save_redirect(self.i_s, self.file, primary_target.index())
     }
 
     fn infer_primary_target_or_atom(&mut self, t: PrimaryTargetOrAtom) -> Inferred {

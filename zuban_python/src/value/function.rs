@@ -394,9 +394,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
                 Box::new(callable_content),
             ))))
-            .save_redirect(i_s.db, decorator_ref.file, decorator_ref.node_index)
+            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
         } else {
-            new_inf.save_redirect(i_s.db, decorator_ref.file, decorator_ref.node_index)
+            new_inf.save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
         }
     }
 
