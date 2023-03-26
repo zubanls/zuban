@@ -5,7 +5,7 @@ use crate::database::{CallableContent, Database, Execution};
 use crate::value::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]
-pub enum Context<'db, 'a> {
+enum Context<'db, 'a> {
     None,
     DiagnosticClass(&'a Class<'a>),
     Class(&'a Class<'a>),
@@ -23,7 +23,7 @@ enum Mode<'a> {
 #[derive(Clone, Copy, Debug)]
 pub struct InferenceState<'db, 'a> {
     pub db: &'db Database,
-    pub context: Context<'db, 'a>,
+    context: Context<'db, 'a>,
     mode: Mode<'a>,
 }
 
@@ -32,14 +32,6 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db,
             context: Context::None,
-            mode: Mode::Normal,
-        }
-    }
-
-    pub fn with_context(&self, context: Context<'db, 'a>) -> Self {
-        Self {
-            db: self.db,
-            context,
             mode: Mode::Normal,
         }
     }

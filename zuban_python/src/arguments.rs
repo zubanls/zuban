@@ -8,11 +8,11 @@ use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
-use crate::inference_state::{Context, InferenceState};
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Function, IteratorContent};
+use crate::InferenceState;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
     Primary, PrimaryContent,
@@ -98,7 +98,7 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
                 },
             },
             ArgumentsDetails::Comprehension(comprehension) => {
-                ArgumentIteratorBase::Comprehension(self.i_s.context, self.file, comprehension)
+                ArgumentIteratorBase::Comprehension(self.i_s, self.file, comprehension)
             }
             ArgumentsDetails::None => ArgumentIteratorBase::Finished,
         })
@@ -275,7 +275,7 @@ impl<'db, 'a> CombinedArguments<'db, 'a> {
 pub enum ArgumentKind<'db, 'a> {
     // Can be used for classmethod class or self in bound methods
     Keyword {
-        context: Context<'db, 'a>,
+        i_s: InferenceState<'db, 'a>,
         key: &'a str,
         node_ref: NodeRef<'a>,
     },
@@ -287,12 +287,12 @@ pub enum ArgumentKind<'db, 'a> {
         is_keyword: bool,
     },
     Positional {
-        context: Context<'db, 'a>,
+        i_s: InferenceState<'db, 'a>,
         position: usize, // The position as a 1-based index
         node_ref: NodeRef<'a>,
     },
     SlicesTuple {
-        context: Context<'db, 'a>,
+        i_s: InferenceState<'db, 'a>,
         slices: Slices<'a>,
     },
     ParamSpec {
@@ -301,7 +301,7 @@ pub enum ArgumentKind<'db, 'a> {
         position: usize,
     },
     Comprehension {
-        context: Context<'db, 'a>,
+        i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
         comprehension: Comprehension<'a>,
     },
@@ -309,26 +309,26 @@ pub enum ArgumentKind<'db, 'a> {
 
 impl<'db, 'a> ArgumentKind<'db, 'a> {
     fn new_positional_return(
-        context: Context<'db, 'a>,
+        i_s: InferenceState<'db, 'a>,
         position: usize,
         file: &'a PythonFile,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
         BaseArgumentReturn::Argument(ArgumentKind::Positional {
-            context,
+            i_s,
             position,
             node_ref: NodeRef { file, node_index },
         })
     }
 
     fn new_keyword_return(
-        context: Context<'db, 'a>,
+        i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
         key: &'a str,
         node_index: NodeIndex,
     ) -> BaseArgumentReturn<'db, 'a> {
         BaseArgumentReturn::Argument(ArgumentKind::Keyword {
-            context,
+            i_s,
             key,
             node_ref: NodeRef { file, node_index },
         })
@@ -359,10 +359,8 @@ impl<'db, 'a> Argument<'db, 'a> {
     ) -> Inferred {
         match &self.kind {
             ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),
-            ArgumentKind::Positional {
-                context, node_ref, ..
-            } => {
-                let mut i_s = i_s.with_context(*context);
+            ArgumentKind::Positional { i_s, node_ref, .. } => {
+                let mut i_s = *i_s;
                 node_ref
                     .file
                     // TODO this execution is wrong
@@ -372,17 +370,15 @@ impl<'db, 'a> Argument<'db, 'a> {
                         result_context,
                     )
             }
-            ArgumentKind::Keyword {
-                context, node_ref, ..
-            } => {
-                let mut i_s = i_s.with_context(*context);
+            ArgumentKind::Keyword { i_s, node_ref, .. } => {
+                let mut i_s = *i_s;
                 node_ref
                     .file
                     .inference(&mut i_s)
                     .infer_expression_with_context(node_ref.as_expression(), result_context)
             }
-            ArgumentKind::SlicesTuple { context, slices } => {
-                let mut i_s = i_s.with_context(*context);
+            ArgumentKind::SlicesTuple { i_s, slices } => {
+                let mut i_s = *i_s;
                 let parts = slices
                     .iter()
                     .map(|x| {
@@ -399,9 +395,9 @@ impl<'db, 'a> Argument<'db, 'a> {
             ArgumentKind::Comprehension {
                 file,
                 comprehension,
-                context,
+                i_s,
             } => {
-                let mut i_s = i_s.with_context(*context);
+                let mut i_s = *i_s;
                 file.inference(&mut i_s).infer_comprehension(*comprehension)
             }
             ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
@@ -458,7 +454,7 @@ enum ArgumentIteratorBase<'db, 'a> {
         iterator: std::iter::Enumerate<ArgumentsIterator<'a>>,
         kwargs_before_star_args: Option<Vec<ASTArgument<'a>>>,
     },
-    Comprehension(Context<'db, 'a>, &'a PythonFile, Comprehension<'a>),
+    Comprehension(InferenceState<'db, 'a>, &'a PythonFile, Comprehension<'a>),
     Inferred {
         inferred: &'a Inferred,
         node_ref: NodeRef<'a>,
@@ -568,7 +564,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     match arg {
                         ASTArgument::Positional(named_expr) => {
                             return Some(ArgumentKind::new_positional_return(
-                                i_s.context,
+                                *i_s,
                                 i + 1,
                                 file,
                                 named_expr.index(),
@@ -579,7 +575,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 kwargs_before_star_args.push(arg);
                             } else {
                                 return Some(ArgumentKind::new_keyword_return(
-                                    i_s.context,
+                                    *i_s,
                                     file,
                                     name.as_code(),
                                     expr.index(),
@@ -682,7 +678,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         match kwarg_before_star_args {
                             ASTArgument::Keyword(name, expr) => {
                                 return Some(ArgumentKind::new_keyword_return(
-                                    i_s.context,
+                                    *i_s,
                                     file,
                                     name.as_code(),
                                     expr.index(),
@@ -694,9 +690,9 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 }
                 None
             }
-            Self::Comprehension(context, file, comprehension) => {
+            Self::Comprehension(i_s, file, comprehension) => {
                 Some(BaseArgumentReturn::Argument(ArgumentKind::Comprehension {
-                    context: *context,
+                    i_s: *i_s,
                     file,
                     comprehension: *comprehension,
                 }))
@@ -711,7 +707,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                         let file = s.file;
                         let named_expr = s.named_expr;
                         Some(ArgumentKind::new_positional_return(
-                            i_s.context,
+                            i_s,
                             1,
                             file,
                             named_expr.index(),
@@ -719,7 +715,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     }
                     SliceTypeContent::Slices(slices) => {
                         Some(BaseArgumentReturn::Argument(ArgumentKind::SlicesTuple {
-                            context: i_s.context,
+                            i_s,
                             slices,
                         }))
                     }
