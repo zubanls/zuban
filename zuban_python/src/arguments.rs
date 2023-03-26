@@ -354,7 +354,7 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub fn infer(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        func_i_s: &InferenceState<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
         match &self.kind {
@@ -363,7 +363,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                 node_ref
                     .file
                     // TODO this execution is wrong
-                    .inference(i_s)
+                    .inference(&i_s.use_mode_of(func_i_s))
                     .infer_named_expression_with_context(
                         node_ref.as_named_expression(),
                         result_context,
@@ -371,12 +371,13 @@ impl<'db, 'a> Argument<'db, 'a> {
             }
             ArgumentKind::Keyword { i_s, node_ref, .. } => node_ref
                 .file
-                .inference(i_s)
+                .inference(&i_s.use_mode_of(func_i_s))
                 .infer_expression_with_context(node_ref.as_expression(), result_context),
             ArgumentKind::SlicesTuple { i_s, slices } => {
                 let parts = slices
                     .iter()
                     .map(|x| {
+                        let i_s = &i_s.use_mode_of(func_i_s);
                         TypeOrTypeVarTuple::Type(
                             x.infer(i_s, &mut ResultContext::Unknown)
                                 .class_as_db_type(i_s),
@@ -391,7 +392,9 @@ impl<'db, 'a> Argument<'db, 'a> {
                 file,
                 comprehension,
                 i_s,
-            } => file.inference(i_s).infer_comprehension(*comprehension),
+            } => file
+                .inference(&i_s.use_mode_of(func_i_s))
+                .infer_comprehension(*comprehension),
             ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
             ),

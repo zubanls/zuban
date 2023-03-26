@@ -91,7 +91,6 @@ testReverseOperatorMethodForwardIsAny3
 # Overload
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 # Overloading
-testOverloadBadArgumentsInferredToAny1
 testOverloadBadArgumentsInferredToAny2
 # Overloading __init__
 testOverloadedToGeneric

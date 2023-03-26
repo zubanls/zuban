@@ -15,7 +15,7 @@ enum Context<'db, 'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-enum Mode<'a> {
+pub enum Mode<'a> {
     Normal,
     OverloadCheck { had_error: &'a Cell<bool> },
 }
@@ -90,6 +90,12 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             context: Context::LambdaCallable(callable),
             mode: self.mode,
         }
+    }
+
+    pub fn use_mode_of(&self, other: &Self) -> Self {
+        let mut new = *self;
+        new.mode = other.mode;
+        new
     }
 
     pub fn do_overload_check<T>(
