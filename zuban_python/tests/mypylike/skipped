@@ -88,10 +88,14 @@ testReverseComparisonOperator
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
-# Overload
-testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
+# overload argument expression uses context inference multiple times
+testLiteralAndGenericsWithOverloads
+testPreferExactSignatureMatchInOverload
 # Overloading
 testOverloadBadArgumentsInferredToAny2
+# Overloads maybe later
+testOverloadOverlapWithTypeVarsWithValues
+testOverloadMultipleVarargDefinitionComplex
 # Overloading __init__
 testOverloadedToGeneric
 # *args/**kwargs input use Any if length unclear
@@ -127,14 +131,6 @@ testOverloadsNoneAndTypeVarsWithStrictOptional
 overload_union_math_on_class_init_constrained
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
-# Overloads maybe later
-testOverloadOverlapWithTypeVarsWithValues
-testOverloadMultipleVarargDefinitionComplex
-# overloading for loop
-testOverloadedInIter
-# overload argument expression uses context inference multiple times
-testLiteralAndGenericsWithOverloads
-testPreferExactSignatureMatchInOverload
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -1271,6 +1267,8 @@ testExtremeForwardReferencing
 
 # union creation / vs. object / vs. any from ternary
 testConditionalExpressionUnionWithAny
+# join callables
+testOverloadedInIter
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
@@ -1352,6 +1350,7 @@ overload_overlapping_any
 # - Signature of "f" incompatible with supertype "Parent"
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityTypeVar-xfail
+testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 # Overloaded operator methods cannot have wider argument types in overrides
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
