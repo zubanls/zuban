@@ -172,7 +172,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         if self.is_generator() {
             todo!("Maybe not check here, because this could be precalculated and cached");
         }
-        let mut inner_i_s = i_s.with_func_and_args(self, args);
+        let inner_i_s = i_s.with_func_and_args(self, args);
         for return_or_yield in self.iter_return_or_yield() {
             match return_or_yield {
                 ReturnOrYield::Return(ret) =>
@@ -182,9 +182,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         return self
                             .node_ref
                             .file
-                            .inference(&mut inner_i_s)
+                            .inference(&inner_i_s)
                             .infer_star_expressions(star_expressions, &mut ResultContext::Unknown)
-                            .resolve_untyped_function_return(&mut inner_i_s);
+                            .resolve_untyped_function_return(&inner_i_s);
                     } else {
                         todo!()
                     }
@@ -937,7 +937,7 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     ) -> Inferred {
         if let Some(class) = &self.class {
             self.execute_internal(
-                &mut i_s.with_class_context(class),
+                &i_s.with_class_context(class),
                 args,
                 on_type_error,
                 Some(class),

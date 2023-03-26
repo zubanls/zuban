@@ -1240,7 +1240,7 @@ impl DbType {
                         return;
                     }
                     // Simplify duplicates & subclass removal
-                    let mut i_s = InferenceState::new(db);
+                    let i_s = InferenceState::new(db);
                     let mut matcher = Matcher::with_ignored_promotions();
                     match &type_ {
                         DbType::RecursiveAlias(r1) if r1.generics.is_some() => {
@@ -1261,7 +1261,7 @@ impl DbType {
                             let t = Type::new(&type_);
                             for entry in entries.iter_mut() {
                                 let current = Type::new(&entry.type_);
-                                if entry.type_.has_any(&mut i_s) || type_.has_any(&mut i_s) {
+                                if entry.type_.has_any(&i_s) || type_.has_any(&i_s) {
                                     if entry.type_ == type_ {
                                         return;
                                     }
@@ -1270,14 +1270,12 @@ impl DbType {
                                         DbType::RecursiveAlias(r) if r.generics.is_some() => (),
                                         _ => {
                                             if current
-                                                .is_super_type_of(&mut i_s, &mut matcher, &t)
+                                                .is_super_type_of(&i_s, &mut matcher, &t)
                                                 .bool()
                                             {
                                                 return; // Type is already in the union
                                             }
-                                            if current
-                                                .is_sub_type_of(&mut i_s, &mut matcher, &t)
-                                                .bool()
+                                            if current.is_sub_type_of(&i_s, &mut matcher, &t).bool()
                                             {
                                                 // The new type is more general and therefore needs to be used.
                                                 entry.type_ = type_;

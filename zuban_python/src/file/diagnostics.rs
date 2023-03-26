@@ -184,7 +184,7 @@ impl<'db> Inference<'db, '_, '_> {
             None,
         );
         self.file
-            .inference(&mut self.i_s.with_diagnostic_class_context(&c))
+            .inference(&self.i_s.with_diagnostic_class_context(&c))
             .calc_block_diagnostics(block, Some(c), None)
     }
 

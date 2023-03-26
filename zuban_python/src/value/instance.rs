@@ -128,10 +128,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             // First check class infos
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let Some(c) = class.maybe_class(i_s.db) {
-                    let mut i_s = i_s.with_class_context(&self.class);
-                    inf.resolve_class_type_vars(&mut i_s.with_class_context(&c), &self.class)
+                    let i_s = i_s.with_class_context(&self.class);
+                    inf.resolve_class_type_vars(&i_s.with_class_context(&c), &self.class)
                         .bind_instance_descriptors(
-                            &mut i_s,
+                            &i_s,
                             self,
                             c,
                             |i_s| self.as_inferred(i_s),
@@ -152,14 +152,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             // Then check self attributes
             if let Some(c) = class.maybe_class(i_s.db) {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
-                    let mut i_s = i_s.with_class_context(&c);
+                    let i_s = i_s.with_class_context(&c);
                     return LookupResult::GotoName(
                         PointLink::new(c.node_ref.file.file_index(), self_symbol),
                         c.node_ref
                             .file
-                            .inference(&mut i_s)
+                            .inference(&i_s)
                             .infer_name_by_index(self_symbol)
-                            .resolve_class_type_vars(&mut i_s, &self.class),
+                            .resolve_class_type_vars(&i_s, &self.class),
                     );
                 }
             }

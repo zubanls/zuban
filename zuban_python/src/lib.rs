@@ -182,14 +182,14 @@ impl<'a> Script<'a> {
         callable: &C,
         position: Position,
     ) -> impl Iterator<Item = T> {
-        let mut i_s = InferenceState::new(&self.project.db);
+        let i_s = InferenceState::new(&self.project.db);
         match self.leaf(position) {
             Leaf::Name(name) => name.infer(),
             Leaf::Number => todo!(),
             Leaf::Keyword(keyword) => self.file().infer_operator_leaf(&self.project.db, keyword),
             Leaf::None | Leaf::String => todo!(),
         }
-        .run_on_value_names(&mut i_s, callable)
+        .run_on_value_names(&i_s, callable)
     }
 
     /*

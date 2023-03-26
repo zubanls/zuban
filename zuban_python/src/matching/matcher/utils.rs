@@ -98,7 +98,7 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             if !checked {
                 // [2]
                 let matches = Type::Class(class).is_super_type_of(
-                    &mut i_s.with_class_context(&class),
+                    &i_s.with_class_context(&class),
                     &mut matcher,
                     &t,
                 );

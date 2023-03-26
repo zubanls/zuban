@@ -360,31 +360,26 @@ impl<'db, 'a> Argument<'db, 'a> {
         match &self.kind {
             ArgumentKind::Inferred { inferred, .. } => (*inferred).clone(),
             ArgumentKind::Positional { i_s, node_ref, .. } => {
-                let mut i_s = *i_s;
                 node_ref
                     .file
                     // TODO this execution is wrong
-                    .inference(&mut i_s)
+                    .inference(i_s)
                     .infer_named_expression_with_context(
                         node_ref.as_named_expression(),
                         result_context,
                     )
             }
-            ArgumentKind::Keyword { i_s, node_ref, .. } => {
-                let mut i_s = *i_s;
-                node_ref
-                    .file
-                    .inference(&mut i_s)
-                    .infer_expression_with_context(node_ref.as_expression(), result_context)
-            }
+            ArgumentKind::Keyword { i_s, node_ref, .. } => node_ref
+                .file
+                .inference(i_s)
+                .infer_expression_with_context(node_ref.as_expression(), result_context),
             ArgumentKind::SlicesTuple { i_s, slices } => {
-                let mut i_s = *i_s;
                 let parts = slices
                     .iter()
                     .map(|x| {
                         TypeOrTypeVarTuple::Type(
-                            x.infer(&mut i_s, &mut ResultContext::Unknown)
-                                .class_as_db_type(&mut i_s),
+                            x.infer(i_s, &mut ResultContext::Unknown)
+                                .class_as_db_type(i_s),
                         )
                     })
                     .collect();
@@ -396,10 +391,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                 file,
                 comprehension,
                 i_s,
-            } => {
-                let mut i_s = *i_s;
-                file.inference(&mut i_s).infer_comprehension(*comprehension)
-            }
+            } => file.inference(i_s).infer_comprehension(*comprehension),
             ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
             ),
@@ -488,14 +480,14 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 true => vec![],
             },
             Self::Iterator {
-                mut i_s,
+                i_s,
                 file,
                 iterator,
                 ..
             } => iterator
                 .map(|(_, arg)| {
                     let mut prefix = "".to_owned();
-                    let mut inference = file.inference(&mut i_s);
+                    let mut inference = file.inference(&i_s);
                     let inf = match arg {
                         ASTArgument::Positional(named_expr) => {
                             inference.infer_named_expression(named_expr)
@@ -513,18 +505,18 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                             inference.infer_expression(double_starred_expr.expression())
                         }
                     };
-                    format!("{prefix}{}", inf.format_short(&mut i_s)).into()
+                    format!("{prefix}{}", inf.format_short(&i_s)).into()
                 })
                 .collect(),
             Self::Comprehension(_, file, comprehension) => {
                 todo!()
             }
             Self::Finished => vec![],
-            Self::SliceType(mut i_s, slice_type) => slice_type
+            Self::SliceType(i_s, slice_type) => slice_type
                 .iter()
                 .map(|x| {
-                    x.infer(&mut i_s, &mut ResultContext::Unknown)
-                        .format_short(&mut i_s)
+                    x.infer(&i_s, &mut ResultContext::Unknown)
+                        .format_short(&i_s)
                 })
                 .collect(),
         }
@@ -699,7 +691,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
             }
             Self::Finished => None,
             Self::SliceType(..) => {
-                let Self::SliceType(mut i_s, slice_type) = mem::replace(self, Self::Finished) else {
+                let Self::SliceType(i_s, slice_type) = mem::replace(self, Self::Finished) else {
                     unreachable!()
                 };
                 match slice_type.unpack() {
@@ -722,7 +714,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     SliceTypeContent::Slice(slices) => {
                         let t = i_s.db.python_state.slice_db_type();
                         Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
-                            inferred: Inferred::execute_db_type(&mut i_s, t),
+                            inferred: Inferred::execute_db_type(&i_s, t),
                             position: 1,
                             node_ref: slices.as_node_ref(),
                             in_args_or_kwargs_and_arbitrary_len: false,

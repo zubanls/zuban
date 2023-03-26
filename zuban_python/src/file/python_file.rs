@@ -85,9 +85,9 @@ impl File for PythonFile {
             .any(|&x| x == leaf.as_str())
         {
             if let Some(primary) = leaf.maybe_primary_parent() {
-                let mut i_s = InferenceState::new(db);
+                let i_s = InferenceState::new(db);
                 return self
-                    .inference(&mut i_s)
+                    .inference(&i_s)
                     .infer_primary(primary, &mut ResultContext::Unknown);
             }
         }
@@ -125,11 +125,11 @@ impl File for PythonFile {
         db: &'db Database,
         config: &DiagnosticConfig,
     ) -> Box<[Diagnostic<'db>]> {
-        let mut i_s = InferenceState::new(db);
+        let i_s = InferenceState::new(db);
         if self.super_file.is_none() {
             // The main file is responsible for calculating diagnostics of type comments,
             // annotation strings, etc.
-            self.inference(&mut i_s).calculate_diagnostics();
+            self.inference(&i_s).calculate_diagnostics();
         }
         let mut vec: Vec<_> = unsafe {
             self.issues

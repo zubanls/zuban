@@ -1124,16 +1124,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.i_s,
                 |i_s: &InferenceState<'db, '_>, type_| {
                     if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
-                        let mut i_s = i_s.with_lambda_callable(c);
+                        let i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
                         let rt = Type::new(&c.result_type);
                         let result = self
                             .file
-                            .inference(&mut i_s)
+                            .inference(&i_s)
                             .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = c.clone();
-                        c.result_type = result.class_as_type(&mut i_s).into_db_type(i_s.db);
-                        Inferred::execute_db_type(&mut i_s, DbType::Callable(c))
+                        c.result_type = result.class_as_type(&i_s).into_db_type(i_s.db);
+                        Inferred::execute_db_type(&i_s, DbType::Callable(c))
                     } else {
                         todo!()
                     }

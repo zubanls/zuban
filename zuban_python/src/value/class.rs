@@ -343,7 +343,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let inf = self
                     .node_ref
                     .file
-                    .inference(&mut i_s.with_class_context(self))
+                    .inference(&i_s.with_class_context(self))
                     .infer_name_by_index(node_index);
                 LookupResult::GotoName(
                     PointLink::new(self.node_ref.file.file_index(), node_index),
@@ -385,8 +385,8 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let result = lookup_result.and_then(|inf| {
             if let Some(in_class) = in_class {
-                let mut i_s = i_s.with_class_context(&in_class);
-                inf.bind_class_descriptors(&mut i_s, self, in_class, node_ref)
+                let i_s = i_s.with_class_context(&in_class);
+                inf.bind_class_descriptors(&i_s, self, in_class, node_ref)
             } else {
                 todo!()
             }

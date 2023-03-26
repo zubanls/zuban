@@ -81,21 +81,21 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
         let class = &self.instance.class;
         match &self.function {
             BoundMethodFunction::Function(f) => f.execute_internal(
-                &mut i_s.with_class_context(class),
+                &i_s.with_class_context(class),
                 &args,
                 on_type_error,
                 Some(class),
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => f.execute_internal(
-                &mut i_s.with_class_context(class),
+                &i_s.with_class_context(class),
                 &args,
                 on_type_error,
                 Some(class),
                 result_context,
             ),
             BoundMethodFunction::Callable(f) => f.execute_internal(
-                &mut i_s.with_class_context(class),
+                &i_s.with_class_context(class),
                 &args,
                 on_type_error,
                 Some(class),
