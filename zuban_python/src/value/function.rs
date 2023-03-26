@@ -1345,14 +1345,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             old_indices,
                             &argument_indices,
                         ) {
-                            /*
-                            TODO probably add this?
                             if had_error {
+                                /*
                                 args.reset_cache();
                                 // Need to run the whole thing again to generate errors.
                                 match_signature(i_s, function);
+                                */
+                                todo!()
                             }
-                            */
                             return None;
                         }
                     } else {
