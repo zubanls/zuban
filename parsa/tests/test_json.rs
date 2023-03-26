@@ -25,7 +25,7 @@ impl<'a> parsa::Tokenizer<'a, JsonTerminal> for JsonTokenizer<'a> {
     fn new(code: &'a str) -> Self {
         assert!(code.len() < u32::MAX as usize);
         Self {
-            code: code,
+            code,
             index: 0,
             ended: false,
         }
@@ -37,12 +37,12 @@ impl Iterator for JsonTokenizer<'_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let new_token = |start, length, type_: JsonTerminalType, can_contain_syntax| {
-            return Some(JsonTerminal {
+            Some(JsonTerminal {
                 start_index: start as u32,
                 length: length as u32,
-                type_: type_,
-                can_contain_syntax: can_contain_syntax,
-            });
+                type_,
+                can_contain_syntax,
+            })
         };
         let code_bytes = &self.code.as_bytes();
         let as_code = |index: usize| unsafe { str::from_utf8_unchecked(&code_bytes[index..]) };
@@ -59,13 +59,11 @@ impl Iterator for JsonTokenizer<'_> {
                 self.index += 1;
                 return new_token(index, 1, JsonTerminalType::Operator, true);
             }
+        } else if self.ended {
+            return None;
         } else {
-            if self.ended {
-                return None;
-            } else {
-                self.ended = true;
-                return new_token(index, 0, JsonTerminalType::Endmarker, false);
-            }
+            self.ended = true;
+            return new_token(index, 0, JsonTerminalType::Endmarker, false);
         }
 
         for (regex, type_) in &[

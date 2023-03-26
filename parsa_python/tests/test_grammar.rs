@@ -6,7 +6,7 @@ fn dedent(s: &'static str) -> String {
     let mut indent = usize::MAX;
     let lines: &Vec<_> = &s.split('\n').collect();
     for line in lines {
-        if line.trim().len() > 0 {
+        if !line.trim().is_empty() {
             indent = std::cmp::min(indent, line.len() - line.trim_start().len());
         }
     }
