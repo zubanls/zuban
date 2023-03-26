@@ -1309,7 +1309,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 args.reset_cache();
             }
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let calculated_type_args = match_signature(i_s, function);
+            let (calculated_type_args, had_error) =
+                i_s.do_overload_check(|i_s| match_signature(i_s, function));
             match calculated_type_args.matches {
                 SignatureMatch::True => {
                     if multi_any_match.is_some() {
@@ -1321,6 +1322,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             self.name(),
                             function.node().short_debug()
                         );
+                        /*
+                        if had_error {
+                            // Need to run the whole thing again to generate errors.
+                            match_signature(i_s, function);
+                        }
+                        */
                         return handle_result(calculated_type_args.type_arguments, function);
                     }
                 }

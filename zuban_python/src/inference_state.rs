@@ -44,7 +44,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::Execution(func, args),
-            mode: Mode::Normal,
+            mode: self.mode,
         }
     }
 
@@ -56,7 +56,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::DiagnosticExecution(func, args),
-            mode: Mode::Normal,
+            mode: self.mode,
         }
     }
 
@@ -64,7 +64,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::None,
-            mode: Mode::Normal,
+            mode: self.mode,
         }
     }
 
@@ -72,7 +72,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::Class(current_class),
-            mode: Mode::Normal,
+            mode: self.mode,
         }
     }
 
@@ -80,7 +80,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::DiagnosticClass(current_class),
-            mode: Mode::Normal,
+            mode: self.mode,
         }
     }
 
@@ -88,8 +88,22 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         Self {
             db: self.db,
             context: Context::LambdaCallable(callable),
-            mode: Mode::Normal,
+            mode: self.mode,
         }
+    }
+
+    pub fn do_overload_check<T>(
+        &self,
+        mut callable: impl FnMut(&mut InferenceState<'db, '_>) -> T,
+    ) -> (T, bool) {
+        let had_error = &Cell::new(false);
+        let i_s = &mut InferenceState {
+            db: self.db,
+            context: self.context,
+            mode: Mode::OverloadCheck { had_error },
+        };
+        let result = callable(i_s);
+        (result, had_error.get())
     }
 
     pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
@@ -128,6 +142,16 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             self.context,
             Context::DiagnosticClass(_) | Context::DiagnosticExecution(..)
         )
+    }
+
+    pub fn should_add_typing_issue(&self) -> bool {
+        match self.mode {
+            Mode::OverloadCheck { had_error } => {
+                had_error.set(true);
+                false
+            }
+            Mode::Normal => true,
+        }
     }
 
     pub fn run_with_execution<T>(

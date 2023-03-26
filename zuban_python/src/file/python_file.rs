@@ -294,6 +294,9 @@ impl<'db> PythonFile {
     }
 
     pub fn add_typing_issue(&self, i_s: &InferenceState, issue: Issue) {
+        if !i_s.should_add_typing_issue() {
+            return;
+        }
         if self.tree.node_has_type_ignore_comment(issue.node_index) {
             debug!(
                 "New ignored issue: {}",

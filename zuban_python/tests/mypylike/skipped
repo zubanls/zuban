@@ -1,4 +1,5 @@
 # Next up
+testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
 
 # dict specialities
 testDictWithKeywordArgsOnly
