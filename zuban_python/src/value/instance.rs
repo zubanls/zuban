@@ -312,15 +312,15 @@ enum FoundOnClass<'a> {
     UnresolvedDbType(&'a DbType),
 }
 
-struct ClassMroFinder<'db, 'a, 'c, 'd> {
-    i_s: &'d InferenceState<'db, 'c>,
+struct ClassMroFinder<'db, 'a, 'd> {
+    i_s: &'d InferenceState<'db, 'd>,
     instance: &'d Instance<'d>,
     mro_iterator: MroIterator<'db, 'a>,
     from: NodeRef<'d>,
     name: &'d str,
 }
 
-impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_, '_> {
+impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
     type Item = FoundOnClass<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
