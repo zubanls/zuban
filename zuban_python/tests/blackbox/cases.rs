@@ -75,8 +75,8 @@ impl TestFile<'_> {
         let lines: Vec<_> = self.code.split('\n').collect();
         for (line_nr, line) in lines.iter().enumerate() {
             let trimmed = line.trim_start();
-            if trimmed.starts_with("#?") {
-                let mut names: Vec<_> = trimmed[2..].trim_start().split(" ").collect();
+            if let Some(stripped) = trimmed.strip_prefix("#?") {
+                let mut names: Vec<_> = stripped.trim_start().split(' ').collect();
                 let rest;
                 let column = {
                     if let Ok(c) = names[0].parse() {
@@ -88,14 +88,14 @@ impl TestFile<'_> {
                         lines[line_nr + 1].len()
                     }
                 };
-                if *names.last().unwrap() == "" {
+                if names.last().unwrap().is_empty() {
                     // Splittling leaves an empty string if nothing is provided
                     names.pop();
                 }
-                let type_ = if trimmed.ends_with("]") {
+                let type_ = if trimmed.ends_with(']') {
                     CaseType::Complete(
                         rest[1..rest.len() - 1]
-                            .split(",")
+                            .split(',')
                             .filter(|x| !x.is_empty())
                             .map(|quoted| {
                                 let quoted = quoted.trim();

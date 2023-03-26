@@ -639,6 +639,7 @@ pub fn match_arguments_against_params<
     };
     if args_with_params.too_many_positional_arguments {
         matches = Match::new_false();
+        #[allow(clippy::overly_complex_bool_expr)]
         if should_generate_errors || true {
             // TODO remove true and add test
             let mut s = "Too many positional arguments".to_owned();

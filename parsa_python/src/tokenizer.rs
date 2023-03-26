@@ -610,6 +610,7 @@ mod tests {
     macro_rules! parametrize {
         ($($name:ident $input:expr => $expected:tt;)*) => {$(
             #[test]
+            #[allow(clippy::vec_init_then_push)]  // This is probably a bug.
             fn $name() {
                 let string: &str = $input;
                 let tokenizer = PythonTokenizer::new($input);

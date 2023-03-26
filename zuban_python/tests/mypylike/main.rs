@@ -237,7 +237,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             );
         }
         for step in &steps.steps {
-            for (path, _) in &step.files {
+            for path in step.files.keys() {
                 #[allow(unused_must_use)]
                 {
                     project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));

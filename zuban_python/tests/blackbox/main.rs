@@ -49,8 +49,8 @@ fn calculate_filters(args: &[String]) -> Vec<Filter> {
     for c in &args[1..] {
         if let Ok(line) = c.parse::<usize>() {
             filters.last_mut().unwrap().lines.push(line);
-        } else if c.starts_with("!") {
-            filters.push(Filter::new(&c[1..], true));
+        } else if let Some(stripped) = c.strip_prefix('!') {
+            filters.push(Filter::new(stripped, true));
         } else if c != "blackbox" {
             filters.push(Filter::new(c, false));
         }

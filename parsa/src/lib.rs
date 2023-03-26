@@ -806,6 +806,7 @@ mod tests {
             rule2: Bar?
         );
 
+        #[allow(clippy::no_effect)]
         &*GRAMMAR;
     }
     #[test]
@@ -821,6 +822,7 @@ mod tests {
             rule3: rule1
         );
 
+        #[allow(clippy::no_effect)]
         &*GRAMMAR;
     }
     #[test]
@@ -835,6 +837,7 @@ mod tests {
             rule2: rule1
         );
 
+        #[allow(clippy::no_effect)]
         &*GRAMMAR;
     }
     #[test]
@@ -849,6 +852,7 @@ mod tests {
             rule2: rule1
         );
 
+        #[allow(clippy::no_effect)]
         &*GRAMMAR;
     }
     #[test]
@@ -862,6 +866,7 @@ mod tests {
             rule2: rule1
         );
 
+        #[allow(clippy::no_effect)]
         &*GRAMMAR;
     }
 }
