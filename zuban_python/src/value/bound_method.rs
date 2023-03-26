@@ -58,7 +58,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -69,7 +69,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -104,7 +104,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         let t = match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, FirstParamProperties::Skip),
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, FirstParamProperties::Skip),

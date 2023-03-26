@@ -35,7 +35,7 @@ type MapAnnotationTypeCallback<'a> =
     Option<&'a dyn Fn(&mut TypeComputation, TypeContent) -> DbType>;
 
 type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
-    &mut InferenceState<'db, '_>,
+    &InferenceState<'db, '_>,
     &TypeVarManager,
     TypeVarLike,
     Option<PointLink>, // current_callable
@@ -206,7 +206,7 @@ pub enum BaseClass {
 
 macro_rules! compute_type_application {
     ($self:ident, $slice_type:expr, $from_alias_definition:expr, $method:ident $args:tt) => {{
-        let mut on_type_var = |i_s: &mut InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
+        let mut on_type_var = |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
             if let Some(class) = i_s.current_class() {
                 if let Some(usage) = class
                     .type_vars(i_s)
@@ -278,7 +278,7 @@ macro_rules! compute_type_application {
 }
 
 pub(super) fn type_computation_for_variable_annotation(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     manager: &TypeVarManager,
     type_var_like: TypeVarLike,
     current_callable: Option<PointLink>,
@@ -2243,7 +2243,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
                 cached_type_node_ref.insert_complex(complex, Locality::Todo);
                 let mut type_var_manager = TypeVarManager::default();
                 let mut type_var_callback =
-                    |_: &mut InferenceState, _: &_, type_var_like: TypeVarLike, _| {
+                    |_: &InferenceState, _: &_, type_var_like: TypeVarLike, _| {
                         // Here we avoid all late bound type var calculation for callable, which is how
                         // mypy works. The default behavior without a type_var_callback would be to
                         // just calculate all late bound type vars, but that would mean that something
@@ -2453,7 +2453,7 @@ impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {
         let mut on_type_var =
-            |i_s: &mut InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
+            |i_s: &InferenceState, _: &_, type_var_like: TypeVarLike, current_callable| {
                 if let Some(class) = i_s.current_class() {
                     if let Some(type_var_likes) = class.type_vars(i_s) {
                         for (i, tvl) in type_var_likes.iter().enumerate() {
@@ -2594,7 +2594,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
 }
 
 fn check_type_name<'db: 'file, 'file>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     name_node_ref: NodeRef<'file>,
 ) -> TypeNameLookup<'file, 'file> {
     let point = name_node_ref.point();
@@ -2770,7 +2770,7 @@ pub fn use_cached_simple_generic_type<'db>(
     expr: Expression,
 ) -> Type<'db> {
     // The context of inference state is not important, because this is only a simple generic type.
-    let i_s = &mut InferenceState::new(db);
+    let i_s = &InferenceState::new(db);
     let mut inference = file.inference(i_s);
     debug_assert_eq!(
         inference.file.points.get(expr.index()).type_(),
@@ -2785,7 +2785,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
     file: &'file PythonFile,
     annotation: Annotation,
 ) -> Type<'file> {
-    file.inference(&mut InferenceState::new(db))
+    file.inference(&InferenceState::new(db))
         .use_cached_annotation_or_type_comment_type_internal(
             annotation.index(),
             annotation.expression(),

@@ -27,7 +27,7 @@ use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
 pub struct Inference<'db: 'file, 'file, 'a, 'b> {
     pub(super) file: &'file PythonFile,
     pub(super) file_index: FileIndex,
-    pub(super) i_s: &'a mut InferenceState<'db, 'b>,
+    pub(super) i_s: &'a InferenceState<'db, 'b>,
 }
 
 macro_rules! check_point_cache_with {
@@ -410,7 +410,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
             }
             AssignmentContent::AugAssign(target, aug_assign, right_side) => Some(right_side),
         };
-        let on_type_error = |i_s: &mut InferenceState, got, expected| -> NodeRef {
+        let on_type_error = |i_s: &InferenceState, got, expected| -> NodeRef {
             // In cases of stubs when an ellipsis is given, it's not an error.
             if self.file.is_stub(i_s.db) {
                 // Right side always exists, because it was compared and there was an error because
@@ -1122,7 +1122,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
         result_context
             .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
-                |i_s: &mut InferenceState<'db, '_>, type_| {
+                |i_s: &InferenceState<'db, '_>, type_| {
                     if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
                         let mut i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
@@ -1940,7 +1940,7 @@ impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
 }
 
 fn add_attribute_error<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     node_ref: NodeRef,
     value: &dyn Value<'db, '_>,
     name: Name,

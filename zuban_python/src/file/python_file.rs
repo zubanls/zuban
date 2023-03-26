@@ -247,7 +247,7 @@ impl<'db> PythonFile {
 
     pub fn inference<'file, 'i_s, 'b>(
         &'file self,
-        i_s: &'i_s mut InferenceState<'db, 'b>,
+        i_s: &'i_s InferenceState<'db, 'b>,
     ) -> Inference<'db, 'file, 'i_s, 'b> {
         Inference {
             file: self,

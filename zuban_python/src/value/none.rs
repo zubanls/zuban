@@ -21,7 +21,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -29,7 +29,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&DbType::None)
     }
 
@@ -39,7 +39,7 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {

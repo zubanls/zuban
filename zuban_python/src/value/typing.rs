@@ -49,7 +49,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -62,7 +62,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -76,7 +76,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             )
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         match self.specific {
             Specific::TypingGeneric
             | Specific::TypingProtocol
@@ -92,7 +92,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
@@ -129,7 +129,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -138,7 +138,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -179,7 +179,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -204,7 +204,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -214,13 +214,13 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         Inferred::new_any()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::Type(Cow::Owned(DbType::Type(Rc::new(self.db_type.clone()))))
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -250,7 +250,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 Type::new(self.db_type).error_if_not_matches(
                     i_s,
                     &inferred_tup,
-                    |i_s: &mut InferenceState<'db, '_>, t1, t2| {
+                    |i_s: &InferenceState<'db, '_>, t1, t2| {
                         (on_type_error.callback)(i_s, None, &|_| todo!(), &arg, t1, t2);
                         args.as_node_ref().to_db_lifetime(i_s.db)
                     },
@@ -320,20 +320,20 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
         todo!()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         todo!()
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         args: &dyn Arguments,
         _: &mut ResultContext,
         _: OnTypeError,
@@ -358,20 +358,20 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
         todo!()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         todo!()
     }
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -440,7 +440,7 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -449,7 +449,7 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -505,7 +505,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -557,7 +557,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -575,7 +575,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 }
@@ -592,7 +592,7 @@ impl fmt::Debug for TypeVarInstance<'_> {
 pub struct TypeVarClass();
 
 fn maybe_type_var(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
@@ -772,7 +772,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -781,7 +781,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         args: &dyn Arguments,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
@@ -793,7 +793,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of TypeVarClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
@@ -813,7 +813,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -822,7 +822,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         args: &dyn Arguments,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
@@ -834,14 +834,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of TypeVarTupleClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
 
 fn maybe_type_var_tuple(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
@@ -966,7 +966,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -975,7 +975,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         args: &dyn Arguments,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
@@ -987,14 +987,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of ParamSpecClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
 
 fn maybe_param_spec(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
@@ -1099,7 +1099,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -1109,7 +1109,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
@@ -1121,14 +1121,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of NewTypeClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
 
 fn maybe_new_type<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
 ) -> Option<NewType> {
     let Some((first, second)) = args.maybe_two_positional_args(i_s.db) else {
@@ -1205,7 +1205,7 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -1214,7 +1214,7 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
         if let Some(first_arg) = iterator.next() {
             let t = Type::new(self.new_type.type_(i_s));
             let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
-            t.error_if_not_matches(i_s, &inf, |i_s: &mut InferenceState<'db, '_>, t1, t2| {
+            t.error_if_not_matches(i_s, &inf, |i_s: &InferenceState<'db, '_>, t1, t2| {
                 (on_type_error.callback)(
                     i_s,
                     None,
@@ -1242,14 +1242,14 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
         todo!()
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Rc::new(DbType::NewType(
             self.new_type.clone(),
         ))))

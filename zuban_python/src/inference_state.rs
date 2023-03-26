@@ -94,10 +94,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn do_overload_check<T>(
         &self,
-        mut callable: impl FnMut(&mut InferenceState<'db, '_>) -> T,
+        mut callable: impl FnMut(&InferenceState<'db, '_>) -> T,
     ) -> (T, bool) {
         let had_error = &Cell::new(false);
-        let i_s = &mut InferenceState {
+        let i_s = &InferenceState {
             db: self.db,
             context: self.context,
             mode: Mode::OverloadCheck { had_error },
@@ -157,7 +157,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
     pub fn run_with_execution<T>(
         &self,
         execution: &Execution,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>) -> T,
+        callable: impl FnOnce(&InferenceState<'db, '_>) -> T,
     ) -> T {
         // TODO this is unused?!
         let func = Function::from_execution(self.db, execution, None);

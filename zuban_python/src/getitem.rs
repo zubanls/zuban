@@ -85,7 +85,7 @@ pub struct Simple<'file> {
 }
 
 impl<'file> Simple<'file> {
-    pub fn infer(&self, i_s: &mut InferenceState, result_context: &mut ResultContext) -> Inferred {
+    pub fn infer(&self, i_s: &InferenceState, result_context: &mut ResultContext) -> Inferred {
         self.file
             .inference(i_s)
             .infer_named_expression_with_context(self.named_expr, result_context)
@@ -131,7 +131,7 @@ pub enum SliceOrSimple<'file> {
 }
 
 impl<'file> SliceOrSimple<'file> {
-    pub fn infer(&self, i_s: &mut InferenceState, result_context: &mut ResultContext) -> Inferred {
+    pub fn infer(&self, i_s: &InferenceState, result_context: &mut ResultContext) -> Inferred {
         match self {
             Self::Simple(simple) => simple.infer(i_s, result_context),
             Self::Slice(slice) => todo!(),

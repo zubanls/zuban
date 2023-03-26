@@ -22,7 +22,7 @@ use crate::node_ref::NodeRef;
 use crate::value::{Class, FirstParamProperties, Function, Instance, OnTypeError, Value};
 
 pub fn calculate_class_init_type_vars_and_return<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     class: &Class,
     function: Function,
     args: &dyn Arguments<'db>,
@@ -155,7 +155,7 @@ pub struct CalculatedTypeArguments {
 impl CalculatedTypeArguments {
     pub fn lookup_type_var_usage(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         class: Option<&Class>,
         usage: TypeVarLikeUsage,
     ) -> GenericItem {
@@ -181,7 +181,7 @@ impl CalculatedTypeArguments {
 }
 
 pub fn calculate_function_type_vars_and_return<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     class: Option<&Class>,
     function: Function,
     args: &dyn Arguments<'db>,
@@ -213,7 +213,7 @@ pub fn calculate_function_type_vars_and_return<'db>(
 }
 
 pub fn calculate_callable_type_vars_and_return<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     class: Option<&Class>,
     callable: &CallableContent,
     args: &dyn Arguments<'db>,
@@ -248,7 +248,7 @@ fn get_matcher<'a>(
 }
 
 fn add_generics_from_result_context_class(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     matcher: &mut Matcher,
     type_vars: &TypeVarLikes,
     result_class: &Class,
@@ -284,7 +284,7 @@ fn add_generics_from_result_context_class(
 }
 
 fn calculate_type_vars<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
     class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
@@ -451,7 +451,7 @@ pub fn match_arguments_against_params<
     P: Param<'x>,
     AI: ArgumentIterator<'db, 'x>,
 >(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
@@ -520,7 +520,7 @@ pub fn match_arguments_against_params<
                     matcher,
                     &value,
                     on_type_error.as_ref().map(|on_type_error| {
-                        |i_s: &mut InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
+                        |i_s: &InferenceState<'db, '_>, mut t1, t2, reason: &MismatchReason| {
                             let node_ref = argument.as_node_ref().to_db_lifetime(i_s.db);
                             if let Some(starred) = node_ref.maybe_starred_expression() {
                                 t1 = format!(
@@ -715,7 +715,7 @@ pub fn match_arguments_against_params<
 }
 
 fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
@@ -735,7 +735,7 @@ fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterato
 }
 
 pub fn create_signature_without_self(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     func: Function,
     instance: &Instance,
     expected_type: &Type,

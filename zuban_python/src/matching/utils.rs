@@ -2,7 +2,7 @@ use crate::database::DbType;
 use crate::inference_state::InferenceState;
 use crate::value::Class;
 
-pub fn replace_class_type_vars(i_s: &mut InferenceState, t: &DbType, class: &Class) -> DbType {
+pub fn replace_class_type_vars(i_s: &InferenceState, t: &DbType, class: &Class) -> DbType {
     let db = i_s.db;
     t.replace_type_var_likes_and_self(
         i_s.db,

@@ -41,7 +41,7 @@ impl CalculatedTypeVarLike {
 
     pub fn merge_fixed_length_type_var_tuple<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
         &mut self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         fetch: usize,
         items: I,
     ) {
@@ -73,11 +73,7 @@ impl CalculatedTypeVarLike {
         }
     }
 
-    pub fn merge_arbitrary_length_type_var_tuple(
-        &mut self,
-        i_s: &mut InferenceState,
-        item: &DbType,
-    ) {
+    pub fn merge_arbitrary_length_type_var_tuple(&mut self, i_s: &InferenceState, item: &DbType) {
         todo!()
     }
 
@@ -132,7 +128,7 @@ impl TypeVarMatcher {
         }
     }
 
-    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
+    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &DbType) {
         type_.search_type_vars(&mut |t| {
             if t.in_definition() == self.match_in_definition {
                 let current = &mut self.calculated_type_vars[t.index().as_usize()];
@@ -155,7 +151,7 @@ impl TypeVarMatcher {
 
     pub fn match_or_add_type_var(
         &mut self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         type_var_usage: &TypeVarUsage,
         type_var: &TypeVar,
         value_type: &Type,

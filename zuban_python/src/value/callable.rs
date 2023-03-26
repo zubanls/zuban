@@ -21,7 +21,7 @@ impl<'a> Callable<'a> {
 
     pub(super) fn execute_internal<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
         class: Option<&Class>,
@@ -51,7 +51,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -59,7 +59,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         LookupResult::None
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 
@@ -69,7 +69,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -77,7 +77,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
-    fn description(&self, i_s: &mut InferenceState) -> String {
+    fn description(&self, i_s: &InferenceState) -> String {
         base_description!(self) + &self.content.format(&FormatData::new_short(i_s.db))
     }
 }

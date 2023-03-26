@@ -206,7 +206,7 @@ impl<'a> Generics<'a> {
 
     pub fn matches(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         value_generics: Self,
         type_vars: &TypeVarLikes,
@@ -226,7 +226,7 @@ impl<'a> Generics<'a> {
 
     pub fn overlaps(
         self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         other_generics: Self,
         type_vars: Option<&TypeVarLikes>,
     ) -> bool {

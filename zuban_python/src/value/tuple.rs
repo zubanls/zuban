@@ -38,7 +38,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -65,7 +65,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         LookupResult::None
     }
 
-    fn iter(&self, i_s: &mut InferenceState, from: NodeRef) -> IteratorContent<'a> {
+    fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
         match &self.content.args {
             Some(args @ TupleTypeArguments::FixedLength(ts)) => {
                 if args.has_type_var_tuple().is_some() {
@@ -81,13 +81,13 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         }
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -97,7 +97,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                     if args.has_type_var_tuple().is_some() {
                         todo!()
                     }
-                    let infer = |i_s: &mut InferenceState, literal: Literal| {
+                    let infer = |i_s: &InferenceState, literal: Literal| {
                         if !matches!(literal.kind, LiteralKind::Int(_)) {
                             return None;
                         }
@@ -148,7 +148,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         }
     }
 
-    fn description(&self, i_s: &mut InferenceState) -> String {
+    fn description(&self, i_s: &InferenceState) -> String {
         self.content.format(&FormatData::new_short(i_s.db)).into()
     }
 }

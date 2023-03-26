@@ -72,7 +72,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn type_check_init_func(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -136,7 +136,7 @@ impl<'db: 'a, 'a> Class<'a> {
         })
     }
 
-    pub fn type_vars(&self, i_s: &mut InferenceState) -> Option<&'a TypeVarLikes> {
+    pub fn type_vars(&self, i_s: &InferenceState) -> Option<&'a TypeVarLikes> {
         let node_ref = self.type_vars_node_ref();
         let point = node_ref.point();
         if point.calculated() {
@@ -157,7 +157,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn maybe_type_var_like_in_parent(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         type_var: &TypeVarLike,
     ) -> Option<TypeVarLikeUsage<'static>> {
         match self.class_storage.parent_scope {
@@ -194,7 +194,7 @@ impl<'db: 'a, 'a> Class<'a> {
         self.node_ref.add_to_node_index(4)
     }
 
-    pub fn ensure_calculated_class_infos(&self, i_s: &mut InferenceState<'db, '_>) {
+    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>) {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if !point.calculated() {
@@ -217,7 +217,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn calculate_class_infos(&self, i_s: &mut InferenceState<'db, '_>) -> Box<ClassInfos> {
+    fn calculate_class_infos(&self, i_s: &InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         // Calculate all type vars beforehand
         let type_vars = self.type_vars(i_s);
@@ -319,7 +319,7 @@ impl<'db: 'a, 'a> Class<'a> {
         })
     }
 
-    pub fn check_protocol_match(&self, i_s: &mut InferenceState<'db, '_>, other: Self) -> bool {
+    pub fn check_protocol_match(&self, i_s: &InferenceState<'db, '_>, other: Self) -> bool {
         for c in self.use_cached_class_infos(i_s.db).mro.iter() {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
@@ -336,7 +336,7 @@ impl<'db: 'a, 'a> Class<'a> {
         true
     }
 
-    pub fn lookup_symbol(&self, i_s: &mut InferenceState<'db, '_>, name: &str) -> LookupResult {
+    pub fn lookup_symbol(&self, i_s: &InferenceState<'db, '_>, name: &str) -> LookupResult {
         match self.class_storage.class_symbol_table.lookup_symbol(name) {
             None => LookupResult::None,
             Some(node_index) => {
@@ -355,7 +355,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn lookup_and_class(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         name: &str,
     ) -> (LookupResult, Option<Class>) {
         for (mro_index, c) in self.mro(i_s.db) {
@@ -374,7 +374,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn lookup_with_or_without_descriptors(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
         use_descriptors: bool,
@@ -437,7 +437,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 self.qualified_name(format_data.db)
             }
         };
-        let type_vars = self.type_vars(&mut InferenceState::new(format_data.db));
+        let type_vars = self.type_vars(&InferenceState::new(format_data.db));
         if let Some(type_vars) = type_vars {
             result += &self.generics().format(format_data, Some(type_vars.len()));
         }
@@ -448,7 +448,7 @@ impl<'db: 'a, 'a> Class<'a> {
         self.format(&FormatData::new_short(db))
     }
 
-    pub fn as_inferred(&self, i_s: &mut InferenceState) -> Inferred {
+    pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
         match self.use_cached_type_vars(i_s.db).is_some() {
             false => Inferred::from_saved_node_ref(self.node_ref),
             true => Inferred::execute_db_type(i_s, DbType::Type(Rc::new(self.as_db_type(i_s.db)))),
@@ -457,7 +457,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn generics_as_list(&self, db: &Database) -> Option<GenericsList> {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
-        let type_vars = self.type_vars(&mut InferenceState::new(db));
+        let type_vars = self.type_vars(&InferenceState::new(db));
         self.generics().as_generics_list(db, type_vars)
     }
 
@@ -507,7 +507,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -520,7 +520,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -560,7 +560,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -574,7 +574,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
             )
     }
 
-    fn description(&self, i_s: &mut InferenceState) -> String {
+    fn description(&self, i_s: &InferenceState) -> String {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
@@ -586,7 +586,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         Some(self)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
     }
 }
@@ -609,7 +609,7 @@ struct BasesIterator<'db> {
 }
 
 impl<'db> BasesIterator<'db> {
-    fn next(&mut self, i_s: &mut InferenceState<'db, '_>) -> Option<Inferred> {
+    fn next(&mut self, i_s: &InferenceState<'db, '_>) -> Option<Inferred> {
         if let Some(args) = self.args.as_mut() {
             match args.next() {
                 Some(Argument::Positional(p)) => {

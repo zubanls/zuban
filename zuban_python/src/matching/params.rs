@@ -23,7 +23,7 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
 }
 
 pub fn matches_params(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     matcher: &mut Matcher,
     params1: &CallableParams,
     params2: &CallableParams,
@@ -86,14 +86,14 @@ pub fn matches_params(
 }
 
 pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     mut params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
     variance: Variance,
 ) -> Match {
     let match_with_variance =
-        |i_s: &mut _, matcher: &mut _, a: &Option<Type>, b: &Option<Type>, variance| {
+        |i_s: &_, matcher: &mut _, a: &Option<Type>, b: &Option<Type>, variance| {
             if let Some(a) = a {
                 if let Some(b) = b {
                     return a.matches(i_s, matcher, b, variance);
@@ -102,7 +102,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             Match::new_true()
         };
 
-    let match_ = |i_s: &mut _, matcher: &mut _, a: &Option<Type>, b: &Option<Type>| {
+    let match_ = |i_s: &_, matcher: &mut _, a: &Option<Type>, b: &Option<Type>| {
         match_with_variance(i_s, matcher, a, b, variance)
     };
 
@@ -297,7 +297,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
 }
 
 pub fn has_overlapping_params<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     params1: &CallableParams,
     params2: &CallableParams,
 ) -> bool {
@@ -312,7 +312,7 @@ pub fn has_overlapping_params<'db>(
 }
 
 pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
@@ -325,7 +325,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
         WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
         WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => todo!(),
     };
-    let check_type = |i_s: &mut InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
+    let check_type = |i_s: &InferenceState<'db, '_>, t1: Option<&Type>, p2: P2| {
         if let Some(t1) = t1 {
             if let Some(t2) = to_type(i_s.db, p2) {
                 return t1.overlaps(i_s, &t2);

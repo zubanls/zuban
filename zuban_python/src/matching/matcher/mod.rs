@@ -138,7 +138,7 @@ impl<'a> Matcher<'a> {
 
     pub fn match_or_add_type_var(
         &mut self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         t1: &TypeVarUsage,
         value_type: &Type,
         variance: Variance,
@@ -205,7 +205,7 @@ impl<'a> Matcher<'a> {
 
     pub fn match_type_var_tuple(
         &mut self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         tuple1: &[TypeOrTypeVarTuple],
         tuple2: &TupleTypeArguments,
         variance: Variance,
@@ -291,7 +291,7 @@ impl<'a> Matcher<'a> {
 
     pub fn match_or_add_param_spec_against_param_spec(
         &mut self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         p1_pre_param_spec: &[DbType],
         p1: &ParamSpecUsage,
         p2_pre_param_spec: &[DbType],
@@ -311,22 +311,22 @@ impl<'a> Matcher<'a> {
             }
         }
         let match_params =
-            |i_s: &mut _,
-             matches,
-             params: &ParamSpecArgument,
-             p2_pre_iterator: std::slice::Iter<_>| match &params.params {
-                CallableParams::Simple(params1) => todo!(),
-                CallableParams::Any => matches,
-                CallableParams::WithParamSpec(pre, usage) => {
-                    if pre.len() != p2_pre_iterator.len() {
-                        todo!()
-                    } else {
-                        debug!("TODO should maybe use type vars?");
-                        let mut matches = matches;
-                        for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
-                            matches &= Type::new(t1).simple_matches(i_s, &Type::new(t2), variance);
+            |i_s: &_, matches, params: &ParamSpecArgument, p2_pre_iterator: std::slice::Iter<_>| {
+                match &params.params {
+                    CallableParams::Simple(params1) => todo!(),
+                    CallableParams::Any => matches,
+                    CallableParams::WithParamSpec(pre, usage) => {
+                        if pre.len() != p2_pre_iterator.len() {
+                            todo!()
+                        } else {
+                            debug!("TODO should maybe use type vars?");
+                            let mut matches = matches;
+                            for (t1, t2) in pre.iter().zip(p2_pre_iterator) {
+                                matches &=
+                                    Type::new(t1).simple_matches(i_s, &Type::new(t2), variance);
+                            }
+                            matches & (usage == p2).into()
                         }
-                        matches & (usage == p2).into()
                     }
                 }
             };
@@ -367,7 +367,7 @@ impl<'a> Matcher<'a> {
 
     pub fn match_or_add_param_spec(
         &mut self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         pre_param_spec_types: &[DbType],
         p1: &ParamSpecUsage,
         params2_iterator: std::slice::Iter<CallableParam>,
@@ -441,7 +441,7 @@ impl<'a> Matcher<'a> {
 
     pub fn match_param_spec_arguments<'db, 'b, 'c>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
         class: Option<&Class>,
@@ -629,7 +629,7 @@ impl<'a> Matcher<'a> {
         })
     }
 
-    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &mut InferenceState, type_: &DbType) {
+    pub fn set_all_contained_type_vars_to_any(&mut self, i_s: &InferenceState, type_: &DbType) {
         if let Some(matcher) = self.type_var_matcher.as_mut() {
             matcher.set_all_contained_type_vars_to_any(i_s, type_)
         }

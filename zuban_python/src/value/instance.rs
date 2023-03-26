@@ -29,7 +29,7 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn as_inferred(&self, i_s: &mut InferenceState) -> Inferred {
+    pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
         if let Some(inferred_link) = self.inferred_link {
             Inferred::from_saved_node_ref(inferred_link)
         } else {
@@ -40,7 +40,7 @@ impl<'a> Instance<'a> {
 
     pub fn checked_set_descriptor(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         from: NodeRef,
         name: Name,
         value: &Inferred,
@@ -120,7 +120,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -173,7 +173,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
@@ -198,7 +198,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -246,7 +246,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         Inferred::new_any()
     }
 
-    fn iter(&self, i_s: &mut InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
+    fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
         let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {
             i_s,
@@ -287,7 +287,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         Some(self)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         if matches!(self.class.generics, Generics::Self_ { .. }) {
             // The generics are only ever self for our own instance, because Generics::Self_ is
             // only used for the current class.
@@ -298,7 +298,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         }
     }
 
-    fn description(&self, i_s: &mut InferenceState) -> String {
+    fn description(&self, i_s: &InferenceState) -> String {
         format!(
             "{} {}",
             format!("{:?}", self.kind()).to_lowercase(),
@@ -313,7 +313,7 @@ enum FoundOnClass<'a> {
 }
 
 struct ClassMroFinder<'db, 'a, 'c, 'd> {
-    i_s: &'d mut InferenceState<'db, 'c>,
+    i_s: &'d InferenceState<'db, 'c>,
     instance: &'d Instance<'d>,
     mro_iterator: MroIterator<'db, 'a>,
     from: NodeRef<'d>,

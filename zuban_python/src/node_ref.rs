@@ -187,7 +187,7 @@ impl<'file> NodeRef<'file> {
         )
     }
 
-    pub fn compute_new_type_constraint(&self, i_s: &mut InferenceState) -> DbType {
+    pub fn compute_new_type_constraint(&self, i_s: &InferenceState) -> DbType {
         self.file
             .inference(i_s)
             .compute_new_type_constraint(self.as_expression())

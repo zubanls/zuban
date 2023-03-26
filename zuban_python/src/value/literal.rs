@@ -33,13 +33,13 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
         self.value.module(db)
     }
 
-    fn description(&self, i_s: &mut InferenceState) -> String {
+    fn description(&self, i_s: &InferenceState) -> String {
         self.value.description(i_s)
     }
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -50,7 +50,7 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
         self.value.should_add_lookup_error(db)
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Literal(self.db_literal))
     }
 }

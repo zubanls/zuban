@@ -191,7 +191,7 @@ impl PythonState {
                     Generics::NotDefinedYet,
                     None,
                 );
-                class.ensure_calculated_class_infos(&mut InferenceState::new(db));
+                class.ensure_calculated_class_infos(&InferenceState::new(db));
             };
         }
         cache_index!(builtins_object_index, db, builtins, "object");

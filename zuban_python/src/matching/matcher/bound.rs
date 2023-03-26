@@ -71,7 +71,7 @@ impl TypeVarBound {
 
     pub fn merge_or_mismatch<'db>(
         &mut self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         other: &Type,
         variance: Variance,
     ) -> Match {

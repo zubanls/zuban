@@ -51,40 +51,37 @@ impl<'db> Inference<'db, '_, '_, '_> {
     ) -> Option<Inferred> {
         let file = self.file;
         result_context
-            .with_type_if_exists(
-                self.i_s,
-                |i_s: &mut InferenceState<'db, '_>, type_, matcher| {
-                    let mut found = None;
-                    type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
-                        if list_cls.node_ref == i_s.db.python_state.list_node_ref() {
-                            let type_vars = list_cls.type_vars(i_s).unwrap();
-                            let generic_t = list_cls
-                                .generics()
-                                .nth(i_s.db, &type_vars[0], 0)
-                                .expect_type_argument();
-                            found = check_list_with_context(i_s, matcher, generic_t, file, list);
-                            if found.is_none() {
-                                // As a fallback if there were only errors or no items at all, just use
-                                // the given and expected result context as a type.
-                                found = Some(
-                                    list_cls
-                                        .as_db_type(i_s.db)
-                                        .replace_type_var_likes(self.i_s.db, &mut |tv| {
-                                            tv.as_type_var_like().as_any_generic_item()
-                                        }),
-                                );
-                            }
-                            true
-                        } else {
-                            false
+            .with_type_if_exists(self.i_s, |i_s: &InferenceState<'db, '_>, type_, matcher| {
+                let mut found = None;
+                type_.on_any_class(i_s, matcher, &mut |i_s, matcher, list_cls| {
+                    if list_cls.node_ref == i_s.db.python_state.list_node_ref() {
+                        let type_vars = list_cls.type_vars(i_s).unwrap();
+                        let generic_t = list_cls
+                            .generics()
+                            .nth(i_s.db, &type_vars[0], 0)
+                            .expect_type_argument();
+                        found = check_list_with_context(i_s, matcher, generic_t, file, list);
+                        if found.is_none() {
+                            // As a fallback if there were only errors or no items at all, just use
+                            // the given and expected result context as a type.
+                            found = Some(
+                                list_cls
+                                    .as_db_type(i_s.db)
+                                    .replace_type_var_likes(self.i_s.db, &mut |tv| {
+                                        tv.as_type_var_like().as_any_generic_item()
+                                    }),
+                            );
                         }
-                    });
-                    // `found` might still be empty, because we matched Any.
-                    found.map(|found| {
-                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(found)))
-                    })
-                },
-            )
+                        true
+                    } else {
+                        false
+                    }
+                });
+                // `found` might still be empty, because we matched Any.
+                found.map(|found| {
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(found)))
+                })
+            })
             .flatten()
     }
 
@@ -102,7 +99,7 @@ impl<'db> Inference<'db, '_, '_, '_> {
 }
 
 fn check_list_with_context<'db>(
-    i_s: &mut InferenceState<'db, '_>,
+    i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     generic_t: Type,
     file: &PythonFile,
@@ -115,13 +112,13 @@ fn check_list_with_context<'db>(
     let mut found: Option<DbType> = None;
     if let Some(elements) = list.unpack() {
         for (item, element) in elements.enumerate() {
-            let mut check_item = |i_s: &mut InferenceState<'db, '_>, inferred: Inferred, index| {
+            let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
                 let m = generic_t.error_if_not_matches_with_matcher(
                     i_s,
                     matcher,
                     &inferred,
                     Some(
-                        |i_s: &mut InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
+                        |i_s: &InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
                             let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
                             node_ref.add_typing_issue(
                                 i_s,
@@ -172,7 +169,7 @@ fn check_list_with_context<'db>(
 }
 
 pub fn on_argument_type_error(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     class: Option<&Class>,
     error_text: &dyn Fn(&str) -> Option<Box<str>>,
     arg: &Argument,

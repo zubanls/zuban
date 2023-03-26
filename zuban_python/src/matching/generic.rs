@@ -56,7 +56,7 @@ impl<'a> Generic<'a> {
 
     pub fn matches(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         other: &Self,
         variance: Variance,
@@ -93,7 +93,7 @@ impl<'a> Generic<'a> {
         }
     }
 
-    pub fn overlaps(self, i_s: &mut InferenceState, other: Self) -> bool {
+    pub fn overlaps(self, i_s: &InferenceState, other: Self) -> bool {
         match self {
             Self::TypeArgument(t1) => match other {
                 Self::TypeArgument(ref t2) => t1.overlaps(i_s, t2),

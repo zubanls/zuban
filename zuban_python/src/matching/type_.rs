@@ -70,7 +70,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_callable(&self, i_s: &mut InferenceState) -> Option<Cow<'a, CallableContent>> {
+    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Cow<'a, CallableContent>> {
         match self {
             Self::Type(Cow::Borrowed(DbType::Callable(c))) => Some(Cow::Borrowed(c)),
             _ => match self.maybe_db_type() {
@@ -119,7 +119,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn overlaps(&self, i_s: &mut InferenceState, other: &Self) -> bool {
+    pub fn overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
         match other.maybe_db_type() {
             Some(DbType::TypeVar(t2_usage)) => {
                 return if let Some(bound) = &t2_usage.type_var.bound {
@@ -216,7 +216,7 @@ impl<'a> Type<'a> {
 
     fn matches_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         value_type: &Self,
         variance: Variance,
@@ -370,24 +370,24 @@ impl<'a> Type<'a> {
 
     pub fn is_sub_type_of(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
         matcher.match_reverse(|matcher| value_type.is_super_type_of(i_s, matcher, self))
     }
 
-    pub fn is_simple_sub_type_of(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
+    pub fn is_simple_sub_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
         self.is_sub_type_of(i_s, &mut Matcher::default(), value_type)
     }
 
-    pub fn is_simple_super_type_of(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
+    pub fn is_simple_super_type_of(&self, i_s: &InferenceState, value_type: &Self) -> Match {
         self.is_super_type_of(i_s, &mut Matcher::default(), value_type)
     }
 
     pub fn is_super_type_of(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
@@ -437,7 +437,7 @@ impl<'a> Type<'a> {
     #[inline]
     pub fn check_promotion(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         class2: Class,
     ) -> Match {
@@ -451,13 +451,13 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn is_simple_same_type(&self, i_s: &mut InferenceState, value_type: &Self) -> Match {
+    pub fn is_simple_same_type(&self, i_s: &InferenceState, value_type: &Self) -> Match {
         self.is_same_type(i_s, &mut Matcher::default(), value_type)
     }
 
     pub fn is_same_type(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         value_type: &Self,
     ) -> Match {
@@ -476,7 +476,7 @@ impl<'a> Type<'a> {
 
     pub fn simple_matches(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         value_type: &Self,
         variance: Variance,
     ) -> Match {
@@ -485,7 +485,7 @@ impl<'a> Type<'a> {
 
     pub fn matches(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         value_type: &Self,
         variance: Variance,
@@ -499,7 +499,7 @@ impl<'a> Type<'a> {
 
     fn check_protocol_and_other_side(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         value_type: &Self,
         variance: Variance,
@@ -633,7 +633,7 @@ impl<'a> Type<'a> {
 
     fn matches_union(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         u1: &UnionType,
         value_type: &Self,
@@ -691,7 +691,7 @@ impl<'a> Type<'a> {
     }
 
     fn matches_class(
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         class1: &Class,
         value_type: &Type,
@@ -706,7 +706,7 @@ impl<'a> Type<'a> {
                         .matches(i_s, matcher, c2_generics, type_vars)
                         .similar_if_false();
                     if !result.bool() {
-                        let mut check = |i_s: &mut InferenceState, n| {
+                        let mut check = |i_s: &InferenceState, n| {
                             let type_var_like = &type_vars[n];
                             let t1 = c1_generics.nth_type_argument(i_s.db, type_var_like, n);
                             if t1.is_any() {
@@ -751,7 +751,7 @@ impl<'a> Type<'a> {
     }
 
     fn matches_callable(
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         c1: &CallableContent,
         c2: &CallableContent,
@@ -776,7 +776,7 @@ impl<'a> Type<'a> {
     }
 
     fn matches_tuple(
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         t1: &TupleContent,
         t2: &TupleContent,
@@ -792,7 +792,7 @@ impl<'a> Type<'a> {
         Match::new_true()
     }
 
-    fn overlaps_tuple(i_s: &mut InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
+    fn overlaps_tuple(i_s: &InferenceState, t1: &TupleContent, t2: &TupleContent) -> bool {
         use TupleTypeArguments::*;
         match (&t1.args, &t2.args) {
             (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
@@ -850,10 +850,10 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn overlaps_class(i_s: &mut InferenceState, class1: Class, class2: Class) -> bool {
+    pub fn overlaps_class(i_s: &InferenceState, class1: Class, class2: Class) -> bool {
         let check = {
             #[inline]
-            |i_s: &mut InferenceState, t1: &Type, t2: &Type| {
+            |i_s: &InferenceState, t1: &Type, t2: &Type| {
                 t1.maybe_class(i_s.db)
                     .and_then(|c1| {
                         t2.maybe_class(i_s.db).map(|c2| {
@@ -882,16 +882,16 @@ impl<'a> Type<'a> {
 
     pub fn error_if_not_matches<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         value: &Inferred,
-        callback: impl FnOnce(&mut InferenceState<'db, '_>, Box<str>, Box<str>) -> NodeRef<'db>,
+        callback: impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>) -> NodeRef<'db>,
     ) -> Match {
         self.error_if_not_matches_with_matcher(
             i_s,
             &mut Matcher::default(),
             value,
             Some(
-                |i_s: &mut InferenceState<'db, '_>, t1, t2, reason: &MismatchReason| {
+                |i_s: &InferenceState<'db, '_>, t1, t2, reason: &MismatchReason| {
                     callback(i_s, t1, t2)
                 },
             ),
@@ -900,16 +900,11 @@ impl<'a> Type<'a> {
 
     pub fn error_if_not_matches_with_matcher<'db>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         matcher: &mut Matcher,
         value: &Inferred,
         callback: Option<
-            impl FnOnce(
-                &mut InferenceState<'db, '_>,
-                Box<str>,
-                Box<str>,
-                &MismatchReason,
-            ) -> NodeRef<'db>,
+            impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>,
         >,
     ) -> Match {
         let value_type = value.class_as_type(i_s);
@@ -960,7 +955,7 @@ impl<'a> Type<'a> {
 
     pub fn try_to_resemble_context(
         self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
         t: &Self,
     ) -> DbType {
@@ -1051,7 +1046,7 @@ impl<'a> Type<'a> {
 
     pub fn execute_and_resolve_type_vars(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         class: Option<&Class>,
         self_class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
@@ -1066,7 +1061,7 @@ impl<'a> Type<'a> {
 
     fn internal_resolve_type_vars(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         class: Option<&Class>,
         self_class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
@@ -1085,9 +1080,9 @@ impl<'a> Type<'a> {
 
     pub fn on_any_class(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         matcher: &mut Matcher,
-        callable: &mut impl FnMut(&mut InferenceState, &mut Matcher, &Class) -> bool,
+        callable: &mut impl FnMut(&InferenceState, &mut Matcher, &Class) -> bool,
     ) -> bool {
         if let Some(class) = self.maybe_class(i_s.db) {
             callable(i_s, matcher, &class)
@@ -1111,7 +1106,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn common_base_type(&self, i_s: &mut InferenceState, other: &Self) -> DbType {
+    pub fn common_base_type(&self, i_s: &InferenceState, other: &Self) -> DbType {
         match (self.maybe_class(i_s.db), other.maybe_class(i_s.db)) {
             (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s.db) {
@@ -1160,7 +1155,7 @@ impl<'a> Type<'a> {
         matches!(self, Type::Type(t) if matches!(t.as_ref(), DbType::Any))
     }
 
-    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+    pub fn has_any(&self, i_s: &InferenceState) -> bool {
         match self {
             // TODO this does not not need to generate a db type
             Self::Class(c) => c.as_db_type(i_s.db).has_any(i_s),
@@ -1176,7 +1171,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn lookup_symbol(&self, i_s: &mut InferenceState, name: &str) -> LookupResult {
+    pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
             Self::Type(t) => match t.as_ref() {
@@ -1201,7 +1196,7 @@ impl<'a> Type<'a> {
 }
 
 pub fn match_tuple_type_arguments(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     matcher: &mut Matcher,
     t1: &TupleTypeArguments,
     t2: &TupleTypeArguments,
@@ -1267,7 +1262,7 @@ pub fn match_tuple_type_arguments(
 }
 
 pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
-    i_s: &mut InferenceState,
+    i_s: &InferenceState,
     mut ts: I,
 ) -> DbType {
     if let Some(first) = ts.next() {

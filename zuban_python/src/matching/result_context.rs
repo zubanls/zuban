@@ -18,8 +18,8 @@ pub enum ResultContext<'a, 'b> {
 impl<'a> ResultContext<'a, '_> {
     pub fn with_type_if_exists_and_replace_type_var_likes<'db, T>(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'_>) -> T,
+        i_s: &InferenceState<'db, '_>,
+        callable: impl FnOnce(&InferenceState<'db, '_>, &Type<'_>) -> T,
     ) -> Option<T> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_)),
@@ -34,8 +34,8 @@ impl<'a> ResultContext<'a, '_> {
 
     pub fn with_type_if_exists<'db, T>(
         &mut self,
-        i_s: &mut InferenceState<'db, '_>,
-        callable: impl FnOnce(&mut InferenceState<'db, '_>, &Type<'_>, &mut Matcher) -> T,
+        i_s: &InferenceState<'db, '_>,
+        callable: impl FnOnce(&InferenceState<'db, '_>, &Type<'_>, &mut Matcher) -> T,
     ) -> Option<T> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
@@ -44,13 +44,13 @@ impl<'a> ResultContext<'a, '_> {
         }
     }
 
-    pub fn is_literal_context<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn is_literal_context<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
         if matches!(self, Self::ExpectLiteral) {
             return true;
         }
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
-            |i_s: &mut InferenceState<'db, '_>, type_| match type_.maybe_db_type() {
+            |i_s: &InferenceState<'db, '_>, type_| match type_.maybe_db_type() {
                 Some(DbType::Literal(_)) => true,
                 Some(DbType::Union(items)) => items.iter().any(|i| matches!(i, DbType::Literal(_))),
                 _ => false,
@@ -59,7 +59,7 @@ impl<'a> ResultContext<'a, '_> {
         .unwrap_or(false)
     }
 
-    pub fn expects_union<'db>(&self, i_s: &mut InferenceState<'db, '_>) -> bool {
+    pub fn expects_union<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
         match self {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {
                 matches!(type_.maybe_db_type(), Some(DbType::Union(_)))

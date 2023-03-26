@@ -33,7 +33,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
 
     fn lookup_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
@@ -43,7 +43,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
 
     fn get_item(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
@@ -57,7 +57,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             )
     }
 
-    fn as_type(&self, i_s: &mut InferenceState<'db, '_>) -> Type<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Rc::new(
             self.alias.as_db_type_and_set_type_vars_any(i_s.db),
         )))
@@ -65,7 +65,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
 
     fn execute(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,

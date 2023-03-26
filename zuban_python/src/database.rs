@@ -1004,16 +1004,16 @@ impl DbType {
         result
     }
 
-    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+    pub fn has_any(&self, i_s: &InferenceState) -> bool {
         self.has_any_internal(i_s, &mut Vec::new())
     }
 
     fn has_any_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
-        let mut search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
+        let search_in_generics = |generics: &GenericsList, already_checked: &mut _| {
             generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.has_any_internal(i_s, already_checked),
                 GenericItem::TypeArguments(_) => todo!(),
@@ -1851,13 +1851,13 @@ impl TupleTypeArguments {
         }
     }
 
-    pub fn has_any(&self, i_s: &mut InferenceState) -> bool {
+    pub fn has_any(&self, i_s: &InferenceState) -> bool {
         self.has_any_internal(i_s, &mut Vec::new())
     }
 
     fn has_any_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
         match self {
@@ -1869,7 +1869,7 @@ impl TupleTypeArguments {
         }
     }
 
-    fn common_base_type(&self, i_s: &mut InferenceState) -> DbType {
+    fn common_base_type(&self, i_s: &InferenceState) -> DbType {
         match self {
             Self::FixedLength(ts) => common_base_type(i_s, ts.iter()),
             Self::ArbitraryLength(t) => t.as_ref().clone(),
@@ -1922,7 +1922,7 @@ impl TupleContent {
             GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
                 self.args
                     .as_ref()
-                    .map(|args| args.common_base_type(&mut InferenceState::new(db)))
+                    .map(|args| args.common_base_type(&InferenceState::new(db)))
                     .unwrap_or(DbType::Any),
             )]))
         })
@@ -2179,7 +2179,7 @@ impl NewType {
         }
     }
 
-    pub fn type_(&self, i_s: &mut InferenceState) -> &DbType {
+    pub fn type_(&self, i_s: &InferenceState) -> &DbType {
         self.type_.get_or_init(|| {
             let t =
                 NodeRef::from_link(i_s.db, self.type_expression).compute_new_type_constraint(i_s);
@@ -3005,7 +3005,7 @@ impl CallableParams {
 
     fn has_any_internal(
         &self,
-        i_s: &mut InferenceState,
+        i_s: &InferenceState,
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool {
         match self {

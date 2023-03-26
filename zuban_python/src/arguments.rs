@@ -354,7 +354,7 @@ impl<'db, 'a> Argument<'db, 'a> {
 
     pub fn infer(
         &self,
-        i_s: &mut InferenceState<'db, '_>,
+        i_s: &InferenceState<'db, '_>,
         result_context: &mut ResultContext,
     ) -> Inferred {
         match &self.kind {
@@ -470,14 +470,14 @@ enum BaseArgumentReturn<'db, 'a> {
 }
 
 impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
-    fn expect_i_s(&mut self) -> &mut InferenceState<'db, 'a> {
+    fn expect_i_s(&mut self) -> &InferenceState<'db, 'a> {
         if let Self::Iterator { i_s, .. } = self {
             i_s
         } else {
             unreachable!()
         }
     }
-    fn into_argument_types(self, i_s: &mut InferenceState) -> Vec<Box<str>> {
+    fn into_argument_types(self, i_s: &InferenceState) -> Vec<Box<str>> {
         match self {
             Self::Inferred {
                 inferred,
@@ -762,7 +762,7 @@ impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
         }
     }
 
-    pub fn into_argument_types(mut self, i_s: &mut InferenceState) -> Box<[Box<str>]> {
+    pub fn into_argument_types(mut self, i_s: &InferenceState) -> Box<[Box<str>]> {
         let mut result = vec![];
         loop {
             result.extend(self.current.into_argument_types(i_s));
@@ -775,7 +775,7 @@ impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
         result.into_boxed_slice()
     }
 
-    pub fn calculate_diagnostics(mut self, i_s: &mut InferenceState<'db, '_>) {
+    pub fn calculate_diagnostics(mut self, i_s: &InferenceState<'db, '_>) {
         while let Some(arg) = self.next() {
             arg.infer(i_s, &mut ResultContext::Unknown);
             if arg.in_args_or_kwargs_and_arbitrary_len() {
