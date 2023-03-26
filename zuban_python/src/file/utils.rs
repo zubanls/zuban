@@ -10,7 +10,7 @@ use crate::node_ref::NodeRef;
 use crate::value::Class;
 use crate::Inferred;
 
-impl<'db> Inference<'db, '_, '_, '_> {
+impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics(
         &mut self,
         elements: ListOrSetElementIterator,

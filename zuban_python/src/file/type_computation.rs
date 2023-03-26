@@ -305,8 +305,8 @@ pub(super) fn type_computation_for_variable_annotation(
     }
 }
 
-pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
-    inference: &'c mut Inference<'db, 'file, 'a, 'b>,
+pub struct TypeComputation<'db, 'file, 'a, 'c> {
+    inference: &'c mut Inference<'db, 'file, 'a>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager,
@@ -320,9 +320,9 @@ pub struct TypeComputation<'db, 'file, 'a, 'b, 'c> {
     is_recursive_alias: bool,
 }
 
-impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b, 'c> {
+impl<'db: 'x + 'file, 'file, 'a, 'c, 'x> TypeComputation<'db, 'file, 'a, 'c> {
     pub fn new(
-        inference: &'c mut Inference<'db, 'file, 'a, 'b>,
+        inference: &'c mut Inference<'db, 'file, 'a>,
         for_definition: PointLink,
         type_var_callback: TypeVarCallback<'db, 'c>,
         origin: TypeComputationOrigin,
@@ -351,7 +351,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
                 .new_annotation_file(self.inference.i_s.db, start, string);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             let compute_type =
-                |comp: &mut TypeComputation<'db, '_, '_, '_, '_>| match star_exprs.unpack() {
+                |comp: &mut TypeComputation<'db, '_, '_, '_>| match star_exprs.unpack() {
                     StarExpressionContent::Expression(expr) => comp.compute_type(expr),
                     StarExpressionContent::Tuple(t) => todo!(),
                     StarExpressionContent::StarExpression(s) => todo!(),
@@ -1962,7 +1962,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'b, 'c, 'x> TypeComputation<'db, 'file, 'a, 'b,
     }
 }
 
-impl<'db: 'x, 'file, 'a, 'b, 'x> Inference<'db, 'file, 'a, 'b> {
+impl<'db: 'x, 'file, 'a, 'x> Inference<'db, 'file, 'a> {
     pub fn compute_type_application_on_class(
         &mut self,
         class: Class,

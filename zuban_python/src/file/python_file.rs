@@ -165,10 +165,7 @@ pub struct StarImport {
 
 impl StarImport {
     #[inline]
-    pub(super) fn to_file<'db>(
-        &self,
-        inf: &mut Inference<'db, '_, '_, '_>,
-    ) -> Option<&'db PythonFile> {
+    pub(super) fn to_file<'db>(&self, inf: &mut Inference<'db, '_, '_>) -> Option<&'db PythonFile> {
         let point = inf.file.points.get(self.star_node);
         if point.calculated() {
             return if point.type_() == PointType::Unknown {
@@ -245,10 +242,10 @@ impl<'db> PythonFile {
         )
     }
 
-    pub fn inference<'file, 'i_s, 'b>(
+    pub fn inference<'file, 'a>(
         &'file self,
-        i_s: &'i_s InferenceState<'db, 'b>,
-    ) -> Inference<'db, 'file, 'i_s, 'b> {
+        i_s: &'a InferenceState<'db, 'a>,
+    ) -> Inference<'db, 'file, 'a> {
         Inference {
             file: self,
             file_index: self.file_index(),

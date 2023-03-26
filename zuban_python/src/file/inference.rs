@@ -24,10 +24,10 @@ use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
 use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
 
-pub struct Inference<'db: 'file, 'file, 'a, 'b> {
+pub struct Inference<'db: 'file, 'file, 'a> {
     pub(super) file: &'file PythonFile,
     pub(super) file_index: FileIndex,
-    pub(super) i_s: &'a InferenceState<'db, 'b>,
+    pub(super) i_s: &'a InferenceState<'db, 'a>,
 }
 
 macro_rules! check_point_cache_with {
@@ -68,7 +68,7 @@ macro_rules! check_point_cache_with {
     }
 }
 
-impl<'db, 'file, 'i_s, 'b> Inference<'db, 'file, 'i_s, 'b> {
+impl<'db, 'file, 'a> Inference<'db, 'file, 'a> {
     fn cache_simple_stmts_name(&mut self, simple_stmts: SimpleStmts, name_def: NodeRef) {
         debug!(
             "Infer stmt (#{}, {}:{}): {:?}",

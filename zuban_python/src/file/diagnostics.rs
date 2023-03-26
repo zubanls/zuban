@@ -14,7 +14,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function};
 
-impl<'db> Inference<'db, '_, '_, '_> {
+impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
         for complex_point in unsafe { self.file.complex_points.iter() } {
