@@ -305,8 +305,8 @@ pub(super) fn type_computation_for_variable_annotation(
     }
 }
 
-pub struct TypeComputation<'db, 'file, 'a, 'c> {
-    inference: &'c mut Inference<'db, 'file, 'a>,
+pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
+    inference: &'c mut Inference<'db, 'file, 'i_s>,
     for_definition: PointLink,
     current_callable: Option<PointLink>,
     type_var_manager: TypeVarManager,
@@ -320,9 +320,9 @@ pub struct TypeComputation<'db, 'file, 'a, 'c> {
     is_recursive_alias: bool,
 }
 
-impl<'db: 'x + 'file, 'file, 'a, 'c, 'x> TypeComputation<'db, 'file, 'a, 'c> {
+impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c> {
     pub fn new(
-        inference: &'c mut Inference<'db, 'file, 'a>,
+        inference: &'c mut Inference<'db, 'file, 'i_s>,
         for_definition: PointLink,
         type_var_callback: TypeVarCallback<'db, 'c>,
         origin: TypeComputationOrigin,
@@ -1962,7 +1962,7 @@ impl<'db: 'x + 'file, 'file, 'a, 'c, 'x> TypeComputation<'db, 'file, 'a, 'c> {
     }
 }
 
-impl<'db: 'x, 'file, 'a, 'x> Inference<'db, 'file, 'a> {
+impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     pub fn compute_type_application_on_class(
         &mut self,
         class: Class,

@@ -24,8 +24,8 @@ enum BaseLookup<'file> {
     Other,
 }
 
-pub struct TypeVarFinder<'db, 'file, 'a, 'c, 'd> {
-    inference: &'c mut Inference<'db, 'file, 'a>,
+pub struct TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
+    inference: &'c mut Inference<'db, 'file, 'i_s>,
     class: Option<&'c Class<'c>>,
     type_var_manager: TypeVarManager,
     generic_or_protocol_slice: Option<SliceType<'d>>,
@@ -33,9 +33,9 @@ pub struct TypeVarFinder<'db, 'file, 'a, 'c, 'd> {
     had_generic_or_protocol_issue: bool,
 }
 
-impl<'db, 'file: 'd, 'a, 'c, 'd> TypeVarFinder<'db, 'file, 'a, 'c, 'd> {
+impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
     pub fn find_class_type_vars(
-        inference: &'c mut Inference<'db, 'file, 'a>,
+        inference: &'c mut Inference<'db, 'file, 'i_s>,
         class: &'c Class<'d>,
     ) -> TypeVarLikes {
         let mut finder = Self {
@@ -67,7 +67,7 @@ impl<'db, 'file: 'd, 'a, 'c, 'd> TypeVarFinder<'db, 'file, 'a, 'c, 'd> {
     }
 
     pub fn find_alias_type_vars(
-        inference: &'c mut Inference<'db, 'file, 'a>,
+        inference: &'c mut Inference<'db, 'file, 'i_s>,
         expr: Expression<'d>,
     ) -> TypeVarLikes {
         let mut finder = Self {
