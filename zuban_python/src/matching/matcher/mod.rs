@@ -344,7 +344,7 @@ impl<'a> Matcher<'a> {
         if tv_matcher.match_in_definition == p1.in_definition {
             let calc = &mut tv_matcher.calculated_type_vars[p1.index.as_usize()];
             match &mut calc.type_ {
-                BoundKind::ParamSpecArgument(p) => match_params(i_s, matches, &p, p2_pre_iterator),
+                BoundKind::ParamSpecArgument(p) => match_params(i_s, matches, p, p2_pre_iterator),
                 BoundKind::Uncalculated => {
                     calc.type_ = BoundKind::ParamSpecArgument(ParamSpecArgument::new(
                         CallableParams::WithParamSpec(

@@ -209,7 +209,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let actual = replace_annoyances(diagnostics.join("\n"));
             let mut actual_lines = actual
                 .trim()
-                .split("\n")
+                .split('\n')
                 .map(|s| s.to_lowercase())
                 .collect::<Vec<_>>();
             if actual_lines == [""] {
@@ -222,7 +222,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             wanted_lower.sort();
 
             // To check output only sort by filenames, which should be enough.
-            wanted.sort_by_key(|line| line.split(":").next().unwrap().to_owned());
+            wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
 
             assert_eq!(
                 actual_lines,
@@ -232,7 +232,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 self.file_name,
                 i + 1,
                 steps.steps.len(),
-                wanted.iter().fold(String::new(), |a, b| a + &b + "\n"),
+                wanted.iter().fold(String::new(), |a, b| a + b + "\n"),
                 actual,
             );
         }
@@ -287,15 +287,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
             } else {
                 process_step_part2(step_index, type_, in_between, rest)
             }
-            if rest == "__main__" {
-                if in_between.starts_with("# flags: ") {
-                    let all_flags = &in_between[9..in_between.find("\n").unwrap()];
-                    flags = all_flags.split(' ').collect();
-                }
+            if rest == "__main__" && in_between.starts_with("# flags: ") {
+                let all_flags = &in_between[9..in_between.find('\n').unwrap()];
+                flags = all_flags.split(' ').collect();
             }
         };
 
-        for capture in CASE_PART.captures_iter(&self.code) {
+        for capture in CASE_PART.captures_iter(self.code) {
             process_step(
                 current_step_index,
                 current_type,
@@ -349,8 +347,8 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
     let mut wanted = step
         .out
         .trim()
-        .split("\n")
-        .filter_map(|s| cleanup_mypy_issues(s))
+        .split('\n')
+        .filter_map(cleanup_mypy_issues)
         .collect::<Vec<_>>();
 
     if wanted == [""] {
@@ -366,7 +364,7 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
         } else {
             path
         };
-        let lines: Box<_> = code.split("\n").collect();
+        let lines: Box<_> = code.split('\n').collect();
         for (line_nr, type_, comment) in ErrorCommentsOnCode(&lines, lines.iter().enumerate()) {
             for comment in comment.split(" # E: ") {
                 for (i, comment) in comment.split(" # N: ").enumerate() {
@@ -619,7 +617,7 @@ fn mypy_style_cases<'a, 'b>(file_name: &'a str, code: &'b str) -> Vec<TestCase<'
 
     let mut start = None;
     let mut next_name = None;
-    for capture in CASE.captures_iter(&code) {
+    for capture in CASE.captures_iter(code) {
         if let Some(start) = start {
             add(
                 next_name.take().unwrap(),
@@ -701,8 +699,8 @@ fn skipped() -> Box<[Skipped]> {
     file.trim()
         .split('\n')
         .map(|mut x| {
-            let start_star = x.starts_with("*");
-            let end_star = x.ends_with("*");
+            let start_star = x.starts_with('*');
+            let end_star = x.ends_with('*');
             if start_star {
                 x = &x[1..];
             }
