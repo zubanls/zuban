@@ -202,19 +202,12 @@ class Foo(Generic[T]):
     def __init__(self, t: T): ...
     def __init__(self, t): ...
 
-x: Foo[int] | int = Foo("")
+x: Foo[int] | int = Foo("") # E: Argument 1 to "Foo" has incompatible type "str"; expected "int"
 y: Foo[str] | str = Foo("")
 
 lst: list[str]
-x = Foo(lst)
+x = Foo(lst) # E: Argument 1 to "Foo" has incompatible type "list[str]"; expected "list[int]"
 y = Foo(lst)
-
-[out]
-main:12: error: No overload variant of "Foo" matches argument type "str"
-main:12: note: Possible overload variants:
-main:12: note:     def __init__(self, t: Any)
-main:12: note:     def __init__(self, t: list[Any])
-main:16: error: Argument 1 to "Foo" has incompatible type "list[str]"; expected "list[int]"
 
 [case contravariant_type_var]
 from typing import Generic, TypeVar
