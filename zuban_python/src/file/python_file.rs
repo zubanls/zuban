@@ -302,7 +302,7 @@ impl<'db> PythonFile {
             return;
         }
         debug!(
-            "New issue: {}",
+            "NEW ISSUE: {}",
             Diagnostic::new(i_s.db, self, &issue).as_string()
         );
         self.issues.push(Box::pin(issue));
