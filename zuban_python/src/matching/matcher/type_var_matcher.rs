@@ -161,16 +161,25 @@ impl TypeVarMatcher {
         let current = &mut self.calculated_type_vars[type_var_usage.index.as_usize()];
         if let BoundKind::TypeVar(current_type) = &mut current.type_ {
             let m = current_type.merge_or_mismatch(i_s, value_type, variance);
-            return match m.bool() || !type_var.restrictions.is_empty() {
-                true => m,
-                false => match current.defined_by_result_context {
-                    true => Match::new_false(),
-                    false => Match::False {
-                        reason: MismatchReason::CannotInferTypeArgument(type_var_usage.index),
-                        similar: false,
+            if !m.bool() && current.defined_by_result_context && i_s.is_checking_overload() {
+                // In case generics are defined by the result context, we need to be careful when
+                // dealing with overloads that we are currently testing. It is possible that the
+                // current overload provides a context that another would not provide. In that case
+                // just reject the result context generics and go on.
+                current.defined_by_result_context = false;
+                current.type_ = BoundKind::Uncalculated;
+            } else {
+                return match m.bool() || !type_var.restrictions.is_empty() {
+                    true => m,
+                    false => match current.defined_by_result_context {
+                        true => Match::new_false(),
+                        false => Match::False {
+                            reason: MismatchReason::CannotInferTypeArgument(type_var_usage.index),
+                            similar: false,
+                        },
                     },
-                },
-            };
+                };
+            }
         } else {
             debug_assert!(!current.calculated(), "{current:?}");
         }

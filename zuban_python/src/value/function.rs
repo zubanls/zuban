@@ -1305,9 +1305,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         let mut had_error_in_func = None;
         for (i, link) in self.overload.functions.iter().enumerate() {
-            if i != 0 {
-                args.reset_cache();
-            }
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let (calculated_type_args, had_error) =
                 i_s.do_overload_check(|i_s| match_signature(i_s, function));
@@ -1318,6 +1315,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 SignatureMatch::True => {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
+                        args.reset_cache();
                         return None;
                     } else {
                         debug!(
@@ -1325,8 +1323,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             self.name(),
                             function.node().short_debug()
                         );
+                        args.reset_cache();
                         if had_error {
-                            args.reset_cache();
                             // Need to run the whole thing again to generate errors.
                             match_signature(i_s, function);
                         }
@@ -1345,9 +1343,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             old_indices,
                             &argument_indices,
                         ) {
+                            args.reset_cache();
                             if had_error {
                                 /*
-                                args.reset_cache();
                                 // Need to run the whole thing again to generate errors.
                                 match_signature(i_s, function);
                                 */
@@ -1370,10 +1368,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 }
                 SignatureMatch::False { similar: false } => (),
             }
+            args.reset_cache();
         }
         if let Some(function) = had_error_in_func {
             // Need to run the whole thing again to generate errors.
-            args.reset_cache();
             match_signature(i_s, function);
         }
         if let Some((type_arguments, function, _)) = multi_any_match {

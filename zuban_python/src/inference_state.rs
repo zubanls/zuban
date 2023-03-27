@@ -15,7 +15,7 @@ enum Context<'db, 'a> {
 }
 
 #[derive(Clone, Copy, Debug)]
-pub enum Mode<'a> {
+enum Mode<'a> {
     Normal,
     OverloadCheck { had_error: &'a Cell<bool> },
 }
@@ -110,6 +110,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         };
         let result = callable(i_s);
         (result, had_error.get())
+    }
+
+    pub fn is_checking_overload(&self) -> bool {
+        matches!(self.mode, Mode::OverloadCheck { .. })
     }
 
     pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {

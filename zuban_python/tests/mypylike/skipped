@@ -1,5 +1,6 @@
 # Next up
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
+union_context_class_matching_with_overload
 
 # dict specialities
 testDictWithKeywordArgsOnly
@@ -89,7 +90,6 @@ testReverseComparisonOperator
 testReverseOperatorMethodForwardIsAny3
 
 # overload argument expression uses context inference multiple times
-testLiteralAndGenericsWithOverloads
 testPreferExactSignatureMatchInOverload
 # Overloading
 testOverloadBadArgumentsInferredToAny2
