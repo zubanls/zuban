@@ -90,8 +90,6 @@ testReverseComparisonOperator
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
-# overload argument expression uses context inference multiple times
-testPreferExactSignatureMatchInOverload
 # Overloading
 testOverloadBadArgumentsInferredToAny2
 # Overloads maybe later
