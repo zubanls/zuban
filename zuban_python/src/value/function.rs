@@ -1325,10 +1325,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             function.node().short_debug()
                         );
                         args.reset_cache();
-                        if had_error {
-                            // Need to run the whole thing again to generate errors.
-                            match_signature(i_s, function);
-                        }
                         return handle_result(calculated_type_args.type_arguments, function);
                     }
                 }
@@ -1346,11 +1342,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         ) {
                             args.reset_cache();
                             if had_error {
-                                /*
-                                // Need to run the whole thing again to generate errors.
+                                // Need to run the whole thing again to generate errors, because
+                                // the function is not going to be checked.
                                 match_signature(i_s, function);
-                                */
-                                todo!()
+                                todo!("Add a test")
                             }
                             return None;
                         }
@@ -1370,10 +1365,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 SignatureMatch::False { similar: false } => (),
             }
             args.reset_cache();
-        }
-        if let Some(function) = had_error_in_func {
-            // Need to run the whole thing again to generate errors.
-            match_signature(i_s, function);
         }
         if let Some((type_arguments, function, _)) = multi_any_match {
             return handle_result(type_arguments, function);
@@ -1399,6 +1390,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 };
                 args.as_node_ref().add_typing_issue(i_s, t);
             }
+        }
+        if let Some(function) = had_error_in_func {
+            // Need to run the whole thing again to generate errors, because the function is not
+            // going to be checked.
+            match_signature(i_s, function);
         }
         None
     }
