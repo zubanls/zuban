@@ -167,6 +167,8 @@ impl TypeVarMatcher {
                 // current overload provides a context that another would not provide. In that case
                 // just reject the result context generics and go on.
                 current.defined_by_result_context = false;
+                // TODO add a test where this would fail, because there's a result context that was
+                // also already used by a non-result context.
                 current.type_ = BoundKind::Uncalculated;
             } else {
                 return match m.bool() || !type_var.restrictions.is_empty() {
