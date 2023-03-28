@@ -1319,8 +1319,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         return None;
                     } else {
                         debug!(
-                            "Decided overload for {}: {:?}",
+                            "Decided overload for {} (called on #{}): {:?}",
                             self.name(),
+                            args.as_node_ref().line(),
                             function.node().short_debug()
                         );
                         args.reset_cache();

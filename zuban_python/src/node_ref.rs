@@ -208,6 +208,12 @@ impl<'file> NodeRef<'file> {
     pub fn into_inferred(self) -> Inferred {
         Inferred::new_saved2(self.file, self.node_index)
     }
+
+    pub fn line(&self) -> usize {
+        self.file
+            .byte_to_line_column(self.file.tree.node_start_position(self.node_index))
+            .0
+    }
 }
 
 impl fmt::Debug for NodeRef<'_> {
