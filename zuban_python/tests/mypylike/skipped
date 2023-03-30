@@ -90,8 +90,6 @@ testReverseComparisonOperator
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
-# Overloading
-testOverloadBadArgumentsInferredToAny2
 # Overloads maybe later
 testOverloadOverlapWithTypeVarsWithValues
 testOverloadMultipleVarargDefinitionComplex
@@ -543,6 +541,7 @@ testNoTypeCheckDecoratorSemanticError
 
 # Union attribute error: Item "D" of "C | D" has no attribute "y"
 testUnionAttributeAccess
+testOverloadBadArgumentsInferredToAny2
 
 # Union iter()
 testUnionMultiassignSingle

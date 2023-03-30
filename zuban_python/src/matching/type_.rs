@@ -568,7 +568,7 @@ impl<'a> Type<'a> {
                         .entries
                         .iter()
                         .all(|e| {
-                            self.simple_matches(i_s, &Type::new(&e.type_), variance)
+                            self.matches(i_s, matcher, &Type::new(&e.type_), variance)
                                 .bool()
                         })
                         .into();
