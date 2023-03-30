@@ -92,7 +92,6 @@ testReverseOperatorMethodForwardIsAny3
 
 # Overloads maybe later
 testOverloadOverlapWithTypeVarsWithValues
-testOverloadMultipleVarargDefinitionComplex
 # Overloading __init__
 testOverloadedToGeneric
 # *args/**kwargs input use Any if length unclear
@@ -1324,6 +1323,7 @@ testTypingSelfWithValuesExpansion
 testOptionalLambdaInference
 
 # - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
+testOverloadMultipleVarargDefinitionComplex
 testOverloadPartialOverlapWithUnrestrictedTypeVar
 testOverloadPartialOverlapWithUnrestrictedTypeVarNested
 testOverloadedPartiallyOverlappingTypeVarsAndUnion

@@ -16,8 +16,8 @@ use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
     Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
-    StringSlice, TupleTypeArguments, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1214,20 +1214,20 @@ impl<'db> InferrableParam<'db, '_> {
         match &self.argument {
             ParamInput::Argument(arg) => Some(arg.infer(i_s, &mut ResultContext::Unknown)),
             ParamInput::Tuple(args) => {
-                todo!();
-                /*
                 let mut list = vec![];
                 for arg in args.iter() {
-                    list.push(arg.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s))
+                    if arg.in_args_or_kwargs_and_arbitrary_len() {
+                        todo!()
+                    }
+                    list.push(TypeOrTypeVarTuple::Type(
+                        arg.infer(i_s, &mut ResultContext::Unknown)
+                            .class_as_db_type(i_s),
+                    ))
                 }
-                let t = TupleContent {
-                    generics: Some(GenericsList::generics_from_vec(list)),
-                    arbitrary_length: false,
-                };
+                let t = TupleContent::new_fixed_length(list.into_boxed_slice());
                 Some(Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
                     Box::new(DbType::Tuple(t)),
                 )))
-                */
             }
             ParamInput::None => None,
         }
