@@ -9,7 +9,7 @@ use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{
-    Argument, ArgumentIteratorImpl, ArgumentKind, Arguments, KnownArguments, SimpleArguments,
+    Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments, SimpleArguments,
 };
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
@@ -1087,7 +1087,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
 
 pub struct InferrableParamIterator<'db, 'a> {
     db: &'db Database,
-    arguments: ArgumentIteratorImpl<'db, 'a>,
+    arguments: ArgumentIterator<'db, 'a>,
     params: ASTParamIterator<'a>,
     file: &'a PythonFile,
     unused_keyword_arguments: Vec<Argument<'db, 'a>>,
@@ -1098,7 +1098,7 @@ impl<'db, 'a> InferrableParamIterator<'db, 'a> {
         db: &'db Database,
         file: &'a PythonFile,
         params: ASTParamIterator<'a>,
-        arguments: ArgumentIteratorImpl<'db, 'a>,
+        arguments: ArgumentIterator<'db, 'a>,
     ) -> Self {
         Self {
             db,
