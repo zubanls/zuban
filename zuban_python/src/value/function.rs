@@ -1395,10 +1395,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     let mut non_union_args = vec![];
                     fill_args_and_check(&mut non_union_args, args.iter())
                     for arg in args.iter() {
-                        if arg.in_args_or_kwargs_and_arbitrary_len() {
-                            //self.drop_args_kwargs_iterator();
-                            todo!()
-                        }
                         arg
                     }
                     */

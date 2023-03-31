@@ -789,9 +789,6 @@ impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
     pub fn calculate_diagnostics(mut self, i_s: &InferenceState<'db, '_>) {
         while let Some(arg) = self.next() {
             arg.infer(i_s, &mut ResultContext::Unknown);
-            if arg.in_args_or_kwargs_and_arbitrary_len() {
-                self.drop_args_kwargs_iterator()
-            }
         }
     }
 }
@@ -806,7 +803,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
     type Item = Argument<'db, 'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        match &mut self.args_kwargs_iterator {
+        match std::mem::replace(&mut self.args_kwargs_iterator, ArgsKwargsIterator::None) {
             ArgsKwargsIterator::None => match self.current.next() {
                 Some(BaseArgumentReturn::Argument(mut kind)) => {
                     let index = self.counter;
@@ -842,25 +839,32 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                 }
             },
             ArgsKwargsIterator::Args {
-                iterator,
+                mut iterator,
                 node_ref,
                 position,
             } => {
                 if let Some(inferred) = iterator.next(self.current.expect_i_s()) {
                     let index = self.counter;
                     self.counter += 1;
+                    let in_args_or_kwargs_and_arbitrary_len = iterator.len().is_none();
+                    if !in_args_or_kwargs_and_arbitrary_len {
+                        self.args_kwargs_iterator = ArgsKwargsIterator::Args {
+                            iterator,
+                            node_ref,
+                            position,
+                        };
+                    }
                     Some(Argument {
                         kind: ArgumentKind::Inferred {
                             inferred,
-                            position: *position,
-                            node_ref: *node_ref,
-                            in_args_or_kwargs_and_arbitrary_len: iterator.len().is_none(),
+                            position,
+                            node_ref,
+                            in_args_or_kwargs_and_arbitrary_len,
                             is_keyword: false,
                         },
                         index,
                     })
                 } else {
-                    self.args_kwargs_iterator = ArgsKwargsIterator::None;
                     self.next()
                 }
             }
@@ -874,8 +878,8 @@ impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
                 Some(Argument {
                     kind: ArgumentKind::Inferred {
                         inferred: inferred_value.clone(),
-                        position: *position,
-                        node_ref: *node_ref,
+                        position,
+                        node_ref,
                         in_args_or_kwargs_and_arbitrary_len: true,
                         is_keyword: true,
                     },

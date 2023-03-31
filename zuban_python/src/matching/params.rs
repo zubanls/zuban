@@ -508,7 +508,8 @@ impl<'x> Param<'x> for &'x CallableParam {
 
 pub struct InferrableParamIterator2<'db, 'a, I, P, AI: Iterator> {
     db: &'db Database,
-    pub arguments: Peekable<AI>,
+    arguments: Peekable<AI>,
+    current_arg: Option<Argument<'db, 'a>>,
     params: I,
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
     current_starred_param: Option<P>,
@@ -521,6 +522,7 @@ impl<'db, 'a, I, P, AI: ArgumentIterator<'db, 'a>> InferrableParamIterator2<'db,
         Self {
             db,
             arguments: Peekable::new(arguments),
+            current_arg: None,
             params,
             unused_keyword_arguments: vec![],
             current_starred_param: None,
@@ -534,15 +536,47 @@ impl<'db, 'a, I, P, AI: ArgumentIterator<'db, 'a>> InferrableParamIterator2<'db,
     }
 
     pub fn has_unused_arguments(&mut self) -> bool {
-        while let Some(arg) = self.arguments.peek() {
+        while let Some(arg) = self.next_arg() {
             if arg.in_args_or_kwargs_and_arbitrary_len() {
-                self.arguments.next();
-                self.arguments.as_inner_mut().drop_args_kwargs_iterator()
+                self.current_arg = None;
             } else {
+                // Should not modify arguments that are uncalled-for, because we use them later for
+                // diagnostics.
+                self.current_arg = Some(arg);
                 return true;
             }
         }
         false
+    }
+
+    pub fn next_arg(&mut self) -> Option<Argument<'db, 'a>> {
+        if let Some(arg) = self.current_arg.take() {
+            if arg.in_args_or_kwargs_and_arbitrary_len() {
+                self.current_arg = Some(arg.clone());
+            }
+            return Some(arg);
+        }
+        let arg = self.arguments.next();
+        if let Some(a) = &arg {
+            if a.in_args_or_kwargs_and_arbitrary_len() {
+                self.current_arg = arg.clone();
+            }
+        }
+        arg
+    }
+
+    fn next_arg_if(&mut self, when: impl FnOnce(&Argument) -> bool) -> Option<Argument<'db, 'a>> {
+        self.next_arg().and_then(|arg| {
+            if arg.in_args_or_kwargs_and_arbitrary_len() {
+                self.current_arg = None;
+            }
+            if when(&arg) {
+                Some(arg)
+            } else {
+                self.current_arg = Some(arg);
+                None
+            }
+        })
     }
 }
 
@@ -556,7 +590,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
-            if let Some(argument) = self.arguments.next_if(|arg| !arg.is_keyword_argument()) {
+            if let Some(argument) = self.next_arg_if(|arg| !arg.is_keyword_argument()) {
                 if argument.in_args_or_kwargs_and_arbitrary_len() {
                     self.arguments.as_inner_mut().drop_args_kwargs_iterator()
                 }
@@ -569,7 +603,7 @@ where
             }
         }
         if let Some(param) = self.current_double_starred_param {
-            if let Some(argument) = self.arguments.next_if(|arg| arg.is_keyword_argument()) {
+            if let Some(argument) = self.next_arg_if(|arg| arg.is_keyword_argument()) {
                 if argument.in_args_or_kwargs_and_arbitrary_len() {
                     self.arguments.as_inner_mut().drop_args_kwargs_iterator()
                 }
@@ -603,7 +637,7 @@ where
             let mut argument_with_index = None;
             match param.kind(self.db) {
                 ParamKind::PositionalOrKeyword => {
-                    for arg in &mut self.arguments {
+                    while let Some(arg) = self.next_arg() {
                         match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
                                 if Some(key) == param.name(self.db) {
@@ -626,7 +660,7 @@ where
                     }
                 }
                 ParamKind::KeywordOnly => {
-                    while let Some(arg) = self.arguments.next() {
+                    while let Some(arg) = self.next_arg() {
                         match arg.kind {
                             ArgumentKind::Keyword { key, .. } => {
                                 if Some(key) == param.name(self.db) {
@@ -638,6 +672,7 @@ where
                             }
                             _ => {
                                 if arg.in_args_or_kwargs_and_arbitrary_len() {
+                                    self.current_arg = None;
                                     self.arguments.as_inner_mut().drop_args_kwargs_iterator()
                                 } else {
                                     self.too_many_positional_arguments = true;
@@ -652,7 +687,7 @@ where
                     }
                 }
                 ParamKind::PositionalOnly => {
-                    argument_with_index = self.arguments.next();
+                    argument_with_index = self.next_arg();
                     if let Some(ref arg) = argument_with_index {
                         match arg.kind {
                             ArgumentKind::Positional { .. }

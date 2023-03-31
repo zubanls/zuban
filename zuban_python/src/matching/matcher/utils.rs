@@ -650,7 +650,7 @@ pub fn match_arguments_against_params<
         matches = Match::new_false();
         if should_generate_errors {
             let mut too_many = false;
-            for arg in args_with_params.arguments {
+            while let Some(arg) = args_with_params.next_arg() {
                 match arg.kind {
                     ArgumentKind::Keyword { key, node_ref, .. } => {
                         add_keyword_argument_issue(node_ref, key)
