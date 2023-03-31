@@ -1383,6 +1383,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
                 on_overload_mismatch(i_s, class)
             } else {
+                if args.has_a_union_argument(i_s) {
+                    debug!("TODO add union logic");
+                }
                 let t = IssueType::OverloadMismatch {
                     name: function.diagnostic_string(self.class.as_ref()),
                     args: args.iter().into_argument_types(i_s),

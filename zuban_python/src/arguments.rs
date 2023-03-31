@@ -45,6 +45,22 @@ pub trait Arguments<'db>: std::fmt::Debug {
         // avoid overload context inference issues.
     }
 
+    fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
+        for arg in self.iter() {
+            if arg.in_args_or_kwargs_and_arbitrary_len() {
+                todo!()
+            }
+            if arg
+                .infer(i_s, &mut ResultContext::Unknown)
+                .class_as_type(i_s)
+                .is_union()
+            {
+                return true;
+            }
+        }
+        false
+    }
+
     fn maybe_two_positional_args(&self, db: &'db Database) -> Option<(NodeRef<'db>, NodeRef<'db>)> {
         let mut iterator = self.iter();
         let Some(first_arg) = iterator.next() else {
