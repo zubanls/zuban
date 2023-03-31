@@ -9,7 +9,6 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
-use crate::utils::Peekable;
 
 pub trait Param<'x>: Copy + std::fmt::Debug {
     fn has_default(&self) -> bool;
