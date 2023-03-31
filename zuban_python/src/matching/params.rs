@@ -549,13 +549,7 @@ impl<'db, 'a, I, P, AI: ArgumentIterator<'db, 'a>> InferrableParamIterator2<'db,
     }
 
     pub fn next_arg(&mut self) -> Option<Argument<'db, 'a>> {
-        if let Some(arg) = self.current_arg.take() {
-            if arg.in_args_or_kwargs_and_arbitrary_len() {
-                self.current_arg = Some(arg.clone());
-            }
-            return Some(arg);
-        }
-        let arg = self.arguments.next();
+        let arg = self.current_arg.take().or_else(|| self.arguments.next());
         if let Some(a) = &arg {
             if a.in_args_or_kwargs_and_arbitrary_len() {
                 self.current_arg = arg.clone();
