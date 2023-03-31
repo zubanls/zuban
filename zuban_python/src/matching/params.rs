@@ -106,7 +106,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
         match_with_variance(i_s, matcher, a, b, variance)
     };
 
-    let mut params2 = Peekable::new(params2);
+    let mut params2 = params2.peekable();
     let mut unused_keyword_params: Vec<P2> = vec![];
 
     let mut matches = Match::new_true();
