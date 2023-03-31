@@ -3,6 +3,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
+use super::function::OverloadResult;
 use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
@@ -95,9 +96,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 );
                 Some((func, calculated_type_args.type_arguments, false))
             }
-            Some(FunctionOrOverload::Overload(overloaded_function)) => overloaded_function
+            Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
-                .map(|(func, _)| {
+            {
+                OverloadResult::Single(func, _) => {
                     // Execute the found function to create the diagnostics.
                     let list = calculate_class_init_type_vars_and_return(
                         i_s,
@@ -108,8 +110,11 @@ impl<'db: 'a, 'a> Class<'a> {
                         Some(on_type_error),
                     )
                     .type_arguments;
-                    (func, list, true)
-                }),
+                    Some((func, list, true))
+                }
+                OverloadResult::Union(t) => todo!(),
+                OverloadResult::NotFound => None,
+            },
             None => unreachable!("Should never happen, because there's always object.__init__"),
         }
     }

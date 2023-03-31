@@ -1241,6 +1241,12 @@ pub struct OverloadedFunction<'a> {
     class: Option<Class<'a>>,
 }
 
+pub enum OverloadResult<'a> {
+    Single(Function<'a, 'a>, Option<GenericsList>),
+    Union(DbType),
+    NotFound,
+}
+
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub fn new(node_ref: NodeRef<'a>, overload: &'a Overload, class: Option<Class<'a>>) -> Self {
         Self {
@@ -1258,7 +1264,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         search_init: bool, // TODO this feels weird, maybe use a callback?
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<(Function<'a, 'a>, Option<GenericsList>)> {
+    ) -> OverloadResult<'a> {
         let mut match_signature = |i_s: &InferenceState<'db, '_>, function: Function<'a, 'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
@@ -1299,7 +1305,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             } else {
                 calculated_type_vars
             };
-            Some((function, calculated))
+            OverloadResult::Single(function, calculated)
         };
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
@@ -1316,7 +1322,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
                         args.reset_cache();
-                        return None;
+                        return OverloadResult::NotFound;
                     } else {
                         debug!(
                             "Decided overload for {} (called on #{}): {:?}",
@@ -1347,7 +1353,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 match_signature(i_s, function);
                                 todo!("Add a test")
                             }
-                            return None;
+                            return OverloadResult::NotFound;
                         }
                     } else {
                         multi_any_match = Some((
@@ -1384,6 +1390,17 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 on_overload_mismatch(i_s, class)
             } else {
                 if args.has_a_union_argument(i_s) {
+                    /*
+                    let mut non_union_args = vec![];
+                    fill_args_and_check(&mut non_union_args, args.iter())
+                    for arg in args.iter() {
+                        if arg.in_args_or_kwargs_and_arbitrary_len() {
+                            //self.drop_args_kwargs_iterator();
+                            todo!()
+                        }
+                        arg
+                    }
+                    */
                     debug!("TODO add union logic");
                 }
                 let t = IssueType::OverloadMismatch {
@@ -1399,7 +1416,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // going to be checked.
             match_signature(i_s, function);
         }
-        None
+        OverloadResult::NotFound
     }
 
     fn variants(&self, i_s: &InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {
@@ -1449,9 +1466,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name());
-        self.find_matching_function(i_s, args, class, false, result_context, on_type_error)
-            .map(|(function, _)| function.execute(i_s, args, result_context, on_type_error))
-            .unwrap_or_else(|| self.fallback_type(i_s))
+        match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
+            OverloadResult::Single(func, _) => {
+                func.execute(i_s, args, result_context, on_type_error)
+            }
+            OverloadResult::Union(t) => Inferred::execute_db_type(i_s, t),
+            OverloadResult::NotFound => self.fallback_type(i_s),
+        }
     }
 }
 
