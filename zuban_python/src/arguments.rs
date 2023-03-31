@@ -18,15 +18,9 @@ use parsa_python_ast::{
     Primary, PrimaryContent,
 };
 
-pub trait ArgumentIterator<'db: 'a, 'a>: Iterator<Item = Argument<'db, 'a>> {
-    fn drop_args_kwargs_iterator(&mut self);
-}
+pub trait ArgumentIterator<'db: 'a, 'a>: Iterator<Item = Argument<'db, 'a>> {}
 
-impl<'db, 'a> ArgumentIterator<'db, 'a> for std::vec::IntoIter<Argument<'db, 'a>> {
-    fn drop_args_kwargs_iterator(&mut self) {
-        unreachable!()
-    }
-}
+impl<'db, 'a> ArgumentIterator<'db, 'a> for std::vec::IntoIter<Argument<'db, 'a>> {}
 
 pub enum ArgumentsType<'a> {
     Normal(&'a PythonFile, NodeIndex),
@@ -793,11 +787,7 @@ impl<'db, 'a> ArgumentIteratorImpl<'db, 'a> {
     }
 }
 
-impl<'db, 'a> ArgumentIterator<'db, 'a> for ArgumentIteratorImpl<'db, 'a> {
-    fn drop_args_kwargs_iterator(&mut self) {
-        self.args_kwargs_iterator = ArgsKwargsIterator::None;
-    }
-}
+impl<'db, 'a> ArgumentIterator<'db, 'a> for ArgumentIteratorImpl<'db, 'a> {}
 
 impl<'db, 'a> Iterator for ArgumentIteratorImpl<'db, 'a> {
     type Item = Argument<'db, 'a>;

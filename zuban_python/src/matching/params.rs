@@ -508,7 +508,7 @@ impl<'x> Param<'x> for &'x CallableParam {
 
 pub struct InferrableParamIterator2<'db, 'a, I, P, AI: Iterator> {
     db: &'db Database,
-    arguments: Peekable<AI>,
+    arguments: AI,
     current_arg: Option<Argument<'db, 'a>>,
     params: I,
     pub unused_keyword_arguments: Vec<Argument<'db, 'a>>,
@@ -521,7 +521,7 @@ impl<'db, 'a, I, P, AI: ArgumentIterator<'db, 'a>> InferrableParamIterator2<'db,
     pub fn new(db: &'db Database, params: I, arguments: AI) -> Self {
         Self {
             db,
-            arguments: Peekable::new(arguments),
+            arguments,
             current_arg: None,
             params,
             unused_keyword_arguments: vec![],
@@ -591,9 +591,6 @@ where
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
             if let Some(argument) = self.next_arg_if(|arg| !arg.is_keyword_argument()) {
-                if argument.in_args_or_kwargs_and_arbitrary_len() {
-                    self.arguments.as_inner_mut().drop_args_kwargs_iterator()
-                }
                 return Some(InferrableParam2 {
                     param,
                     argument: ParamArgument::Argument(argument),
@@ -604,9 +601,6 @@ where
         }
         if let Some(param) = self.current_double_starred_param {
             if let Some(argument) = self.next_arg_if(|arg| arg.is_keyword_argument()) {
-                if argument.in_args_or_kwargs_and_arbitrary_len() {
-                    self.arguments.as_inner_mut().drop_args_kwargs_iterator()
-                }
                 return Some(InferrableParam2 {
                     param,
                     argument: ParamArgument::Argument(argument),
@@ -673,7 +667,6 @@ where
                             _ => {
                                 if arg.in_args_or_kwargs_and_arbitrary_len() {
                                     self.current_arg = None;
-                                    self.arguments.as_inner_mut().drop_args_kwargs_iterator()
                                 } else {
                                     self.too_many_positional_arguments = true;
                                 }
