@@ -488,7 +488,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         class_generics_not_defined_yet: bool,
     ) -> DbType {
         let mut class_method_type_var_usage = None;
-        let mut params = self.iter_params().peekable();
+        let mut params = self.iter_params();
         let defined_at = self.node_ref.as_link();
         let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
         let mut type_vars = if let Some(type_vars) = type_vars.take() {
@@ -598,10 +598,11 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     fn internal_as_db_type(
         &self,
         i_s: &InferenceState,
-        mut params: std::iter::Peekable<impl Iterator<Item = FunctionParam<'a>>>,
+        params: impl Iterator<Item = FunctionParam<'a>>,
         has_self_type_var_usage: bool,
         mut as_db_type: impl FnMut(&InferenceState, Type) -> DbType,
     ) -> CallableContent {
+        let mut params = params.peekable();
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
 
