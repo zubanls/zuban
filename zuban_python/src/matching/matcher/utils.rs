@@ -10,7 +10,7 @@ use super::super::{
 };
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
-use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments};
+use crate::arguments::{Argument, ArgumentKind, Arguments};
 use crate::database::{
     CallableContent, CallableParams, DbType, GenericItem, GenericsList, PointLink, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes,
@@ -449,7 +449,7 @@ pub fn match_arguments_against_params<
     'x,
     'c,
     P: Param<'x>,
-    AI: ArgumentIterator<'db, 'x>,
+    AI: Iterator<Item = Argument<'db, 'x>>,
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
@@ -715,7 +715,12 @@ pub fn match_arguments_against_params<
     }
 }
 
-fn calculate_type_vars_for_params<'db: 'x, 'x, P: Param<'x>, AI: ArgumentIterator<'db, 'x>>(
+fn calculate_type_vars_for_params<
+    'db: 'x,
+    'x,
+    P: Param<'x>,
+    AI: Iterator<Item = Argument<'db, 'x>>,
+>(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
     class: Option<&Class>,

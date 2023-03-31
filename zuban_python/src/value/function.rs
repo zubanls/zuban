@@ -9,8 +9,7 @@ use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::{
-    Argument, ArgumentIterator, ArgumentIteratorImpl, ArgumentKind, Arguments, KnownArguments,
-    SimpleArguments,
+    Argument, ArgumentIteratorImpl, ArgumentKind, Arguments, KnownArguments, SimpleArguments,
 };
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
@@ -112,7 +111,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         'b,
         impl Iterator<Item = FunctionParam<'b>>,
         FunctionParam<'b>,
-        impl ArgumentIterator<'db, 'b>,
+        impl Iterator<Item = Argument<'db, 'b>>,
     >
     where
         'a: 'b,
