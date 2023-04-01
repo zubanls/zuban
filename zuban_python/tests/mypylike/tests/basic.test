@@ -26,3 +26,10 @@ def foo(*, x: int, y: int) -> None: ...
 
 dct: dict[str, int]
 foo(**dct)
+
+[case positional_only_params_with_kwargs]
+
+def foo(x, /) -> None: ...
+
+dct: dict[str, int]
+foo(**dct) # E: Missing positional argument "x" in call to "foo"

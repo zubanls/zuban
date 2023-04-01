@@ -683,17 +683,17 @@ where
                     }
                 }
                 ParamKind::PositionalOnly => {
-                    argument_with_index = self.next_arg();
-                    if let Some(ref arg) = argument_with_index {
+                    if let Some(arg) = self.next_arg() {
                         match arg.kind {
                             ArgumentKind::Positional { .. }
-                            | ArgumentKind::Inferred { .. }
-                            | ArgumentKind::Comprehension { .. } => (),
-                            ArgumentKind::Keyword { .. } => {
-                                self.unused_keyword_arguments
-                                    .push(argument_with_index.take().unwrap());
+                            | ArgumentKind::Inferred {
+                                is_keyword: false, ..
                             }
-                            _ => todo!("{arg:?}"),
+                            | ArgumentKind::Comprehension { .. } => argument_with_index = Some(arg),
+                            ArgumentKind::Keyword { .. } => {
+                                self.unused_keyword_arguments.push(arg);
+                            }
+                            _ => (),
                         }
                     }
                 }
