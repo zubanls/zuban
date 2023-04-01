@@ -659,6 +659,14 @@ where
                                     self.unused_keyword_arguments.push(arg);
                                 }
                             }
+                            ArgumentKind::Inferred {
+                                is_keyword: true,
+                                in_args_or_kwargs_and_arbitrary_len: true,
+                                ..
+                            } => {
+                                argument_with_index = Some(arg);
+                                break;
+                            }
                             _ => {
                                 if arg.in_args_or_kwargs_and_arbitrary_len() {
                                     self.current_arg = None;
