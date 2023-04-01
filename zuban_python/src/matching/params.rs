@@ -560,12 +560,12 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
         arg
     }
 
-    fn next_arg_if(&mut self, when: impl FnOnce(&Argument) -> bool) -> Option<Argument<'db, 'a>> {
+    fn maybe_exact_arg(&mut self, is_keyword_arg: bool) -> Option<Argument<'db, 'a>> {
         self.next_arg().and_then(|arg| {
             if arg.in_args_or_kwargs_and_arbitrary_len() {
                 self.current_arg = None;
             }
-            if when(&arg) {
+            if arg.is_keyword_argument() == is_keyword_arg {
                 Some(arg)
             } else {
                 self.current_arg = Some(arg);
@@ -585,7 +585,7 @@ where
 
     fn next(&mut self) -> Option<Self::Item> {
         if let Some(param) = self.current_starred_param {
-            if let Some(argument) = self.next_arg_if(|arg| !arg.is_keyword_argument()) {
+            if let Some(argument) = self.maybe_exact_arg(false) {
                 return Some(InferrableParam2 {
                     param,
                     argument: ParamArgument::Argument(argument),
@@ -595,7 +595,7 @@ where
             }
         }
         if let Some(param) = self.current_double_starred_param {
-            if let Some(argument) = self.next_arg_if(|arg| arg.is_keyword_argument()) {
+            if let Some(argument) = self.maybe_exact_arg(true) {
                 return Some(InferrableParam2 {
                     param,
                     argument: ParamArgument::Argument(argument),
