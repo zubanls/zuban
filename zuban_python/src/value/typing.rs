@@ -724,6 +724,7 @@ fn maybe_type_var(
                 }
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
+                | ArgumentKind::Overridden { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }
@@ -931,6 +932,7 @@ fn maybe_type_var_tuple(
                 }
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
+                | ArgumentKind::Overridden { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
             }
         }

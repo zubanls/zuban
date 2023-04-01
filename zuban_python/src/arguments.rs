@@ -311,6 +311,10 @@ pub enum ArgumentKind<'db, 'a> {
         file: &'a PythonFile,
         comprehension: Comprehension<'a>,
     },
+    Overridden {
+        original: &'a Argument<'db, 'a>,
+        inferred: Inferred,
+    },
 }
 
 impl<'db, 'a> ArgumentKind<'db, 'a> {
@@ -404,6 +408,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
             ),
+            ArgumentKind::Overridden { inferred, .. } => inferred.clone(),
         }
     }
 
@@ -419,6 +424,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                 ..
             } => NodeRef::new(file, comprehension.index()),
             ArgumentKind::SlicesTuple { slices, .. } => todo!(),
+            ArgumentKind::Overridden { original, .. } => original.as_node_ref(),
         }
     }
 
@@ -432,6 +438,7 @@ impl<'db, 'a> Argument<'db, 'a> {
             ArgumentKind::Comprehension { .. } => "0".to_owned(),
             ArgumentKind::Keyword { key, .. } => format!("{key:?}"),
             ArgumentKind::SlicesTuple { .. } => todo!(),
+            ArgumentKind::Overridden { original, .. } => original.human_readable_index(),
         }
     }
 
