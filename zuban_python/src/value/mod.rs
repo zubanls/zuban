@@ -123,7 +123,7 @@ macro_rules! base_qualified_name {
     };
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum IteratorContent<'a> {
     Inferred(Inferred),
     ListLiteral(ListLiteral<'a>, ListOrSetElementIterator<'a>),

@@ -1265,7 +1265,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> OverloadResult<'a> {
-        let mut match_signature = |i_s: &InferenceState<'db, '_>, function: Function<'a, 'a>| {
+        let match_signature = |i_s: &InferenceState<'db, '_>,
+                               result_context: &mut ResultContext,
+                               function: Function<'a, 'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
                 calculate_class_init_type_vars_and_return(
@@ -1313,7 +1315,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         for (i, link) in self.overload.functions.iter().enumerate() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let (calculated_type_args, had_error) =
-                i_s.do_overload_check(|i_s| match_signature(i_s, function));
+                i_s.do_overload_check(|i_s| match_signature(i_s, result_context, function));
             if had_error && had_error_in_func.is_none() {
                 had_error_in_func = Some(function);
             }
@@ -1350,7 +1352,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             if had_error {
                                 // Need to run the whole thing again to generate errors, because
                                 // the function is not going to be checked.
-                                match_signature(i_s, function);
+                                match_signature(i_s, result_context, function);
                                 todo!("Add a test")
                             }
                             return OverloadResult::NotFound;
@@ -1379,7 +1381,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
-            let calculated_type_args = match_signature(i_s, function);
+            let calculated_type_args = match_signature(i_s, result_context, function);
             return handle_result(calculated_type_args.type_arguments, function);
         } else {
             let function = Function::new(
@@ -1390,14 +1392,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 on_overload_mismatch(i_s, class)
             } else {
                 if args.has_a_union_argument(i_s) {
-                    /*
                     let mut non_union_args = vec![];
-                    fill_args_and_check(&mut non_union_args, args.iter())
-                    for arg in args.iter() {
-                        arg
+                    if let Some(t) =
+                        self.check_union_math(i_s, result_context, args.iter(), &mut non_union_args)
+                    {
+                        return OverloadResult::Union(t);
                     }
-                    */
-                    debug!("TODO add union logic");
                 }
                 let t = IssueType::OverloadMismatch {
                     name: function.diagnostic_string(self.class.as_ref()),
@@ -1410,9 +1410,56 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(function) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
             // going to be checked.
-            match_signature(i_s, function);
+            match_signature(i_s, result_context, function);
         }
         OverloadResult::NotFound
+    }
+
+    fn check_union_math<'x>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        result_context: &mut ResultContext,
+        mut args: ArgumentIterator<'db, 'x>,
+        non_union_args: &mut Vec<Argument<'db, 'x>>,
+    ) -> Option<DbType> {
+        if let Some(next_arg) = args.next() {
+            let inf = next_arg.infer(i_s, result_context);
+            if inf.is_union(i_s.db) {
+                // TODO this is shit
+                let nxt_arg: &'x Argument<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };
+                non_union_args.push(Argument {
+                    index: next_arg.index,
+                    kind: ArgumentKind::Overridden {
+                        original: &nxt_arg,
+                        inferred: Inferred::new_unknown(),
+                    },
+                });
+                let DbType::Union(u) = inf.class_as_type(i_s).into_db_type(i_s.db) else {
+                    unreachable!()
+                };
+                let mut result = DbType::Never;
+                for entry in u.entries.into_vec().into_iter() {
+                    non_union_args.last_mut().unwrap().kind = ArgumentKind::Overridden {
+                        original: &nxt_arg,
+                        inferred: Inferred::execute_db_type(i_s, entry.type_),
+                    };
+                    if let Some(t) =
+                        self.check_union_math(i_s, result_context, args.clone(), non_union_args)
+                    {
+                        result.union_in_place(t);
+                    } else {
+                        return None;
+                    }
+                }
+                Some(result)
+            } else {
+                non_union_args.push(next_arg);
+                self.check_union_math(i_s, result_context, args, non_union_args)
+            }
+        } else {
+            //self.find_matching_function(i_s)
+            todo!()
+        }
     }
 
     fn variants(&self, i_s: &InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {

@@ -498,7 +498,7 @@ impl<'db> List<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ListOrSetElementIterator<'db>(StepBy<SiblingIterator<'db>>);
 
 impl<'db> ListOrSetElementIterator<'db> {
@@ -2622,7 +2622,7 @@ impl<'db> Iterator for NameIterator<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct ArgumentsIterator<'db>(SiblingIterator<'db>);
 
 impl<'db> Iterator for ArgumentsIterator<'db> {
@@ -2652,7 +2652,7 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Argument<'db> {
     Positional(NamedExpression<'db>),
     Keyword(Name<'db>, Expression<'db>),

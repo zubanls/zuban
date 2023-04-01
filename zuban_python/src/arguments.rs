@@ -40,11 +40,7 @@ pub trait Arguments<'db>: std::fmt::Debug {
             if arg.in_args_or_kwargs_and_arbitrary_len() {
                 todo!()
             }
-            if arg
-                .infer(i_s, &mut ResultContext::Unknown)
-                .class_as_type(i_s)
-                .is_union()
-            {
+            if arg.infer(i_s, &mut ResultContext::Unknown).is_union(i_s.db) {
                 return true;
             }
         }
@@ -454,7 +450,7 @@ impl<'db, 'a> Argument<'db, 'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum ArgumentIteratorBase<'db, 'a> {
     Iterator {
         i_s: InferenceState<'db, 'a>,
@@ -743,7 +739,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct ArgumentIterator<'db, 'a> {
     current: ArgumentIteratorBase<'db, 'a>,
     args_kwargs_iterator: ArgsKwargsIterator<'a>,
@@ -881,7 +877,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 enum ArgsKwargsIterator<'a> {
     Args {
         iterator: IteratorContent<'a>,
