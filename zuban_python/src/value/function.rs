@@ -32,8 +32,8 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, FormatData, Generic, Generics, Matcher, ResultContext, SignatureMatch,
-    Type,
+    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, Matcher,
+    ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -714,38 +714,53 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             Some(on_type_error),
         );
         if let Some(return_annotation) = return_annotation {
-            // We check first if type vars are involved, because if they aren't we can reuse the
-            // annotation expression cache instead of recalculating.
-            if NodeRef::new(self.node_ref.file, return_annotation.index())
-                .point()
-                .maybe_specific()
-                == Some(Specific::AnnotationOrTypeCommentWithTypeVars)
-            {
-                debug!(
-                    "Inferring generics for {}{}",
-                    self.class
-                        .map(|c| format!("{}.", c.format_short(i_s.db)))
-                        .unwrap_or_else(|| "".to_owned()),
-                    self.name()
-                );
-                self.node_ref
-                    .file
-                    .inference(i_s)
-                    .use_cached_return_annotation_type(return_annotation)
-                    .execute_and_resolve_type_vars(
-                        i_s,
-                        self.class.as_ref(),
-                        class,
-                        &calculated_type_vars,
-                    )
-            } else {
-                self.node_ref
-                    .file
-                    .inference(i_s)
-                    .use_cached_return_annotation(return_annotation)
-            }
+            self.apply_type_args_in_return_annotation(
+                i_s,
+                calculated_type_vars,
+                class,
+                return_annotation,
+            )
         } else {
             self.execute_without_annotation(i_s, args)
+        }
+    }
+
+    fn apply_type_args_in_return_annotation(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        calculated_type_vars: CalculatedTypeArguments,
+        class: Option<&Class>,
+        return_annotation: ReturnAnnotation,
+    ) -> Inferred {
+        // We check first if type vars are involved, because if they aren't we can reuse the
+        // annotation expression cache instead of recalculating.
+        if NodeRef::new(self.node_ref.file, return_annotation.index())
+            .point()
+            .maybe_specific()
+            == Some(Specific::AnnotationOrTypeCommentWithTypeVars)
+        {
+            debug!(
+                "Inferring generics for {}{}",
+                self.class
+                    .map(|c| format!("{}.", c.format_short(i_s.db)))
+                    .unwrap_or_else(|| "".to_owned()),
+                self.name()
+            );
+            self.node_ref
+                .file
+                .inference(i_s)
+                .use_cached_return_annotation_type(return_annotation)
+                .execute_and_resolve_type_vars(
+                    i_s,
+                    self.class.as_ref(),
+                    class,
+                    &calculated_type_vars,
+                )
+        } else {
+            self.node_ref
+                .file
+                .inference(i_s)
+                .use_cached_return_annotation(return_annotation)
         }
     }
 
