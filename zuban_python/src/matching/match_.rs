@@ -20,6 +20,12 @@ pub enum SignatureMatch {
     True,
 }
 
+impl SignatureMatch {
+    pub fn bool(&self) -> bool {
+        matches!(self, Self::True | Self::TrueWithAny { .. })
+    }
+}
+
 #[derive(Clone, Debug)]
 pub enum Match {
     False {

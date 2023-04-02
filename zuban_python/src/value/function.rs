@@ -1410,9 +1410,15 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             } else {
                 if args.has_a_union_argument(i_s) {
                     let mut non_union_args = vec![];
-                    if let Some(t) =
-                        self.check_union_math(i_s, result_context, args.iter(), &mut non_union_args)
-                    {
+                    if let Some(t) = self.check_union_math(
+                        i_s,
+                        result_context,
+                        args.iter(),
+                        &mut non_union_args,
+                        args.as_node_ref(),
+                        search_init,
+                        class,
+                    ) {
                         return OverloadResult::Union(t);
                     }
                 }
@@ -1438,6 +1444,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
         mut args: ArgumentIterator<'db, 'x>,
         non_union_args: &mut Vec<Argument<'db, 'x>>,
+        args_node_ref: NodeRef,
+        search_init: bool,
+        class: Option<&Class>,
     ) -> Option<DbType> {
         if let Some(next_arg) = args.next() {
             let inf = next_arg.infer(i_s, result_context);
@@ -1460,9 +1469,15 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         original: &nxt_arg,
                         inferred: Inferred::execute_db_type(i_s, entry.type_),
                     };
-                    if let Some(t) =
-                        self.check_union_math(i_s, result_context, args.clone(), non_union_args)
-                    {
+                    if let Some(t) = self.check_union_math(
+                        i_s,
+                        result_context,
+                        args.clone(),
+                        non_union_args,
+                        args_node_ref,
+                        search_init,
+                        class,
+                    ) {
                         result.union_in_place(t);
                     } else {
                         return None;
@@ -1471,11 +1486,64 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 Some(result)
             } else {
                 non_union_args.push(next_arg);
-                self.check_union_math(i_s, result_context, args, non_union_args)
+                self.check_union_math(
+                    i_s,
+                    result_context,
+                    args,
+                    non_union_args,
+                    args_node_ref,
+                    search_init,
+                    class,
+                )
             }
         } else {
-            //self.find_matching_function(i_s)
-            todo!()
+            for (i, link) in self.overload.functions.iter().enumerate() {
+                let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+                let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
+                    if search_init {
+                        calculate_class_init_type_vars_and_return(
+                            i_s,
+                            class.unwrap(),
+                            function,
+                            non_union_args.clone().into_iter(),
+                            &|| args_node_ref,
+                            result_context,
+                            None,
+                        )
+                    } else {
+                        calculate_function_type_vars_and_return(
+                            i_s,
+                            class,
+                            function,
+                            non_union_args.clone().into_iter(),
+                            &|| args_node_ref,
+                            false,
+                            function.type_vars(i_s),
+                            function.node_ref.as_link(),
+                            result_context,
+                            None,
+                        )
+                    }
+                });
+                if had_error {
+                    todo!()
+                }
+                if calculated_type_args.matches.bool() {
+                    if search_init {
+                    } else {
+                        if let Some(return_annotation) = function.return_annotation() {
+                            return Some(function.apply_type_args_in_return_annotation(
+                                i_s,
+                                calculated_type_args,
+                                class,
+                                return_annotation,
+                            ));
+                        } else {
+                            todo!()
+                        }
+                    }
+                }
+            }
         }
     }
 
