@@ -721,7 +721,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 .maybe_specific()
                 == Some(Specific::AnnotationOrTypeCommentWithTypeVars)
             {
-                // TODO this could also be a tuple...
                 debug!(
                     "Inferring generics for {}{}",
                     self.class
