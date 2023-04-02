@@ -1532,18 +1532,23 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if search_init {
                     } else {
                         if let Some(return_annotation) = function.return_annotation() {
-                            return Some(function.apply_type_args_in_return_annotation(
-                                i_s,
-                                calculated_type_args,
-                                class,
-                                return_annotation,
-                            ));
+                            return Some(
+                                function
+                                    .apply_type_args_in_return_annotation(
+                                        i_s,
+                                        calculated_type_args,
+                                        class,
+                                        return_annotation,
+                                    )
+                                    .class_as_db_type(i_s),
+                            );
                         } else {
                             todo!()
                         }
                     }
                 }
             }
+            None
         }
     }
 

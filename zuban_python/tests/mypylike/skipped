@@ -106,7 +106,6 @@ testOverloadVarargsAndKwargsSelection
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
 testOverloadInferUnionReturnBasic
-testOverloadsUsingAny
 testOverloadInferUnionReturnMultipleArguments
 testOverloadInferUnionRespectsVariance
 testUnionMathTrickyOverload1
@@ -118,13 +117,16 @@ testManyUnionsInOverload
 testOverloadAndSelfTypes
 multi_dimension_union_math
 # - 3352-3500 Union/Type vars/overloads weird combinations
-testOverloadInferUnionIfParameterNamesAreDifferent
 testOverloadInferUnionReturnFunctionsWithKwargs
 testOverloadInferUnionWithDifferingLengths
-testOverloadInferUnionWithMixOfPositionalAndOptionalArgs
-testOverloadingInferUnionReturn*
-testOverloadInferUnionReturnWithInconsistentTypevarNames
-testOverloadsNoneAndTypeVarsWithNoStrictOptional
+testOverloadingInferUnionReturnWithTypevarWithValueRestriction
+testOverloadingInferUnionReturnWithFunctionTypevarReturn
+testOverloadingInferUnionReturnWithObjectTypevarReturn
+testOverloadingInferUnionReturnWithBadObjectTypevarReturn
+testOverloadingInferUnionReturnWithMixedTypevars
+testOverloadingInferUnionReturnWithMixedTypevarsInnerMismatch
+testOverloadingInferUnionReturnWithMixedTypevarsTighterBound
+testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
 testOverloadsNoneAndTypeVarsWithStrictOptional
 overload_union_math_on_class_init_constrained
 # - Not all union combinations were tried because there are too many unions
