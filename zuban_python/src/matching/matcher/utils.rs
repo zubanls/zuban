@@ -371,7 +371,7 @@ fn calculate_type_vars<'db>(
                 func_or_callable,
                 &|| args.as_node_ref(),
                 on_type_error,
-                function.iter_args_with_params(i_s.db, args, skip_first_param),
+                function.iter_args_with_params(i_s.db, args.iter(), skip_first_param),
             )
         }
         FunctionOrCallable::Callable(callable) => match &callable.params {

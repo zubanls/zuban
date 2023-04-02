@@ -101,17 +101,17 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         InferrableParamIterator::new(db, self.node_ref.file, params, args.iter())
     }
 
-    pub fn iter_args_with_params<'b>(
+    pub fn iter_args_with_params<'b, AI: Iterator<Item = Argument<'db, 'b>>>(
         &self,
         db: &'db Database,
-        args: &'b dyn Arguments<'db>,
+        args: AI,
         skip_first_param: bool,
     ) -> InferrableParamIterator2<
         'db,
         'b,
         impl Iterator<Item = FunctionParam<'b>>,
         FunctionParam<'b>,
-        impl Iterator<Item = Argument<'db, 'b>>,
+        AI,
     >
     where
         'a: 'b,
@@ -120,7 +120,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         if skip_first_param {
             params.next();
         }
-        InferrableParamIterator2::new(db, params, args.iter())
+        InferrableParamIterator2::new(db, params, args)
     }
 
     pub fn infer_param(
