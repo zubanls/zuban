@@ -1465,6 +1465,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 };
                 let mut result = DbType::Never;
                 for entry in u.entries.into_vec().into_iter() {
+                    let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgumentKind::Overridden {
                         original: &nxt_arg,
                         inferred: Inferred::execute_db_type(i_s, entry.type_),
@@ -1478,6 +1479,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         search_init,
                         class,
                     ) {
+                        non_union_args.truncate(non_union_args_len);
                         result.union_in_place(t);
                     } else {
                         return None;
