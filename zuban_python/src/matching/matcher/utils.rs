@@ -369,7 +369,7 @@ fn calculate_type_vars<'db>(
                 &mut matcher,
                 class,
                 func_or_callable,
-                args,
+                &|| args.as_node_ref(),
                 on_type_error,
                 function.iter_args_with_params(i_s.db, args, skip_first_param),
             )
@@ -380,7 +380,7 @@ fn calculate_type_vars<'db>(
                 &mut matcher,
                 None,
                 func_or_callable,
-                args,
+                &|| args.as_node_ref(),
                 on_type_error,
                 InferrableParamIterator2::new(i_s.db, params.iter(), args.iter()),
             ),
@@ -718,6 +718,7 @@ pub fn match_arguments_against_params<
 fn calculate_type_vars_for_params<
     'db: 'x,
     'x,
+    'c,
     P: Param<'x>,
     AI: Iterator<Item = Argument<'db, 'x>>,
 >(
@@ -725,7 +726,7 @@ fn calculate_type_vars_for_params<
     matcher: &mut Matcher,
     class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
-    args: &dyn Arguments<'db>,
+    args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
     args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
@@ -734,7 +735,7 @@ fn calculate_type_vars_for_params<
         matcher,
         class,
         func_or_callable,
-        &|| args.as_node_ref(),
+        args_node_ref,
         on_type_error,
         args_with_params,
     )
