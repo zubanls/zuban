@@ -10,7 +10,7 @@ use super::super::{
 };
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
-use crate::arguments::{Argument, ArgumentKind, Arguments};
+use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParams, DbType, GenericItem, GenericsList, PointLink, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes,
@@ -21,11 +21,12 @@ use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::value::{Class, FirstParamProperties, Function, Instance, OnTypeError, Value};
 
-pub fn calculate_class_init_type_vars_and_return<'db>(
+pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
-    function: Function,
-    args: &dyn Arguments<'db>,
+    function: Function<'a, 'a>,
+    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args_node_ref: &impl Fn() -> NodeRef<'a>,
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
@@ -119,8 +120,8 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             Some(class),
             func_or_callable,
             None,
-            args.iter(),
-            &|| args.as_node_ref(),
+            args,
+            args_node_ref,
             true,
             func_type_vars,
             match_in_definition,
@@ -136,8 +137,8 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             Some(class),
             func_or_callable,
             Some(class),
-            args.iter(),
-            &|| args.as_node_ref(),
+            args,
+            args_node_ref,
             true,
             type_vars,
             match_in_definition,
@@ -182,11 +183,12 @@ impl CalculatedTypeArguments {
     }
 }
 
-pub fn calculate_function_type_vars_and_return<'db>(
+pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: Option<&Class>,
-    function: Function,
-    args: &dyn Arguments<'db>,
+    function: Function<'a, 'a>,
+    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args_node_ref: &impl Fn() -> NodeRef<'a>,
     skip_first_param: bool,
     type_vars: Option<&TypeVarLikes>,
     match_in_definition: PointLink,
@@ -205,8 +207,8 @@ pub fn calculate_function_type_vars_and_return<'db>(
         class,
         func_or_callable,
         None,
-        args.iter(),
-        &|| args.as_node_ref(),
+        args,
+        args_node_ref,
         skip_first_param,
         type_vars,
         match_in_definition,
@@ -215,11 +217,12 @@ pub fn calculate_function_type_vars_and_return<'db>(
     )
 }
 
-pub fn calculate_callable_type_vars_and_return<'db>(
+pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: Option<&Class>,
-    callable: &CallableContent,
-    args: &dyn Arguments<'db>,
+    callable: &'a CallableContent,
+    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args_node_ref: &impl Fn() -> NodeRef<'a>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> CalculatedTypeArguments {
@@ -231,8 +234,8 @@ pub fn calculate_callable_type_vars_and_return<'db>(
         None,
         func_or_callable,
         None,
-        args.iter(),
-        &|| args.as_node_ref(),
+        args,
+        args_node_ref,
         false,
         type_vars,
         callable.defined_at,

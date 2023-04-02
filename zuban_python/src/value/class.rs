@@ -90,7 +90,8 @@ impl<'db: 'a, 'a> Class<'a> {
                     i_s,
                     self,
                     func,
-                    args,
+                    args.iter(),
+                    &|| args.as_node_ref(),
                     result_context,
                     Some(on_type_error),
                 );
@@ -105,7 +106,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         i_s,
                         self,
                         func,
-                        args,
+                        args.iter(),
+                        &|| args.as_node_ref(),
                         result_context,
                         Some(on_type_error),
                     )

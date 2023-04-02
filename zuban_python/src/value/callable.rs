@@ -31,7 +31,8 @@ impl<'a> Callable<'a> {
             i_s,
             class,
             self.content,
-            args,
+            args.iter(),
+            &|| args.as_node_ref(),
             result_context,
             on_type_error,
         );
