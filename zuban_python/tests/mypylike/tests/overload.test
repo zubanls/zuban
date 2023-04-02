@@ -198,8 +198,10 @@ u1: int | str
 reveal_type(Foo(1, "")) # N: Revealed type is "__main__.Foo[builtins.str]"
 reveal_type(Foo(1, u1)) # N: Revealed type is "__main__.Foo[int | str]"
 
-[case multi_dimension_union_math]
+[case multi_dimension_union_math_issue_13595]
 # Taken from mypy #13595
+from typing import Union, overload
+
 @overload
 def f(x: int, y: int) -> None: ...
 @overload
@@ -208,6 +210,7 @@ def f(x: str, y: int) -> None: ...
 def f(x: int, y: str) -> None: ...
 @overload
 def f(x: str, y: str) -> None: ...
+def f(x, y) -> None: ...
 
 a: Union[int, str]
 b: Union[int, str]

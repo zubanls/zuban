@@ -1530,6 +1530,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 }
                 if calculated_type_args.matches.bool() {
                     if search_init {
+                        todo!()
                     } else {
                         if let Some(return_annotation) = function.return_annotation() {
                             return Some(
