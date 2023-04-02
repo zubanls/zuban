@@ -119,7 +119,8 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             Some(class),
             func_or_callable,
             None,
-            args,
+            args.iter(),
+            &|| args.as_node_ref(),
             true,
             func_type_vars,
             match_in_definition,
@@ -135,7 +136,8 @@ pub fn calculate_class_init_type_vars_and_return<'db>(
             Some(class),
             func_or_callable,
             Some(class),
-            args,
+            args.iter(),
+            &|| args.as_node_ref(),
             true,
             type_vars,
             match_in_definition,
@@ -203,7 +205,8 @@ pub fn calculate_function_type_vars_and_return<'db>(
         class,
         func_or_callable,
         None,
-        args,
+        args.iter(),
+        &|| args.as_node_ref(),
         skip_first_param,
         type_vars,
         match_in_definition,
@@ -228,7 +231,8 @@ pub fn calculate_callable_type_vars_and_return<'db>(
         None,
         func_or_callable,
         None,
-        args,
+        args.iter(),
+        &|| args.as_node_ref(),
         false,
         type_vars,
         callable.defined_at,
@@ -283,13 +287,14 @@ fn add_generics_from_result_context_class(
     }
 }
 
-fn calculate_type_vars<'db>(
+fn calculate_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
     class: Option<&Class>,
-    func_or_callable: FunctionOrCallable,
+    func_or_callable: FunctionOrCallable<'a>,
     expected_return_class: Option<&Class>,
-    args: &dyn Arguments<'db>,
+    mut args: impl Iterator<Item = Argument<'db, 'a>>,
+    args_node_ref: &impl Fn() -> NodeRef<'a>,
     skip_first_param: bool,
     type_vars: Option<&TypeVarLikes>,
     match_in_definition: PointLink,
@@ -369,9 +374,9 @@ fn calculate_type_vars<'db>(
                 &mut matcher,
                 class,
                 func_or_callable,
-                &|| args.as_node_ref(),
+                args_node_ref,
                 on_type_error,
-                function.iter_args_with_params(i_s.db, args.iter(), skip_first_param),
+                function.iter_args_with_params(i_s.db, args, skip_first_param),
             )
         }
         FunctionOrCallable::Callable(callable) => match &callable.params {
@@ -380,13 +385,12 @@ fn calculate_type_vars<'db>(
                 &mut matcher,
                 None,
                 func_or_callable,
-                &|| args.as_node_ref(),
+                args_node_ref,
                 on_type_error,
-                InferrableParamIterator2::new(i_s.db, params.iter(), args.iter()),
+                InferrableParamIterator2::new(i_s.db, params.iter(), args),
             ),
             CallableParams::Any => SignatureMatch::True,
             CallableParams::WithParamSpec(pre_types, param_spec) => {
-                let mut args = args.iter();
                 if !pre_types.is_empty() {
                     dbg!(pre_types, args.collect::<Vec<_>>());
                     todo!()
