@@ -229,3 +229,17 @@ class Foo(Generic[T]):
     @overload
     def foo(self, x: U, y: int) -> Optional[U]: ...
     def foo(self, x, y=None) -> Optional[T]: ... # E: Overloaded function implementation cannot produce return type of signature 3
+
+[case overload_michi_valid_implementation]
+# Originally raise by Michi. This should theoretically not lead to errors, but
+# Mypy and Zuban both just compare the named parameters, which leads to this
+# error.
+from typing import overload
+
+@overload
+def oof(fn: int) -> int: ...
+
+@overload
+def oof(fn2: bytes) -> bytes: ...
+
+def oof(fn: int | bytes | None = None, fn2: bytes | None = None) -> bytes | int: raise NotImplementedError # E: Overloaded function implementation does not accept all possible arguments of signature 2
