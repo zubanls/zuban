@@ -171,10 +171,7 @@ impl TypeVarMatcher {
                 // also already used by a non-result context.
                 current.type_ = BoundKind::Uncalculated;
             } else {
-                return match m.bool() || !type_var.restrictions.is_empty() {
-                    true => m,
-                    false => Match::new_false(),
-                };
+                return m;
             }
         } else {
             debug_assert!(!current.calculated(), "{current:?}");
