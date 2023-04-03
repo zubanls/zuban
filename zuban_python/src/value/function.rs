@@ -1262,9 +1262,12 @@ pub enum OverloadResult<'a> {
     NotFound,
 }
 
-pub enum UnionMathResult<'a> {
-    FirstSimilar(Function<'a, 'a>),
-    Match(DbType),
+pub enum UnionMathResult {
+    FirstSimilarIndex(usize),
+    Match {
+        first_similar_index: usize,
+        result: DbType,
+    },
     NoMatch,
 }
 
@@ -1402,7 +1405,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         }
         if first_similar.is_none() && args.has_a_union_argument(i_s) {
             let mut non_union_args = vec![];
-            if let UnionMathResult::Match(t) = self.check_union_math(
+            match self.check_union_math(
                 i_s,
                 result_context,
                 args.iter(),
@@ -1411,7 +1414,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 search_init,
                 class,
             ) {
-                return OverloadResult::Union(t);
+                UnionMathResult::Match { result, .. } => return OverloadResult::Union(result),
+                UnionMathResult::FirstSimilarIndex(index) => {
+                    first_similar = Some(Function::new(
+                        NodeRef::from_link(i_s.db, self.overload.functions[index]),
+                        self.class,
+                    ))
+                }
+                UnionMathResult::NoMatch => (),
             }
         }
         if let Some(function) = first_similar {
@@ -1453,7 +1463,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         args_node_ref: NodeRef,
         search_init: bool,
         class: Option<&Class>,
-    ) -> UnionMathResult<'db> {
+    ) -> UnionMathResult {
         if let Some(next_arg) = args.next() {
             let inf = next_arg.infer(i_s, result_context);
             if inf.is_union(i_s.db) {
@@ -1469,7 +1479,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let DbType::Union(u) = inf.class_as_type(i_s).into_db_type(i_s.db) else {
                     unreachable!()
                 };
-                let mut result = DbType::Never;
+                let mut unioned = DbType::Never;
+                let mut first_similar = None;
+                let mut mismatch = false;
                 for entry in u.entries.into_vec().into_iter() {
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgumentKind::Overridden {
@@ -1485,13 +1497,39 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         search_init,
                         class,
                     );
-                    let UnionMathResult::Match(t) = r else {
-                        return r
+                    if let UnionMathResult::Match {
+                        first_similar_index,
+                        ..
+                    }
+                    | UnionMathResult::FirstSimilarIndex(first_similar_index) = r
+                    {
+                        if first_similar
+                            .map(|f| f > first_similar_index)
+                            .unwrap_or(true)
+                        {
+                            first_similar = Some(first_similar_index);
+                        }
+                    }
+                    match r {
+                        UnionMathResult::Match { result, .. } if !mismatch => {
+                            unioned.union_in_place(result);
+                        }
+                        _ => mismatch = true,
                     };
                     non_union_args.truncate(non_union_args_len);
-                    result.union_in_place(t);
                 }
-                UnionMathResult::Match(result)
+                if mismatch {
+                    if let Some(first_similar_index) = first_similar {
+                        UnionMathResult::FirstSimilarIndex(first_similar_index)
+                    } else {
+                        UnionMathResult::NoMatch
+                    }
+                } else {
+                    UnionMathResult::Match {
+                        result: unioned,
+                        first_similar_index: first_similar.unwrap(),
+                    }
+                }
             } else {
                 non_union_args.push(next_arg);
                 self.check_union_math(
@@ -1540,8 +1578,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if search_init {
                         todo!()
                     } else if let Some(return_annotation) = function.return_annotation() {
-                        return UnionMathResult::Match(
-                            function
+                        return UnionMathResult::Match {
+                            result: function
                                 .apply_type_args_in_return_annotation(
                                     i_s,
                                     calculated_type_args,
@@ -1549,7 +1587,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                     return_annotation,
                                 )
                                 .class_as_db_type(i_s),
-                        );
+                            first_similar_index: i,
+                        };
                     } else {
                         todo!()
                     }

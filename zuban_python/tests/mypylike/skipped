@@ -105,14 +105,8 @@ testOverloadVarargsSelection
 testOverloadVarargsAndKwargsSelection
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
-testOverloadInferUnionReturnBasic
-testOverloadInferUnionReturnMultipleArguments
 testOverloadInferUnionRespectsVariance
-testUnionMathTrickyOverload1
 testUnionMathTrickyOverload2
-testLiteralInferredInOverloadContextUnionMath
-testLiteralInferredInOverloadContextUnionMathOverloadingReturnsBestType
-testLiteralInferredInOverloadContextUnionMathTrickyOverload
 # - 3352-3500 Union/Type vars/overloads weird combinations
 testOverloadInferUnionWithDifferingLengths
 testOverloadingInferUnionReturnWithTypevarWithValueRestriction
