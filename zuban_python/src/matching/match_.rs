@@ -40,7 +40,6 @@ pub enum Match {
 #[derive(Clone, Debug)]
 pub enum MismatchReason {
     None,
-    CannotInferTypeArgument(TypeVarIndex),
     ConstraintMismatch {
         expected: DbType,
         type_var: Rc<TypeVar>,

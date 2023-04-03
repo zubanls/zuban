@@ -553,16 +553,6 @@ pub fn match_arguments_against_params<
                                 .into()
                             }
                             match reason {
-                                MismatchReason::CannotInferTypeArgument(index) => {
-                                    node_ref.add_typing_issue(
-                                        i_s,
-                                        IssueType::CannotInferTypeArgument {
-                                            index: *index,
-                                            callable: diagnostic_string("")
-                                                .unwrap_or_else(|| Box::from("Callable")),
-                                        },
-                                    );
-                                }
                                 MismatchReason::ConstraintMismatch { expected, type_var } => {
                                     node_ref.add_typing_issue(
                                         i_s,

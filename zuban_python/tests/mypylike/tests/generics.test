@@ -260,7 +260,7 @@ b_contra: Contra[B]
 
 f(a_co, a_contra)
 f(b_co, b_contra)
-f(a_co, b_contra) # E: Cannot infer type argument 1 of "f"
+f(a_co, b_contra) # E: Argument 2 to "f" has incompatible type "Contra[B]"; expected "Contra[A]"
 f(b_co, a_contra)
 
 [case type_var_with_co_and_contra_real_life]
@@ -578,7 +578,7 @@ def g(x: TupList[T, T]) -> TupList[T, T]:
 f(g([(1, 1)]))
 f(g([(1, "")]))
 x = [(1, "")]
-g(x) # E: Cannot infer type argument 1 of "g"
+g(x) # E: Argument 1 to "g" has incompatible type "list[tuple[int, str]]"; expected "list[tuple[int, int]]"
 
 x1: TupList[object, object] = f(g([(1, 1)]))
 x2: TupList[int, int] = f(g([(1, 1)]))
@@ -600,7 +600,8 @@ def g(x: TupList[tuple[T, T], tuple[T, T]]) -> TupList[T, T]:
 f(g([((1, 1), (1, 1))]))
 f(g([((1, 1), (1, ""))]))
 x = [((1, 1), (1, ""))]
-g(x) # E: Cannot infer type argument 1 of "g"
+g(x) # E: Argument 1 to "g" has incompatible type "list[tuple[tuple[int, int], tuple[int, str]]]"; expected "list[tuple[tuple[int, int], tuple[int, int]]]"
+
 
 x1: TupList[object, object] = f(g([((1, 1), (1, 1))]))
 x2: TupList[int, int] = f(g([((1, 1), (1, 1))]))
@@ -622,7 +623,7 @@ def g(x: TupList[T, T]) -> TupList[tuple[T, T], tuple[T, T]]:
 f(g([(1, 1)]))
 f(g([(1, "")]))
 x = [(1, "")]
-g(x) # E: Cannot infer type argument 1 of "g"
+g(x) # E: Argument 1 to "g" has incompatible type "list[tuple[int, str]]"; expected "list[tuple[int, int]]"
 
 x1: TupList[tuple[object, object], tuple[object, object]] = f(g([(1, 1)]))
 x2: TupList[tuple[int, int], tuple[int, int]] = f(g([(1, 1)]))
@@ -642,9 +643,9 @@ def g(x: TupList[T, U]) -> TupList[T, U]:
     raise NotImplementedError
 
 f(g([((1, 1), (1, 1))]))
-f(g([((1, 1), (1, ""))])) # E: Cannot infer type argument 1 of "f"
+f(g([((1, 1), (1, ""))])) # E: Argument 1 to "f" has incompatible type "list[tuple[tuple[int, int], tuple[int, str]]]"; expected "list[tuple[tuple[int, int], tuple[int, int]]]"
 x = [((1, 1), (1, ""))]
-f(g(x)) # E: Cannot infer type argument 1 of "f"
+f(g(x)) # E: Argument 1 to "f" has incompatible type "list[tuple[tuple[int, int], tuple[int, str]]]"; expected "list[tuple[tuple[int, int], tuple[int, int]]]"
 
 x1: TupList[object, object] = f(g([((1, 1), (1, 1))]))
 x2: TupList[int, int] = f(g([((1, 1), (1, 1))]))

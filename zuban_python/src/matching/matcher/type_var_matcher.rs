@@ -173,13 +173,7 @@ impl TypeVarMatcher {
             } else {
                 return match m.bool() || !type_var.restrictions.is_empty() {
                     true => m,
-                    false => match current.defined_by_result_context {
-                        true => Match::new_false(),
-                        false => Match::False {
-                            reason: MismatchReason::CannotInferTypeArgument(type_var_usage.index),
-                            similar: false,
-                        },
-                    },
+                    false => Match::new_false(),
                 };
             }
         } else {
