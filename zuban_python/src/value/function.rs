@@ -1262,6 +1262,12 @@ pub enum OverloadResult<'a> {
     NotFound,
 }
 
+pub enum UnionMathResult<'a> {
+    FirstSimilar(Function<'a, 'a>),
+    Match(DbType),
+    NoMatch,
+}
+
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub fn new(node_ref: NodeRef<'a>, overload: &'a Overload, class: Option<Class<'a>>) -> Self {
         Self {
@@ -1410,7 +1416,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             } else {
                 if args.has_a_union_argument(i_s) {
                     let mut non_union_args = vec![];
-                    if let Some(t) = self.check_union_math(
+                    if let UnionMathResult::Match(t) = self.check_union_math(
                         i_s,
                         result_context,
                         args.iter(),
@@ -1447,7 +1453,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         args_node_ref: NodeRef,
         search_init: bool,
         class: Option<&Class>,
-    ) -> Option<DbType> {
+    ) -> UnionMathResult<'db> {
         if let Some(next_arg) = args.next() {
             let inf = next_arg.infer(i_s, result_context);
             if inf.is_union(i_s.db) {
@@ -1470,7 +1476,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         original: nxt_arg,
                         inferred: Inferred::execute_db_type(i_s, entry.type_),
                     };
-                    if let Some(t) = self.check_union_math(
+                    let r = self.check_union_math(
                         i_s,
                         result_context,
                         args.clone(),
@@ -1478,14 +1484,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         args_node_ref,
                         search_init,
                         class,
-                    ) {
-                        non_union_args.truncate(non_union_args_len);
-                        result.union_in_place(t);
-                    } else {
-                        return None;
-                    }
+                    );
+                    let UnionMathResult::Match(t) = r else {
+                        return r
+                    };
+                    non_union_args.truncate(non_union_args_len);
+                    result.union_in_place(t);
                 }
-                Some(result)
+                UnionMathResult::Match(result)
             } else {
                 non_union_args.push(next_arg);
                 self.check_union_math(
@@ -1534,7 +1540,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     if search_init {
                         todo!()
                     } else if let Some(return_annotation) = function.return_annotation() {
-                        return Some(
+                        return UnionMathResult::Match(
                             function
                                 .apply_type_args_in_return_annotation(
                                     i_s,
@@ -1549,7 +1555,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     }
                 }
             }
-            None
+            UnionMathResult::NoMatch
         }
     }
 
