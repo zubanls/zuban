@@ -779,8 +779,8 @@ impl<'db, 'a> ArgumentIterator<'db, 'a> {
         result.into_boxed_slice()
     }
 
-    pub fn calculate_diagnostics(mut self, i_s: &InferenceState<'db, '_>) {
-        while let Some(arg) = self.next() {
+    pub fn calculate_diagnostics(self, i_s: &InferenceState<'db, '_>) {
+        for arg in self {
             arg.infer(i_s, &mut ResultContext::Unknown);
         }
     }
@@ -864,7 +864,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
                 self.counter += 1;
                 Some(Argument {
                     kind: ArgumentKind::Inferred {
-                        inferred: inferred_value.clone(),
+                        inferred: inferred_value,
                         position,
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: true,

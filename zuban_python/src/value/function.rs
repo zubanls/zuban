@@ -1456,7 +1456,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 non_union_args.push(Argument {
                     index: next_arg.index,
                     kind: ArgumentKind::Overridden {
-                        original: &nxt_arg,
+                        original: nxt_arg,
                         inferred: Inferred::new_unknown(),
                     },
                 });
@@ -1467,7 +1467,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 for entry in u.entries.into_vec().into_iter() {
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgumentKind::Overridden {
-                        original: &nxt_arg,
+                        original: nxt_arg,
                         inferred: Inferred::execute_db_type(i_s, entry.type_),
                     };
                     if let Some(t) = self.check_union_math(
@@ -1533,21 +1533,19 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 if calculated_type_args.matches.bool() {
                     if search_init {
                         todo!()
+                    } else if let Some(return_annotation) = function.return_annotation() {
+                        return Some(
+                            function
+                                .apply_type_args_in_return_annotation(
+                                    i_s,
+                                    calculated_type_args,
+                                    class,
+                                    return_annotation,
+                                )
+                                .class_as_db_type(i_s),
+                        );
                     } else {
-                        if let Some(return_annotation) = function.return_annotation() {
-                            return Some(
-                                function
-                                    .apply_type_args_in_return_annotation(
-                                        i_s,
-                                        calculated_type_args,
-                                        class,
-                                        return_annotation,
-                                    )
-                                    .class_as_db_type(i_s),
-                            );
-                        } else {
-                            todo!()
-                        }
+                        todo!()
                     }
                 }
             }
