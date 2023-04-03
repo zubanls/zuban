@@ -1400,6 +1400,20 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some((type_arguments, function, _)) = multi_any_match {
             return handle_result(type_arguments, function);
         }
+        if first_similar.is_none() && args.has_a_union_argument(i_s) {
+            let mut non_union_args = vec![];
+            if let UnionMathResult::Match(t) = self.check_union_math(
+                i_s,
+                result_context,
+                args.iter(),
+                &mut non_union_args,
+                args.as_node_ref(),
+                search_init,
+                class,
+            ) {
+                return OverloadResult::Union(t);
+            }
+        }
         if let Some(function) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
@@ -1414,20 +1428,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
                 on_overload_mismatch(i_s, class)
             } else {
-                if args.has_a_union_argument(i_s) {
-                    let mut non_union_args = vec![];
-                    if let UnionMathResult::Match(t) = self.check_union_math(
-                        i_s,
-                        result_context,
-                        args.iter(),
-                        &mut non_union_args,
-                        args.as_node_ref(),
-                        search_init,
-                        class,
-                    ) {
-                        return OverloadResult::Union(t);
-                    }
-                }
                 let t = IssueType::OverloadMismatch {
                     name: function.diagnostic_string(self.class.as_ref()),
                     args: args.iter().into_argument_types(i_s),
