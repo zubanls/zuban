@@ -1543,6 +1543,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 )
             }
         } else {
+            let mut first_similar = None;
             for (i, link) in self.overload.functions.iter().enumerate() {
                 let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
@@ -1574,27 +1575,38 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 if had_error {
                     todo!()
                 }
-                if calculated_type_args.matches.bool() {
-                    if search_init {
-                        todo!()
-                    } else if let Some(return_annotation) = function.return_annotation() {
-                        return UnionMathResult::Match {
-                            result: function
-                                .apply_type_args_in_return_annotation(
-                                    i_s,
-                                    calculated_type_args,
-                                    class,
-                                    return_annotation,
-                                )
-                                .class_as_db_type(i_s),
-                            first_similar_index: i,
-                        };
-                    } else {
-                        todo!()
+                match calculated_type_args.matches {
+                    SignatureMatch::True => {
+                        if search_init {
+                            todo!()
+                        } else if let Some(return_annotation) = function.return_annotation() {
+                            return UnionMathResult::Match {
+                                result: function
+                                    .apply_type_args_in_return_annotation(
+                                        i_s,
+                                        calculated_type_args,
+                                        class,
+                                        return_annotation,
+                                    )
+                                    .class_as_db_type(i_s),
+                                first_similar_index: i,
+                            };
+                        } else {
+                            todo!()
+                        }
                     }
+                    SignatureMatch::TrueWithAny { argument_indices } => todo!(),
+                    SignatureMatch::False { similar: true } if first_similar.is_none() => {
+                        first_similar = Some(i);
+                    }
+                    SignatureMatch::False { .. } => (),
                 }
             }
-            UnionMathResult::NoMatch
+            if let Some(first_similar) = first_similar {
+                UnionMathResult::FirstSimilarIndex(first_similar)
+            } else {
+                UnionMathResult::NoMatch
+            }
         }
     }
 
