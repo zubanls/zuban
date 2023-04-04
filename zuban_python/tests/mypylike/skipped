@@ -1,8 +1,5 @@
 # Next up
-testOverloadKwargsSelectionWithDict
-testOverloadingInferUnionReturnWithMixedTypevarsInnerMismatch
 testOverloadingWithParamSpec
-overload_overlapping_any
 
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
@@ -106,6 +103,7 @@ testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
 testOverloadVarargsSelection
 testOverloadVarargsAndKwargsSelection
+testOverloadKwargsSelectionWithDict
 # - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
 #       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
 testUnionMathTrickyOverload2

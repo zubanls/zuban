@@ -42,7 +42,7 @@ def f(x: T) -> T: pass
 @overload
 def f(x: Any) -> Any: pass
 @overload
-def f(x: Any) -> Any: pass  # TODO should complain here
+def f(x: Any) -> Any: pass  # E: Overloaded function signature 3 will never be matched: signature 2's parameter type(s) are the same or broader
 def f(x: Any) -> Any: pass
 
 [case overload_merging_nested]
