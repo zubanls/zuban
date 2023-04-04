@@ -1,5 +1,8 @@
 # Next up
 testOverloadKwargsSelectionWithDict
+testOverloadingInferUnionReturnWithMixedTypevarsInnerMismatch
+testOverloadingWithParamSpec
+overload_overlapping_any
 
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
@@ -1310,36 +1313,11 @@ testTypingSelfWithValuesExpansion
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
 
-# - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
-testOverloadMultipleVarargDefinitionComplex
-testOverloadPartialOverlapWithUnrestrictedTypeVar
-testOverloadPartialOverlapWithUnrestrictedTypeVarNested
-testOverloadedPartiallyOverlappingTypeVarsAndUnion
-testOverloadingInferUnionReturnWithMixedTypevarsInnerMismatch
-testOverloadingWithParamSpec
-# Overlapping general
-testManyUnionsInOverload
-testOverloadInferUnionReturnFunctionsWithKwargs
-testOverloadWithOverlappingItemsAndAnyArgument5
-testIntersectionTypesAndVarArgs
-testLiteralInferredInOverloadContextWithTypevars
-testLiteralSubtypeOverlap
-testOverloadsAndNoneWithoutStrictOptional
-testOverloadsAndNoneWithStrictOptional
-testTypeTypeOverlapsWithObjectAndType
-testTypeOverlapsWithObject
-testAccessingGenericDescriptorFromInferredClass
-testAccessingGenericDescriptorFromClass
-testOverloadWithNonGenericDescriptorLookalike
-testOverloadWithGenericDescriptor
-testUnpackIterableClassWithOverloadedIter2
-testSelfTypeOverrideCompatibilityGeneric
-overload_overlapping_any
-
 # - Signature of "f" incompatible with supertype "Parent"
 testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityTypeVar-xfail
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
+testSelfTypeOverrideCompatibilityGeneric
 # Overloaded operator methods cannot have wider argument types in overrides
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
@@ -2050,6 +2028,28 @@ testInvalidLvalueWithExplicitType
 testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
+
+# - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
+#testOverloadMultipleVarargDefinitionComplex
+#testOverloadPartialOverlapWithUnrestrictedTypeVar
+#testOverloadPartialOverlapWithUnrestrictedTypeVarNested
+#testOverloadedPartiallyOverlappingTypeVarsAndUnion
+# Overlapping general
+#testManyUnionsInOverload
+#testOverloadInferUnionReturnFunctionsWithKwargs
+#testOverloadWithOverlappingItemsAndAnyArgument5
+#testIntersectionTypesAndVarArgs
+#testLiteralInferredInOverloadContextWithTypevars
+#testLiteralSubtypeOverlap
+#testOverloadsAndNoneWithoutStrictOptional
+#testOverloadsAndNoneWithStrictOptional
+#testTypeTypeOverlapsWithObjectAndType
+#testTypeOverlapsWithObject
+#testAccessingGenericDescriptorFromInferredClass
+#testAccessingGenericDescriptorFromClass
+#testOverloadWithNonGenericDescriptorLookalike
+#testOverloadWithGenericDescriptor
+#testUnpackIterableClassWithOverloadedIter2
 
 # `for ... in` type comment
 testRefreshForWithTypeComment1

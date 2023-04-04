@@ -315,6 +315,9 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
 ) -> bool {
+    #![allow(unreachable_code)]
+    debug!("TODO this is not yet properly implemented and skipped in tests, see this commit");
+    return false;
     let to_type = |db: &'db _, p2: P2| match p2.specific(db) {
         WrappedParamSpecific::PositionalOnly(t2)
         | WrappedParamSpecific::PositionalOrKeyword(t2)
