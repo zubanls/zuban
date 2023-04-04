@@ -293,6 +293,12 @@ impl<'a> Type<'a> {
                     matches!(value_type, Self::Type(ref t2) if matches!(t2.as_ref(), DbType::None))
                         .into()
                 }
+                DbType::Any if matcher.is_matching_reverse() => {
+                    debug!("TODO write a test for this.");
+                    let t1 = self.as_cow(i_s.db);
+                    matcher.set_all_contained_type_vars_to_any(i_s, &t1);
+                    return Match::True { with_any: true };
+                }
                 DbType::Any => Match::new_true(),
                 DbType::Never => Match::new_false(),
                 DbType::Tuple(t1) => match value_type {
@@ -517,6 +523,7 @@ impl<'a> Type<'a> {
         //    again.
         if let Type::Type(t2) = value_type {
             match t2.as_ref() {
+                DbType::Any if matcher.is_matching_reverse() => return Match::new_true(),
                 DbType::Any => {
                     let t1 = self.as_cow(i_s.db);
                     matcher.set_all_contained_type_vars_to_any(i_s, &t1);

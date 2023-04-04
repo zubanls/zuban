@@ -1,5 +1,4 @@
 # Next up
-testOverloadingWithParamSpec
 
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
