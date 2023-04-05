@@ -37,9 +37,6 @@ pub trait Arguments<'db>: std::fmt::Debug {
 
     fn has_a_union_argument(&self, i_s: &InferenceState<'db, '_>) -> bool {
         for arg in self.iter() {
-            if arg.in_args_or_kwargs_and_arbitrary_len() {
-                todo!()
-            }
             if arg.infer(i_s, &mut ResultContext::Unknown).is_union(i_s.db) {
                 return true;
             }

@@ -17,12 +17,19 @@ pub enum SignatureMatch {
     TrueWithAny {
         argument_indices: Box<[ArgumentIndexWithParam]>,
     },
-    True,
+    True {
+        arbitrary_length_handled: bool,
+    },
 }
 
 impl SignatureMatch {
+    pub fn new_true() -> Self {
+        Self::True {
+            arbitrary_length_handled: true,
+        }
+    }
     pub fn bool(&self) -> bool {
-        matches!(self, Self::True | Self::TrueWithAny { .. })
+        matches!(self, Self::True { .. } | Self::TrueWithAny { .. })
     }
 }
 

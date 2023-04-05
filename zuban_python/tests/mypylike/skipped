@@ -95,19 +95,12 @@ testOverloadOverlapWithTypeVarsWithValues
 # Overloading __init__
 testOverloadedToGeneric
 # *args *params should be preferred in overload
-testOverloadVarargInputAndVarargDefinition
-testOverloadMultipleVarargDefinition
 testOverloadVarargsSelection
 testOverloadVarargsAndKwargsSelection
-testOverloadKwargsSelectionWithDict
-# - wtf Argument 1 to "f1" has incompatible type "Union[A, B]"; expected "A"
-#       Argument 1 to "foo" has incompatible type "Union[WrapperCo[A], WrapperContra[C]]"; expected "WrapperCo[B]"
+# Union math special cases
 testUnionMathTrickyOverload2
-# - 3352-3500 Union/Type vars/overloads weird combinations
 testOverloadInferUnionWithDifferingLengths
 overload_union_math_on_class_init_constrained
-# - Not all union combinations were tried because there are too many unions
-testTooManyUnionsException
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -2019,6 +2012,9 @@ testInvalidLvalueWithExplicitType
 testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
+
+# "Not all union combinations were tried because there are too many unions"
+testTooManyUnionsException
 
 # - (with type vars) Overloaded function signatures 2 and 3 overlap with incompatible return types
 #testOverloadMultipleVarargDefinitionComplex

@@ -454,7 +454,7 @@ impl<'a> Matcher<'a> {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
                     BoundKind::ParamSpecArgument(p) => Cow::Borrowed(p),
                     // This means that an Any came along.
-                    BoundKind::Uncalculated => return SignatureMatch::True,
+                    BoundKind::Uncalculated => return SignatureMatch::new_true(),
                     BoundKind::TypeVar(_) | BoundKind::TypeVarTuple(_) => unreachable!(),
                 }
             } else {
@@ -482,7 +482,7 @@ impl<'a> Matcher<'a> {
                     iter,
                 )
             }
-            CallableParams::Any => SignatureMatch::True,
+            CallableParams::Any => SignatureMatch::new_true(),
             CallableParams::WithParamSpec(pre, usage1) => {
                 let mut arg_iterator = args.into_vec().into_iter();
                 if !pre.is_empty() {
@@ -499,7 +499,7 @@ impl<'a> Matcher<'a> {
                             if arg_iterator.next().is_some() {
                                 unreachable!()
                             }
-                            SignatureMatch::True
+                            SignatureMatch::new_true()
                         } else {
                             if let Some(on_type_error) = on_type_error {
                                 (on_type_error.callback)(

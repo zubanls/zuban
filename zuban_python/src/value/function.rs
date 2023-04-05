@@ -1336,6 +1336,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             };
             OverloadResult::Single(function, calculated)
         };
+        let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         let mut had_error_in_func = None;
@@ -1347,10 +1348,17 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 had_error_in_func = Some(function);
             }
             match calculated_type_args.matches {
-                SignatureMatch::True => {
+                SignatureMatch::True {
+                    arbitrary_length_handled,
+                } => {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
                         return OverloadResult::NotFound;
+                    } else if !arbitrary_length_handled {
+                        if first_arbitrary_length_not_handled.is_none() {
+                            first_arbitrary_length_not_handled =
+                                Some((calculated_type_args.type_arguments, function));
+                        }
                     } else {
                         debug!(
                             "Decided overload for {} (called on #{}): {:?}",
@@ -1401,6 +1409,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             args.reset_cache();
         }
         if let Some((type_arguments, function, _)) = multi_any_match {
+            return handle_result(type_arguments, function);
+        }
+        if let Some((type_arguments, function)) = first_arbitrary_length_not_handled {
             return handle_result(type_arguments, function);
         }
         if first_similar.is_none() && args.has_a_union_argument(i_s) {
@@ -1576,7 +1587,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     todo!()
                 }
                 match calculated_type_args.matches {
-                    SignatureMatch::True => {
+                    SignatureMatch::True { .. } => {
                         if search_init {
                             todo!()
                         } else if let Some(return_annotation) = function.return_annotation() {

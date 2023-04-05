@@ -392,7 +392,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 on_type_error,
                 InferrableParamIterator2::new(i_s.db, params.iter(), args),
             ),
-            CallableParams::Any => SignatureMatch::True,
+            CallableParams::Any => SignatureMatch::new_true(),
             CallableParams::WithParamSpec(pre_types, param_spec) => {
                 if !pre_types.is_empty() {
                     dbg!(pre_types, args.collect::<Vec<_>>());
@@ -401,7 +401,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 if let Some(arg) = args.next() {
                     if let ArgumentKind::ParamSpec { usage, .. } = &arg.kind {
                         if usage.in_definition == param_spec.in_definition {
-                            SignatureMatch::True
+                            SignatureMatch::new_true()
                         } else if class.is_none() {
                             SignatureMatch::False { similar: false }
                         } else {
@@ -482,6 +482,7 @@ pub fn match_arguments_against_params<
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
+    let mut arbitrary_length_handled = true;
     for (i, p) in args_with_params.by_ref().enumerate() {
         if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
@@ -499,6 +500,13 @@ pub fn match_arguments_against_params<
                     | WrappedParamSpecific::KeywordOnly(t)
                     | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
                     | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                        if argument.in_args_or_kwargs_and_arbitrary_len() {
+                            arbitrary_length_handled = matches!(
+                                &specific,
+                                WrappedParamSpecific::Starred(_)
+                                    | WrappedParamSpecific::DoubleStarred(_)
+                            );
+                        }
                         match t {
                             Some(t) => t,
                             None => continue,
@@ -598,7 +606,7 @@ pub fn match_arguments_against_params<
                     args_node_ref,
                     on_type_error,
                 ) {
-                    SignatureMatch::True => Match::new_true(),
+                    SignatureMatch::True { .. } => Match::new_true(),
                     SignatureMatch::TrueWithAny { .. } => todo!(),
                     SignatureMatch::False { similar } => Match::False {
                         similar,
@@ -704,7 +712,9 @@ pub fn match_arguments_against_params<
         };
     }
     match matches {
-        Match::True { with_any: false } => SignatureMatch::True,
+        Match::True { with_any: false } => SignatureMatch::True {
+            arbitrary_length_handled,
+        },
         Match::True { with_any: true } => SignatureMatch::TrueWithAny {
             argument_indices: argument_indices_with_any.into(),
         },
