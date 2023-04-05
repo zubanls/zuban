@@ -1350,7 +1350,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 SignatureMatch::True => {
                     if multi_any_match.is_some() {
                         // This means that there was an explicit any in a param.
-                        args.reset_cache();
                         return OverloadResult::NotFound;
                     } else {
                         debug!(
@@ -1375,8 +1374,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             old_indices,
                             &argument_indices,
                         ) {
-                            args.reset_cache();
                             if had_error {
+                                args.reset_cache();
                                 // Need to run the whole thing again to generate errors, because
                                 // the function is not going to be checked.
                                 match_signature(i_s, result_context, function);
