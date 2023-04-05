@@ -94,9 +94,6 @@ testReverseOperatorMethodForwardIsAny3
 testOverloadOverlapWithTypeVarsWithValues
 # Overloading __init__
 testOverloadedToGeneric
-# *args/**kwargs input use Any if length unclear
-testOverloadWithOverlappingItemsAndAnyArgument6
-testOverloadWithOverlappingItemsAndAnyArgument11
 # *args *params should be preferred in overload
 testOverloadVarargInputAndVarargDefinition
 testOverloadMultipleVarargDefinition
