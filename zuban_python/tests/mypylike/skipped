@@ -108,7 +108,6 @@ testOverloadKwargsSelectionWithDict
 testUnionMathTrickyOverload2
 # - 3352-3500 Union/Type vars/overloads weird combinations
 testOverloadInferUnionWithDifferingLengths
-testOverloadingInferUnionReturnWithMixedTypevarsInnerMismatch
 overload_union_math_on_class_init_constrained
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
