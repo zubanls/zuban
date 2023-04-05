@@ -1262,6 +1262,7 @@ pub enum OverloadResult<'a> {
     NotFound,
 }
 
+#[derive(Debug)]
 pub enum UnionMathResult {
     FirstSimilarIndex(usize),
     Match {

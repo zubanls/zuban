@@ -108,10 +108,7 @@ testOverloadKwargsSelectionWithDict
 testUnionMathTrickyOverload2
 # - 3352-3500 Union/Type vars/overloads weird combinations
 testOverloadInferUnionWithDifferingLengths
-testOverloadingInferUnionReturnWithTypevarWithValueRestriction
-testOverloadingInferUnionReturnWithMixedTypevars
-testOverloadingInferUnionReturnWithMixedTypevarsTighterBound
-testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
+testOverloadingInferUnionReturnWithMixedTypevarsInnerMismatch
 overload_union_math_on_class_init_constrained
 # - Not all union combinations were tried because there are too many unions
 testTooManyUnionsException
@@ -1306,6 +1303,7 @@ testTypeVarValuesFunction
 testTypeVarValuesMethod1
 testTypeVarValuesMethod2
 testTypingSelfWithValuesExpansion
+testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference

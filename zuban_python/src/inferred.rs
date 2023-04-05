@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{on_argument_type_error, File, PythonFile};
+use crate::file::{on_argument_type_error, use_cached_annotation_type, File, PythonFile};
 use crate::inference_state::InferenceState;
 use crate::matching::{
     create_signature_without_self, replace_class_type_vars, FormatData, Generics, Matcher,
@@ -1118,10 +1118,20 @@ impl<'db: 'slf, 'slf> Inferred {
         match &self.state {
             InferredState::Saved(reference, point) => {
                 let node_ref = NodeRef::from_link(db, *reference);
-                node_ref
-                    .complex()
-                    .map(|c| check_complex_point(c))
-                    .unwrap_or(false)
+                if point.type_() == PointType::Specific {
+                    if point.specific() == Specific::AnnotationOrTypeCommentWithTypeVars {
+                        // TODO the node_ref may not be an annotation.
+                        use_cached_annotation_type(db, node_ref.file, node_ref.as_annotation())
+                            .is_union()
+                    } else {
+                        false
+                    }
+                } else {
+                    node_ref
+                        .complex()
+                        .map(|c| check_complex_point(c))
+                        .unwrap_or(false)
+                }
             }
             InferredState::UnsavedComplex(c) => check_complex_point(c),
             _ => false,
