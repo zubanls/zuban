@@ -12,9 +12,9 @@ class Z(tuple): ...
 [case duplicate_base_class_of_type]
 
 class A(type, type): ...  # E: Duplicate base class "type"
-class B(type[int], type): ...  # E: Duplicate base class "type"
-class C(type, type[int]): ...  # E: Duplicate base class "type"
-class D(type[str], type[int]): ...  # E: Duplicate base class "type"
+class B(type[int], type): ...  # E: Invalid base class "type[int]"
+class C(type, type[int]): ...  # E: Invalid base class "type[int]"
+class D(type[str], type[int]): ...  # E: Invalid base class "type[str]" # E: Invalid base class "type[int]"
 
 class X(type): ...
 

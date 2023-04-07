@@ -870,7 +870,6 @@ testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 # type base class
 testTypeEquivalentTypeAnyEdgeCase
 testClassObjectsNotUnpackableWithoutIterableMetaclass
-duplicate_base_class_of_type
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
