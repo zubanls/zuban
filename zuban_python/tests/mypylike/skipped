@@ -154,6 +154,8 @@ testOverlappingClassCallables
 testNoneHasBool
 testEqNone
 testInferEqualsStillOptionalWithBothOptional
+# type attributes
+testTypeEquivalentTypeAnyEdgeCase
 
 # boolean operators
 testOrOperationWithGenericOperands
@@ -700,6 +702,20 @@ testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
 testPrecedenceOfFirstBaseAsInferenceResult
 type_var_with_co_and_contra_real_life
+# six imports
+testNewAnalyzerMetaclassSix1
+testNewAnalyzerMetaclassSix2
+testNewAnalyzerMetaclassSix3
+testNewAnalyzerMetaclassSix4
+testSixMetaclassImportFrom
+testSixMetaclassImport
+testSixMetaclassAndBase
+testSixMetaclassGenerics
+testSixMetaclassErrors
+testSixMetaclassAny
+testSixMetaclass
+testFromSixMetaclass
+testSixMetaclassGenericBase
 
 # Binary or implementation missing
 testMiscBinaryOperators
@@ -781,10 +797,6 @@ testNonClassMetaclass
 testNewAnalyzerMetaclass1
 testNewAnalyzerMetaclass2
 testNewAnalyzerMetaclassPlaceholder
-testNewAnalyzerMetaclassSix1
-testNewAnalyzerMetaclassSix2
-testNewAnalyzerMetaclassSix3
-testNewAnalyzerMetaclassSix4
 testNewAnalyzerMetaclassFuture1
 testNewAnalyzerMetaclassFuture3
 testNewAnalyzerMetaclassFuture4
@@ -840,14 +852,6 @@ testAnyAsBaseOfMetaclass
 testMetaclassTypeCallable
 testMetaclassStrictSupertypeOfTypeWithClassmethods
 testMetaclassOverloadResolution
-testSixMetaclass
-testFromSixMetaclass
-testSixMetaclassImportFrom
-testSixMetaclassImport
-testSixMetaclassAndBase
-testSixMetaclassGenerics
-testSixMetaclassErrors
-testSixMetaclassAny
 testFutureMetaclass
 testFromFutureMetaclass
 testFutureMetaclassImportFrom
@@ -862,14 +866,8 @@ testMetaclassMemberAccessViaType3
 testMetaclassPlaceholderNode
 testMetaclassSubclassSelf
 testMetaclassConflict
-testInitSubclassWithMetaclassOK
-testInitSubclassWithCustomMetaclassOK
-testSixMetaclassGenericBase
 testInferringLvarTypesUnpackedFromIterableClassObject
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
-# type base class
-testTypeEquivalentTypeAnyEdgeCase
-testClassObjectsNotUnpackableWithoutIterableMetaclass
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -1680,6 +1678,7 @@ testMultipassAndTopLevelVariable
 testMultipassAndCircularDependency
 testForwardReferenceToDecoratedClassMethod
 testAccessingClassAttributeWithTypeInferenceIssue
+testClassObjectsNotUnpackableWithoutIterableMetaclass
 
 # {**kwargs}
 testSubtypingMappingUnpacking1
