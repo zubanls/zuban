@@ -90,15 +90,9 @@ testReverseComparisonOperator
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
-# Overloads maybe later
-testOverloadOverlapWithTypeVarsWithValues
-# Overloading __init__
-testOverloadedToGeneric
-# *args *params should be preferred in overload
-testOverloadVarargsSelection
-# Union math special cases
+# Union Math Any argument
 testUnionMathTrickyOverload2
-testOverloadInferUnionWithDifferingLengths
+# Overload union math for __init__
 overload_union_math_on_class_init_constrained
 
 # Class function Foo.bar something like a BoundFunction
@@ -286,6 +280,8 @@ testNewTypeInLocalScope
 testForwardReferenceToNestedClassWithinClass
 # function types in class body
 testMethodRefInClassBody
+# Class argument and __init__ as overloaded DbType
+testOverloadedToGeneric
 
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)
@@ -1217,6 +1213,8 @@ testInferringLvarTypesInNestedListAssignment
 testInferringMultipleLvarDefinitionWithListRvalue
 testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
 testUnpackInExpression1-only_when_nocache
+# list[<nothing>] against *args or never
+testOverloadVarargsSelection
 
 # List inference unions are special (list meets)
 testListLiteralWithFunctionsErasesNames
@@ -1239,6 +1237,8 @@ testExtremeForwardReferencing
 testConditionalExpressionUnionWithAny
 # join callables
 testOverloadedInIter
+# join sub and super classes
+testOverloadInferUnionWithDifferingLengths
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
