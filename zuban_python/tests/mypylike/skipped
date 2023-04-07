@@ -90,8 +90,6 @@ testReverseComparisonOperator
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
-# Union Math Any argument
-testUnionMathTrickyOverload2
 # Overload union math for __init__
 overload_union_math_on_class_init_constrained
 

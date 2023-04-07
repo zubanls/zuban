@@ -571,14 +571,20 @@ impl<'a> Type<'a> {
                     if matcher.is_matching_reverse() {
                         debug!("TODO matching reverse?");
                     }
-                    return u2
-                        .entries
-                        .iter()
-                        .all(|e| {
-                            self.matches(i_s, matcher, &Type::new(&e.type_), variance)
-                                .bool()
-                        })
-                        .into();
+                    let mut result: Option<Match> = None;
+                    for e in u2.entries.iter() {
+                        let r = self.matches(i_s, matcher, &Type::new(&e.type_), variance);
+                        if !r.bool() {
+                            return r.bool().into();
+                        } else {
+                            if let Some(old) = result {
+                                result = Some(old & r)
+                            } else {
+                                result = Some(r)
+                            }
+                        }
+                    }
+                    return result.unwrap();
                 }
                 DbType::NewType(n2) => {
                     let t = n2.type_(i_s);
