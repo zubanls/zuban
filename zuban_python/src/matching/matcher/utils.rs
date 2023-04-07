@@ -482,7 +482,6 @@ pub fn match_arguments_against_params<
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
     let mut matches = Match::new_true();
-    let mut arbitrary_length_handled = true;
     for (i, p) in args_with_params.by_ref().enumerate() {
         if matches!(p.argument, ParamArgument::None) && !p.param.has_default() {
             matches = Match::new_false();
@@ -500,13 +499,6 @@ pub fn match_arguments_against_params<
                     | WrappedParamSpecific::KeywordOnly(t)
                     | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
                     | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                        if argument.in_args_or_kwargs_and_arbitrary_len() {
-                            arbitrary_length_handled = matches!(
-                                &specific,
-                                WrappedParamSpecific::Starred(_)
-                                    | WrappedParamSpecific::DoubleStarred(_)
-                            );
-                        }
                         match t {
                             Some(t) => t,
                             None => continue,
@@ -672,7 +664,7 @@ pub fn match_arguments_against_params<
             }
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
-        for unused in args_with_params.unused_keyword_arguments {
+        for unused in &args_with_params.unused_keyword_arguments {
             match unused.kind {
                 ArgumentKind::Keyword { key, node_ref, .. } => {
                     add_keyword_argument_issue(node_ref, key)
@@ -713,7 +705,7 @@ pub fn match_arguments_against_params<
     }
     match matches {
         Match::True { with_any: false } => SignatureMatch::True {
-            arbitrary_length_handled,
+            arbitrary_length_handled: args_with_params.had_arbitrary_length_handled(),
         },
         Match::True { with_any: true } => SignatureMatch::TrueWithAny {
             argument_indices: argument_indices_with_any.into(),

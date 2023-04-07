@@ -517,6 +517,7 @@ pub struct InferrableParamIterator2<'db, 'a, I, P, AI: Iterator> {
     current_starred_param: Option<P>,
     current_double_starred_param: Option<P>,
     pub too_many_positional_arguments: bool,
+    arbitrary_length_handled: bool,
 }
 
 impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
@@ -532,6 +533,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
             current_starred_param: None,
             current_double_starred_param: None,
             too_many_positional_arguments: false,
+            arbitrary_length_handled: true,
         }
     }
 
@@ -553,10 +555,15 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
         false
     }
 
+    pub fn had_arbitrary_length_handled(self) -> bool {
+        self.arbitrary_length_handled
+    }
+
     pub fn next_arg(&mut self) -> Option<Argument<'db, 'a>> {
         let arg = self.current_arg.take().or_else(|| self.arguments.next());
         if let Some(a) = &arg {
             if a.in_args_or_kwargs_and_arbitrary_len() {
+                self.arbitrary_length_handled = false;
                 self.current_arg = arg.clone();
             }
         }
@@ -565,6 +572,7 @@ impl<'db, 'a, I, P, AI: Iterator<Item = Argument<'db, 'a>>>
 
     fn maybe_exact_multi_arg(&mut self, is_keyword_arg: bool) -> Option<Argument<'db, 'a>> {
         self.next_arg().and_then(|arg| {
+            self.arbitrary_length_handled = true;
             if arg.is_keyword_argument() == is_keyword_arg {
                 self.current_arg = None;
                 Some(arg)
