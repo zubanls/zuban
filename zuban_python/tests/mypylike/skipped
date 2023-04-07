@@ -96,7 +96,6 @@ testOverloadOverlapWithTypeVarsWithValues
 testOverloadedToGeneric
 # *args *params should be preferred in overload
 testOverloadVarargsSelection
-testOverloadVarargsAndKwargsSelection
 # Union math special cases
 testUnionMathTrickyOverload2
 testOverloadInferUnionWithDifferingLengths
