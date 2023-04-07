@@ -824,7 +824,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         return result;
                     }
-                    Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
                     _ => (),
                 },
@@ -960,7 +959,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         return result;
                     }
-                    Specific::StaticMethod => todo!(),
                     Specific::Property => todo!(),
                     Specific::AnnotationOrTypeCommentWithTypeVars => {
                         if let Some(from) = from {
@@ -1432,7 +1430,6 @@ fn run_on_specific<'db: 'a, 'a, T>(
         }
         Specific::Function => callable(i_s, &Function::new(definition, None)),
         Specific::ClassMethod => todo!(),
-        Specific::StaticMethod => todo!(),
         Specific::Property => todo!(),
         Specific::AnnotationOrTypeCommentClassInstance => {
             let expr_def = definition.add_to_node_index(2);

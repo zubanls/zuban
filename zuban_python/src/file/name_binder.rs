@@ -847,7 +847,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         match name.as_str() {
                             "property" => function_type = FunctionType::Property,
                             "classmethod" => function_type = FunctionType::ClassMethod,
-                            "staticmethod" => function_type = FunctionType::StaticMethod,
                             "overload" => is_overload = true,
                             _ => (),
                         }
@@ -856,10 +855,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             }
         }
 
-        if self.type_ == NameBinderType::Class
-            && function_type != FunctionType::StaticMethod
-            && param_count == 0
-        {
+        if self.type_ == NameBinderType::Class && param_count == 0 {
             self.add_issue(func.index(), IssueType::MethodWithoutArguments)
         }
 
@@ -927,7 +923,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 if let Some(decorators) = decorators {
                     // TODO this filtering is wrong and should be deleted
                     if decorators.iter().any(|d| {
-                        ["abstractmethod", "classmethod", "staticmethod", "property"]
+                        ["abstractmethod", "classmethod", "property"]
                             .iter()
                             .any(|s| d.as_code().contains(s))
                     }) {
@@ -954,7 +950,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     match function_type {
                         FunctionType::Function => Specific::Function,
                         FunctionType::ClassMethod => Specific::ClassMethod,
-                        FunctionType::StaticMethod => Specific::StaticMethod,
                         FunctionType::Property => Specific::Property,
                     }
                 } else {

@@ -377,7 +377,6 @@ pub enum Specific {
     LazyInferredFunction, // A function that will be inferred later.
     Function,             // The node point so the index of the result
     ClassMethod,
-    StaticMethod,
     Property,
     Closure,
     // NoReturnFunction,  // TODO Remove or use?
@@ -1778,7 +1777,6 @@ pub enum FunctionType {
     Function,
     Property,
     ClassMethod,
-    StaticMethod,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]

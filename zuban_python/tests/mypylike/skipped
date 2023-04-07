@@ -360,18 +360,16 @@ SelfTypeOverloadedClassMethod
 
 # staticmethod
 testStaticmethodAndNonMethod
-testBoundStaticMethod
+testTypeConstructorReturnsTypeType
 testTypingSelfClassMethod
 testForwardReferenceToDynamicallyTypedStaticMethod
-testForwardReferenceToStaticallyTypedStaticMethod
 testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
-testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
-testSimpleStaticMethod
 testBuiltinStaticMethod
-testAssignStaticMethodOnInstance
-testTypeConstructorReturnsTypeType
 testRefMethodWithDecorator
+# staticmethod call error has no Argument 1 to "f" of "A"
+testSimpleStaticMethod
+testForwardReferenceToStaticallyTypedStaticMethod
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical
@@ -1181,6 +1179,7 @@ testAssignToMethodViaInstance
 testAssignToMethodViaClass
 testAssignClassMethodOnClass
 testAssignClassMethodOnInstance
+testAssignStaticMethodOnInstance
 
 # "Cannot assign to a type"
 testAssignToNestedClassViaClass
