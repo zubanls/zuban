@@ -385,6 +385,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::GenericWithGenerics) => BaseClass::Generic,
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
+            TypeContent::SpecialType(SpecialType::Type) => BaseClass::DbType(DbType::Class(
+                self.inference.i_s.db.python_state.type_node_ref().as_link(),
+                None,
+            )),
             TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
                 BaseClass::Invalid
             }

@@ -16,8 +16,15 @@ class B(type[int], type): ...  # E: Duplicate base class "type"
 class C(type, type[int]): ...  # E: Duplicate base class "type"
 class D(type[str], type[int]): ...  # E: Duplicate base class "type"
 
-class X(type[str]): ...
-class Y(type): ...
+class X(type): ...
+
+[case base_class_of_type]
+from typing import Type
+
+class A(Type[int]): ...  # E: Invalid base class "Type[int]"
+class B(type[int]): ...  # E: Invalid base class "type[int]"
+class C(Type): ...
+class D(type): ...
 
 [case duplicate_base_class_of_callable]
 from typing import Callable

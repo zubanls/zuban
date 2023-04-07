@@ -47,6 +47,7 @@ pub struct PythonState {
     typing_extensions: *const PythonFile,
 
     builtins_object_index: NodeIndex,
+    builtins_type_index: NodeIndex,
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
     builtins_dict_index: NodeIndex,
@@ -85,6 +86,7 @@ impl PythonState {
             mypy_extensions: null(),
             typing_extensions: null(),
             builtins_object_index: 0,
+            builtins_type_index: 0,
             builtins_list_index: 0,
             builtins_tuple_index: 0,
             builtins_dict_index: 0,
@@ -195,6 +197,7 @@ impl PythonState {
             };
         }
         cache_index!(builtins_object_index, db, builtins, "object");
+        cache_index!(builtins_type_index, db, builtins, "type");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
         cache_index!(builtins_bool_index, db, builtins, "bool");
@@ -292,6 +295,7 @@ impl PythonState {
     }
 
     builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
+    builtins_attribute_node_ref!(type_node_ref, builtins_type_index);
     builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
     builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
     builtins_attribute_node_ref!(tuple_node_ref, builtins_tuple_index);
