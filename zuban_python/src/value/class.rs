@@ -321,6 +321,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         };
                     }
                     Argument::Keyword(name, expr) => {
+                        let node_ref = NodeRef::new(self.node_ref.file, expr.index());
                         if name.as_str() == "metaclass" {
                             let mut inference = self.node_ref.file.inference(i_s);
                             let meta_base = TypeComputation::new(
@@ -334,20 +335,31 @@ impl<'db: 'a, 'a> Class<'a> {
                             .compute_base_class(expr);
                             match meta_base {
                                 BaseClass::DbType(DbType::Class(link, None)) => {
-                                    metaclass = Some(link);
+                                    if Class::from_db_type(i_s.db, link, &None).in_mro(
+                                        i_s.db,
+                                        &DbType::Class(
+                                            i_s.db.python_state.type_node_ref().as_link(),
+                                            None,
+                                        ),
+                                    ) {
+                                        metaclass = Some(link);
+                                    } else {
+                                        node_ref.add_typing_issue(
+                                            i_s,
+                                            IssueType::MetaclassMustInheritFromType,
+                                        );
+                                    }
                                 }
                                 BaseClass::DbType(_) => {
-                                    NodeRef::new(self.node_ref.file, expr.index())
-                                        .add_typing_issue(
-                                            i_s,
-                                            IssueType::DynamicMetaclassNotSupported {
-                                                class_name: Box::from(self.name()),
-                                            },
-                                        );
+                                    node_ref.add_typing_issue(
+                                        i_s,
+                                        IssueType::DynamicMetaclassNotSupported {
+                                            class_name: Box::from(self.name()),
+                                        },
+                                    );
                                 }
                                 BaseClass::Invalid => {
-                                    NodeRef::new(self.node_ref.file, expr.index())
-                                        .add_typing_issue(i_s, IssueType::InvalidMetaclass);
+                                    node_ref.add_typing_issue(i_s, IssueType::InvalidMetaclass);
                                 }
                                 _ => {}
                             }
