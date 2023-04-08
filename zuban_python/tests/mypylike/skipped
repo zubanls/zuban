@@ -809,26 +809,24 @@ testValidTypeAliasAsMetaclass
 testValidTypeAliasOfTypeAliasAsMetaclass
 # Cyclic Metaclass
 testMetaclassSubclassSelf
-# Metaclass general
-testAnyAsBaseOfMetaclass
-testMetaclassOverloadResolution
-# Metaclass iter/getitem
-testMetaclassGetitem
-testMetaclassIterable
-testInferringLvarTypesUnpackedFromIterableClassObject
-testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 # Metaclass self type
 testSelfTypeStructureMetaclassMatch
 testSelfTypeProtocolMetaclassMatch
 testMetaclassSelfType
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass
-# Metaclass lookup/addition
+# Metaclass iter/getitem/addition
+testMetaclassGetitem
+testMetaclassIterable
+testInferringLvarTypesUnpackedFromIterableClassObject
+testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 testMetaclassOperators
 testMetaclassOperatorsDirect
 # Metaclass type meta matching
 testFineMetaclassUpdate
 testFineMetaclassRemoveFromClass2
+testAnyAsBaseOfMetaclass
+testMetaclassOverloadResolution
 # "Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases"
 testFineMetaclassRecalculation
 testFineMetaclassDeclaredUpdate
@@ -836,9 +834,16 @@ testInvalidMetaclassStructure
 testMetaclassConflict
 # "Self type cannot be used in a metaclas"
 testTypingSelfMetaClassDisabled
+
 # Use type(foo) when foo has a metaclass
 testMetaclassTypeCallable
 testMetaclassMemberAccessViaType
+# Foo = type(...) used as `x: Foo` (type execution)
+testNoneAlias
+testNoneAliasStrict
+
+# Type[Any] is object
+testSimplifyingUnionWithTypeTypes2
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -1747,16 +1752,6 @@ testIncompatibleAssignmentAmbiguousShortnames
 # "Perhaps you need a type annotation for "x"? Suggestion: "List[str | int]""
 testInferredTypeSubTypeOfReturnType
 
-# Too many values to unpack (2 expected, 3 provided)
-testInferringLvarTypesInMultiDefWithInvalidTuple
-
-# Type[Any] is object
-testSimplifyingUnionWithTypeTypes2
-
-# Foo = type(...) used as `x: Foo` (type execution)
-testNoneAlias
-testNoneAliasStrict
-
 # Module __getattr__
 testNewAnalyzerModuleGetattrSerialize_incremental
 testModuleLevelGetattr*
@@ -1847,6 +1842,8 @@ testVariableDeclWithInvalidNumberOfTypes
 testVariableDeclWithInvalidNumberOfTypesNested
 testVariableDeclWithInvalidNumberOfTypesNested2
 testVariableDeclWithInvalidNumberOfTypesNested4
+# "Too many values to unpack (2 expected, 3 provided)"
+testInferringLvarTypesInMultiDefWithInvalidTuple
 
 # EllipsisType
 testUnionWithEllipsis
