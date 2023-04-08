@@ -811,7 +811,6 @@ testMetaclassSubclassSelf
 testMetaclassSubclass
 testMetaclassGetitem
 testMetaclassAndSkippedImport
-testNewAnalyzerClassKeywordsError
 testIndirectSubclassReferenceMetaclass
 testMetaclassDeletion
 testFixMissingMetaclass

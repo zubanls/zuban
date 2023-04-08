@@ -364,6 +364,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                 _ => {}
                             }
                         } else {
+                            // Generate diagnostics
+                            self.node_ref.file.inference(i_s).infer_expression(expr);
                             debug!("TODO shouldn't we handle this? In testNewAnalyzerClassKeywordsForward it's ignored...")
                         }
                     }
