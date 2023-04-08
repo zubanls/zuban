@@ -308,8 +308,13 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                             }
                             BaseClass::Protocol => is_protocol = true,
-                            BaseClass::Generic => {}
+                            BaseClass::Generic => (),
+                            BaseClass::Unknown => {
+                                incomplete_mro = true;
+                            }
                             BaseClass::Invalid => {
+                                NodeRef::new(self.node_ref.file, n.index())
+                                    .add_typing_issue(i_s, IssueType::InvalidBaseClass);
                                 incomplete_mro = true;
                             }
                         };

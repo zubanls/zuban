@@ -202,6 +202,7 @@ pub enum BaseClass {
     Protocol,
     Generic,
     Invalid,
+    Unknown,
 }
 
 macro_rules! compute_type_application {
@@ -390,12 +391,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 None,
             )),
             TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
-                BaseClass::Invalid
+                // TODO what is this case?
+                BaseClass::Unknown
             }
-            TypeContent::ParamSpec(_) => {
-                self.add_typing_issue_for_index(expr.index(), IssueType::InvalidBaseClass);
-                BaseClass::Invalid
-            }
+            TypeContent::ParamSpec(_) => BaseClass::Invalid,
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
@@ -403,18 +402,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::Class(_, _) | DbType::Tuple(_) | DbType::Callable(_) => {
                         BaseClass::DbType(db_type)
                     }
-                    DbType::Any => BaseClass::Invalid,
+                    DbType::Any => BaseClass::Unknown,
                     DbType::NewType(_) => {
                         self.add_typing_issue_for_index(
                             expr.index(),
                             IssueType::CannotSubclassNewType,
                         );
-                        BaseClass::Invalid
+                        BaseClass::Unknown
                     }
-                    _ => {
-                        self.add_typing_issue_for_index(expr.index(), IssueType::InvalidBaseClass);
-                        BaseClass::Invalid
-                    }
+                    _ => BaseClass::Invalid,
                 }
             }
         }
