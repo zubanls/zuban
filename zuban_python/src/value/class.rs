@@ -8,8 +8,8 @@ use super::{Function, Instance, LookupResult, Module, OnTypeError, Value, ValueK
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MroIndex, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes,
+    MetaclassState, MroIndex, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
@@ -233,7 +233,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut mro = vec![];
         let mut incomplete_mro = false;
         let mut is_protocol = false;
-        let mut metaclass = None;
+        let mut metaclass = MetaclassState::None;
         if let Some(arguments) = self.node().arguments() {
             // Calculate the type var remapping
             for argument in arguments.iter() {
@@ -300,11 +300,12 @@ impl<'db: 'a, 'a> Class<'a> {
                                             );
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
-                                        if let Some(m) = cached_class_infos.metaclass {
-                                            if metaclass.is_some() {
-                                                todo!()
-                                            }
-                                            metaclass = Some(m)
+                                        if metaclass != MetaclassState::None
+                                            && cached_class_infos.metaclass != MetaclassState::None
+                                        {
+                                            todo!()
+                                        } else {
+                                            metaclass = cached_class_infos.metaclass;
                                         }
                                         for base in cached_class_infos.mro.iter() {
                                             mro.push(base.replace_type_var_likes(db, &mut |t| {
@@ -349,10 +350,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                             None,
                                         ),
                                     ) {
-                                        if metaclass.is_some() {
+                                        if metaclass != MetaclassState::None {
                                             todo!()
                                         }
-                                        metaclass = Some(link);
+                                        metaclass = MetaclassState::Some(link);
                                     } else {
                                         node_ref.add_typing_issue(
                                             i_s,
@@ -360,7 +361,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                         );
                                     }
                                 }
-                                BaseClass::DbType(_) | BaseClass::Invalid => {
+                                BaseClass::Unknown => metaclass = MetaclassState::Unknown,
+                                _ => {
                                     /*
                                     node_ref.add_typing_issue(
                                         i_s,
@@ -371,7 +373,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                     */
                                     node_ref.add_typing_issue(i_s, IssueType::InvalidMetaclass);
                                 }
-                                _ => {}
                             }
                         } else {
                             // Generate diagnostics
@@ -466,12 +467,14 @@ impl<'db: 'a, 'a> Class<'a> {
         match result {
             Some(LookupResult::None) | None => {
                 let class_infos = self.use_cached_class_infos(i_s.db);
-                if let Some(metaclass) = class_infos.metaclass {
-                    let instance =
-                        Instance::new(Class::from_db_type(i_s.db, metaclass, &None), None);
-                    instance.lookup_internal(i_s, node_ref, name)
-                } else {
-                    LookupResult::None
+                match class_infos.metaclass {
+                    MetaclassState::Some(link) => {
+                        let instance =
+                            Instance::new(Class::from_db_type(i_s.db, link, &None), None);
+                        instance.lookup_internal(i_s, node_ref, name)
+                    }
+                    MetaclassState::Unknown => LookupResult::UnknownName(Inferred::new_unknown()),
+                    MetaclassState::None => LookupResult::None,
                 }
             }
             Some(x) => x,

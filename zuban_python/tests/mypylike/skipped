@@ -809,7 +809,6 @@ testValidTypeAliasOfTypeAliasAsMetaclass
 testMetaclassSubclassSelf
 # Metaclass general
 testMetaclassGetitem
-testMetaclassAndSkippedImport
 testIndirectSubclassReferenceMetaclass
 testMetaclassDeletion
 testFixMissingMetaclass

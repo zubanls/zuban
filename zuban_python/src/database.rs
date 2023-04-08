@@ -3456,10 +3456,17 @@ pub struct ClassStorage {
     pub promote_to: Cell<Option<PointLink>>,
 }
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum MetaclassState {
+    None,
+    Unknown,
+    Some(PointLink),
+}
+
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
     pub mro: Box<[DbType]>, // Does never include `object`
-    pub metaclass: Option<PointLink>,
+    pub metaclass: MetaclassState,
     pub is_protocol: bool,
     pub incomplete_mro: bool,
 }
