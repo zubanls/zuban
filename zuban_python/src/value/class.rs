@@ -343,13 +343,16 @@ impl<'db: 'a, 'a> Class<'a> {
                             .compute_base_class(expr);
                             match meta_base {
                                 BaseClass::DbType(DbType::Class(link, None)) => {
-                                    if Class::from_db_type(i_s.db, link, &None).in_mro(
-                                        i_s.db,
-                                        &DbType::Class(
-                                            i_s.db.python_state.type_node_ref().as_link(),
-                                            None,
-                                        ),
-                                    ) {
+                                    let c = Class::from_db_type(i_s.db, link, &None);
+                                    if c.use_cached_class_infos(i_s.db).incomplete_mro
+                                        || c.in_mro(
+                                            i_s.db,
+                                            &DbType::Class(
+                                                i_s.db.python_state.type_node_ref().as_link(),
+                                                None,
+                                            ),
+                                        )
+                                    {
                                         if metaclass != MetaclassState::None {
                                             todo!()
                                         }
