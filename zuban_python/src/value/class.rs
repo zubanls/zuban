@@ -4,7 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::function::OverloadResult;
-use super::{Function, LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::{Function, Instance, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
@@ -233,6 +233,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut mro = vec![];
         let mut incomplete_mro = false;
         let mut is_protocol = false;
+        let mut metaclass = None;
         if let Some(arguments) = self.node().arguments() {
             // Calculate the type var remapping
             for argument in arguments.iter() {
@@ -332,7 +333,9 @@ impl<'db: 'a, 'a> Class<'a> {
                             )
                             .compute_base_class(expr);
                             match meta_base {
-                                BaseClass::DbType(DbType::Class(link, None)) => {}
+                                BaseClass::DbType(DbType::Class(link, None)) => {
+                                    metaclass = Some(link);
+                                }
                                 BaseClass::DbType(_) => {
                                     NodeRef::new(self.node_ref.file, expr.index())
                                         .add_typing_issue(
@@ -358,6 +361,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         Box::new(ClassInfos {
             mro: mro.into_boxed_slice(),
+            metaclass,
             incomplete_mro,
             is_protocol,
         })
@@ -436,7 +440,16 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         });
         match result {
-            Some(LookupResult::None) | None => LookupResult::None,
+            Some(LookupResult::None) | None => {
+                let class_infos = self.use_cached_class_infos(i_s.db);
+                if let Some(metaclass) = class_infos.metaclass {
+                    let instance =
+                        Instance::new(Class::from_db_type(i_s.db, metaclass, &None), None);
+                    instance.lookup_internal(i_s, node_ref, name)
+                } else {
+                    LookupResult::None
+                }
+            }
             Some(x) => x,
         }
     }

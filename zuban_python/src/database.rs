@@ -3459,6 +3459,7 @@ pub struct ClassStorage {
 #[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
     pub mro: Box<[DbType]>, // Does never include `object`
+    pub metaclass: Option<PointLink>,
     pub is_protocol: bool,
     pub incomplete_mro: bool,
 }
