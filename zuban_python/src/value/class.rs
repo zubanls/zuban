@@ -319,7 +319,41 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                         };
                     }
-                    Argument::Keyword(_, _) => (), // Ignore for now -> part of meta class
+                    Argument::Keyword(name, expr) => {
+                        if name.as_str() == "metaclass" {
+                            let mut inference = self.node_ref.file.inference(i_s);
+                            let meta_base = TypeComputation::new(
+                                &mut inference,
+                                self.node_ref.as_link(),
+                                &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
+                                    if let Some(type_vars) = type_vars {
+                                        if let Some(usage) = type_vars
+                                            .find(type_var_like.clone(), self.node_ref.as_link())
+                                        {
+                                            return TypeVarCallbackReturn::TypeVarLike(usage);
+                                        }
+                                    }
+                                    if let Some(usage) =
+                                        self.maybe_type_var_like_in_parent(i_s, &type_var_like)
+                                    {
+                                        return TypeVarCallbackReturn::TypeVarLike(usage);
+                                    }
+                                    todo!("Maybe class in func");
+                                },
+                                TypeComputationOrigin::BaseClass,
+                            )
+                            .compute_base_class(expr);
+                            match meta_base {
+                                BaseClass::Invalid => {
+                                    NodeRef::new(self.node_ref.file, expr.index())
+                                        .add_typing_issue(i_s, IssueType::InvalidMetaclass);
+                                }
+                                _ => {}
+                            }
+                        } else {
+                            debug!("TODO shouldn't we handle this? In testNewAnalyzerClassKeywordsForward it's ignored...")
+                        }
+                    }
                     Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
                 }
             }
