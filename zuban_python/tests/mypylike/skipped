@@ -809,9 +809,6 @@ testValidTypeAliasOfTypeAliasAsMetaclass
 testMetaclassSubclassSelf
 # Metaclass general
 testMetaclassGetitem
-testIndirectSubclassReferenceMetaclass
-testMetaclassDeletion
-testFixMissingMetaclass
 testMetaclassPlaceholderNode
 testProtocolsInvalidateByRemovingMetaclass
 testMetaclassMemberAccessViaType3
