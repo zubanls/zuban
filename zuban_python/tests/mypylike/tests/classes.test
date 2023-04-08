@@ -44,3 +44,13 @@ def typed() -> None: ...
 class A(abs): ...  # E: Invalid base class "abs"
 class B(untyped): ...  # E: Invalid base class "untyped"
 class C(typed): ...  # E: Invalid base class "typed"
+
+[case generic_metaclasses_are_invalid_according_to_mypy]
+from typing import Generic, TypeVar
+
+T = TypeVar("T")
+
+class Meta(type, Generic[T]):
+    def f(cls) -> T: ...
+
+class A(metaclass=Meta[int]): ...  # E: Dynamic metaclass not supported for "A"
