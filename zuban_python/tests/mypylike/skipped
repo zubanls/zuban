@@ -791,8 +791,6 @@ testUnimportedHintAny
 testUnimportedHintAnyLower
 
 # Metaclass
-testInvalidMetaclass
-testInvalidQualifiedMetaclass
 testNewAnalyzerMetaclass1
 testNewAnalyzerMetaclass2
 testNewAnalyzerMetaclassPlaceholder

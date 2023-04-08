@@ -326,19 +326,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 &mut inference,
                                 self.node_ref.as_link(),
                                 &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
-                                    if let Some(type_vars) = type_vars {
-                                        if let Some(usage) = type_vars
-                                            .find(type_var_like.clone(), self.node_ref.as_link())
-                                        {
-                                            return TypeVarCallbackReturn::TypeVarLike(usage);
-                                        }
-                                    }
-                                    if let Some(usage) =
-                                        self.maybe_type_var_like_in_parent(i_s, &type_var_like)
-                                    {
-                                        return TypeVarCallbackReturn::TypeVarLike(usage);
-                                    }
-                                    todo!("Maybe class in func");
+                                    todo!();
                                 },
                                 TypeComputationOrigin::BaseClass,
                             )
