@@ -156,6 +156,7 @@ testEqNone
 testInferEqualsStillOptionalWithBothOptional
 # type attributes
 testTypeEquivalentTypeAnyEdgeCase
+testMetaclassMemberAccessViaType3
 
 # boolean operators
 testOrOperationWithGenericOperands
@@ -630,6 +631,7 @@ testSelfTypeProtocolClassmethodMatch
 testCannotUseNewTypeWithProtocols
 testBuiltinClassMethod
 testDivmod
+testProtocolsInvalidateByRemovingMetaclass
 # Duck typing
 testOverloadingAndDucktypeCompatibility
 
@@ -808,15 +810,13 @@ testValidTypeAliasOfTypeAliasAsMetaclass
 # Cyclic Metaclass
 testMetaclassSubclassSelf
 # Metaclass general
+testAnyAsBaseOfMetaclass
+testMetaclassOverloadResolution
+# Metaclass iter/getitem
 testMetaclassGetitem
-testMetaclassPlaceholderNode
-testProtocolsInvalidateByRemovingMetaclass
-testMetaclassMemberAccessViaType3
 testMetaclassIterable
 testInferringLvarTypesUnpackedFromIterableClassObject
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
-testAnyAsBaseOfMetaclass
-testMetaclassOverloadResolution
 # Metaclass self type
 testSelfTypeStructureMetaclassMatch
 testSelfTypeProtocolMetaclassMatch
@@ -1793,6 +1793,7 @@ testNewAnalyzerBool
 testCallerTupleVarArgsAndGenericCalleeVarArg
 
 # Formatting qualified module names
+testMetaclassPlaceholderNode
 testSubmoduleMixingImportFromAndImport2
 testErrorFromGoogleCloud
 testStubPackageSubModule
