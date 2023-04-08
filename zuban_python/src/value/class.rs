@@ -299,7 +299,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 IssueType::CyclicDefinition { name },
                                             );
                                     } else {
-                                        for base in class.use_cached_class_infos(db).mro.iter() {
+                                        let cached_class_infos = class.use_cached_class_infos(db);
+                                        if let Some(m) = cached_class_infos.metaclass {
+                                            if metaclass.is_some() {
+                                                todo!()
+                                            }
+                                            metaclass = Some(m)
+                                        }
+                                        for base in cached_class_infos.mro.iter() {
                                             mro.push(base.replace_type_var_likes(db, &mut |t| {
                                                 mro[mro_index].expect_class_generics()[t.index()]
                                                     .clone()
@@ -342,6 +349,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                             None,
                                         ),
                                     ) {
+                                        if metaclass.is_some() {
+                                            todo!()
+                                        }
                                         metaclass = Some(link);
                                     } else {
                                         node_ref.add_typing_issue(

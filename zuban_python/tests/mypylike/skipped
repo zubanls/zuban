@@ -808,7 +808,6 @@ testValidTypeAliasOfTypeAliasAsMetaclass
 # Cyclic Metaclass
 testMetaclassSubclassSelf
 # Metaclass general
-testMetaclassSubclass
 testMetaclassGetitem
 testMetaclassAndSkippedImport
 testIndirectSubclassReferenceMetaclass
