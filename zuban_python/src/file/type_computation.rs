@@ -394,7 +394,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 // TODO what is this case?
                 BaseClass::Unknown
             }
-            TypeContent::ParamSpec(_) => BaseClass::Invalid,
+            TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => BaseClass::Invalid,
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
