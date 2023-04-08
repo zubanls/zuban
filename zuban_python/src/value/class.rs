@@ -350,15 +350,15 @@ impl<'db: 'a, 'a> Class<'a> {
                                         );
                                     }
                                 }
-                                BaseClass::DbType(_) => {
+                                BaseClass::DbType(_) | BaseClass::Invalid => {
+                                    /*
                                     node_ref.add_typing_issue(
                                         i_s,
                                         IssueType::DynamicMetaclassNotSupported {
                                             class_name: Box::from(self.name()),
                                         },
                                     );
-                                }
-                                BaseClass::Invalid => {
+                                    */
                                     node_ref.add_typing_issue(i_s, IssueType::InvalidMetaclass);
                                 }
                                 _ => {}

@@ -802,11 +802,9 @@ testNoReExportUnrelatedSiblingPrefix
 testUnimportedHintAny
 testUnimportedHintAnyLower
 
-# "Invalid metaclass "
+# "Invalid metaclass "Explicit"" when Explicit: TypeAlias = type
 testValidTypeAliasAsMetaclass
-testMetaclassTuple
 testValidTypeAliasOfTypeAliasAsMetaclass
-testTypeAliasWithArgsAsMetaclass
 # Cyclic Metaclass
 testMetaclassSubclassSelf
 # Metaclass general

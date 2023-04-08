@@ -53,4 +53,4 @@ T = TypeVar("T")
 class Meta(type, Generic[T]):
     def f(cls) -> T: ...
 
-class A(metaclass=Meta[int]): ...  # E: Dynamic metaclass not supported for "A"
+class A(metaclass=Meta[int]): ...  # E: Invalid metaclass "Meta[int]"
