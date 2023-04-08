@@ -702,6 +702,18 @@ testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
 testPrecedenceOfFirstBaseAsInferenceResult
 type_var_with_co_and_contra_real_life
+# future imports (future is not part of stubs)
+testNewAnalyzerMetaclassFuture1
+testNewAnalyzerMetaclassFuture3
+testNewAnalyzerMetaclassFuture4
+testFutureMetaclass
+testFromFutureMetaclass
+testFutureMetaclassImportFrom
+testFutureMetaclassImport
+testFutureMetaclassAndBase
+testFutureMetaclassGenerics
+testFutureMetaclassErrors
+testFutureMetaclassAny
 # six imports
 testNewAnalyzerMetaclassSix1
 testNewAnalyzerMetaclassSix2
@@ -790,58 +802,51 @@ testNoReExportUnrelatedSiblingPrefix
 testUnimportedHintAny
 testUnimportedHintAnyLower
 
-# Metaclass
-testNewAnalyzerMetaclassFuture1
-testNewAnalyzerMetaclassFuture3
-testNewAnalyzerMetaclassFuture4
-testNotSimplifyingUnionWithMetaclass
-testMetaclassOperators
-testMetaclassOperatorsDirect
-testFineMetaclassUpdate
-testFineMetaclassRecalculation
-testFineMetaclassDeclaredUpdate
-testFineMetaclassRemoveFromClass2
+# "Invalid metaclass "
+testValidTypeAliasAsMetaclass
+testMetaclassTuple
+testValidTypeAliasOfTypeAliasAsMetaclass
+testTypeAliasWithArgsAsMetaclass
+# Cyclic Metaclass
+testMetaclassSubclassSelf
+# Metaclass general
+testMetaclassSubclass
+testMetaclassGetitem
+testMetaclassAndSkippedImport
+testNewAnalyzerClassKeywordsError
 testIndirectSubclassReferenceMetaclass
 testMetaclassDeletion
 testFixMissingMetaclass
-testProtocolsInvalidateByRemovingMetaclass
-testNewAnalyzerClassKeywordsError
-testNewAnalyzerClassPropertiesInAllScopes
-testTypingSelfMetaClassDisabled
-testSelfTypeStructureMetaclassMatch
-testSelfTypeProtocolMetaclassMatch
-testConstructorJoinsWithCustomMetaclass
-testInvalidMetaclassStructure
-testMetaclassSubclass
-testMetaclassAsAny
-testMetaclassAsAnyWithAFlag
-testMetaclassIterable
-testMetaclassTuple
-testMetaclassGetitem
-testMetaclassSelfType
-testMetaclassAndSkippedImport
-testValidTypeAliasAsMetaclass
-testValidTypeAliasOfTypeAliasAsMetaclass
-testTypeAliasWithArgsAsMetaclass
-testAnyAsBaseOfMetaclass
-testMetaclassTypeCallable
-testMetaclassStrictSupertypeOfTypeWithClassmethods
-testMetaclassOverloadResolution
-testFutureMetaclass
-testFromFutureMetaclass
-testFutureMetaclassImportFrom
-testFutureMetaclassImport
-testFutureMetaclassAndBase
-testFutureMetaclassGenerics
-testFutureMetaclassErrors
-testFutureMetaclassAny
-testMetaclassMemberAccessViaType
-testMetaclassMemberAccessViaType3
 testMetaclassPlaceholderNode
-testMetaclassSubclassSelf
-testMetaclassConflict
+testProtocolsInvalidateByRemovingMetaclass
+testMetaclassMemberAccessViaType3
+testMetaclassIterable
 testInferringLvarTypesUnpackedFromIterableClassObject
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
+testAnyAsBaseOfMetaclass
+testMetaclassOverloadResolution
+# Metaclass self type
+testSelfTypeStructureMetaclassMatch
+testSelfTypeProtocolMetaclassMatch
+testMetaclassSelfType
+# Metaclass Union
+testNotSimplifyingUnionWithMetaclass
+# Metaclass lookup/addition
+testMetaclassOperators
+testMetaclassOperatorsDirect
+# Metaclass type meta matching
+testFineMetaclassUpdate
+testFineMetaclassRemoveFromClass2
+# "Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases"
+testFineMetaclassRecalculation
+testFineMetaclassDeclaredUpdate
+testInvalidMetaclassStructure
+testMetaclassConflict
+# "Self type cannot be used in a metaclas"
+testTypingSelfMetaClassDisabled
+# Use type(foo) when foo has a metaclass
+testMetaclassTypeCallable
+testMetaclassMemberAccessViaType
 
 # abstractmethod / ABCMeta
 testMakeClassNoLongerAbstract1
@@ -857,6 +862,8 @@ testAbstractNestedFunction
 testInferenceWithAbstractClassContext3
 testAbstractClasses
 testAbstractInit
+testNewAnalyzerClassPropertiesInAllScopes
+testConstructorJoinsWithCustomMetaclass
 
 # Signature of "???" incompatible with supertype "???"
 testKeywordOnlyArgumentOrderInsensitivity
@@ -925,6 +932,9 @@ testCallableDataAttribute
 testTypingSelfClassVar
 testTypingSelfCallableClassVar
 testSelfTypeCallableClassVarOldStyle
+testMetaclassAsAny
+testMetaclassStrictSupertypeOfTypeWithClassmethods
+testMetaclassAsAnyWithAFlag
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
