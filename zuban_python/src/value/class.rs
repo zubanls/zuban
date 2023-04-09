@@ -300,13 +300,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                             );
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
-                                        if metaclass != MetaclassState::None
-                                            && cached_class_infos.metaclass != MetaclassState::None
-                                        {
-                                            todo!()
-                                        } else {
-                                            metaclass = cached_class_infos.metaclass;
-                                        }
+                                        Self::update_metaclass(
+                                            i_s,
+                                            &mut metaclass,
+                                            cached_class_infos.metaclass,
+                                        );
                                         for base in cached_class_infos.mro.iter() {
                                             mro.push(base.replace_type_var_likes(db, &mut |t| {
                                                 mro[mro_index].expect_class_generics()[t.index()]
@@ -353,10 +351,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                             ),
                                         )
                                     {
-                                        if metaclass != MetaclassState::None {
-                                            todo!()
-                                        }
-                                        metaclass = MetaclassState::Some(link);
+                                        Self::update_metaclass(
+                                            i_s,
+                                            &mut metaclass,
+                                            MetaclassState::Some(link),
+                                        )
                                     } else {
                                         node_ref.add_typing_issue(
                                             i_s,
@@ -393,6 +392,18 @@ impl<'db: 'a, 'a> Class<'a> {
             incomplete_mro,
             is_protocol,
         })
+    }
+
+    fn update_metaclass(
+        i_s: &InferenceState<'db, '_>,
+        current: &mut MetaclassState,
+        new: MetaclassState,
+    ) {
+        if *current != MetaclassState::None && new != MetaclassState::None {
+            todo!()
+        } else {
+            *current = new;
+        }
     }
 
     pub fn check_protocol_match(&self, i_s: &InferenceState<'db, '_>, other: Self) -> bool {
