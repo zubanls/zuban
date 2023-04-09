@@ -5,8 +5,8 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
-    CallableContent, CallableParams, Database, DbType, TupleContent, TupleTypeArguments,
-    TypeOrTypeVarTuple, UnionType, Variance,
+    CallableContent, CallableParams, Database, DbType, MetaclassState, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -748,6 +748,25 @@ impl<'a> Type<'a> {
                     return result;
                 }
                 return Match::new_true();
+            }
+        } else if let Some(DbType::Type(t2)) = value_type.maybe_db_type() {
+            if let DbType::Class(c2, generics2) = t2.as_ref() {
+                let class2 = Class::from_db_type(i_s.db, *c2, generics2);
+                match class2.use_cached_class_infos(i_s.db).metaclass {
+                    MetaclassState::Some(link) => {
+                        let meta = Class::from_db_type(i_s.db, link, &None);
+                        return Type::Class(*class1).matches(
+                            i_s,
+                            matcher,
+                            &Type::Class(meta),
+                            variance,
+                        );
+                    }
+                    MetaclassState::Unknown => {
+                        todo!()
+                    }
+                    MetaclassState::None => (),
+                }
             }
         } else if variance == Variance::Covariant {
             if let Some(DbType::Literal(literal)) = value_type.maybe_db_type() {

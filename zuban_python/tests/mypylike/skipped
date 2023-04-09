@@ -804,6 +804,8 @@ testNoReExportUnrelatedSiblingPrefix
 testUnimportedHintAny
 testUnimportedHintAnyLower
 
+# Metaclass weird errors
+testAnyAsBaseOfMetaclass
 # "Invalid metaclass "Explicit"" when Explicit: TypeAlias = type
 testValidTypeAliasAsMetaclass
 testValidTypeAliasOfTypeAliasAsMetaclass
@@ -813,8 +815,15 @@ testMetaclassSubclassSelf
 testSelfTypeStructureMetaclassMatch
 testSelfTypeProtocolMetaclassMatch
 testMetaclassSelfType
+# "Self type cannot be used in a metaclas"
+testTypingSelfMetaClassDisabled
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass
+# "Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases"
+testFineMetaclassRecalculation
+testFineMetaclassDeclaredUpdate
+testInvalidMetaclassStructure
+testMetaclassConflict
 # Metaclass iter/getitem/addition
 testMetaclassGetitem
 testMetaclassIterable
@@ -822,18 +831,6 @@ testInferringLvarTypesUnpackedFromIterableClassObject
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 testMetaclassOperators
 testMetaclassOperatorsDirect
-# Metaclass type meta matching
-testFineMetaclassUpdate
-testFineMetaclassRemoveFromClass2
-testAnyAsBaseOfMetaclass
-testMetaclassOverloadResolution
-# "Metaclass conflict: the metaclass of a derived class must be a (non-strict) subclass of the metaclasses of all its bases"
-testFineMetaclassRecalculation
-testFineMetaclassDeclaredUpdate
-testInvalidMetaclassStructure
-testMetaclassConflict
-# "Self type cannot be used in a metaclas"
-testTypingSelfMetaClassDisabled
 
 # Use type(foo) when foo has a metaclass
 testMetaclassTypeCallable
