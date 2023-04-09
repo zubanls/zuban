@@ -254,7 +254,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         match meta_base {
                             BaseClass::DbType(DbType::Class(link, None)) => {
                                 let c = Class::from_db_type(i_s.db, link, &None);
-                                if c.use_cached_class_infos(i_s.db).incomplete_mro
+                                if !c.should_add_lookup_error(i_s.db)
                                     || c.in_mro(
                                         i_s.db,
                                         &DbType::Class(
@@ -509,7 +509,14 @@ impl<'db: 'a, 'a> Class<'a> {
                     MetaclassState::Some(link) => {
                         let instance =
                             Instance::new(Class::from_db_type(i_s.db, link, &None), None);
-                        instance.lookup_internal(i_s, node_ref, name)
+                        let result = instance.lookup_internal(i_s, node_ref, name);
+                        if matches!(result, LookupResult::None)
+                            && !instance.should_add_lookup_error(i_s.db)
+                        {
+                            LookupResult::UnknownName(Inferred::new_unknown())
+                        } else {
+                            result
+                        }
                     }
                     MetaclassState::Unknown => LookupResult::UnknownName(Inferred::new_unknown()),
                     MetaclassState::None => LookupResult::None,

@@ -804,8 +804,6 @@ testNoReExportUnrelatedSiblingPrefix
 testUnimportedHintAny
 testUnimportedHintAnyLower
 
-# Metaclass weird errors
-testAnyAsBaseOfMetaclass
 # "Invalid metaclass "Explicit"" when Explicit: TypeAlias = type
 testValidTypeAliasAsMetaclass
 testValidTypeAliasOfTypeAliasAsMetaclass

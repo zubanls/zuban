@@ -168,7 +168,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn should_add_lookup_error(&self, db: &Database) -> bool {
-        !self.class.use_cached_class_infos(db).incomplete_mro
+        self.class.should_add_lookup_error(db)
     }
 
     fn execute(
