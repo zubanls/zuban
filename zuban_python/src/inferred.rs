@@ -1651,11 +1651,7 @@ fn run_on_db_type_type<'db: 'a, 'a, T>(
 ) -> T {
     match type_ {
         DbType::Class(link, generics) => {
-            let class = Class::from_position(
-                NodeRef::from_link(i_s.db, *link),
-                Generics::new_maybe_list(generics),
-                None,
-            );
+            let class = Class::from_db_type(i_s.db, *link, generics);
             callable(i_s, &class)
         }
         DbType::Union(lst) => lst

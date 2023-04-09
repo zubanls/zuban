@@ -276,14 +276,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                                 mro.push(t);
                                 let class = match &mro.last().unwrap() {
-                                    DbType::Class(link, generics) => Some(Class::from_position(
-                                        NodeRef::from_link(db, *link),
-                                        generics
-                                            .as_ref()
-                                            .map(Generics::new_list)
-                                            .unwrap_or(Generics::None),
-                                        None,
-                                    )),
+                                    DbType::Class(link, generics) => {
+                                        Some(Class::from_db_type(i_s.db, *link, generics))
+                                    }
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => None,
                                     _ => unreachable!(),
