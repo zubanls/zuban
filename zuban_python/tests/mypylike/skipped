@@ -810,10 +810,10 @@ testAnyAsBaseOfMetaclass
 testValidTypeAliasAsMetaclass
 testValidTypeAliasOfTypeAliasAsMetaclass
 # Metaclass self type
-testSelfTypeStructureMetaclassMatch
 testSelfTypeProtocolMetaclassMatch
 testMetaclassSelfType
-# "Self type cannot be used in a metaclas"
+testSelfTypeStructureMetaclassMatch
+# "Self type cannot be used in a metaclass"
 testTypingSelfMetaClassDisabled
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass
