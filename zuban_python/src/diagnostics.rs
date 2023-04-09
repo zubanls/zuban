@@ -45,6 +45,7 @@ pub(crate) enum IssueType {
     InvalidMetaclass,
     DynamicMetaclassNotSupported { class_name: Box<str> },
     MetaclassMustInheritFromType,
+    MetaclassConflict,
     CannotSubclassNewType,
     DuplicateBaseClass { name: Box<str> },
     CyclicDefinition { name: Box<str> },
@@ -310,6 +311,9 @@ impl<'db> Diagnostic<'db> {
             }
             IssueType::MetaclassMustInheritFromType =>
                 "Metaclasses not inheriting from \"type\" are not supported".to_owned(),
+            IssueType::MetaclassConflict =>
+                "Metaclass conflict: the metaclass of a derived class must be \
+                 a (non-strict) subclass of the metaclasses of all its bases".to_owned(),
             IssueType::CannotSubclassNewType => "Cannot subclass \"NewType\"".to_owned(),
             IssueType::DuplicateBaseClass{name} => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);

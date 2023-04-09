@@ -297,6 +297,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         let cached_class_infos = class.use_cached_class_infos(db);
                                         Self::update_metaclass(
                                             i_s,
+                                            NodeRef::new(self.node_ref.file, n.index()),
                                             &mut metaclass,
                                             cached_class_infos.metaclass,
                                         );
@@ -348,6 +349,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     {
                                         Self::update_metaclass(
                                             i_s,
+                                            node_ref,
                                             &mut metaclass,
                                             MetaclassState::Some(link),
                                         )
@@ -391,13 +393,27 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn update_metaclass(
         i_s: &InferenceState<'db, '_>,
+        node_ref: NodeRef,
         current: &mut MetaclassState,
         new: MetaclassState,
     ) {
-        if *current != MetaclassState::None && new != MetaclassState::None {
-            todo!()
-        } else {
-            *current = new;
+        match new {
+            MetaclassState::None => (),
+            MetaclassState::Unknown => {
+                if *current == MetaclassState::None {
+                    *current = MetaclassState::Unknown
+                }
+            }
+            MetaclassState::Some(link2) => match current {
+                MetaclassState::Some(link1) => {
+                    let t1 = Type::Class(Class::from_db_type(i_s.db, *link1, &None));
+                    let t2 = Type::Class(Class::from_db_type(i_s.db, link2, &None));
+                    if !t1.is_simple_super_type_of(i_s, &t2).bool() {
+                        node_ref.add_typing_issue(i_s, IssueType::MetaclassConflict);
+                    }
+                }
+                _ => *current = new,
+            },
         }
     }
 
