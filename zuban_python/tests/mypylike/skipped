@@ -809,8 +809,6 @@ testAnyAsBaseOfMetaclass
 # "Invalid metaclass "Explicit"" when Explicit: TypeAlias = type
 testValidTypeAliasAsMetaclass
 testValidTypeAliasOfTypeAliasAsMetaclass
-# Cyclic Metaclass
-testMetaclassSubclassSelf
 # Metaclass self type
 testSelfTypeStructureMetaclassMatch
 testSelfTypeProtocolMetaclassMatch
