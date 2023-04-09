@@ -235,6 +235,64 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut is_protocol = false;
         let mut metaclass = MetaclassState::None;
         if let Some(arguments) = self.node().arguments() {
+            // Check metaclass before checking all the arguments, because it has a preference over
+            // the metaclasses of the subclasses.
+            for argument in arguments.iter() {
+                if let Argument::Keyword(name, expr) = argument {
+                    if name.as_str() == "metaclass" {
+                        let node_ref = NodeRef::new(self.node_ref.file, expr.index());
+                        let mut inference = self.node_ref.file.inference(i_s);
+                        let meta_base = TypeComputation::new(
+                            &mut inference,
+                            self.node_ref.as_link(),
+                            &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
+                                todo!();
+                            },
+                            TypeComputationOrigin::BaseClass,
+                        )
+                        .compute_base_class(expr);
+                        match meta_base {
+                            BaseClass::DbType(DbType::Class(link, None)) => {
+                                let c = Class::from_db_type(i_s.db, link, &None);
+                                if c.use_cached_class_infos(i_s.db).incomplete_mro
+                                    || c.in_mro(
+                                        i_s.db,
+                                        &DbType::Class(
+                                            i_s.db.python_state.type_node_ref().as_link(),
+                                            None,
+                                        ),
+                                    )
+                                {
+                                    Self::update_metaclass(
+                                        i_s,
+                                        node_ref,
+                                        &mut metaclass,
+                                        MetaclassState::Some(link),
+                                    )
+                                } else {
+                                    node_ref.add_typing_issue(
+                                        i_s,
+                                        IssueType::MetaclassMustInheritFromType,
+                                    );
+                                }
+                            }
+                            BaseClass::Unknown => metaclass = MetaclassState::Unknown,
+                            _ => {
+                                /*
+                                node_ref.add_typing_issue(
+                                    i_s,
+                                    IssueType::DynamicMetaclassNotSupported {
+                                        class_name: Box::from(self.name()),
+                                    },
+                                );
+                                */
+                                node_ref.add_typing_issue(i_s, IssueType::InvalidMetaclass);
+                            }
+                        }
+                    }
+                }
+            }
+
             // Calculate the type var remapping
             for argument in arguments.iter() {
                 match argument {
@@ -323,58 +381,9 @@ impl<'db: 'a, 'a> Class<'a> {
                         };
                     }
                     Argument::Keyword(name, expr) => {
-                        let node_ref = NodeRef::new(self.node_ref.file, expr.index());
-                        if name.as_str() == "metaclass" {
-                            let mut inference = self.node_ref.file.inference(i_s);
-                            let meta_base = TypeComputation::new(
-                                &mut inference,
-                                self.node_ref.as_link(),
-                                &mut |i_s, _: &_, type_var_like: TypeVarLike, _| {
-                                    todo!();
-                                },
-                                TypeComputationOrigin::BaseClass,
-                            )
-                            .compute_base_class(expr);
-                            match meta_base {
-                                BaseClass::DbType(DbType::Class(link, None)) => {
-                                    let c = Class::from_db_type(i_s.db, link, &None);
-                                    if c.use_cached_class_infos(i_s.db).incomplete_mro
-                                        || c.in_mro(
-                                            i_s.db,
-                                            &DbType::Class(
-                                                i_s.db.python_state.type_node_ref().as_link(),
-                                                None,
-                                            ),
-                                        )
-                                    {
-                                        Self::update_metaclass(
-                                            i_s,
-                                            node_ref,
-                                            &mut metaclass,
-                                            MetaclassState::Some(link),
-                                        )
-                                    } else {
-                                        node_ref.add_typing_issue(
-                                            i_s,
-                                            IssueType::MetaclassMustInheritFromType,
-                                        );
-                                    }
-                                }
-                                BaseClass::Unknown => metaclass = MetaclassState::Unknown,
-                                _ => {
-                                    /*
-                                    node_ref.add_typing_issue(
-                                        i_s,
-                                        IssueType::DynamicMetaclassNotSupported {
-                                            class_name: Box::from(self.name()),
-                                        },
-                                    );
-                                    */
-                                    node_ref.add_typing_issue(i_s, IssueType::InvalidMetaclass);
-                                }
-                            }
-                        } else {
+                        if name.as_str() != "metaclass" {
                             // Generate diagnostics
+                            let node_ref = NodeRef::new(self.node_ref.file, expr.index());
                             self.node_ref.file.inference(i_s).infer_expression(expr);
                             debug!("TODO shouldn't we handle this? In testNewAnalyzerClassKeywordsForward it's ignored...")
                         }
@@ -408,8 +417,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 MetaclassState::Some(link1) => {
                     let t1 = Type::Class(Class::from_db_type(i_s.db, *link1, &None));
                     let t2 = Type::Class(Class::from_db_type(i_s.db, link2, &None));
-                    if !t1.is_simple_super_type_of(i_s, &t2).bool() {
-                        node_ref.add_typing_issue(i_s, IssueType::MetaclassConflict);
+                    if !t1.is_simple_sub_type_of(i_s, &t2).bool() {
+                        if t2.is_simple_sub_type_of(i_s, &t1).bool() {
+                            *current = new
+                        } else {
+                            node_ref.add_typing_issue(i_s, IssueType::MetaclassConflict);
+                        }
                     }
                 }
                 _ => *current = new,
