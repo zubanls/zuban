@@ -742,6 +742,35 @@ impl UnionType {
     }
 }
 
+pub trait SpecialType: std::fmt::Debug {
+    fn format(&self, format_data: &FormatData) -> Box<str>;
+    fn has_any_internal(
+        &self,
+        i_s: &InferenceState,
+        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+    ) -> bool;
+    fn has_self_type(&self) -> bool;
+}
+
+#[derive(Debug, Clone)]
+pub struct SpecialTypeRc(Rc<dyn SpecialType>);
+
+impl std::cmp::PartialEq for SpecialTypeRc {
+    fn eq(&self, other: &Self) -> bool {
+        Rc::ptr_eq(&self.0, &other.0)
+    }
+}
+
+impl std::ops::Deref for SpecialTypeRc {
+    type Target = dyn SpecialType;
+
+    fn deref(&self) -> &Self::Target {
+        self.0.deref()
+    }
+}
+
+// PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
+// with another type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
     Class(PointLink, Option<GenericsList>),
@@ -756,6 +785,7 @@ pub enum DbType {
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
+    SpecialType(SpecialTypeRc),
     Self_,
     None,
     Any,
@@ -906,6 +936,7 @@ impl DbType {
             Self::ParamSpecKwargs(usage) => {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
+            Self::SpecialType(special) => special.format(format_data),
         }
     }
 
@@ -994,6 +1025,7 @@ impl DbType {
             Self::Self_ | Self::NewType(_) => (),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
+            Self::SpecialType(special) => todo!(),
         }
     }
 
@@ -1059,6 +1091,7 @@ impl DbType {
             }
             Self::Self_ => todo!(),
             Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
+            Self::SpecialType(special) => special.has_any_internal(i_s, already_checked),
         }
     }
 
@@ -1112,6 +1145,7 @@ impl DbType {
                     }
             }
             Self::Self_ => true,
+            Self::SpecialType(special) => special.has_self_type(),
             Self::Class(_, None)
             | Self::None
             | Self::Never
@@ -1378,6 +1412,7 @@ impl DbType {
             Self::Self_ => replace_self(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
+            Self::SpecialType(special) => todo!(),
         }
     }
 
@@ -1700,6 +1735,7 @@ impl DbType {
             Self::Self_ => Self::Self_,
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
+            Self::SpecialType(special) => todo!(),
         }
     }
 

@@ -210,6 +210,7 @@ impl<'a> Type<'a> {
                 DbType::Self_ => false, // TODO this is wrong
                 DbType::ParamSpecArgs(usage) => todo!(),
                 DbType::ParamSpecKwargs(usage) => todo!(),
+                DbType::SpecialType(special) => todo!(),
             },
         }
     }
@@ -369,6 +370,7 @@ impl<'a> Type<'a> {
                     Some(DbType::ParamSpecKwargs(usage2)) => (usage1 == usage2).into(),
                     _ => Match::new_false(),
                 },
+                DbType::SpecialType(special) => todo!(),
             },
         };
         result
