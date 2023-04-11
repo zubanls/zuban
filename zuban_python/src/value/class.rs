@@ -552,6 +552,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         let class_infos = self.use_cached_class_infos(db);
+        // TODO this might be an issue with generics.
         class_infos.mro.contains(t)
     }
 
