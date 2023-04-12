@@ -7,9 +7,9 @@ use super::function::OverloadResult;
 use super::{Function, Instance, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
-    ClassInfos, ClassStorage, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MetaclassState, MroIndex, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
+    ClassInfos, ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
+    Locality, MetaclassState, MroIndex, ParentScope, Point, PointLink, PointType, StringSlice,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::File;
@@ -232,7 +232,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
         let mut mro = vec![];
         let mut incomplete_mro = false;
-        let mut is_protocol = false;
+        let mut class_type = ClassType::Normal;
         let mut metaclass = MetaclassState::None;
         if let Some(arguments) = self.node().arguments() {
             // Check metaclass before checking all the arguments, because it has a preference over
@@ -368,7 +368,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                     }
                                 }
                             }
-                            BaseClass::Protocol => is_protocol = true,
+                            // TODO this might overwrite other class types
+                            BaseClass::Protocol => class_type = ClassType::Protocol,
+                            BaseClass::NamedTuple => class_type = ClassType::NamedTuple,
                             BaseClass::Generic => (),
                             BaseClass::Unknown => {
                                 incomplete_mro = true;
@@ -396,7 +398,7 @@ impl<'db: 'a, 'a> Class<'a> {
             mro: mro.into_boxed_slice(),
             metaclass,
             incomplete_mro,
-            is_protocol,
+            class_type,
         })
     }
 

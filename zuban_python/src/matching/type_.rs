@@ -5,7 +5,7 @@ use super::{
     matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
 };
 use crate::database::{
-    CallableContent, CallableParams, Database, DbType, MetaclassState, TupleContent,
+    CallableContent, CallableParams, ClassType, Database, DbType, MetaclassState, TupleContent,
     TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
@@ -515,7 +515,7 @@ impl<'a> Type<'a> {
         // 2. Check if it is a class with a protocol
         if let Some(class1) = self.maybe_class(i_s.db) {
             // TODO this should probably be checked before normal mro checking?!
-            if class1.use_cached_class_infos(i_s.db).is_protocol {
+            if class1.use_cached_class_infos(i_s.db).class_type == ClassType::Protocol {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
                     return class1.check_protocol_match(i_s, class2).into();
                 }

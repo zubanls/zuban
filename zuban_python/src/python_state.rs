@@ -63,6 +63,7 @@ pub struct PythonState {
     builtins_memoryview_index: NodeIndex,
     builtins_slice_index: NodeIndex,
     typing_mapping_index: NodeIndex,
+    typing_namedtuple_index: NodeIndex,
     types_module_type_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
@@ -103,6 +104,7 @@ impl PythonState {
             builtins_slice_index: 0,
             types_module_type_index: 0,
             typing_mapping_index: 0,
+            typing_namedtuple_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -213,6 +215,7 @@ impl PythonState {
         cache_index!(builtins_memoryview_index, db, builtins, "memoryview");
         cache_index!(builtins_slice_index, db, builtins, "slice");
         cache_index!(typing_mapping_index, db, typing, "Mapping");
+        cache_index!(typing_namedtuple_index, db, typing, "NamedTuple");
         cache_index!(types_module_type_index, db, types, "ModuleType");
 
         let s = &mut db.python_state;
@@ -350,6 +353,10 @@ impl PythonState {
         NodeRef::new(self.typing(), self.typing_mapping_index)
     }
 
+    pub fn typing_namedtuple_node_ref(&self) -> NodeRef {
+        NodeRef::new(self.typing(), self.typing_namedtuple_index)
+    }
+
     pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {
         let node_index = match specific {
             Specific::MypyExtensionsArg => self.mypy_extensions_arg_func,
@@ -419,6 +426,7 @@ fn typing_changes(
     set_typing_inference(typing, "Literal", Specific::TypingLiteral);
     set_typing_inference(typing, "Final", Specific::TypingFinal);
     set_typing_inference(typing, "TypedDict", Specific::TypedDict);
+    set_typing_inference(typing, "NamedTuple", Specific::TypingNamedTuple);
     set_typing_inference(typing, "Unpack", Specific::TypingUnpack);
     set_typing_inference(typing, "TypeAlias", Specific::TypingTypeAlias);
     set_typing_inference(typing, "Self", Specific::TypingSelf);
@@ -469,6 +477,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "NewType",
         "TypeVar",
         "TypeVarTuple",
+        "NamedTuple",
         "LiteralString",
         "Concatenate",
         "ParamSpec",

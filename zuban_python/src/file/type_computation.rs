@@ -51,6 +51,7 @@ pub(super) enum SpecialType {
     ProtocolWithGenerics,
     Generic,
     GenericWithGenerics,
+    TypingNamedTuple,
     Callable,
     Type,
     Tuple,
@@ -200,6 +201,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
 pub enum BaseClass {
     DbType(DbType),
     Protocol,
+    NamedTuple,
     Generic,
     Invalid,
     Unknown,
@@ -386,6 +388,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::GenericWithGenerics) => BaseClass::Generic,
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
+            TypeContent::SpecialType(SpecialType::TypingNamedTuple) => BaseClass::NamedTuple,
             TypeContent::SpecialType(SpecialType::Type) => BaseClass::DbType(DbType::Class(
                 self.inference.i_s.db.python_state.type_node_ref().as_link(),
                 None,
@@ -838,6 +841,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::SpecialType(SpecialType::GenericWithGenerics)
                         }
                         SpecialType::GenericWithGenerics => todo!(),
+                        SpecialType::TypingNamedTuple => todo!(),
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
@@ -2632,6 +2636,9 @@ fn check_type_name<'db: 'file, 'file>(
                     }
                     Some(Specific::TypingTuple) => {
                         return TypeNameLookup::SpecialType(SpecialType::Tuple);
+                    }
+                    Some(Specific::TypingNamedTuple) => {
+                        return TypeNameLookup::SpecialType(SpecialType::TypingNamedTuple);
                     }
                     Some(s) => {
                         debug!(

@@ -409,6 +409,7 @@ pub enum Specific {
     // TODO maybe NoReturn?
     TypingAny,
     TypedDict,
+    TypingNamedTuple,
     RevealTypeFunction,
 
     MypyExtensionsArg,
@@ -3500,10 +3501,17 @@ pub enum MetaclassState {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum ClassType {
+    Normal,
+    Protocol,
+    NamedTuple,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
     pub mro: Box<[DbType]>, // Does never include `object`
     pub metaclass: MetaclassState,
-    pub is_protocol: bool,
+    pub class_type: ClassType,
     pub incomplete_mro: bool,
 }
 
