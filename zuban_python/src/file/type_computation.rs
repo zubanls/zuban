@@ -2658,11 +2658,8 @@ fn check_type_name<'db: 'file, 'file>(
                 new_name.name_definition().unwrap().index(),
             );
             name_def.file.inference(i_s).cache_class(name_def, c);
-            TypeNameLookup::Class(Inferred::new_saved(
-                name_node_ref.file,
-                c.index(),
-                name_node_ref.file.points.get(c.index()),
-            ))
+            let class_node_ref = NodeRef::new(name_node_ref.file, c.index());
+            TypeNameLookup::Class(Inferred::from_saved_node_ref(class_node_ref))
         }
         TypeLike::Assignment(assignment) => {
             if name_node_ref.point().calculated() {
