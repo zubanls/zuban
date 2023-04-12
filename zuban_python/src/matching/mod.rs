@@ -5,6 +5,7 @@ mod match_;
 mod matcher;
 pub mod params;
 mod result_context;
+mod special;
 mod type_;
 mod utils;
 
