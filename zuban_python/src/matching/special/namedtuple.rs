@@ -1,7 +1,8 @@
 use crate::{
-    database::{Database, GenericsList, PointLink, RecursiveAlias, SpecialType},
+    database::{Database, GenericsList, PointLink, RecursiveAlias, SpecialType, Variance},
+    debug,
     inference_state::InferenceState,
-    matching::FormatData,
+    matching::{FormatData, Match, Matcher, Type},
     node_ref::NodeRef,
     value::{Class, LookupResult, Value},
     ValueKind,
@@ -55,6 +56,18 @@ impl SpecialType for InheritedNamedtuple {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
+        debug!("TODO namedtuple");
         self.class(i_s.db).lookup_internal(i_s, node_ref, name)
+    }
+
+    fn matches_internal(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Type,
+        variance: Variance,
+    ) -> Match {
+        debug!("TODO namedtuple");
+        Match::new_true()
     }
 }

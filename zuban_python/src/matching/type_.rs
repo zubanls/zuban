@@ -370,7 +370,9 @@ impl<'a> Type<'a> {
                     Some(DbType::ParamSpecKwargs(usage2)) => (usage1 == usage2).into(),
                     _ => Match::new_false(),
                 },
-                DbType::SpecialType(special) => todo!(),
+                DbType::SpecialType(special) => {
+                    special.matches_internal(i_s, matcher, value_type, variance)
+                }
             },
         };
         result

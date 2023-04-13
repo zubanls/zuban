@@ -16,6 +16,7 @@ use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
 use crate::inference_state::InferenceState;
+use crate::matching::Match;
 use crate::matching::{
     common_base_type, FormatData, Generic, Generics, Matcher, ParamsStyle, Type,
 };
@@ -761,6 +762,14 @@ pub trait SpecialType: std::fmt::Debug {
         name: &str,
     ) -> LookupResult;
     fn kind(&self) -> ValueKind;
+
+    fn matches_internal(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Type,
+        variance: Variance,
+    ) -> Match;
 }
 
 #[derive(Debug, Clone)]
