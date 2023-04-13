@@ -154,7 +154,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
-    fn calc_block_diagnostics(
+    pub fn calc_block_diagnostics(
         &mut self,
         block: Block,
         class: Option<Class>,

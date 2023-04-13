@@ -1,12 +1,22 @@
+use parsa_python_ast::{
+    AssignmentContent, BlockContent, SimpleStmtContent, SimpleStmts, StmtContent,
+};
+
 use crate::{
-    database::{Database, GenericsList, PointLink, RecursiveAlias, SpecialType, Variance},
+    database::{Database, DbType, GenericsList, PointLink, RecursiveAlias, SpecialType, Variance},
     debug,
+    file::{use_cached_annotation_type, PythonFile},
     inference_state::InferenceState,
     matching::{FormatData, Match, Matcher, Type},
     node_ref::NodeRef,
     value::{Class, LookupResult, Value},
     ValueKind,
 };
+
+struct NamedtupleMember {
+    type_: DbType,
+    has_default: bool,
+}
 
 #[derive(Debug)]
 pub struct InheritedNamedtuple {
@@ -22,11 +32,43 @@ impl InheritedNamedtuple {
     fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         Class::from_db_type(db, self.class, &self.generics)
     }
+
+    fn todo_types<'a>(&'a self, db: &Database) -> Box<[NamedtupleMember]> {
+        // TODO performance this is wrong
+        let mut vec = vec![];
+        let cls = self.class(db);
+        let file = cls.node_ref.file;
+        match cls.node().block().unpack() {
+            BlockContent::Indented(stmts) => {
+                for stmt in stmts {
+                    match stmt.unpack() {
+                        StmtContent::SimpleStmts(simple) => {
+                            find_stmt_named_tuple_types(db, file, &mut vec, simple)
+                        }
+                        _ => todo!(),
+                    }
+                }
+            }
+            BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(db, file, &mut vec, simple),
+        }
+        vec.into_boxed_slice()
+    }
 }
 
 impl SpecialType for InheritedNamedtuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
-        Box::from("TODO namedtuple format")
+        // TODO is this InferenceState instantiation really needed?
+        let types = self
+            .todo_types(format_data.db)
+            .iter()
+            .map(|t| t.type_.format(format_data))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(
+            "tuple[{types}, fallback={}]",
+            self.class(format_data.db).qualified_name(format_data.db)
+        )
+        .into()
     }
 
     fn has_any_internal(
@@ -69,5 +111,27 @@ impl SpecialType for InheritedNamedtuple {
     ) -> Match {
         debug!("TODO namedtuple");
         Match::new_true()
+    }
+}
+
+fn find_stmt_named_tuple_types(
+    db: &Database,
+    file: &PythonFile,
+    vec: &mut Vec<NamedtupleMember>,
+    simple_stmts: SimpleStmts,
+) {
+    for simple in simple_stmts.iter() {
+        match simple.unpack() {
+            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
+                AssignmentContent::WithAnnotation(name, annot, default) => {
+                    vec.push(NamedtupleMember {
+                        type_: use_cached_annotation_type(db, file, annot).into_db_type(db),
+                        has_default: default.is_some(),
+                    })
+                }
+                _ => todo!(),
+            },
+            _ => todo!(),
+        }
     }
 }

@@ -208,10 +208,16 @@ impl<'db: 'a, 'a> Class<'a> {
         if !point.calculated() {
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
-            node_ref.insert_complex(
-                ComplexPoint::ClassInfos(self.calculate_class_infos(i_s)),
-                Locality::Todo,
-            );
+            let class_infos = self.calculate_class_infos(i_s);
+            let is_named_tuple = class_infos.class_type == ClassType::NamedTuple;
+            node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
+            if is_named_tuple {
+                // TODO this should just calculate all types initially.
+                node_ref
+                    .file
+                    .inference(i_s)
+                    .calc_block_diagnostics(self.node().block(), None, None)
+            }
             debug_assert!(node_ref.point().calculated());
         }
     }

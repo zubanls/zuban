@@ -1519,6 +1519,10 @@ impl<'db> ClassDef<'db> {
         unreachable!()
     }
 
+    pub fn block(&self) -> Block<'db> {
+        self.unpack().1
+    }
+
     pub fn search_potential_self_assignments(&self) -> PotentialSelfAssignments<'db> {
         PotentialSelfAssignments(self.node.search(&[Nonterminal(t_primary)]))
     }
