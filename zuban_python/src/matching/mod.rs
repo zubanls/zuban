@@ -20,5 +20,6 @@ pub use matcher::{
 };
 pub use params::{matches_params, matches_simple_params, overload_has_overlapping_params, Param};
 pub use result_context::ResultContext;
+pub use special::InheritedNamedtuple;
 pub use type_::{common_base_type, match_tuple_type_arguments, Type};
 pub use utils::replace_class_type_vars;

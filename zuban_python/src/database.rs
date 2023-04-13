@@ -794,6 +794,9 @@ pub enum DbType {
 }
 
 impl DbType {
+    pub fn new_special(special: Rc<dyn SpecialType>) -> Self {
+        Self::SpecialType(SpecialTypeRc(special))
+    }
     pub fn union(self, other: DbType) -> Self {
         self.union_with_details(other, false)
     }
@@ -3500,7 +3503,7 @@ pub enum MetaclassState {
     Some(PointLink),
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum ClassType {
     Normal,
     Protocol,

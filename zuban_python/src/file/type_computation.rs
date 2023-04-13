@@ -4,12 +4,12 @@ use parsa_python_ast::*;
 
 use super::TypeVarFinder;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
-    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind, Locality,
-    NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType,
-    RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias,
-    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    CallableContent, CallableParam, CallableParams, CallableWithParent, ClassType, ComplexPoint,
+    Database, DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind,
+    Locality, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink,
+    PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent,
+    TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -18,7 +18,7 @@ use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, ResultContext, Type};
+use crate::matching::{Generics, InheritedNamedtuple, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -189,6 +189,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
     Class(Inferred),
     TypeVarLike(TypeVarLike),
+    NamedTupleClass(PointLink),
     TypeAlias(&'db TypeAlias),
     NewType(Rc<NewType>),
     SpecialType(SpecialType),
@@ -1833,6 +1834,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
             TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
+            TypeNameLookup::NamedTupleClass(tup) => TypeContent::DbType(DbType::new_special(
+                Rc::new(InheritedNamedtuple::new(tup, None)),
+            )),
         }
     }
 
@@ -2659,6 +2663,14 @@ fn check_type_name<'db: 'file, 'file>(
             );
             name_def.file.inference(i_s).cache_class(name_def, c);
             let class_node_ref = NodeRef::new(name_node_ref.file, c.index());
+            // Classes can be defined recursive, so use the NamedTuple stuff here.
+            if Class::from_position(class_node_ref, Generics::NotDefinedYet, None)
+                .maybe_cached_class_infos(i_s.db)
+                .map(|c| c.class_type)
+                == Some(ClassType::NamedTuple)
+            {
+                return TypeNameLookup::NamedTupleClass(class_node_ref.as_link());
+            }
             TypeNameLookup::Class(Inferred::from_saved_node_ref(class_node_ref))
         }
         TypeLike::Assignment(assignment) => {

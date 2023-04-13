@@ -217,10 +217,16 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn use_cached_class_infos(&self, db: &'db Database) -> &'db ClassInfos {
+        self.maybe_cached_class_infos(db).unwrap()
+    }
+
+    pub fn maybe_cached_class_infos(&self, db: &'db Database) -> Option<&'db ClassInfos> {
         let node_ref = self.class_info_node_ref();
-        debug_assert!(node_ref.point().calculated());
+        if !node_ref.point().calculated() {
+            return None;
+        }
         match node_ref.to_db_lifetime(db).complex().unwrap() {
-            ComplexPoint::ClassInfos(class_infos) => class_infos,
+            ComplexPoint::ClassInfos(class_infos) => Some(class_infos),
             _ => unreachable!(),
         }
     }

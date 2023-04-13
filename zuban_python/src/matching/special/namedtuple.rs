@@ -10,9 +10,15 @@ pub struct InheritedNamedtuple {
     generics: Option<GenericsList>,
 }
 
+impl InheritedNamedtuple {
+    pub fn new(class: PointLink, generics: Option<GenericsList>) -> Self {
+        Self { class, generics }
+    }
+}
+
 impl SpecialType for InheritedNamedtuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
-        todo!()
+        Box::from("TODO namedtuple format")
     }
 
     fn has_any_internal(
