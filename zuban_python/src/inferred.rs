@@ -1641,9 +1641,10 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         }
         DbType::ParamSpecArgs(usage) => todo!(),
         DbType::ParamSpecKwargs(usage) => todo!(),
-        DbType::SpecialType(special) => {
-            callable(i_s, &SpecialTypeAsValue::new(i_s.db, special.deref()))
-        }
+        DbType::SpecialType(special) => callable(
+            i_s,
+            &SpecialTypeAsValue::new(i_s.db, special.deref(), db_type),
+        ),
     }
 }
 

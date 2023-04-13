@@ -22,9 +22,11 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
+use crate::value::LookupResult;
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
+use crate::ValueKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -752,6 +754,13 @@ pub trait SpecialType: std::fmt::Debug {
     ) -> bool;
     fn has_self_type(&self) -> bool;
     fn name<'a>(&'a self, db: &'a Database) -> &'a str;
+    fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult;
+    fn kind(&self) -> ValueKind;
 }
 
 #[derive(Debug, Clone)]

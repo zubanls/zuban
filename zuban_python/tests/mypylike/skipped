@@ -394,6 +394,8 @@ testLiteralWithFinalPropagationIsNotLeaking
 testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
 # NamedTuple
+testCorrectDoubleForwardNamedTuple
+testCrashInJoinOfSelfRecursiveNamedTuples
 testNewAnalyzerNamedTupleCall
 testNewAnalyzerNamedTupleClass
 testNewAnalyzerNamedTupleCallNested
@@ -457,6 +459,8 @@ testNoRecursiveTuplesAtFunctionScope
 testRecursiveTupleClassesNewType
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
+# NamedTuple classmethod access
+testBoundClassMethodWithNamedTupleBase
 # namedtuple
 testCallableParsingInInheritence
 

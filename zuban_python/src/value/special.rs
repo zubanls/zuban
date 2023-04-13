@@ -1,5 +1,7 @@
-use super::{Value, ValueKind};
+use super::{LookupResult, Value, ValueKind};
+use crate::database::DbType;
 use crate::inference_state::InferenceState;
+use crate::matching::Type;
 use crate::{
     database::{Database, SpecialType},
     node_ref::NodeRef,
@@ -9,17 +11,26 @@ use crate::{
 pub struct SpecialTypeAsValue<'a> {
     db: &'a Database,
     special_type: &'a dyn SpecialType,
+    db_type_ptr: &'a DbType,
 }
 
 impl<'a> SpecialTypeAsValue<'a> {
-    pub fn new(db: &'a Database, special_type: &'a dyn SpecialType) -> Self {
-        Self { db, special_type }
+    pub fn new(
+        db: &'a Database,
+        special_type: &'a dyn SpecialType,
+        db_type_ptr: &'a DbType,
+    ) -> Self {
+        Self {
+            db,
+            special_type,
+            db_type_ptr,
+        }
     }
 }
 
 impl<'db, 'a> Value<'db, 'a> for SpecialTypeAsValue<'a> {
     fn kind(&self) -> ValueKind {
-        ValueKind::Object
+        self.special_type.kind()
     }
 
     fn name(&self) -> &'a str {
@@ -31,7 +42,11 @@ impl<'db, 'a> Value<'db, 'a> for SpecialTypeAsValue<'a> {
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
-    ) -> super::LookupResult {
-        todo!()
+    ) -> LookupResult {
+        self.special_type.lookup_internal(i_s, node_ref, name)
+    }
+
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::new(self.db_type_ptr)
     }
 }

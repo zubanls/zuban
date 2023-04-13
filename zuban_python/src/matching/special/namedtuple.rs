@@ -2,7 +2,9 @@ use crate::{
     database::{Database, GenericsList, PointLink, RecursiveAlias, SpecialType},
     inference_state::InferenceState,
     matching::FormatData,
-    value::Class,
+    node_ref::NodeRef,
+    value::{Class, LookupResult, Value},
+    ValueKind,
 };
 
 #[derive(Debug)]
@@ -38,8 +40,21 @@ impl SpecialType for InheritedNamedtuple {
         todo!()
     }
 
+    fn kind(&self) -> ValueKind {
+        ValueKind::Object
+    }
+
     fn name<'a>(&'a self, db: &'a Database) -> &'a str {
         let c = self.class(db);
         c.name2()
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.class(i_s.db).lookup_internal(i_s, node_ref, name)
     }
 }
