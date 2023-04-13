@@ -1,7 +1,8 @@
 use crate::{
-    database::{GenericsList, PointLink, RecursiveAlias, SpecialType},
+    database::{Database, GenericsList, PointLink, RecursiveAlias, SpecialType},
     inference_state::InferenceState,
     matching::FormatData,
+    value::Class,
 };
 
 #[derive(Debug)]
@@ -13,6 +14,10 @@ pub struct InheritedNamedtuple {
 impl InheritedNamedtuple {
     pub fn new(class: PointLink, generics: Option<GenericsList>) -> Self {
         Self { class, generics }
+    }
+
+    fn class<'a>(&'a self, db: &'a Database) -> Class<'a> {
+        Class::from_db_type(db, self.class, &self.generics)
     }
 }
 
@@ -31,5 +36,10 @@ impl SpecialType for InheritedNamedtuple {
 
     fn has_self_type(&self) -> bool {
         todo!()
+    }
+
+    fn name<'a>(&'a self, db: &'a Database) -> &'a str {
+        let c = self.class(db);
+        c.name2()
     }
 }

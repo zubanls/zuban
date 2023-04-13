@@ -604,6 +604,11 @@ impl<'db: 'a, 'a> Class<'a> {
         let link = self.node_ref.as_link();
         DbType::Class(link, lst)
     }
+
+    pub fn name2(&self) -> &'a str {
+        // TODO merge this with Value::name
+        self.node().name().as_str()
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Class<'a> {

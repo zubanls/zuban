@@ -751,6 +751,7 @@ pub trait SpecialType: std::fmt::Debug {
         already_checked: &mut Vec<Rc<RecursiveAlias>>,
     ) -> bool;
     fn has_self_type(&self) -> bool;
+    fn name<'a>(&'a self, db: &'a Database) -> &'a str;
 }
 
 #[derive(Debug, Clone)]

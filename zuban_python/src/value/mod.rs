@@ -7,6 +7,7 @@ mod iterable;
 mod literal;
 mod module;
 mod none;
+mod special;
 mod tuple;
 mod type_alias;
 mod typing;
@@ -30,6 +31,7 @@ pub use iterable::{DictLiteral, ListLiteral};
 pub use literal::Literal;
 pub use module::Module;
 pub use none::NoneInstance;
+pub use special::SpecialTypeAsValue;
 pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
