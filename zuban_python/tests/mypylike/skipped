@@ -394,7 +394,6 @@ testLiteralWithFinalPropagationIsNotLeaking
 testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
 # NamedTuple
-testCrashInJoinOfSelfRecursiveNamedTuples
 testNewAnalyzerNamedTupleCall
 testNewAnalyzerNamedTupleClass
 testNewAnalyzerNamedTupleCallNested

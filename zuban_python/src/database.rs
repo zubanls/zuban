@@ -770,6 +770,9 @@ pub trait SpecialType: std::fmt::Debug {
         value_type: &Type,
         variance: Variance,
     ) -> Match;
+    fn search_type_vars(&self, found_type_var: &mut dyn FnMut(TypeVarLikeUsage)) {
+        // Most special types do not need type var searching, so we leave this like it is.
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1048,7 +1051,7 @@ impl DbType {
             Self::Self_ | Self::NewType(_) => (),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
-            Self::SpecialType(special) => todo!(),
+            Self::SpecialType(special) => special.search_type_vars(found_type_var),
         }
     }
 
