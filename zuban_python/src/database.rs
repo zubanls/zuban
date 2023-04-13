@@ -83,8 +83,8 @@ impl fmt::Display for FileIndex {
 }
 
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
-type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
-type ReplaceSelf<'x> = &'x mut dyn FnMut() -> DbType;
+pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
+pub type ReplaceSelf<'x> = &'x mut dyn FnMut() -> DbType;
 
 // Most significant bits
 // 27 bits = 134217728; 20 bits = 1048576
@@ -773,6 +773,14 @@ pub trait SpecialType: std::fmt::Debug {
     fn search_type_vars(&self, found_type_var: &mut dyn FnMut(TypeVarLikeUsage)) {
         // Most special types do not need type var searching, so we leave this like it is.
     }
+    fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Option<DbType> {
+        None
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -1438,7 +1446,9 @@ impl DbType {
             Self::Self_ => replace_self(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
-            Self::SpecialType(special) => todo!(),
+            Self::SpecialType(special) => special
+                .replace_type_var_likes_and_self(db, callable, replace_self)
+                .unwrap_or(DbType::SpecialType(special.clone())),
         }
     }
 

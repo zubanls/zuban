@@ -3,7 +3,10 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    database::{Database, DbType, GenericsList, PointLink, RecursiveAlias, SpecialType, Variance},
+    database::{
+        Database, DbType, GenericsList, PointLink, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike,
+        SpecialType, Variance,
+    },
     debug,
     file::{use_cached_annotation_type, PythonFile},
     inference_state::InferenceState,
@@ -45,6 +48,7 @@ impl InheritedNamedtuple {
                         StmtContent::SimpleStmts(simple) => {
                             find_stmt_named_tuple_types(db, file, &mut vec, simple)
                         }
+                        StmtContent::FunctionDef(_) => (),
                         _ => todo!(),
                     }
                 }
@@ -80,7 +84,18 @@ impl SpecialType for InheritedNamedtuple {
     }
 
     fn has_self_type(&self) -> bool {
-        todo!()
+        debug!("TODO namedtuple has_self_type");
+        false
+    }
+
+    fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Option<DbType> {
+        debug!("TODO namedtuple replace_type_var_likes_and_self");
+        None
     }
 
     fn kind(&self) -> ValueKind {

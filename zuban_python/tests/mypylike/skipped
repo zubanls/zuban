@@ -397,11 +397,9 @@ testGenericTupleTypeSubclassing
 testNewAnalyzerNamedTupleCall
 testNewAnalyzerNamedTupleCallNested
 testNewAnalyzerNamedTupleCallNestedMethod
-testNewAnalyzerNamedTupleClassNestedMethod
 testNewAnalyzerNamedTupleClassForwardMethod
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
-testNewAnalyzerNamedTupleMethod
 testNewAnalyzerTupleIteration
 testNewAnalyzerMemberNameMatchesNamedTuple
 testImportReExportedNamedTupleInCycle1
@@ -1834,6 +1832,8 @@ testStubPackageSubModule
 testReExportChildStubs3
 testImportFromReExportInCycleUsingRelativeImport1
 testImportReExportInCycleUsingRelativeImport2
+# Qualified nested class name
+testNewAnalyzerNamedTupleClassNestedMethod
 
 # Formatting class in reveal_type (stashed in 860494e, see also https://github.com/python/mypy/issues/13062)
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses
