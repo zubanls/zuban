@@ -16,18 +16,18 @@ use crate::{
     ValueKind,
 };
 
-struct NamedtupleMember {
+struct NamedTupleMember {
     type_: DbType,
     has_default: bool,
 }
 
 #[derive(Debug)]
-pub struct InheritedNamedtuple {
+pub struct InheritedNamedTuple {
     class: PointLink,
     generics: Option<GenericsList>,
 }
 
-impl InheritedNamedtuple {
+impl InheritedNamedTuple {
     pub fn new(class: PointLink, generics: Option<GenericsList>) -> Self {
         Self { class, generics }
     }
@@ -36,7 +36,7 @@ impl InheritedNamedtuple {
         Class::from_db_type(db, self.class, &self.generics)
     }
 
-    fn todo_types<'a>(&'a self, db: &Database) -> Box<[NamedtupleMember]> {
+    fn todo_types<'a>(&'a self, db: &Database) -> Box<[NamedTupleMember]> {
         // TODO performance this is wrong
         let mut vec = vec![];
         let cls = self.class(db);
@@ -59,7 +59,7 @@ impl InheritedNamedtuple {
     }
 }
 
-impl SpecialType for InheritedNamedtuple {
+impl SpecialType for InheritedNamedTuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         // TODO is this InferenceState instantiation really needed?
         let types = self
@@ -132,14 +132,14 @@ impl SpecialType for InheritedNamedtuple {
 fn find_stmt_named_tuple_types(
     db: &Database,
     file: &PythonFile,
-    vec: &mut Vec<NamedtupleMember>,
+    vec: &mut Vec<NamedTupleMember>,
     simple_stmts: SimpleStmts,
 ) {
     for simple in simple_stmts.iter() {
         match simple.unpack() {
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(name, annot, default) => {
-                    vec.push(NamedtupleMember {
+                    vec.push(NamedTupleMember {
                         type_: use_cached_annotation_type(db, file, annot).into_db_type(db),
                         has_default: default.is_some(),
                     })

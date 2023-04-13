@@ -1,3 +1,3 @@
 mod namedtuple;
 
-pub use namedtuple::InheritedNamedtuple;
+pub use namedtuple::InheritedNamedTuple;

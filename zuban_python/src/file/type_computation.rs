@@ -18,7 +18,7 @@ use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, InheritedNamedtuple, ResultContext, Type};
+use crate::matching::{Generics, InheritedNamedTuple, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -1835,7 +1835,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
             TypeNameLookup::RecursiveAlias(link) => TypeContent::RecursiveAlias(link),
             TypeNameLookup::NamedTupleClass(tup) => TypeContent::DbType(DbType::new_special(
-                Rc::new(InheritedNamedtuple::new(tup, None)),
+                Rc::new(InheritedNamedTuple::new(tup, None)),
             )),
         }
     }
