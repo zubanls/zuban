@@ -1,24 +1,130 @@
+use once_cell::unsync::OnceCell;
+
 use parsa_python_ast::{
     AssignmentContent, BlockContent, SimpleStmtContent, SimpleStmts, StmtContent,
 };
 
 use crate::{
     database::{
-        Database, DbType, GenericsList, PointLink, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike,
-        SpecialType, Variance,
+        CallableContent, CallableParams, Database, DbType, GenericsList, PointLink, RecursiveAlias,
+        ReplaceSelf, ReplaceTypeVarLike, SpecialType, StringSlice, Variance,
     },
     debug,
     file::{use_cached_annotation_type, PythonFile},
     inference_state::InferenceState,
     matching::{FormatData, Match, Matcher, Type},
     node_ref::NodeRef,
-    value::{Class, LookupResult, Value},
+    value::{Class, LookupResult, Module, Value},
     ValueKind,
 };
+
+#[derive(Debug)]
+enum NamedTupleGenerics {
+    Some(GenericsList),
+    None,
+    ToBeDefined,
+}
 
 struct NamedTupleMember {
     type_: DbType,
     has_default: bool,
+}
+
+#[derive(Debug)]
+struct NamedTuple {
+    // Basically __new__
+    constructor: OnceCell<CallableContent>,
+    name: StringSlice,
+}
+
+impl NamedTuple {
+    fn new(name: StringSlice) -> Self {
+        Self {
+            constructor: OnceCell::new(),
+            name,
+        }
+    }
+
+    fn qualified_name(&self, db: &Database) -> String {
+        let file = db.loaded_python_file(self.name.file_index);
+        let module = Module::new(db, file).qualified_name(db);
+        format!("{module}.{}", self.name(db))
+    }
+}
+
+impl SpecialType for NamedTuple {
+    fn format(&self, format_data: &FormatData) -> Box<str> {
+        // TODO is this InferenceState instantiation really needed?
+        let CallableParams::Simple(params) = &self.constructor.get().unwrap().params else {
+            unreachable!()
+        };
+        let types = params
+            .iter()
+            .skip(1)
+            .map(|t| {
+                t.param_specific
+                    .expect_positional_db_type_as_ref()
+                    .format(format_data)
+            })
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!(
+            "tuple[{types}, fallback={}]",
+            self.qualified_name(format_data.db)
+        )
+        .into()
+    }
+
+    fn has_any_internal(
+        &self,
+        i_s: &InferenceState,
+        already_checked: &mut Vec<std::rc::Rc<RecursiveAlias>>,
+    ) -> bool {
+        todo!()
+    }
+
+    fn has_self_type(&self) -> bool {
+        debug!("TODO namedtuple has_self_type");
+        false
+    }
+
+    fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Option<DbType> {
+        debug!("TODO namedtuple replace_type_var_likes_and_self");
+        None
+    }
+
+    fn kind(&self) -> ValueKind {
+        ValueKind::Object
+    }
+
+    fn name<'a>(&'a self, db: &'a Database) -> &'a str {
+        self.name.as_str(db)
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        todo!()
+    }
+
+    fn matches_internal(
+        &self,
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        value_type: &Type,
+        variance: Variance,
+    ) -> Match {
+        debug!("TODO namedtuple");
+        Match::new_true()
+    }
 }
 
 #[derive(Debug)]

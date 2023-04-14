@@ -38,7 +38,7 @@ pub struct MroIndex(pub u32);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StringSlice {
-    file_index: FileIndex,
+    pub file_index: FileIndex,
     start: CodeIndex,
     end: u32,
 }
@@ -2043,6 +2043,13 @@ impl ParamSpecific {
 
     pub fn expect_positional_db_type(self) -> DbType {
         match self {
+            Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn expect_positional_db_type_as_ref(&self) -> &DbType {
+        match &self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,
             _ => unreachable!(),
         }
