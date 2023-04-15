@@ -1,5 +1,7 @@
 use std::fmt;
 
+use parsa_python_ast::Assignment;
+
 use super::{Matcher, Type};
 use crate::database::DbType;
 use crate::InferenceState;
@@ -10,7 +12,7 @@ pub enum ResultContext<'a, 'b> {
         matcher: &'a mut Matcher<'b>,
         type_: &'a Type<'a>,
     },
-    AssignmentNewDefinition,
+    AssignmentNewDefinition(&'a Assignment<'a>),
     Unknown,
     ExpectLiteral,
 }
@@ -28,7 +30,7 @@ impl<'a> ResultContext<'a, '_> {
                 let t = matcher.replace_type_var_likes_for_nested_context(i_s.db, &t);
                 Some(callable(i_s, &Type::new(&t)))
             }
-            Self::Unknown | Self::AssignmentNewDefinition | Self::ExpectLiteral => None,
+            Self::Unknown | Self::AssignmentNewDefinition(_) | Self::ExpectLiteral => None,
         }
     }
 
@@ -40,7 +42,7 @@ impl<'a> ResultContext<'a, '_> {
         match self {
             Self::Known(type_) => Some(callable(i_s, type_, &mut Matcher::default())),
             Self::WithMatcher { matcher, type_ } => Some(callable(i_s, type_, matcher)),
-            Self::Unknown | Self::AssignmentNewDefinition | Self::ExpectLiteral => None,
+            Self::Unknown | Self::AssignmentNewDefinition(_) | Self::ExpectLiteral => None,
         }
     }
 
@@ -64,7 +66,7 @@ impl<'a> ResultContext<'a, '_> {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {
                 matches!(type_.maybe_db_type(), Some(DbType::Union(_)))
             }
-            Self::Unknown | Self::ExpectLiteral | Self::AssignmentNewDefinition => false,
+            Self::Unknown | Self::ExpectLiteral | Self::AssignmentNewDefinition(_) => false,
         }
     }
 }
@@ -76,7 +78,9 @@ impl fmt::Debug for ResultContext<'_, '_> {
             Self::WithMatcher { type_, .. } => write!(f, "WithMatcher(_, {type_:?})"),
             Self::Unknown => write!(f, "Unknown"),
             Self::ExpectLiteral => write!(f, "ExpectLiteral"),
-            Self::AssignmentNewDefinition => write!(f, "AssignmentNewDefinition"),
+            Self::AssignmentNewDefinition(assignment) => {
+                write!(f, "AssignmentNewDefinition({})", assignment.as_code())
+            }
         }
     }
 }

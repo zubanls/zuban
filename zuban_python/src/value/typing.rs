@@ -74,7 +74,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             .compute_type_application_on_typing_class(
                 self.specific,
                 *slice_type,
-                matches!(result_context, ResultContext::AssignmentNewDefinition),
+                matches!(result_context, ResultContext::AssignmentNewDefinition(_)),
             )
     }
 
@@ -602,7 +602,7 @@ fn maybe_type_var(
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+    if !matches!(result_context, ResultContext::AssignmentNewDefinition(_)) {
         args.as_node_ref()
             .add_typing_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
         return None;
@@ -852,7 +852,7 @@ fn maybe_type_var_tuple(
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+    if !matches!(result_context, ResultContext::AssignmentNewDefinition(_)) {
         args.as_node_ref()
             .add_typing_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
         return None;
@@ -1006,7 +1006,7 @@ fn maybe_param_spec(
     args: &dyn Arguments,
     result_context: &ResultContext,
 ) -> Option<TypeVarLike> {
-    if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
+    if !matches!(result_context, ResultContext::AssignmentNewDefinition(_)) {
         args.as_node_ref()
             .add_typing_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
         return None;

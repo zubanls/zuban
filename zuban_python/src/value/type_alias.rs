@@ -53,7 +53,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             .compute_type_application_on_alias(
                 self.alias,
                 *slice_type,
-                matches!(result_context, ResultContext::AssignmentNewDefinition),
+                matches!(result_context, ResultContext::AssignmentNewDefinition(_)),
             )
     }
 
