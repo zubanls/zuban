@@ -2,18 +2,20 @@ use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
+use parsa_python_ast::{AtomContent, ExpressionContent, ExpressionPart};
+
 use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
-    ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
-    TypeVarLike, TypeVarName, TypeVarTuple, TypeVarUsage, Variance,
+    CallableContent, ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink,
+    Specific, StringSlice, TypeVar, TypeVarLike, TypeVarName, TypeVarTuple, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{FormatData, NamedTuple, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -43,6 +45,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingType => "Type",
             Specific::TypingLiteral => "Literal",
             Specific::TypingAnnotated => "Annotated",
+            Specific::TypingNamedTuple => "NamedTuple",
             _ => unreachable!("{:?}", self.specific),
         }
     }
@@ -86,6 +89,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingCallable => todo!(),
             Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
             Specific::TypingAnnotated => todo!(),
+            Specific::TypingNamedTuple => todo!(),
             _ => unreachable!("{:?}", self.specific),
         }
     }
@@ -97,6 +101,9 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
+        if self.specific == Specific::TypingNamedTuple {
+            return Inferred::execute_db_type(i_s, new_named_tuple(i_s, args));
+        }
         let mut iterator = args.iter();
         let first = iterator.next();
         if let Some(x) = iterator.next() {
@@ -112,6 +119,63 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         } else {
             todo!()
         }
+    }
+}
+
+fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> DbType {
+    let mut iterator = args.iter();
+    let Some(first_arg) = iterator.next() else {
+        todo!()
+    };
+    let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
+        todo!()
+    };
+    let expr = node_ref.as_named_expression().expression();
+    let first = expr
+        .maybe_single_string_literal()
+        .map(|py_string| (node_ref, py_string));
+    let Some(second_arg) = iterator.next() else {
+        todo!()
+    };
+
+    let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
+        todo!()
+    };
+    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
+        todo!()
+    };
+    let list_iterator = match atom.unpack() {
+        AtomContent::List(list) => list.unpack(),
+        AtomContent::Tuple(tup) => todo!(),
+        _ => todo!(),
+    };
+
+    if let Some(params) = node_ref
+        .file
+        .inference(i_s)
+        .compute_named_tuple_initializer(
+            args.as_node_ref(),
+            list_iterator.unwrap_or_else(|| todo!()),
+        )
+    {
+        let string_slice = StringSlice::from_expression(node_ref.file_index(), expr);
+        if string_slice.is_none() {
+            todo!()
+        }
+        let callable = CallableContent {
+            name: string_slice,
+            class_name: None,
+            defined_at: node_ref.as_link(),
+            type_vars: None,
+            params,
+            result_type: DbType::Any,
+        };
+        DbType::new_special(Rc::new(NamedTuple::from_execution(
+            string_slice.unwrap(),
+            callable,
+        )))
+    } else {
+        todo!()
     }
 }
 

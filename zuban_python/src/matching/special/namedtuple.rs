@@ -31,17 +31,24 @@ struct NamedTupleMember {
 }
 
 #[derive(Debug)]
-struct NamedTuple {
+pub struct NamedTuple {
+    name: StringSlice,
     // Basically __new__
     constructor: OnceCell<CallableContent>,
-    name: StringSlice,
 }
 
 impl NamedTuple {
-    fn new(name: StringSlice) -> Self {
+    pub fn new(name: StringSlice) -> Self {
         Self {
             constructor: OnceCell::new(),
             name,
+        }
+    }
+
+    pub fn from_execution(name: StringSlice, constructor: CallableContent) -> Self {
+        Self {
+            name,
+            constructor: OnceCell::from(constructor),
         }
     }
 

@@ -680,6 +680,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
+    fn compute_named_expr_db_type(&mut self, named_expr: NamedExpression) -> DbType {
+        let t = self.compute_type(named_expr.expression());
+        self.as_db_type(t, NodeRef::new(self.inference.file, named_expr.index()))
+    }
+
     fn compute_slice_type(&mut self, slice: SliceOrSimple<'x>) -> TypeContent<'db, 'x> {
         match slice {
             SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
@@ -2513,6 +2518,57 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 t
             }
         }
+    }
+
+    pub fn compute_named_tuple_initializer(
+        &mut self,
+        node_ref: NodeRef,
+        list: ListOrSetElementIterator,
+    ) -> Option<CallableParams> {
+        let mut x = type_computation_for_variable_annotation;
+        let file_index = self.file_index;
+        let mut comp = TypeComputation::new(
+            self,
+            node_ref.as_link(),
+            &mut x,
+            TypeComputationOrigin::Constraint,
+        );
+        // From NamedTuple('x', [('a', int)]) to a callable that matches those params
+        let mut params = vec![];
+        for element in list {
+            let StarLikeExpression::NamedExpression(ne) = element else {
+                todo!()
+            };
+            let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
+                todo!()
+            };
+            let mut parts = match atom.unpack() {
+                AtomContent::Tuple(tup) => tup.iter(),
+                _ => todo!(),
+            };
+            let Some(first) = parts.next() else {
+                todo!()
+            };
+            let Some(second) = parts.next() else {
+                todo!()
+            };
+            let StarLikeExpression::NamedExpression(name_expr) = first else {
+                todo!()
+            };
+            let StarLikeExpression::NamedExpression(type_expr) = second else {
+                todo!()
+            };
+            let Some(name) = StringSlice::from_expression(file_index, name_expr.expression()) else {
+                todo!()
+            };
+            let t = comp.compute_named_expr_db_type(type_expr);
+            params.push(CallableParam {
+                param_specific: ParamSpecific::PositionalOrKeyword(DbType::Any),
+                name: Some(name),
+                has_default: false,
+            });
+        }
+        Some(CallableParams::Simple(params.into_boxed_slice()))
     }
 }
 
