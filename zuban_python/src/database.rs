@@ -9,6 +9,7 @@ use std::pin::Pin;
 use std::rc::Rc;
 
 use once_cell::unsync::OnceCell;
+use parsa_python_ast::Expression;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
 use crate::file::PythonFile;
@@ -44,6 +45,16 @@ pub struct StringSlice {
 }
 
 impl StringSlice {
+    pub fn from_expression(file_index: FileIndex, expr: Expression) -> Option<Self> {
+        if let Some(literal) = expr.maybe_single_string_literal() {
+            let (start, end) = literal.content_start_and_end_in_literal();
+            let s = literal.start();
+            Some(Self::new(file_index, s + start, s + end))
+        } else {
+            None
+        }
+    }
+
     pub fn new(file_index: FileIndex, start: CodeIndex, end: u32) -> Self {
         Self {
             file_index,

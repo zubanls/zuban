@@ -1854,20 +1854,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ArgumentsDetails::Node(arguments) => {
                 let mut iterator = arguments.iter();
                 let name_from_expr = |slf: &mut Self, expr: Expression| {
-                    if let Some(literal) = expr.maybe_single_string_literal() {
-                        let (start, end) = literal.content_start_and_end_in_literal();
-                        let s = literal.start();
-                        Some(StringSlice::new(
-                            self.inference.file.file_index(),
-                            s + start,
-                            s + end,
-                        ))
-                    } else {
-                        if !expr.is_none_literal() {
-                            todo!()
-                        }
-                        None
+                    let result =
+                        StringSlice::from_expression(self.inference.file.file_index(), expr);
+                    if result.is_none() && !expr.is_none_literal() {
+                        todo!()
                     }
+                    result
                 };
                 let type_from_expr = |slf: &mut Self, expr: Expression| {
                     let t = slf.compute_type(expr);
