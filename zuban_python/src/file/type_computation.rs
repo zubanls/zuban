@@ -3,6 +3,7 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use super::TypeVarFinder;
+use crate::arguments::{ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassType, ComplexPoint,
     Database, DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind,
@@ -18,7 +19,7 @@ use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, InheritedNamedTuple, ResultContext, Type};
+use crate::matching::{Generics, InheritedNamedTuple, NamedTuple, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -814,6 +815,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             PrimaryContent::Execution(details) => match base {
                 TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
                     self.execute_mypy_extension_param(primary, s, details)
+                }
+                TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
+                    dbg!(self.inference.file.points.get(primary.index()));
+                    let args = SimpleArguments::from_primary(
+                        *self.inference.i_s,
+                        self.inference.file,
+                        primary,
+                        None,
+                    );
+                    TypeContent::DbType(new_named_tuple(self.inference.i_s, &args))
                 }
                 TypeContent::Unknown => TypeContent::Unknown,
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Execution),
@@ -2563,7 +2574,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             };
             let t = comp.compute_named_expr_db_type(type_expr);
             params.push(CallableParam {
-                param_specific: ParamSpecific::PositionalOrKeyword(DbType::Any),
+                param_specific: ParamSpecific::PositionalOrKeyword(t),
                 name: Some(name),
                 has_default: false,
             });
@@ -2854,4 +2865,61 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
             annotation.index(),
             annotation.expression(),
         )
+}
+
+pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> DbType {
+    let mut iterator = args.iter();
+    let Some(first_arg) = iterator.next() else {
+        todo!()
+    };
+    let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
+        todo!()
+    };
+    let expr = node_ref.as_named_expression().expression();
+    let first = expr
+        .maybe_single_string_literal()
+        .map(|py_string| (node_ref, py_string));
+    let Some(second_arg) = iterator.next() else {
+        todo!()
+    };
+
+    let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
+        todo!()
+    };
+    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
+        todo!()
+    };
+    let list_iterator = match atom.unpack() {
+        AtomContent::List(list) => list.unpack(),
+        AtomContent::Tuple(tup) => todo!(),
+        _ => todo!(),
+    };
+
+    if let Some(params) = node_ref
+        .file
+        .inference(i_s)
+        .compute_named_tuple_initializer(
+            args.as_node_ref(),
+            list_iterator.unwrap_or_else(|| todo!()),
+        )
+    {
+        let string_slice = StringSlice::from_expression(node_ref.file_index(), expr);
+        if string_slice.is_none() {
+            todo!()
+        }
+        let callable = CallableContent {
+            name: string_slice,
+            class_name: None,
+            defined_at: node_ref.as_link(),
+            type_vars: None,
+            params,
+            result_type: DbType::Any,
+        };
+        DbType::new_special(Rc::new(NamedTuple::from_execution(
+            string_slice.unwrap(),
+            callable,
+        )))
+    } else {
+        todo!()
+    }
 }

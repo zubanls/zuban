@@ -6,12 +6,13 @@ use parsa_python_ast::{
 
 use crate::{
     database::{
-        CallableContent, CallableParams, Database, DbType, GenericsList, PointLink, RecursiveAlias,
-        ReplaceSelf, ReplaceTypeVarLike, SpecialType, StringSlice, Variance,
+        CallableContent, CallableParam, CallableParams, Database, DbType, GenericsList, PointLink,
+        RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType, StringSlice, Variance,
     },
     debug,
     file::{use_cached_annotation_type, PythonFile},
     inference_state::InferenceState,
+    inferred::Inferred,
     matching::{FormatData, Match, Matcher, Type},
     node_ref::NodeRef,
     value::{Class, LookupResult, Module, Value},
@@ -52,6 +53,13 @@ impl NamedTuple {
         }
     }
 
+    fn params(&self) -> &[CallableParam] {
+        let CallableParams::Simple(params) = &self.constructor.get().unwrap().params else {
+            unreachable!();
+        };
+        params
+    }
+
     fn qualified_name(&self, db: &Database) -> String {
         let file = db.loaded_python_file(self.name.file_index);
         let module = Module::new(db, file).qualified_name(db);
@@ -67,7 +75,6 @@ impl SpecialType for NamedTuple {
         };
         let types = params
             .iter()
-            .skip(1)
             .map(|t| {
                 t.param_specific
                     .expect_positional_db_type_as_ref()
@@ -119,6 +126,14 @@ impl SpecialType for NamedTuple {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
+        for p in self.params() {
+            if name == p.name.unwrap().as_str(i_s.db) {
+                return LookupResult::UnknownName(Inferred::execute_db_type(
+                    i_s,
+                    p.param_specific.expect_positional_db_type_as_ref().clone(),
+                ));
+            }
+        }
         todo!()
     }
 

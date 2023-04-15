@@ -307,7 +307,7 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn maybe_new_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Rc<NewType>> {
+    pub fn maybe_new_type(&self, i_s: &InferenceState) -> Option<Rc<NewType>> {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::NewTypeDefinition(n)) = node_ref.complex() {
