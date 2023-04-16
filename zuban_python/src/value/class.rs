@@ -719,7 +719,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
             .compute_type_application_on_class(
                 *self,
                 *slice_type,
-                matches!(result_context, ResultContext::AssignmentNewDefinition(_)),
+                matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
     }
 

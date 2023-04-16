@@ -456,7 +456,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let result_type = original_def.as_ref().map(|inf| inf.class_as_type(self.i_s));
                     let mut result_context = match &result_type {
                         Some(t) => ResultContext::Known(t),
-                        None => ResultContext::AssignmentNewDefinition(&assignment),
+                        None => ResultContext::AssignmentNewDefinition,
                     };
                     self.infer_assignment_right_side(right_side, &mut result_context)
                 };
