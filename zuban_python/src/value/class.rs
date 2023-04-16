@@ -585,6 +585,10 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(type_vars) = type_vars {
             result += &self.generics().format(format_data, Some(type_vars.len()));
         }
+        let class_infos = self.use_cached_class_infos(format_data.db);
+        if class_infos.class_type == ClassType::NamedTuple {
+            result = format!("tuple[, fallback={result}]")
+        }
         result.into()
     }
 

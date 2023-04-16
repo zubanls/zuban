@@ -19,7 +19,7 @@ use crate::file::{
 use crate::inference_state::InferenceState;
 use crate::matching::Match;
 use crate::matching::{
-    common_base_type, FormatData, Generic, Generics, Matcher, NamedTuple, ParamsStyle, Type,
+    common_base_type, FormatData, Generic, Generics, Matcher, ParamsStyle, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
