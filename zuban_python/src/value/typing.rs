@@ -101,7 +101,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if self.specific == Specific::TypingNamedTuple {
-            return Inferred::execute_db_type(i_s, new_named_tuple(i_s, args));
+            return match new_named_tuple(i_s, args) {
+                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
+                    DbType::new_special(rc),
+                )),
+                None => Inferred::new_any(),
+            };
         }
         let mut iterator = args.iter();
         let first = iterator.next();

@@ -824,7 +824,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         primary,
                         None,
                     );
-                    TypeContent::DbType(new_named_tuple(self.inference.i_s, &args))
+                    TypeContent::DbType(match new_named_tuple(self.inference.i_s, &args) {
+                        Some(rc) => DbType::new_special(rc),
+                        None => DbType::Any,
+                    })
                 }
                 TypeContent::Unknown => TypeContent::Unknown,
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Execution),
@@ -2867,7 +2870,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
         )
 }
 
-pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> DbType {
+pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Option<Rc<NamedTuple>> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
@@ -2915,7 +2918,7 @@ pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> DbType {
             params,
             result_type: DbType::Any,
         };
-        DbType::new_special(Rc::new(NamedTuple::from_execution(
+        Some(Rc::new(NamedTuple::from_execution(
             string_slice.unwrap(),
             callable,
         )))

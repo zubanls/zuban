@@ -31,7 +31,7 @@ struct NamedTupleMember {
     has_default: bool,
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub struct NamedTuple {
     name: StringSlice,
     // Basically __new__

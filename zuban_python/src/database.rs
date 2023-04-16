@@ -19,7 +19,7 @@ use crate::file::{
 use crate::inference_state::InferenceState;
 use crate::matching::Match;
 use crate::matching::{
-    common_base_type, FormatData, Generic, Generics, Matcher, ParamsStyle, Type,
+    common_base_type, FormatData, Generic, Generics, Matcher, NamedTuple, ParamsStyle, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -494,6 +494,8 @@ pub enum ComplexPoint {
     FunctionOverload(Box<Overload>),
     TypeInstance(Box<DbType>),
     NewTypeDefinition(Rc<NewType>),
+    // e.g. X = NamedTuple('X', []), does not include classes.
+    NamedTupleDefinition(DbType),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),
