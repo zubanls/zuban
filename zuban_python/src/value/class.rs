@@ -816,6 +816,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                         self.generics.unwrap(),
                         generics.as_ref(),
                     )),
+                    // TODO this is wrong, because it does not use generics.
                     _ => Type::new(c),
                 },
             ));
