@@ -393,10 +393,9 @@ testLiteralWithFinalPropagationIsNotLeaking
 # Tuple Super Class
 testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
-# NamedTuple
-testNewAnalyzerNamedTupleCallNested
-testNewAnalyzerNamedTupleCallNestedMethod
+# NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
+# NamedTuple
 testNewAnalyzerNamedTupleBaseClass
 testNewAnalyzerTupleIteration
 testNewAnalyzerMemberNameMatchesNamedTuple
@@ -1826,6 +1825,8 @@ testImportFromReExportInCycleUsingRelativeImport1
 testImportReExportInCycleUsingRelativeImport2
 # Qualified nested class name
 testNewAnalyzerNamedTupleClassNestedMethod
+testNewAnalyzerNamedTupleCallNested
+testNewAnalyzerNamedTupleCallNestedMethod
 
 # Formatting class in reveal_type (stashed in 860494e, see also https://github.com/python/mypy/issues/13062)
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses

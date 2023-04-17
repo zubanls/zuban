@@ -808,6 +808,10 @@ pub trait SpecialType: std::fmt::Debug {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred;
+
+    fn as_named_tuple(&self) -> Option<&NamedTuple> {
+        None
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -854,6 +858,7 @@ impl DbType {
     pub fn new_special(special: Rc<dyn SpecialType>) -> Self {
         Self::SpecialType(SpecialTypeRc(special))
     }
+
     pub fn union(self, other: DbType) -> Self {
         self.union_with_details(other, false)
     }
@@ -3556,7 +3561,10 @@ pub enum MetaclassState {
 pub enum ClassType {
     Normal,
     Protocol,
-    NamedTuple(Rc<NamedTuple>),
+    NamedTuple {
+        named_tuple: Rc<NamedTuple>,
+        is_defining_class: bool,
+    },
 }
 
 #[derive(Debug, Clone, PartialEq)]

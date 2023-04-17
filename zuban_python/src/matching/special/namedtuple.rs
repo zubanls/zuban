@@ -34,7 +34,7 @@ struct NamedTupleMember {
     has_default: bool,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 pub struct NamedTuple {
     name: StringSlice,
     // Basically __new__
@@ -197,6 +197,10 @@ impl SpecialType for NamedTuple {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
+    }
+
+    fn as_named_tuple(&self) -> Option<&Self> {
+        Some(self)
     }
 }
 

@@ -202,7 +202,8 @@ pub(super) enum TypeNameLookup<'db, 'a> {
 pub enum BaseClass {
     DbType(DbType),
     Protocol,
-    NamedTuple,
+    NamedTuple(Rc<NamedTuple>),
+    NewNamedTuple,
     Generic,
     Invalid,
     Unknown,
@@ -389,7 +390,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::GenericWithGenerics) => BaseClass::Generic,
             TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
             TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
-            TypeContent::SpecialType(SpecialType::TypingNamedTuple) => BaseClass::NamedTuple,
+            TypeContent::SpecialType(SpecialType::TypingNamedTuple) => BaseClass::NewNamedTuple,
             TypeContent::SpecialType(SpecialType::Type) => BaseClass::DbType(DbType::Class(
                 self.inference.i_s.db.python_state.type_node_ref().as_link(),
                 None,
@@ -405,6 +406,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 match db_type {
                     DbType::Class(_, _) | DbType::Tuple(_) | DbType::Callable(_) => {
                         BaseClass::DbType(db_type)
+                    }
+                    DbType::SpecialType(special) => {
+                        if let Some(nt) = special.as_named_tuple() {
+                            // TODO performance: this is already an Rc and should not need to be
+                            // duplicated.
+                            BaseClass::NamedTuple(Rc::new(nt.clone()))
+                        } else {
+                            BaseClass::Invalid
+                        }
                     }
                     DbType::Any => BaseClass::Unknown,
                     DbType::NewType(_) => {

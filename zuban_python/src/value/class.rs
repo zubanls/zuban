@@ -210,12 +210,15 @@ impl<'db: 'a, 'a> Class<'a> {
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             let class_infos = self.calculate_class_infos(i_s);
-            let named_tuple = match &class_infos.class_type {
-                ClassType::NamedTuple(nt) => Some(nt.clone()), // It's an Rc
+            let defining_named_tuple = match &class_infos.class_type {
+                ClassType::NamedTuple {
+                    named_tuple,
+                    is_defining_class: true,
+                } => Some(named_tuple.clone()), // It's an Rc
                 _ => None,
             };
             node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
-            if let Some(named_tuple) = named_tuple {
+            if let Some(named_tuple) = defining_named_tuple {
                 // TODO this should just calculate all types initially.
                 node_ref.file.inference(i_s).calc_block_diagnostics(
                     self.node().block(),
@@ -388,12 +391,22 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             // TODO this might overwrite other class types
                             BaseClass::Protocol => class_type = ClassType::Protocol,
-                            BaseClass::NamedTuple => {
-                                let nt = Rc::new(NamedTuple::new(StringSlice::from_name(
+                            BaseClass::NamedTuple(named_tuple) => {
+                                mro.push(DbType::new_special(named_tuple.clone()));
+                                class_type = ClassType::NamedTuple {
+                                    named_tuple,
+                                    is_defining_class: false,
+                                }
+                            }
+                            BaseClass::NewNamedTuple => {
+                                let named_tuple = Rc::new(NamedTuple::new(StringSlice::from_name(
                                     self.node_ref.file_index(),
                                     self.node().name(),
                                 )));
-                                class_type = ClassType::NamedTuple(nt)
+                                class_type = ClassType::NamedTuple {
+                                    named_tuple,
+                                    is_defining_class: true,
+                                }
                             }
                             BaseClass::Generic => (),
                             BaseClass::Unknown => {
@@ -599,7 +612,9 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let class_infos = self.use_cached_class_infos(format_data.db);
         match &class_infos.class_type {
-            ClassType::NamedTuple(nt) => nt.format_with_name(format_data, &result),
+            ClassType::NamedTuple { named_tuple, .. } => {
+                named_tuple.format_with_name(format_data, &result)
+            }
             _ => result.into(),
         }
     }
