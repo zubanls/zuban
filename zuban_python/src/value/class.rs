@@ -21,7 +21,8 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, FormatData, Generics, Match, ResultContext, Type,
+    calculate_class_init_type_vars_and_return, FormatData, Generics, Match, NamedTuple,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -209,7 +210,7 @@ impl<'db: 'a, 'a> Class<'a> {
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             let class_infos = self.calculate_class_infos(i_s);
-            let is_named_tuple = class_infos.class_type == ClassType::NamedTuple;
+            let is_named_tuple = matches!(class_infos.class_type, ClassType::NamedTuple(_));
             node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
             if is_named_tuple {
                 // TODO this should just calculate all types initially.
@@ -382,7 +383,13 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             // TODO this might overwrite other class types
                             BaseClass::Protocol => class_type = ClassType::Protocol,
-                            BaseClass::NamedTuple => class_type = ClassType::NamedTuple,
+                            BaseClass::NamedTuple => {
+                                let nt = Rc::new(NamedTuple::new(StringSlice::from_name(
+                                    self.node_ref.file_index(),
+                                    self.node().name(),
+                                )));
+                                class_type = ClassType::NamedTuple(nt)
+                            }
                             BaseClass::Generic => (),
                             BaseClass::Unknown => {
                                 incomplete_mro = true;
@@ -586,10 +593,10 @@ impl<'db: 'a, 'a> Class<'a> {
             result += &self.generics().format(format_data, Some(type_vars.len()));
         }
         let class_infos = self.use_cached_class_infos(format_data.db);
-        if class_infos.class_type == ClassType::NamedTuple {
-            result = format!("tuple[, fallback={result}]")
+        match &class_infos.class_type {
+            ClassType::NamedTuple(nt) => format!("tuple[, fallback={result}]").into(),
+            _ => result.into(),
         }
-        result.into()
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {

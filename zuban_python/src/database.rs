@@ -10,6 +10,7 @@ use std::rc::Rc;
 
 use once_cell::unsync::OnceCell;
 use parsa_python_ast::Expression;
+use parsa_python_ast::Name;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
 use crate::file::PythonFile;
@@ -19,7 +20,7 @@ use crate::file::{
 use crate::inference_state::InferenceState;
 use crate::matching::Match;
 use crate::matching::{
-    common_base_type, FormatData, Generic, Generics, Matcher, ParamsStyle, Type,
+    common_base_type, FormatData, Generic, Generics, Matcher, NamedTuple, ParamsStyle, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -53,6 +54,10 @@ impl StringSlice {
         } else {
             None
         }
+    }
+
+    pub fn from_name(file_index: FileIndex, name: Name) -> Self {
+        Self::new(file_index, name.start(), name.end())
     }
 
     pub fn new(file_index: FileIndex, start: CodeIndex, end: u32) -> Self {
@@ -3555,11 +3560,11 @@ pub enum MetaclassState {
     Some(PointLink),
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum ClassType {
     Normal,
     Protocol,
-    NamedTuple,
+    NamedTuple(Rc<NamedTuple>),
 }
 
 #[derive(Debug, Clone, PartialEq)]
