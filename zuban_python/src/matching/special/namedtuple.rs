@@ -8,7 +8,7 @@ use crate::{
     database::{
         CallableContent, CallableParam, CallableParams, Database, DbType, GenericsList,
         ParamSpecific, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType, StringSlice,
-        TypeVarLikes, Variance,
+        Variance,
     },
     debug,
     file::{use_cached_annotation_type, File, PythonFile},

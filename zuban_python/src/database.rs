@@ -929,27 +929,10 @@ impl DbType {
         self.format(&FormatData::new_short(db))
     }
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        let class_name = |link| {
-            let class = Class::from_position(
-                NodeRef::from_link(format_data.db, link),
-                Generics::NotDefinedYet,
-                None,
-            );
-            match format_data.style {
-                FormatStyle::Short => Box::from(class.name()),
-                FormatStyle::Qualified | FormatStyle::MypyRevealType => {
-                    class.qualified_name(format_data.db).into()
-                }
-            }
-        };
         match self {
-            Self::Class(link, None) => class_name(*link),
-            Self::Class(link, Some(generics_lst)) => format!(
-                "{}[{}]",
-                &class_name(*link),
-                generics_lst.format(format_data)
-            )
-            .into(),
+            Self::Class(link, generics) => {
+                Class::from_db_type(format_data.db, *link, generics).format(format_data)
+            }
             Self::Union(union) => union.format(format_data),
             Self::Intersection(intersection) => intersection.format(format_data),
             Self::TypeVar(t) => format_data.format_type_var_like(

@@ -1291,11 +1291,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             false,
             result_context,
         );
+        /*
+         * TODO reenable this? see test testNewAnalyzerAliasToNotReadyNestedClass2
         debug!(
             "Infer primary {} as {}",
             primary.short_debug(),
             result.format_short(self.i_s)
         );
+        */
         result
     }
 
