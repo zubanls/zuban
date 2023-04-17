@@ -1869,8 +1869,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ArgumentsDetails::Node(arguments) => {
                 let mut iterator = arguments.iter();
                 let name_from_expr = |slf: &mut Self, expr: Expression| {
-                    let result =
-                        StringSlice::from_expression(self.inference.file.file_index(), expr);
+                    let result = StringSlice::from_string_in_expression(
+                        self.inference.file.file_index(),
+                        expr,
+                    );
                     if result.is_none() && !expr.is_none_literal() {
                         todo!()
                     }
@@ -2568,7 +2570,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             let StarLikeExpression::NamedExpression(type_expr) = second else {
                 todo!()
             };
-            let Some(name) = StringSlice::from_expression(file_index, name_expr.expression()) else {
+            let Some(name) = StringSlice::from_string_in_expression(file_index, name_expr.expression()) else {
                 todo!()
             };
             let t = comp.compute_named_expr_db_type(type_expr);
@@ -2895,7 +2897,7 @@ pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Option<Rc<
             list_iterator.unwrap_or_else(|| todo!()),
         )
     {
-        let string_slice = StringSlice::from_expression(node_ref.file_index(), expr);
+        let string_slice = StringSlice::from_string_in_expression(node_ref.file_index(), expr);
         if string_slice.is_none() {
             todo!()
         }

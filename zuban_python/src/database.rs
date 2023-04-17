@@ -45,7 +45,7 @@ pub struct StringSlice {
 }
 
 impl StringSlice {
-    pub fn from_expression(file_index: FileIndex, expr: Expression) -> Option<Self> {
+    pub fn from_string_in_expression(file_index: FileIndex, expr: Expression) -> Option<Self> {
         if let Some(literal) = expr.maybe_single_string_literal() {
             let (start, end) = literal.content_start_and_end_in_literal();
             let s = literal.start();
