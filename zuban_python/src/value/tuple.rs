@@ -4,6 +4,7 @@ use crate::database::{
     TypeOrTypeVarTuple,
 };
 use crate::debug;
+use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, UnionValue};
@@ -97,42 +98,14 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                     if args.has_type_var_tuple().is_some() {
                         todo!()
                     }
-                    let infer = |i_s: &InferenceState, literal: Literal| {
-                        if !matches!(literal.kind, LiteralKind::Int(_)) {
-                            return None;
-                        }
-                        let LiteralValue::Int(i) = literal.value(i_s.db) else {
-                            unreachable!();
-                        };
-                        let index = usize::try_from(i).ok().unwrap_or_else(|| todo!());
+                    infer_index(i_s, simple, |index| {
                         ts.as_ref().get(index).map(|t| match t {
                             TypeOrTypeVarTuple::Type(t) => {
                                 Inferred::execute_db_type(i_s, t.clone())
                             }
                             TypeOrTypeVarTuple::TypeVarTuple(t) => unreachable!(),
                         })
-                    };
-                    match simple
-                        .infer(i_s, &mut ResultContext::ExpectLiteral)
-                        .maybe_literal(i_s.db)
-                    {
-                        UnionValue::Single(literal) => infer(i_s, literal),
-                        UnionValue::Multiple(mut literals) => literals
-                            .next()
-                            .and_then(|l| infer(i_s, l))
-                            .and_then(|mut inferred| {
-                                for literal in literals {
-                                    if let Some(new_inf) = infer(i_s, literal) {
-                                        inferred = inferred.union(new_inf);
-                                    } else {
-                                        return None;
-                                    }
-                                }
-                                Some(inferred)
-                            }),
-                        UnionValue::Any => todo!(),
-                    }
-                    .unwrap_or_else(Inferred::new_unknown)
+                    })
                 }
                 Some(TupleTypeArguments::ArbitraryLength(t)) => {
                     Inferred::execute_db_type(i_s, t.as_ref().clone())

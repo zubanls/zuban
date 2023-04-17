@@ -1,10 +1,14 @@
 use parsa_python_ast::{Int, List, ListOrSetElementIterator, StarLikeExpression};
 
 use crate::arguments::Argument;
-use crate::database::{ComplexPoint, DbType, GenericItem, GenericsList};
+use crate::database::{
+    ComplexPoint, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
+};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
+use crate::getitem::Simple;
 use crate::inference_state::InferenceState;
+use crate::inferred::UnionValue;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::Class;
@@ -194,4 +198,44 @@ pub fn on_argument_type_error(
             .into(),
         ),
     )
+}
+
+pub fn infer_index(
+    i_s: &InferenceState,
+    simple: Simple,
+    callable: impl Fn(usize) -> Option<Inferred>,
+) -> Inferred {
+    let infer = |i_s: &InferenceState, literal: Literal| {
+        if !matches!(literal.kind, LiteralKind::Int(_)) {
+            return None;
+        }
+        let LiteralValue::Int(i) = literal.value(i_s.db) else {
+            unreachable!();
+        };
+        let index = usize::try_from(i).ok().unwrap_or_else(|| todo!());
+        callable(index)
+    };
+    match simple
+        .infer(i_s, &mut ResultContext::ExpectLiteral)
+        .maybe_literal(i_s.db)
+    {
+        UnionValue::Single(literal) => infer(i_s, literal),
+        UnionValue::Multiple(mut literals) => {
+            literals
+                .next()
+                .and_then(|l| infer(i_s, l))
+                .and_then(|mut inferred| {
+                    for literal in literals {
+                        if let Some(new_inf) = infer(i_s, literal) {
+                            inferred = inferred.union(new_inf);
+                        } else {
+                            return None;
+                        }
+                    }
+                    Some(inferred)
+                })
+        }
+        UnionValue::Any => todo!(),
+    }
+    .unwrap_or_else(Inferred::new_unknown)
 }
