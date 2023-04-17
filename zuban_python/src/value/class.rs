@@ -210,14 +210,19 @@ impl<'db: 'a, 'a> Class<'a> {
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             let class_infos = self.calculate_class_infos(i_s);
-            let is_named_tuple = matches!(class_infos.class_type, ClassType::NamedTuple(_));
+            let named_tuple = match &class_infos.class_type {
+                ClassType::NamedTuple(nt) => Some(nt.clone()), // It's an Rc
+                _ => None,
+            };
             node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
-            if is_named_tuple {
+            if let Some(named_tuple) = named_tuple {
                 // TODO this should just calculate all types initially.
-                node_ref
-                    .file
-                    .inference(i_s)
-                    .calc_block_diagnostics(self.node().block(), None, None)
+                node_ref.file.inference(i_s).calc_block_diagnostics(
+                    self.node().block(),
+                    None,
+                    None,
+                );
+                named_tuple.initialize_class_members_lazy(i_s.db, *self)
             }
             debug_assert!(node_ref.point().calculated());
         }
@@ -594,7 +599,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let class_infos = self.use_cached_class_infos(format_data.db);
         match &class_infos.class_type {
-            ClassType::NamedTuple(nt) => format!("tuple[, fallback={result}]").into(),
+            ClassType::NamedTuple(nt) => nt.format_with_name(format_data, &result),
             _ => result.into(),
         }
     }
