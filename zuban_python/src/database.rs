@@ -17,10 +17,13 @@ use crate::file::PythonFile;
 use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
+use crate::inferred::Inferred;
 use crate::matching::Match;
+use crate::matching::ResultContext;
 use crate::matching::{
-    common_base_type, FormatData, Generic, Generics, Matcher, NamedTuple, ParamsStyle, Type,
+    common_base_type, FormatData, Generic, Matcher, NamedTuple, ParamsStyle, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
@@ -799,6 +802,12 @@ pub trait SpecialType: std::fmt::Debug {
     ) -> Option<DbType> {
         None
     }
+    fn get_item(
+        &self,
+        i_s: &InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred;
 }
 
 #[derive(Debug, Clone)]

@@ -1,7 +1,9 @@
 use super::{LookupResult, Value, ValueKind};
 use crate::database::DbType;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::matching::Type;
+use crate::inferred::Inferred;
+use crate::matching::{ResultContext, Type};
 use crate::{
     database::{Database, SpecialType},
     node_ref::NodeRef,
@@ -48,5 +50,14 @@ impl<'db, 'a> Value<'db, 'a> for SpecialTypeAsValue<'a> {
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type_ptr)
+    }
+
+    fn get_item(
+        &self,
+        i_s: &InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        self.special_type.get_item(i_s, slice_type, result_context)
     }
 }

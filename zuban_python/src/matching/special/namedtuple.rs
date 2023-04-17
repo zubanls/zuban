@@ -11,10 +11,11 @@ use crate::{
         Variance,
     },
     debug,
-    file::{use_cached_annotation_type, File, PythonFile},
+    file::{infer_index, use_cached_annotation_type, File, PythonFile},
+    getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{FormatData, Match, Matcher, Type},
+    matching::{FormatData, Match, Matcher, ResultContext, Type},
     node_ref::NodeRef,
     value::{Class, LookupResult, Module, Value},
     ValueKind,
@@ -65,7 +66,7 @@ impl NamedTuple {
                             find_stmt_named_tuple_types(db, file, &mut vec, simple)
                         }
                         StmtContent::FunctionDef(_) => (),
-                        _ => todo!(),
+                        _ => todo!("{stmt:?}"),
                     }
                 }
             }
@@ -174,6 +175,26 @@ impl SpecialType for NamedTuple {
     ) -> Match {
         debug!("TODO namedtuple");
         Match::new_true()
+    }
+
+    fn get_item(
+        &self,
+        i_s: &InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        match slice_type.unpack() {
+            SliceTypeContent::Simple(simple) => infer_index(i_s, simple, |index| {
+                self.params().get(index).map(|p| {
+                    Inferred::execute_db_type(
+                        i_s,
+                        p.param_specific.expect_positional_db_type_as_ref().clone(),
+                    )
+                })
+            }),
+            SliceTypeContent::Slice(_) => todo!(),
+            SliceTypeContent::Slices(_) => todo!(),
+        }
     }
 }
 
