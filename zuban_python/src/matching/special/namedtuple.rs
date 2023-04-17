@@ -11,6 +11,7 @@ use crate::{
         Variance,
     },
     debug,
+    diagnostics::IssueType,
     file::{infer_index, use_cached_annotation_type, File, PythonFile},
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
@@ -55,7 +56,7 @@ impl NamedTuple {
         }
     }
 
-    pub fn initialize_class_members_lazy(&self, db: &Database, cls: Class) {
+    pub fn initialize_class_members_lazy(&self, i_s: &InferenceState, cls: Class) {
         let mut vec = vec![];
         let file = cls.node_ref.file;
         match cls.node().block().unpack() {
@@ -63,10 +64,11 @@ impl NamedTuple {
                 for stmt in stmts {
                     match stmt.unpack() {
                         StmtContent::SimpleStmts(simple) => {
-                            find_stmt_named_tuple_types(db, file, &mut vec, simple)
+                            find_stmt_named_tuple_types(i_s.db, file, &mut vec, simple)
                         }
                         StmtContent::FunctionDef(_) => (),
-                        _ => todo!("{stmt:?}"),
+                        _ => NodeRef::new(file, stmt.index())
+                            .add_typing_issue(i_s, IssueType::InvalidStmtInNamedTuple),
                     }
                 }
             }
@@ -76,7 +78,7 @@ impl NamedTuple {
             name: Some(self.name),
             class_name: None,
             defined_at: cls.node_ref.as_link(),
-            type_vars: cls.use_cached_type_vars(db).cloned(),
+            type_vars: cls.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(vec.into_boxed_slice()),
             result_type: DbType::Any,
         });

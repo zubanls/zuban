@@ -89,6 +89,7 @@ pub(crate) enum IssueType {
     UnsupportedClassScopedImport,
 
     StmtOutsideFunction { keyword: &'static str },
+    InvalidStmtInNamedTuple,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -411,6 +412,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_owned(),
             IssueType::StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+            IssueType::InvalidStmtInNamedTuple =>
+                "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_owned(),
 
             IssueType::OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_owned(),

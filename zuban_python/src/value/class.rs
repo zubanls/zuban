@@ -222,7 +222,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     None,
                     None,
                 );
-                named_tuple.initialize_class_members_lazy(i_s.db, *self)
+                named_tuple.initialize_class_members_lazy(i_s, *self)
             }
             debug_assert!(node_ref.point().calculated());
         }

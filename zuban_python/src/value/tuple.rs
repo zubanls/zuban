@@ -1,13 +1,10 @@
 use super::{IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{
-    DbType, Literal, LiteralKind, LiteralValue, TupleContent, TupleTypeArguments,
-    TypeOrTypeVarTuple,
-};
+use crate::database::{DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, UnionValue};
+use crate::inferred::Inferred;
 use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::Instance;
