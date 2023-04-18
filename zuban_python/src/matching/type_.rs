@@ -1213,6 +1213,7 @@ impl<'a> Type<'a> {
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(c, generics) => todo!(),
                 DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
+                DbType::SpecialType(t) => t.lookup_internal(i_s, None, name),
                 DbType::Callable(t) => todo!(),
                 _ => todo!("{name:?} {self:?}"),
             },

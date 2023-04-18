@@ -395,8 +395,8 @@ testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
-# NamedTuple
 testNewAnalyzerNamedTupleBaseClass
+# NamedTuple
 testNewAnalyzerTupleIteration
 testNewAnalyzerMemberNameMatchesNamedTuple
 testImportReExportedNamedTupleInCycle1

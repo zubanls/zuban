@@ -139,7 +139,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                             mro_index,
                         )
                 } else {
-                    todo!()
+                    Some(inf)
                 }
             });
             match result {
