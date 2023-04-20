@@ -721,21 +721,10 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
                     None => "".to_owned(),
                 }
             );
-            if generics_list.is_none() && !is_overload {
-                match args.as_execution(&func) {
-                    Some(execution) => {
-                        // TODO probably use something like this here:
-                        // ComplexPoint::ExecutionInstance(self.node_ref.as_link(), Box::new(execution))
-                        Inferred::create_instance(self.node_ref.as_link(), None)
-                    }
-                    None => Inferred::create_instance(self.node_ref.as_link(), None),
-                }
-            } else {
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
-                    self.node_ref.as_link(),
-                    generics_list,
-                ))))
-            }
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
+                self.node_ref.as_link(),
+                generics_list,
+            ))))
         } else {
             Inferred::new_any()
         }
