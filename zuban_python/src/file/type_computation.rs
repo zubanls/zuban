@@ -2917,7 +2917,7 @@ pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Option<Rc<
             defined_at: node_ref.as_link(),
             type_vars: None,
             params,
-            result_type: DbType::Any,
+            result_type: DbType::None,
         };
         Some(Rc::new(NamedTuple::from_execution(
             string_slice.unwrap(),

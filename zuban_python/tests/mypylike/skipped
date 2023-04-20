@@ -396,9 +396,11 @@ testGenericTupleTypeSubclassing
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
-# NamedTuple
+# NamedTuple Iter
 testNewAnalyzerTupleIteration
+# Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
+# NamedTuple
 testImportReExportedNamedTupleInCycle1
 testImportReExportedNamedTupleInCycle2
 testTypeAliasesToNamedTuple

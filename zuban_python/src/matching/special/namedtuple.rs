@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use once_cell::unsync::OnceCell;
 
 use parsa_python_ast::{
@@ -38,7 +40,7 @@ struct NamedTupleMember {
 pub struct NamedTuple {
     name: StringSlice,
     // Basically __new__
-    constructor: OnceCell<CallableContent>,
+    constructor: OnceCell<Rc<CallableContent>>,
 }
 
 impl NamedTuple {
@@ -52,7 +54,7 @@ impl NamedTuple {
     pub fn from_execution(name: StringSlice, constructor: CallableContent) -> Self {
         Self {
             name,
-            constructor: OnceCell::from(constructor),
+            constructor: OnceCell::from(Rc::new(constructor)),
         }
     }
 
@@ -74,14 +76,14 @@ impl NamedTuple {
             }
             BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(db, file, &mut vec, simple),
         }
-        let result = self.constructor.set(CallableContent {
+        let result = self.constructor.set(Rc::new(CallableContent {
             name: Some(self.name),
             class_name: None,
             defined_at: cls.node_ref.as_link(),
             type_vars: cls.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(vec.into_boxed_slice()),
-            result_type: DbType::Any,
-        });
+            result_type: DbType::None,
+        }));
         debug_assert_eq!(result, Ok(()));
     }
 
@@ -164,6 +166,12 @@ impl SpecialType for NamedTuple {
                     p.param_specific.expect_positional_db_type_as_ref().clone(),
                 ));
             }
+        }
+        if name == "__init__" {
+            return LookupResult::UnknownName(Inferred::execute_db_type(
+                i_s,
+                DbType::Callable(self.constructor.get().unwrap().clone()),
+            ));
         }
         todo!()
     }

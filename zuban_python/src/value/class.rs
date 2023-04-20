@@ -403,6 +403,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     self.node_ref.file_index(),
                                     self.node().name(),
                                 )));
+                                mro.push(DbType::new_special(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple {
                                     named_tuple,
                                     is_defining_class: true,
@@ -514,8 +515,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 if let Type::Class(c) = c {
                     return (result, Some(c));
                 } else {
-                    todo!()
-                    //return (result, None);
+                    return (result, None);
                 }
             }
         }
