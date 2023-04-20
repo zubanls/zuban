@@ -826,7 +826,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.execute_mypy_extension_param(primary, s, details)
                 }
                 TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
-                    dbg!(self.inference.file.points.get(primary.index()));
                     let args = SimpleArguments::from_primary(
                         *self.inference.i_s,
                         self.inference.file,
