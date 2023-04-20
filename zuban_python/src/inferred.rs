@@ -321,10 +321,13 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific && point.specific() == Specific::Closure {
+                /*
                 return Inferred::new_unsaved_complex(ComplexPoint::Closure(
                     definition,
                     Box::new(i_s.args_as_execution().unwrap()),
                 ));
+                */
+                todo!()
             }
         }
         if let Some(class) = i_s.current_class() {
@@ -342,10 +345,13 @@ impl<'db: 'slf, 'slf> Inferred {
             if point.type_() == PointType::Specific {
                 match point.specific() {
                     Specific::Closure => {
+                        /*
                         return Inferred::new_unsaved_complex(ComplexPoint::Closure(
                             definition,
                             Box::new(i_s.args_as_execution().unwrap()),
                         ));
+                        */
+                        todo!()
                     }
                     Specific::Param | Specific::SelfParam => {
                         todo!("might not even happen - remove")

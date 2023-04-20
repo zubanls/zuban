@@ -174,9 +174,4 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         let args = SimpleArguments::from_execution(self.db, execution);
         callable(&mut self.with_func_and_args(&func, &args))
     }
-
-    pub fn args_as_execution(&self) -> Option<Execution> {
-        self.current_execution()
-            .and_then(|(func, args)| args.as_execution(func))
-    }
 }
