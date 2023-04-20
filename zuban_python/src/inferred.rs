@@ -661,7 +661,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn init_as_function<'a>(
         &self,
         db: &'db Database,
-        class: Class<'a>,
+        class: Option<Class<'a>>,
     ) -> Option<FunctionOrOverload<'a>>
     where
         'db: 'a,
@@ -671,16 +671,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 let definition = NodeRef::from_link(db, *definition);
                 if let Some(Specific::Function) = point.maybe_specific() {
                     return Some(FunctionOrOverload::Function(Function::new(
-                        definition,
-                        Some(class),
+                        definition, class,
                     )));
                 }
                 match definition.complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
                         return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
-                            definition,
-                            overload,
-                            Some(class),
+                            definition, overload, class,
                         )));
                     }
                     Some(ComplexPoint::TypeInstance(t)) => {

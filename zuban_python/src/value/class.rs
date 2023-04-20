@@ -4,7 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
 
 use super::function::OverloadResult;
-use super::{Function, Instance, LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::{Instance, LookupResult, Module, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
     ClassInfos, ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
@@ -21,8 +21,8 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, FormatData, Generics, Match, NamedTuple,
-    ResultContext, Type,
+    calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
+    Generics, Match, NamedTuple, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -78,13 +78,12 @@ impl<'db: 'a, 'a> Class<'a> {
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<(Function, Option<GenericsList>, bool)> {
+    ) -> Option<Option<GenericsList>> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
-        let cls = class.unwrap_or_else(|| todo!());
         match init
             .into_maybe_inferred()
             .unwrap()
-            .init_as_function(i_s.db, cls)
+            .init_as_function(i_s.db, class)
         {
             Some(FunctionOrOverload::Function(func)) => {
                 let calculated_type_args = calculate_class_init_type_vars_and_return(
@@ -96,10 +95,19 @@ impl<'db: 'a, 'a> Class<'a> {
                     result_context,
                     Some(on_type_error),
                 );
-                Some((func, calculated_type_args.type_arguments, false))
+                Some(calculated_type_args.type_arguments)
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
-                todo!()
+                let calculated_type_args = calculate_callable_type_vars_and_return(
+                    i_s,
+                    class.as_ref(),
+                    &callable_content,
+                    args.iter(),
+                    &|| args.as_node_ref(),
+                    result_context,
+                    on_type_error,
+                );
+                Some(calculated_type_args.type_arguments)
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
@@ -116,7 +124,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         Some(on_type_error),
                     )
                     .type_arguments;
-                    Some((func, list, true))
+                    Some(list)
                 }
                 OverloadResult::Union(t) => todo!(),
                 OverloadResult::NotFound => None,
@@ -709,7 +717,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         // TODO locality!!!
-        if let Some((func, generics_list, is_overload)) =
+        if let Some(generics_list) =
             self.type_check_init_func(i_s, args, result_context, on_type_error)
         {
             debug!(
