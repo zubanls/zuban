@@ -391,7 +391,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
-                Box::new(callable_content),
+                Rc::new(callable_content),
             ))))
             .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
         } else {
@@ -477,7 +477,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut callable =
             self.internal_as_db_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
         callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-        DbType::Callable(Box::new(callable))
+        DbType::Callable(Rc::new(callable))
     }
 
     pub fn classmethod_as_db_type(
@@ -591,7 +591,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut callable = self.internal_as_db_type(i_s, params, false, as_db_type);
         let type_vars = type_vars.into_inner();
         callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-        DbType::Callable(Box::new(callable))
+        DbType::Callable(Rc::new(callable))
     }
 
     fn internal_as_db_type(

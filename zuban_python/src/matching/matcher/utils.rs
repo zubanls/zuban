@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use parsa_python_ast::ParamKind;
 
 use super::super::params::{
@@ -19,6 +21,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
+use crate::utils::rc_unwrap_or_clone;
 use crate::value::{Class, FirstParamProperties, Function, Instance, OnTypeError, Value};
 
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
@@ -760,9 +763,10 @@ pub fn create_signature_without_self(
     }
     let mut t = func.as_db_type(i_s, FirstParamProperties::Skip);
     if let Some(type_vars) = type_vars {
-        let DbType::Callable(callable_content) = &mut t else {
+        let DbType::Callable(callable_content) = t else {
             unreachable!();
         };
+        let mut callable_content = rc_unwrap_or_clone(callable_content);
         let mut old_type_vars = std::mem::replace(&mut callable_content.type_vars, None)
             .unwrap()
             .into_vec();
@@ -775,7 +779,7 @@ pub fn create_signature_without_self(
         if !old_type_vars.is_empty() {
             callable_content.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
         }
-        t = t.replace_type_var_likes_and_self(
+        t = DbType::Callable(Rc::new(callable_content)).replace_type_var_likes_and_self(
             i_s.db,
             &mut |usage| {
                 let index = usage.index().as_usize();

@@ -582,7 +582,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 a.as_db_type_and_set_type_vars_any(self.inference.i_s.db)
             }
             TypeContent::SpecialType(m) => match m {
-                SpecialType::Callable => DbType::Callable(Box::new(CallableContent {
+                SpecialType::Callable => DbType::Callable(Rc::new(CallableContent {
                     name: None,
                     class_name: None,
                     defined_at: node_ref.as_link(),
@@ -1441,7 +1441,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         };
         self.current_callable = old;
-        TypeContent::DbType(DbType::Callable(Box::new(content)))
+        TypeContent::DbType(DbType::Callable(Rc::new(content)))
     }
 
     fn compute_type_get_item_on_union(

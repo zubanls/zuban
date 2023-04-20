@@ -841,7 +841,7 @@ pub enum DbType {
     TypeVar(TypeVarUsage),
     Type(Rc<DbType>),
     Tuple(TupleContent),
-    Callable(Box<CallableContent>),
+    Callable(Rc<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
     NewType(Rc<NewType>),
     ParamSpecArgs(ParamSpecUsage),
@@ -1443,7 +1443,7 @@ impl DbType {
                         replace_self,
                     );
                 }
-                Self::Callable(Box::new(CallableContent {
+                Self::Callable(Rc::new(CallableContent {
                     name: content.name,
                     class_name: content.class_name,
                     defined_at: content.defined_at,
@@ -1708,7 +1708,7 @@ impl DbType {
                             .then(|| t.type_var_like.clone())
                     })
                     .collect::<Box<_>>();
-                Self::Callable(Box::new(CallableContent {
+                Self::Callable(Rc::new(CallableContent {
                     name: content.name,
                     class_name: content.class_name,
                     defined_at: content.defined_at,
@@ -1844,7 +1844,7 @@ impl DbType {
                 _ => Self::Any,
             },
             Self::Callable(content1) => match other {
-                Self::Callable(content2) => Self::Callable(Box::new(CallableContent {
+                Self::Callable(content2) => Self::Callable(Rc::new(CallableContent {
                     name: content1.name.or(content2.name),
                     class_name: content1.class_name.or(content2.class_name),
                     defined_at: content1.defined_at,
