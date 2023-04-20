@@ -403,8 +403,6 @@ testNewAnalyzerTupleIteration
 testNewAnalyzerMemberNameMatchesNamedTuple
 # NamedTuple next
 testCrashOnSelfRecursiveNamedTupleVar
-testNamedTupleForwardFunctionDirect
-testNamedTupleForwardFunctionIndirect
 testNamedTupleForwardFunctionIndirectReveal
 # NamedTuple
 testImportReExportedNamedTupleInCycle2
