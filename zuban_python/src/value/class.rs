@@ -98,6 +98,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 );
                 Some((func, calculated_type_args.type_arguments, false))
             }
+            Some(FunctionOrOverload::Callable(callable_content)) => {
+                todo!()
+            }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
             {

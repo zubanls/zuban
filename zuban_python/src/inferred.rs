@@ -31,6 +31,7 @@ use crate::value::{
 #[derive(Debug)]
 pub enum FunctionOrOverload<'a> {
     Function(Function<'a, 'a>),
+    Callable(Rc<CallableContent>),
     Overload(OverloadedFunction<'a>),
 }
 
@@ -659,21 +660,37 @@ impl<'db: 'slf, 'slf> Inferred {
     where
         'db: 'a,
     {
-        if let InferredState::Saved(definition, point) = &self.state {
-            let definition = NodeRef::from_link(db, *definition);
-            if let Some(Specific::Function) = point.maybe_specific() {
-                return Some(FunctionOrOverload::Function(Function::new(
-                    definition,
-                    Some(class),
-                )));
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                let definition = NodeRef::from_link(db, *definition);
+                if let Some(Specific::Function) = point.maybe_specific() {
+                    return Some(FunctionOrOverload::Function(Function::new(
+                        definition,
+                        Some(class),
+                    )));
+                }
+                match definition.complex() {
+                    Some(ComplexPoint::FunctionOverload(overload)) => {
+                        return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
+                            definition,
+                            overload,
+                            Some(class),
+                        )));
+                    }
+                    Some(ComplexPoint::TypeInstance(t)) => {
+                        if let DbType::Callable(c) = t.as_ref() {
+                            return Some(FunctionOrOverload::Callable(c.clone()));
+                        }
+                    }
+                    _ => (),
+                }
             }
-            if let Some(ComplexPoint::FunctionOverload(overload)) = definition.complex() {
-                return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
-                    definition,
-                    overload,
-                    Some(class),
-                )));
+            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(t)) => {
+                if let DbType::Callable(c) = t.as_ref() {
+                    return Some(FunctionOrOverload::Callable(c.clone()));
+                }
             }
+            _ => (),
         }
         None
     }
