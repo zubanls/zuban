@@ -4,14 +4,12 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
-use crate::database::Execution;
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::ResultContext;
 use crate::node_ref::NodeRef;
-use crate::value::Function;
 
 #[derive(Debug, Copy, Clone)]
 pub struct SliceType<'file> {
@@ -200,21 +198,6 @@ pub struct SliceArguments<'db, 'a> {
 impl<'db> Arguments<'db> for SliceArguments<'db, '_> {
     fn iter(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::new_slice(*self.slice_type, self.i_s)
-    }
-
-    fn outer_execution(&self) -> Option<&Execution> {
-        todo!()
-    }
-
-    fn as_execution(&self, function: &Function) -> Option<Execution> {
-        /*
-        Execution::new(
-            function.as_point_link(),
-            PointLink::new(self.file.file_index(), self.primary_node.index()),
-            self.in_,
-        )
-        */
-        todo!()
     }
 
     fn type_(&self) -> ArgumentsType {

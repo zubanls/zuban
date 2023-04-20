@@ -831,7 +831,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         *self.inference.i_s,
                         self.inference.file,
                         primary,
-                        None,
                     );
                     TypeContent::DbType(match new_named_tuple(self.inference.i_s, &args) {
                         Some(rc) => DbType::new_special(rc),

@@ -8,9 +8,7 @@ use std::fmt;
 use std::rc::Rc;
 
 use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
-use crate::arguments::{
-    Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments, SimpleArguments,
-};
+use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
@@ -131,11 +129,12 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     ) -> Inferred {
         let func_node =
             FunctionDef::from_param_name_def_index(&self.node_ref.file.tree, param_name_def_index);
-        let temporary_args;
-        let temporary_func;
+        //let temporary_args;
+        //let temporary_func;
         let (check_args, func) = if func_node.index() == self.node_ref.node_index {
             (args, self)
         } else {
+            /*
             let mut execution = args.outer_execution();
             loop {
                 if let Some(exec) = execution {
@@ -151,6 +150,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     return Inferred::new_unknown();
                 }
             }
+            */
+            debug!("TODO untyped param");
+            return Inferred::new_unknown();
         };
         for param in func.iter_inferrable_params(i_s.db, check_args, false) {
             if param.is_at(param_name_def_index) {

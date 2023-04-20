@@ -4,7 +4,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::rc::Rc;
 
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments, SimpleArguments};
+use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
@@ -1372,11 +1372,14 @@ fn run_on_complex<'db: 'a, 'a, T>(
         ComplexPoint::Closure(function, execution) => {
             let f = i_s.db.loaded_python_file(function.file);
             let func = Function::from_execution(i_s.db, execution, None);
+            /*
             let args = SimpleArguments::from_execution(i_s.db, execution);
             callable(
                 &mut i_s.with_func_and_args(&func, &args),
                 &Function::new(NodeRef::from_link(i_s.db, *function), None),
             )
+            */
+            todo!()
         }
         ComplexPoint::FunctionOverload(overload) => callable(
             i_s,

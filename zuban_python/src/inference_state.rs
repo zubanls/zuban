@@ -1,7 +1,7 @@
 use std::cell::Cell;
 
-use crate::arguments::{Arguments, SimpleArguments};
-use crate::database::{CallableContent, Database, Execution};
+use crate::arguments::Arguments;
+use crate::database::{CallableContent, Database};
 use crate::value::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]
@@ -162,16 +162,5 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             }
             Mode::Normal => true,
         }
-    }
-
-    pub fn run_with_execution<T>(
-        &self,
-        execution: &Execution,
-        callable: impl FnOnce(&InferenceState<'db, '_>) -> T,
-    ) -> T {
-        // TODO this is unused?!
-        let func = Function::from_execution(self.db, execution, None);
-        let args = SimpleArguments::from_execution(self.db, execution);
-        callable(&mut self.with_func_and_args(&func, &args))
     }
 }

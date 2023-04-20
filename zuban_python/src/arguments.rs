@@ -1,17 +1,15 @@
 use std::mem;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, Execution, MroIndex, ParamSpecUsage, PointLink, TupleContent,
-    TypeOrTypeVarTuple,
+    ComplexPoint, Database, DbType, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
 };
 use crate::diagnostics::IssueType;
-use crate::file::File;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::value::{Function, IteratorContent};
+use crate::value::IteratorContent;
 use crate::InferenceState;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
@@ -26,8 +24,6 @@ pub trait Arguments<'db>: std::fmt::Debug {
     // Returns an iterator of arguments, where args are returned before kw args.
     // This is not the case in the grammar, but here we want that.
     fn iter(&self) -> ArgumentIterator<'db, '_>;
-    fn outer_execution(&self) -> Option<&Execution>;
-    fn as_execution(&self, function: &Function) -> Option<Execution>;
     fn type_(&self) -> ArgumentsType;
     fn as_node_ref(&self) -> NodeRef;
     fn reset_cache(&self) {
@@ -72,7 +68,6 @@ pub struct SimpleArguments<'db, 'a> {
     file: &'a PythonFile,
     primary_node_index: NodeIndex,
     details: ArgumentsDetails<'a>,
-    in_: Option<&'a Execution>,
     i_s: InferenceState<'db, 'a>,
 }
 
@@ -103,20 +98,6 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
         })
     }
 
-    fn outer_execution(&self) -> Option<&Execution> {
-        self.in_
-    }
-
-    fn as_execution(&self, function: &Function) -> Option<Execution> {
-        self.details.index().map(|index| {
-            Execution::new(
-                function.node_ref.as_link(),
-                PointLink::new(self.file.file_index(), index),
-                self.in_,
-            )
-        })
-    }
-
     fn type_(&self) -> ArgumentsType {
         ArgumentsType::Normal(self.file, self.primary_node_index)
     }
@@ -141,13 +122,11 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
         file: &'a PythonFile,
         primary_node_index: NodeIndex,
         details: ArgumentsDetails<'a>,
-        in_: Option<&'a Execution>,
     ) -> Self {
         Self {
             file,
             primary_node_index,
             details,
-            in_,
             i_s,
         }
     }
@@ -156,21 +135,13 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         file: &'a PythonFile,
         primary_node: Primary<'a>,
-        in_: Option<&'a Execution>,
     ) -> Self {
         match primary_node.second() {
             PrimaryContent::Execution(details) => {
-                Self::new(i_s, file, primary_node.index(), details, in_)
+                Self::new(i_s, file, primary_node.index(), details)
             }
             _ => unreachable!(),
         }
-    }
-
-    pub fn from_execution(db: &'db Database, execution: &'a Execution) -> Self {
-        let f = db.loaded_python_file(execution.argument_node.file);
-        todo!()
-        // details = ...
-        //Self::from_primary(f, primary, execution.in_.as_deref(), None)
     }
 }
 
@@ -189,14 +160,6 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
             node_ref: self.node_ref,
             is_bound_self: self.is_bound_self,
         })
-    }
-
-    fn outer_execution(&self) -> Option<&Execution> {
-        todo!()
-    }
-
-    fn as_execution(&self, function: &Function) -> Option<Execution> {
-        None
     }
 
     fn type_(&self) -> ArgumentsType {
@@ -240,14 +203,6 @@ impl<'db, 'a> Arguments<'db> for CombinedArguments<'db, 'a> {
         debug_assert!(iterator.next.is_none()); // For now this is not supported
         iterator.next = Some(self.args2);
         iterator
-    }
-
-    fn outer_execution(&self) -> Option<&Execution> {
-        todo!()
-    }
-
-    fn as_execution(&self, function: &Function) -> Option<Execution> {
-        None
     }
 
     fn type_(&self) -> ArgumentsType {
@@ -901,14 +856,6 @@ impl<'a> NoArguments<'a> {
 impl<'db, 'a> Arguments<'db> for NoArguments<'a> {
     fn iter(&self) -> ArgumentIterator<'db, '_> {
         ArgumentIterator::new(ArgumentIteratorBase::Finished)
-    }
-
-    fn outer_execution(&self) -> Option<&Execution> {
-        None
-    }
-
-    fn as_execution(&self, function: &Function) -> Option<Execution> {
-        None
     }
 
     fn type_(&self) -> ArgumentsType {

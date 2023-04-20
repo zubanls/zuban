@@ -1339,11 +1339,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }),
             PrimaryContent::Execution(details) => {
                 let f = self.file;
-                let x = self
-                    .i_s
-                    .current_execution()
-                    .and_then(|x| x.1.as_execution(x.0));
-                let args = SimpleArguments::new(*self.i_s, f, node_index, details, x.as_ref());
+                let args = SimpleArguments::new(*self.i_s, f, node_index, details);
                 base.internal_run(
                     self.i_s,
                     &mut |i_s, value| {
