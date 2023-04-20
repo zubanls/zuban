@@ -623,7 +623,9 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let class_infos = self.use_cached_class_infos(format_data.db);
         match &class_infos.class_type {
-            ClassType::NamedTuple { named_tuple, .. } => {
+            ClassType::NamedTuple { named_tuple, .. }
+                if format_data.style == FormatStyle::MypyRevealType =>
+            {
                 named_tuple.format_with_name(format_data, &result)
             }
             _ => result.into(),

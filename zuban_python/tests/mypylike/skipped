@@ -402,7 +402,6 @@ testNewAnalyzerTupleIteration
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
 # NamedTuple next
-testNewTypeFromForwardNamedTuple
 testCrashOnSelfRecursiveNamedTupleVar
 testNamedTupleForwardFunctionDirect
 testNamedTupleForwardFunctionIndirect
