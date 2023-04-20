@@ -318,6 +318,16 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
+    pub fn maybe_named_tuple_definition(&self, i_s: &InferenceState) -> Option<DbType> {
+        if let InferredState::Saved(definition, point) = self.state {
+            let node_ref = NodeRef::from_link(i_s.db, definition);
+            if let Some(ComplexPoint::NamedTupleDefinition(n)) = node_ref.complex() {
+                return Some(n.clone());
+            }
+        }
+        None
+    }
+
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific && point.specific() == Specific::Closure {

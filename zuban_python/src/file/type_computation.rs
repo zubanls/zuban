@@ -194,6 +194,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     NewType(Rc<NewType>),
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
+    NamedTupleDefinition(DbType),
     RecursiveAlias(PointLink),
     Unknown,
 }
@@ -1856,6 +1857,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
+            TypeNameLookup::NamedTupleDefinition(t) => TypeContent::DbType(t),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
@@ -2257,6 +2259,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 TypeNameLookup::TypeVarLike(tv)
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {
                 TypeNameLookup::NewType(n)
+            } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
+                TypeNameLookup::NamedTupleDefinition(t)
             } else {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let type_var_likes = TypeVarFinder::find_alias_type_vars(self, expr);
