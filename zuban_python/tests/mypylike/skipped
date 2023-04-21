@@ -432,7 +432,6 @@ testNamedTupleUpdateNonRecursiveToRecursiveFine
 # NamedTuple classmethod access
 testBoundClassMethodWithNamedTupleBase
 # namedtuple
-testCallableParsingInInheritence
 testNewTypeWithNamedTuple
 
 # data class (currently all are passing)

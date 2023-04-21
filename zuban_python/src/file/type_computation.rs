@@ -852,7 +852,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     )
                 }
                 TypeContent::Unknown => TypeContent::Unknown,
-                _ => TypeContent::InvalidVariable(InvalidVariableType::Execution),
+                _ => {
+                    debug!("Invalid type execution: {base:?}");
+                    TypeContent::InvalidVariable(InvalidVariableType::Execution)
+                }
             },
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
@@ -2730,9 +2733,6 @@ fn check_type_name<'db: 'file, 'file>(
                     Some(Specific::TypingNamedTuple) => {
                         return TypeNameLookup::SpecialType(SpecialType::TypingNamedTuple);
                     }
-                    Some(Specific::CollectionsNamedTuple) => {
-                        return TypeNameLookup::SpecialType(SpecialType::CollectionsNamedTuple);
-                    }
                     Some(s) => {
                         debug!(
                             "Found an unexpected specific {s:?} for {}",
@@ -2771,9 +2771,15 @@ fn check_type_name<'db: 'file, 'file>(
             }
             inference.compute_type_assignment(assignment, false)
         }
-        TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function(
-            Function::new(NodeRef::new(name_node_ref.file, f.index()), None),
-        )),
+        TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function({
+            let point = name_node_ref.point();
+            if point.calculated() {
+                if point.maybe_specific() == Some(Specific::CollectionsNamedTuple) {
+                    return TypeNameLookup::SpecialType(SpecialType::CollectionsNamedTuple);
+                }
+            }
+            Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
+        })),
         TypeLike::Import => {
             if point.calculated() {
                 // When an import appears, this means that there's no redirect and the import leads
@@ -2964,5 +2970,41 @@ pub fn new_collections_named_tuple(
     if iterator.next().is_some() {
         todo!()
     }
-    todo!()
+    let args_node_ref = args.as_node_ref();
+    let mut params = vec![];
+
+    let mut add_param = |name| {
+        params.push(CallableParam {
+            param_specific: ParamSpecific::PositionalOrKeyword(DbType::Any),
+            name: Some(name),
+            has_default: false,
+        })
+    };
+    match atom.unpack() {
+        AtomContent::List(list) => todo!(),
+        AtomContent::Tuple(tup) => todo!(),
+        AtomContent::Strings(s) => match s.maybe_single_string_literal() {
+            Some(s) => {
+                let (start, _) = s.content_start_and_end_in_literal();
+                debug!("TODO split content");
+                let content = s.content();
+                add_param(StringSlice::new(
+                    args_node_ref.file_index(),
+                    start,
+                    start + content.len() as CodeIndex,
+                ))
+            }
+            _ => todo!(),
+        },
+        _ => todo!("{atom:?}"),
+    };
+    let callable = CallableContent {
+        name: Some(name),
+        class_name: None,
+        defined_at: args_node_ref.as_link(),
+        type_vars: None,
+        params: CallableParams::Simple(params.into_boxed_slice()),
+        result_type: DbType::None,
+    };
+    Some(Rc::new(NamedTuple::from_execution(name, callable)))
 }
