@@ -3,7 +3,7 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use super::TypeVarFinder;
-use crate::arguments::{ArgumentKind, Arguments, SimpleArguments};
+use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
     DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind, Locality,
@@ -2890,10 +2890,9 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
         )
 }
 
-pub fn new_typing_named_tuple(
-    i_s: &InferenceState,
-    args: &dyn Arguments,
-) -> Option<Rc<NamedTuple>> {
+fn check_named_tuple_name<'x, 'y>(
+    args: &'y dyn Arguments<'x>,
+) -> Option<(StringSlice, Atom<'y>, ArgumentIterator<'x, 'y>)> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
@@ -2905,43 +2904,51 @@ pub fn new_typing_named_tuple(
     let first = expr
         .maybe_single_string_literal()
         .map(|py_string| (node_ref, py_string));
+    let Some(string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
+        todo!()
+    };
     let Some(second_arg) = iterator.next() else {
         todo!()
     };
-
     let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
         todo!()
     };
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
         todo!()
     };
+    Some((string_slice, atom, iterator))
+}
+
+pub fn new_typing_named_tuple(
+    i_s: &InferenceState,
+    args: &dyn Arguments,
+) -> Option<Rc<NamedTuple>> {
+    let Some((name, atom, mut iterator)) = check_named_tuple_name(args) else {
+        todo!()
+    };
+    if iterator.next().is_some() {
+        todo!()
+    }
     let list_iterator = match atom.unpack() {
         AtomContent::List(list) => list.unpack(),
         AtomContent::Tuple(tup) => todo!(),
         _ => todo!("{atom:?}"),
     };
-
-    if let Some(params) = node_ref
+    let args_node_ref = args.as_node_ref();
+    if let Some(params) = args_node_ref
         .file
         .inference(i_s)
-        .compute_named_tuple_initializer(args.as_node_ref(), list_iterator)
+        .compute_named_tuple_initializer(args_node_ref, list_iterator)
     {
-        let string_slice = StringSlice::from_string_in_expression(node_ref.file_index(), expr);
-        if string_slice.is_none() {
-            todo!()
-        }
         let callable = CallableContent {
-            name: string_slice,
+            name: Some(name),
             class_name: None,
-            defined_at: node_ref.as_link(),
+            defined_at: args_node_ref.as_link(),
             type_vars: None,
             params,
             result_type: DbType::None,
         };
-        Some(Rc::new(NamedTuple::from_execution(
-            string_slice.unwrap(),
-            callable,
-        )))
+        Some(Rc::new(NamedTuple::from_execution(name, callable)))
     } else {
         todo!()
     }
@@ -2951,5 +2958,11 @@ pub fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
+    let Some((name, atom, mut iterator)) = check_named_tuple_name(args) else {
+        todo!()
+    };
+    if iterator.next().is_some() {
+        todo!()
+    }
     todo!()
 }
