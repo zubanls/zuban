@@ -433,8 +433,9 @@ pub enum Specific {
     // TODO maybe NoReturn?
     TypingAny,
     TypedDict,
-    TypingNamedTuple,
     RevealTypeFunction,
+    TypingNamedTuple,      // typing.NamedTuple
+    CollectionsNamedTuple, // collections.namedtuple
 
     MypyExtensionsArg,
     MypyExtensionsDefaultArg,
