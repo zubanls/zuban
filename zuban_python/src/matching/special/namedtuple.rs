@@ -184,7 +184,7 @@ impl SpecialType for NamedTuple {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
-        debug!("TODO namedtuple");
+        debug!("TODO namedtuple matches_internal");
         Match::new_true()
     }
 
