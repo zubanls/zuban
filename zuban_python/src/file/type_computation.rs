@@ -1381,14 +1381,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             match atom.unpack() {
                 AtomContent::List(list) => {
                     let mut params = vec![];
-                    if let Some(iterator) = list.unpack() {
-                        for i in iterator {
-                            if let StarLikeExpression::NamedExpression(n) = i {
-                                let t = self.compute_type(n.expression());
-                                self.add_param(&mut params, t, n.index())
-                            } else {
-                                todo!()
-                            }
+                    for i in list.unpack() {
+                        if let StarLikeExpression::NamedExpression(n) = i {
+                            let t = self.compute_type(n.expression());
+                            self.add_param(&mut params, t, n.index())
+                        } else {
+                            todo!()
                         }
                     }
                     CallableParams::Simple(params.into_boxed_slice())
@@ -2904,10 +2902,7 @@ pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Option<Rc<
     if let Some(params) = node_ref
         .file
         .inference(i_s)
-        .compute_named_tuple_initializer(
-            args.as_node_ref(),
-            list_iterator.unwrap_or_else(|| todo!()),
-        )
+        .compute_named_tuple_initializer(args.as_node_ref(), list_iterator)
     {
         let string_slice = StringSlice::from_string_in_expression(node_ref.file_index(), expr);
         if string_slice.is_none() {

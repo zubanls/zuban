@@ -1436,11 +1436,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return result.save_redirect(self.i_s, self.file, atom.index());
                 }
                 let result = match list.unpack() {
-                    Some(elements) => self
+                    elements @ StarLikeExpressionIterator::Elements(_) => self
                         .file
                         .inference(self.i_s)
                         .create_list_or_set_generics(elements),
-                    None => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
+                    StarLikeExpressionIterator::Empty => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
                 };
                 return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
                     DbType::Class(
@@ -1453,7 +1453,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Dict(_) => Specific::Dict,
             DictComprehension(_) => todo!(),
             Set(set) => {
-                if let Some(elements) = set.unpack() {
+                if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::create_instance(
                         self.i_s.db.python_state.builtins_point_link("set"),
                         Some(Box::new([self.create_list_or_set_generics(elements)])),

@@ -53,12 +53,12 @@ impl<'a> ListLiteral<'a> {
         let reference = self.node_ref.add_to_node_index(1);
         if !reference.point().calculated() {
             let result = match self.list_node().unpack() {
-                Some(elements) => self
+                elements @ StarLikeExpressionIterator::Elements(_) => self
                     .node_ref
                     .file
                     .inference(i_s)
                     .create_list_or_set_generics(elements),
-                None => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
+                StarLikeExpressionIterator::Empty => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
             };
             reference.insert_complex(
                 ComplexPoint::TypeInstance(Box::new(DbType::Class(
@@ -105,9 +105,13 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
 
     fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
         match self.list_node().unpack() {
-            Some(elements) => IteratorContent::ListLiteral(*self, elements),
+            elements @ StarLikeExpressionIterator::Elements(_) => {
+                IteratorContent::ListLiteral(*self, elements)
+            }
             // TODO shouldn't this be IteratorContent::Empty, ???
-            None => IteratorContent::ListLiteral(*self, StarLikeExpressionIterator::Empty),
+            StarLikeExpressionIterator::Empty => {
+                IteratorContent::ListLiteral(*self, StarLikeExpressionIterator::Empty)
+            }
         }
     }
 

@@ -114,60 +114,58 @@ fn check_list_with_context<'db>(
     // Since it's a list, now check all the entries if they match the given
     // result generic;
     let mut found: Option<DbType> = None;
-    if let Some(elements) = list.unpack() {
-        for (item, element) in elements.enumerate() {
-            let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
-                let m = generic_t.error_if_not_matches_with_matcher(
-                    i_s,
-                    matcher,
-                    &inferred,
-                    Some(
-                        |i_s: &InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
-                            let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
-                            node_ref.add_typing_issue(
-                                i_s,
-                                IssueType::ListItemMismatch {
-                                    item,
-                                    got,
-                                    expected,
-                                },
-                            );
-                            node_ref
-                        },
-                    ),
-                );
-                if m.bool() {
-                    let resembling = inferred
-                        .class_as_type(i_s)
-                        .try_to_resemble_context(i_s, matcher, &generic_t);
-                    if let Some(found) = &mut found {
-                        found.union_in_place(resembling)
-                    } else {
-                        found = Some(resembling);
-                    }
-                } else if i_s.is_checking_overload() {
-                    let t = inferred.class_as_type(i_s).into_db_type(i_s.db);
-                    if let Some(found) = &mut found {
-                        found.union_in_place(t)
-                    } else {
-                        found = Some(t);
-                    }
+    for (item, element) in list.unpack().enumerate() {
+        let mut check_item = |i_s: &InferenceState<'db, '_>, inferred: Inferred, index| {
+            let m = generic_t.error_if_not_matches_with_matcher(
+                i_s,
+                matcher,
+                &inferred,
+                Some(
+                    |i_s: &InferenceState<'db, '_>, got, expected, _: &MismatchReason| {
+                        let node_ref = NodeRef::new(file, index).to_db_lifetime(i_s.db);
+                        node_ref.add_typing_issue(
+                            i_s,
+                            IssueType::ListItemMismatch {
+                                item,
+                                got,
+                                expected,
+                            },
+                        );
+                        node_ref
+                    },
+                ),
+            );
+            if m.bool() {
+                let resembling = inferred
+                    .class_as_type(i_s)
+                    .try_to_resemble_context(i_s, matcher, &generic_t);
+                if let Some(found) = &mut found {
+                    found.union_in_place(resembling)
+                } else {
+                    found = Some(resembling);
                 }
-            };
-            let mut inference = file.inference(i_s);
-            match element {
-                StarLikeExpression::NamedExpression(e) => {
-                    let inferred =
-                        inference.infer_named_expression_with_context(e, &mut new_result_context);
-                    check_item(i_s, inferred, e.index())
+            } else if i_s.is_checking_overload() {
+                let t = inferred.class_as_type(i_s).into_db_type(i_s.db);
+                if let Some(found) = &mut found {
+                    found.union_in_place(t)
+                } else {
+                    found = Some(t);
                 }
-                StarLikeExpression::StarNamedExpression(e) => {
-                    todo!("{e:?}")
-                }
-                StarLikeExpression::Expression(e) => unreachable!(),
-                StarLikeExpression::StarExpression(e) => unreachable!(),
-            };
-        }
+            }
+        };
+        let mut inference = file.inference(i_s);
+        match element {
+            StarLikeExpression::NamedExpression(e) => {
+                let inferred =
+                    inference.infer_named_expression_with_context(e, &mut new_result_context);
+                check_item(i_s, inferred, e.index())
+            }
+            StarLikeExpression::StarNamedExpression(e) => {
+                todo!("{e:?}")
+            }
+            StarLikeExpression::Expression(e) => unreachable!(),
+            StarLikeExpression::StarExpression(e) => unreachable!(),
+        };
     }
     found.map(|inner| {
         DbType::Class(

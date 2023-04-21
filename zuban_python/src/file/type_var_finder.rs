@@ -272,11 +272,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                 {
                     match atom.unpack() {
                         AtomContent::List(list) => {
-                            if let Some(iterator) = list.unpack() {
-                                for i in iterator {
-                                    if let StarLikeExpression::NamedExpression(n) = i {
-                                        self.find_in_expr(n.expression());
-                                    }
+                            for i in list.unpack() {
+                                if let StarLikeExpression::NamedExpression(n) = i {
+                                    self.find_in_expr(n.expression());
                                 }
                             }
                         }

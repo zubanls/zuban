@@ -487,29 +487,25 @@ impl<'db> File<'db> {
 }
 
 impl<'db> List<'db> {
-    pub fn unpack(&self) -> Option<StarLikeExpressionIterator<'db>> {
+    pub fn unpack(&self) -> StarLikeExpressionIterator<'db> {
         let n = self.node.nth_child(1);
         if n.is_type(Nonterminal(star_named_expressions)) {
-            Some(StarLikeExpressionIterator::Elements(
-                n.iter_children().step_by(2),
-            ))
+            StarLikeExpressionIterator::Elements(n.iter_children().step_by(2))
         } else {
             assert_eq!(n.type_(), PyNodeType::Keyword);
-            None
+            StarLikeExpressionIterator::Empty
         }
     }
 }
 
 impl<'db> Set<'db> {
-    pub fn unpack(&self) -> Option<StarLikeExpressionIterator<'db>> {
+    pub fn unpack(&self) -> StarLikeExpressionIterator<'db> {
         let n = self.node.nth_child(1);
         if n.is_type(Nonterminal(star_named_expressions)) {
-            Some(StarLikeExpressionIterator::Elements(
-                n.iter_children().step_by(2),
-            ))
+            StarLikeExpressionIterator::Elements(n.iter_children().step_by(2))
         } else {
             assert_eq!(n.type_(), PyNodeType::Keyword);
-            None
+            StarLikeExpressionIterator::Empty
         }
     }
 }
