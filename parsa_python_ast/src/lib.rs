@@ -540,23 +540,23 @@ pub enum StarLikeExpression<'db> {
 }
 
 impl<'db> Tuple<'db> {
-    pub fn iter(&self) -> TupleLikeIterator<'db> {
+    pub fn iter(&self) -> StarLikeExpressionIterator<'db> {
         let n = self.node.nth_child(1);
         if n.is_type(Nonterminal(tuple_content)) {
-            TupleLikeIterator::Elements(n.iter_children().step_by(2))
+            StarLikeExpressionIterator::Elements(n.iter_children().step_by(2))
         } else {
             debug_assert_eq!(n.as_code(), ")");
-            TupleLikeIterator::Empty
+            StarLikeExpressionIterator::Empty
         }
     }
 }
 
-pub enum TupleLikeIterator<'db> {
+pub enum StarLikeExpressionIterator<'db> {
     Elements(StepBy<SiblingIterator<'db>>),
     Empty,
 }
 
-impl<'db> Iterator for TupleLikeIterator<'db> {
+impl<'db> Iterator for StarLikeExpressionIterator<'db> {
     type Item = StarLikeExpression<'db>;
     fn next(&mut self) -> Option<Self::Item> {
         match self {
