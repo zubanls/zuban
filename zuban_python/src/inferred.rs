@@ -1401,9 +1401,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
             &Instance::new(i_s.db.python_state.object_class(), None),
         ),
         ComplexPoint::NewTypeDefinition(n) => callable(i_s, &NewTypeInstance::new(i_s.db, n)),
-        ComplexPoint::NamedTupleDefinition(n) => {
-            run_on_db_type(i_s, &n, definition, callable, reducer, on_missing)
-        }
+        ComplexPoint::NamedTupleDefinition(n) => run_on_db_type_type(i_s, &n, callable, reducer),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }

@@ -7,6 +7,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
+    arguments::Arguments,
     database::{
         CallableContent, CallableParam, CallableParams, Database, DbType, GenericsList,
         ParamSpecific, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType, StringSlice,
@@ -20,7 +21,7 @@ use crate::{
     inferred::Inferred,
     matching::{FormatData, Match, Matcher, ResultContext, Type},
     node_ref::NodeRef,
-    value::{Class, LookupResult, Module, Value},
+    value::{Class, LookupResult, Module, OnTypeError, Value},
     ValueKind,
 };
 
@@ -205,6 +206,17 @@ impl SpecialType for NamedTuple {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
+    }
+
+    fn instantiate(
+        &self,
+        i_s: &InferenceState,
+        full_type: &DbType,
+        args: &dyn Arguments,
+        on_type_error: OnTypeError,
+    ) -> DbType {
+        debug!("TODO check namedtuple args");
+        full_type.clone()
     }
 
     fn as_named_tuple(&self) -> Option<&Self> {

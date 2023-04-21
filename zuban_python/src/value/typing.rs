@@ -304,6 +304,10 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 Inferred::execute_db_type(i_s, DbType::Self_)
             }
             DbType::Any => Inferred::new_any(),
+            DbType::SpecialType(special) => Inferred::execute_db_type(
+                i_s,
+                special.instantiate(i_s, self.db_type, args, on_type_error),
+            ),
             _ => todo!("{:?}", self.db_type),
         }
     }

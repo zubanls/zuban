@@ -401,10 +401,11 @@ testNewAnalyzerNamedTupleBaseClass
 testNewAnalyzerTupleIteration
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
-# NamedTuple next
-testCrashOnSelfRecursiveNamedTupleVar
+# Namedtuple -> tuple matching
+testNamedTupleUpdate3
+# Namedtuple class attr access
+testNamedTupleForwardFunctionIndirectReveal
 # NamedTuple
-testImportReExportedNamedTupleInCycle2
 testTypeAliasesToNamedTuple
 testTypeUsingTypeCNamedTuple
 testOverloadVarargsSelectionWithNamedTuples
@@ -421,11 +422,6 @@ testBasicRecursiveGenericNamedTuple
 testRecursiveNamedTupleWithList
 testNewTypeWithNamedTuple
 testRefreshFunctionalNamedTuple
-testNamedTupleUpdate
-testNamedTupleUpdate2
-testNamedTupleUpdate3
-testNamedTupleUpdate4
-testNamedTupleUpdate5
 testNamedTupleUpdateGeneric
 testNamedTupleUpdateNonRecursiveToRecursiveFine
 testNamedTupleWithinFunction
@@ -433,7 +429,6 @@ testNamedTupleFallback
 testNamedTupleFallbackModule
 
 testDistinctTypes
-testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testRegression11705_NoStrict
 testRecursiveAliasViaBaseClass3
 testNoRecursiveTuplesAtFunctionScope
@@ -525,6 +520,7 @@ testCrashInvalidArgsSyntheticFunctionSyntax
 testCrashForwardSyntheticClassSyntax
 testCrashForwardSyntheticFunctionSyntax
 testRecursiveTypedDictWithList
+testNewAnalyzerTypeArgBoundCheckDifferentNodes
 
 # NoReturn
 testNoReturnTypeAlias
@@ -2120,6 +2116,7 @@ testRecursiveForwardReferenceInUnion
 testRecursiveAliasesErrors1
 testRecursiveAliasesErrors2
 testJSONAliasApproximation
+testCrashOnSelfRecursiveNamedTupleVar
 
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102

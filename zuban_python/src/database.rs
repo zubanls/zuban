@@ -13,6 +13,7 @@ use parsa_python_ast::Expression;
 use parsa_python_ast::Name;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
+use crate::arguments::Arguments;
 use crate::file::PythonFile;
 use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
@@ -29,6 +30,7 @@ use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::LookupResult;
+use crate::value::OnTypeError;
 use crate::value::{Class, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
@@ -812,6 +814,14 @@ pub trait SpecialType: std::fmt::Debug {
     fn as_named_tuple(&self) -> Option<&NamedTuple> {
         None
     }
+
+    fn instantiate(
+        &self,
+        i_s: &InferenceState,
+        full_type: &DbType,
+        args: &dyn Arguments,
+        on_type_error: OnTypeError,
+    ) -> DbType;
 }
 
 #[derive(Debug, Clone)]
