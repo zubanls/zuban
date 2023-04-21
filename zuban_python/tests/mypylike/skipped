@@ -394,6 +394,7 @@ testLiteralWithFinalPropagationIsNotLeaking
 # Tuple Super Class
 testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
+testTypeAliasesToNamedTuple
 # Tuple indexing (including slices)
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
@@ -402,6 +403,7 @@ testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
 # NamedTuple Iter
 testNewAnalyzerTupleIteration
+testOverloadVarargsSelectionWithNamedTuples
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple -> tuple matching
@@ -410,20 +412,14 @@ testNamedTupleUpdate3
 testNamedTupleForwardFunctionIndirectReveal
 # Namedtuple invalid definition
 testNamedTupleFallbackModule
-# NamedTuple
-testTypeAliasesToNamedTuple
-testOverloadVarargsSelectionWithNamedTuples
 # Recursive NamedTuples
-testRecursiveAliasViaNamedTuple
-testBasicRecursiveNamedTuple
-testBasicRecursiveNamedTupleSpecial
-testBasicRecursiveNamedTupleClass
 testMutuallyRecursiveNamedTuples
 testMutuallyRecursiveNamedTuplesJoin
 testMutuallyRecursiveNamedTuplesClasses
 testMutuallyRecursiveNamedTuplesCalls
 testBasicRecursiveGenericNamedTuple
 testRecursiveNamedTupleWithList
+testRecursiveAliasViaNamedTuple
 testRecursiveAliasViaBaseClass3
 testNoRecursiveTuplesAtFunctionScope
 testRecursiveTupleClassesNewType
@@ -1446,6 +1442,9 @@ testNoneListTernary
 testIsinstanceAndOptionalAndAnyBase
 testGenericTypeAliasesOptional
 testCastConfusion
+testBasicRecursiveNamedTuple
+testBasicRecursiveNamedTupleSpecial
+testBasicRecursiveNamedTupleClass
 # narrowing with or/and
 testRestrictedTypeAnd
 testRestrictedTypeOr
