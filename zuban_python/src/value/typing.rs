@@ -10,7 +10,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::new_named_tuple;
+use crate::file::new_typing_named_tuple;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
@@ -101,7 +101,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         on_type_error: OnTypeError,
     ) -> Inferred {
         if self.specific == Specific::TypingNamedTuple {
-            return match new_named_tuple(i_s, args) {
+            return match new_typing_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
                     DbType::new_special(rc),
                 )),

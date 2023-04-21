@@ -53,6 +53,7 @@ pub(super) enum SpecialType {
     Generic,
     GenericWithGenerics,
     TypingNamedTuple,
+    CollectionsNamedTuple,
     Callable,
     Type,
     Tuple,
@@ -832,10 +833,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.inference.file,
                         primary,
                     );
-                    TypeContent::DbType(match new_named_tuple(self.inference.i_s, &args) {
+                    TypeContent::DbType(match new_typing_named_tuple(self.inference.i_s, &args) {
                         Some(rc) => DbType::new_special(rc),
                         None => DbType::Any,
                     })
+                }
+                TypeContent::SpecialType(SpecialType::CollectionsNamedTuple) => {
+                    let args = SimpleArguments::from_primary(
+                        *self.inference.i_s,
+                        self.inference.file,
+                        primary,
+                    );
+                    TypeContent::DbType(
+                        match new_collections_named_tuple(self.inference.i_s, &args) {
+                            Some(rc) => DbType::new_special(rc),
+                            None => DbType::Any,
+                        },
+                    )
                 }
                 TypeContent::Unknown => TypeContent::Unknown,
                 _ => TypeContent::InvalidVariable(InvalidVariableType::Execution),
@@ -869,7 +883,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             TypeContent::SpecialType(SpecialType::GenericWithGenerics)
                         }
                         SpecialType::GenericWithGenerics => todo!(),
-                        SpecialType::TypingNamedTuple => todo!(),
+                        SpecialType::TypingNamedTuple | SpecialType::CollectionsNamedTuple => {
+                            todo!()
+                        }
                         SpecialType::Callable => self.compute_type_get_item_on_callable(s),
                         SpecialType::MypyExtensionsParamType(_) => todo!(),
                         SpecialType::CallableParam(_) => todo!(),
@@ -2714,6 +2730,9 @@ fn check_type_name<'db: 'file, 'file>(
                     Some(Specific::TypingNamedTuple) => {
                         return TypeNameLookup::SpecialType(SpecialType::TypingNamedTuple);
                     }
+                    Some(Specific::CollectionsNamedTuple) => {
+                        return TypeNameLookup::SpecialType(SpecialType::CollectionsNamedTuple);
+                    }
                     Some(s) => {
                         debug!(
                             "Found an unexpected specific {s:?} for {}",
@@ -2871,7 +2890,10 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
         )
 }
 
-pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Option<Rc<NamedTuple>> {
+pub fn new_typing_named_tuple(
+    i_s: &InferenceState,
+    args: &dyn Arguments,
+) -> Option<Rc<NamedTuple>> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
@@ -2923,4 +2945,11 @@ pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Option<Rc<
     } else {
         todo!()
     }
+}
+
+pub fn new_collections_named_tuple(
+    i_s: &InferenceState,
+    args: &dyn Arguments,
+) -> Option<Rc<NamedTuple>> {
+    todo!()
 }
