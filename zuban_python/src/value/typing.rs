@@ -10,7 +10,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::new_typing_named_tuple;
+use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
@@ -45,6 +45,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingLiteral => "Literal",
             Specific::TypingAnnotated => "Annotated",
             Specific::TypingNamedTuple => "NamedTuple",
+            Specific::CollectionsNamedTuple => "namedtuple",
             _ => unreachable!("{:?}", self.specific),
         }
     }
@@ -89,6 +90,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
             Specific::TypingAnnotated => todo!(),
             Specific::TypingNamedTuple => todo!(),
+            Specific::CollectionsNamedTuple => todo!(),
             _ => unreachable!("{:?}", self.specific),
         }
     }
@@ -102,6 +104,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
     ) -> Inferred {
         if self.specific == Specific::TypingNamedTuple {
             return match new_typing_named_tuple(i_s, args) {
+                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
+                    DbType::new_special(rc),
+                )),
+                None => Inferred::new_any(),
+            };
+        }
+        if self.specific == Specific::CollectionsNamedTuple {
+            return match new_collections_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
                     DbType::new_special(rc),
                 )),

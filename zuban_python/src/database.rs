@@ -1868,6 +1868,14 @@ impl DbType {
             _ => Self::Any,
         }
     }
+
+    pub fn is_subclassable(&self) -> bool {
+        match self {
+            Self::Class(..) | Self::Tuple(..) | Self::NewType(..) => true,
+            Self::SpecialType(special) => special.as_named_tuple().is_some(),
+            _ => false,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

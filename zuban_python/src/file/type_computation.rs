@@ -2545,10 +2545,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
             t => {
                 let t = comp.as_db_type(t, node_ref);
-                if !matches!(
-                    t,
-                    DbType::Class(..) | DbType::Tuple(..) | DbType::NewType(..)
-                ) {
+                if !t.is_subclassable() {
                     node_ref.add_typing_issue(
                         self.i_s,
                         IssueType::NewTypeMustBeSubclassable {
@@ -2981,7 +2978,19 @@ pub fn new_collections_named_tuple(
         })
     };
     match atom.unpack() {
-        AtomContent::List(list) => todo!(),
+        AtomContent::List(list) => {
+            for element in list.unpack() {
+                let StarLikeExpression::NamedExpression(ne) = element else {
+                todo!()
+            };
+                let Some(string_slice) = StringSlice::from_string_in_expression(
+                args_node_ref.file.file_index(),
+                ne.expression()) else {
+                todo!()
+            };
+                add_param(string_slice)
+            }
+        }
         AtomContent::Tuple(tup) => todo!(),
         AtomContent::Strings(s) => match s.maybe_single_string_literal() {
             Some(s) => {

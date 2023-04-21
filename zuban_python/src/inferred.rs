@@ -1513,6 +1513,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
         | Specific::TypingLiteral
         | Specific::TypingAnnotated
         | Specific::TypingNamedTuple
+        | Specific::CollectionsNamedTuple
         | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
         Specific::Any | Specific::Cycle => on_missing(i_s),
         Specific::TypingCast => callable(i_s, &TypingCast()),
