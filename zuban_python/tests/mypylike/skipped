@@ -412,7 +412,6 @@ testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleFallbackModule
 # NamedTuple
 testTypeAliasesToNamedTuple
-testTypeUsingTypeCNamedTuple
 testOverloadVarargsSelectionWithNamedTuples
 # Recursive NamedTuples
 testRecursiveAliasViaNamedTuple

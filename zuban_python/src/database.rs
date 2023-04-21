@@ -816,12 +816,12 @@ pub trait SpecialType: std::fmt::Debug {
         None
     }
 
-    fn instantiate(
+    fn instantiate<'db>(
         &self,
-        i_s: &InferenceState,
+        i_s: &InferenceState<'db, '_>,
         full_type: &DbType,
-        args: &dyn Arguments,
-        on_type_error: OnTypeError,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> DbType;
 }
 

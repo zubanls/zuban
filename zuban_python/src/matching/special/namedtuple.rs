@@ -19,7 +19,9 @@ use crate::{
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{FormatData, Match, Matcher, ResultContext, Type},
+    matching::{
+        calculate_callable_type_vars_and_return, FormatData, Match, Matcher, ResultContext, Type,
+    },
     node_ref::NodeRef,
     value::{Class, LookupResult, Module, OnTypeError, Value},
     ValueKind,
@@ -208,14 +210,23 @@ impl SpecialType for NamedTuple {
         }
     }
 
-    fn instantiate(
+    fn instantiate<'db>(
         &self,
-        i_s: &InferenceState,
+        i_s: &InferenceState<'db, '_>,
         full_type: &DbType,
-        args: &dyn Arguments,
-        on_type_error: OnTypeError,
+        args: &dyn Arguments<'db>,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> DbType {
-        debug!("TODO check namedtuple args");
+        let calculated_type_vars = calculate_callable_type_vars_and_return(
+            i_s,
+            None,
+            self.constructor.get().unwrap(),
+            args.iter(),
+            &|| args.as_node_ref(),
+            &mut ResultContext::Unknown,
+            on_type_error,
+        );
+        debug!("TODO use generics for namedtuple");
         full_type.clone()
     }
 
