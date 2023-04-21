@@ -487,10 +487,12 @@ impl<'db> File<'db> {
 }
 
 impl<'db> List<'db> {
-    pub fn unpack(&self) -> Option<ListOrSetElementIterator<'db>> {
+    pub fn unpack(&self) -> Option<StarLikeExpressionIterator<'db>> {
         let n = self.node.nth_child(1);
         if n.is_type(Nonterminal(star_named_expressions)) {
-            Some(ListOrSetElementIterator(n.iter_children().step_by(2)))
+            Some(StarLikeExpressionIterator::Elements(
+                n.iter_children().step_by(2),
+            ))
         } else {
             assert_eq!(n.type_(), PyNodeType::Keyword);
             None
@@ -498,33 +500,13 @@ impl<'db> List<'db> {
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct ListOrSetElementIterator<'db>(StepBy<SiblingIterator<'db>>);
-
-impl<'db> ListOrSetElementIterator<'db> {
-    pub fn new_empty(tree: &'db Tree) -> Self {
-        Self(SiblingIterator::new_empty(&tree.0).step_by(2))
-    }
-}
-
-impl<'db> Iterator for ListOrSetElementIterator<'db> {
-    type Item = StarLikeExpression<'db>;
-    fn next(&mut self) -> Option<Self::Item> {
-        self.0.next().map(|next| {
-            if next.is_type(Nonterminal(named_expression)) {
-                StarLikeExpression::NamedExpression(NamedExpression::new(next))
-            } else {
-                StarLikeExpression::StarNamedExpression(StarNamedExpression::new(next))
-            }
-        })
-    }
-}
-
 impl<'db> Set<'db> {
-    pub fn unpack(&self) -> Option<ListOrSetElementIterator<'db>> {
+    pub fn unpack(&self) -> Option<StarLikeExpressionIterator<'db>> {
         let n = self.node.nth_child(1);
         if n.is_type(Nonterminal(star_named_expressions)) {
-            Some(ListOrSetElementIterator(n.iter_children().step_by(2)))
+            Some(StarLikeExpressionIterator::Elements(
+                n.iter_children().step_by(2),
+            ))
         } else {
             assert_eq!(n.type_(), PyNodeType::Keyword);
             None
@@ -551,6 +533,7 @@ impl<'db> Tuple<'db> {
     }
 }
 
+#[derive(Debug, Clone)]
 pub enum StarLikeExpressionIterator<'db> {
     Elements(StepBy<SiblingIterator<'db>>),
     Empty,

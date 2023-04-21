@@ -12,7 +12,7 @@ mod tuple;
 mod type_alias;
 mod typing;
 
-use parsa_python_ast::{ListOrSetElementIterator, StarLikeExpression};
+use parsa_python_ast::{StarLikeExpression, StarLikeExpressionIterator};
 
 use crate::arguments::{Argument, Arguments};
 use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
@@ -128,7 +128,7 @@ macro_rules! base_qualified_name {
 #[derive(Debug, Clone)]
 pub enum IteratorContent<'a> {
     Inferred(Inferred),
-    ListLiteral(ListLiteral<'a>, ListOrSetElementIterator<'a>),
+    ListLiteral(ListLiteral<'a>, StarLikeExpressionIterator<'a>),
     // The code before makes sure that no type var tuples are passed.
     FixedLengthTupleGenerics(std::slice::Iter<'a, TypeOrTypeVarTuple>),
     Empty,

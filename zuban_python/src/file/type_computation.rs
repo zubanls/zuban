@@ -2547,7 +2547,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     pub fn compute_named_tuple_initializer(
         &mut self,
         node_ref: NodeRef,
-        list: ListOrSetElementIterator,
+        list: StarLikeExpressionIterator,
     ) -> Option<CallableParams> {
         let mut x = type_computation_for_variable_annotation;
         let file_index = self.file_index;

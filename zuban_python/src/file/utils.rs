@@ -1,4 +1,4 @@
-use parsa_python_ast::{Int, List, ListOrSetElementIterator, StarLikeExpression};
+use parsa_python_ast::{Int, List, StarLikeExpression, StarLikeExpressionIterator};
 
 use crate::arguments::Argument;
 use crate::database::{
@@ -17,7 +17,7 @@ use crate::Inferred;
 impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics(
         &mut self,
-        elements: ListOrSetElementIterator,
+        elements: StarLikeExpressionIterator,
     ) -> GenericItem {
         let mut result = DbType::Never;
         for child in elements {

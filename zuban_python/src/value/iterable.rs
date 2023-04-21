@@ -1,5 +1,5 @@
 use parsa_python_ast::{
-    Dict, DictElement, Expression, List, ListOrSetElementIterator, NamedExpression,
+    Dict, DictElement, Expression, List, NamedExpression, StarLikeExpressionIterator,
 };
 
 use super::{Class, Instance, IteratorContent, LookupResult, Value, ValueKind};
@@ -107,10 +107,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
         match self.list_node().unpack() {
             Some(elements) => IteratorContent::ListLiteral(*self, elements),
             // TODO shouldn't this be IteratorContent::Empty, ???
-            None => IteratorContent::ListLiteral(
-                *self,
-                ListOrSetElementIterator::new_empty(&self.node_ref.file.tree),
-            ),
+            None => IteratorContent::ListLiteral(*self, StarLikeExpressionIterator::Empty),
         }
     }
 
