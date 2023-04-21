@@ -394,6 +394,9 @@ testLiteralWithFinalPropagationIsNotLeaking
 # Tuple Super Class
 testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
+# Tuple indexing (including slices)
+testLiteralIntelligentIndexingTuples
+testLiteralIntelligentIndexingTupleUnions
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
@@ -405,11 +408,13 @@ testNewAnalyzerMemberNameMatchesNamedTuple
 testNamedTupleUpdate3
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
+# Namedtuple invalid definition
+testNamedTupleFallbackModule
 # NamedTuple
 testTypeAliasesToNamedTuple
 testTypeUsingTypeCNamedTuple
 testOverloadVarargsSelectionWithNamedTuples
-testNarrowingDownNamedTupleUnion
+# Recursive NamedTuples
 testRecursiveAliasViaNamedTuple
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial
@@ -420,23 +425,15 @@ testMutuallyRecursiveNamedTuplesClasses
 testMutuallyRecursiveNamedTuplesCalls
 testBasicRecursiveGenericNamedTuple
 testRecursiveNamedTupleWithList
-testNewTypeWithNamedTuple
-testNamedTupleUpdateNonRecursiveToRecursiveFine
-testNamedTupleWithinFunction
-testNamedTupleFallback
-testNamedTupleFallbackModule
-
-testDistinctTypes
-testRegression11705_NoStrict
 testRecursiveAliasViaBaseClass3
 testNoRecursiveTuplesAtFunctionScope
 testRecursiveTupleClassesNewType
-testLiteralIntelligentIndexingTuples
-testLiteralIntelligentIndexingTupleUnions
+testNamedTupleUpdateNonRecursiveToRecursiveFine
 # NamedTuple classmethod access
 testBoundClassMethodWithNamedTupleBase
 # namedtuple
 testCallableParsingInInheritence
+testNewTypeWithNamedTuple
 
 # data class (currently all are passing)
 
@@ -519,6 +516,7 @@ testCrashForwardSyntheticClassSyntax
 testCrashForwardSyntheticFunctionSyntax
 testRecursiveTypedDictWithList
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
+testDistinctTypes
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1041,6 +1039,7 @@ testAttributeDefOrder2
 testGenericOverridePreciseInvalid
 testGenericOverrideGeneric
 testGenericOverrideGenericChained
+testNamedTupleFallback
 # List item 0 has incompatible type "str"; expected "int"
 testVariableTypeVarList
 testInWithInvalidArgs
@@ -1396,6 +1395,7 @@ testIntersectionUsingPromotion7
 testIntersectionUsingPromotion8
 testCorrectIsinstanceWithForwardUnion
 testNewTypeWithIsInstanceAndIsSubclass
+testNarrowingDownNamedTupleUnion
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
@@ -1466,6 +1466,7 @@ testNoneAndStringIsNone
 testInferInWithErasedTypes
 testUnionTruthinessTracking
 testRegression11705_Strict
+testRegression11705_NoStrict
 # or/and
 testBooleanAndOr
 testNonBooleanOr

@@ -2896,7 +2896,7 @@ pub fn new_named_tuple(i_s: &InferenceState, args: &dyn Arguments) -> Option<Rc<
     let list_iterator = match atom.unpack() {
         AtomContent::List(list) => list.unpack(),
         AtomContent::Tuple(tup) => todo!(),
-        _ => todo!(),
+        _ => todo!("{atom:?}"),
     };
 
     if let Some(params) = node_ref
