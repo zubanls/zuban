@@ -389,6 +389,19 @@ impl<'db: 'a, 'a> Class<'a> {
                                             &mut metaclass,
                                             cached_class_infos.metaclass,
                                         );
+                                        if let ClassType::NamedTuple {
+                                            ref named_tuple, ..
+                                        } = cached_class_infos.class_type
+                                        {
+                                            if matches!(class_type, ClassType::Normal) {
+                                                class_type = ClassType::NamedTuple {
+                                                    named_tuple: named_tuple.clone(),
+                                                    is_defining_class: false,
+                                                }
+                                            } else {
+                                                todo!()
+                                            }
+                                        }
                                         for base in cached_class_infos.mro.iter() {
                                             mro.push(base.replace_type_var_likes(db, &mut |t| {
                                                 mro[mro_index].expect_class_generics()[t.index()]

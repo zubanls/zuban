@@ -399,8 +399,6 @@ testTypeAliasesToNamedTuple
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
 testMutuallyRecursiveNamedTuplesClasses
-# Class NamedTuple indexing
-testRecursiveAliasViaBaseClass3
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
