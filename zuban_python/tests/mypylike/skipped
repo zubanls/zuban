@@ -398,12 +398,16 @@ testTypeAliasesToNamedTuple
 # Tuple indexing (including slices)
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
+testMutuallyRecursiveNamedTuplesClasses
+# Class NamedTuple indexing
+testRecursiveAliasViaBaseClass3
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
 # NamedTuple Iter
 testNewAnalyzerTupleIteration
 testOverloadVarargsSelectionWithNamedTuples
+testRecursiveTupleClassesNewType
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple -> tuple matching
@@ -413,15 +417,8 @@ testMutuallyRecursiveNamedTuples
 testNamedTupleForwardFunctionIndirectReveal
 # Namedtuple invalid definition
 testNamedTupleFallbackModule
-# Recursive NamedTuples
-testMutuallyRecursiveNamedTuplesClasses
+# NamedTuples set generics
 testBasicRecursiveGenericNamedTuple
-testRecursiveNamedTupleWithList
-testRecursiveAliasViaNamedTuple
-testRecursiveAliasViaBaseClass3
-testNoRecursiveTuplesAtFunctionScope
-testRecursiveTupleClassesNewType
-testNamedTupleUpdateNonRecursiveToRecursiveFine
 # NamedTuple classmethod access
 testBoundClassMethodWithNamedTupleBase
 
@@ -1388,6 +1385,7 @@ testIntersectionUsingPromotion8
 testCorrectIsinstanceWithForwardUnion
 testNewTypeWithIsInstanceAndIsSubclass
 testNarrowingDownNamedTupleUnion
+testRecursiveAliasViaNamedTuple
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
@@ -1445,6 +1443,7 @@ testCastConfusion
 testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial
 testBasicRecursiveNamedTupleClass
+testNamedTupleUpdateNonRecursiveToRecursiveFine
 # narrowing with or/and
 testRestrictedTypeAnd
 testRestrictedTypeOr
@@ -2119,6 +2118,9 @@ testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
 # Not working in interpreter
 # Recursive class inheritance
 testNewAnalyzerAliasToNotReadyNestedClass
+
+# "Recursive types are not allowed at function scope"
+testNoRecursiveTuplesAtFunctionScope
 
 # xfail
 testOpWithInheritedFromAny-xfail
