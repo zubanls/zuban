@@ -408,12 +408,12 @@ testOverloadVarargsSelectionWithNamedTuples
 testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple -> tuple matching
 testNamedTupleUpdate3
+testMutuallyRecursiveNamedTuples
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 # Namedtuple invalid definition
 testNamedTupleFallbackModule
 # Recursive NamedTuples
-testMutuallyRecursiveNamedTuples
 testMutuallyRecursiveNamedTuplesJoin
 testMutuallyRecursiveNamedTuplesClasses
 testMutuallyRecursiveNamedTuplesCalls

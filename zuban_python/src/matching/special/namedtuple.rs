@@ -90,8 +90,12 @@ impl NamedTuple {
         debug_assert_eq!(result, Ok(()));
     }
 
+    fn constructor(&self) -> &CallableContent {
+        self.constructor.get().unwrap()
+    }
+
     fn params(&self) -> &[CallableParam] {
-        let CallableParams::Simple(params) = &self.constructor.get().unwrap().params else {
+        let CallableParams::Simple(params) = &self.constructor().params else {
             unreachable!();
         };
         params
@@ -104,9 +108,16 @@ impl NamedTuple {
     }
 
     pub fn format_with_name(&self, format_data: &FormatData, name: &str) -> Box<str> {
-        let CallableParams::Simple(params) = &self.constructor.get().unwrap().params else {
+        let CallableParams::Simple(params) = &self.constructor().params else {
             unreachable!()
         };
+        // We need to check recursions here, because for class definitions of named tuples can
+        // recurse with their attributes.
+        let rec = RecursiveAlias::new(self.constructor().defined_at, None);
+        if format_data.has_already_seen_recursive_alias(&rec) {
+            return Box::from(name);
+        }
+        let format_data = &format_data.with_seen_recursive_alias(&rec);
         let types = params
             .iter()
             .map(|t| {
@@ -220,7 +231,7 @@ impl SpecialType for NamedTuple {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             None,
-            self.constructor.get().unwrap(),
+            self.constructor(),
             args.iter(),
             &|| args.as_node_ref(),
             &mut ResultContext::Unknown,
