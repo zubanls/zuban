@@ -203,6 +203,17 @@ impl SpecialType for NamedTuple {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
+        if let Some(DbType::SpecialType(s)) = value_type.maybe_db_type() {
+            if let Some(nt) = s.as_named_tuple() {
+                let c1 = self.constructor();
+                let c2 = nt.constructor();
+                if c1.type_vars.is_some() || c2.type_vars.is_some() {
+                    todo!()
+                } else {
+                    return (c1 == c2).into();
+                }
+            }
+        }
         debug!("TODO namedtuple matches_internal");
         Match::new_true()
     }
