@@ -417,8 +417,6 @@ testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleFallbackModule
 # NamedTuples set generics
 testBasicRecursiveGenericNamedTuple
-# NamedTuple classmethod access
-testBoundClassMethodWithNamedTupleBase
 
 # data class (currently all are passing)
 

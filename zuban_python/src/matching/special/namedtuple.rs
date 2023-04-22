@@ -3,7 +3,7 @@ use std::rc::Rc;
 use once_cell::unsync::OnceCell;
 
 use parsa_python_ast::{
-    AssignmentContent, BlockContent, SimpleStmtContent, SimpleStmts, StmtContent, Target,
+    AssignmentContent, BlockContent, Decoratee, SimpleStmtContent, SimpleStmts, StmtContent, Target,
 };
 
 use crate::{
@@ -72,6 +72,14 @@ impl NamedTuple {
                             find_stmt_named_tuple_types(i_s.db, file, &mut vec, simple)
                         }
                         StmtContent::FunctionDef(_) => (),
+                        StmtContent::Decorated(dec)
+                            if matches!(
+                                dec.decoratee(),
+                                Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
+                            ) =>
+                        {
+                            ()
+                        }
                         _ => NodeRef::new(file, stmt.index())
                             .add_typing_issue(i_s, IssueType::InvalidStmtInNamedTuple),
                     }
