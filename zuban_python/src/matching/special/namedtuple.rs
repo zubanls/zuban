@@ -9,9 +9,9 @@ use parsa_python_ast::{
 use crate::{
     arguments::Arguments,
     database::{
-        CallableContent, CallableParam, CallableParams, Database, DbType, GenericsList,
-        ParamSpecific, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType, StringSlice,
-        Variance,
+        CallableContent, CallableParam, CallableParams, Database, DbType, FormatStyle,
+        GenericsList, ParamSpecific, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType,
+        StringSlice, Variance,
     },
     debug,
     diagnostics::IssueType,
@@ -108,6 +108,9 @@ impl NamedTuple {
     }
 
     pub fn format_with_name(&self, format_data: &FormatData, name: &str) -> Box<str> {
+        if format_data.style != FormatStyle::MypyRevealType {
+            return Box::from(name);
+        }
         let CallableParams::Simple(params) = &self.constructor().params else {
             unreachable!()
         };
@@ -133,7 +136,10 @@ impl NamedTuple {
 
 impl SpecialType for NamedTuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
-        self.format_with_name(format_data, &self.qualified_name(format_data.db))
+        match format_data.style {
+            FormatStyle::Short => self.format_with_name(format_data, self.name(format_data.db)),
+            _ => self.format_with_name(format_data, &self.qualified_name(format_data.db)),
+        }
     }
 
     fn has_any_internal(

@@ -414,7 +414,6 @@ testNamedTupleForwardFunctionIndirectReveal
 # Namedtuple invalid definition
 testNamedTupleFallbackModule
 # Recursive NamedTuples
-testMutuallyRecursiveNamedTuplesJoin
 testMutuallyRecursiveNamedTuplesClasses
 testMutuallyRecursiveNamedTuplesCalls
 testBasicRecursiveGenericNamedTuple
@@ -1223,6 +1222,8 @@ testConditionalExpressionUnionWithAny
 testOverloadedInIter
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
+# join tuple iter
+testMutuallyRecursiveNamedTuplesJoin
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
