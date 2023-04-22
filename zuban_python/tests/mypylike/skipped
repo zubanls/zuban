@@ -399,6 +399,11 @@ testTypeAliasesToNamedTuple
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
 testMutuallyRecursiveNamedTuplesClasses
+# Namedtuple -> tuple matching
+testNamedTupleUpdate3
+testMutuallyRecursiveNamedTuples
+# NamedTuples set generics
+testBasicRecursiveGenericNamedTuple
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
@@ -408,15 +413,10 @@ testOverloadVarargsSelectionWithNamedTuples
 testRecursiveTupleClassesNewType
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
-# Namedtuple -> tuple matching
-testNamedTupleUpdate3
-testMutuallyRecursiveNamedTuples
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 # Namedtuple invalid definition
 testNamedTupleFallbackModule
-# NamedTuples set generics
-testBasicRecursiveGenericNamedTuple
 
 # data class (currently all are passing)
 
