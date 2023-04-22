@@ -181,6 +181,10 @@ impl SpecialType for NamedTuple {
         self.name.as_str(db)
     }
 
+    fn debug(&self) -> String {
+        format!("{:?}", self)
+    }
+
     fn lookup_internal(
         &self,
         i_s: &InferenceState,

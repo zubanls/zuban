@@ -770,7 +770,7 @@ impl UnionType {
     }
 }
 
-pub trait SpecialType: std::fmt::Debug {
+pub trait SpecialType: std::any::Any + 'static {
     fn format(&self, format_data: &FormatData) -> Box<str>;
     fn has_any_internal(
         &self,
@@ -779,6 +779,8 @@ pub trait SpecialType: std::fmt::Debug {
     ) -> bool;
     fn has_self_type(&self) -> bool;
     fn name<'a>(&'a self, db: &'a Database) -> &'a str;
+    // We need any as a super trait, but we would want Debug as well, so just copy that here.
+    fn debug(&self) -> String;
     fn lookup_internal(
         &self,
         i_s: &InferenceState,
@@ -825,8 +827,16 @@ pub trait SpecialType: std::fmt::Debug {
     ) -> DbType;
 }
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SpecialTypeRc(Rc<dyn SpecialType>);
+
+impl fmt::Debug for SpecialTypeRc {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        f.debug_tuple("SpecialTypeRc")
+            .field(&self.0.debug())
+            .finish()
+    }
+}
 
 impl std::cmp::PartialEq for SpecialTypeRc {
     fn eq(&self, other: &Self) -> bool {

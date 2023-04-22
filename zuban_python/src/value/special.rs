@@ -9,11 +9,18 @@ use crate::{
     node_ref::NodeRef,
 };
 
-#[derive(Debug)]
 pub struct SpecialTypeAsValue<'a> {
     db: &'a Database,
     special_type: &'a dyn SpecialType,
     db_type_ptr: &'a DbType,
+}
+
+impl std::fmt::Debug for SpecialTypeAsValue<'_> {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SpecialTypeAsValue")
+            .field("special_type", &self.special_type.debug())
+            .finish()
+    }
 }
 
 impl<'a> SpecialTypeAsValue<'a> {
