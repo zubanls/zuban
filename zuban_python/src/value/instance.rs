@@ -6,7 +6,7 @@ use super::{
     Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{Database, DbType, PointLink};
+use crate::database::{ClassType, Database, DbType, PointLink, SpecialType};
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
@@ -202,6 +202,13 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        if let ClassType::NamedTuple {
+            ref named_tuple, ..
+        } = self.class.use_cached_class_infos(i_s.db).class_type
+        {
+            // TODO this doesn't take care of the mro and could not be the first __getitem__
+            return named_tuple.get_item(i_s, slice_type, result_context);
+        }
         let mro_iterator = self.class.mro(i_s.db);
         let node_ref = slice_type.as_node_ref();
         let finder = ClassMroFinder {
