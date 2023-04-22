@@ -226,8 +226,7 @@ impl SpecialType for NamedTuple {
                 }
             }
         }
-        debug!("TODO namedtuple matches_internal");
-        Match::new_true()
+        Match::new_false()
     }
 
     fn get_item(
