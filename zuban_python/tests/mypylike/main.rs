@@ -31,6 +31,7 @@ const USE_MYPY_TEST_FILES: [&str; 42] = [
     "semanal-types.test",
     "check-semanal-error.test",
     "check-newsemanal.test",
+    //
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
