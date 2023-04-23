@@ -1284,6 +1284,7 @@ testOverloadedInIter
 testOverloadInferUnionWithDifferingLengths
 # join tuple iter
 testMutuallyRecursiveNamedTuplesJoin
+testCallerTupleVarArgsAndGenericCalleeVarArg
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
@@ -1862,10 +1863,6 @@ testUnusedTargetNotExceptClause
 
 # weird files
 testScriptsAreNotModules
-
-# Literal with ?
-testNewAnalyzerBool
-testCallerTupleVarArgsAndGenericCalleeVarArg
 
 # __doc__ definitions
 testNewNamedTupleDocString
