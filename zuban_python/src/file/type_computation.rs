@@ -2934,7 +2934,7 @@ pub fn new_typing_named_tuple(
     }
     let list_iterator = match atom.unpack() {
         AtomContent::List(list) => list.unpack(),
-        AtomContent::Tuple(tup) => todo!(),
+        AtomContent::Tuple(tup) => tup.iter(),
         _ => todo!("{atom:?}"),
     };
     let args_node_ref = args.as_node_ref();
