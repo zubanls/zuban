@@ -10,9 +10,10 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 34] = [
+const USE_MYPY_TEST_FILES: [&str; 35] = [
     // Semanal tests
     "semanal-errors.test",
+    "semanal-namedtuple.test",
     "check-semanal-error.test",
     // Type checking tests
     "check-generics.test",
@@ -272,7 +273,12 @@ impl<'name, 'code> TestCase<'name, 'code> {
             if type_ == "file" {
                 step.files.insert(rest, in_between);
             } else if type_ == "out" {
-                step.out = in_between;
+                if !(self.file_name.contains("semanal-") && in_between.starts_with("MypyFile:1")) {
+                    // Semanal files print the AST in success cases. We only care about the
+                    // errors, because zuban's tree is probably different. We still test however
+                    // that there are no errors in those cases.
+                    step.out = in_between;
+                }
             } else if type_ == "delete" {
                 step.deletions.push(rest)
             }
