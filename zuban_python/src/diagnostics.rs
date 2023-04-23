@@ -89,6 +89,7 @@ pub(crate) enum IssueType {
     UnsupportedClassScopedImport,
 
     StmtOutsideFunction { keyword: &'static str },
+    TupleIndexOutOfRange,
     InvalidStmtInNamedTuple,
     InvalidSecondArgumentToNamedTuple,
 
@@ -413,6 +414,7 @@ impl<'db> Diagnostic<'db> {
             IssueType::UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_owned(),
             IssueType::StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+            IssueType::TupleIndexOutOfRange => "Tuple index out of range".to_owned(),
             IssueType::InvalidStmtInNamedTuple =>
                 "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_owned(),
             IssueType::InvalidSecondArgumentToNamedTuple =>

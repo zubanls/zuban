@@ -256,12 +256,17 @@ impl SpecialType for NamedTuple {
     ) -> Inferred {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => infer_index(i_s, simple, |index| {
-                self.params().get(index).map(|p| {
-                    Inferred::execute_db_type(
+                if let Some(p) = self.params().get(index) {
+                    Some(Inferred::execute_db_type(
                         i_s,
                         p.param_specific.expect_positional_db_type_as_ref().clone(),
-                    )
-                })
+                    ))
+                } else {
+                    slice_type
+                        .as_node_ref()
+                        .add_typing_issue(i_s, IssueType::TupleIndexOutOfRange);
+                    None
+                }
             }),
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
