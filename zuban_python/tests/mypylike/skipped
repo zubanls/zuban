@@ -1,6 +1,8 @@
 # Next up
 testQualifiedTypevar
 testInvalidOptionalType
+testTryExceptWithMultipleHandlers
+testConstantFold2
 testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
 
@@ -1757,6 +1759,16 @@ testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 testNewNamedTupleWithMethods
 
+# del statement
+testIndexedDel
+testDelGlobalName
+testDelLocalName
+testDelMultipleThings
+testDelMultipleThingsInvalid
+
+# Except with multiple exceptions in parentheses
+testExceptWithMultipleTypes
+
 # "Cannot determine type of"
 testThreePassesRequired
 testAccessGlobalVarBeforeItsTypeIsAvailable
@@ -2041,6 +2053,12 @@ testNewAnalyzerTypeArgBoundCheckWithContext
 
 # --allow-untyped-globals
 testPermissiveAttributeOverride1
+
+# --allow-redefinition
+testStarLvalues
+testRenameGlobalVariable
+testNoRenameGlobalVariable
+testCannotRenameExternalVarWithinClass
 
 # --disallow-any-expr
 testDoNotLimitErrorVolumeIfNotImportErrors
