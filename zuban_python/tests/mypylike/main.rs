@@ -11,11 +11,13 @@ use regex::{Captures, Regex, Replacer};
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
 const USE_MYPY_TEST_FILES: [&str; 34] = [
+    // Semanal tests
+    "semanal-errors.test",
+    "check-semanal-error.test",
+    // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
     "check-typevar-unbound.test",
-    "semanal-errors.test",
-    "check-semanal-error.test",
     "check-newsemanal.test",
     "check-basic.test",
     "check-type-aliases.test",
