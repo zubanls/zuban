@@ -25,7 +25,6 @@ const USE_MYPY_TEST_FILES: [&str; 42] = [
     "semanal-namedtuple.test",
     //"semanal-python310.test",
     "semanal-statements.test",
-    //"semanal-symtable.test",
     "semanal-typealiases.test",
     //"semanal-typeddict.test",
     "semanal-typeinfo.test",
@@ -130,6 +129,7 @@ const USE_MYPY_TEST_FILES: [&str; 42] = [
     // Won't do, because it tests mypy internals
     //"check-incomplete-fixture.test",
     //"check-native-int.test",
+    //"semanal-symtable.test",
 ];
 
 const BASE_PATH: &str = "/mypylike/";
