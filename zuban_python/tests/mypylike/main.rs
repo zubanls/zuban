@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 39] = [
+const USE_MYPY_TEST_FILES: [&str; 40] = [
     // Semanal tests
     //"semanal-abstractclasses.test",
     "semanal-basic.test",
@@ -28,7 +28,7 @@ const USE_MYPY_TEST_FILES: [&str; 39] = [
     //"semanal-symtable.test",
     //"semanal-typealiases.test",
     //"semanal-typeddict.test",
-    //"semanal-typeinfo.test",
+    "semanal-typeinfo.test",
     "semanal-types.test",
     "check-semanal-error.test",
     "check-newsemanal.test",
@@ -289,7 +289,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
             if type_ == "file" {
                 step.files.insert(rest, in_between);
             } else if type_ == "out" {
-                if !(self.file_name.contains("semanal-") && in_between.starts_with("MypyFile:1")) {
+                if !(self.file_name.contains("semanal-")
+                    && (in_between.starts_with("MypyFile:1")
+                        || in_between.starts_with("TypeInfoMap(")))
+                {
                     // Semanal files print the AST in success cases. We only care about the
                     // errors, because zuban's tree is probably different. We still test however
                     // that there are no errors in those cases.
