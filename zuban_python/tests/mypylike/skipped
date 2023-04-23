@@ -427,16 +427,10 @@ testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
 testNewNamedTupleMethodInheritance
 # "Tuple index out of range"
 testNamedTupleWithTupleFieldNamesUsedAsTuple
-# type_computation:3008
-testNamedTupleNoBytes
 # Nested usage in functions of definition, means constructor is not yet defined.
 testNamedTupleTypingSelfMethod
 testNewNamedTupleClassMethod
 testNewNamedTupleStaticMethod
-# namedtuple:322
-testNewNamedTupleIllegalNames
-# namedtuple:324
-testNewNamedTupleDocString
 # "namedtuple()" field names cannot start with an underscore: _y, _z
 testNamedTupleNoUnderscoreFields
 # "Class has two incompatible bases derived from tuple"
@@ -485,9 +479,11 @@ testNamedTupleMissingClassAttribute
 # Namedtuple invalid definition
 testNamedTupleFallbackModule
 # NamedTuple wrong args
+testNamedTupleNoBytes
 testNamedTupleAdditionalArgs
 # Namedtuple bad overwrite of count etc
 testNamedTupleIncompatibleRedefinition
+testNewNamedTupleIllegalNames
 
 # data class (currently all are passing)
 
@@ -1870,6 +1866,9 @@ testScriptsAreNotModules
 # Literal with ?
 testNewAnalyzerBool
 testCallerTupleVarArgsAndGenericCalleeVarArg
+
+# __doc__ definitions
+testNewNamedTupleDocString
 
 # Formatting qualified module names
 testMetaclassPlaceholderNode
