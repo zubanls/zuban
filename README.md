@@ -24,3 +24,11 @@ with debug enabled:
     sudo sysctl -w kernel.perf_event_paranoid=1  # Might be needed
     flamegraph cargo test blackbox --release
     firefox flamegraph.svg
+
+### Progress History
+
+- 2022-09-27: 1170 / 2547 (0.08s -> 14625 tests/s 44b39e90299909bb1672a0a64699c42145efda35)
+- 2023-01-20: 1622 / 2989 (0.13s -> 12476 tests/s 914aede21d716bd80b9a790c213b6d54024b8b79)
+- 2023-02-23: 1750 / 3104 (0.27s ->  6481 tests/s a8d9592a77286caa42501c69ea8b7b89c430c4a8)
+- 2023-03-22: 2106 / 3866 (0.30s ->  7262 tests/s d5b94d4a3dcb75fbdb2abb7c6feb41dd7bd287ec)
+- 2023-04-23: 2328 / 4006 (0.31s ->  7510 tests/s 515d90a4a5c12af68cd885db0bf2b79afe88f54d)
