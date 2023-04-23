@@ -428,7 +428,6 @@ testNewNamedTupleMethodInheritance
 # "Tuple index out of range"
 testNamedTupleWithTupleFieldNamesUsedAsTuple
 # type_computation:3008
-testInvalidNamedTupleWithinFunction
 testNamedTupleNoBytes
 # Nested usage in functions of definition, means constructor is not yet defined.
 testNamedTupleTypingSelfMethod
@@ -447,6 +446,7 @@ testNamedTuplesTwoAsBaseClasses2
 testAssignNamedTupleAsAttribute
 # "First argument to namedtuple() should be "A", not "X""
 testNamedTupleTypeNameMatchesVariableName
+testInvalidNamedTupleWithinFunction
 # "Statement is unreachable"
 testNamedTupleWithBoolNarrowsToBool
 # "Self type cannot be used in NamedTuple item type"

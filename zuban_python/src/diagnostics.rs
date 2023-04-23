@@ -90,6 +90,7 @@ pub(crate) enum IssueType {
 
     StmtOutsideFunction { keyword: &'static str },
     InvalidStmtInNamedTuple,
+    InvalidSecondArgumentToNamedTuple,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -414,6 +415,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
             IssueType::InvalidStmtInNamedTuple =>
                 "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_owned(),
+            IssueType::InvalidSecondArgumentToNamedTuple =>
+                "List or tuple literal expected as the second argument to \"namedtuple()\"".to_owned(),
 
             IssueType::OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_owned(),

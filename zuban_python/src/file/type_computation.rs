@@ -2895,7 +2895,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
 
 fn check_named_tuple_name<'x, 'y>(
     args: &'y dyn Arguments<'x>,
-) -> Option<(StringSlice, Atom<'y>, ArgumentIterator<'x, 'y>)> {
+) -> Option<(StringSlice, NodeRef<'y>, Atom<'y>, ArgumentIterator<'x, 'y>)> {
     let mut iterator = args.iter();
     let Some(first_arg) = iterator.next() else {
         todo!()
@@ -2919,14 +2919,14 @@ fn check_named_tuple_name<'x, 'y>(
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
         todo!()
     };
-    Some((string_slice, atom, iterator))
+    Some((string_slice, node_ref, atom, iterator))
 }
 
 pub fn new_typing_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, atom, mut iterator)) = check_named_tuple_name(args) else {
+    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(args) else {
         todo!()
     };
     if iterator.next().is_some() {
@@ -2961,7 +2961,7 @@ pub fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, atom, mut iterator)) = check_named_tuple_name(args) else {
+    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(args) else {
         todo!()
     };
     if iterator.next().is_some() {
@@ -3007,7 +3007,10 @@ pub fn new_collections_named_tuple(
             }
             _ => todo!(),
         },
-        _ => todo!("{atom:?}"),
+        _ => {
+            second_node_ref.add_typing_issue(i_s, IssueType::InvalidSecondArgumentToNamedTuple);
+            return None;
+        }
     };
     let callable = CallableContent {
         name: Some(name),
