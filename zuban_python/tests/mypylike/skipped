@@ -1,13 +1,27 @@
 # Next up
 testQualifiedTypevar
 testInvalidOptionalType
+testAnyTypeAlias2
+testCantUseStringLiteralAsTypeAlias
 testTryExceptWithMultipleHandlers
 testConstantFold2
 testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
+# [fixture ]
+testQualifiedSimpleTypeAlias
+testImportUnionTypeAlias
+testImportUnionTypeAlias2
+testImportSimpleTypeAlias
+testImportSimpleTypeAlias2
+testTypeAliasOfImportedAlias
 
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
+
+# typing.List used in inference
+testTypeApplicationWithQualifiedTypeAlias
+# typing.Union used in type alias
+testUnionTypeAliasWithQualifiedUnion
 
 # dict specialities
 testDictWithKeywordArgsOnly
