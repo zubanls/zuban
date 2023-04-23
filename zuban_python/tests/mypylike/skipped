@@ -331,6 +331,7 @@ testOverridePropertyMethod
 testEllipsis
 testCrashOnComplexNamedTupleUnionProperty
 testNamedTupleProperty
+testNewNamedTupleProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -403,6 +404,7 @@ testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
 testMutuallyRecursiveNamedTuplesClasses
 # Namedtuple uncategorized
+testTypingExtensionsNamedTuple
 testNamedTupleAsBaseClass
 testNamedTupleAsBaseClass2
 testNamedTupleCreateWithPositionalArguments
@@ -422,6 +424,7 @@ testNamedTupleSubclassMulti
 testNamedTupleClassMethodWithGenericReturnValue
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
+testNewNamedTupleMethodInheritance
 # type_computation.rs:2968
 testNamedTupleAdditionalArgs
 # type_computation.rs:2937
@@ -433,10 +436,16 @@ testInvalidNamedTupleWithinFunction
 testNamedTupleNoBytes
 # namedtuple:105
 testNamedTupleTypingSelfMethod
+testNewNamedTupleClassMethod
+testNewNamedTupleStaticMethod
 # namedtuple:226
 testTypeNamedTupleClassmethod
 testNamedTupleHasMatchArgs
 testNamedTupleHasNoMatchArgsOldVersion
+# namedtuple:322
+testNewNamedTupleIllegalNames
+# namedtuple:324
+testNewNamedTupleDocString
 # "namedtuple()" field names cannot start with an underscore: _y, _z
 testNamedTupleNoUnderscoreFields
 # "Class has two incompatible bases derived from tuple"
@@ -1728,6 +1737,7 @@ testAwaitAndAsyncDef-only_when_nocache
 testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
+testNewNamedTupleWithMethods
 
 # "Cannot determine type of"
 testThreePassesRequired

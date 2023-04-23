@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 33] = [
+const USE_MYPY_TEST_FILES: [&str; 34] = [
     "check-generics.test",
     "check-generic-alias.test",
     "check-typevar-unbound.test",
@@ -68,7 +68,7 @@ const USE_MYPY_TEST_FILES: [&str; 33] = [
     //"check-ctypes.test",
     //"check-dataclasses.test",
     "check-namedtuple.test",
-    //"check-class-namedtuple.test",
+    "check-class-namedtuple.test",
     //"check-typeddict.test",
     "check-newtype.test",
     //"check-unsupported.test",
