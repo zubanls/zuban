@@ -1,4 +1,7 @@
 # Next up
+testQualifiedTypevar
+testInvalidOptionalType
+testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
 
 # Remove Mode from inference_state
