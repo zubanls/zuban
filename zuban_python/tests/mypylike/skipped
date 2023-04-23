@@ -1,4 +1,5 @@
 # Next up
+testBaseClassWithExplicitAnyType
 
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
@@ -273,6 +274,7 @@ testNewAnalyzerUnsupportedBaseClassInsideFunction
 testInfiniteLoop
 testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
+testAccessToLocalInOuterScopeWithinNestedClass
 # Class in function type comment
 testClassWithinFunction
 testDeclareVariableWithNestedClassType
@@ -280,6 +282,8 @@ testDeclareVariableWithNestedClassType
 testNewTypeInLocalScope
 # class in class forward reference
 testForwardReferenceToNestedClassWithinClass
+testClassWithBaseClassWithinClass
+testDeclarationReferenceToNestedClass
 # function types in class body
 testMethodRefInClassBody
 # Class argument and __init__ as overloaded DbType
@@ -297,6 +301,8 @@ testTypingSelfNonAnnotationUses
 # base class: type alias
 testDontSimplifyNoneUnionsWithStrictOptional
 testOptionalAndAnyBaseClass
+# base class: callable
+testInvalidBaseClass
 
 # Property
 testBoundMethodUsage
@@ -374,6 +380,7 @@ testOverloadWithSwappedDecorators2
 testOverloadWithStaticMethods
 testBuiltinStaticMethod
 testRefMethodWithDecorator
+testStaticMethodWithNoArgs
 # staticmethod call error has no Argument 1 to "f" of "A"
 testSimpleStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
@@ -1597,6 +1604,8 @@ testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
 testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
+# Use x instead of self as first argument (probably name binding issue)
+testNonStandardNameForSelfAndInit
 
 # All conditional function variants must have identical signatures (flow analysis)
 testUnionOrderEquivalence
