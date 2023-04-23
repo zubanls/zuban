@@ -12,8 +12,24 @@ use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
 const USE_MYPY_TEST_FILES: [&str; 35] = [
     // Semanal tests
+    //"semanal-abstractclasses.test",
+    //"semanal-basic.test",
+    //"semanal-classes.test",
+    //"semanal-classvar.test",
+    //"semanal-errors-python310.test",
     "semanal-errors.test",
+    //"semanal-expressions.test",
+    //"semanal-lambda.test",
+    //"semanal-literal.test",
+    //"semanal-modules.test",
     "semanal-namedtuple.test",
+    //"semanal-python310.test",
+    //"semanal-statements.test",
+    //"semanal-symtable.test",
+    //"semanal-typealiases.test",
+    //"semanal-typeddict.test",
+    //"semanal-typeinfo.test",
+    //"semanal-types.test",
     "check-semanal-error.test",
     "check-newsemanal.test",
     // Type checking tests
