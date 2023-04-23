@@ -302,14 +302,20 @@ impl<'a> Type<'a> {
                 }
                 DbType::Any => Match::new_true(),
                 DbType::Never => Match::new_false(),
-                DbType::Tuple(t1) => match value_type {
-                    Self::Type(t2) => match t2.as_ref() {
-                        DbType::Tuple(t2) => {
-                            let m: Match = Self::matches_tuple(i_s, matcher, t1, t2, variance);
+                DbType::Tuple(t1) => match value_type.maybe_db_type() {
+                    Some(DbType::Tuple(t2)) => {
+                        let m: Match = Self::matches_tuple(i_s, matcher, t1, t2, variance);
+                        m.similar_if_false()
+                    }
+                    Some(DbType::SpecialType(s)) => {
+                        if let Some(nt) = s.as_named_tuple() {
+                            let m: Match =
+                                Self::matches_tuple(i_s, matcher, t1, nt.as_tuple(), variance);
                             m.similar_if_false()
+                        } else {
+                            Match::new_false()
                         }
-                        _ => Match::new_false(),
-                    },
+                    }
                     _ => Match::new_false(),
                 },
                 DbType::Union(union_type1) => {

@@ -399,9 +399,6 @@ testTypeAliasesToNamedTuple
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
 testMutuallyRecursiveNamedTuplesClasses
-# Namedtuple -> tuple matching
-testNamedTupleUpdate3
-testMutuallyRecursiveNamedTuples
 # NamedTuples set generics
 testBasicRecursiveGenericNamedTuple
 # NamedTuple special methods

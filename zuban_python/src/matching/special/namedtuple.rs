@@ -11,7 +11,7 @@ use crate::{
     database::{
         CallableContent, CallableParam, CallableParams, Database, DbType, FormatStyle,
         GenericsList, ParamSpecific, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType,
-        StringSlice, Variance,
+        StringSlice, TupleContent, TypeOrTypeVarTuple, Variance,
     },
     debug,
     diagnostics::IssueType,
@@ -44,12 +44,14 @@ pub struct NamedTuple {
     name: StringSlice,
     // Basically __new__
     constructor: OnceCell<Rc<CallableContent>>,
+    tuple: OnceCell<Rc<TupleContent>>,
 }
 
 impl NamedTuple {
     pub fn new(name: StringSlice) -> Self {
         Self {
             constructor: OnceCell::new(),
+            tuple: OnceCell::new(),
             name,
         }
     }
@@ -58,6 +60,7 @@ impl NamedTuple {
         Self {
             name,
             constructor: OnceCell::from(Rc::new(constructor)),
+            tuple: OnceCell::new(),
         }
     }
 
@@ -100,6 +103,21 @@ impl NamedTuple {
 
     fn constructor(&self) -> &CallableContent {
         self.constructor.get().unwrap()
+    }
+
+    pub fn as_tuple(&self) -> &TupleContent {
+        self.tuple.get_or_init(|| {
+            Rc::new(TupleContent::new_fixed_length(
+                self.params()
+                    .iter()
+                    .map(|t| {
+                        TypeOrTypeVarTuple::Type(
+                            t.param_specific.expect_positional_db_type_as_ref().clone(),
+                        )
+                    })
+                    .collect::<Box<_>>(),
+            ))
+        })
     }
 
     fn params(&self) -> &[CallableParam] {
