@@ -87,6 +87,7 @@ testReverseOperatorTypeType
 testUnsafeOverlappingWithOperatorMethodsAndOverloading2
 testUnsafeOverlappingWithLineNo
 testReverseComparisonOperator
+testUnsafeOverlappingNamedTuple
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
@@ -329,6 +330,7 @@ testOverrideMethodProperty
 testOverridePropertyMethod
 testEllipsis
 testCrashOnComplexNamedTupleUnionProperty
+testNamedTupleProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -400,17 +402,89 @@ testNewAnalyzerTupleIteration
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
 testMutuallyRecursiveNamedTuplesClasses
-# NamedTuples set generics
+# Namedtuple uncategorized
+testNamedTupleAsBaseClass
+testNamedTupleAsBaseClass2
+testNamedTupleCreateWithPositionalArguments
+testNamedTupleAccessingAttributes
+testNamedTupleAttributesAreReadOnly
+testTypingNamedTupleAttributesAreReadOnly
+testCreateNamedTupleWithKeywordArguments
+testNamedTupleCreateAndUseAsTuple
+testNamedTupleWithItemTypes
+testNamedTupleSelfTypeWithNamedTupleAsBase
+testNamedTupleTypeReferenceToClassDerivedFrom
+testNamedTupleSimpleTypeInference
+testNamedTupleJoinNamedTuple
+testNamedTupleJoinTuple
+testNamedTupleImportCycle
+testNamedTupleSubclassMulti
+testNamedTupleClassMethodWithGenericReturnValue
+testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
+testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
+# type_computation.rs:2968
+testNamedTupleAdditionalArgs
+# type_computation.rs:2937
+testNamedTupleWithTupleFieldNamesWithItemTypes
+# type_computation.rs:2994
+testNamedTupleWithTupleFieldNamesUsedAsTuple
+# type_computation:3008
+testInvalidNamedTupleWithinFunction
+testNamedTupleNoBytes
+# namedtuple:105
+testNamedTupleTypingSelfMethod
+# namedtuple:226
+testTypeNamedTupleClassmethod
+testNamedTupleHasMatchArgs
+testNamedTupleHasNoMatchArgsOldVersion
+# "namedtuple()" field names cannot start with an underscore: _y, _z
+testNamedTupleNoUnderscoreFields
+# "Class has two incompatible bases derived from tuple"
+testNamedTuplesTwoAsBaseClasses
+testNamedTuplesTwoAsBaseClasses2
+# "NamedTuple type as an attribute is not supported"
+testAssignNamedTupleAsAttribute
+# "First argument to namedtuple() should be "A", not "X""
+testNamedTupleTypeNameMatchesVariableName
+# "Statement is unreachable"
+testNamedTupleWithBoolNarrowsToBool
+# "Self type cannot be used in NamedTuple item type"
+testNamedTupleSelfItemNotAllowed
+# Namedtuple unpacking size messages
+testNamedTupleUsedAsTuple
+# NamedTuples generics
 testBasicRecursiveGenericNamedTuple
+testGenericNamedTupleCreation
+testGenericNamedTupleAlias
+testGenericNamedTupleMethods
+testGenericNamedTupleCustomMethods
+testGenericNamedTupleSubtyping
+testGenericNamedTupleJoin
+testGenericNamedTupleCallSyntax
+testGenericNamedTupleNoLegacySyntax
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
+testNamedTupleAsDict
+testNamedTupleReplace
+testNamedTupleReplaceAsClass
+testNamedTupleReplaceTyped
+testNamedTupleMake
+testNamedTupleFields
+testNamedTupleSource
+testNamedTupleUnit
+testNamedTupleFieldTypes
+testNamedTupleSelfTypeReplace
+testNamedTupleSelfTypeMake
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
+testNamedTupleMissingClassAttribute
 # Namedtuple invalid definition
 testNamedTupleFallbackModule
+# Namedtuple bad overwrite of count etc
+testNamedTupleIncompatibleRedefinition
 
 # data class (currently all are passing)
 
@@ -1094,6 +1168,7 @@ testNewReturnType11
 testNewReturnType12
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
+testNamedTupleNew
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
@@ -2090,7 +2165,7 @@ testMypyPathAndPython2Dir
 # Won't support list/dict/tuple "is not subscriptable" (python <3.10)
 testNoSubscriptionOfBuiltinAliases
 
-# Won't support --disable-recursive-alias
+# Won't support --disable-recursive-aliases
 testNewAnalyzerAliasToNotReadyDirectBase
 testNewAnalyzerAliasToNotReadyDirectBaseFunction
 testNewAnalyzerNewTypeForwardClassAliasDirect
@@ -2100,6 +2175,14 @@ testRecursiveAliasesErrors1
 testRecursiveAliasesErrors2
 testJSONAliasApproximation
 testCrashOnSelfRecursiveNamedTupleVar
+testSimpleSelfReferentialNamedTuple
+testSelfRefNT1
+testSelfRefNT2
+testSelfRefNT3
+testSelfRefNT4
+testSelfRefNT5
+testRecursiveNamedTupleInBases
+testSubclassOfRecursiveNamedTuple
 
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102
