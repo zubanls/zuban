@@ -2977,21 +2977,23 @@ pub fn new_collections_named_tuple(
             has_default: false,
         })
     };
-    match atom.unpack() {
-        AtomContent::List(list) => {
-            for element in list.unpack() {
-                let StarLikeExpression::NamedExpression(ne) = element else {
-                todo!()
-            };
-                let Some(string_slice) = StringSlice::from_string_in_expression(
-                args_node_ref.file.file_index(),
-                ne.expression()) else {
-                todo!()
-            };
-                add_param(string_slice)
-            }
+
+    let mut add_from_iterator = |iterator| {
+        for element in iterator {
+            let StarLikeExpression::NamedExpression(ne) = element else {
+            todo!()
+        };
+            let Some(string_slice) = StringSlice::from_string_in_expression(
+            args_node_ref.file.file_index(),
+            ne.expression()) else {
+            todo!()
+        };
+            add_param(string_slice)
         }
-        AtomContent::Tuple(tup) => todo!(),
+    };
+    match atom.unpack() {
+        AtomContent::List(list) => add_from_iterator(list.unpack()),
+        AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
         AtomContent::Strings(s) => match s.maybe_single_string_literal() {
             Some(s) => {
                 let (start, _) = s.content_start_and_end_in_literal();

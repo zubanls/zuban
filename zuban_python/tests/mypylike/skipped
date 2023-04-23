@@ -425,7 +425,7 @@ testNamedTupleClassMethodWithGenericReturnValue
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
 testNewNamedTupleMethodInheritance
-# type_computation.rs:2994
+# "Tuple index out of range"
 testNamedTupleWithTupleFieldNamesUsedAsTuple
 # type_computation:3008
 testInvalidNamedTupleWithinFunction
