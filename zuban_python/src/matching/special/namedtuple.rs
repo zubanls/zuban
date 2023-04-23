@@ -223,7 +223,8 @@ impl SpecialType for NamedTuple {
                 DbType::Callable(self.constructor.get().unwrap().clone()),
             ));
         }
-        todo!()
+        debug!("TODO lookup of NamedTuple base classes");
+        LookupResult::None
     }
 
     fn matches_internal(

@@ -434,14 +434,11 @@ testNamedTupleWithTupleFieldNamesUsedAsTuple
 # type_computation:3008
 testInvalidNamedTupleWithinFunction
 testNamedTupleNoBytes
-# namedtuple:105
+# Nested usage in functions of definition, means constructor is not yet defined.
 testNamedTupleTypingSelfMethod
 testNewNamedTupleClassMethod
 testNewNamedTupleStaticMethod
 # namedtuple:226
-testTypeNamedTupleClassmethod
-testNamedTupleHasMatchArgs
-testNamedTupleHasNoMatchArgsOldVersion
 # namedtuple:322
 testNewNamedTupleIllegalNames
 # namedtuple:324
@@ -1434,6 +1431,8 @@ testIfTypeCheckingUnreachableClass
 testNewAnalyzerVersionCheck
 testNewAnalyzerVersionCheck2
 testPromoteMemoryviewToBytes
+# NamedTuple magic attribute __match_args__ in py >= 3.10
+testNamedTupleHasMatchArgs
 
 # callable()
 testFineGrainedCallable
