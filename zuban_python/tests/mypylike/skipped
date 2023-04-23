@@ -395,6 +395,7 @@ testLiteralWithFinalPropagationIsNotLeaking
 testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
 testTypeAliasesToNamedTuple
+testNewAnalyzerTupleIteration
 # Tuple indexing (including slices)
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
@@ -404,10 +405,6 @@ testBasicRecursiveGenericNamedTuple
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass
-# NamedTuple Iter
-testNewAnalyzerTupleIteration
-testOverloadVarargsSelectionWithNamedTuples
-testRecursiveTupleClassesNewType
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple class attr access

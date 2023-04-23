@@ -11,7 +11,7 @@ use crate::{
     database::{
         CallableContent, CallableParam, CallableParams, Database, DbType, FormatStyle,
         GenericsList, ParamSpecific, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType,
-        StringSlice, TupleContent, TypeOrTypeVarTuple, Variance,
+        StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
     },
     debug,
     diagnostics::IssueType,
@@ -23,7 +23,7 @@ use crate::{
         calculate_callable_type_vars_and_return, FormatData, Match, Matcher, ResultContext, Type,
     },
     node_ref::NodeRef,
-    value::{Class, LookupResult, Module, OnTypeError, Value},
+    value::{Class, IteratorContent, LookupResult, Module, OnTypeError, Value},
     ValueKind,
 };
 
@@ -265,6 +265,13 @@ impl SpecialType for NamedTuple {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
+    }
+
+    fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'_> {
+        let TupleTypeArguments::FixedLength(t) = self.as_tuple().args.as_ref().unwrap() else {
+            unreachable!()
+        };
+        IteratorContent::FixedLengthTupleGenerics(t.iter())
     }
 
     fn instantiate<'db>(

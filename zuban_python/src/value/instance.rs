@@ -254,6 +254,13 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
+        if let ClassType::NamedTuple {
+            ref named_tuple, ..
+        } = self.class.use_cached_class_infos(i_s.db).class_type
+        {
+            // TODO this doesn't take care of the mro and could not be the first __iter__
+            return named_tuple.iter(i_s, from);
+        }
         let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {
             i_s,

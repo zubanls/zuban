@@ -29,6 +29,7 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
+use crate::value::IteratorContent;
 use crate::value::LookupResult;
 use crate::value::OnTypeError;
 use crate::value::{Class, Value};
@@ -813,6 +814,8 @@ pub trait SpecialType: std::any::Any + 'static {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred;
+
+    fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'_>;
 
     fn as_named_tuple(&self) -> Option<&NamedTuple> {
         None

@@ -1,4 +1,4 @@
-use super::{LookupResult, Value, ValueKind};
+use super::{IteratorContent, LookupResult, Value, ValueKind};
 use crate::database::DbType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
@@ -66,5 +66,8 @@ impl<'db, 'a> Value<'db, 'a> for SpecialTypeAsValue<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         self.special_type.get_item(i_s, slice_type, result_context)
+    }
+    fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
+        self.special_type.iter(i_s, from)
     }
 }
