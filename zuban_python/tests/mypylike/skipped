@@ -1,4 +1,5 @@
 # Next up
+testBinaryOperations
 testQualifiedTypevar
 testInvalidOptionalType
 testAnyTypeAlias2
@@ -727,10 +728,15 @@ testSimpleDictionaryComprehension
 testDictionaryComprehensionWithNonDirectMapping
 testSimpleGeneratorExpression
 testGeneratorIncompatibleErrorMessage
+testSetComprehension
+testSetComprehensionWithCondition
+testDictionaryComprehension
+testDictionaryComprehensionWithCondition
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 
 # lambda
+testLambdaWithArguments
 testLambdaDefaultTypeErrors
 testLambdaDefaultContext
 testLambdaVarargContext
