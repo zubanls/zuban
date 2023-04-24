@@ -1920,6 +1920,7 @@ testWithStmtScopeInnerScopeReference
 testWithStmtScopeAndLambda
 
 # match statement
+testValuePattern
 testCapturePattern
 testCapturePatternOutliving
 testNestedCapturePatterns
