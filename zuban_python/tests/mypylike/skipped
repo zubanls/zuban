@@ -1817,6 +1817,7 @@ testPreferPackageOverFile
 testPreferPackageOverFile2
 testTrailingCommaInIfParsing
 testDictWithStarExpr
+testNotPreferPackageOverFileCase
 
 # Yield
 testYieldOutsideFunction
