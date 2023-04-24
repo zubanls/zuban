@@ -1900,6 +1900,16 @@ testWithStmtScopeAndClass
 testWithStmtScopeInnerScopeReference
 testWithStmtScopeAndLambda
 
+# match statement
+testCapturePattern
+testCapturePatternOutliving
+testNestedCapturePatterns
+testMappingPatternRest
+testAsPattern
+testGuard
+testCapturePatternInGuard
+testAsPatternInGuard
+
 # "Cannot determine type of"
 testThreePassesRequired
 testAccessGlobalVarBeforeItsTypeIsAvailable
