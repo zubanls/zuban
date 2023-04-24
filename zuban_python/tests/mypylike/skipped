@@ -591,6 +591,8 @@ testInvariance
 testStrictEqualityAndEnumWithCustomEq
 
 # TypedDict
+testTypedDictWithDocString
+testCanCreateTypedDictTypeWithDictLiteral
 testNewAnalyzerTypedDictClass
 testNewAnalyzerTypedDictClassInheritance
 testNewAnalyzerMemberNameMatchesTypedDict
