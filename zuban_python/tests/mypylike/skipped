@@ -1,5 +1,4 @@
 # Next up
-testQualifiedSimpleTypeAlias
 testQualifiedTypevar
 testInvalidOptionalType
 testAnyTypeAlias2
