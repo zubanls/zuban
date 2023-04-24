@@ -141,7 +141,7 @@ lazy_static::lazy_static! {
     // mypy/test-data/unit:
     // find . | grep check | xargs cat | grep '^\[' | grep -Ev '\[(out|case|file)'
     static ref CASE_PART: Regex = Regex::new(concat!(
-        r"(?m)^\[(file|out\d*|builtins|typing|stale|rechecked|targets\d?|delete|triggered)",
+        r"(?m)^\[(file|out\d*|builtins|typing|stale|rechecked|targets\d?|delete|triggered|fixture)",
         r"(?: ([^\]]*))?\][ \t]*\n"
     )).unwrap();
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
@@ -287,7 +287,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 steps.insert(step_index, Default::default());
                 steps.get_mut(&step_index).unwrap()
             };
-            if type_ == "file" {
+            if type_ == "file" || type_ == "fixture" {
                 step.files.insert(rest, in_between);
             } else if type_ == "out" {
                 if !(self.file_name.contains("semanal-")
