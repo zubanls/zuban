@@ -8,6 +8,7 @@ testTryExceptWithMultipleHandlers
 testConstantFold2
 testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
+testIndexingWithDynamic
 # statement stuff
 testPlusAssign
 testMinusAssign
@@ -709,6 +710,12 @@ testDynamicallyTypedNestedFunction
 testInferringImplicitDynamicTypeForLvar
 testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue
 testLambdaUnypedContext
+testSkipTypeCheckingWithImplicitSignature
+testSkipTypeCheckingWithImplicitSignatureAndDefaultArgs
+testSkipTypeCheckingImplicitMethod
+testTooManyArgsInDynamic
+testTooFewArgsInDynamic
+testJustRightInDynamic
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 # "'reveal_type' always outputs 'Any' in unchecked functions"
@@ -1161,6 +1168,7 @@ testOverrideStaticMethodWithClassMethod
 testIntroducingInplaceOperatorInSubclass
 testMethodOverridingWithIncompatibleTypesOnMultipleLines
 testMultiLineMethodOverridingWithIncompatibleTypesWrongIgnore
+testOverridingMethodAcrossHierarchy
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride
@@ -1462,6 +1470,8 @@ testSelfTypeOverrideCompatibility
 testSelfTypeOverrideCompatibilityTypeVar-xfail
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
 testSelfTypeOverrideCompatibilityGeneric
+testInvalidOverrideArgumentCountWithImplicitSignature2
+testInvalidOverrideArgumentCountWithImplicitSignature3
 # Overloaded operator methods cannot have wider argument types in overrides
 testOperatorMethodOverrideIntroducingOverloading
 testOverloadedOperatorMethodOverrideWithNewItem
@@ -1643,6 +1653,8 @@ testInferInWithErasedTypes
 testUnionTruthinessTracking
 testRegression11705_Strict
 testRegression11705_NoStrict
+testBinaryOperationsWithDynamicLeftOperand
+testBinaryOperationsWithDynamicAsRightOperand
 # or/and
 testBooleanAndOr
 testNonBooleanOr
@@ -1654,6 +1666,7 @@ testIsInstanceTypeByAssert
 testIsInstanceTypeVsMetaclass
 # narrowing assignments
 testNarrowingFromObjectToOptional
+testDynamicWithMemberAccess
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
@@ -2152,6 +2165,7 @@ testVariableDeclWithInvalidNumberOfTypesNested2
 testVariableDeclWithInvalidNumberOfTypesNested4
 # "Too many values to unpack (2 expected, 3 provided)"
 testInferringLvarTypesInMultiDefWithInvalidTuple
+testMultipleAssignmentWithDynamic
 
 # EllipsisType
 testUnionWithEllipsis

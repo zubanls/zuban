@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 53] = [
+const USE_MYPY_TEST_FILES: [&str; 54] = [
     // Semanal tests
     "semanal-abstractclasses.test",
     "semanal-basic.test",
@@ -72,7 +72,7 @@ const USE_MYPY_TEST_FILES: [&str; 53] = [
     //"check-ignore.test",
     //"check-underscores.test",
     //"check-redefine.test",
-    //"check-dynamic-typing.test",
+    "check-dynamic-typing.test",
     "check-selftype.test",
     "check-recursive-types.test",
     //"check-typeguard.test",
@@ -93,6 +93,7 @@ const USE_MYPY_TEST_FILES: [&str; 53] = [
     //"check-unreachable-code.test",
     //"check-possibly-undefined.test",
     //"check-slots.test",
+    //"check-formatting.test",
     "check-typevar-tuple.test",
     //"check-dataclasses.test",
     //"check-dataclass-transform.test",
@@ -105,6 +106,7 @@ const USE_MYPY_TEST_FILES: [&str; 53] = [
     //"check-python311.test",
     //"check-custom-plugin.test",
     //"check-fastparse.test",
+    //"check-serialize.test",
     //"check-incremental.test",
     "fine-grained.test",
     //"fine-grained-modules.test",
@@ -119,9 +121,7 @@ const USE_MYPY_TEST_FILES: [&str; 53] = [
 
     //"check-columns.test",
     //"check-errorcodes.test",
-    //"check-formatting.test",
     //"check-flags.test",
-    //"check-serialize.test",
     //"cmdline.test",
     //"cmdline.pyproject.test",
     //"pep561.test",
