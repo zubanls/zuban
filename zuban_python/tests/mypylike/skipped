@@ -881,6 +881,7 @@ testAccessingGenericABCMembers
 testAccessingInheritedGenericABCMembers
 testPrecedenceOfFirstBaseAsInferenceResult
 type_var_with_co_and_contra_real_life
+testBuiltinsUsingModule
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
 testNewAnalyzerMetaclassFuture3
@@ -908,6 +909,9 @@ testSixMetaclass
 testFromSixMetaclass
 testSixMetaclassGenericBase
 
+# star imports in modules that are imported
+testRelativeImport3
+
 # Binary or implementation missing
 testMiscBinaryOperators
 
@@ -918,10 +922,16 @@ testAllMustBeSequenceStr
 testUnderscoreExportedValuesInImportAll
 testReExportAllInStub
 
+# Module <M> has no attribute <missing_name>
+testRelativeImportFromSameModule
+testImportFromSameModule
 # Module <M> has no attribute <missing_name>; maybe <name>
 testNewAnalyzerTypeAnnotationCycle3
 testModuleAttributeTwoSuggestions
 testModuleAttributeThreeSuggestions
+testImportMisspellingSingleCandidate
+testImportMisspellingMultipleCandidates
+testImportMisspellingMultipleCandidatesTruncated
 
 # Unexpected keyword argument "otter" for "f"; did you mean "other"?
 testKeywordMisspelling
@@ -980,6 +990,8 @@ testNoReExportUnrelatedModule
 testNoReExportUnrelatedSiblingPrefix
 testUnimportedHintAny
 testUnimportedHintAnyLower
+testFromImportAsInStub
+testImportAsInStub
 
 # "Invalid metaclass "Explicit"" when Explicit: TypeAlias = type
 testValidTypeAliasAsMetaclass
@@ -1344,6 +1356,7 @@ testClassScopeImportWithFollowImports
 testClassScopeImportVarious
 testClassScopeImportWithError
 testClassScopeImportWithWrapperAndError
+testImportInClassBody
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
