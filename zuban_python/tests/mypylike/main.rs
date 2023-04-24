@@ -10,9 +10,9 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 46] = [
+const USE_MYPY_TEST_FILES: [&str; 47] = [
     // Semanal tests
-    //"semanal-abstractclasses.test",
+    "semanal-abstractclasses.test",
     "semanal-basic.test",
     "semanal-classes.test",
     //"semanal-classvar.test",
