@@ -1909,6 +1909,11 @@ testAsPattern
 testGuard
 testCapturePatternInGuard
 testAsPatternInGuard
+testMatchUndefinedSubject
+testMatchUndefinedValuePattern
+testMatchUndefinedClassPattern
+testNoneBindingWildcardPattern
+testNoneBindingStarredWildcardPattern
 
 # "Cannot determine type of"
 testThreePassesRequired
