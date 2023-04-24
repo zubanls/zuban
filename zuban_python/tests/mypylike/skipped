@@ -7,6 +7,50 @@ testTryExceptWithMultipleHandlers
 testConstantFold2
 testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
+# statement stuff
+testPlusAssign
+testMinusAssign
+testMulAssign
+testMatMulAssign
+testDivAssign
+testPowAssign
+testInplaceOperatorMethods
+testInplaceSetitem
+testAssert
+testTryExceptFlow
+testExceptWithTypeType
+testAugmentedAssignmentIntFloat
+testAugmentedAssignmentIntFloatMember
+testAugmentedAssignmentIntFloatDict
+testForwardRefsInWithStatementImplicit
+testForwardRefsInWithStatement
+testNoCrashOnStarRightHandSide
+testTypingExtensionsSuggestion
+# raise: Exception must be derived from BaseException
+testRaiseStatement
+testRaiseClassObject
+testRaiseNonExceptionTypeFails
+testRaiseNonExceptionUnionFails
+testRaiseClassObjectCustomInit
+testRaiseFromStatement
+testRaiseFromClassobject
+testExceptionVariableReuseInDeferredNode1
+testExceptionVariableReuseInDeferredNode2
+testExceptionVariableReuseInDeferredNode3
+# Exception uses type instead of instance
+testSimpleTryExcept
+testSimpleTryExcept2
+testBaseClassAsExceptionTypeInExcept
+testMultipleExceptHandlers
+testTryExceptStatement
+testTryExceptWithinFunction
+testExceptionVariableReuseInDeferredNode4
+testExceptionVariableReuseInDeferredNode5
+testExceptionVariableReuseInDeferredNode6
+testArbitraryExpressionAsExceptionType
+testTupleValueAsExceptionType
+testOverloadedExceptionType
+testExceptionIsType
 # [fixture ]
 testQualifiedSimpleTypeAlias
 testImportUnionTypeAlias
@@ -14,6 +58,9 @@ testImportUnionTypeAlias2
 testImportSimpleTypeAlias
 testImportSimpleTypeAlias2
 testTypeAliasOfImportedAlias
+
+# Flakey in --release
+testReturnInIterator
 
 # Remove Mode from inference_state
 testSelfTypeRestrictedMethodOverloadInitBadTypeNoCrash
@@ -813,6 +860,8 @@ testTypeAliasWithNewStyleUnionChangedToVariable
 # "Missing return statement"
 testWarnNoReturnWorksWithStrictOptional
 testAssertCurrentFrameIsNotUnreachable
+testNoReturnInGenerator
+testWithStmtBoolExitReturnOkay
 
 # ""f" does not return a value"
 testUseOfNoneReturningFunction
@@ -1162,6 +1211,7 @@ testAddBaseClassAttributeCausingErrorInSubclass
 # Base class any
 testAnyBaseClassUnconstrainedConstructor
 testErrorMapToSupertype
+testExceptionWithAnyBaseClass
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
 
@@ -1741,6 +1791,7 @@ testModuleAliasToOtherModule
 testModuleAliasToQualifiedImport2
 # Incompatible redefinition (redefinition with type "Callable[[Any], Any]", original type "Callable[[], Any]")
 testRedefineFunctionDefinedAsVariableWithInvalidSignature
+testRedefinedFunctionInTryWithElse
 # Incompatible redefinition
 testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 # NewType Redefinition
@@ -1762,6 +1813,26 @@ testYieldFromIteratorHasNoValue
 testYieldFromGeneratorHasValue
 testYieldFromTupleExpression
 testNoCrashOnLambdaGenerator
+testReturnInGenerator
+testSimpleYield
+testTypeInferenceContextAndYield
+testYieldWithNoValueWhenValueRequired
+testGeneratorUnion
+# yield from
+testSimpleYieldFromWithIterator
+testYieldFromInFunctionReturningFunction
+testYieldFromNotIterableReturnType
+testYieldFromNotAppliedIterator
+testYieldFromCheckIncompatibleTypesTwoIterables
+testYieldFromNotAppliedToNothing
+testYieldFromAndYieldTogether
+testYieldFromAny
+testYieldFromGenericCall
+testYieldFromTupleStatement
+
+# "The return type of a generator should be "Generator" or one of its supertypes"
+testYieldInFunctionReturningFunction
+testWithInvalidInstanceReturnType
 
 # async/await
 testAwaitCoroutine
@@ -1791,9 +1862,50 @@ testDelGlobalName
 testDelLocalName
 testDelMultipleThings
 testDelMultipleThingsInvalid
+testDelStmtWithIndex
+testDelStmtWithAttribute
+testDelStatementWithTuple
+testDelStmtWithTypeInfo
+testDelStatementWithAssignmentSimple
+testDelStatementWithAssignmentTuple
+testDelStatementWithAssignmentList
+testDelStatementWithAssignmentClass
+testDelStatementWithConditions
 
 # Except with multiple exceptions in parentheses
 testExceptWithMultipleTypes
+testExceptWithMultipleTypes2
+testExceptWithMultipleTypes3
+testExceptWithMultipleTypes4
+testExceptWithAnyTypes
+# "Trying to read deleted variable "e"
+testReuseTryExceptionVariable
+testReuseDefinedTryExceptionVariable
+
+# With statement
+testWithStmtAndInvalidExit
+testWithStmtAndMissingExit
+testWithStmtAndInvalidEnter
+testWithStmtAndMissingEnter
+testWithStmtAndMultipleExprs
+testWithStmtAndResult
+testWithStmtAndMultipleResults
+testWithStmtAndComplexTarget
+testWithStmtTypeComment
+testWithStmtTupleTypeComment
+testWithStmtComplexTypeComment
+testWithStmtBoolExitReturnWithResultFalse
+testWithStmtScopeBasics
+testWithStmtScopeAndImport2
+testWithStmtScopeNestedWith1
+testWithStmtScopeNestedWith2
+testWithStmtScopeInnerAndOuterScopes
+testWithStmtScopeMultipleContextManagers
+testWithStmtScopeMultipleAssignment
+testWithStmtScopeComplexAssignments
+testWithStmtScopeAndClass
+testWithStmtScopeInnerScopeReference
+testWithStmtScopeAndLambda
 
 # "Cannot determine type of"
 testThreePassesRequired
@@ -1820,6 +1932,13 @@ testForStatementInferenceWithVoid
 
 # "Cannot call function of unknown type"
 testUnknownFunctionNotCallable
+
+# "Return value expected"
+testReturnWithoutAValue
+testEmptyReturnInGenerator
+
+# No return value expected
+testNonEmptyReturnInNoneTypedGenerator
 
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
@@ -1849,6 +1968,8 @@ testSubtypingFunctionsImplicitNames
 
 # Global
 testAssignToFuncDefViaGlobalDecl2
+testTypeOfGlobalUsed
+testGlobalWithoutInitialization
 
 # Nonlocal
 testInvalidNonlocalDecl
@@ -1858,6 +1979,8 @@ testNonlocalDeclOutsideFunction
 testGlobalAndNonlocalDecl
 testNonlocalAndGlobalDecl
 testNewAnalyzerRedefinedNonlocal
+testTypeOfOuterMostNonlocalUsed
+testTypeOfNonlocalUsed
 
 # slice type checking
 testNonIntSliceBounds
@@ -2012,6 +2135,7 @@ testTestExtendPrimitives
 testContextForAttributeDeclaredInInit
 testDeclareAttributeTypeInInit
 testAccessAttributeDeclaredInInitBeforeDeclaration
+testNoteUncheckedAnnotation
 
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
@@ -2163,6 +2287,8 @@ testTooManyUnionsException
 # `for ... in` type comment
 testRefreshForWithTypeComment1
 testRefreshForWithTypeComment2
+testForStatementTypeComments
+testForStatementMultipleTypeComments
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
