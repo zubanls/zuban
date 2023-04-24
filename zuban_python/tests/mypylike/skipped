@@ -1789,6 +1789,7 @@ testDecoratedRedefinitionIsNotOverload
 testMultipleClassDefinition
 testMemberRedefinition
 testMemberRedefinitionDefinedInClass
+testDecorateOverloadedFunction
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
