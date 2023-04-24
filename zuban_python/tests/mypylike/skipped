@@ -442,6 +442,7 @@ testOverloadWithStaticMethods
 testBuiltinStaticMethod
 testRefMethodWithDecorator
 testStaticMethodWithNoArgs
+testIgnoredModuleDefinesBaseClassAndClassAttribute
 # staticmethod call error has no Argument 1 to "f" of "A"
 testSimpleStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
@@ -917,6 +918,7 @@ testSixMetaclassAny
 testSixMetaclass
 testFromSixMetaclass
 testSixMetaclassGenericBase
+testIgnoreInsideClassDoesntAffectWhole
 
 # star imports in modules that are imported
 testRelativeImport3
@@ -1259,6 +1261,7 @@ testAddBaseClassAttributeCausingErrorInSubclass
 testAnyBaseClassUnconstrainedConstructor
 testErrorMapToSupertype
 testExceptionWithAnyBaseClass
+testIgnoredModuleDefinesBaseClassWithInheritance2
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
 
@@ -1723,6 +1726,7 @@ testDeferredAndOptionalInferenceSpecialCase
 testInheritedAttributeNoStrictOptional
 testIncompatibleInheritedAttributeNoStrictOptional
 testInheritedAttributeStrictOptional
+testIgnoreTypeInferenceError2
 
 # Weird Name binder type definitions (overwritten?)
 testLiteralBinderLastValueErased
@@ -1866,6 +1870,8 @@ testPreferPackageOverFile2
 testTrailingCommaInIfParsing
 testDictWithStarExpr
 testNotPreferPackageOverFileCase
+testIgnoreImportBadModule
+testIgnoreImportStarFromBadModule
 
 # Yield
 testYieldOutsideFunction
@@ -1881,6 +1887,8 @@ testSimpleYield
 testTypeInferenceContextAndYield
 testYieldWithNoValueWhenValueRequired
 testGeneratorUnion
+# ""yield" outside function"
+testCannotIgnoreBlockingError
 # yield from
 testSimpleYieldFromWithIterator
 testYieldFromInFunctionReturningFunction
@@ -2227,6 +2235,19 @@ testNoteUncheckedAnnotation
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
 
+# type ignore on statement, but not exact line
+testIgnoreImportFromErrorMultiline
+# type: ignore on type computation of too many type arguments
+testIgnoreTooManyTypeArguments
+# type ignore whole module
+testIgnoreWholeModule2
+testIgnoreWholeModule3
+testIgnoreWholeModule4
+testIgnoreWholeModule5
+testDontIgnoreWholeModule2
+testDontIgnoreWholeModule3
+# Unused "type: ignore" comment
+testIgnoreWholeModule1
 # type: ignore leads to Any type?
 testDunderCallAddition
 # type: ignore[...]
@@ -2310,6 +2331,9 @@ testUnlimitedStubErrorVolume
 
 # --disallow-any-generics
 testErrorReportingNewAnalyzer
+
+# --disallow-untyped-defs
+testIgnoreInsideFunctionDoesntAffectWhole
 
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent

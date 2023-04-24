@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 57] = [
+const USE_MYPY_TEST_FILES: [&str; 58] = [
     // Semanal tests
     "semanal-abstractclasses.test",
     "semanal-basic.test",
@@ -69,7 +69,7 @@ const USE_MYPY_TEST_FILES: [&str; 57] = [
     "check-inference-context.test",
     //"check-final.test",
     //"check-abstract.test",
-    //"check-ignore.test",
+    "check-ignore.test",
     "check-underscores.test",
     //"check-redefine.test",
     "check-dynamic-typing.test",
