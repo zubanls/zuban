@@ -205,6 +205,7 @@ testSelfReferentialSubscriptExpression
 testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
 testConditionalExceptionAlias
+testListAssignmentUnequalAmountToUnpack
 
 # Module attributes
 testModuleImplicitAttributes
@@ -742,6 +743,7 @@ testSetComprehension
 testSetComprehensionWithCondition
 testDictionaryComprehension
 testDictionaryComprehensionWithCondition
+testComprehensionShadowBinder
 # comprehensions Scoping
 testListComprehensionSpecialScoping
 
@@ -1408,6 +1410,10 @@ testInferringLvarTypesInNestedListAssignment
 testInferringMultipleLvarDefinitionWithListRvalue
 testInferMultipleLocalVariableTypesWithArrayRvalueAndNesting
 testUnpackInExpression1-only_when_nocache
+testNestedListAssignment
+testNestedListAssignmentToTuple
+testListAssignmentFromTuple
+testListWithStarExpr
 # list[<nothing>] against *args or never
 testOverloadVarargsSelection
 
