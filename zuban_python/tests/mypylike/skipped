@@ -9,6 +9,12 @@ testConstantFold2
 testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
 testIndexingWithDynamic
+testIndexingTuples
+testIndexingTuplesWithNegativeIntegers
+testMultipleAssignmentWithIndexedLvalues
+testTupleMeetTupleVariable
+testUnpackBases
+testNonliteralTupleIndex
 # statement stuff
 testPlusAssign
 testMinusAssign
@@ -53,6 +59,8 @@ testArbitraryExpressionAsExceptionType
 testTupleValueAsExceptionType
 testOverloadedExceptionType
 testExceptionIsType
+# tuple assignment tuple[Any, ...] to tuple[A, A]
+testSubtypingWithNamedTupleType
 
 # Flakey in --release
 testReturnInIterator
@@ -469,10 +477,15 @@ testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
 testTypeAliasesToNamedTuple
 testNewAnalyzerTupleIteration
+testValidTupleBaseClass2
+testGenericClassWithTupleBaseClass
+testTupleSubclassJoin
+testTypeTupleCall
 # Tuple indexing (including slices)
 testLiteralIntelligentIndexingTuples
 testLiteralIntelligentIndexingTupleUnions
 testMutuallyRecursiveNamedTuplesClasses
+testNonliteralTupleSlice
 # Namedtuple uncategorized
 testTypingExtensionsNamedTuple
 testNamedTupleAsBaseClass
@@ -819,6 +832,7 @@ testCannotUseNewTypeWithProtocols
 testBuiltinClassMethod
 testDivmod
 testProtocolsInvalidateByRemovingMetaclass
+testSubtypingTupleIsSized
 # Duck typing
 testOverloadingAndDucktypeCompatibility
 
@@ -882,6 +896,7 @@ testNoneReturnTypeWithExpressions
 testNoneReturnTypeWithExpressions2
 testConditionalExpressionWithEmptyCondition
 testConditionalExpressionStatementNoReturn
+testVoidValueInTuple
 
 # stdlib imports
 testOverloadSpecialCase
@@ -1440,9 +1455,16 @@ testConditionalExpressionUnionWithAny
 testOverloadedInIter
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
+testForLoopOverTupleAndSubtyping
 # join tuple iter
 testMutuallyRecursiveNamedTuplesJoin
 testCallerTupleVarArgsAndGenericCalleeVarArg
+# tuple joins
+testFixedTupleJoinVarTuple
+testFixedTupleJoinList
+testEmptyTupleJoin
+testTupleJoinIrregular
+testTupleSubclassJoinIrregular
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
@@ -1621,6 +1643,9 @@ testMultipleIsinstanceTests2
 testIsinstanceAndElif
 testIsinstanceAndAnyType
 testIsinstanceAndGenericType
+testTupleMeetTupleAny
+testTupleMeetTupleAnyComplex
+testTupleMeetTupleAnyAfter
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
@@ -1679,6 +1704,7 @@ testBasicRecursiveNamedTuple
 testBasicRecursiveNamedTupleSpecial
 testBasicRecursiveNamedTupleClass
 testNamedTupleUpdateNonRecursiveToRecursiveFine
+testTupleOverlapDifferentTuples
 # narrowing with or/and
 testRestrictedTypeAnd
 testRestrictedTypeOr
@@ -1710,6 +1736,9 @@ testIsInstanceTypeVsMetaclass
 # narrowing assignments
 testNarrowingFromObjectToOptional
 testDynamicWithMemberAccess
+testTupleCompatibleWithSequence
+testTupleInstanceCompatibleWithIterable
+testTupleTypeCompatibleWithIterable
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
@@ -2108,6 +2137,9 @@ testInheritanceAndAttributeAssignment
 testAssignmentToAttributeInMultipleMethods
 testAccessingClassAttributeWithTypeInferenceIssue2
 testTypeAnnotationNeededMultipleAssignment
+testAssignmentToStarMissingAnnotation
+testForLoopOverEmptyTuple
+testTupleWithoutContext
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -2216,6 +2248,40 @@ testVariableDeclWithInvalidNumberOfTypesNested4
 # "Too many values to unpack (2 expected, 3 provided)"
 testInferringLvarTypesInMultiDefWithInvalidTuple
 testMultipleAssignmentWithDynamic
+testMultipleAssignmentWithInvalidNumberOfValues
+testInitializationWithMultipleValues
+testNestedTupleAssignment2
+# "Unsupported target for indexed assignment ("tuple[A, B]")"
+testAssigningToTupleItems
+# star unpacking for tuples
+testAssignmentToStarAnnotation
+testAssignmentToStarCount1
+testAssignmentToStarCount2
+testAssignmentToStarFromAny
+testAssignmentToComplexStar
+testAssignmentToStarFromTupleType
+# star input for tuple
+testTupleWithStarExpr2
+testTupleWithStarExpr3
+testTupleWithStarExpr
+# "Can use starred expression only as assignment target"
+testUnpackSyntaxError
+# union tuple index
+testUnionOfTupleIndex
+testUnionOfTupleIndexMixed
+# tuple concatenation
+testFixedLengthTupleConcatenation
+# tuple multiplication
+testMultiplyTupleByIntegerLiteral
+testMultiplyTupleByIntegerLiteralReverse
+# "Expression tuple item 8 has type "str"; "int" expected;"
+testAssigningWithLongTupleInitializer
+# Tuple operator in
+testTupleMethods
+# tuple maybe ok error messages?
+testTupleWithUndersizedContext
+testTupleWithOversizedContext
+testAssignEmptyBogus
 
 # EllipsisType
 testUnionWithEllipsis
