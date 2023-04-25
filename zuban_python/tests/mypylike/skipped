@@ -15,6 +15,10 @@ testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testUnpackBases
 testNonliteralTupleIndex
+testFastParseVariableTypeWithIgnore
+testFastParseVariableTypeWithIgnoreNoSpace
+testFastParseVariableTypeWithIgnoreAndComment
+testFasterParseTypeErrorCustom
 # statement stuff
 testPlusAssign
 testMinusAssign
@@ -408,6 +412,8 @@ testEllipsis
 testCrashOnComplexNamedTupleUnionProperty
 testNamedTupleProperty
 testNewNamedTupleProperty
+testFastParseProperty
+testFastParseConditionalProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -735,6 +741,8 @@ testJustRightInDynamic
 testInferringTypesFromIterable
 # "'reveal_type' always outputs 'Any' in unchecked functions"
 testRevealUncheckedFunction
+# Function duplicate param names
+testFastParserDuplicateNames
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -982,6 +990,7 @@ testGenericAliasCollectionsABCReveal
 
 # Complex Star import
 testImportWithinMethod
+testNoCrashOnImportFromStarNested
 # Star import override
 testAssignToFuncDefViaImport
 
@@ -1733,6 +1742,9 @@ testNarrowOptionalOutsideLambdaWithDeferred
 testIsInstanceTypeVsUnionOfType
 testIsInstanceTypeByAssert
 testIsInstanceTypeVsMetaclass
+# General assert
+testFastParseMalformedAssert
+testFastParseAssertMessage
 # narrowing assignments
 testNarrowingFromObjectToOptional
 testDynamicWithMemberAccess
@@ -1899,6 +1911,12 @@ testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 testNewAnalyzerNewTypeRedefinition
 testNewTypeRedefiningVariablesFails
 
+# Invalid type comment or annotation, because of weird annotations
+testFastParseTypeCommentSyntaxError
+testFastParseFunctionAnnotationSyntaxError
+testFastParseFunctionAnnotationSyntaxErrorSpaces
+testFastParseInvalidFunctionAnnotation
+
 # syntax errors
 testPreferPackageOverFile
 testPreferPackageOverFile2
@@ -1907,6 +1925,7 @@ testDictWithStarExpr
 testNotPreferPackageOverFileCase
 testIgnoreImportBadModule
 testIgnoreImportStarFromBadModule
+testFastParseSyntaxError
 
 # Yield
 testYieldOutsideFunction
@@ -2492,6 +2511,12 @@ testDucktypeTransitivityDecorator
 testQualifiedTypeVariableName
 testPartiallyQualifiedTypeVariableName
 
+# Probably won't support: Type comments for params
+testFastParsePerArgumentAnnotations
+testFastParsePerArgumentAnnotationsWithReturn
+testFastParsePerArgumentAnnotationsWithAnnotatedBareStar
+testFastParsePerArgumentAnnotationsWithReturnAndBareStar
+
 # Won't support: Signature Comments
 testIncompatibleSignatureInComment
 testFunctionSignatureAsComment
@@ -2517,6 +2542,10 @@ testInferOptionalFromDefaultNoneComment
 testNoInferOptionalFromDefaultNoneComment
 testCheckUntypedDefsSelf1
 testOperatorDoubleUnionDivision
+testFasterParseTooManyArgumentsAnnotation
+testFasterParseTooFewArgumentsAnnotation
+testFastParserShowsMultipleErrors
+testFastParserConsistentFunctionTypes
 
 # --scripts-are-modules
 testScriptsAreModules
