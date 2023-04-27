@@ -1,5 +1,4 @@
 # Next up
-testTryExceptWithMultipleHandlers
 testConstantFold2
 testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
@@ -44,6 +43,7 @@ testRaiseFromClassobject
 testExceptionVariableReuseInDeferredNode1
 testExceptionVariableReuseInDeferredNode2
 testExceptionVariableReuseInDeferredNode3
+testTryExceptWithMultipleHandlers
 # Exception uses type instead of instance
 testSimpleTryExcept
 testSimpleTryExcept2
