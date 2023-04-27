@@ -80,11 +80,11 @@ impl<'db: 'a, 'a> Class<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<Option<GenericsList>> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
-        match init
-            .into_maybe_inferred()
-            .unwrap()
-            .init_as_function(i_s.db, class)
-        {
+        let Some(inf) = init.into_maybe_inferred() else {
+            debug_assert!(self.use_cached_class_infos(i_s.db).incomplete_mro);
+            return Some(self.type_vars(i_s).map(|type_vars| type_vars.as_any_generic_list()))
+        };
+        match inf.init_as_function(i_s.db, class) {
             Some(FunctionOrOverload::Function(func)) => {
                 let calculated_type_args = calculate_class_init_type_vars_and_return(
                     i_s,
@@ -531,7 +531,8 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
     ) -> (LookupResult, Option<Class>) {
-        for (mro_index, c) in self.mro(i_s.db) {
+        let incomplete_mro = self.use_cached_class_infos(i_s.db).incomplete_mro;
+        for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, incomplete_mro) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let Type::Class(c) = c {
@@ -595,15 +596,23 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
+    pub fn mro_with_incomplete_mro(
+        &self,
+        db: &'db Database,
+        incomplete_mro: bool,
+    ) -> MroIterator<'db, 'a> {
         let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
             db,
             Type::Class(*self),
             Some(self.generics),
             class_infos.mro.iter(),
-            self.node_ref == db.python_state.object_node_ref(),
+            incomplete_mro || self.node_ref == db.python_state.object_node_ref(),
         )
+    }
+
+    pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
+        self.mro_with_incomplete_mro(db, self.node_ref == db.python_state.object_node_ref())
     }
 
     pub fn in_mro(&self, db: &'db Database, t: &DbType) -> bool {

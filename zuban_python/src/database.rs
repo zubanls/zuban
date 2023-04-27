@@ -2711,6 +2711,10 @@ impl TypeVarLikes {
             })
     }
 
+    pub fn as_any_generic_list(&self) -> GenericsList {
+        GenericsList::new_generics(self.iter().map(|tv| tv.as_any_generic_item()).collect())
+    }
+
     pub fn iter(&self) -> std::slice::Iter<TypeVarLike> {
         self.0.iter()
     }
