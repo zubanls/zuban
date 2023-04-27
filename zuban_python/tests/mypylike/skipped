@@ -1,5 +1,4 @@
 # Next up
-testInvalidOptionalType
 testAnyTypeAlias2
 testCantUseStringLiteralAsTypeAlias
 testTryExceptWithMultipleHandlers

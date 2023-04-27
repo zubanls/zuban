@@ -635,6 +635,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     DbType::Any
                 }
+                SpecialType::Optional => {
+                    self.add_typing_issue(node_ref, IssueType::OptionalMustHaveOneArgument);
+                    DbType::Any
+                }
                 _ => {
                     self.add_typing_issue(
                         node_ref,
@@ -1494,7 +1498,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(next) = iterator.next() {
-            todo!()
+            self.add_typing_issue(next.as_node_ref(), IssueType::OptionalMustHaveOneArgument);
         }
         let t = self.compute_slice_db_type(first);
         let was_union = Type::new(&t).is_union();
