@@ -455,7 +455,14 @@ impl<'db: 'a, 'a> Class<'a> {
                             debug!("TODO shouldn't we handle this? In testNewAnalyzerClassKeywordsForward it's ignored...")
                         }
                     }
-                    Argument::Starred(_) | Argument::DoubleStarred(_) => (), // Nobody probably cares about this
+                    Argument::Starred(starred) => {
+                        NodeRef::new(self.node_ref.file, starred.index())
+                            .add_typing_issue(i_s, IssueType::InvalidBaseClass);
+                    }
+                    Argument::DoubleStarred(double_starred) => {
+                        NodeRef::new(self.node_ref.file, double_starred.index())
+                            .add_typing_issue(i_s, IssueType::InvalidBaseClass);
+                    }
                 }
             }
         }
