@@ -73,7 +73,7 @@ pub(super) enum SpecialType {
 pub(super) enum InvalidVariableType<'a> {
     List,
     Tuple { tuple_length: usize },
-    Execution,
+    Execution { was_class: bool },
     Function(Function<'a, 'a>),
     ParamNameAsBaseClassAny(NodeRef<'a>),
     Literal(&'a str),
@@ -152,13 +152,23 @@ impl InvalidVariableType<'_> {
             Self::Literal(s) => IssueType::InvalidType(
                 format!("Invalid type: try using Literal[{s}] instead?").into(),
             ),
-            Self::Execution | Self::Other => match origin {
-                TypeComputationOrigin::CastTarget => IssueType::InvalidCastTarget,
-                TypeComputationOrigin::TypeAlias => IssueType::InvalidType(Box::from(
+            Self::Execution { .. } | Self::Other if origin == TypeComputationOrigin::CastTarget => {
+                IssueType::InvalidCastTarget
+            }
+            Self::Execution { .. } | Self::Other if origin == TypeComputationOrigin::TypeAlias => {
+                IssueType::InvalidType(Box::from(
                     "Invalid type alias: expression is not a valid type",
-                )),
-                _ => IssueType::InvalidType(Box::from("Invalid type comment or annotation")),
-            },
+                ))
+            }
+            Self::Execution { was_class: true } => {
+                add_typing_issue(IssueType::InvalidType(Box::from(
+                    "Invalid type comment or annotation",
+                )));
+                IssueType::Note(Box::from("Suggestion: use Foo[...] instead of Foo(...)"))
+            }
+            Self::Execution { .. } | Self::Other => {
+                IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
+            }
             Self::Float => IssueType::InvalidType(
                 "Invalid type: float literals cannot be used as a type".into(),
             ),
@@ -858,7 +868,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Unknown => TypeContent::Unknown,
                 _ => {
                     debug!("Invalid type execution: {base:?}");
-                    TypeContent::InvalidVariable(InvalidVariableType::Execution)
+                    TypeContent::InvalidVariable(InvalidVariableType::Execution {
+                        was_class: matches!(base, TypeContent::ClassWithoutTypeVar(_)),
+                    })
                 }
             },
             PrimaryContent::GetItem(slice_type) => {
