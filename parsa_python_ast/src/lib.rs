@@ -64,7 +64,18 @@ impl Tree {
         self.0
             .node_by_index(index)
             .parent_until(&[Nonterminal(simple_stmt)])
-            .map(|s| s.suffix().trim_start_matches(&[' ', '\t'][..]) == "# type: ignore")
+            .map(|s| {
+                for comment in s.suffix().split('#').skip(1) {
+                    let rest = comment.trim_start_matches(' ');
+                    if !rest.starts_with("type:") {
+                        return false;
+                    }
+                    if rest[5..].trim() == "ignore" {
+                        return true;
+                    }
+                }
+                false
+            })
             .unwrap_or(false)
     }
 

@@ -1,7 +1,4 @@
 # Next up
-testFastParseVariableTypeWithIgnore
-testFastParseVariableTypeWithIgnoreNoSpace
-testFastParseVariableTypeWithIgnoreAndComment
 testFasterParseTypeErrorCustom
 # statement stuff
 testPlusAssign
