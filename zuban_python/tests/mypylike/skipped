@@ -2324,8 +2324,6 @@ testDontIgnoreWholeModule2
 testDontIgnoreWholeModule3
 # Unused "type: ignore" comment
 testIgnoreWholeModule1
-# type: ignore leads to Any type?
-testDunderCallAddition
 # type: ignore[...]
 testJoinWithAnyFallback
 
