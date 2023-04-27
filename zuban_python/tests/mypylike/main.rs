@@ -310,7 +310,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         let mut process_step = |step_index, type_, step_start, step_end, rest: &'code str| {
             let in_between = &self.code[step_start..step_end];
 
-            if type_ == "out" && step_index == 1 {
+            if type_ == "out" && step_index == 1 && !self.file_name.contains("semanal-") {
                 // For now just ignore different versions and overwrite the out. This works,
                 // because we always target the latest version and older versions are currently
                 // listed below newer ones (by convention?).

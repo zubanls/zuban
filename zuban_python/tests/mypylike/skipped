@@ -1,5 +1,4 @@
 # Next up
-testBinaryOperations
 testInvalidOptionalType
 testAnyTypeAlias2
 testCantUseStringLiteralAsTypeAlias
