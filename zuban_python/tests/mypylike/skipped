@@ -1,5 +1,4 @@
 # Next up
-testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
 testIndexingWithDynamic
 testIndexingTuples
