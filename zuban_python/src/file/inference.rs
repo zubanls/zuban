@@ -514,7 +514,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
-                        .lookup_implicit(i_s, Some(node_ref), normal, &|i_s| todo!())
+                        .lookup_implicit(i_s, Some(node_ref), normal, &|i_s| {
+                            let left = value.as_type(i_s).format_short(i_s.db);
+                            node_ref.add_typing_issue(
+                                i_s,
+                                IssueType::UnsupportedLeftOperand {
+                                    operand: Box::from(aug_assign.operand()),
+                                    left,
+                                },
+                            );
+                        })
                         .execute_with_details(
                             i_s,
                             &KnownArguments::new(&right, node_ref),

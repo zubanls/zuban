@@ -1,12 +1,6 @@
 # Next up
 
 # statement stuff
-testPlusAssign
-testMinusAssign
-testMulAssign
-testMatMulAssign
-testDivAssign
-testPowAssign
 testInplaceOperatorMethods
 testInplaceSetitem
 testAssert
