@@ -288,12 +288,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 _ => (),
             }
         }
-        from.add_typing_issue(
-            i_s,
-            IssueType::NotIterable {
-                type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
-            },
-        );
+        if !self.class.incomplete_mro(i_s.db) {
+            from.add_typing_issue(
+                i_s,
+                IssueType::NotIterable {
+                    type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
+                },
+            );
+        }
         IteratorContent::Any
     }
 

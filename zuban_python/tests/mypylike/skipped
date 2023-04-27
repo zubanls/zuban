@@ -1274,7 +1274,6 @@ testOptionalAndAnyBaseClass
 # base class: callable
 testInvalidBaseClass
 # Base class any
-testErrorMapToSupertype
 testIgnoredModuleDefinesBaseClassWithInheritance2
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny
