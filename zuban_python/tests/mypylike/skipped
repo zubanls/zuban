@@ -1,5 +1,4 @@
 # Next up
-testBaseClassWithExplicitAnyType
 testIndexingWithDynamic
 testIndexingTuples
 testIndexingTuplesWithNegativeIntegers
@@ -364,12 +363,6 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 testSelfTypeMultipleTypeVars
 testTypingSelfNonAnnotationUses
-
-# base class: type alias
-testDontSimplifyNoneUnionsWithStrictOptional
-testOptionalAndAnyBaseClass
-# base class: callable
-testInvalidBaseClass
 
 # Property
 testBoundMethodUsage
@@ -1276,10 +1269,13 @@ testChangeBaseClassAttributeType
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
 
+# base class: type alias
+testOptionalAndAnyBaseClass
+# base class: callable
+testInvalidBaseClass
 # Base class any
 testAnyBaseClassUnconstrainedConstructor
 testErrorMapToSupertype
-testExceptionWithAnyBaseClass
 testIgnoredModuleDefinesBaseClassWithInheritance2
 # class base Any in combination with overload
 testOverloadWithDerivedFromAny

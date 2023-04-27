@@ -2273,6 +2273,15 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if let Some((name_def, annotation, expr)) =
             assignment.maybe_simple_type_expression_assignment()
         {
+            if let Some((_, type_)) = self.check_for_type_comment(assignment) {
+                // This case is a bit weird in Mypy, but it makes it possible to use a type
+                // definition like:
+                //
+                //     Foo = 1  # Any
+                if type_.is_any() {
+                    return TypeNameLookup::Unknown;
+                }
+            }
             if expr.maybe_single_string_literal().is_some() && !is_explicit {
                 return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                     NodeRef::new(file, name_def.index()),
