@@ -387,6 +387,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                             );
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
+                                        incomplete_mro |= cached_class_infos.incomplete_mro;
                                         Self::update_metaclass(
                                             i_s,
                                             NodeRef::new(self.node_ref.file, n.index()),
