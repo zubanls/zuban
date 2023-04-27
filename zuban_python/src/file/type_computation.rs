@@ -2487,6 +2487,28 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         DbType::Tuple(TupleContent::new_fixed_length(generics))
     }
 
+    pub fn check_for_type_comment(
+        &mut self,
+        assignment: Assignment,
+    ) -> Option<(Inferred, Type<'db>)> {
+        const TYPE: &str = "# type:";
+        let suffix = assignment.suffix();
+        if let Some(start) = suffix.find(TYPE) {
+            let mut start = start + TYPE.len();
+            let with_spaces = &suffix[start..];
+            let s = with_spaces.trim_start_matches(' ');
+            start += with_spaces.len() - s.len();
+            debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
+            if s != "ignore" {
+                return Some(self.compute_type_comment(
+                    assignment.end() + start as CodeIndex,
+                    s,
+                    NodeRef::new(self.file, assignment.index()),
+                ));
+            }
+        }
+        None
+    }
     pub fn compute_cast_target(&mut self, node_ref: NodeRef) -> Inferred {
         let named_expr = node_ref.as_named_expression();
         let mut x = type_computation_for_variable_annotation;

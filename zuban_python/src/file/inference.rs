@@ -428,23 +428,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         };
         match assignment.unpack() {
             AssignmentContent::Normal(targets, right_side) => {
-                let suffix = assignment.suffix();
-                const TYPE: &str = "# type:";
-                let mut type_comment_result = None;
-                if let Some(start) = suffix.find(TYPE) {
-                    let mut start = start + TYPE.len();
-                    let with_spaces = &suffix[start..];
-                    let s = with_spaces.trim_start_matches(' ');
-                    start += with_spaces.len() - s.len();
-                    debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
-                    if s != "ignore" {
-                        type_comment_result = Some(self.compute_type_comment(
-                            assignment.end() + start as CodeIndex,
-                            s,
-                            node_ref,
-                        ));
-                    }
-                }
+                let type_comment_result = self.check_for_type_comment(assignment);
+
                 let is_definition = type_comment_result.is_some();
                 let right = if let Some((r, type_)) = type_comment_result {
                     let right = self
