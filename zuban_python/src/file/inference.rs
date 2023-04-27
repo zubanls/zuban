@@ -1880,6 +1880,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             println!("TODO Is this branch still needed???");
             //self.infer_multi_definition(name.name_definition().unwrap())
         }
+        if point.calculated() {
+            if let Some(inf) = self.check_point_cache(name.index()) {
+                return inf;
+            }
+        }
         match name.name_definition() {
             Some(name_def) => self.infer_name_definition(name_def),
             None => {
