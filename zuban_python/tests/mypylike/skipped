@@ -1,5 +1,4 @@
 # Next up
-testCantUseStringLiteralAsTypeAlias
 testTryExceptWithMultipleHandlers
 testConstantFold2
 testQualifiedTypeNameBasedOnAny

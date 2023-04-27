@@ -2273,6 +2273,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if let Some((name_def, annotation, expr)) =
             assignment.maybe_simple_type_expression_assignment()
         {
+            if expr.maybe_single_string_literal().is_some() && !is_explicit {
+                return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
+                    NodeRef::new(file, name_def.index()),
+                ));
+            }
             debug_assert!(file.points.get(name_def.index()).calculated() || annotation.is_some());
             let inferred = self.check_point_cache(name_def.index()).unwrap();
             let in_definition = cached_type_node_ref.as_link();
