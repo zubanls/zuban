@@ -1,5 +1,4 @@
 # Next up
-testConstantFold2
 testQualifiedTypeNameBasedOnAny
 testBaseClassWithExplicitAnyType
 testIndexingWithDynamic
