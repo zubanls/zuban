@@ -317,25 +317,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 if !rest.starts_with("version>=") && rest != "skip-path-normalization" {
                     assert_eq!(rest, "");
                 }
-                let mut start = 0;
-                let mut next_check = 0;
-                let mut index = 1;
-                while let Some(new) = in_between[next_check..].find("==\n") {
-                    if start == 0 && new == 0
-                        || in_between.as_bytes()[next_check + new - 1] == b'\n'
-                    {
-                        process_step_part2(
-                            index,
-                            "out",
-                            &in_between[start..next_check + new],
-                            rest,
-                        );
-                        start = next_check + new + 3;
-                    }
-                    index += 1;
-                    next_check += new + 3;
+                for (i, part) in in_between.split("==\n").enumerate() {
+                    process_step_part2(i + 1, "out", part, rest)
                 }
-                process_step_part2(index, "out", &in_between[start..], rest);
             } else {
                 process_step_part2(step_index, type_, in_between, rest)
             }
