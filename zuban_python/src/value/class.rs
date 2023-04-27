@@ -81,7 +81,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> Option<Option<GenericsList>> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let Some(inf) = init.into_maybe_inferred() else {
-            debug_assert!(self.use_cached_class_infos(i_s.db).incomplete_mro);
+            debug_assert!(self.incomplete_mro(i_s.db));
             return Some(self.type_vars(i_s).map(|type_vars| type_vars.as_any_generic_list()))
         };
         match inf.init_as_function(i_s.db, class) {
@@ -242,6 +242,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn use_cached_class_infos(&self, db: &'db Database) -> &'db ClassInfos {
         self.maybe_cached_class_infos(db).unwrap()
+    }
+
+    pub fn incomplete_mro(&self, db: &Database) -> bool {
+        self.use_cached_class_infos(db).incomplete_mro
     }
 
     pub fn maybe_cached_class_infos(&self, db: &'db Database) -> Option<&'db ClassInfos> {
@@ -531,8 +535,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
     ) -> (LookupResult, Option<Class>) {
-        let incomplete_mro = self.use_cached_class_infos(i_s.db).incomplete_mro;
-        for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, incomplete_mro) {
+        for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, self.incomplete_mro(i_s.db)) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let Type::Class(c) = c {
@@ -726,7 +729,7 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     }
 
     fn should_add_lookup_error(&self, db: &Database) -> bool {
-        !self.use_cached_class_infos(db).incomplete_mro
+        !self.incomplete_mro(db)
     }
 
     fn execute(
