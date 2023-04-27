@@ -2211,8 +2211,6 @@ testNewAnalyzerTypeVarForwardReferenceErrors
 
 # Aliases in Mypy define generics as X = Foo as Foo[Any, Any]
 testAliasToTupleAndCallable
-testNewAnalyzerAliasesFixedFew
-testNewAnalyzerAliasesFixedMany
 
 # Formatting Module as types ("ModuleType" instead of Module)
 testInvalidOperationsOnModules
