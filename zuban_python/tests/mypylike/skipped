@@ -2,7 +2,6 @@
 
 # statement stuff
 testInplaceOperatorMethods
-testTryExceptFlow
 testExceptWithTypeType
 testAugmentedAssignmentIntFloat
 testAugmentedAssignmentIntFloatMember

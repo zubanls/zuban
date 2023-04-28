@@ -2137,7 +2137,6 @@ impl<'db> DottedAsName<'db> {
 
 impl<'db> AssertStmt<'db> {
     pub fn unpack(&self) -> (Expression<'db>, Option<Expression<'db>>) {
-        dbg!(self.node);
         let mut iterator = self.node.iter_children().skip(1);
         let first = iterator.next().unwrap();
         (
