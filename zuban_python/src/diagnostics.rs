@@ -229,8 +229,8 @@ impl<'db> Diagnostic<'db> {
                 format!("Name {:?} is not defined", primary.as_code())
             }
             InvalidTypeDeclaration =>
-                "Type cannot be declared in assignment to non-self attribute".to_owned(),
-            UnexpectedTypeDeclaration => "Unexpected type declaration".to_owned(),
+                "Type cannot be declared in assignment to non-self attribute".to_string(),
+            UnexpectedTypeDeclaration => "Unexpected type declaration".to_string(),
             OverloadMismatch{name, args, variants} => {
                 let arg_str = args.join("\", \"");
                 let mut out = match args.len() {
@@ -266,11 +266,11 @@ impl<'db> Diagnostic<'db> {
             ModuleNotFound{module_name} => format!(
                 "Cannot find implementation or library stub for module named {module_name:?}",
             ),
-            NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
+            NoParentModule => "No parent module -- cannot perform relative import".to_string(),
             NotCallable{type_} => format!("{type_} not callable"),
-            AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_owned(),
+            AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_string(),
             NotIterable{type_} => format!("{type_} object is not iterable"),
-            InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_owned(),
+            InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_string(),
             UnsupportedOperand{operand, left, right} => {
                 format!(
                     "Unsupported operand types for {operand} ({left:?} and {right:?})",
@@ -290,10 +290,10 @@ impl<'db> Diagnostic<'db> {
             ),
             NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
             MethodWithoutArguments => {
-                "Method must have at least one argument. Did you forget the \"self\" argument?".to_owned()
+                "Method must have at least one argument. Did you forget the \"self\" argument?".to_string()
             }
             OnlyClassTypeApplication => {
-                "Type application is only supported for generic classes".to_owned()
+                "Type application is only supported for generic classes".to_string()
             }
             TooFewValuesToUnpack{actual, expected} => format!(
                 "Need more than {actual} values to unpack ({expected} expected)"
@@ -312,11 +312,11 @@ impl<'db> Diagnostic<'db> {
                 format!("Dynamic metaclass not supported for \"{class_name}\"")
             }
             MetaclassMustInheritFromType =>
-                "Metaclasses not inheriting from \"type\" are not supported".to_owned(),
+                "Metaclasses not inheriting from \"type\" are not supported".to_string(),
             MetaclassConflict =>
                 "Metaclass conflict: the metaclass of a derived class must be \
-                 a (non-strict) subclass of the metaclasses of all its bases".to_owned(),
-            CannotSubclassNewType => "Cannot subclass \"NewType\"".to_owned(),
+                 a (non-strict) subclass of the metaclasses of all its bases".to_string(),
+            CannotSubclassNewType => "Cannot subclass \"NewType\"".to_string(),
             DuplicateBaseClass{name} => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Duplicate base class \"{name}\"")
@@ -324,7 +324,7 @@ impl<'db> Diagnostic<'db> {
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             EnsureSingleGenericOrProtocol =>
-                "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
+                "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
             InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
                  {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"
@@ -339,7 +339,7 @@ impl<'db> Diagnostic<'db> {
             OptionalMustHaveOneArgument => "Optional[...] must have exactly one type argument".to_string(),
 
             DuplicateTypeVar =>
-                "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
+                "Duplicate type variables in Generic[...] or Protocol[...]".to_string(),
             UnboundTypeVarLike{type_var_like} => match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     let qualified = type_var.qualified_name(self.db);
@@ -360,20 +360,20 @@ impl<'db> Diagnostic<'db> {
                 }
             }
             IncompleteGenericOrProtocolTypeVars =>
-                "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
+                "If Generic[...] or Protocol[...] is present it should list all type variables".to_string(),
             TypeVarExpected{class} => format!("Free type variable expected in {class}[...]"),
             TypeVarBoundViolation{actual, of, expected} => format!(
                 "Type argument \"{actual}\" of \"{of}\" must be a subtype of \"{expected}\"",
             ),
             InvalidTypeVarValue{type_var_name, of, actual} =>
                 format!("Value of type variable {type_var_name:?} of {of} cannot be {actual:?}"),
-            InvalidCastTarget => "Cast target is not a type".to_owned(),
+            InvalidCastTarget => "Cast target is not a type".to_string(),
             TypeVarCoAndContravariant =>
-                "TypeVar cannot be both covariant and contravariant".to_owned(),
+                "TypeVar cannot be both covariant and contravariant".to_string(),
             TypeVarValuesAndUpperBound =>
-                "TypeVar cannot have both values and an upper bound".to_owned(),
+                "TypeVar cannot have both values and an upper bound".to_string(),
             TypeVarOnlySingleRestriction =>
-                 "TypeVar cannot have only a single constraint".to_owned(),
+                 "TypeVar cannot have only a single constraint".to_string(),
             UnexpectedArgument{class_name, argument_name} => format!(
                  "Unexpected argument to \"{class_name}()\": \"{argument_name}\""),
             TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
@@ -382,54 +382,54 @@ impl<'db> Diagnostic<'db> {
             TypeVarVarianceMustBeBool{argument} => format!(
                 "TypeVar \"{argument}\" may only be a literal bool"
             ),
-            TypeVarTypeExpected => "Type expected".to_owned(),
+            TypeVarTypeExpected => "Type expected".to_string(),
             TypeVarNameMismatch{class_name, string_name, variable_name} => format!(
                 "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
             ),
             TypeVarInReturnButNotArgument =>
-                "A function returning TypeVar should receive at least one argument containing the same Typevar".to_owned(),
+                "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string(),
             UnexpectedTypeForTypeVar =>
-                "Cannot declare the type of a TypeVar or similar construct".to_owned(),
+                "Cannot declare the type of a TypeVar or similar construct".to_string(),
             TypeVarLikeTooManyArguments{class_name} => format!(
                 "Only the first argument to {class_name} has defined semantics"),
             MultipleTypeVarTuplesInClassDef =>
-                "Can only use one type var tuple in a class def".to_owned(),
+                "Can only use one type var tuple in a class def".to_string(),
             BoundTypeVarInAlias{name} =>
                 format!("Can't use bound type variable \"{name}\" to define generic alias"),
             NestedConcatenate =>
-                "Nested Concatenates are invalid".to_owned(),
+                "Nested Concatenates are invalid".to_string(),
             InvalidSelfArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
             ),
             InvalidClassMethodFirstArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to class attribute function \"{function_name}\" with type \"{callable}\""
             ),
-            UnexpectedComprehension => "Unexpected comprehension".to_owned(),
+            UnexpectedComprehension => "Unexpected comprehension".to_string(),
             AmbigousClassVariableAccess =>
-                "Access to generic instance variables via class is ambiguous".to_owned(),
+                "Access to generic instance variables via class is ambiguous".to_string(),
 
             BaseExceptionExpected =>
-                "Exception type must be derived from BaseException".to_owned(),
+                "Exception type must be derived from BaseException".to_string(),
             BaseExceptionExpectedForRaise =>
-                "Exception must be derived from BaseException".to_owned(),
+                "Exception must be derived from BaseException".to_string(),
             UnsupportedClassScopedImport =>
-                "Unsupported class scoped import".to_owned(),
+                "Unsupported class scoped import".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
-            TupleIndexOutOfRange => "Tuple index out of range".to_owned(),
+            TupleIndexOutOfRange => "Tuple index out of range".to_string(),
             InvalidStmtInNamedTuple =>
-                "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_owned(),
+                "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_string(),
             InvalidSecondArgumentToNamedTuple =>
-                "List or tuple literal expected as the second argument to \"namedtuple()\"".to_owned(),
+                "List or tuple literal expected as the second argument to \"namedtuple()\"".to_string(),
 
             OverloadImplementationNotLast =>
-                "The implementation for an overloaded function must come last".to_owned(),
+                "The implementation for an overloaded function must come last".to_string(),
             OverloadImplementationNeeded =>
-                "An overloaded function outside a stub file must have an implementation".to_owned(),
+                "An overloaded function outside a stub file must have an implementation".to_string(),
             OverloadStubImplementationNotAllowed =>
-                "An implementation for an overloaded function is not allowed in a stub file".to_owned(),
+                "An implementation for an overloaded function is not allowed in a stub file".to_string(),
             OverloadSingleNotAllowed =>
-                "Single overload definition, multiple required".to_owned(),
+                "Single overload definition, multiple required".to_string(),
             OverloadUnmatchable{unmatchable_signature_index, matchable_signature_index} => format!(
                 "Overloaded function signature {unmatchable_signature_index} will never \
                  be matched: signature {matchable_signature_index}'s parameter type(s) \
