@@ -2135,6 +2135,18 @@ impl<'db> DottedAsName<'db> {
     }
 }
 
+impl<'db> AssertStmt<'db> {
+    pub fn unpack(&self) -> (Expression<'db>, Option<Expression<'db>>) {
+        dbg!(self.node);
+        let mut iterator = self.node.iter_children().skip(1);
+        let first = iterator.next().unwrap();
+        (
+            Expression::new(first),
+            iterator.skip(1).next().map(Expression::new),
+        )
+    }
+}
+
 impl<'db> PrimaryTarget<'db> {
     pub fn first(&self) -> PrimaryTargetOrAtom<'db> {
         let first = self.node.nth_child(0);

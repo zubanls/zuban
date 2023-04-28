@@ -57,7 +57,13 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::PassStmt(x) => {}
                 SimpleStmtContent::GlobalStmt(x) => {}
                 SimpleStmtContent::NonlocalStmt(x) => {}
-                SimpleStmtContent::AssertStmt(x) => {}
+                SimpleStmtContent::AssertStmt(assert_stmt) => {
+                    let (expr, message_expr) = assert_stmt.unpack();
+                    self.infer_expression(expr);
+                    if let Some(message_expr) = message_expr {
+                        self.infer_expression(message_expr);
+                    }
+                }
                 SimpleStmtContent::BreakStmt(x) => {}
                 SimpleStmtContent::ContinueStmt(x) => {}
                 SimpleStmtContent::DelStmt(d) => {

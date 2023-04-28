@@ -2,8 +2,6 @@
 
 # statement stuff
 testInplaceOperatorMethods
-testInplaceSetitem
-testAssert
 testTryExceptFlow
 testExceptWithTypeType
 testAugmentedAssignmentIntFloat
@@ -1453,6 +1451,7 @@ testTupleSubclassJoinIrregular
 # __setitem__
 testInferOptionalDictKeyValueTypes
 testIndexingAsLvalue
+testInplaceSetitem
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
 testInferSetInitializedToEmpty
