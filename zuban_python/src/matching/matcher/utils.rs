@@ -613,27 +613,37 @@ pub fn match_arguments_against_params<
         }
     }
     let add_keyword_argument_issue = |reference: NodeRef, name| {
-        let s = if let FunctionOrCallable::Function(function) = func_or_callable {
-            if function.iter_params().any(|p| {
-                p.name(i_s.db) == Some(name)
-                    && matches!(
-                        p.kind(i_s.db),
-                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+        let s = match func_or_callable {
+            FunctionOrCallable::Function(function) => {
+                if function.iter_params().any(|p| {
+                    p.name(i_s.db) == Some(name)
+                        && matches!(
+                            p.kind(i_s.db),
+                            ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                        )
+                }) {
+                    format!(
+                        "{} gets multiple values for keyword argument {name:?}",
+                        function.diagnostic_string(class),
                     )
-            }) {
-                format!(
-                    "{} gets multiple values for keyword argument {name:?}",
-                    function.diagnostic_string(class),
-                )
-            } else {
-                format!(
-                    "Unexpected keyword argument {name:?} for {}",
-                    function.diagnostic_string(class),
-                )
+                } else {
+                    format!(
+                        "Unexpected keyword argument {name:?} for {}",
+                        function.diagnostic_string(class),
+                    )
+                }
             }
-        } else {
-            debug!("TODO this keyword param could also exist");
-            format!("Unexpected keyword argument {name:?}")
+            FunctionOrCallable::Callable(callable) => {
+                debug!("TODO this keyword param could also exist");
+                if let Some(n) = callable.name {
+                    format!(
+                        "Unexpected keyword argument {name:?} for \"{}\"",
+                        n.as_str(i_s.db)
+                    )
+                } else {
+                    format!("Unexpected keyword argument {name:?}")
+                }
+            }
         };
         reference.add_typing_issue(i_s, IssueType::ArgumentIssue(s.into()));
     };
