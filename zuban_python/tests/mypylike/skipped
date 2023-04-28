@@ -2,7 +2,6 @@
 
 # statement stuff
 testInplaceOperatorMethods
-testExceptWithTypeType
 testNoCrashOnStarRightHandSide
 # raise: Exception must be derived from BaseException
 testRaiseStatement

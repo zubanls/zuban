@@ -499,10 +499,20 @@ impl<'db: 'slf, 'slf> Inferred {
                 match point.type_() {
                     PointType::Complex => {
                         let complex = definition.file.complex_points.get(point.complex_index());
-                        if let ComplexPoint::Class(c) = complex {
-                            Some(Class::new(definition, c, generics, None))
-                        } else {
-                            None
+                        match complex {
+                            ComplexPoint::Class(c) => {
+                                Some(Class::new(definition, c, generics, None))
+                            }
+                            ComplexPoint::TypeInstance(t) => match t.as_ref() {
+                                DbType::Type(t) => match t.as_ref() {
+                                    DbType::Class(link, generics) => {
+                                        Some(Class::from_db_type(i_s.db, *link, generics))
+                                    }
+                                    _ => None,
+                                },
+                                _ => None,
+                            },
+                            _ => None,
                         }
                     }
                     PointType::Specific => match point.specific() {
