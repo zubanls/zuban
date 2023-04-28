@@ -3638,13 +3638,14 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
+        assert_eq!(size_of::<DbType>(), 32);
+        assert_eq!(size_of::<ComplexPoint>(), 32);
         assert_eq!(size_of::<ClassStorage>(), 120);
-        assert_eq!(size_of::<ClassInfos>(), 24);
+        assert_eq!(size_of::<ClassInfos>(), 48);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<AnyLink>(), 16);
         assert_eq!(size_of::<Execution>(), 24);
-        assert_eq!(size_of::<ComplexPoint>(), 32);
-        assert_eq!(size_of::<DbType>(), 32);
+        assert_eq!(size_of::<StringSlice>(), 12);
     }
 
     #[test]
