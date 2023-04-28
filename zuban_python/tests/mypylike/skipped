@@ -455,7 +455,6 @@ testNonliteralTupleIndex
 # Namedtuple uncategorized
 testNamedTupleSelfTypeWithNamedTupleAsBase
 testNamedTupleTypeReferenceToClassDerivedFrom
-testNamedTupleSubclassMulti
 testNamedTupleClassMethodWithGenericReturnValue
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
@@ -1615,6 +1614,7 @@ testIsinstanceAndGenericType
 testTupleMeetTupleAny
 testTupleMeetTupleAnyComplex
 testTupleMeetTupleAnyAfter
+testNamedTupleSubclassMulti
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
