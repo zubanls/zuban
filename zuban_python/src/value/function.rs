@@ -340,12 +340,12 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 Generic::ParamSpecArgument(p) => match p.into_owned().params {
                     CallableParams::Any => CallableParams::Any,
                     CallableParams::Simple(params) => {
-                        // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                        // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
                         pre_params.extend(params.into_iter().cloned());
                         CallableParams::Simple(Rc::from(pre_params))
                     }
                     CallableParams::WithParamSpec(pre, p) => {
-                        // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                        // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
                         let types: Vec<_> = Vec::from(pre.as_ref());
                         CallableParams::WithParamSpec(into_types(types, pre_params), p)
                     }

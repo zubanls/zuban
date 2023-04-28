@@ -1592,7 +1592,7 @@ impl DbType {
                 } else {
                     match new.params {
                         CallableParams::Simple(params) => {
-                            // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                            // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
                             let mut params = Vec::from(params.as_ref());
                             params.splice(
                                 0..0,
@@ -1618,7 +1618,7 @@ impl DbType {
                                     t.replace_type_var_likes_and_self(db, callable, replace_self)
                                 })
                                 .collect();
-                            // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                            // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
                             types.extend(new_types.iter().cloned());
                             CallableParams::WithParamSpec(types.into(), p)
                         }
