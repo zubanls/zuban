@@ -1733,7 +1733,7 @@ impl DbType {
                         (t.most_outer_callable == Some(content.defined_at))
                             .then(|| t.type_var_like.clone())
                     })
-                    .collect::<Box<_>>();
+                    .collect::<Rc<_>>();
                 Self::Callable(Rc::new(CallableContent {
                     name: content.name,
                     class_name: content.class_name,
@@ -2661,15 +2661,15 @@ impl Variance {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct TypeVarLikes(Box<[TypeVarLike]>);
+pub struct TypeVarLikes(Rc<[TypeVarLike]>);
 
 impl TypeVarLikes {
     pub fn from_vec(vec: Vec<TypeVarLike>) -> Self {
-        Self(vec.into_boxed_slice())
+        Self(Rc::from(vec))
     }
 
     pub fn into_vec(self) -> Vec<TypeVarLike> {
-        self.0.into_vec()
+        Vec::from(self.0.as_ref())
     }
 
     pub fn len(&self) -> usize {
