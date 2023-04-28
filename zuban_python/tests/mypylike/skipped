@@ -1,7 +1,5 @@
 # Next up
 
-# statement stuff
-testInplaceOperatorMethods
 # raise: Exception must be derived from BaseException
 testRaiseStatement
 testRaiseClassObject
@@ -1445,6 +1443,10 @@ testTupleSubclassJoinIrregular
 testInferOptionalDictKeyValueTypes
 testIndexingAsLvalue
 testInplaceSetitem
+
+# inplace operator methods
+testInplaceOperatorMethods
+
 # List/Set/Dict Inferring type of variable when initialized to an empty collection
 testInferListInitialized*
 testInferSetInitializedToEmpty
