@@ -3049,14 +3049,16 @@ pub fn new_collections_named_tuple(
         AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
         AtomContent::Strings(s) => match s.maybe_single_string_literal() {
             Some(s) => {
-                let (start, _) = s.content_start_and_end_in_literal();
-                debug!("TODO split content");
-                let content = s.content();
-                add_param(StringSlice::new(
-                    args_node_ref.file_index(),
-                    start,
-                    start + content.len() as CodeIndex,
-                ))
+                let (mut start, _) = s.content_start_and_end_in_literal();
+                start += s.start();
+                for part in s.content().split(&[',', ' ']) {
+                    add_param(StringSlice::new(
+                        args_node_ref.file_index(),
+                        start,
+                        start + part.len() as CodeIndex,
+                    ));
+                    start += part.len() as CodeIndex + 1;
+                }
             }
             _ => todo!(),
         },

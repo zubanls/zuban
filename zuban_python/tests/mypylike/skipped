@@ -453,12 +453,7 @@ testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
 # Namedtuple uncategorized
-testNamedTupleCreateWithPositionalArguments
-testNamedTupleAccessingAttributes
-testNamedTupleAttributesAreReadOnly
-testTypingNamedTupleAttributesAreReadOnly
 testCreateNamedTupleWithKeywordArguments
-testNamedTupleCreateAndUseAsTuple
 testNamedTupleWithItemTypes
 testNamedTupleSelfTypeWithNamedTupleAsBase
 testNamedTupleTypeReferenceToClassDerivedFrom
@@ -506,6 +501,7 @@ testNamedTupleWithBoolNarrowsToBool
 testNamedTupleSelfItemNotAllowed
 # "Property "y" defined in "Point" is read-only"
 testTypingExtensionsNamedTuple
+testNamedTupleAttributesAreReadOnly
 # Namedtuple unpacking size messages
 testNamedTupleUsedAsTuple
 # NamedTuples generics
@@ -545,6 +541,8 @@ testNamedTupleAdditionalArgs
 # Namedtuple bad overwrite of count etc
 testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames
+# "Protocol member HasX.x expected settable variable, got read-only attribute"
+testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
