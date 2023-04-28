@@ -455,7 +455,6 @@ testNonliteralTupleIndex
 # Namedtuple uncategorized
 testNamedTupleSelfTypeWithNamedTupleAsBase
 testNamedTupleTypeReferenceToClassDerivedFrom
-testNamedTupleSimpleTypeInference
 testNamedTupleJoinNamedTuple
 testNamedTupleJoinTuple
 testNamedTupleImportCycle

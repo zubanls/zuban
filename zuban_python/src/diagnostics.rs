@@ -295,9 +295,10 @@ impl<'db> Diagnostic<'db> {
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()
             }
-            TooFewValuesToUnpack{actual, expected} => format!(
-                "Need more than {actual} values to unpack ({expected} expected)"
-            ),
+            TooFewValuesToUnpack{actual, expected} => match actual {
+                1 => format!("Need more than {actual} value to unpack ({expected} expected)"),
+                _ => format!("Need more than {actual} values to unpack ({expected} expected)"),
+            },
             StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
             InvalidBaseClass => {
