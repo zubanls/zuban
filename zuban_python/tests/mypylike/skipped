@@ -3,13 +3,7 @@
 # statement stuff
 testInplaceOperatorMethods
 testExceptWithTypeType
-testAugmentedAssignmentIntFloat
-testAugmentedAssignmentIntFloatMember
-testAugmentedAssignmentIntFloatDict
-testForwardRefsInWithStatementImplicit
-testForwardRefsInWithStatement
 testNoCrashOnStarRightHandSide
-testTypingExtensionsSuggestion
 # raise: Exception must be derived from BaseException
 testRaiseStatement
 testRaiseClassObject
@@ -644,6 +638,8 @@ testCrashForwardSyntheticFunctionSyntax
 testRecursiveTypedDictWithList
 testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testDistinctTypes
+testForwardRefsInWithStatementImplicit
+testForwardRefsInWithStatement
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1724,6 +1720,9 @@ testDynamicWithMemberAccess
 testTupleCompatibleWithSequence
 testTupleInstanceCompatibleWithIterable
 testTupleTypeCompatibleWithIterable
+testAugmentedAssignmentIntFloat
+testAugmentedAssignmentIntFloatMember
+testAugmentedAssignmentIntFloatDict
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
@@ -2469,6 +2468,9 @@ testForStatementMultipleTypeComments
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
+
+# Won't support for now: "Use `from typing_extensions import _FutureFeatureFixture` instead"
+testTypingExtensionsSuggestion
 
 # Probably won't support: typing._promote
 testListWithDucktypeCompatibility
