@@ -455,9 +455,6 @@ testNonliteralTupleIndex
 # Namedtuple uncategorized
 testNamedTupleSelfTypeWithNamedTupleAsBase
 testNamedTupleTypeReferenceToClassDerivedFrom
-testNamedTupleJoinNamedTuple
-testNamedTupleJoinTuple
-testNamedTupleImportCycle
 testNamedTupleSubclassMulti
 testNamedTupleClassMethodWithGenericReturnValue
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
@@ -1429,6 +1426,9 @@ testFixedTupleJoinList
 testEmptyTupleJoin
 testTupleJoinIrregular
 testTupleSubclassJoinIrregular
+# namedtuple joins
+testNamedTupleJoinNamedTuple
+testNamedTupleJoinTuple
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
