@@ -190,19 +190,13 @@ impl<'db> Diagnostic<'db> {
         let line = self.start_position().line_and_column().0;
         use IssueType::*;
         let error = match &self.issue.type_ {
-            AttributeError{object, name} => {
-                format!("{object} has no attribute {name:?}")
-            }
+            AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             ImportAttributeError{module_name, name} => {
                 format!("Module {module_name:?} has no attribute {name:?}")
             }
-            NameError{name} => {
-                format!("Name {name:?} is not defined")
-            }
+            NameError{name} => format!("Name {name:?} is not defined"),
             IncompatibleReturn{got, expected} => {
-                format!(
-                    "Incompatible return value type (got {got:?}, expected {expected:?})",
-                )
+                format!("Incompatible return value type (got {got:?}, expected {expected:?})")
             }
             IncompatibleAssignment{got, expected} => {
                 format!(
@@ -236,8 +230,7 @@ impl<'db> Diagnostic<'db> {
             }
             InvalidTypeDeclaration =>
                 "Type cannot be declared in assignment to non-self attribute".to_owned(),
-            UnexpectedTypeDeclaration =>
-                "Unexpected type declaration".to_owned(),
+            UnexpectedTypeDeclaration => "Unexpected type declaration".to_owned(),
             OverloadMismatch{name, args, variants} => {
                 let arg_str = args.join("\", \"");
                 let mut out = match args.len() {
