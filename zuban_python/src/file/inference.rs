@@ -842,7 +842,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             StarExpressionContent::StarExpression(expr) => {
-                todo!("Add error: can't use starred expression here")
+                NodeRef::new(self.file, expr.index())
+                    .add_typing_issue(self.i_s, IssueType::StarredExpressionOnlyNoTarget);
+                Inferred::new_any()
             }
             StarExpressionContent::Tuple(tuple) => self
                 .infer_tuple_iterator(tuple.iter())

@@ -40,6 +40,7 @@ pub(crate) enum IssueType {
     InvalidGetItem { actual: Box<str>, type_: Box<str>, expected: Box<str> },
     NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
+    StarredExpressionOnlyNoTarget,
     OnlyClassTypeApplication,
     InvalidBaseClass,
     InvalidMetaclass,
@@ -302,6 +303,8 @@ impl<'db> Diagnostic<'db> {
             IssueType::TooFewValuesToUnpack{actual, expected} => format!(
                 "Need more than {actual} values to unpack ({expected} expected)"
             ),
+            IssueType::StarredExpressionOnlyNoTarget =>
+                "Can use starred expression only as assignment target".to_string(),
             IssueType::InvalidBaseClass => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
