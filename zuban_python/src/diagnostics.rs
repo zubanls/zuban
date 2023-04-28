@@ -188,37 +188,38 @@ impl<'db> Diagnostic<'db> {
             path = "main";
         }
         let line = self.start_position().line_and_column().0;
+        use IssueType::*;
         let error = match &self.issue.type_ {
-            IssueType::AttributeError{object, name} => {
+            AttributeError{object, name} => {
                 format!("{object} has no attribute {name:?}")
             }
-            IssueType::ImportAttributeError{module_name, name} => {
+            ImportAttributeError{module_name, name} => {
                 format!("Module {module_name:?} has no attribute {name:?}")
             }
-            IssueType::NameError{name} => {
+            NameError{name} => {
                 format!("Name {name:?} is not defined")
             }
-            IssueType::IncompatibleReturn{got, expected} => {
+            IncompatibleReturn{got, expected} => {
                 format!(
                     "Incompatible return value type (got {got:?}, expected {expected:?})",
                 )
             }
-            IssueType::IncompatibleAssignment{got, expected} => {
+            IncompatibleAssignment{got, expected} => {
                 format!(
                     "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",
                 )
             }
-            IssueType::ListItemMismatch{item, got, expected} => format!(
+            ListItemMismatch{item, got, expected} => format!(
                 "List item {item} has incompatible type \"{got}\"; expected \"{expected}\"",
             ),
-            IssueType::Redefinition{line} => {
+            Redefinition{line} => {
                 let node_ref = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
-            IssueType::ArgumentIssue(s) | IssueType::InvalidType(s) => s.clone().into(),
-            IssueType::TooManyArguments(rest) => format!("Too many arguments{rest}"),
-            IssueType::TooFewArguments(rest) => format!("Too few arguments{rest}"),
-            IssueType::IncompatibleDefaultArgument {argument_name, got, expected} => {
+            ArgumentIssue(s) | InvalidType(s) => s.clone().into(),
+            TooManyArguments(rest) => format!("Too many arguments{rest}"),
+            TooFewArguments(rest) => format!("Too few arguments{rest}"),
+            IncompatibleDefaultArgument {argument_name, got, expected} => {
                 let mut out = format!(
                     "Incompatible default for argument \"{argument_name}\" \
                      (default has type \"{got}\", argument has type \"{expected}\")"
@@ -229,15 +230,15 @@ impl<'db> Diagnostic<'db> {
                 }
                 out
             },
-            IssueType::TypeNotFound => {
+            TypeNotFound => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())
             }
-            IssueType::InvalidTypeDeclaration =>
+            InvalidTypeDeclaration =>
                 "Type cannot be declared in assignment to non-self attribute".to_owned(),
-            IssueType::UnexpectedTypeDeclaration =>
+            UnexpectedTypeDeclaration =>
                 "Unexpected type declaration".to_owned(),
-            IssueType::OverloadMismatch{name, args, variants} => {
+            OverloadMismatch{name, args, variants} => {
                 let arg_str = args.join("\", \"");
                 let mut out = match args.len() {
                     0 => format!(
@@ -257,96 +258,96 @@ impl<'db> Diagnostic<'db> {
                 out.pop(); // Pop the last newline
                 out
             }
-            IssueType::TypeArgumentIssue{class, expected_count, given_count} => {
+            TypeArgumentIssue{class, expected_count, given_count} => {
                 match expected_count {
                     0 => format!("{class:?} expects no type arguments, but {given_count} given"),
                     1 => format!("{class:?} expects {expected_count} type argument, but {given_count} given"),
                     _ => format!("{class:?} expects {expected_count} type arguments, but {given_count} given"),
                 }
             }
-            IssueType::TypeAliasArgumentIssue{expected_count, given_count} => {
+            TypeAliasArgumentIssue{expected_count, given_count} => {
                 format!(
                     "Bad number of arguments for type alias, expected: {expected_count}, given: {given_count}",
                 )
             }
-            IssueType::ModuleNotFound{module_name} => format!(
+            ModuleNotFound{module_name} => format!(
                 "Cannot find implementation or library stub for module named {module_name:?}",
             ),
-            IssueType::NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
-            IssueType::NotCallable{type_} => format!("{type_} not callable"),
-            IssueType::AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_owned(),
-            IssueType::NotIterable{type_} => format!("{type_} object is not iterable"),
-            IssueType::InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_owned(),
-            IssueType::UnsupportedOperand{operand, left, right} => {
+            NoParentModule => "No parent module -- cannot perform relative import".to_owned(),
+            NotCallable{type_} => format!("{type_} not callable"),
+            AnyNotCallable => "Any(...) is no longer supported. Use cast(Any, ...) instead".to_owned(),
+            NotIterable{type_} => format!("{type_} object is not iterable"),
+            InvalidCallableArgCount => "Please use \"Callable[[<parameters>], <return type>]\" or \"Callable\"".to_owned(),
+            UnsupportedOperand{operand, left, right} => {
                 format!(
                     "Unsupported operand types for {operand} ({left:?} and {right:?})",
                 )
             }
-            IssueType::UnsupportedLeftOperand{operand, left} => format!(
+            UnsupportedLeftOperand{operand, left} => format!(
                 "Unsupported left operand type for {operand} ({left:?})"
             ),
-            IssueType::UnsupportedIn{right} => format!(
+            UnsupportedIn{right} => format!(
                 "Unsupported right operand type for in ({right:?})"
             ),
-            IssueType::UnsupportedOperandForUnary{operand, got} => {
+            UnsupportedOperandForUnary{operand, got} => {
                 format!("Unsupported operand type for {operand} ({got:?})")
             }
-            IssueType::InvalidGetItem{actual, type_, expected} => format!(
+            InvalidGetItem{actual, type_, expected} => format!(
                 "Invalid index type {actual:?} for {type_:?}; expected type {expected:?}",
             ),
-            IssueType::NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
-            IssueType::MethodWithoutArguments => {
+            NotIndexable{type_} => format!("Value of type {type_:?} is not indexable"),
+            MethodWithoutArguments => {
                 "Method must have at least one argument. Did you forget the \"self\" argument?".to_owned()
             }
-            IssueType::OnlyClassTypeApplication => {
+            OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_owned()
             }
-            IssueType::TooFewValuesToUnpack{actual, expected} => format!(
+            TooFewValuesToUnpack{actual, expected} => format!(
                 "Need more than {actual} values to unpack ({expected} expected)"
             ),
-            IssueType::StarredExpressionOnlyNoTarget =>
+            StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
-            IssueType::InvalidBaseClass => {
+            InvalidBaseClass => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid base class {:?}", primary.as_code())
             }
-            IssueType::InvalidMetaclass => {
+            InvalidMetaclass => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Invalid metaclass {:?}", primary.as_code())
             }
-            IssueType::DynamicMetaclassNotSupported{class_name} => {
+            DynamicMetaclassNotSupported{class_name} => {
                 format!("Dynamic metaclass not supported for \"{class_name}\"")
             }
-            IssueType::MetaclassMustInheritFromType =>
+            MetaclassMustInheritFromType =>
                 "Metaclasses not inheriting from \"type\" are not supported".to_owned(),
-            IssueType::MetaclassConflict =>
+            MetaclassConflict =>
                 "Metaclass conflict: the metaclass of a derived class must be \
                  a (non-strict) subclass of the metaclasses of all its bases".to_owned(),
-            IssueType::CannotSubclassNewType => "Cannot subclass \"NewType\"".to_owned(),
-            IssueType::DuplicateBaseClass{name} => {
+            CannotSubclassNewType => "Cannot subclass \"NewType\"".to_owned(),
+            DuplicateBaseClass{name} => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Duplicate base class \"{name}\"")
             }
-            IssueType::CyclicDefinition{name} =>
+            CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
-            IssueType::EnsureSingleGenericOrProtocol =>
+            EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_owned(),
-            IssueType::InvalidCallableParams => format!(
+            InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
                  {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"
             ),
-            IssueType::InvalidParamSpecGenerics{got} => format!(
+            InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
             ),
-            IssueType::NewTypeMustBeSubclassable{got} => format!(
+            NewTypeMustBeSubclassable{got} => format!(
                 "Argument 2 to NewType(...) must be subclassable (got \"{got}\")"
             ),
-            IssueType::NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
-            IssueType::OptionalMustHaveOneArgument => "Optional[...] must have exactly one type argument".to_string(),
+            NewTypeInvalidType => "Argument 2 to NewType(...) must be a valid type".to_string(),
+            OptionalMustHaveOneArgument => "Optional[...] must have exactly one type argument".to_string(),
 
-            IssueType::DuplicateTypeVar =>
+            DuplicateTypeVar =>
                 "Duplicate type variables in Generic[...] or Protocol[...]".to_owned(),
-            IssueType::UnboundTypeVarLike{type_var_like} => match type_var_like {
+            UnboundTypeVarLike{type_var_like} => match type_var_like {
                 TypeVarLike::TypeVar(type_var) => {
                     let qualified = type_var.qualified_name(self.db);
                     let name = type_var.name(self.db);
@@ -365,94 +366,94 @@ impl<'db> Diagnostic<'db> {
                     format!("ParamSpec {name:?} is unbound")
                 }
             }
-            IssueType::IncompleteGenericOrProtocolTypeVars =>
+            IncompleteGenericOrProtocolTypeVars =>
                 "If Generic[...] or Protocol[...] is present it should list all type variables".to_owned(),
-            IssueType::TypeVarExpected{class} => format!("Free type variable expected in {class}[...]"),
-            IssueType::TypeVarBoundViolation{actual, of, expected} => format!(
+            TypeVarExpected{class} => format!("Free type variable expected in {class}[...]"),
+            TypeVarBoundViolation{actual, of, expected} => format!(
                 "Type argument \"{actual}\" of \"{of}\" must be a subtype of \"{expected}\"",
             ),
-            IssueType::InvalidTypeVarValue{type_var_name, of, actual} =>
+            InvalidTypeVarValue{type_var_name, of, actual} =>
                 format!("Value of type variable {type_var_name:?} of {of} cannot be {actual:?}"),
-            IssueType::InvalidCastTarget => "Cast target is not a type".to_owned(),
-            IssueType::TypeVarCoAndContravariant =>
+            InvalidCastTarget => "Cast target is not a type".to_owned(),
+            TypeVarCoAndContravariant =>
                 "TypeVar cannot be both covariant and contravariant".to_owned(),
-            IssueType::TypeVarValuesAndUpperBound =>
+            TypeVarValuesAndUpperBound =>
                 "TypeVar cannot have both values and an upper bound".to_owned(),
-            IssueType::TypeVarOnlySingleRestriction =>
+            TypeVarOnlySingleRestriction =>
                  "TypeVar cannot have only a single constraint".to_owned(),
-            IssueType::UnexpectedArgument{class_name, argument_name} => format!(
+            UnexpectedArgument{class_name, argument_name} => format!(
                  "Unexpected argument to \"{class_name}()\": \"{argument_name}\""),
-            IssueType::TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
-            IssueType::TypeVarLikeFirstArgMustBeString{class_name} => format!(
+            TypeVarLikeTooFewArguments{class_name} => format!("Too few arguments for {class_name}()"),
+            TypeVarLikeFirstArgMustBeString{class_name} => format!(
                 "{class_name}() expects a string literal as first argument"),
-            IssueType::TypeVarVarianceMustBeBool{argument} => format!(
+            TypeVarVarianceMustBeBool{argument} => format!(
                 "TypeVar \"{argument}\" may only be a literal bool"
             ),
-            IssueType::TypeVarTypeExpected => "Type expected".to_owned(),
-            IssueType::TypeVarNameMismatch{class_name, string_name, variable_name} => format!(
+            TypeVarTypeExpected => "Type expected".to_owned(),
+            TypeVarNameMismatch{class_name, string_name, variable_name} => format!(
                 "String argument 1 \"{string_name}\" to {class_name}(...) does not \
                  match variable name \"{variable_name}\""
             ),
-            IssueType::TypeVarInReturnButNotArgument =>
+            TypeVarInReturnButNotArgument =>
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_owned(),
-            IssueType::UnexpectedTypeForTypeVar =>
+            UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_owned(),
-            IssueType::TypeVarLikeTooManyArguments{class_name} => format!(
+            TypeVarLikeTooManyArguments{class_name} => format!(
                 "Only the first argument to {class_name} has defined semantics"),
-            IssueType::MultipleTypeVarTuplesInClassDef =>
+            MultipleTypeVarTuplesInClassDef =>
                 "Can only use one type var tuple in a class def".to_owned(),
-            IssueType::BoundTypeVarInAlias{name} =>
+            BoundTypeVarInAlias{name} =>
                 format!("Can't use bound type variable \"{name}\" to define generic alias"),
-            IssueType::NestedConcatenate =>
+            NestedConcatenate =>
                 "Nested Concatenates are invalid".to_owned(),
-            IssueType::InvalidSelfArgument{argument_type, function_name, callable} => format!(
+            InvalidSelfArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to attribute function \"{function_name}\" with type \"{callable}\""
             ),
-            IssueType::InvalidClassMethodFirstArgument{argument_type, function_name, callable} => format!(
+            InvalidClassMethodFirstArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to class attribute function \"{function_name}\" with type \"{callable}\""
             ),
-            IssueType::UnexpectedComprehension => "Unexpected comprehension".to_owned(),
-            IssueType::AmbigousClassVariableAccess =>
+            UnexpectedComprehension => "Unexpected comprehension".to_owned(),
+            AmbigousClassVariableAccess =>
                 "Access to generic instance variables via class is ambiguous".to_owned(),
 
-            IssueType::BaseExceptionExpected =>
+            BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
-            IssueType::BaseExceptionExpectedForRaise =>
+            BaseExceptionExpectedForRaise =>
                 "Exception must be derived from BaseException".to_owned(),
-            IssueType::UnsupportedClassScopedImport =>
+            UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_owned(),
-            IssueType::StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
-            IssueType::TupleIndexOutOfRange => "Tuple index out of range".to_owned(),
-            IssueType::InvalidStmtInNamedTuple =>
+            StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+            TupleIndexOutOfRange => "Tuple index out of range".to_owned(),
+            InvalidStmtInNamedTuple =>
                 "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_owned(),
-            IssueType::InvalidSecondArgumentToNamedTuple =>
+            InvalidSecondArgumentToNamedTuple =>
                 "List or tuple literal expected as the second argument to \"namedtuple()\"".to_owned(),
 
-            IssueType::OverloadImplementationNotLast =>
+            OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_owned(),
-            IssueType::OverloadImplementationNeeded =>
+            OverloadImplementationNeeded =>
                 "An overloaded function outside a stub file must have an implementation".to_owned(),
-            IssueType::OverloadStubImplementationNotAllowed =>
+            OverloadStubImplementationNotAllowed =>
                 "An implementation for an overloaded function is not allowed in a stub file".to_owned(),
-            IssueType::OverloadSingleNotAllowed =>
+            OverloadSingleNotAllowed =>
                 "Single overload definition, multiple required".to_owned(),
-            IssueType::OverloadUnmatchable{unmatchable_signature_index, matchable_signature_index} => format!(
+            OverloadUnmatchable{unmatchable_signature_index, matchable_signature_index} => format!(
                 "Overloaded function signature {unmatchable_signature_index} will never \
                  be matched: signature {matchable_signature_index}'s parameter type(s) \
                  are the same or broader"
             ),
-            IssueType::OverloadIncompatibleReturnTypes{first_signature_index, second_signature_index} => format!(
+            OverloadIncompatibleReturnTypes{first_signature_index, second_signature_index} => format!(
                 "Overloaded function signatures {first_signature_index} and \
                  {second_signature_index} overlap with incompatible return types"
             ),
-            IssueType::OverloadImplementationReturnTypeIncomplete{signature_index} => format!(
+            OverloadImplementationReturnTypeIncomplete{signature_index} => format!(
                 "Overloaded function implementation cannot produce return type of signature {signature_index}"
             ),
-            IssueType::OverloadImplementationArgumentsNotBroadEnough{signature_index} => format!(
+            OverloadImplementationArgumentsNotBroadEnough{signature_index} => format!(
                 "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
             ),
 
-            IssueType::InvariantNote{actual, maybe} => {
+            InvariantNote{actual, maybe} => {
                 type_ = "note";
                 let suffix = match *actual {
                     "List" => "",
@@ -464,7 +465,7 @@ impl<'db> Diagnostic<'db> {
                     {path}:{line}: note: Consider using \"{maybe}\" instead, which is covariant{suffix}"
                 )
             }
-            IssueType::Note(s) => {
+            Note(s) => {
                 type_ = "note";
                 s.clone().into()
             }
