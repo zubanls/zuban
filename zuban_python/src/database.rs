@@ -1592,7 +1592,8 @@ impl DbType {
                 } else {
                     match new.params {
                         CallableParams::Simple(params) => {
-                            let mut params = params.into_vec();
+                            // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                            let mut params = Vec::from(params.as_ref());
                             params.splice(
                                 0..0,
                                 types.iter().map(|t| CallableParam {
@@ -1607,7 +1608,7 @@ impl DbType {
                                     has_default: false,
                                 }),
                             );
-                            CallableParams::Simple(params.into_boxed_slice())
+                            CallableParams::Simple(Rc::from(params))
                         }
                         CallableParams::Any => CallableParams::Any,
                         CallableParams::WithParamSpec(new_types, p) => {
@@ -1617,7 +1618,8 @@ impl DbType {
                                     t.replace_type_var_likes_and_self(db, callable, replace_self)
                                 })
                                 .collect();
-                            types.extend(new_types.into_vec());
+                            // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                            types.extend(new_types.iter().cloned());
                             CallableParams::WithParamSpec(types.into(), p)
                         }
                     }
@@ -2966,7 +2968,7 @@ impl<'a> TypeVarLikeUsage<'a> {
             }
             TypeVarLikeUsage::ParamSpec(usage) => {
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                    CallableParams::WithParamSpec(Box::new([]), usage.into_owned()),
+                    CallableParams::WithParamSpec(Rc::new([]), usage.into_owned()),
                     None,
                 ))
             }
@@ -2989,7 +2991,7 @@ impl<'a> TypeVarLikeUsage<'a> {
                 let mut usage = usage.into_owned();
                 usage.index = index;
                 GenericItem::ParamSpecArgument(ParamSpecArgument::new(
-                    CallableParams::WithParamSpec(Box::new([]), usage),
+                    CallableParams::WithParamSpec(Rc::new([]), usage),
                     None,
                 ))
             }
@@ -3044,8 +3046,8 @@ impl<'a> TypeVarLikeUsage<'a> {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum CallableParams {
-    Simple(Box<[CallableParam]>),
-    WithParamSpec(Box<[DbType]>, ParamSpecUsage),
+    Simple(Rc<[CallableParam]>),
+    WithParamSpec(Rc<[DbType]>, ParamSpecUsage),
     Any,
 }
 

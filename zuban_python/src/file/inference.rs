@@ -1151,7 +1151,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         class_name: None,
                         defined_at: PointLink::new(self.file.file_index(), lambda.index()),
                         type_vars: None,
-                        params: CallableParams::Simple(Box::new([])),
+                        params: CallableParams::Simple(Rc::new([])),
                         result_type: result.class_as_db_type(self.i_s),
                     };
                     Inferred::execute_db_type(self.i_s, DbType::Callable(Rc::new(c)))

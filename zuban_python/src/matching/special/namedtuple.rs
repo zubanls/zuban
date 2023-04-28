@@ -95,7 +95,7 @@ impl NamedTuple {
             class_name: None,
             defined_at: cls.node_ref.as_link(),
             type_vars: cls.use_cached_type_vars(i_s.db).cloned(),
-            params: CallableParams::Simple(vec.into_boxed_slice()),
+            params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::None,
         }));
         debug_assert_eq!(result, Ok(()));

@@ -324,11 +324,13 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         mut pre_params: Vec<CallableParam>,
         usage: &ParamSpecUsage,
     ) -> CallableParams {
-        let into_types = |v, pre_params: Vec<CallableParam>| {
-            pre_params
-                .into_iter()
-                .map(|p| p.param_specific.expect_positional_db_type())
-                .collect()
+        let into_types = |mut types: Vec<_>, pre_params: Vec<CallableParam>| {
+            types.extend(
+                pre_params
+                    .into_iter()
+                    .map(|p| p.param_specific.expect_positional_db_type()),
+            );
+            Rc::from(types)
         };
         match self.class {
             Some(c) if c.node_ref.as_link() == usage.in_definition => match c
@@ -338,11 +340,13 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 Generic::ParamSpecArgument(p) => match p.into_owned().params {
                     CallableParams::Any => CallableParams::Any,
                     CallableParams::Simple(params) => {
-                        pre_params.extend(params.into_vec());
-                        CallableParams::Simple(pre_params.into_boxed_slice())
+                        // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                        pre_params.extend(params.into_iter().cloned());
+                        CallableParams::Simple(Rc::from(pre_params))
                     }
                     CallableParams::WithParamSpec(pre, p) => {
-                        let types = pre.into_vec();
+                        // rust-unstable-todo use unwrap_or_clone().into_vec() -> #93610
+                        let types: Vec<_> = Vec::from(pre.as_ref());
                         CallableParams::WithParamSpec(into_types(types, pre_params), p)
                     }
                 },
@@ -675,7 +679,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 }),
             });
         }
-        return_result(CallableParams::Simple(new_params.into_boxed_slice()))
+        return_result(CallableParams::Simple(Rc::from(new_params)))
     }
 
     pub fn name_string_slice(&self) -> StringSlice {

@@ -1298,7 +1298,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let t = self.compute_slice_type(s);
             self.add_param(&mut params, t, s.as_node_ref().node_index)
         }
-        CallableParams::Simple(params.into_boxed_slice())
+        CallableParams::Simple(Rc::from(params))
     }
 
     fn check_param(&mut self, t: TypeContent, index: NodeIndex) -> CallableParam {
@@ -1386,30 +1386,31 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let SliceOrSimple::Simple(n) = first else {
             todo!();
         };
-        let calc_params = |slf: &mut Self| match slf.compute_slice_type(first) {
-            TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Box::new([]), p),
-            TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
-                CallableParams::Any
-            }
-            TypeContent::Unknown => CallableParams::Any,
-            TypeContent::Concatenate(p) => p,
-            t if allow_aesthetic_class_simplification => CallableParams::Simple(Box::new([
-                slf.check_param(t, first.as_node_ref().node_index)
-            ])),
-            _ => {
-                if from_class_generics {
-                    slf.add_typing_issue(
-                        n.as_node_ref(),
-                        IssueType::InvalidParamSpecGenerics {
-                            got: Box::from(n.named_expr.as_code()),
-                        },
-                    );
-                } else {
-                    slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
+        let calc_params =
+            |slf: &mut Self| match slf.compute_slice_type(first) {
+                TypeContent::ParamSpec(p) => CallableParams::WithParamSpec(Rc::new([]), p),
+                TypeContent::SpecialType(SpecialType::Any) if from_class_generics => {
+                    CallableParams::Any
                 }
-                CallableParams::Any
-            }
-        };
+                TypeContent::Unknown => CallableParams::Any,
+                TypeContent::Concatenate(p) => p,
+                t if allow_aesthetic_class_simplification => CallableParams::Simple(Rc::new([
+                    slf.check_param(t, first.as_node_ref().node_index)
+                ])),
+                _ => {
+                    if from_class_generics {
+                        slf.add_typing_issue(
+                            n.as_node_ref(),
+                            IssueType::InvalidParamSpecGenerics {
+                                got: Box::from(n.named_expr.as_code()),
+                            },
+                        );
+                    } else {
+                        slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
+                    }
+                    CallableParams::Any
+                }
+            };
         if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
             n.named_expr.expression().unpack()
         {
@@ -1424,7 +1425,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             todo!()
                         }
                     }
-                    CallableParams::Simple(params.into_boxed_slice())
+                    CallableParams::Simple(Rc::from(params))
                 }
                 AtomContent::Ellipsis => CallableParams::Any,
                 _ => calc_params(self),
@@ -2658,7 +2659,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 has_default: false,
             });
         }
-        Some(CallableParams::Simple(params.into_boxed_slice()))
+        Some(CallableParams::Simple(Rc::from(params)))
     }
 }
 
@@ -3069,7 +3070,7 @@ pub fn new_collections_named_tuple(
         class_name: None,
         defined_at: args_node_ref.as_link(),
         type_vars: None,
-        params: CallableParams::Simple(params.into_boxed_slice()),
+        params: CallableParams::Simple(Rc::from(params)),
         result_type: DbType::None,
     };
     Some(Rc::new(NamedTuple::from_execution(name, callable)))
