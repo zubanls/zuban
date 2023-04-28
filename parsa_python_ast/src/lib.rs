@@ -2146,6 +2146,19 @@ impl<'db> AssertStmt<'db> {
     }
 }
 
+impl<'db> RaiseStmt<'db> {
+    pub fn unpack(&self) -> Option<(Expression<'db>, Option<Expression<'db>>)> {
+        let mut iterator = self.node.iter_children().skip(1);
+        let Some(first) = iterator.next() else {
+            return None
+        };
+        Some((
+            Expression::new(first),
+            iterator.skip(1).next().map(Expression::new),
+        ))
+    }
+}
+
 impl<'db> PrimaryTarget<'db> {
     pub fn first(&self) -> PrimaryTargetOrAtom<'db> {
         let first = self.node.nth_child(0);

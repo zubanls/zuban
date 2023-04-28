@@ -88,6 +88,7 @@ pub(crate) enum IssueType {
     AmbigousClassVariableAccess,
 
     BaseExceptionExpected,
+    BaseExceptionExpectedForRaise,
     UnsupportedClassScopedImport,
 
     StmtOutsideFunction { keyword: &'static str },
@@ -416,6 +417,8 @@ impl<'db> Diagnostic<'db> {
 
             IssueType::BaseExceptionExpected =>
                 "Exception type must be derived from BaseException".to_owned(),
+            IssueType::BaseExceptionExpectedForRaise =>
+                "Exception must be derived from BaseException".to_owned(),
             IssueType::UnsupportedClassScopedImport =>
                 "Unsupported class scoped import".to_owned(),
             IssueType::StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),

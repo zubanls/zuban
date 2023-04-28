@@ -1,17 +1,10 @@
 # Next up
 
-# raise: Exception must be derived from BaseException
-testRaiseStatement
-testRaiseClassObject
-testRaiseNonExceptionTypeFails
-testRaiseNonExceptionUnionFails
+# raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
+# raise from: Exception must be derived from BaseException
 testRaiseFromStatement
 testRaiseFromClassobject
-testExceptionVariableReuseInDeferredNode1
-testExceptionVariableReuseInDeferredNode2
-testExceptionVariableReuseInDeferredNode3
-testTryExceptWithMultipleHandlers
 # Exception uses type instead of instance
 testSimpleTryExcept
 testSimpleTryExcept2
@@ -26,6 +19,10 @@ testArbitraryExpressionAsExceptionType
 testTupleValueAsExceptionType
 testOverloadedExceptionType
 testExceptionIsType
+testExceptionVariableReuseInDeferredNode1
+testExceptionVariableReuseInDeferredNode2
+testExceptionVariableReuseInDeferredNode3
+testTryExceptWithMultipleHandlers
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
 

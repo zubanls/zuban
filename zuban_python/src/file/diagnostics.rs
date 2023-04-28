@@ -43,7 +43,31 @@ impl<'db> Inference<'db, '_, '_> {
                     self.calc_return_stmt_diagnostics(func, return_stmt)
                 }
                 SimpleStmtContent::YieldExpr(x) => {}
-                SimpleStmtContent::RaiseStmt(x) => {}
+                SimpleStmtContent::RaiseStmt(raise_stmt) => {
+                    if let Some((expr, from_expr)) = raise_stmt.unpack() {
+                        let mut has_no_base_exception = false;
+                        self.infer_expression(expr).run_mut(
+                            self.i_s,
+                            &mut |i_s, value| {
+                                if !value.should_add_lookup_error(i_s.db) {
+                                    return
+                                }
+                                let Some(class) = value.as_class().copied().or_else(|| value.as_instance().map(|instance| instance.class)) else {
+                                    has_no_base_exception = true;
+                                    return
+                                };
+                                has_no_base_exception |= !class.in_mro(self.i_s.db, &self.i_s.db.python_state.base_exception());
+                            },
+                            &mut || (),
+                        );
+                        if has_no_base_exception {
+                            NodeRef::new(self.file, expr.index()).add_typing_issue(
+                                self.i_s,
+                                IssueType::BaseExceptionExpectedForRaise,
+                            );
+                        }
+                    }
+                }
                 SimpleStmtContent::ImportFrom(import_from) => {
                     if class.is_some() && func.is_none() {
                         NodeRef::new(self.file, simple_stmt.index())
