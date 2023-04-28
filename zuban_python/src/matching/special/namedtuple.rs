@@ -105,6 +105,14 @@ impl NamedTuple {
         self.constructor.get().unwrap()
     }
 
+    pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
+        let mut nt = self.clone();
+        let mut callable = nt.constructor.get().unwrap().as_ref().clone();
+        callable.name = Some(name);
+        nt.constructor = OnceCell::from(Rc::new(callable));
+        Rc::new(nt)
+    }
+
     pub fn as_tuple(&self) -> &TupleContent {
         self.tuple.get_or_init(|| {
             Rc::new(TupleContent::new_fixed_length(
@@ -241,7 +249,7 @@ impl SpecialType for NamedTuple {
                 if c1.type_vars.is_some() || c2.type_vars.is_some() {
                     todo!()
                 } else {
-                    return (c1 == c2).into();
+                    return (c1.defined_at == c2.defined_at).into();
                 }
             }
         }

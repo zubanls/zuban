@@ -453,8 +453,6 @@ testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
 # Namedtuple uncategorized
-testNamedTupleAsBaseClass
-testNamedTupleAsBaseClass2
 testNamedTupleCreateWithPositionalArguments
 testNamedTupleAccessingAttributes
 testNamedTupleAttributesAreReadOnly

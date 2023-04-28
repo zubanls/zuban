@@ -419,6 +419,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             // TODO this might overwrite other class types
                             BaseClass::Protocol => class_type = ClassType::Protocol,
                             BaseClass::NamedTuple(named_tuple) => {
+                                let named_tuple =
+                                    named_tuple.clone_with_new_init_class(self.name_string_slice());
                                 mro.push(DbType::new_special(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple {
                                     named_tuple,
