@@ -453,7 +453,6 @@ testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
 # Namedtuple uncategorized
-testTypingExtensionsNamedTuple
 testNamedTupleAsBaseClass
 testNamedTupleAsBaseClass2
 testNamedTupleCreateWithPositionalArguments
@@ -507,6 +506,8 @@ testInvalidNamedTupleWithinFunction
 testNamedTupleWithBoolNarrowsToBool
 # "Self type cannot be used in NamedTuple item type"
 testNamedTupleSelfItemNotAllowed
+# "Property "y" defined in "Point" is read-only"
+testTypingExtensionsNamedTuple
 # Namedtuple unpacking size messages
 testNamedTupleUsedAsTuple
 # NamedTuples generics
