@@ -452,12 +452,9 @@ testIndexingTuplesWithNegativeIntegers
 testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
-# Namedtuple uncategorized
-testNamedTupleSelfTypeWithNamedTupleAsBase
-testNamedTupleTypeReferenceToClassDerivedFrom
+# `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
-testNewNamedTupleMethodInheritance
 # Semanal issues
 testNamedTupleWithInvalidName
 testNamedTupleWithInvalidItems2
@@ -1157,6 +1154,7 @@ testModifyBaseClassMethodCausingInvalidOverride
 testSelfTypeBound
 testMethodOverridingAcrossDeepInheritanceHierarchy2
 testMethodOverridingWithVoidReturnValue
+testNewNamedTupleMethodInheritance
 # Signatures of "__ior__" and "__or__" are incompatible
 testGenericOperatorMethodOverlapping
 testGenericOperatorMethodOverlapping2
