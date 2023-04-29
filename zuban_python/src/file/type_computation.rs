@@ -3054,11 +3054,11 @@ pub fn new_collections_named_tuple(
             let StarLikeExpression::NamedExpression(ne) = element else {
             todo!()
         };
-            let Some(string_slice) = StringSlice::from_string_in_expression(
-            args_node_ref.file.file_index(),
-            ne.expression()) else {
-            todo!()
-        };
+            let Some(string_slice) = StringSlice::from_string_in_expression(args_node_ref.file.file_index(), ne.expression()) else {
+                NodeRef::new(second_node_ref.file, ne.index())
+                    .add_typing_issue(i_s, IssueType::StringLiteralExpectedAsNamedTupleItem);
+                continue
+            };
             add_param(string_slice)
         }
     };

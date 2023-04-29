@@ -94,6 +94,7 @@ pub(crate) enum IssueType {
     StmtOutsideFunction { keyword: &'static str },
     TupleIndexOutOfRange,
     NamedTupleExpectsStringLiteralAsFirstArg,
+    StringLiteralExpectedAsNamedTupleItem,
     InvalidStmtInNamedTuple,
     InvalidSecondArgumentToNamedTuple,
 
@@ -421,6 +422,8 @@ impl<'db> Diagnostic<'db> {
             TupleIndexOutOfRange => "Tuple index out of range".to_string(),
             NamedTupleExpectsStringLiteralAsFirstArg =>
                 "\"namedtuple()\" expects a string literal as the first argument".to_string(),
+            StringLiteralExpectedAsNamedTupleItem =>
+                 "String literal expected as \"namedtuple()\" item".to_string(),
             InvalidStmtInNamedTuple =>
                 "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_string(),
             InvalidSecondArgumentToNamedTuple =>
