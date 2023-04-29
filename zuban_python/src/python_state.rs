@@ -16,6 +16,7 @@ use crate::{InferenceState, PythonProject};
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual
 // class.
 const NAME_TO_CLASS_DIFF: u32 = 3;
+const NAME_TO_FUNCTION_DIFF: u32 = 3;
 
 macro_rules! builtins_attribute_node_ref {
     ($name:ident, $attr:ident) => {
@@ -65,6 +66,7 @@ pub struct PythonState {
     typing_mapping_index: NodeIndex,
     typing_namedtuple_index: NodeIndex,
     types_module_type_index: NodeIndex,
+    collections_namedtuple_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
     mypy_extensions_named_arg_func: NodeIndex,
@@ -105,6 +107,7 @@ impl PythonState {
             types_module_type_index: 0,
             typing_mapping_index: 0,
             typing_namedtuple_index: 0,
+            collections_namedtuple_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -217,6 +220,14 @@ impl PythonState {
         cache_index!(typing_mapping_index, db, typing, "Mapping");
         cache_index!(typing_namedtuple_index, db, typing, "NamedTuple");
         cache_index!(types_module_type_index, db, types, "ModuleType");
+
+        db.python_state.collections_namedtuple_index = db
+            .python_state
+            .collections()
+            .symbol_table
+            .lookup_symbol("namedtuple")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
 
         let s = &mut db.python_state;
         let object_db_type = s.object_db_type();
