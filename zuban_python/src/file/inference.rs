@@ -450,17 +450,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                let mut x = type_computation_for_variable_annotation;
-                let mut comp = TypeComputation::new(
-                    self,
-                    node_ref.as_link(),
-                    &mut x,
-                    TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
-                );
-                comp.cache_annotation(annotation, false);
-                comp.into_type_vars(|inf, recalculate_type_vars| {
-                    inf.recalculate_annotation_type_vars(annotation.index(), recalculate_type_vars);
-                });
+                self.ensure_cached_annotation(node_ref, annotation);
                 match self.file.points.get(annotation.index()).maybe_specific() {
                     Some(Specific::TypingTypeAlias) => {
                         debug!("TODO TypeAlias calculation, does this make sense?");
