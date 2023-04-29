@@ -2024,16 +2024,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 }
 
 impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
-    pub fn ensure_cached_annotation(
-        &mut self,
-        assignment_node_ref: NodeRef,
-        annotation: Annotation,
-    ) {
+    pub fn ensure_cached_annotation(&mut self, annotation: Annotation) {
         if !self.file.points.get(annotation.index()).calculated() {
             let mut x = type_computation_for_variable_annotation;
             let mut comp = TypeComputation::new(
                 self,
-                assignment_node_ref.as_link(),
+                PointLink::new(self.file_index, annotation.index()),
                 &mut x,
                 TypeComputationOrigin::AssignmentTypeCommentOrAnnotation,
             );

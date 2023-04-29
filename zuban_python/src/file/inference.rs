@@ -450,7 +450,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
-                self.ensure_cached_annotation(node_ref, annotation);
+                self.ensure_cached_annotation(annotation);
                 match self.file.points.get(annotation.index()).maybe_specific() {
                     Some(Specific::TypingTypeAlias) => {
                         debug!("TODO TypeAlias calculation, does this make sense?");
