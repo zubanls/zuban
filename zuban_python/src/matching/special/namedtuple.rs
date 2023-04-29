@@ -72,7 +72,7 @@ impl NamedTuple {
                 for stmt in stmts {
                     match stmt.unpack() {
                         StmtContent::SimpleStmts(simple) => {
-                            find_stmt_named_tuple_types(i_s.db, file, &mut vec, simple)
+                            find_stmt_named_tuple_types(i_s, file, &mut vec, simple)
                         }
                         StmtContent::FunctionDef(_) => (),
                         StmtContent::Decorated(dec)
@@ -88,7 +88,7 @@ impl NamedTuple {
                     }
                 }
             }
-            BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(db, file, &mut vec, simple),
+            BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
         }
         let result = self.constructor.set(Rc::new(CallableContent {
             name: Some(self.name),
@@ -314,7 +314,7 @@ impl SpecialType for NamedTuple {
 }
 
 fn find_stmt_named_tuple_types(
-    db: &Database,
+    i_s: &InferenceState,
     file: &PythonFile,
     vec: &mut Vec<CallableParam>,
     simple_stmts: SimpleStmts,
@@ -324,7 +324,12 @@ fn find_stmt_named_tuple_types(
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(target, annot, default) => match target {
                     Target::Name(name) => {
-                        let t = use_cached_annotation_type(db, file, annot).into_db_type(db);
+                        file.inference(i_s).ensure_cached_annotation(
+                            NodeRef::new(file, assignment.index()),
+                            annot,
+                        );
+                        let t =
+                            use_cached_annotation_type(i_s.db, file, annot).into_db_type(i_s.db);
                         vec.push(CallableParam {
                             param_specific: ParamSpecific::PositionalOrKeyword(t),
                             has_default: default.is_some(),

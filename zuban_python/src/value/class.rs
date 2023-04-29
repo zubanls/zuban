@@ -230,11 +230,7 @@ impl<'db: 'a, 'a> Class<'a> {
             };
             node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
             if let Some(named_tuple) = defining_named_tuple {
-                node_ref
-                    .file
-                    .inference(&mut i_s.with_class_context(self))
-                    .calc_block_diagnostics(self.node().block(), None, None);
-                named_tuple.initialize_class_members_lazy(i_s, *self)
+                named_tuple.initialize_class_members_lazy(&mut i_s.with_class_context(self), *self)
             }
             debug_assert!(node_ref.point().calculated());
         }
