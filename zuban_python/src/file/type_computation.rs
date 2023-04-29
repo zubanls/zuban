@@ -2963,6 +2963,7 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
 }
 
 fn check_named_tuple_name<'x, 'y>(
+    i_s: &InferenceState,
     args: &'y dyn Arguments<'x>,
 ) -> Option<(StringSlice, NodeRef<'y>, Atom<'y>, ArgumentIterator<'x, 'y>)> {
     let mut iterator = args.iter();
@@ -2977,7 +2978,8 @@ fn check_named_tuple_name<'x, 'y>(
         .maybe_single_string_literal()
         .map(|py_string| (node_ref, py_string));
     let Some(string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
-        todo!()
+        first_arg.as_node_ref().add_typing_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg);
+        return None
     };
     let Some(second_arg) = iterator.next() else {
         todo!()
@@ -2995,7 +2997,7 @@ pub fn new_typing_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(args) else {
+    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(i_s, args) else {
         todo!()
     };
     if iterator.next().is_some() {
@@ -3030,8 +3032,8 @@ pub fn new_collections_named_tuple(
     i_s: &InferenceState,
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
-    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(args) else {
-        todo!()
+    let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(i_s, args) else {
+        return None
     };
     if iterator.next().is_some() {
         todo!()
