@@ -93,7 +93,7 @@ pub(crate) enum IssueType {
 
     StmtOutsideFunction { keyword: &'static str },
     TupleIndexOutOfRange,
-    NamedTupleExpectsStringLiteralAsFirstArg,
+    NamedTupleExpectsStringLiteralAsFirstArg { name: &'static str },
     StringLiteralExpectedAsNamedTupleItem,
     InvalidStmtInNamedTuple,
     InvalidSecondArgumentToNamedTuple { name: &'static str },
@@ -423,8 +423,8 @@ impl<'db> Diagnostic<'db> {
                 "Unsupported class scoped import".to_string(),
             StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
             TupleIndexOutOfRange => "Tuple index out of range".to_string(),
-            NamedTupleExpectsStringLiteralAsFirstArg =>
-                "\"namedtuple()\" expects a string literal as the first argument".to_string(),
+            NamedTupleExpectsStringLiteralAsFirstArg{name} =>
+                format!("\"{name}()\" expects a string literal as the first argument"),
             StringLiteralExpectedAsNamedTupleItem =>
                  "String literal expected as \"namedtuple()\" item".to_string(),
             InvalidStmtInNamedTuple =>
