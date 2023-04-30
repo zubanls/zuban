@@ -461,7 +461,6 @@ testNamedTupleWithInvalidName
 testNamedTupleWithNonpositionalArgs
 testNamedTupleWithNonpositionalArgs2
 testTypingNamedTupleWithTooFewArguments
-testTypingNamedTupleWithUnexpectedNames
 testInvalidNamedTupleBaseClass
 testInvalidNamedTupleBaseClass2
 # Nested usage in functions of definition, means constructor is not yet defined.

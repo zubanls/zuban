@@ -2971,17 +2971,19 @@ fn check_named_tuple_name<'x, 'y>(
         todo!()
     };
     let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
-        todo!()
+        first_arg.as_node_ref().add_typing_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
+        return None
     };
     let expr = node_ref.as_named_expression().expression();
     let first = expr
         .maybe_single_string_literal()
         .map(|py_string| (node_ref, py_string));
     let Some(string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
-        first_arg.as_node_ref().add_typing_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg);
+        node_ref.add_typing_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg);
         return None
     };
     let Some(second_arg) = iterator.next() else {
+        // TODO this is only done for namedtuple and not NamedTuple
         // Detected by execution of namedtuple
         return None
     };
