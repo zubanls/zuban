@@ -458,14 +458,7 @@ testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
 # Semanal too many issues
 testNamedTupleWithInvalidName
 # Semanal issues
-testNamedTupleWithNonpositionalArgs
-testNamedTupleWithNonpositionalArgs2
 testTypingNamedTupleWithTooFewArguments
-testInvalidNamedTupleBaseClass2
-# Nested usage in functions of definition, means constructor is not yet defined.
-testNamedTupleTypingSelfMethod
-testNewNamedTupleClassMethod
-testNewNamedTupleStaticMethod
 # "namedtuple()" field names cannot start with an underscore: _y, _z
 testNamedTupleNoUnderscoreFields
 testNamedTupleWithUnderscoreItemName
@@ -511,6 +504,7 @@ testNamedTupleUnit
 testNamedTupleFieldTypes
 testNamedTupleSelfTypeReplace
 testNamedTupleSelfTypeMake
+testNamedTupleTypingSelfMethod
 # Weird recursion (name binder issue?)
 testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple class attr access
