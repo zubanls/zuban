@@ -96,7 +96,7 @@ pub(crate) enum IssueType {
     NamedTupleExpectsStringLiteralAsFirstArg,
     StringLiteralExpectedAsNamedTupleItem,
     InvalidStmtInNamedTuple,
-    InvalidSecondArgumentToNamedTuple,
+    InvalidSecondArgumentToNamedTuple { name: &'static str },
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -426,8 +426,8 @@ impl<'db> Diagnostic<'db> {
                  "String literal expected as \"namedtuple()\" item".to_string(),
             InvalidStmtInNamedTuple =>
                 "Invalid statement in NamedTuple definition; expected \"field_name: field_type [= default]\"".to_string(),
-            InvalidSecondArgumentToNamedTuple =>
-                "List or tuple literal expected as the second argument to \"namedtuple()\"".to_string(),
+            InvalidSecondArgumentToNamedTuple{name} =>
+                format!("List or tuple literal expected as the second argument to \"{name}()\""),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

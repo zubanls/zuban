@@ -3007,7 +3007,13 @@ pub fn new_typing_named_tuple(
     let list_iterator = match atom.unpack() {
         AtomContent::List(list) => list.unpack(),
         AtomContent::Tuple(tup) => tup.iter(),
-        _ => todo!("{atom:?}"),
+        _ => {
+            second_node_ref.add_typing_issue(
+                i_s,
+                IssueType::InvalidSecondArgumentToNamedTuple { name: "NamedTuple" },
+            );
+            return None;
+        }
     };
     let args_node_ref = args.as_node_ref();
     if let Some(params) = args_node_ref
@@ -3082,7 +3088,10 @@ pub fn new_collections_named_tuple(
             _ => todo!(),
         },
         _ => {
-            second_node_ref.add_typing_issue(i_s, IssueType::InvalidSecondArgumentToNamedTuple);
+            second_node_ref.add_typing_issue(
+                i_s,
+                IssueType::InvalidSecondArgumentToNamedTuple { name: "namedtuple" },
+            );
             return None;
         }
     };
