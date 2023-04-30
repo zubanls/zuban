@@ -455,8 +455,6 @@ testNonliteralTupleIndex
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
-# Semanal too many issues
-testNamedTupleWithInvalidName
 # Semanal issues
 testTypingNamedTupleWithTooFewArguments
 # "Class has two incompatible bases derived from tuple"
