@@ -508,7 +508,6 @@ testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleMissingClassAttribute
 # NamedTuple wrong args
 testNamedTupleNoBytes
-testNamedTupleAdditionalArgs
 # Namedtuple bad overwrite of count etc
 testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames

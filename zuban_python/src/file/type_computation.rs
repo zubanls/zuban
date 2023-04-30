@@ -3068,7 +3068,7 @@ pub fn new_collections_named_tuple(
         return None
     };
     if iterator.next().is_some() {
-        todo!()
+        return None;
     }
     let args_node_ref = args.as_node_ref();
     let mut params = vec![];
