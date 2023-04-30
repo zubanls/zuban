@@ -20,7 +20,8 @@ use crate::{
     inference_state::InferenceState,
     inferred::Inferred,
     matching::{
-        calculate_callable_type_vars_and_return, FormatData, Match, Matcher, ResultContext, Type,
+        calculate_callable_type_vars_and_return, FormatData, Generics, Match, Matcher,
+        ResultContext, Type,
     },
     node_ref::NodeRef,
     value::{Class, IteratorContent, LookupResult, Module, OnTypeError, Value},
@@ -141,7 +142,12 @@ impl NamedTuple {
         format!("{module}.{}", self.name(db))
     }
 
-    pub fn format_with_name(&self, format_data: &FormatData, name: &str) -> Box<str> {
+    pub fn format_with_name(
+        &self,
+        format_data: &FormatData,
+        name: &str,
+        generics: Generics,
+    ) -> Box<str> {
         if format_data.style != FormatStyle::MypyRevealType {
             return Box::from(name);
         }
@@ -157,10 +163,22 @@ impl NamedTuple {
         let format_data = &format_data.with_seen_recursive_alias(&rec);
         let types = params
             .iter()
-            .map(|t| {
-                t.param_specific
-                    .expect_positional_db_type_as_ref()
-                    .format(format_data)
+            .map(|p| {
+                let t = p.param_specific.expect_positional_db_type_as_ref();
+                match generics {
+                    Generics::NotDefinedYet | Generics::None => t.format(format_data),
+                    _ => t
+                        .replace_type_var_likes_and_self(
+                            format_data.db,
+                            &mut |usage| {
+                                generics
+                                    .nth_usage(format_data.db, &usage)
+                                    .into_generic_item(format_data.db)
+                            },
+                            &mut || todo!(),
+                        )
+                        .format(format_data),
+                }
             })
             .collect::<Vec<_>>()
             .join(", ");
@@ -171,8 +189,16 @@ impl NamedTuple {
 impl SpecialType for NamedTuple {
     fn format(&self, format_data: &FormatData) -> Box<str> {
         match format_data.style {
-            FormatStyle::Short => self.format_with_name(format_data, self.name(format_data.db)),
-            _ => self.format_with_name(format_data, &self.qualified_name(format_data.db)),
+            FormatStyle::Short => self.format_with_name(
+                format_data,
+                self.name(format_data.db),
+                Generics::NotDefinedYet,
+            ),
+            _ => self.format_with_name(
+                format_data,
+                &self.qualified_name(format_data.db),
+                Generics::NotDefinedYet,
+            ),
         }
     }
 

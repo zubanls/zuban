@@ -475,13 +475,10 @@ testTypingExtensionsNamedTuple
 testNamedTupleAttributesAreReadOnly
 # Namedtuple unpacking size messages
 testNamedTupleUsedAsTuple
+# Joining namedtuples (especially generic once)
+testGenericNamedTupleJoin
 # NamedTuples generics
 testBasicRecursiveGenericNamedTuple
-testGenericNamedTupleCreation
-testGenericNamedTupleAlias
-testGenericNamedTupleMethods
-testGenericNamedTupleCustomMethods
-testGenericNamedTupleJoin
 testGenericNamedTupleCallSyntax
 testGenericNamedTupleNoLegacySyntax
 # NamedTuple special methods
@@ -499,6 +496,7 @@ testNamedTupleFieldTypes
 testNamedTupleSelfTypeReplace
 testNamedTupleSelfTypeMake
 testNamedTupleTypingSelfMethod
+testGenericNamedTupleMethods
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleMissingClassAttribute
