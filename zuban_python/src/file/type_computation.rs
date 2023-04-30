@@ -3002,7 +3002,11 @@ pub fn new_typing_named_tuple(
         return None
     };
     if iterator.next().is_some() {
-        todo!()
+        args.as_node_ref().add_typing_issue(
+            i_s,
+            IssueType::TooManyArguments(" for \"NamedTuple()\"".into()),
+        );
+        return None;
     }
     let list_iterator = match atom.unpack() {
         AtomContent::List(list) => list.unpack(),
