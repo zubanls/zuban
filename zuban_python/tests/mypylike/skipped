@@ -506,8 +506,6 @@ testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleMissingClassAttribute
-# NamedTuple wrong args
-testNamedTupleNoBytes
 # Namedtuple bad overwrite of count etc
 testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames

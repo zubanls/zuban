@@ -100,6 +100,7 @@ pub(crate) enum IssueType {
     UnexpectedArgumentsTo { name: &'static str },
     TupleExpectedAsNamedTupleField,
     NamedTupleNamesCannotStartWithUnderscore { name: &'static str, field_names: Box<str> },
+    NamedTupleInvalidFieldName,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -436,6 +437,7 @@ impl<'db> Diagnostic<'db> {
             TupleExpectedAsNamedTupleField => "Tuple expected as \"NamedTuple()\" field".to_string(),
             NamedTupleNamesCannotStartWithUnderscore{name, field_names} => format!(
                 "\"{name}()\" field names cannot start with an underscore: {field_names}"),
+            NamedTupleInvalidFieldName => "Invalid \"NamedTuple()\" field name".to_string(),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

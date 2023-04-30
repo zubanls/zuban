@@ -2672,7 +2672,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 todo!()
             };
             let Some(name) = StringSlice::from_string_in_expression(file_index, name_expr.expression()) else {
-                todo!()
+                NodeRef::new(self.file, name_expr.index()).add_typing_issue(
+                    self.i_s,
+                    IssueType::NamedTupleInvalidFieldName,
+                );
+                return None
             };
             let name_str = name.as_str(comp.inference.i_s.db);
             if name_str.starts_with('_') {
