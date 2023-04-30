@@ -294,7 +294,7 @@ macro_rules! compute_type_application {
     }}
 }
 
-pub(super) fn type_computation_for_variable_annotation(
+fn type_computation_for_variable_annotation(
     i_s: &InferenceState,
     manager: &TypeVarManager,
     type_var_like: TypeVarLike,

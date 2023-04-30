@@ -3,8 +3,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::*;
 
-use super::type_computation::type_computation_for_variable_annotation;
-use super::{on_argument_type_error, File, PythonFile, TypeComputation, TypeComputationOrigin};
+use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{
     Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
 };
