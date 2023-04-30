@@ -98,6 +98,7 @@ pub(crate) enum IssueType {
     InvalidStmtInNamedTuple,
     InvalidSecondArgumentToNamedTuple { name: &'static str },
     UnexpectedArgumentsTo { name: &'static str },
+    TupleExpectedAsNamedTupleField,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -431,6 +432,7 @@ impl<'db> Diagnostic<'db> {
                 format!("List or tuple literal expected as the second argument to \"{name}()\""),
             UnexpectedArgumentsTo{name} =>
                 format!("Unexpected arguments to \"{name}()\""),
+            TupleExpectedAsNamedTupleField => "Tuple expected as \"NamedTuple()\" field".to_string(),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),

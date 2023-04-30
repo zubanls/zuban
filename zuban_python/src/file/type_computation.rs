@@ -2651,7 +2651,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             };
             let mut parts = match atom.unpack() {
                 AtomContent::Tuple(tup) => tup.iter(),
-                _ => todo!(),
+                _ => {
+                    NodeRef::new(node_ref.file, atom.index())
+                        .add_typing_issue(self.i_s, IssueType::TupleExpectedAsNamedTupleField);
+                    return None;
+                }
             };
             let Some(first) = parts.next() else {
                 todo!()
@@ -3037,7 +3041,7 @@ pub fn new_typing_named_tuple(
         };
         Some(Rc::new(NamedTuple::from_execution(name, callable)))
     } else {
-        todo!()
+        return None;
     }
 }
 
