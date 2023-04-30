@@ -178,6 +178,7 @@ testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
 testConditionalExceptionAlias
 testListAssignmentUnequalAmountToUnpack
+testNewAnalyzerMemberNameMatchesNamedTuple
 
 # Module attributes
 testModuleImplicitAttributes
@@ -499,8 +500,6 @@ testNamedTupleFieldTypes
 testNamedTupleSelfTypeReplace
 testNamedTupleSelfTypeMake
 testNamedTupleTypingSelfMethod
-# Weird recursion (name binder issue?)
-testNewAnalyzerMemberNameMatchesNamedTuple
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleMissingClassAttribute
@@ -648,6 +647,8 @@ testNestedProtocolGenericUnionsDeep
 testNestedInstanceUnsimplifiedUnion
 testNestedInstanceTypeAlias
 testNestedInstanceTypeAliasUnsimplifiedUnion
+# Tuple iter fixes
+testTupleBaseClass
 
 # Dynamic functions are not type checked?!
 testNoInvalidTypeInDynamicFunctions

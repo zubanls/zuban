@@ -7,6 +7,7 @@ use super::{
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, Database, DbType, PointLink, SpecialType};
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
@@ -238,10 +239,16 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                         }),
                     );
                 }
-                FoundOnClass::UnresolvedDbType(db_type @ DbType::Tuple(t)) => {
-                    return Tuple::new(db_type, t).get_item(i_s, slice_type, result_context);
-                }
-                _ => (),
+                FoundOnClass::UnresolvedDbType(db_type) => match db_type.as_ref() {
+                    DbType::Tuple(t) => {
+                        return Tuple::new(db_type.as_ref(), t).get_item(
+                            i_s,
+                            slice_type,
+                            result_context,
+                        );
+                    }
+                    _ => (),
+                },
             }
         }
         node_ref.add_typing_issue(
@@ -282,8 +289,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                         ),
                     );
                 }
-                FoundOnClass::UnresolvedDbType(db_type @ DbType::Tuple(t)) => {
+                FoundOnClass::UnresolvedDbType(Cow::Borrowed(db_type @ DbType::Tuple(t))) => {
                     return Tuple::new(db_type, t).iter(i_s, from);
+                }
+                FoundOnClass::UnresolvedDbType(Cow::Owned(db_type @ DbType::Tuple(_))) => {
+                    debug!("TODO Owned tuples won't work with iter currently");
                 }
                 _ => (),
             }
@@ -325,7 +335,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
 
 enum FoundOnClass<'a> {
     Attribute(Inferred),
-    UnresolvedDbType(&'a DbType),
+    UnresolvedDbType(Cow<'a, DbType>),
 }
 
 struct ClassMroFinder<'db, 'a, 'd> {
@@ -362,7 +372,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
             } else {
                 match t {
                     // Types are always precalculated in the class mro.
-                    Type::Type(Cow::Borrowed(t)) => return Some(FoundOnClass::UnresolvedDbType(t)),
+                    Type::Type(t) => return Some(FoundOnClass::UnresolvedDbType(t)),
                     _ => unreachable!(),
                 }
             }

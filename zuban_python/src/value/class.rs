@@ -877,7 +877,18 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                         generics.as_ref(),
                     )),
                     // TODO this is wrong, because it does not use generics.
-                    _ => Type::new(c),
+                    _ if matches!(
+                        self.generics,
+                        None | Some(Generics::None | Generics::NotDefinedYet)
+                    ) =>
+                    {
+                        Type::new(c)
+                    }
+                    _ => Type::owned(c.replace_type_var_likes_and_self(
+                        self.db,
+                        &mut |usage| usage.into_generic_item(),
+                        &mut || todo!(),
+                    )),
                 },
             ));
             self.mro_index += 1;
