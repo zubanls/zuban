@@ -195,8 +195,31 @@ impl SpecialType for NamedTuple {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Option<DbType> {
-        debug!("TODO namedtuple replace_type_var_likes_and_self");
-        None
+        let mut constructor = self.constructor().clone();
+        let CallableParams::Simple(params) = &constructor.params else {
+            unreachable!();
+        };
+        constructor.params = CallableParams::Simple(
+            params
+                .iter()
+                .map(|param| {
+                    let ParamSpecific::PositionalOrKeyword(t) = &param.param_specific else {
+                unreachable!()
+            };
+                    CallableParam {
+                        param_specific: ParamSpecific::PositionalOrKeyword(
+                            t.replace_type_var_likes_and_self(db, callable, replace_self),
+                        ),
+                        has_default: param.has_default,
+                        name: param.name,
+                    }
+                })
+                .collect(),
+        );
+        Some(DbType::new_special(Rc::new(Self::from_execution(
+            self.name,
+            constructor,
+        ))))
     }
 
     fn kind(&self) -> ValueKind {

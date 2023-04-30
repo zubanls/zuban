@@ -882,7 +882,11 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                     }
                     _ => Type::owned(c.replace_type_var_likes_and_self(
                         self.db,
-                        &mut |usage| usage.into_generic_item(),
+                        &mut |usage| {
+                            self.generics
+                                .nth_usage(self.db, &usage)
+                                .into_generic_item(self.db)
+                        },
                         &mut || todo!(),
                     )),
                 },
