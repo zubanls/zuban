@@ -459,10 +459,6 @@ testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
 testNamedTupleWithInvalidName
 # Semanal issues
 testTypingNamedTupleWithTooFewArguments
-# "namedtuple()" field names cannot start with an underscore: _y, _z
-testNamedTupleNoUnderscoreFields
-testNamedTupleWithUnderscoreItemName
-testTypingNamedTupleWithUnderscoreItemName
 # "Class has two incompatible bases derived from tuple"
 testNamedTuplesTwoAsBaseClasses
 testNamedTuplesTwoAsBaseClasses2
