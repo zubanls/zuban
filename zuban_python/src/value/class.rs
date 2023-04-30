@@ -614,7 +614,7 @@ impl<'db: 'a, 'a> Class<'a> {
         MroIterator::new(
             db,
             Type::Class(*self),
-            Some(self.generics),
+            self.generics,
             class_infos.mro.iter(),
             incomplete_mro || self.node_ref == db.python_state.object_node_ref(),
         )
@@ -834,7 +834,7 @@ impl<'db> BasesIterator<'db> {
 
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
-    generics: Option<Generics<'a>>,
+    generics: Generics<'a>,
     class: Option<Type<'a>>,
     iterator: std::slice::Iter<'a, DbType>,
     mro_index: u32,
@@ -845,7 +845,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
         class: Type<'a>,
-        generics: Option<Generics<'a>>,
+        generics: Generics<'a>,
         iterator: std::slice::Iter<'a, DbType>,
         returned_object: bool,
     ) -> Self {
@@ -873,15 +873,11 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                 match c {
                     DbType::Class(c, generics) => Type::Class(Class::from_position(
                         NodeRef::from_link(self.db, *c),
-                        self.generics.unwrap(),
+                        self.generics,
                         generics.as_ref(),
                     )),
                     // TODO this is wrong, because it does not use generics.
-                    _ if matches!(
-                        self.generics,
-                        None | Some(Generics::None | Generics::NotDefinedYet)
-                    ) =>
-                    {
+                    _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {
                         Type::new(c)
                     }
                     _ => Type::owned(c.replace_type_var_likes_and_self(

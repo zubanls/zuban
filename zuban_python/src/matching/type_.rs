@@ -626,7 +626,7 @@ impl<'a> Type<'a> {
                     MroIterator::new(
                         db,
                         Type::new(t),
-                        Some(tuple_class.generics),
+                        tuple_class.generics,
                         tuple_class.use_cached_class_infos(db).mro.iter(),
                         false,
                     )
