@@ -477,10 +477,12 @@ testNamedTupleAttributesAreReadOnly
 testNamedTupleUsedAsTuple
 # Joining namedtuples (especially generic once)
 testGenericNamedTupleJoin
-# NamedTuples generics
-testBasicRecursiveGenericNamedTuple
-testGenericNamedTupleCallSyntax
+# "Generic named tuples are not supported for legacy class syntax"
 testGenericNamedTupleNoLegacySyntax
+# Recursive generic NamedTuple
+testBasicRecursiveGenericNamedTuple
+# NamedTuple generic used
+testGenericNamedTupleCallSyntax
 # NamedTuple special methods
 testNewAnalyzerNamedTupleSpecialMethods
 testNewAnalyzerNamedTupleBaseClass

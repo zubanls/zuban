@@ -882,7 +882,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     TypeContent::DbType(d) => match d {
                         DbType::Any => TypeContent::DbType(d),
-                        _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
+                        _ => {
+                            debug!(
+                                "Invalid getitem used on {}",
+                                d.format_short(self.inference.i_s.db)
+                            );
+                            TypeContent::InvalidVariable(InvalidVariableType::Other)
+                        }
                     },
                     TypeContent::Module(m) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
