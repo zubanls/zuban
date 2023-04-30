@@ -2004,11 +2004,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         &mut self,
         node_ref: NodeRef,
         list: StarLikeExpressionIterator,
-    ) -> Option<CallableParams> {
+    ) -> Option<Vec<CallableParam>> {
         // From NamedTuple('x', [('a', int)]) to a callable that matches those params
 
         let file_index = self.inference.file_index;
-        let mut field_names_with_underscore = vec![];
         let mut params = vec![];
         for element in list {
             let StarLikeExpression::NamedExpression(ne) = element else {
@@ -2047,9 +2046,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 return None
             };
             let name_str = name.as_str(self.inference.i_s.db);
-            if name_str.starts_with('_') {
-                field_names_with_underscore.push(name_str);
-            }
             let t = self.compute_named_expr_db_type(type_expr);
             params.push(CallableParam {
                 param_specific: ParamSpecific::PositionalOrKeyword(t),
@@ -2057,16 +2053,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 has_default: false,
             });
         }
-        if !field_names_with_underscore.is_empty() {
-            node_ref.add_typing_issue(
-                self.inference.i_s,
-                IssueType::NamedTupleNamesCannotStartWithUnderscore {
-                    name: "NamedTuple",
-                    field_names: field_names_with_underscore.join(", ").into(),
-                },
-            );
-        }
-        Some(CallableParams::Simple(Rc::from(params)))
+        Some(params)
     }
 
     pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
@@ -3050,12 +3037,13 @@ pub fn new_typing_named_tuple(
         TypeComputationOrigin::Constraint,
     );
     if let Some(params) = comp.compute_named_tuple_initializer(args_node_ref, list_iterator) {
+        check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
         let callable = CallableContent {
             name: Some(name),
             class_name: None,
             defined_at: args_node_ref.as_link(),
             type_vars: None,
-            params,
+            params: CallableParams::Simple(Rc::from(params)),
             result_type: DbType::None,
         };
         Some(Rc::new(NamedTuple::from_execution(name, callable)))
@@ -3124,6 +3112,24 @@ pub fn new_collections_named_tuple(
             return None;
         }
     };
+    check_named_tuple_has_no_fields_with_underscore(i_s, "namedtuple", args, &params);
+    let callable = CallableContent {
+        name: Some(name),
+        class_name: None,
+        defined_at: args_node_ref.as_link(),
+        type_vars: None,
+        params: CallableParams::Simple(Rc::from(params)),
+        result_type: DbType::None,
+    };
+    Some(Rc::new(NamedTuple::from_execution(name, callable)))
+}
+
+fn check_named_tuple_has_no_fields_with_underscore(
+    i_s: &InferenceState,
+    name: &'static str,
+    args: &dyn Arguments,
+    params: &[CallableParam],
+) {
     let field_names_with_underscore: Vec<_> = params
         .iter()
         .filter_map(|p| {
@@ -3135,18 +3141,9 @@ pub fn new_collections_named_tuple(
         args.as_node_ref().add_typing_issue(
             i_s,
             IssueType::NamedTupleNamesCannotStartWithUnderscore {
-                name: "namedtuple",
+                name,
                 field_names: field_names_with_underscore.join(", ").into(),
             },
         );
     }
-    let callable = CallableContent {
-        name: Some(name),
-        class_name: None,
-        defined_at: args_node_ref.as_link(),
-        type_vars: None,
-        params: CallableParams::Simple(Rc::from(params)),
-        result_type: DbType::None,
-    };
-    Some(Rc::new(NamedTuple::from_execution(name, callable)))
 }
