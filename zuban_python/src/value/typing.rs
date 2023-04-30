@@ -100,7 +100,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
+        on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         if self.specific == Specific::TypingNamedTuple {
             return match new_typing_named_tuple(i_s, args) {
@@ -111,6 +111,10 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             };
         }
         if self.specific == Specific::CollectionsNamedTuple {
+            i_s.db
+                .python_state
+                .collections_namedtuple_function()
+                .execute(i_s, args, result_context, on_type_error);
             return match new_collections_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
                     DbType::new_special(rc),

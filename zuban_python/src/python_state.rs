@@ -9,7 +9,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, OverloadedFunction};
+use crate::value::{Class, Function, OverloadedFunction};
 use crate::{InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
@@ -364,8 +364,11 @@ impl PythonState {
         NodeRef::new(self.typing(), self.typing_mapping_index)
     }
 
-    pub fn typing_namedtuple_node_ref(&self) -> NodeRef {
-        NodeRef::new(self.typing(), self.typing_namedtuple_index)
+    pub fn collections_namedtuple_function(&self) -> Function {
+        Function::new(
+            NodeRef::new(self.collections(), self.collections_namedtuple_index),
+            None,
+        )
     }
 
     pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {

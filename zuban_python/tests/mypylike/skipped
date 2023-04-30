@@ -455,15 +455,16 @@ testNonliteralTupleIndex
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
+# Semanal too many issues
+testNamedTupleWithInvalidName
 # Semanal issues
-testNamedTupleWithTooFewArguments
 testNamedTupleWithNonpositionalArgs
+testNamedTupleWithNonpositionalArgs2
 testTypingNamedTupleWithTooFewArguments
 testTypingNamedTupleWithManyArguments
 testTypingNamedTupleWithInvalidName
 testTypingNamedTupleWithInvalidItems
 testTypingNamedTupleWithUnexpectedNames
-testNamedTupleWithNonpositionalArgs2
 testInvalidNamedTupleBaseClass
 testInvalidNamedTupleBaseClass2
 # Nested usage in functions of definition, means constructor is not yet defined.

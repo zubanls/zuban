@@ -2982,7 +2982,8 @@ fn check_named_tuple_name<'x, 'y>(
         return None
     };
     let Some(second_arg) = iterator.next() else {
-        todo!()
+        // Detected by execution of namedtuple
+        return None
     };
     let ArgumentKind::Positional { node_ref, .. } = second_arg.kind else {
         todo!()
@@ -2998,7 +2999,7 @@ pub fn new_typing_named_tuple(
     args: &dyn Arguments,
 ) -> Option<Rc<NamedTuple>> {
     let Some((name, second_node_ref, atom, mut iterator)) = check_named_tuple_name(i_s, args) else {
-        todo!()
+        return None
     };
     if iterator.next().is_some() {
         todo!()
