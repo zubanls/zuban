@@ -2000,6 +2000,75 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }))
     }
 
+    pub fn compute_named_tuple_initializer(
+        &mut self,
+        node_ref: NodeRef,
+        list: StarLikeExpressionIterator,
+    ) -> Option<CallableParams> {
+        // From NamedTuple('x', [('a', int)]) to a callable that matches those params
+
+        let file_index = self.inference.file_index;
+        let mut field_names_with_underscore = vec![];
+        let mut params = vec![];
+        for element in list {
+            let StarLikeExpression::NamedExpression(ne) = element else {
+                todo!()
+            };
+            let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
+                todo!()
+            };
+            let mut parts = match atom.unpack() {
+                AtomContent::Tuple(tup) => tup.iter(),
+                _ => {
+                    NodeRef::new(self.inference.file, atom.index()).add_typing_issue(
+                        self.inference.i_s,
+                        IssueType::TupleExpectedAsNamedTupleField,
+                    );
+                    return None;
+                }
+            };
+            let Some(first) = parts.next() else {
+                todo!()
+            };
+            let Some(second) = parts.next() else {
+                todo!()
+            };
+            let StarLikeExpression::NamedExpression(name_expr) = first else {
+                todo!()
+            };
+            let StarLikeExpression::NamedExpression(type_expr) = second else {
+                todo!()
+            };
+            let Some(name) = StringSlice::from_string_in_expression(file_index, name_expr.expression()) else {
+                NodeRef::new(self.inference.file, name_expr.index()).add_typing_issue(
+                    self.inference.i_s,
+                    IssueType::NamedTupleInvalidFieldName,
+                );
+                return None
+            };
+            let name_str = name.as_str(self.inference.i_s.db);
+            if name_str.starts_with('_') {
+                field_names_with_underscore.push(name_str);
+            }
+            let t = self.compute_named_expr_db_type(type_expr);
+            params.push(CallableParam {
+                param_specific: ParamSpecific::PositionalOrKeyword(t),
+                name: Some(name),
+                has_default: false,
+            });
+        }
+        if !field_names_with_underscore.is_empty() {
+            node_ref.add_typing_issue(
+                self.inference.i_s,
+                IssueType::NamedTupleNamesCannotStartWithUnderscore {
+                    name: "NamedTuple",
+                    field_names: field_names_with_underscore.join(", ").into(),
+                },
+            );
+        }
+        Some(CallableParams::Simple(Rc::from(params)))
+    }
+
     pub fn into_type_vars<C>(self, on_type_var_recalculation: C) -> TypeVarLikes
     where
         C: FnOnce(&Inference, &dyn Fn(&DbType) -> DbType),
@@ -2626,80 +2695,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             }
         }
     }
-
-    pub fn compute_named_tuple_initializer(
-        &mut self,
-        node_ref: NodeRef,
-        list: StarLikeExpressionIterator,
-    ) -> Option<CallableParams> {
-        // From NamedTuple('x', [('a', int)]) to a callable that matches those params
-
-        let mut x = type_computation_for_variable_annotation;
-        let file_index = self.file_index;
-        let mut comp = TypeComputation::new(
-            self,
-            node_ref.as_link(),
-            &mut x,
-            TypeComputationOrigin::Constraint,
-        );
-        let mut field_names_with_underscore = vec![];
-        let mut params = vec![];
-        for element in list {
-            let StarLikeExpression::NamedExpression(ne) = element else {
-                todo!()
-            };
-            let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
-                todo!()
-            };
-            let mut parts = match atom.unpack() {
-                AtomContent::Tuple(tup) => tup.iter(),
-                _ => {
-                    NodeRef::new(node_ref.file, atom.index())
-                        .add_typing_issue(self.i_s, IssueType::TupleExpectedAsNamedTupleField);
-                    return None;
-                }
-            };
-            let Some(first) = parts.next() else {
-                todo!()
-            };
-            let Some(second) = parts.next() else {
-                todo!()
-            };
-            let StarLikeExpression::NamedExpression(name_expr) = first else {
-                todo!()
-            };
-            let StarLikeExpression::NamedExpression(type_expr) = second else {
-                todo!()
-            };
-            let Some(name) = StringSlice::from_string_in_expression(file_index, name_expr.expression()) else {
-                NodeRef::new(self.file, name_expr.index()).add_typing_issue(
-                    self.i_s,
-                    IssueType::NamedTupleInvalidFieldName,
-                );
-                return None
-            };
-            let name_str = name.as_str(comp.inference.i_s.db);
-            if name_str.starts_with('_') {
-                field_names_with_underscore.push(name_str);
-            }
-            let t = comp.compute_named_expr_db_type(type_expr);
-            params.push(CallableParam {
-                param_specific: ParamSpecific::PositionalOrKeyword(t),
-                name: Some(name),
-                has_default: false,
-            });
-        }
-        if !field_names_with_underscore.is_empty() {
-            node_ref.add_typing_issue(
-                self.i_s,
-                IssueType::NamedTupleNamesCannotStartWithUnderscore {
-                    name: "NamedTuple",
-                    field_names: field_names_with_underscore.join(", ").into(),
-                },
-            );
-        }
-        Some(CallableParams::Simple(Rc::from(params)))
-    }
 }
 
 #[inline]
@@ -3046,11 +3041,15 @@ pub fn new_typing_named_tuple(
         }
     };
     let args_node_ref = args.as_node_ref();
-    if let Some(params) = args_node_ref
-        .file
-        .inference(i_s)
-        .compute_named_tuple_initializer(args_node_ref, list_iterator)
-    {
+    let on_type_var = &mut |i_s: &InferenceState, _: &_, _, _| TypeVarCallbackReturn::NotFound;
+    let mut inference = args_node_ref.file.inference(i_s);
+    let mut comp = TypeComputation::new(
+        &mut inference,
+        args.as_node_ref().as_link(),
+        on_type_var,
+        TypeComputationOrigin::Constraint,
+    );
+    if let Some(params) = comp.compute_named_tuple_initializer(args_node_ref, list_iterator) {
         let callable = CallableContent {
             name: Some(name),
             class_name: None,
