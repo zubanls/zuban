@@ -3038,11 +3038,12 @@ pub fn new_typing_named_tuple(
     );
     if let Some(params) = comp.compute_named_tuple_initializer(args_node_ref, list_iterator) {
         check_named_tuple_has_no_fields_with_underscore(i_s, "NamedTuple", args, &params);
+        let type_var_likes = comp.into_type_vars(|_, _| ());
         let callable = CallableContent {
             name: Some(name),
             class_name: None,
             defined_at: args_node_ref.as_link(),
-            type_vars: None,
+            type_vars: (!type_var_likes.is_empty()).then(|| type_var_likes),
             params: CallableParams::Simple(Rc::from(params)),
             result_type: DbType::None,
         };
