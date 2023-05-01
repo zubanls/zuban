@@ -44,7 +44,7 @@ struct NamedTupleMember {
 pub struct NamedTuple {
     name: StringSlice,
     // Basically __new__
-    constructor: OnceCell<Rc<CallableContent>>,
+    constructor: Rc<CallableContent>,
     tuple: OnceCell<Rc<TupleContent>>,
 }
 
@@ -52,7 +52,7 @@ impl NamedTuple {
     pub fn from_class(i_s: &InferenceState, cls: Class) -> Self {
         let name = StringSlice::from_name(cls.node_ref.file_index(), cls.node().name());
         Self {
-            constructor: OnceCell::from(Rc::new(Self::initialize_class_members(i_s, name, cls))),
+            constructor: Rc::new(Self::initialize_class_members(i_s, name, cls)),
             tuple: OnceCell::new(),
             name,
         }
@@ -61,7 +61,7 @@ impl NamedTuple {
     pub fn from_execution(name: StringSlice, constructor: CallableContent) -> Self {
         Self {
             name,
-            constructor: OnceCell::from(Rc::new(constructor)),
+            constructor: Rc::new(constructor),
             tuple: OnceCell::new(),
         }
     }
@@ -106,15 +106,11 @@ impl NamedTuple {
         }
     }
 
-    fn constructor(&self) -> &CallableContent {
-        self.constructor.get().unwrap()
-    }
-
     pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
         let mut nt = self.clone();
-        let mut callable = nt.constructor.get().unwrap().as_ref().clone();
+        let mut callable = nt.constructor.as_ref().clone();
         callable.name = Some(name);
-        nt.constructor = OnceCell::from(Rc::new(callable));
+        nt.constructor = Rc::new(callable);
         Rc::new(nt)
     }
 
@@ -134,7 +130,7 @@ impl NamedTuple {
     }
 
     fn params(&self) -> &[CallableParam] {
-        let CallableParams::Simple(params) = &self.constructor().params else {
+        let CallableParams::Simple(params) = &self.constructor.params else {
             unreachable!();
         };
         params
@@ -155,12 +151,12 @@ impl NamedTuple {
         if format_data.style != FormatStyle::MypyRevealType {
             return Box::from(name);
         }
-        let CallableParams::Simple(params) = &self.constructor().params else {
+        let CallableParams::Simple(params) = &self.constructor.params else {
             unreachable!()
         };
         // We need to check recursions here, because for class definitions of named tuples can
         // recurse with their attributes.
-        let rec = RecursiveAlias::new(self.constructor().defined_at, None);
+        let rec = RecursiveAlias::new(self.constructor.defined_at, None);
         if format_data.has_already_seen_recursive_alias(&rec) {
             return Box::from(name);
         }
@@ -225,7 +221,7 @@ impl SpecialType for NamedTuple {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> Option<DbType> {
-        let mut constructor = self.constructor().clone();
+        let mut constructor = self.constructor.as_ref().clone();
         let CallableParams::Simple(params) = &constructor.params else {
             unreachable!();
         };
@@ -281,7 +277,7 @@ impl SpecialType for NamedTuple {
         if name == "__init__" {
             return LookupResult::UnknownName(Inferred::execute_db_type(
                 i_s,
-                DbType::Callable(self.constructor.get().unwrap().clone()),
+                DbType::Callable(self.constructor.clone()),
             ));
         }
         debug!("TODO lookup of NamedTuple base classes");
@@ -297,8 +293,8 @@ impl SpecialType for NamedTuple {
     ) -> Match {
         if let Some(DbType::SpecialType(s)) = value_type.maybe_db_type() {
             if let Some(nt) = s.as_named_tuple() {
-                let c1 = self.constructor();
-                let c2 = nt.constructor();
+                let c1 = &self.constructor;
+                let c2 = &nt.constructor;
                 if c1.type_vars.is_some() || c2.type_vars.is_some() {
                     todo!()
                 } else {
@@ -351,7 +347,7 @@ impl SpecialType for NamedTuple {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             None,
-            self.constructor(),
+            &self.constructor,
             args.iter(),
             &|| args.as_node_ref(),
             &mut ResultContext::Unknown,
