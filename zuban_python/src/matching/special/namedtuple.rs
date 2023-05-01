@@ -2,20 +2,16 @@ use std::rc::Rc;
 
 use once_cell::unsync::OnceCell;
 
-use parsa_python_ast::{
-    AssignmentContent, BlockContent, Decoratee, SimpleStmtContent, SimpleStmts, StmtContent, Target,
-};
-
 use crate::{
     arguments::Arguments,
     database::{
         CallableContent, CallableParam, CallableParams, Database, DbType, FormatStyle,
         GenericsList, ParamSpecific, RecursiveAlias, ReplaceSelf, ReplaceTypeVarLike, SpecialType,
-        StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
+        StringSlice, TupleContent, TupleTypeArguments, Variance,
     },
     debug,
     diagnostics::IssueType,
-    file::{infer_index, use_cached_annotation_type, File, PythonFile},
+    file::infer_index,
     getitem::{SliceType, SliceTypeContent},
     inference_state::InferenceState,
     inferred::Inferred,
@@ -24,21 +20,9 @@ use crate::{
         ResultContext, Type,
     },
     node_ref::NodeRef,
-    value::{Class, IteratorContent, LookupResult, Module, OnTypeError, Value},
+    value::{IteratorContent, LookupResult, OnTypeError, Value},
     ValueKind,
 };
-
-#[derive(Debug)]
-enum NamedTupleGenerics {
-    Some(GenericsList),
-    None,
-    ToBeDefined,
-}
-
-struct NamedTupleMember {
-    type_: DbType,
-    has_default: bool,
-}
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct NamedTuple {
@@ -48,242 +32,10 @@ pub struct NamedTuple {
     tuple: OnceCell<Rc<TupleContent>>,
 }
 
-impl NamedTuple {
-    pub fn from_class(i_s: &InferenceState, cls: Class) -> Self {
-        let name = StringSlice::from_name(cls.node_ref.file_index(), cls.node().name());
-        Self {
-            constructor: Rc::new(Self::initialize_class_members(i_s, name, cls)),
-            tuple: OnceCell::new(),
-            name,
-        }
-    }
+impl NamedTuple {}
 
-    pub fn from_execution(name: StringSlice, constructor: CallableContent) -> Self {
-        Self {
-            name,
-            constructor: Rc::new(constructor),
-            tuple: OnceCell::new(),
-        }
-    }
-
-    fn initialize_class_members(
-        i_s: &InferenceState,
-        name: StringSlice,
-        cls: Class,
-    ) -> CallableContent {
-        let mut vec = vec![];
-        let file = cls.node_ref.file;
-        match cls.node().block().unpack() {
-            BlockContent::Indented(stmts) => {
-                for stmt in stmts {
-                    match stmt.unpack() {
-                        StmtContent::SimpleStmts(simple) => {
-                            find_stmt_named_tuple_types(i_s, file, &mut vec, simple)
-                        }
-                        StmtContent::FunctionDef(_) => (),
-                        StmtContent::Decorated(dec)
-                            if matches!(
-                                dec.decoratee(),
-                                Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
-                            ) =>
-                        {
-                            ()
-                        }
-                        _ => NodeRef::new(file, stmt.index())
-                            .add_typing_issue(i_s, IssueType::InvalidStmtInNamedTuple),
-                    }
-                }
-            }
-            BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
-        }
-        CallableContent {
-            name: Some(name),
-            class_name: None,
-            defined_at: cls.node_ref.as_link(),
-            type_vars: cls.use_cached_type_vars(i_s.db).cloned(),
-            params: CallableParams::Simple(Rc::from(vec)),
-            result_type: DbType::None,
-        }
-    }
-
-    pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
-        let mut nt = self.clone();
-        let mut callable = nt.constructor.as_ref().clone();
-        callable.name = Some(name);
-        nt.constructor = Rc::new(callable);
-        Rc::new(nt)
-    }
-
-    pub fn as_tuple(&self) -> &TupleContent {
-        self.tuple.get_or_init(|| {
-            Rc::new(TupleContent::new_fixed_length(
-                self.params()
-                    .iter()
-                    .map(|t| {
-                        TypeOrTypeVarTuple::Type(
-                            t.param_specific.expect_positional_db_type_as_ref().clone(),
-                        )
-                    })
-                    .collect::<Box<_>>(),
-            ))
-        })
-    }
-
-    fn params(&self) -> &[CallableParam] {
-        let CallableParams::Simple(params) = &self.constructor.params else {
-            unreachable!();
-        };
-        params
-    }
-
-    fn qualified_name(&self, db: &Database) -> String {
-        let file = db.loaded_python_file(self.name.file_index);
-        let module = Module::new(db, file).qualified_name(db);
-        format!("{module}.{}", self.name(db))
-    }
-
-    pub fn format_with_name(
-        &self,
-        format_data: &FormatData,
-        name: &str,
-        generics: Generics,
-    ) -> Box<str> {
-        if format_data.style != FormatStyle::MypyRevealType {
-            return Box::from(name);
-        }
-        let CallableParams::Simple(params) = &self.constructor.params else {
-            unreachable!()
-        };
-        // We need to check recursions here, because for class definitions of named tuples can
-        // recurse with their attributes.
-        let rec = RecursiveAlias::new(self.constructor.defined_at, None);
-        if format_data.has_already_seen_recursive_alias(&rec) {
-            return Box::from(name);
-        }
-        let format_data = &format_data.with_seen_recursive_alias(&rec);
-        let types = params
-            .iter()
-            .map(|p| {
-                let t = p.param_specific.expect_positional_db_type_as_ref();
-                match generics {
-                    Generics::NotDefinedYet | Generics::None => t.format(format_data),
-                    _ => t
-                        .replace_type_var_likes_and_self(
-                            format_data.db,
-                            &mut |usage| {
-                                generics
-                                    .nth_usage(format_data.db, &usage)
-                                    .into_generic_item(format_data.db)
-                            },
-                            &mut || todo!(),
-                        )
-                        .format(format_data),
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-        format!("tuple[{types}, fallback={name}]",).into()
-    }
-}
-
+/*
 impl SpecialType for NamedTuple {
-    fn format(&self, format_data: &FormatData) -> Box<str> {
-        match format_data.style {
-            FormatStyle::Short => self.format_with_name(
-                format_data,
-                self.name(format_data.db),
-                Generics::NotDefinedYet,
-            ),
-            _ => self.format_with_name(
-                format_data,
-                &self.qualified_name(format_data.db),
-                Generics::NotDefinedYet,
-            ),
-        }
-    }
-
-    fn has_any_internal(
-        &self,
-        i_s: &InferenceState,
-        already_checked: &mut Vec<std::rc::Rc<RecursiveAlias>>,
-    ) -> bool {
-        todo!()
-    }
-
-    fn has_self_type(&self) -> bool {
-        debug!("TODO namedtuple has_self_type");
-        false
-    }
-
-    fn replace_type_var_likes_and_self(
-        &self,
-        db: &Database,
-        callable: ReplaceTypeVarLike,
-        replace_self: ReplaceSelf,
-    ) -> Option<DbType> {
-        let mut constructor = self.constructor.as_ref().clone();
-        let CallableParams::Simple(params) = &constructor.params else {
-            unreachable!();
-        };
-        constructor.params = CallableParams::Simple(
-            params
-                .iter()
-                .map(|param| {
-                    let ParamSpecific::PositionalOrKeyword(t) = &param.param_specific else {
-                unreachable!()
-            };
-                    CallableParam {
-                        param_specific: ParamSpecific::PositionalOrKeyword(
-                            t.replace_type_var_likes_and_self(db, callable, replace_self),
-                        ),
-                        has_default: param.has_default,
-                        name: param.name,
-                    }
-                })
-                .collect(),
-        );
-        Some(DbType::new_special(Rc::new(Self::from_execution(
-            self.name,
-            constructor,
-        ))))
-    }
-
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
-    fn name<'a>(&'a self, db: &'a Database) -> &'a str {
-        self.name.as_str(db)
-    }
-
-    fn debug(&self) -> String {
-        format!("{:?}", self)
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        for p in self.params() {
-            if name == p.name.unwrap().as_str(i_s.db) {
-                return LookupResult::UnknownName(Inferred::execute_db_type(
-                    i_s,
-                    p.param_specific.expect_positional_db_type_as_ref().clone(),
-                ));
-            }
-        }
-        if name == "__init__" {
-            return LookupResult::UnknownName(Inferred::execute_db_type(
-                i_s,
-                DbType::Callable(self.constructor.clone()),
-            ));
-        }
-        debug!("TODO lookup of NamedTuple base classes");
-        LookupResult::None
-    }
-
     fn matches_internal(
         &self,
         i_s: &InferenceState,
@@ -291,52 +43,7 @@ impl SpecialType for NamedTuple {
         value_type: &Type,
         variance: Variance,
     ) -> Match {
-        if let Some(DbType::SpecialType(s)) = value_type.maybe_db_type() {
-            if let Some(nt) = s.as_named_tuple() {
-                let c1 = &self.constructor;
-                let c2 = &nt.constructor;
-                if c1.type_vars.is_some() || c2.type_vars.is_some() {
-                    todo!()
-                } else {
-                    return (c1.defined_at == c2.defined_at).into();
-                }
-            }
-        }
-        Match::new_false()
     }
-
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => infer_index(i_s, simple, |index| {
-                if let Some(p) = self.params().get(index) {
-                    Some(Inferred::execute_db_type(
-                        i_s,
-                        p.param_specific.expect_positional_db_type_as_ref().clone(),
-                    ))
-                } else {
-                    slice_type
-                        .as_node_ref()
-                        .add_typing_issue(i_s, IssueType::TupleIndexOutOfRange);
-                    None
-                }
-            }),
-            SliceTypeContent::Slice(_) => todo!(),
-            SliceTypeContent::Slices(_) => todo!(),
-        }
-    }
-
-    fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'_> {
-        let TupleTypeArguments::FixedLength(t) = self.as_tuple().args.as_ref().unwrap() else {
-            unreachable!()
-        };
-        IteratorContent::FixedLengthTupleGenerics(t.iter())
-    }
-
     fn instantiate<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -344,49 +51,6 @@ impl SpecialType for NamedTuple {
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> DbType {
-        let calculated_type_vars = calculate_callable_type_vars_and_return(
-            i_s,
-            None,
-            &self.constructor,
-            args.iter(),
-            &|| args.as_node_ref(),
-            &mut ResultContext::Unknown,
-            on_type_error,
-        );
-        debug!("TODO use generics for namedtuple");
-        full_type.clone()
-    }
-
-    fn as_named_tuple(&self) -> Option<&Self> {
-        Some(self)
     }
 }
-
-fn find_stmt_named_tuple_types(
-    i_s: &InferenceState,
-    file: &PythonFile,
-    vec: &mut Vec<CallableParam>,
-    simple_stmts: SimpleStmts,
-) {
-    for simple in simple_stmts.iter() {
-        match simple.unpack() {
-            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
-                AssignmentContent::WithAnnotation(target, annot, default) => match target {
-                    Target::Name(name) => {
-                        file.inference(i_s).ensure_cached_annotation(annot);
-                        let t =
-                            use_cached_annotation_type(i_s.db, file, annot).into_db_type(i_s.db);
-                        vec.push(CallableParam {
-                            param_specific: ParamSpecific::PositionalOrKeyword(t),
-                            has_default: default.is_some(),
-                            name: Some(StringSlice::from_name(file.file_index(), name.name())),
-                        })
-                    }
-                    _ => todo!(),
-                },
-                _ => todo!(),
-            },
-            _ => todo!(),
-        }
-    }
-}
+*/

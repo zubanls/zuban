@@ -14,6 +14,7 @@ use parsa_python_ast::Name;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
 use crate::arguments::Arguments;
+use crate::debug;
 use crate::file::PythonFile;
 use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
@@ -21,18 +22,17 @@ use crate::file::{
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
+use crate::matching::Generics;
 use crate::matching::Match;
 use crate::matching::ResultContext;
-use crate::matching::{
-    common_base_type, FormatData, Generic, Matcher, NamedTuple, ParamsStyle, Type,
-};
+use crate::matching::{common_base_type, FormatData, Generic, Matcher, ParamsStyle, Type};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::IteratorContent;
 use crate::value::LookupResult;
 use crate::value::OnTypeError;
-use crate::value::{Class, Value};
+use crate::value::{Class, Module, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
 use crate::ValueKind;
@@ -817,10 +817,6 @@ pub trait SpecialType: std::any::Any + 'static {
 
     fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'_>;
 
-    fn as_named_tuple(&self) -> Option<&NamedTuple> {
-        None
-    }
-
     fn instantiate<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -871,6 +867,7 @@ pub enum DbType {
     ParamSpecArgs(ParamSpecUsage),
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
+    NamedTuple(Rc<NamedTuple>),
     SpecialType(SpecialTypeRc),
     Self_,
     None,
@@ -1009,6 +1006,22 @@ impl DbType {
             Self::ParamSpecKwargs(usage) => {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
+            Self::NamedTuple(nt) => {
+                use crate::value::NamedTupleValue;
+                match format_data.style {
+                    FormatStyle::Short => NamedTupleValue::new(format_data.db, &nt)
+                        .format_with_name(
+                            format_data,
+                            nt.name(format_data.db),
+                            Generics::NotDefinedYet,
+                        ),
+                    _ => NamedTupleValue::new(format_data.db, &nt).format_with_name(
+                        format_data,
+                        &nt.qualified_name(format_data.db),
+                        Generics::NotDefinedYet,
+                    ),
+                }
+            }
             Self::SpecialType(special) => special.format(format_data),
         }
     }
@@ -1098,6 +1111,9 @@ impl DbType {
             Self::Self_ | Self::NewType(_) => (),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
+            Self::NamedTuple(_) => {
+                debug!("TODO do we need to support namedtuple searching for type vars?");
+            }
             Self::SpecialType(special) => special.search_type_vars(found_type_var),
         }
     }
@@ -1164,6 +1180,7 @@ impl DbType {
             }
             Self::Self_ => todo!(),
             Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
+            Self::NamedTuple(nt) => todo!(),
             Self::SpecialType(special) => special.has_any_internal(i_s, already_checked),
         }
     }
@@ -1219,6 +1236,10 @@ impl DbType {
             }
             Self::Self_ => true,
             Self::SpecialType(special) => special.has_self_type(),
+            Self::NamedTuple(_) => {
+                debug!("TODO namedtuple has_self_type");
+                false
+            }
             Self::Class(_, None)
             | Self::None
             | Self::Never
@@ -1485,6 +1506,30 @@ impl DbType {
             Self::Self_ => replace_self(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
+            Self::NamedTuple(nt) => {
+                let mut constructor = nt.constructor.as_ref().clone();
+                let CallableParams::Simple(params) = &constructor.params else {
+                    unreachable!();
+                };
+                constructor.params = CallableParams::Simple(
+                    params
+                        .iter()
+                        .map(|param| {
+                            let ParamSpecific::PositionalOrKeyword(t) = &param.param_specific else {
+                        unreachable!()
+                    };
+                            CallableParam {
+                                param_specific: ParamSpecific::PositionalOrKeyword(
+                                    t.replace_type_var_likes_and_self(db, callable, replace_self),
+                                ),
+                                has_default: param.has_default,
+                                name: param.name,
+                            }
+                        })
+                        .collect(),
+                );
+                DbType::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
+            }
             Self::SpecialType(special) => special
                 .replace_type_var_likes_and_self(db, callable, replace_self)
                 .unwrap_or(DbType::SpecialType(special.clone())),
@@ -1812,6 +1857,7 @@ impl DbType {
             Self::Self_ => Self::Self_,
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
+            Self::NamedTuple(_) => todo!(),
             Self::SpecialType(special) => todo!(),
         }
     }
@@ -1886,8 +1932,7 @@ impl DbType {
 
     pub fn is_subclassable(&self) -> bool {
         match self {
-            Self::Class(..) | Self::Tuple(..) | Self::NewType(..) => true,
-            Self::SpecialType(special) => special.as_named_tuple().is_some(),
+            Self::Class(..) | Self::Tuple(..) | Self::NewType(..) | Self::NamedTuple(_) => true,
             _ => false,
         }
     }
@@ -3155,6 +3200,64 @@ impl CallableParams {
                 .any(|t| t.has_any_internal(i_s, already_checked)),
             Self::Any => true,
         }
+    }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct NamedTuple {
+    name: StringSlice,
+    // Basically __new__
+    pub constructor: Rc<CallableContent>,
+    tuple: OnceCell<Rc<TupleContent>>,
+}
+
+impl NamedTuple {
+    pub fn new(name: StringSlice, constructor: CallableContent) -> Self {
+        Self {
+            name,
+            constructor: Rc::new(constructor),
+            tuple: OnceCell::new(),
+        }
+    }
+
+    pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
+        let mut nt = self.clone();
+        let mut callable = nt.constructor.as_ref().clone();
+        callable.name = Some(name);
+        nt.constructor = Rc::new(callable);
+        Rc::new(nt)
+    }
+
+    pub fn params(&self) -> &[CallableParam] {
+        let CallableParams::Simple(params) = &self.constructor.params else {
+            unreachable!();
+        };
+        params
+    }
+
+    pub fn name<'a>(&self, db: &'a Database) -> &'a str {
+        self.name.as_str(db)
+    }
+
+    pub fn qualified_name(&self, db: &Database) -> String {
+        let file = db.loaded_python_file(self.name.file_index);
+        let module = Module::new(db, file).qualified_name(db);
+        format!("{module}.{}", self.name(db))
+    }
+
+    pub fn as_tuple(&self) -> &TupleContent {
+        self.tuple.get_or_init(|| {
+            Rc::new(TupleContent::new_fixed_length(
+                self.params()
+                    .iter()
+                    .map(|t| {
+                        TypeOrTypeVarTuple::Type(
+                            t.param_specific.expect_positional_db_type_as_ref().clone(),
+                        )
+                    })
+                    .collect::<Box<_>>(),
+            ))
+        })
     }
 }
 

@@ -13,7 +13,7 @@ use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Instance, LookupResult, MroIterator, Value};
+use crate::value::{Class, Instance, LookupResult, MroIterator, NamedTupleValue, Value};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -210,6 +210,7 @@ impl<'a> Type<'a> {
                 DbType::Self_ => false, // TODO this is wrong
                 DbType::ParamSpecArgs(usage) => todo!(),
                 DbType::ParamSpecKwargs(usage) => todo!(),
+                DbType::NamedTuple(_) => todo!(),
                 DbType::SpecialType(special) => todo!(),
             },
         }
@@ -304,17 +305,11 @@ impl<'a> Type<'a> {
                 DbType::Never => Match::new_false(),
                 DbType::Tuple(t1) => match value_type.maybe_db_type() {
                     Some(DbType::Tuple(t2)) => {
-                        let m: Match = Self::matches_tuple(i_s, matcher, t1, t2, variance);
-                        m.similar_if_false()
+                        Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
                     }
-                    Some(DbType::SpecialType(s)) => {
-                        if let Some(nt) = s.as_named_tuple() {
-                            let m: Match =
-                                Self::matches_tuple(i_s, matcher, t1, nt.as_tuple(), variance);
-                            m.similar_if_false()
-                        } else {
-                            Match::new_false()
-                        }
+                    Some(DbType::NamedTuple(t2)) => {
+                        Self::matches_tuple(i_s, matcher, t1, t2.as_tuple(), variance)
+                            .similar_if_false()
                     }
                     _ => Match::new_false(),
                 },
@@ -374,6 +369,18 @@ impl<'a> Type<'a> {
                 },
                 DbType::ParamSpecKwargs(usage1) => match value_type.maybe_db_type() {
                     Some(DbType::ParamSpecKwargs(usage2)) => (usage1 == usage2).into(),
+                    _ => Match::new_false(),
+                },
+                DbType::NamedTuple(nt1) => match value_type.maybe_db_type() {
+                    Some(DbType::NamedTuple(nt2)) => {
+                        let c1 = &nt1.constructor;
+                        let c2 = &nt2.constructor;
+                        if c1.type_vars.is_some() || c2.type_vars.is_some() {
+                            todo!()
+                        } else {
+                            (c1.defined_at == c2.defined_at).into()
+                        }
+                    }
                     _ => Match::new_false(),
                 },
                 DbType::SpecialType(special) => {
@@ -1220,6 +1227,9 @@ impl<'a> Type<'a> {
                 DbType::Class(c, generics) => todo!(),
                 DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
                 DbType::SpecialType(t) => t.lookup_internal(i_s, None, name),
+                DbType::NamedTuple(nt) => {
+                    NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, None, name)
+                }
                 DbType::Callable(t) => todo!(),
                 _ => todo!("{name:?} {self:?}"),
             },

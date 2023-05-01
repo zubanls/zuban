@@ -3,10 +3,11 @@ use std::borrow::Cow;
 use parsa_python_ast::Name;
 
 use super::{
-    Class, IteratorContent, LookupResult, MroIterator, OnTypeError, Tuple, Value, ValueKind,
+    Class, IteratorContent, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Tuple, Value,
+    ValueKind,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, Database, DbType, PointLink, SpecialType};
+use crate::database::{ClassType, Database, DbType, PointLink};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
@@ -207,7 +208,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             &self.class.use_cached_class_infos(i_s.db).class_type
         {
             // TODO this doesn't take care of the mro and could not be the first __getitem__
-            return named_tuple.get_item(i_s, slice_type, result_context);
+            return NamedTupleValue::new(i_s.db, named_tuple).get_item(
+                i_s,
+                slice_type,
+                result_context,
+            );
         }
         let mro_iterator = self.class.mro(i_s.db);
         let node_ref = slice_type.as_node_ref();
@@ -264,7 +269,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             self.class.use_cached_class_infos(i_s.db).class_type
         {
             // TODO this doesn't take care of the mro and could not be the first __iter__
-            return named_tuple.iter(i_s, from);
+            return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
         }
         let mro_iterator = self.class.mro(i_s.db);
         let finder = ClassMroFinder {

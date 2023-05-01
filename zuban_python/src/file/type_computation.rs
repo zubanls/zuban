@@ -7,10 +7,10 @@ use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArgument
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
     DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind, Locality,
-    NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType,
-    RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias,
-    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    NamedTuple, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink,
+    PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent,
+    TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -19,7 +19,7 @@ use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, NamedTuple, ResultContext, Type};
+use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::{Class, Function, Module, Value};
 
@@ -419,14 +419,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::Class(_, _) | DbType::Tuple(_) | DbType::Callable(_) => {
                         BaseClass::DbType(db_type)
                     }
-                    DbType::SpecialType(special) => {
-                        if let Some(nt) = special.as_named_tuple() {
-                            // TODO performance: this is already an Rc and should not need to be
-                            // duplicated.
-                            BaseClass::NamedTuple(Rc::new(nt.clone()))
-                        } else {
-                            BaseClass::Invalid
-                        }
+                    DbType::NamedTuple(nt) => {
+                        // TODO performance: this is already an Rc and should not need to be
+                        // duplicated.
+                        BaseClass::NamedTuple(nt.clone())
                     }
                     DbType::Any => BaseClass::Unknown,
                     DbType::NewType(_) => {
@@ -848,7 +844,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         primary,
                     );
                     TypeContent::DbType(match new_typing_named_tuple(self.inference.i_s, &args) {
-                        Some(rc) => DbType::new_special(rc),
+                        Some(rc) => DbType::NamedTuple(rc),
                         None => DbType::Any,
                     })
                 }
@@ -860,7 +856,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     TypeContent::DbType(
                         match new_collections_named_tuple(self.inference.i_s, &args) {
-                            Some(rc) => DbType::new_special(rc),
+                            Some(rc) => DbType::NamedTuple(rc),
                             None => DbType::Any,
                         },
                     )
@@ -3053,7 +3049,7 @@ pub fn new_typing_named_tuple(
             params: CallableParams::Simple(Rc::from(params)),
             result_type: DbType::None,
         };
-        Some(Rc::new(NamedTuple::from_execution(name, callable)))
+        Some(Rc::new(NamedTuple::new(name, callable)))
     } else {
         return None;
     }
@@ -3128,7 +3124,7 @@ pub fn new_collections_named_tuple(
         params: CallableParams::Simple(Rc::from(params)),
         result_type: DbType::None,
     };
-    Some(Rc::new(NamedTuple::from_execution(name, callable)))
+    Some(Rc::new(NamedTuple::new(name, callable)))
 }
 
 fn check_named_tuple_has_no_fields_with_underscore(

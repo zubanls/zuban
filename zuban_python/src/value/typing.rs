@@ -14,7 +14,7 @@ use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{calculate_callable_type_vars_and_return, FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -105,7 +105,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         if self.specific == Specific::TypingNamedTuple {
             return match new_typing_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    DbType::new_special(rc),
+                    DbType::NamedTuple(rc),
                 )),
                 None => Inferred::new_any(),
             };
@@ -117,7 +117,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
                 .execute(i_s, args, result_context, on_type_error);
             return match new_collections_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    DbType::new_special(rc),
+                    DbType::NamedTuple(rc),
                 )),
                 None => Inferred::new_any(),
             };
@@ -318,10 +318,19 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 Inferred::execute_db_type(i_s, DbType::Self_)
             }
             DbType::Any => Inferred::new_any(),
-            DbType::SpecialType(special) => Inferred::execute_db_type(
-                i_s,
-                special.instantiate(i_s, self.db_type, args, on_type_error),
-            ),
+            DbType::NamedTuple(nt) => {
+                let calculated_type_vars = calculate_callable_type_vars_and_return(
+                    i_s,
+                    None,
+                    &nt.constructor,
+                    args.iter(),
+                    &|| args.as_node_ref(),
+                    &mut ResultContext::Unknown,
+                    on_type_error,
+                );
+                debug!("TODO use generics for namedtuple");
+                Inferred::execute_db_type(i_s, DbType::NamedTuple(nt.clone()))
+            }
             _ => todo!("{:?}", self.db_type),
         }
     }

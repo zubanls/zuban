@@ -22,8 +22,8 @@ use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, FirstParamProperties, Function,
-    Instance, IteratorContent, ListLiteral, Literal, Module, NewTypeClass, NewTypeInstance,
-    NoneInstance, OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass,
+    Instance, IteratorContent, ListLiteral, Literal, Module, NamedTupleValue, NewTypeClass,
+    NewTypeInstance, NoneInstance, OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass,
     RevealTypeFunction, SpecialTypeAsValue, Tuple, TypeAlias, TypeVarClass, TypeVarInstance,
     TypeVarTupleClass, TypingAny, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
 };
@@ -1687,6 +1687,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         }
         DbType::ParamSpecArgs(usage) => todo!(),
         DbType::ParamSpecKwargs(usage) => todo!(),
+        DbType::NamedTuple(nt) => callable(i_s, &NamedTupleValue::new(i_s.db, &nt)),
         DbType::SpecialType(special) => callable(
             i_s,
             &SpecialTypeAsValue::new(i_s.db, special.deref(), db_type),

@@ -1,18 +1,22 @@
 use std::fmt;
 use std::rc::Rc;
 
-use parsa_python_ast::{Argument, ArgumentsIterator, ClassDef};
+use parsa_python_ast::{
+    Argument, ArgumentsIterator, AssignmentContent, BlockContent, ClassDef, Decoratee,
+    SimpleStmtContent, SimpleStmts, StmtContent, Target,
+};
 
 use super::function::OverloadResult;
-use super::{Instance, LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::{Instance, LookupResult, Module, NamedTupleValue, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
 use crate::database::{
-    ClassInfos, ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList,
-    Locality, MetaclassState, MroIndex, ParentScope, Point, PointLink, PointType, StringSlice,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParam, CallableParams, ClassInfos, ClassStorage, ClassType,
+    ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality, MetaclassState, MroIndex,
+    NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
-use crate::file::File;
+use crate::file::{use_cached_annotation_type, File};
 use crate::file::{
     BaseClass, PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
     TypeVarFinder,
@@ -22,7 +26,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
-    Generics, Match, NamedTuple, ResultContext, Type,
+    Generics, Match, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -404,15 +408,15 @@ impl<'db: 'a, 'a> Class<'a> {
                             BaseClass::NamedTuple(named_tuple) => {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
-                                mro.push(DbType::new_special(named_tuple.clone()));
+                                mro.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             BaseClass::NewNamedTuple => {
-                                let named_tuple = Rc::new(NamedTuple::from_class(
+                                let named_tuple = self.named_tuple_from_class(
                                     &mut i_s.with_class_context(self),
                                     *self,
-                                ));
-                                mro.push(DbType::new_special(named_tuple.clone()));
+                                );
+                                mro.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             BaseClass::Generic => (),
@@ -633,9 +637,8 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let class_infos = self.use_cached_class_infos(format_data.db);
         match &class_infos.class_type {
-            ClassType::NamedTuple(named_tuple) => {
-                named_tuple.format_with_name(format_data, &result, self.generics)
-            }
+            ClassType::NamedTuple(named_tuple) => NamedTupleValue::new(format_data.db, named_tuple)
+                .format_with_name(format_data, &result, self.generics),
             _ => result.into(),
         }
     }
@@ -666,6 +669,50 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn name2(&self) -> &'a str {
         // TODO merge this with Value::name
         self.node().name().as_str()
+    }
+
+    fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
+        let name = self.name_string_slice();
+        Rc::new(NamedTuple::new(
+            name,
+            self.initialize_class_members(i_s, name),
+        ))
+    }
+
+    fn initialize_class_members(&self, i_s: &InferenceState, name: StringSlice) -> CallableContent {
+        let mut vec = vec![];
+        let file = self.node_ref.file;
+        match self.node().block().unpack() {
+            BlockContent::Indented(stmts) => {
+                for stmt in stmts {
+                    match stmt.unpack() {
+                        StmtContent::SimpleStmts(simple) => {
+                            find_stmt_named_tuple_types(i_s, file, &mut vec, simple)
+                        }
+                        StmtContent::FunctionDef(_) => (),
+                        StmtContent::Decorated(dec)
+                            if matches!(
+                                dec.decoratee(),
+                                Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
+                            ) =>
+                        {
+                            ()
+                        }
+                        _ => NodeRef::new(file, stmt.index())
+                            .add_typing_issue(i_s, IssueType::InvalidStmtInNamedTuple),
+                    }
+                }
+            }
+            BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
+        }
+        CallableContent {
+            name: Some(name),
+            class_name: None,
+            defined_at: self.node_ref.as_link(),
+            type_vars: self.use_cached_type_vars(i_s.db).cloned(),
+            params: CallableParams::Simple(Rc::from(vec)),
+            result_type: DbType::None,
+        }
     }
 }
 
@@ -882,6 +929,35 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
             ))
         } else {
             None
+        }
+    }
+}
+
+fn find_stmt_named_tuple_types(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    vec: &mut Vec<CallableParam>,
+    simple_stmts: SimpleStmts,
+) {
+    for simple in simple_stmts.iter() {
+        match simple.unpack() {
+            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
+                AssignmentContent::WithAnnotation(target, annot, default) => match target {
+                    Target::Name(name) => {
+                        file.inference(i_s).ensure_cached_annotation(annot);
+                        let t =
+                            use_cached_annotation_type(i_s.db, file, annot).into_db_type(i_s.db);
+                        vec.push(CallableParam {
+                            param_specific: ParamSpecific::PositionalOrKeyword(t),
+                            has_default: default.is_some(),
+                            name: Some(StringSlice::from_name(file.file_index(), name.name())),
+                        })
+                    }
+                    _ => todo!(),
+                },
+                _ => todo!(),
+            },
+            _ => todo!(),
         }
     }
 }
