@@ -1,9 +1,7 @@
 use std::rc::Rc;
 
 use super::{IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{
-    CallableParams, DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments,
-};
+use crate::database::{DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::infer_index;

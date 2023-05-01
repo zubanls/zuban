@@ -211,7 +211,6 @@ impl<'a> Type<'a> {
                 DbType::ParamSpecArgs(usage) => todo!(),
                 DbType::ParamSpecKwargs(usage) => todo!(),
                 DbType::NamedTuple(_) => todo!(),
-                DbType::SpecialType(special) => todo!(),
             },
         }
     }
@@ -383,9 +382,6 @@ impl<'a> Type<'a> {
                     }
                     _ => Match::new_false(),
                 },
-                DbType::SpecialType(special) => {
-                    special.matches_internal(i_s, matcher, value_type, variance)
-                }
             },
         };
         result
@@ -1226,7 +1222,6 @@ impl<'a> Type<'a> {
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(c, generics) => todo!(),
                 DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
-                DbType::SpecialType(t) => t.lookup_internal(i_s, None, name),
                 DbType::NamedTuple(nt) => {
                     NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, None, name)
                 }

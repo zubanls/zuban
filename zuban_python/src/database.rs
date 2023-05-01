@@ -13,29 +13,20 @@ use parsa_python_ast::Expression;
 use parsa_python_ast::Name;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 
-use crate::arguments::Arguments;
 use crate::debug;
 use crate::file::PythonFile;
 use crate::file::{
     File, FileState, FileStateLoader, FileSystemReader, LanguageFileState, PythonFileLoader, Vfs,
 };
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
 use crate::matching::Generics;
-use crate::matching::Match;
-use crate::matching::ResultContext;
 use crate::matching::{common_base_type, FormatData, Generic, Matcher, ParamsStyle, Type};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
-use crate::value::IteratorContent;
-use crate::value::LookupResult;
-use crate::value::OnTypeError;
 use crate::value::{Class, Module, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
-use crate::ValueKind;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
@@ -771,86 +762,6 @@ impl UnionType {
     }
 }
 
-pub trait SpecialType: std::any::Any + 'static {
-    fn format(&self, format_data: &FormatData) -> Box<str>;
-    fn has_any_internal(
-        &self,
-        i_s: &InferenceState,
-        already_checked: &mut Vec<Rc<RecursiveAlias>>,
-    ) -> bool;
-    fn has_self_type(&self) -> bool;
-    fn name<'a>(&'a self, db: &'a Database) -> &'a str;
-    // We need any as a super trait, but we would want Debug as well, so just copy that here.
-    fn debug(&self) -> String;
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult;
-    fn kind(&self) -> ValueKind;
-
-    fn matches_internal(
-        &self,
-        i_s: &InferenceState,
-        matcher: &mut Matcher,
-        value_type: &Type,
-        variance: Variance,
-    ) -> Match;
-    fn search_type_vars(&self, found_type_var: &mut dyn FnMut(TypeVarLikeUsage)) {
-        // Most special types do not need type var searching, so we leave this like it is.
-    }
-    fn replace_type_var_likes_and_self(
-        &self,
-        db: &Database,
-        callable: ReplaceTypeVarLike,
-        replace_self: ReplaceSelf,
-    ) -> Option<DbType> {
-        None
-    }
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred;
-
-    fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'_>;
-
-    fn instantiate<'db>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        full_type: &DbType,
-        args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> DbType;
-}
-
-#[derive(Clone)]
-pub struct SpecialTypeRc(Rc<dyn SpecialType>);
-
-impl fmt::Debug for SpecialTypeRc {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_tuple("SpecialTypeRc")
-            .field(&self.0.debug())
-            .finish()
-    }
-}
-
-impl std::cmp::PartialEq for SpecialTypeRc {
-    fn eq(&self, other: &Self) -> bool {
-        Rc::ptr_eq(&self.0, &other.0)
-    }
-}
-
-impl std::ops::Deref for SpecialTypeRc {
-    type Target = dyn SpecialType;
-
-    fn deref(&self) -> &Self::Target {
-        self.0.deref()
-    }
-}
-
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
@@ -868,7 +779,6 @@ pub enum DbType {
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
     NamedTuple(Rc<NamedTuple>),
-    SpecialType(SpecialTypeRc),
     Self_,
     None,
     Any,
@@ -876,10 +786,6 @@ pub enum DbType {
 }
 
 impl DbType {
-    pub fn new_special(special: Rc<dyn SpecialType>) -> Self {
-        Self::SpecialType(SpecialTypeRc(special))
-    }
-
     pub fn union(self, other: DbType) -> Self {
         self.union_with_details(other, false)
     }
@@ -1022,7 +928,6 @@ impl DbType {
                     ),
                 }
             }
-            Self::SpecialType(special) => special.format(format_data),
         }
     }
 
@@ -1114,7 +1019,6 @@ impl DbType {
             Self::NamedTuple(_) => {
                 debug!("TODO do we need to support namedtuple searching for type vars?");
             }
-            Self::SpecialType(special) => special.search_type_vars(found_type_var),
         }
     }
 
@@ -1181,7 +1085,6 @@ impl DbType {
             Self::Self_ => todo!(),
             Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
             Self::NamedTuple(nt) => todo!(),
-            Self::SpecialType(special) => special.has_any_internal(i_s, already_checked),
         }
     }
 
@@ -1235,7 +1138,6 @@ impl DbType {
                     }
             }
             Self::Self_ => true,
-            Self::SpecialType(special) => special.has_self_type(),
             Self::NamedTuple(_) => {
                 debug!("TODO namedtuple has_self_type");
                 false
@@ -1530,9 +1432,6 @@ impl DbType {
                 );
                 DbType::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
             }
-            Self::SpecialType(special) => special
-                .replace_type_var_likes_and_self(db, callable, replace_self)
-                .unwrap_or(DbType::SpecialType(special.clone())),
         }
     }
 
@@ -1858,7 +1757,6 @@ impl DbType {
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
             Self::NamedTuple(_) => todo!(),
-            Self::SpecialType(special) => todo!(),
         }
     }
 

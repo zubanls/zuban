@@ -1,7 +1,6 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::fmt;
-use std::ops::Deref;
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
@@ -24,8 +23,8 @@ use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, FirstParamProperties, Function,
     Instance, IteratorContent, ListLiteral, Literal, Module, NamedTupleValue, NewTypeClass,
     NewTypeInstance, NoneInstance, OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass,
-    RevealTypeFunction, SpecialTypeAsValue, Tuple, TypeAlias, TypeVarClass, TypeVarInstance,
-    TypeVarTupleClass, TypingAny, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
+    RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass,
+    TypingAny, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -1688,10 +1687,6 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         DbType::ParamSpecArgs(usage) => todo!(),
         DbType::ParamSpecKwargs(usage) => todo!(),
         DbType::NamedTuple(nt) => callable(i_s, &NamedTupleValue::new(i_s.db, &nt)),
-        DbType::SpecialType(special) => callable(
-            i_s,
-            &SpecialTypeAsValue::new(i_s.db, special.deref(), db_type),
-        ),
     }
 }
 

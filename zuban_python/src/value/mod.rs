@@ -8,7 +8,6 @@ mod literal;
 mod module;
 mod named_tuple;
 mod none;
-mod special;
 mod tuple;
 mod type_alias;
 mod typing;
@@ -33,7 +32,6 @@ pub use literal::Literal;
 pub use module::Module;
 pub use named_tuple::NamedTupleValue;
 pub use none::NoneInstance;
-pub use special::SpecialTypeAsValue;
 pub use tuple::Tuple;
 pub use type_alias::TypeAlias;
 pub use typing::{
