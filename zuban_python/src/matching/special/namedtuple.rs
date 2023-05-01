@@ -49,9 +49,10 @@ pub struct NamedTuple {
 }
 
 impl NamedTuple {
-    pub fn new(name: StringSlice) -> Self {
+    pub fn from_class(i_s: &InferenceState, cls: Class) -> Self {
+        let name = StringSlice::from_name(cls.node_ref.file_index(), cls.node().name());
         Self {
-            constructor: OnceCell::new(),
+            constructor: OnceCell::from(Rc::new(Self::initialize_class_members(i_s, name, cls))),
             tuple: OnceCell::new(),
             name,
         }
@@ -65,7 +66,11 @@ impl NamedTuple {
         }
     }
 
-    pub fn initialize_class_members_lazy(&self, i_s: &InferenceState, cls: Class) {
+    fn initialize_class_members(
+        i_s: &InferenceState,
+        name: StringSlice,
+        cls: Class,
+    ) -> CallableContent {
         let mut vec = vec![];
         let file = cls.node_ref.file;
         match cls.node().block().unpack() {
@@ -91,15 +96,14 @@ impl NamedTuple {
             }
             BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
         }
-        let result = self.constructor.set(Rc::new(CallableContent {
-            name: Some(self.name),
+        CallableContent {
+            name: Some(name),
             class_name: None,
             defined_at: cls.node_ref.as_link(),
             type_vars: cls.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::None,
-        }));
-        debug_assert_eq!(result, Ok(()));
+        }
     }
 
     fn constructor(&self) -> &CallableContent {

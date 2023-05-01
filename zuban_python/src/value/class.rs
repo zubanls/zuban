@@ -221,17 +221,7 @@ impl<'db: 'a, 'a> Class<'a> {
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             let class_infos = self.calculate_class_infos(i_s);
-            let defining_named_tuple = match &class_infos.class_type {
-                ClassType::NamedTuple {
-                    named_tuple,
-                    is_defining_class: true,
-                } => Some(named_tuple.clone()), // It's an Rc
-                _ => None,
-            };
             node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
-            if let Some(named_tuple) = defining_named_tuple {
-                named_tuple.initialize_class_members_lazy(&mut i_s.with_class_context(self), *self)
-            }
             debug_assert!(node_ref.point().calculated());
         }
     }
@@ -424,10 +414,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                             }
                             BaseClass::NewNamedTuple => {
-                                let named_tuple = Rc::new(NamedTuple::new(StringSlice::from_name(
-                                    self.node_ref.file_index(),
-                                    self.node().name(),
-                                )));
+                                let named_tuple = Rc::new(NamedTuple::from_class(
+                                    &mut i_s.with_class_context(self),
+                                    *self,
+                                ));
                                 mro.push(DbType::new_special(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple {
                                     named_tuple,
