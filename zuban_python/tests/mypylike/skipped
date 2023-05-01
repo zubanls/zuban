@@ -2544,6 +2544,11 @@ testSelfRefNT5
 testRecursiveNamedTupleInBases
 testSubclassOfRecursiveNamedTuple
 
+# Won't support --force-union-syntax
+testOptionalErrorSyntax
+testLiteralUnionErrorSyntax
+testLiteralOptionalErrorSyntax
+
 # Mypy test case issues
 # https://github.com/python/mypy/issues/13102
 testNewAnalyzerMoreInvalidTypeVarArgumentsDeferred
