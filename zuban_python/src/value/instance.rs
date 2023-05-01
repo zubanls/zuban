@@ -203,9 +203,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        if let ClassType::NamedTuple {
-            ref named_tuple, ..
-        } = self.class.use_cached_class_infos(i_s.db).class_type
+        if let ClassType::NamedTuple(named_tuple) =
+            &self.class.use_cached_class_infos(i_s.db).class_type
         {
             // TODO this doesn't take care of the mro and could not be the first __getitem__
             return named_tuple.get_item(i_s, slice_type, result_context);
@@ -261,9 +260,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     }
 
     fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        if let ClassType::NamedTuple {
-            ref named_tuple, ..
-        } = self.class.use_cached_class_infos(i_s.db).class_type
+        if let ClassType::NamedTuple(ref named_tuple) =
+            self.class.use_cached_class_infos(i_s.db).class_type
         {
             // TODO this doesn't take care of the mro and could not be the first __iter__
             return named_tuple.iter(i_s, from);

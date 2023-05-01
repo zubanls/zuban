@@ -3599,10 +3599,7 @@ pub enum MetaclassState {
 pub enum ClassType {
     Normal,
     Protocol,
-    NamedTuple {
-        named_tuple: Rc<NamedTuple>,
-        is_defining_class: bool,
-    },
+    NamedTuple(Rc<NamedTuple>),
 }
 
 #[derive(Debug, Clone, PartialEq)]

@@ -380,15 +380,12 @@ impl<'db: 'a, 'a> Class<'a> {
                                             &mut metaclass,
                                             cached_class_infos.metaclass,
                                         );
-                                        if let ClassType::NamedTuple {
-                                            ref named_tuple, ..
-                                        } = cached_class_infos.class_type
+                                        if let ClassType::NamedTuple(named_tuple) =
+                                            &cached_class_infos.class_type
                                         {
                                             if matches!(class_type, ClassType::Normal) {
-                                                class_type = ClassType::NamedTuple {
-                                                    named_tuple: named_tuple.clone(),
-                                                    is_defining_class: false,
-                                                }
+                                                class_type =
+                                                    ClassType::NamedTuple(named_tuple.clone());
                                             } else {
                                                 todo!()
                                             }
@@ -408,10 +405,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
                                 mro.push(DbType::new_special(named_tuple.clone()));
-                                class_type = ClassType::NamedTuple {
-                                    named_tuple,
-                                    is_defining_class: false,
-                                }
+                                class_type = ClassType::NamedTuple(named_tuple);
                             }
                             BaseClass::NewNamedTuple => {
                                 let named_tuple = Rc::new(NamedTuple::from_class(
@@ -419,10 +413,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     *self,
                                 ));
                                 mro.push(DbType::new_special(named_tuple.clone()));
-                                class_type = ClassType::NamedTuple {
-                                    named_tuple,
-                                    is_defining_class: true,
-                                }
+                                class_type = ClassType::NamedTuple(named_tuple);
                             }
                             BaseClass::Generic => (),
                             BaseClass::Unknown => {
@@ -642,7 +633,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let class_infos = self.use_cached_class_infos(format_data.db);
         match &class_infos.class_type {
-            ClassType::NamedTuple { named_tuple, .. } => {
+            ClassType::NamedTuple(named_tuple) => {
                 named_tuple.format_with_name(format_data, &result, self.generics)
             }
             _ => result.into(),
