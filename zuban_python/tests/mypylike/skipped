@@ -1,4 +1,9 @@
 # Next up
+testKeywordUnpackWithDifferentTypes
+testClassMethodAndStaticMethod
+testUsingNumbersType
+testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
+testForwardBoundFunctionScopeWorks
 
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
@@ -1024,6 +1029,7 @@ testCyclicOverrideChecked
 testCyclicOverrideCheckedDecorator
 testCyclicOverrideCheckedDecoratorDeferred
 testParentClassWithTypeAliasAndSubclassWithMethod
+testSelfTypeOverrideCompatibilityTypeVar
 
 # supertype context inference
 testUseSupertypeAsInferenceContext
@@ -1590,6 +1596,7 @@ testTupleMeetTupleAny
 testTupleMeetTupleAnyComplex
 testTupleMeetTupleAnyAfter
 testNamedTupleSubclassMulti
+testNarrowSelfType
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
@@ -2547,6 +2554,7 @@ testNewAnalyzerAliasToNotReadyNestedClass
 
 # "Recursive types are not allowed at function scope"
 testNoRecursiveTuplesAtFunctionScope
+testRecursiveBoundFunctionScopeNoCrash
 
 # xfail
 testOpWithInheritedFromAny-xfail

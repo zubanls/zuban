@@ -417,7 +417,8 @@ impl<'db> Diagnostic<'db> {
                 "Access to generic instance variables via class is ambiguous".to_string(),
 
             BaseExceptionExpected =>
-                "Exception type must be derived from BaseException".to_string(),
+                "Exception type must be derived from BaseException (or be a \
+                 tuple of exception classes)".to_string(),
             BaseExceptionExpectedForRaise =>
                 "Exception must be derived from BaseException".to_string(),
             UnsupportedClassScopedImport =>
