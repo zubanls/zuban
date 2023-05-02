@@ -1284,12 +1284,34 @@ impl<'db: 'slf, 'slf> Inferred {
                                 on_type_error,
                             );
                         }
+                        ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
+                            let inf = Inferred::from_any_link(i_s.db, instance_link);
+                            let (instance, class) =
+                                load_bound_method_instance(i_s, &inf, *mro_index);
+                            return load_bound_method(
+                                i_s, &instance, class, *mro_index, *func_link,
+                            )
+                            .execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            );
+                        }
                         _ => (),
                     }
                 }
                 _ => (),
             },
-            InferredState::UnsavedComplex(c) => {}
+            InferredState::UnsavedComplex(c) => match c {
+                ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
+                    let inf = Inferred::from_any_link(i_s.db, instance_link);
+                    let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
+                    return load_bound_method(i_s, &instance, class, *mro_index, *func_link)
+                        .execute(i_s, args, result_context, on_type_error);
+                }
+                _ => (),
+            },
             _ => (),
         }
         self.run_on_value(i_s, &mut |i_s, value| {
@@ -1428,48 +1450,14 @@ fn run_on_complex<'db: 'a, 'a, T>(
             previous.unwrap()
         }
         ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
-            let reference = NodeRef::from_link(i_s.db, *func_link);
-
             // TODO this is potentially not needed, a class could lazily be fetched with a
             // closure
             let inf = Inferred::from_any_link(i_s.db, instance_link);
             let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
-            match reference.complex() {
-                Some(ComplexPoint::FunctionOverload(overload)) => {
-                    let func = OverloadedFunction::new(reference, overload, Some(class));
-                    callable(
-                        i_s,
-                        &BoundMethod::new(
-                            &instance,
-                            *mro_index,
-                            BoundMethodFunction::Overload(func),
-                        ),
-                    )
-                }
-                Some(ComplexPoint::TypeInstance(t)) => match t.as_ref() {
-                    DbType::Callable(c) => callable(
-                        i_s,
-                        &BoundMethod::new(
-                            &instance,
-                            *mro_index,
-                            BoundMethodFunction::Callable(Callable::new(t, c)),
-                        ),
-                    ),
-                    _ => unreachable!("{t:?}"),
-                },
-                None => {
-                    let func = Function::new(reference, Some(class));
-                    callable(
-                        i_s,
-                        &BoundMethod::new(
-                            &instance,
-                            *mro_index,
-                            BoundMethodFunction::Function(func),
-                        ),
-                    )
-                }
-                _ => unreachable!(),
-            }
+            callable(
+                i_s,
+                &load_bound_method(i_s, &instance, class, *mro_index, *func_link),
+            )
         }
         ComplexPoint::Closure(function, execution) => {
             let f = i_s.db.loaded_python_file(function.file);
@@ -1500,6 +1488,35 @@ fn run_on_complex<'db: 'a, 'a, T>(
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
+    }
+}
+
+fn load_bound_method<'a, 'b>(
+    i_s: &InferenceState<'a, '_>,
+    instance: &'b Instance<'a>,
+    class: Class<'a>,
+    mro_index: MroIndex,
+    func_link: PointLink,
+) -> BoundMethod<'a, 'b> {
+    let reference = NodeRef::from_link(i_s.db, func_link);
+    match reference.complex() {
+        Some(ComplexPoint::FunctionOverload(overload)) => {
+            let func = OverloadedFunction::new(reference, overload, Some(class));
+            BoundMethod::new(instance, mro_index, BoundMethodFunction::Overload(func))
+        }
+        Some(ComplexPoint::TypeInstance(t)) => match t.as_ref() {
+            DbType::Callable(c) => BoundMethod::new(
+                instance,
+                mro_index,
+                BoundMethodFunction::Callable(Callable::new(t, c)),
+            ),
+            _ => unreachable!("{t:?}"),
+        },
+        None => {
+            let func = Function::new(reference, Some(class));
+            BoundMethod::new(instance, mro_index, BoundMethodFunction::Function(func))
+        }
+        _ => unreachable!(),
     }
 }
 
