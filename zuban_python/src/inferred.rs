@@ -1207,8 +1207,9 @@ impl<'db: 'slf, 'slf> Inferred {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
         match &self.state {
-            InferredState::Saved(link, point) => {
-                if let Some(specific) = point.maybe_specific() {
+            InferredState::Saved(link, point) => match point.type_() {
+                PointType::Specific => {
+                    let specific = point.specific();
                     match specific {
                         Specific::Function => {
                             return Function::new(NodeRef::from_link(i_s.db, *link), None).execute(
@@ -1272,7 +1273,22 @@ impl<'db: 'slf, 'slf> Inferred {
                         _ => (),
                     }
                 }
-            }
+                PointType::Complex => {
+                    let definition = NodeRef::from_link(i_s.db, *link);
+                    match definition.file.complex_points.get(point.complex_index()) {
+                        ComplexPoint::FunctionOverload(overload) => {
+                            return OverloadedFunction::new(definition, &overload, None).execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            );
+                        }
+                        _ => (),
+                    }
+                }
+                _ => (),
+            },
             InferredState::UnsavedComplex(c) => {}
             _ => (),
         }
