@@ -1206,6 +1206,76 @@ impl<'db: 'slf, 'slf> Inferred {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
+        match &self.state {
+            InferredState::Saved(link, point) => {
+                if let Some(specific) = point.maybe_specific() {
+                    match specific {
+                        Specific::Function => {
+                            return Function::new(NodeRef::from_link(i_s.db, *link), None).execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
+                        }
+                        Specific::TypingTypeVarClass => {
+                            return TypeVarClass().execute(i_s, args, result_context, on_type_error)
+                        }
+                        Specific::TypingTypeVarTupleClass => {
+                            return TypeVarTupleClass().execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
+                        }
+                        Specific::TypingParamSpecClass => {
+                            return ParamSpecClass().execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
+                        }
+                        Specific::TypingProtocol
+                        | Specific::TypingGeneric
+                        | Specific::TypingTuple
+                        | Specific::TypingUnion
+                        | Specific::TypingOptional
+                        | Specific::TypingType
+                        | Specific::TypingLiteral
+                        | Specific::TypingAnnotated
+                        | Specific::TypingNamedTuple
+                        | Specific::CollectionsNamedTuple
+                        | Specific::TypingCallable => {
+                            return TypingClass::new(specific).execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
+                        }
+                        Specific::TypingCast => {
+                            return TypingCast().execute(i_s, args, result_context, on_type_error)
+                        }
+                        Specific::RevealTypeFunction => {
+                            return RevealTypeFunction().execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
+                        }
+                        Specific::TypingNewType => {
+                            return NewTypeClass().execute(i_s, args, result_context, on_type_error)
+                        }
+                        _ => (),
+                    }
+                }
+            }
+            InferredState::UnsavedComplex(c) => {}
+            _ => (),
+        }
         self.run_on_value(i_s, &mut |i_s, value| {
             value.execute(i_s, args, result_context, on_type_error)
         })
