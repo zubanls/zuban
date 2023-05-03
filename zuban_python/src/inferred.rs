@@ -1206,7 +1206,7 @@ impl<'db: 'slf, 'slf> Inferred {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
-        match dbg!(&self.state) {
+        match &self.state {
             InferredState::Saved(link, point) => match point.type_() {
                 PointType::Specific => {
                     let specific = point.specific();
@@ -1270,6 +1270,15 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::TypingNewType => {
                             return NewTypeClass().execute(i_s, args, result_context, on_type_error)
                         }
+                        Specific::MypyExtensionsArg
+                        | Specific::MypyExtensionsDefaultArg
+                        | Specific::MypyExtensionsNamedArg
+                        | Specific::MypyExtensionsDefaultNamedArg
+                        | Specific::MypyExtensionsVarArg
+                        | Specific::MypyExtensionsKwArg => {
+                            let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
+                            return func.execute2(i_s, args, result_context, on_type_error);
+                        }
                         _ => (),
                     }
                 }
@@ -1277,7 +1286,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let definition = NodeRef::from_link(i_s.db, *link);
                     match definition.file.complex_points.get(point.complex_index()) {
                         ComplexPoint::FunctionOverload(overload) => {
-                            return OverloadedFunction::new(definition, &overload, None).execute(
+                            return OverloadedFunction::new(definition, &overload, None).execute2(
                                 i_s,
                                 args,
                                 result_context,

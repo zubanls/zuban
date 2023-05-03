@@ -1692,6 +1692,16 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
     }
+
+    pub fn execute2(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        self.execute_internal(i_s, args, on_type_error, None, result_context)
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
@@ -1719,7 +1729,7 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        self.execute_internal(i_s, args, on_type_error, None, result_context)
+        todo!()
     }
 
     fn get_item(
