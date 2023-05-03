@@ -928,7 +928,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn execute2(
+    pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -1676,14 +1676,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         debug!("Execute overloaded function {}", self.name());
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
             OverloadResult::Single(func, _) => {
-                func.execute2(i_s, args, result_context, on_type_error)
+                func.execute(i_s, args, result_context, on_type_error)
             }
             OverloadResult::Union(t) => Inferred::execute_db_type(i_s, t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
     }
 
-    pub fn execute2(
+    pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

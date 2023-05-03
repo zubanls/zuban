@@ -27,7 +27,7 @@ impl TypingClass {
         Self { specific }
     }
 
-    pub fn execute2<'db>(
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -46,7 +46,7 @@ impl TypingClass {
             i_s.db
                 .python_state
                 .collections_namedtuple_function()
-                .execute2(i_s, args, result_context, on_type_error);
+                .execute(i_s, args, result_context, on_type_error);
             return match new_collections_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
                     DbType::NamedTuple(rc),
@@ -282,7 +282,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
 pub struct TypingCast();
 
 impl<'db> TypingCast {
-    pub fn execute2(
+    pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -366,7 +366,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
 pub struct RevealTypeFunction();
 
 impl RevealTypeFunction {
-    pub fn execute2<'db>(
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -530,7 +530,7 @@ impl fmt::Debug for TypeVarInstance<'_> {
 pub struct TypeVarClass();
 
 impl TypeVarClass {
-    pub fn execute2(
+    pub fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -744,7 +744,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
 pub struct TypeVarTupleClass();
 
 impl TypeVarTupleClass {
-    pub fn execute2(
+    pub fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -900,7 +900,7 @@ fn maybe_type_var_tuple(
 pub struct ParamSpecClass();
 
 impl ParamSpecClass {
-    pub fn execute2(
+    pub fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -1035,7 +1035,7 @@ fn maybe_param_spec(
 pub struct NewTypeClass();
 
 impl NewTypeClass {
-    pub fn execute2<'db>(
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

@@ -1212,7 +1212,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let specific = point.specific();
                     match specific {
                         Specific::Function => {
-                            return Function::new(NodeRef::from_link(i_s.db, *link), None).execute2(
+                            return Function::new(NodeRef::from_link(i_s.db, *link), None).execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1220,15 +1220,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingTypeVarClass => {
-                            return TypeVarClass().execute2(
-                                i_s,
-                                args,
-                                result_context,
-                                on_type_error,
-                            )
+                            return TypeVarClass().execute(i_s, args, result_context, on_type_error)
                         }
                         Specific::TypingTypeVarTupleClass => {
-                            return TypeVarTupleClass().execute2(
+                            return TypeVarTupleClass().execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1236,7 +1231,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingParamSpecClass => {
-                            return ParamSpecClass().execute2(
+                            return ParamSpecClass().execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1254,7 +1249,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::TypingNamedTuple
                         | Specific::CollectionsNamedTuple
                         | Specific::TypingCallable => {
-                            return TypingClass::new(specific).execute2(
+                            return TypingClass::new(specific).execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1262,10 +1257,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingCast => {
-                            return TypingCast().execute2(i_s, args, result_context, on_type_error)
+                            return TypingCast().execute(i_s, args, result_context, on_type_error)
                         }
                         Specific::RevealTypeFunction => {
-                            return RevealTypeFunction().execute2(
+                            return RevealTypeFunction().execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1273,12 +1268,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingNewType => {
-                            return NewTypeClass().execute2(
-                                i_s,
-                                args,
-                                result_context,
-                                on_type_error,
-                            )
+                            return NewTypeClass().execute(i_s, args, result_context, on_type_error)
                         }
                         Specific::TypingAny => {
                             args.as_node_ref()
@@ -1293,7 +1283,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::MypyExtensionsVarArg
                         | Specific::MypyExtensionsKwArg => {
                             let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
-                            return func.execute2(i_s, args, result_context, on_type_error);
+                            return func.execute(i_s, args, result_context, on_type_error);
                         }
                         _ => (),
                     }
@@ -1302,7 +1292,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let definition = NodeRef::from_link(i_s.db, *link);
                     match definition.file.complex_points.get(point.complex_index()) {
                         ComplexPoint::FunctionOverload(overload) => {
-                            return OverloadedFunction::new(definition, &overload, None).execute2(
+                            return OverloadedFunction::new(definition, &overload, None).execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1316,7 +1306,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             return load_bound_method(
                                 i_s, &instance, class, *mro_index, *func_link,
                             )
-                            .execute2(
+                            .execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1330,7 +1320,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 Generics::NotDefinedYet,
                                 None,
                             )
-                            .execute2(
+                            .execute(
                                 i_s,
                                 args,
                                 result_context,
@@ -1413,7 +1403,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let inf = Inferred::from_any_link(i_s.db, instance_link);
                     let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
                     return load_bound_method(i_s, &instance, class, *mro_index, *func_link)
-                        .execute2(i_s, args, result_context, on_type_error);
+                        .execute(i_s, args, result_context, on_type_error);
                 }
                 _ => (),
             },

@@ -46,7 +46,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         }
     }
 
-    pub fn execute2<'db>(
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,

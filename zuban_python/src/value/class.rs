@@ -715,7 +715,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn execute2(
+    pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
