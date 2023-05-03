@@ -1426,7 +1426,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ),
                 )));
             }
-            ListComprehension(_) => Specific::List,
+            ListComprehension(_) => {
+                debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
+                return Inferred::execute_db_type(
+                    self.i_s,
+                    DbType::Class(
+                        self.i_s.db.python_state.builtins_point_link("list"),
+                        Some(GenericsList::new_generics(Box::new([
+                            GenericItem::TypeArgument(DbType::Any),
+                        ]))),
+                    ),
+                );
+            }
             Dict(_) => Specific::Dict,
             DictComprehension(_) => todo!(),
             Set(set) => {

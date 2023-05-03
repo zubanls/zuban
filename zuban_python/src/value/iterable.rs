@@ -104,15 +104,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
     }
 
     fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        match self.list_node().unpack() {
-            elements @ StarLikeExpressionIterator::Elements(_) => {
-                IteratorContent::ListLiteral(*self, elements)
-            }
-            // TODO shouldn't this be IteratorContent::Empty, ???
-            StarLikeExpressionIterator::Empty => {
-                IteratorContent::ListLiteral(*self, StarLikeExpressionIterator::Empty)
-            }
-        }
+        todo!()
     }
 
     fn get_item(
