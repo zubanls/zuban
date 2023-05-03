@@ -28,56 +28,7 @@ impl<'a> DictLiteral<'a> {
     }
 
     fn db_type(&self, i_s: &InferenceState) -> &'a GenericsList {
-        let reference = self.node_ref.add_to_node_index(1);
-        if reference.point().calculated() {
-            let ComplexPoint::TypeInstance(t) = reference.complex().unwrap() else {
-                unreachable!()
-            };
-            let DbType::Class(_, Some(list)) = t.as_ref() else {
-                unreachable!()
-            };
-            list
-        } else {
-            let mut keys: Option<DbType> = None;
-            let mut values: Option<DbType> = None;
-            for child in self.dict_node().iter_elements() {
-                match child {
-                    DictElement::KeyValue(key_value) => {
-                        let key_t = self.infer_expr(i_s, key_value.key()).class_as_db_type(i_s);
-                        match keys.as_mut() {
-                            Some(keys) => keys.union_in_place(key_t),
-                            None => keys = Some(key_t),
-                        };
-                        let key_t = self
-                            .infer_expr(i_s, key_value.value())
-                            .class_as_db_type(i_s);
-                        match values.as_mut() {
-                            Some(values) => values.union_in_place(key_t),
-                            None => values = Some(key_t),
-                        };
-                    }
-                    DictElement::DictStarred(_) => {
-                        todo!()
-                    }
-                }
-            }
-            reference.insert_complex(
-                ComplexPoint::TypeInstance(Box::new(DbType::Class(
-                    i_s.db.python_state.builtins_point_link("list"),
-                    Some(GenericsList::new_generics(Box::new([
-                        GenericItem::TypeArgument(keys.unwrap_or(DbType::Any)),
-                        GenericItem::TypeArgument(values.unwrap_or(DbType::Any)),
-                    ]))),
-                ))),
-                Locality::Todo,
-            );
-            debug!(
-                "Calculated generics for {}: {}",
-                self.dict_node().short_debug(),
-                &self.as_type(i_s).format_short(i_s.db),
-            );
-            self.db_type(i_s)
-        }
+        todo!()
     }
 }
 

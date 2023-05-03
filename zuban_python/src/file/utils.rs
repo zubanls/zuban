@@ -1,4 +1,6 @@
-use parsa_python_ast::{Int, List, StarLikeExpression, StarLikeExpressionIterator};
+use parsa_python_ast::{
+    Dict, DictElement, Int, List, StarLikeExpression, StarLikeExpressionIterator,
+};
 
 use crate::arguments::Argument;
 use crate::database::{
@@ -12,7 +14,7 @@ use crate::inferred::UnionValue;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::Class;
-use crate::Inferred;
+use crate::{debug, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn create_list_or_set_generics(
@@ -87,6 +89,50 @@ impl<'db> Inference<'db, '_, '_> {
                 })
             })
             .flatten()
+    }
+
+    pub fn create_dict_generics(
+        &mut self,
+        dict: Dict,
+        result_context: &mut ResultContext,
+    ) -> GenericsList {
+        let mut keys: Option<DbType> = None;
+        let mut values: Option<DbType> = None;
+        for child in dict.iter_elements() {
+            match child {
+                DictElement::KeyValue(key_value) => {
+                    let key_t = self
+                        .infer_expression(key_value.key())
+                        .class_as_db_type(self.i_s);
+                    match keys.as_mut() {
+                        Some(keys) => keys.union_in_place(key_t),
+                        None => keys = Some(key_t),
+                    };
+                    let value_t = self
+                        .infer_expression(key_value.value())
+                        .class_as_db_type(self.i_s);
+                    match values.as_mut() {
+                        Some(values) => values.union_in_place(value_t),
+                        None => values = Some(value_t),
+                    };
+                }
+                DictElement::DictStarred(_) => {
+                    todo!()
+                }
+            }
+        }
+        let keys = keys.unwrap_or(DbType::Any);
+        let values = values.unwrap_or(DbType::Any);
+        debug!(
+            "Calculated generics for {}: dict[{}, {}]",
+            dict.short_debug(),
+            keys.format_short(self.i_s.db),
+            values.format_short(self.i_s.db),
+        );
+        GenericsList::new_generics(Box::new([
+            GenericItem::TypeArgument(keys),
+            GenericItem::TypeArgument(values),
+        ]))
     }
 
     pub fn parse_int(&mut self, int: Int, result_context: &mut ResultContext) -> Option<i64> {
