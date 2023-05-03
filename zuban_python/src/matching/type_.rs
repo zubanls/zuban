@@ -1430,7 +1430,7 @@ pub fn execute_type_of_type<'db>(
             Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(tuple.clone())))
         }
         DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
-            .execute(i_s, args, result_context, on_type_error),
+            .execute2(i_s, args, result_context, on_type_error),
         DbType::TypeVar(t) => {
             if let Some(bound) = &t.type_var.bound {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
@@ -1454,7 +1454,7 @@ pub fn execute_type_of_type<'db>(
         DbType::Self_ => {
             i_s.current_class()
                 .unwrap()
-                .execute(i_s, args, result_context, on_type_error);
+                .execute2(i_s, args, result_context, on_type_error);
             Inferred::execute_db_type(i_s, DbType::Self_)
         }
         DbType::Any => Inferred::new_any(),

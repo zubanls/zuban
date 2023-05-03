@@ -714,6 +714,35 @@ impl<'db: 'a, 'a> Class<'a> {
             result_type: DbType::None,
         }
     }
+
+    pub fn execute2(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        // TODO locality!!!
+        if let Some(generics_list) =
+            self.type_check_init_func(i_s, args, result_context, on_type_error)
+        {
+            debug!(
+                "Class execute: {}{}",
+                self.name(),
+                match generics_list.as_ref() {
+                    Some(generics_list) => Generics::new_list(generics_list)
+                        .format(&FormatData::new_short(i_s.db), None),
+                    None => "".to_owned(),
+                }
+            );
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
+                self.node_ref.as_link(),
+                generics_list,
+            ))))
+        } else {
+            Inferred::new_any()
+        }
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Class<'a> {
@@ -764,35 +793,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
 
     fn should_add_lookup_error(&self, db: &Database) -> bool {
         !self.incomplete_mro(db)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        // TODO locality!!!
-        if let Some(generics_list) =
-            self.type_check_init_func(i_s, args, result_context, on_type_error)
-        {
-            debug!(
-                "Class execute: {}{}",
-                self.name(),
-                match generics_list.as_ref() {
-                    Some(generics_list) => Generics::new_list(generics_list)
-                        .format(&FormatData::new_short(i_s.db), None),
-                    None => "".to_owned(),
-                }
-            );
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
-                self.node_ref.as_link(),
-                generics_list,
-            ))))
-        } else {
-            Inferred::new_any()
-        }
     }
 
     fn get_item(

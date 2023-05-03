@@ -1305,7 +1305,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 Generics::NotDefinedYet,
                                 None,
                             )
-                            .execute(
+                            .execute2(
                                 i_s,
                                 args,
                                 result_context,
