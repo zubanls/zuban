@@ -62,14 +62,4 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
             self.alias.as_db_type_and_set_type_vars_any(i_s.db),
         )))
     }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        todo!()
-    }
 }

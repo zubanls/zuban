@@ -68,16 +68,6 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         Some(*self)
     }
 
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        todo!()
-    }
-
     fn description(&self, i_s: &InferenceState) -> String {
         base_description!(self) + &self.content.format(&FormatData::new_short(i_s.db))
     }

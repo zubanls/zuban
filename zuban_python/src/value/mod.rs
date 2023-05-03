@@ -14,7 +14,7 @@ mod typing;
 
 use parsa_python_ast::{StarLikeExpression, StarLikeExpressionIterator};
 
-use crate::arguments::{Argument, Arguments};
+use crate::arguments::Argument;
 use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
@@ -304,23 +304,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
             LookupResult::FileReference(f) => todo!(),
             LookupResult::None => Inferred::new_unknown(),
         }
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        let t = self.as_type(i_s).format_short(i_s.db);
-        args.as_node_ref().add_typing_issue(
-            i_s,
-            IssueType::NotCallable {
-                type_: format!("\"{}\"", t).into(),
-            },
-        );
-        Inferred::new_unknown()
     }
 
     fn get_item(

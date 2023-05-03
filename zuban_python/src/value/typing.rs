@@ -242,16 +242,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::Type(Cow::Owned(DbType::Type(Rc::new(self.db_type.clone()))))
     }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        todo!()
-    }
 }
 
 impl fmt::Debug for TypingType<'_> {
@@ -285,16 +275,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Any)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments,
-        _: &mut ResultContext,
-        _: OnTypeError,
-    ) -> Inferred {
-        todo!()
     }
 }
 
@@ -1169,16 +1149,6 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
 
     fn name(&self) -> &'a str {
         self.new_type.name(self.db)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        todo!()
     }
 
     fn lookup_internal(

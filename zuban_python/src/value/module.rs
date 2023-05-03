@@ -97,16 +97,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
             })
     }
 
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        todo!()
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::Class(i_s.db.python_state.module_type())
     }

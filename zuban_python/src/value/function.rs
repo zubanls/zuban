@@ -969,16 +969,6 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
         LookupResult::None
     }
 
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        todo!()
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,
@@ -1719,16 +1709,6 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         node_ref: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        todo!()
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
         todo!()
     }
 
