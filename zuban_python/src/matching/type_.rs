@@ -16,7 +16,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
-    Class, Instance, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Value,
+    Callable, Class, Instance, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Value,
 };
 
 #[derive(Debug, Clone)]
@@ -1138,7 +1138,7 @@ impl<'a> Type<'a> {
             return None;
             //return Some(cls.execute(i_s, args, result_context, on_type_error));
         }
-        match self.maybe_db_type().unwrap() {
+        match dbg!(self.maybe_db_type().unwrap()) {
             DbType::Type(cls) => {
                 return Some(execute_type_of_type(
                     i_s,
@@ -1146,6 +1146,26 @@ impl<'a> Type<'a> {
                     result_context,
                     on_type_error,
                     cls.as_ref(),
+                ))
+            }
+            DbType::Union(union) => {
+                return Some(Inferred::gather_union(|gather| {
+                    for entry in union.iter() {
+                        gather(
+                            Type::new(entry)
+                                .execute(i_s, args, result_context, on_type_error)
+                                .unwrap(),
+                        )
+                    }
+                }))
+            }
+            t @ DbType::Callable(content) => {
+                return Some(Callable::new(t, content).execute_internal(
+                    i_s,
+                    args,
+                    on_type_error,
+                    None,
+                    result_context,
                 ))
             }
             _ => {

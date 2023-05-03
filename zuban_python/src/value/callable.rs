@@ -19,7 +19,7 @@ impl<'a> Callable<'a> {
         Self { db_type, content }
     }
 
-    pub(super) fn execute_internal<'db>(
+    pub fn execute_internal<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -75,7 +75,7 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        self.execute_internal(i_s, args, on_type_error, None, result_context)
+        todo!()
     }
 
     fn description(&self, i_s: &InferenceState) -> String {
