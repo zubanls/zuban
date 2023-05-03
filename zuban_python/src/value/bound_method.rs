@@ -45,29 +45,8 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             function,
         }
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
-    fn kind(&self) -> ValueKind {
-        self.function.as_value().kind()
-    }
-
-    fn name(&self) -> &str {
-        self.function.as_value().name()
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        self.function
-            .as_value()
-            .lookup_internal(i_s, node_ref, name)
-    }
-
-    fn execute(
+    pub fn execute2<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -102,6 +81,27 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
                 result_context,
             ),
         }
+    }
+}
+
+impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
+    fn kind(&self) -> ValueKind {
+        self.function.as_value().kind()
+    }
+
+    fn name(&self) -> &str {
+        self.function.as_value().name()
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.function
+            .as_value()
+            .lookup_internal(i_s, node_ref, name)
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
