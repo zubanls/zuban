@@ -1206,13 +1206,13 @@ impl<'db: 'slf, 'slf> Inferred {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
-        match &self.state {
+        match dbg!(&self.state) {
             InferredState::Saved(link, point) => match point.type_() {
                 PointType::Specific => {
                     let specific = point.specific();
                     match specific {
                         Specific::Function => {
-                            return Function::new(NodeRef::from_link(i_s.db, *link), None).execute(
+                            return Function::new(NodeRef::from_link(i_s.db, *link), None).execute2(
                                 i_s,
                                 args,
                                 result_context,

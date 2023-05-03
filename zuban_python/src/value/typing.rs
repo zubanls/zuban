@@ -114,7 +114,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             i_s.db
                 .python_state
                 .collections_namedtuple_function()
-                .execute(i_s, args, result_context, on_type_error);
+                .execute2(i_s, args, result_context, on_type_error);
             return match new_collections_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
                     DbType::NamedTuple(rc),

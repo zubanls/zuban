@@ -927,6 +927,26 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             format!("def {type_var_str}{name}({args}) -> {result}").into()
         }
     }
+
+    pub fn execute2(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        if let Some(class) = &self.class {
+            self.execute_internal(
+                &i_s.with_class_context(class),
+                args,
+                on_type_error,
+                Some(class),
+                result_context,
+            )
+        } else {
+            self.execute_internal(i_s, args, on_type_error, None, result_context)
+        }
+    }
 }
 
 impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
@@ -956,17 +976,7 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        if let Some(class) = &self.class {
-            self.execute_internal(
-                &i_s.with_class_context(class),
-                args,
-                on_type_error,
-                Some(class),
-                result_context,
-            )
-        } else {
-            self.execute_internal(i_s, args, on_type_error, None, result_context)
-        }
+        todo!()
     }
 
     fn get_item(
@@ -1676,7 +1686,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         debug!("Execute overloaded function {}", self.name());
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
             OverloadResult::Single(func, _) => {
-                func.execute(i_s, args, result_context, on_type_error)
+                func.execute2(i_s, args, result_context, on_type_error)
             }
             OverloadResult::Union(t) => Inferred::execute_db_type(i_s, t),
             OverloadResult::NotFound => self.fallback_type(i_s),
