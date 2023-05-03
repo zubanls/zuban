@@ -1135,8 +1135,12 @@ impl<'a> Type<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<Inferred> {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return None;
-            //return Some(cls.execute(i_s, args, result_context, on_type_error));
+            return Some(Instance::new(cls, None).execute(
+                i_s,
+                args,
+                result_context,
+                on_type_error,
+            ));
         }
         match dbg!(self.maybe_db_type().unwrap()) {
             DbType::Type(cls) => {
