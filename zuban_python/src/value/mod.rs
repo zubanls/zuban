@@ -27,7 +27,7 @@ pub use callable::Callable;
 pub use class::{Class, MroIterator};
 pub use function::{FirstParamProperties, Function, InferrableParam, OverloadedFunction};
 pub use instance::Instance;
-pub use iterable::{DictLiteral, ListLiteral};
+pub use iterable::DictLiteral;
 pub use literal::Literal;
 pub use module::Module;
 pub use named_tuple::NamedTupleValue;
@@ -128,7 +128,6 @@ macro_rules! base_qualified_name {
 #[derive(Debug, Clone)]
 pub enum IteratorContent<'a> {
     Inferred(Inferred),
-    ListLiteral(ListLiteral<'a>, StarLikeExpressionIterator<'a>),
     // The code before makes sure that no type var tuples are passed.
     FixedLengthTupleGenerics(std::slice::Iter<'a, TypeOrTypeVarTuple>),
     Empty,
@@ -139,10 +138,6 @@ impl IteratorContent<'_> {
     pub fn infer_all(self, i_s: &InferenceState) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
-            Self::ListLiteral(list, _) => {
-                let g = list.db_type(i_s).clone();
-                Inferred::execute_db_type(i_s, g)
-            }
             Self::FixedLengthTupleGenerics(generics) => Inferred::execute_db_type(
                 i_s,
                 generics.fold(DbType::Never, |a, b| {
@@ -169,17 +164,6 @@ impl IteratorContent<'_> {
                     },
                 )
             }),
-            Self::ListLiteral(list, list_elements) => {
-                list_elements.next().map(|list_element| match list_element {
-                    StarLikeExpression::NamedExpression(named_expr) => {
-                        list.infer_named_expr(i_s, named_expr)
-                    }
-                    StarLikeExpression::StarNamedExpression(_) => todo!(),
-                    StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
-                        unreachable!()
-                    }
-                })
-            }
             Self::Empty => todo!(),
             Self::Any => Some(Inferred::new_any()),
         }
@@ -189,7 +173,6 @@ impl IteratorContent<'_> {
         match self {
             Self::Inferred(_) | Self::Any => None,
             Self::FixedLengthTupleGenerics(t) => Some(t.len()),
-            Self::ListLiteral(_, iterator) => None,
             Self::Empty => todo!(),
         }
     }
