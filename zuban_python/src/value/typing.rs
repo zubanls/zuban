@@ -26,6 +26,50 @@ impl TypingClass {
     pub fn new(specific: Specific) -> Self {
         Self { specific }
     }
+
+    pub fn execute2<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        if self.specific == Specific::TypingNamedTuple {
+            return match new_typing_named_tuple(i_s, args) {
+                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
+                    DbType::NamedTuple(rc),
+                )),
+                None => Inferred::new_any(),
+            };
+        }
+        if self.specific == Specific::CollectionsNamedTuple {
+            i_s.db
+                .python_state
+                .collections_namedtuple_function()
+                .execute2(i_s, args, result_context, on_type_error);
+            return match new_collections_named_tuple(i_s, args) {
+                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
+                    DbType::NamedTuple(rc),
+                )),
+                None => Inferred::new_any(),
+            };
+        }
+        let mut iterator = args.iter();
+        let first = iterator.next();
+        if let Some(x) = iterator.next() {
+            todo!()
+        } else if let Some(first) = first {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
+                Rc::new(
+                    first
+                        .infer(i_s, &mut ResultContext::Unknown)
+                        .class_as_db_type(i_s),
+                ),
+            ))))
+        } else {
+            todo!()
+        }
+    }
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
@@ -92,50 +136,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
             Specific::TypingNamedTuple => todo!(),
             Specific::CollectionsNamedTuple => todo!(),
             _ => unreachable!("{:?}", self.specific),
-        }
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        if self.specific == Specific::TypingNamedTuple {
-            return match new_typing_named_tuple(i_s, args) {
-                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    DbType::NamedTuple(rc),
-                )),
-                None => Inferred::new_any(),
-            };
-        }
-        if self.specific == Specific::CollectionsNamedTuple {
-            i_s.db
-                .python_state
-                .collections_namedtuple_function()
-                .execute2(i_s, args, result_context, on_type_error);
-            return match new_collections_named_tuple(i_s, args) {
-                Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    DbType::NamedTuple(rc),
-                )),
-                None => Inferred::new_any(),
-            };
-        }
-        let mut iterator = args.iter();
-        let first = iterator.next();
-        if let Some(x) = iterator.next() {
-            todo!()
-        } else if let Some(first) = first {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-                Rc::new(
-                    first
-                        .infer(i_s, &mut ResultContext::Unknown)
-                        .class_as_db_type(i_s),
-                ),
-            ))))
-        } else {
-            todo!()
         }
     }
 }
@@ -303,29 +303,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
 #[derive(Debug)]
 pub struct TypingCast();
 
-impl<'db, 'a> Value<'db, 'a> for TypingCast {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
-    fn name(&self) -> &str {
-        "cast"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        todo!()
-    }
-
-    fn execute(
+impl<'db> TypingCast {
+    pub fn execute2(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -382,16 +361,13 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
     }
 }
 
-#[derive(Debug)]
-pub struct RevealTypeFunction();
-
-impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
+impl<'db, 'a> Value<'db, 'a> for TypingCast {
     fn kind(&self) -> ValueKind {
         ValueKind::Function
     }
 
-    fn name(&self) -> &'static str {
-        "reveal_type"
+    fn name(&self) -> &str {
+        "cast"
     }
 
     fn lookup_internal(
@@ -403,7 +379,16 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
         todo!()
     }
 
-    fn execute(
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        todo!()
+    }
+}
+
+#[derive(Debug)]
+pub struct RevealTypeFunction();
+
+impl RevealTypeFunction {
+    pub fn execute2<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -431,6 +416,25 @@ impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
             todo!()
         }
         inferred
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
+    fn kind(&self) -> ValueKind {
+        ValueKind::Function
+    }
+
+    fn name(&self) -> &'static str {
+        "reveal_type"
+    }
+
+    fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        todo!()
     }
 }
 
@@ -546,6 +550,22 @@ impl fmt::Debug for TypeVarInstance<'_> {
 
 #[derive(Debug)]
 pub struct TypeVarClass();
+
+impl TypeVarClass {
+    pub fn execute2(
+        &self,
+        i_s: &InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(t) = maybe_type_var(i_s, args, result_context) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+}
 
 fn maybe_type_var(
     i_s: &InferenceState,
@@ -736,20 +756,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         LookupResult::None
     }
 
-    fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(t) = maybe_type_var(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
-        } else {
-            Inferred::new_unknown()
-        }
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of TypeVarClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
@@ -758,6 +764,22 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
 
 #[derive(Debug)]
 pub struct TypeVarTupleClass();
+
+impl TypeVarTupleClass {
+    pub fn execute2(
+        &self,
+        i_s: &InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+}
 
 impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
     fn kind(&self) -> ValueKind {
@@ -775,20 +797,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
         name: &str,
     ) -> LookupResult {
         LookupResult::None
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(t) = maybe_type_var_tuple(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
-        } else {
-            Inferred::new_unknown()
-        }
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
@@ -913,6 +921,22 @@ fn maybe_type_var_tuple(
 #[derive(Debug)]
 pub struct ParamSpecClass();
 
+impl ParamSpecClass {
+    pub fn execute2(
+        &self,
+        i_s: &InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(t) = maybe_param_spec(i_s, args, result_context) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+}
+
 impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
@@ -929,20 +953,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
         name: &str,
     ) -> LookupResult {
         LookupResult::None
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(t) = maybe_param_spec(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
-        } else {
-            Inferred::new_unknown()
-        }
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
@@ -1046,6 +1056,22 @@ fn maybe_param_spec(
 #[derive(Debug)]
 pub struct NewTypeClass();
 
+impl NewTypeClass {
+    pub fn execute2<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(n) = maybe_new_type(i_s, args) {
+            Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+}
+
 impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
     fn kind(&self) -> ValueKind {
         ValueKind::Class
@@ -1063,20 +1089,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
     ) -> LookupResult {
         // TODO?
         LookupResult::None
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(n) = maybe_new_type(i_s, args) {
-            Inferred::new_unsaved_complex(ComplexPoint::NewTypeDefinition(Rc::new(n)))
-        } else {
-            Inferred::new_unknown()
-        }
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

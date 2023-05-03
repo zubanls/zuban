@@ -1220,10 +1220,15 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingTypeVarClass => {
-                            return TypeVarClass().execute(i_s, args, result_context, on_type_error)
+                            return TypeVarClass().execute2(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
                         }
                         Specific::TypingTypeVarTupleClass => {
-                            return TypeVarTupleClass().execute(
+                            return TypeVarTupleClass().execute2(
                                 i_s,
                                 args,
                                 result_context,
@@ -1231,7 +1236,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingParamSpecClass => {
-                            return ParamSpecClass().execute(
+                            return ParamSpecClass().execute2(
                                 i_s,
                                 args,
                                 result_context,
@@ -1249,7 +1254,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::TypingNamedTuple
                         | Specific::CollectionsNamedTuple
                         | Specific::TypingCallable => {
-                            return TypingClass::new(specific).execute(
+                            return TypingClass::new(specific).execute2(
                                 i_s,
                                 args,
                                 result_context,
@@ -1257,10 +1262,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingCast => {
-                            return TypingCast().execute(i_s, args, result_context, on_type_error)
+                            return TypingCast().execute2(i_s, args, result_context, on_type_error)
                         }
                         Specific::RevealTypeFunction => {
-                            return RevealTypeFunction().execute(
+                            return RevealTypeFunction().execute2(
                                 i_s,
                                 args,
                                 result_context,
@@ -1268,7 +1273,12 @@ impl<'db: 'slf, 'slf> Inferred {
                             )
                         }
                         Specific::TypingNewType => {
-                            return NewTypeClass().execute(i_s, args, result_context, on_type_error)
+                            return NewTypeClass().execute2(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
                         }
                         Specific::MypyExtensionsArg
                         | Specific::MypyExtensionsDefaultArg
