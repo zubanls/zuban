@@ -1298,6 +1298,13 @@ impl<'db: 'slf, 'slf> Inferred {
                                 on_type_error,
                             );
                         }
+                        ComplexPoint::TypeInstance(t) => {
+                            if let Some(inf) =
+                                Type::new(t).execute(i_s, args, result_context, on_type_error)
+                            {
+                                return inf;
+                            }
+                        }
                         _ => (),
                     }
                 }
@@ -1309,6 +1316,13 @@ impl<'db: 'slf, 'slf> Inferred {
                     let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
                     return load_bound_method(i_s, &instance, class, *mro_index, *func_link)
                         .execute(i_s, args, result_context, on_type_error);
+                }
+                ComplexPoint::TypeInstance(t) => {
+                    if let Some(inf) =
+                        Type::new(t).execute(i_s, args, result_context, on_type_error)
+                    {
+                        return inf;
+                    }
                 }
                 _ => (),
             },

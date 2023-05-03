@@ -1133,15 +1133,23 @@ impl<'a> Type<'a> {
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
+    ) -> Option<Inferred> {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return cls.execute(i_s, args, result_context, on_type_error);
+            return None;
+            //return Some(cls.execute(i_s, args, result_context, on_type_error));
         }
         match self.maybe_db_type().unwrap() {
             DbType::Type(cls) => {
-                execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
+                return Some(execute_type_of_type(
+                    i_s,
+                    args,
+                    result_context,
+                    on_type_error,
+                    cls.as_ref(),
+                ))
             }
             _ => {
+                return None;
                 let t = self.format_short(i_s.db);
                 args.as_node_ref().add_typing_issue(
                     i_s,
@@ -1149,7 +1157,7 @@ impl<'a> Type<'a> {
                         type_: format!("\"{}\"", t).into(),
                     },
                 );
-                Inferred::new_unknown()
+                //Inferred::new_unknown()
             }
         }
     }
