@@ -1280,6 +1280,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                 on_type_error,
                             )
                         }
+                        Specific::TypingAny => {
+                            args.as_node_ref()
+                                .add_typing_issue(i_s, IssueType::AnyNotCallable);
+                            args.iter().calculate_diagnostics(i_s);
+                            return Inferred::new_any();
+                        }
                         Specific::MypyExtensionsArg
                         | Specific::MypyExtensionsDefaultArg
                         | Specific::MypyExtensionsNamedArg

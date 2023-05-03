@@ -294,9 +294,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
         _: &mut ResultContext,
         _: OnTypeError,
     ) -> Inferred {
-        args.as_node_ref()
-            .add_typing_issue(i_s, IssueType::AnyNotCallable);
-        Inferred::new_any()
+        todo!()
     }
 }
 

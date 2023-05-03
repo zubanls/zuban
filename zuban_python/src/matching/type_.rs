@@ -1172,6 +1172,10 @@ impl<'a> Type<'a> {
                     result_context,
                 ))
             }
+            DbType::Any => {
+                args.iter().calculate_diagnostics(i_s);
+                return Some(Inferred::new_unknown());
+            }
             _ => {
                 return None;
                 let t = self.format_short(i_s.db);
@@ -1181,7 +1185,7 @@ impl<'a> Type<'a> {
                         type_: format!("\"{}\"", t).into(),
                     },
                 );
-                //Inferred::new_unknown()
+                return Some(Inferred::new_unknown());
             }
         }
     }
