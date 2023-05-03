@@ -1328,9 +1328,16 @@ impl<'db: 'slf, 'slf> Inferred {
             },
             _ => (),
         }
-        self.run_on_value(i_s, &mut |i_s, value| {
-            value.execute(i_s, args, result_context, on_type_error)
-        })
+        self.internal_run(
+            i_s,
+            &mut |i_s, value| value.execute(i_s, args, result_context, on_type_error),
+            &|i_s, i1, i2| i1.union(i2),
+            &mut |i_s| {
+                // Still need to calculate diagnostics for all the arguments
+                args.iter().calculate_diagnostics(i_s);
+                Inferred::new_unknown()
+            },
+        )
     }
 
     pub fn save_and_iter(

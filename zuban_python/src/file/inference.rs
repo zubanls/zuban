@@ -1331,23 +1331,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             PrimaryContent::Execution(details) => {
                 let f = self.file;
                 let args = SimpleArguments::new(*self.i_s, f, node_index, details);
-                base.internal_run(
+                base.execute_with_details(
                     self.i_s,
-                    &mut |i_s, value| {
-                        debug!("Execute {}", value.name());
-                        value.execute(
-                            i_s,
-                            &args,
-                            result_context,
-                            OnTypeError::new(&on_argument_type_error),
-                        )
-                    },
-                    &|i_s, i1, i2| i1.union(i2),
-                    &mut |i_s| {
-                        // Still need to calculate diagnostics for all the arguments
-                        args.iter().calculate_diagnostics(i_s);
-                        Inferred::new_unknown()
-                    },
+                    &args,
+                    result_context,
+                    OnTypeError::new(&on_argument_type_error),
                 )
             }
             PrimaryContent::GetItem(slice_type) => {
