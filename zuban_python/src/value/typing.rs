@@ -286,7 +286,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        todo!()
+        Type::owned(DbType::Any)
     }
 
     fn execute(
@@ -1170,34 +1170,7 @@ impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        let mut iterator = args.iter();
-        if let Some(first_arg) = iterator.next() {
-            let t = Type::new(self.new_type.type_(i_s));
-            let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
-            t.error_if_not_matches(i_s, &inf, |i_s: &InferenceState<'db, '_>, t1, t2| {
-                (on_type_error.callback)(
-                    i_s,
-                    None,
-                    &|_| Some(format!(" to \"{}\"", self.name()).into()),
-                    &first_arg,
-                    t1,
-                    t2,
-                );
-                args.as_node_ref().to_db_lifetime(i_s.db)
-            });
-        } else {
-            args.as_node_ref().add_typing_issue(
-                i_s,
-                IssueType::TooFewArguments(format!(" for \"{}\"", self.name()).into()),
-            );
-        }
-        if iterator.next().is_some() {
-            args.as_node_ref().add_typing_issue(
-                i_s,
-                IssueType::TooManyArguments(format!(" for \"{}\"", self.name()).into()),
-            );
-        }
-        Inferred::execute_db_type(i_s, DbType::NewType(self.new_type.clone()))
+        todo!()
     }
 
     fn lookup_internal(

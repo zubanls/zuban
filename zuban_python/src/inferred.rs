@@ -1298,12 +1298,76 @@ impl<'db: 'slf, 'slf> Inferred {
                                 on_type_error,
                             );
                         }
-                        ComplexPoint::TypeInstance(t) => {
-                            if let Some(inf) =
-                                Type::new(t).execute(i_s, args, result_context, on_type_error)
-                            {
-                                return inf;
+                        ComplexPoint::Class(cls) => {
+                            return Class::new(
+                                NodeRef::from_link(i_s.db, *link),
+                                cls,
+                                Generics::NotDefinedYet,
+                                None,
+                            )
+                            .execute(
+                                i_s,
+                                args,
+                                result_context,
+                                on_type_error,
+                            )
+                        }
+                        ComplexPoint::TypeAlias(alias) => {
+                            if alias.is_class() {
+                                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
+                                    Box::new(alias.as_db_type_and_set_type_vars_any(i_s.db)),
+                                ));
                             }
+                            args.as_node_ref().add_typing_issue(
+                                i_s,
+                                IssueType::NotCallable {
+                                    type_: Box::from("\"<typing special form>\""),
+                                },
+                            );
+                            return Inferred::new_any();
+                        }
+                        ComplexPoint::NewTypeDefinition(new_type) => {
+                            let mut iterator = args.iter();
+                            if let Some(first_arg) = iterator.next() {
+                                let t = Type::new(new_type.type_(i_s));
+                                let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
+                                t.error_if_not_matches(
+                                    i_s,
+                                    &inf,
+                                    |i_s: &InferenceState<'db, '_>, t1, t2| {
+                                        (on_type_error.callback)(
+                                            i_s,
+                                            None,
+                                            &|_| {
+                                                Some(
+                                                    format!(" to \"{}\"", new_type.name(i_s.db))
+                                                        .into(),
+                                                )
+                                            },
+                                            &first_arg,
+                                            t1,
+                                            t2,
+                                        );
+                                        args.as_node_ref().to_db_lifetime(i_s.db)
+                                    },
+                                );
+                            } else {
+                                args.as_node_ref().add_typing_issue(
+                                    i_s,
+                                    IssueType::TooFewArguments(
+                                        format!(" for \"{}\"", new_type.name(i_s.db)).into(),
+                                    ),
+                                );
+                            }
+                            if iterator.next().is_some() {
+                                args.as_node_ref().add_typing_issue(
+                                    i_s,
+                                    IssueType::TooManyArguments(
+                                        format!(" for \"{}\"", new_type.name(i_s.db)).into(),
+                                    ),
+                                );
+                            }
+                            return Self::execute_db_type(i_s, DbType::NewType(new_type.clone()));
                         }
                         _ => (),
                     }
@@ -1317,16 +1381,15 @@ impl<'db: 'slf, 'slf> Inferred {
                     return load_bound_method(i_s, &instance, class, *mro_index, *func_link)
                         .execute(i_s, args, result_context, on_type_error);
                 }
-                ComplexPoint::TypeInstance(t) => {
-                    if let Some(inf) =
-                        Type::new(t).execute(i_s, args, result_context, on_type_error)
-                    {
-                        return inf;
-                    }
-                }
                 _ => (),
             },
             _ => (),
+        }
+        if let Some(inf) = self
+            .class_as_type(i_s)
+            .execute(i_s, args, result_context, on_type_error)
+        {
+            return inf;
         }
         self.internal_run(
             i_s,

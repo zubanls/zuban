@@ -70,17 +70,6 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError,
     ) -> Inferred {
-        if self.alias.is_class() {
-            return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                self.alias.as_db_type_and_set_type_vars_any(i_s.db),
-            )));
-        }
-        args.as_node_ref().add_typing_issue(
-            i_s,
-            IssueType::NotCallable {
-                type_: Box::from("\"<typing special form>\""),
-            },
-        );
-        Inferred::new_any()
+        todo!()
     }
 }
