@@ -1,10 +1,10 @@
 use std::rc::Rc;
 
-use super::{LookupResult, OnTypeError, Value, ValueKind};
-use crate::arguments::Arguments;
-use crate::database::{ComplexPoint, DbType, TypeAlias as DbTypeAlias};
+use super::{LookupResult, Value, ValueKind};
+
+use crate::database::{DbType, TypeAlias as DbTypeAlias};
 use crate::debug;
-use crate::diagnostics::IssueType;
+
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;

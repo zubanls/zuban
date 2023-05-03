@@ -1,15 +1,15 @@
 use std::fmt;
 
-use super::{LookupResult, OnTypeError, Value, ValueKind};
-use crate::arguments::Arguments;
+use super::{LookupResult, Value, ValueKind};
+
 use crate::database::{Database, FileIndex, PointLink};
-use crate::diagnostics::IssueType;
+
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::imports::python_import;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+
+use crate::matching::Type;
 use crate::node_ref::NodeRef;
 
 impl<'a> fmt::Debug for Module<'a> {
