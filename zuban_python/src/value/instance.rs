@@ -109,6 +109,31 @@ impl<'a> Instance<'a> {
         }
         had_set
     }
+
+    pub fn execute2<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        let node_ref = args.as_node_ref();
+        if let Some(inf) = self
+            .lookup_internal(i_s, Some(node_ref), "__call__")
+            .into_maybe_inferred()
+        {
+            inf.execute_with_details(i_s, args, result_context, on_type_error)
+        } else {
+            let t = self.as_type(i_s).format_short(i_s.db);
+            node_ref.add_typing_issue(
+                i_s,
+                IssueType::NotCallable {
+                    type_: format!("{:?}", t).into(),
+                },
+            );
+            Inferred::new_unknown()
+        }
+    }
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
@@ -171,31 +196,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
 
     fn should_add_lookup_error(&self, db: &Database) -> bool {
         self.class.should_add_lookup_error(db)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        let node_ref = args.as_node_ref();
-        if let Some(inf) = self
-            .lookup_internal(i_s, Some(node_ref), "__call__")
-            .into_maybe_inferred()
-        {
-            inf.execute_with_details(i_s, args, result_context, on_type_error)
-        } else {
-            let t = self.as_type(i_s).format_short(i_s.db);
-            node_ref.add_typing_issue(
-                i_s,
-                IssueType::NotCallable {
-                    type_: format!("{:?}", t).into(),
-                },
-            );
-            Inferred::new_unknown()
-        }
     }
 
     fn get_item(

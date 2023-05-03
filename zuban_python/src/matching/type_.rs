@@ -1135,7 +1135,7 @@ impl<'a> Type<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<Inferred> {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return Some(Instance::new(cls, None).execute(
+            return Some(Instance::new(cls, None).execute2(
                 i_s,
                 args,
                 result_context,
