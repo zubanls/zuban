@@ -98,7 +98,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ListLiteral<'a> {
                 Generics::List(self.generic_list(i_s), None),
                 None,
             ),
-            Some(self.type_instance_ref(i_s)),
+            Some(&Inferred::from_saved_node_ref(self.type_instance_ref(i_s))),
         )
         .lookup_internal(i_s, node_ref, name)
     }

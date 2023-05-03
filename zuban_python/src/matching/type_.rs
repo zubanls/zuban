@@ -1130,12 +1130,18 @@ impl<'a> Type<'a> {
     pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
+        inferred_from: Option<&Inferred>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return Instance::new(cls, None).execute(i_s, args, result_context, on_type_error);
+            return Instance::new(cls, inferred_from).execute(
+                i_s,
+                args,
+                result_context,
+                on_type_error,
+            );
         }
         match self.maybe_db_type().unwrap() {
             DbType::Type(cls) => {
@@ -1143,7 +1149,7 @@ impl<'a> Type<'a> {
             }
             DbType::Union(union) => Inferred::gather_union(|gather| {
                 for entry in union.iter() {
-                    gather(Type::new(entry).execute(i_s, args, result_context, on_type_error))
+                    gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
                 }
             }),
             t @ DbType::Callable(content) => Callable::new(t, content).execute_internal(

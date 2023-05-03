@@ -20,20 +20,17 @@ use crate::node_ref::NodeRef;
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
     pub class: Class<'a>,
-    inferred_link: Option<NodeRef<'a>>,
+    inferred: Option<&'a Inferred>,
 }
 
 impl<'a> Instance<'a> {
-    pub fn new(class: Class<'a>, inferred_link: Option<NodeRef<'a>>) -> Self {
-        Self {
-            class,
-            inferred_link,
-        }
+    pub fn new(class: Class<'a>, inferred: Option<&'a Inferred>) -> Self {
+        Self { class, inferred }
     }
 
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
-        if let Some(inferred_link) = self.inferred_link {
-            Inferred::from_saved_node_ref(inferred_link)
+        if let Some(inferred) = self.inferred {
+            inferred.clone()
         } else {
             let t = self.class.as_db_type(i_s.db);
             Inferred::execute_db_type(i_s, t)

@@ -189,11 +189,17 @@ impl<'db: 'slf, 'slf> Inferred {
         'db: 'a,
     {
         match &self.state {
-            InferredState::Saved(definition, point) => {
-                run_on_saved(i_s, *definition, *point, callable, reducer, on_missing)
-            }
+            InferredState::Saved(definition, point) => run_on_saved(
+                i_s,
+                Some(self),
+                *definition,
+                *point,
+                callable,
+                reducer,
+                on_missing,
+            ),
             InferredState::UnsavedComplex(complex) => {
-                run_on_complex(i_s, complex, None, callable, reducer, on_missing)
+                run_on_complex(i_s, complex, None, None, callable, reducer, on_missing)
             }
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => callable(i_s, &NoneInstance()),
@@ -217,9 +223,15 @@ impl<'db: 'slf, 'slf> Inferred {
         on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
     ) -> T {
         match &self.state {
-            InferredState::Saved(definition, point) => {
-                run_on_saved(i_s, *definition, *point, callable, reducer, on_missing)
-            }
+            InferredState::Saved(definition, point) => run_on_saved(
+                i_s,
+                None,
+                *definition,
+                *point,
+                callable,
+                reducer,
+                on_missing,
+            ),
             InferredState::UnsavedComplex(complex) => unreachable!(),
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => callable(i_s, &NoneInstance()),
@@ -386,7 +398,7 @@ impl<'db: 'slf, 'slf> Inferred {
     fn with_instance<'a, T>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        instance_reference: NodeRef<'db>,
+        instance_reference: Option<&'a Self>,
         generics: Option<Generics<'a>>,
         callable: impl FnOnce(&InferenceState<'db, '_>, &Instance<'a>) -> T,
     ) -> T
@@ -425,7 +437,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             // because that's just wrong, it's defined as Any at this point. AFAIK.
                         }
                     }
-                    callable(i_s, &Instance::new(class, Some(instance_reference)))
+                    callable(i_s, &Instance::new(class, instance_reference))
                 }
             }
             _ => unreachable!("{:?}", self.state),
@@ -919,7 +931,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
                                     Generics::new_maybe_list(generics),
-                                    Some(NodeRef::from_link(i_s.db, *definition)),
+                                    Some(&self),
                                 );
                                 if let Some(inf) = inst
                                     .lookup_internal(i_s, from, "__get__")
@@ -1029,7 +1041,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
                                     Generics::new_maybe_list(generics),
-                                    Some(NodeRef::from_link(i_s.db, *definition)),
+                                    Some(&self),
                                 );
                                 if let Some(inf) = inst
                                     .lookup_internal(i_s, from, "__get__")
@@ -1410,7 +1422,7 @@ impl<'db: 'slf, 'slf> Inferred {
             _ => (),
         }
         self.class_as_type(i_s)
-            .execute(i_s, args, result_context, on_type_error)
+            .execute(i_s, Some(self), args, result_context, on_type_error)
     }
 
     pub fn save_and_iter(
@@ -1447,6 +1459,7 @@ impl fmt::Debug for Inferred {
 #[inline]
 fn run_on_saved<'db: 'a, 'a, T>(
     i_s: &InferenceState<'db, '_>,
+    from_inferred: Option<&'a Inferred>,
     definition: PointLink,
     point: Point,
     callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
@@ -1456,6 +1469,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
     match point.type_() {
         PointType::Specific => run_on_specific(
             i_s,
+            from_inferred,
             definition,
             point.specific(),
             callable,
@@ -1473,6 +1487,7 @@ fn run_on_saved<'db: 'a, 'a, T>(
                     i_s,
                     complex,
                     Some(definition),
+                    from_inferred,
                     callable,
                     reducer,
                     on_missing,
@@ -1492,6 +1507,7 @@ fn run_on_complex<'db: 'a, 'a, T>(
     i_s: &InferenceState<'db, '_>,
     complex: &'a ComplexPoint,
     definition: Option<NodeRef<'a>>,
+    from_inferred: Option<&'a Inferred>,
     callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
@@ -1523,10 +1539,18 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 let result = match any_link {
                     AnyLink::Reference(link) => {
                         let reference = NodeRef::from_link(i_s.db, *link);
-                        run_on_saved(i_s, *link, reference.point(), callable, reducer, on_missing)
+                        run_on_saved(
+                            i_s,
+                            None,
+                            *link,
+                            reference.point(),
+                            callable,
+                            reducer,
+                            on_missing,
+                        )
                     }
                     AnyLink::Complex(c) => {
-                        run_on_complex(i_s, c, None, callable, reducer, on_missing)
+                        run_on_complex(i_s, c, None, None, callable, reducer, on_missing)
                     }
                     AnyLink::SimpleSpecific(specific) => match specific {
                         Specific::None => callable(i_s, &NoneInstance()),
@@ -1570,7 +1594,8 @@ fn run_on_complex<'db: 'a, 'a, T>(
             &OverloadedFunction::new(definition.unwrap(), overload, None),
         ),
         ComplexPoint::TypeInstance(t) => {
-            run_on_db_type(i_s, t, definition, callable, reducer, on_missing)
+            let inf = definition.map(Inferred::from_saved_node_ref);
+            run_on_db_type(i_s, t, from_inferred, callable, reducer, on_missing)
         }
         ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
         ComplexPoint::TypeVarLike(t) => callable(
@@ -1617,6 +1642,7 @@ fn load_bound_method<'a, 'b>(
 #[inline]
 fn run_on_specific<'db: 'a, 'a, T>(
     i_s: &InferenceState<'db, '_>,
+    from_inferred: Option<&'a Inferred>,
     definition: PointLink,
     specific: Specific,
     callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
@@ -1679,7 +1705,7 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 .inference(i_s)
                 .check_point_cache(expr_def.node_index)
                 .unwrap();
-            inferred.with_instance(i_s, definition, None, |i_s, instance| {
+            inferred.with_instance(i_s, from_inferred, None, |i_s, instance| {
                 callable(&mut i_s.with_simplified_annotation_instance(), instance)
             })
         }
@@ -1690,19 +1716,12 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 .file
                 .inference(i_s)
                 .use_db_type_of_annotation_or_type_comment(definition.node_index);
-            run_on_db_type(
-                i_s,
-                db_type,
-                Some(definition),
-                callable,
-                reducer,
-                on_missing,
-            )
+            run_on_db_type(i_s, db_type, from_inferred, callable, reducer, on_missing)
         }
         Specific::SelfParam => run_on_db_type(
             i_s,
             &DbType::Self_,
-            Some(definition),
+            from_inferred,
             callable,
             reducer,
             on_missing,
@@ -1806,7 +1825,7 @@ fn infer_instance_with_arguments_cls(i_s: &InferenceState, definition: NodeRef) 
 fn use_instance_with_ref<'a>(
     class_reference: NodeRef<'a>,
     generics: Generics<'a>,
-    instance_reference: Option<NodeRef<'a>>,
+    instance_reference: Option<&'a Inferred>,
 ) -> Instance<'a> {
     let class = Class::from_position(class_reference, generics, None);
     Instance::new(class, instance_reference)
@@ -1815,7 +1834,7 @@ fn use_instance_with_ref<'a>(
 pub fn run_on_db_type<'db: 'a, 'a, T>(
     i_s: &InferenceState<'db, '_>,
     db_type: &'a DbType,
-    definition: Option<NodeRef<'a>>,
+    definition: Option<&'a Inferred>,
     callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
     reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
     on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
