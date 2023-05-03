@@ -4,9 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use super::{on_argument_type_error, File, PythonFile};
-use crate::arguments::{
-    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
-};
+use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
     Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType, Specific,

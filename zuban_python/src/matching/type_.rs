@@ -1133,51 +1133,31 @@ impl<'a> Type<'a> {
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<Inferred> {
+    ) -> Inferred {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return Some(Instance::new(cls, None).execute2(
+            return Instance::new(cls, None).execute2(i_s, args, result_context, on_type_error);
+        }
+        match self.maybe_db_type().unwrap() {
+            DbType::Type(cls) => {
+                execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
+            }
+            DbType::Union(union) => Inferred::gather_union(|gather| {
+                for entry in union.iter() {
+                    gather(Type::new(entry).execute(i_s, args, result_context, on_type_error))
+                }
+            }),
+            t @ DbType::Callable(content) => Callable::new(t, content).execute_internal(
                 i_s,
                 args,
-                result_context,
                 on_type_error,
-            ));
-        }
-        match dbg!(self.maybe_db_type().unwrap()) {
-            DbType::Type(cls) => {
-                return Some(execute_type_of_type(
-                    i_s,
-                    args,
-                    result_context,
-                    on_type_error,
-                    cls.as_ref(),
-                ))
-            }
-            DbType::Union(union) => {
-                return Some(Inferred::gather_union(|gather| {
-                    for entry in union.iter() {
-                        gather(
-                            Type::new(entry)
-                                .execute(i_s, args, result_context, on_type_error)
-                                .unwrap(),
-                        )
-                    }
-                }))
-            }
-            t @ DbType::Callable(content) => {
-                return Some(Callable::new(t, content).execute_internal(
-                    i_s,
-                    args,
-                    on_type_error,
-                    None,
-                    result_context,
-                ))
-            }
-            DbType::Any => {
+                None,
+                result_context,
+            ),
+            DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
-                return Some(Inferred::new_unknown());
+                Inferred::new_unknown()
             }
             _ => {
-                return None;
                 let t = self.format_short(i_s.db);
                 args.as_node_ref().add_typing_issue(
                     i_s,
@@ -1185,7 +1165,7 @@ impl<'a> Type<'a> {
                         type_: format!("\"{}\"", t).into(),
                     },
                 );
-                return Some(Inferred::new_unknown());
+                Inferred::new_unknown()
             }
         }
     }

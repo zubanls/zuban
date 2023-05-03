@@ -1206,7 +1206,7 @@ impl<'db: 'slf, 'slf> Inferred {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
-        match dbg!(&self.state) {
+        match &self.state {
             InferredState::Saved(link, point) => match point.type_() {
                 PointType::Specific => {
                     let specific = point.specific();
@@ -1419,22 +1419,8 @@ impl<'db: 'slf, 'slf> Inferred {
             },
             _ => (),
         }
-        if let Some(inf) = self
-            .class_as_type(i_s)
+        self.class_as_type(i_s)
             .execute(i_s, args, result_context, on_type_error)
-        {
-            return inf;
-        }
-        self.internal_run(
-            i_s,
-            &mut |i_s, value| value.execute(i_s, args, result_context, on_type_error),
-            &|i_s, i1, i2| i1.union(i2),
-            &mut |i_s| {
-                // Still need to calculate diagnostics for all the arguments
-                args.iter().calculate_diagnostics(i_s);
-                Inferred::new_unknown()
-            },
-        )
     }
 
     pub fn save_and_iter(
