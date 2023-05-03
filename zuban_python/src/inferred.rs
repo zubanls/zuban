@@ -1206,7 +1206,7 @@ impl<'db: 'slf, 'slf> Inferred {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
-        match &self.state {
+        match dbg!(&self.state) {
             InferredState::Saved(link, point) => match point.type_() {
                 PointType::Specific => {
                     let specific = point.specific();
@@ -1390,6 +1390,15 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         _ => (),
                     }
+                }
+                PointType::FileReference => {
+                    args.as_node_ref().add_typing_issue(
+                        i_s,
+                        IssueType::NotCallable {
+                            type_: Box::from("Module"),
+                        },
+                    );
+                    return Inferred::new_unknown();
                 }
                 _ => (),
             },

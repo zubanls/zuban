@@ -104,13 +104,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        args.as_node_ref().add_typing_issue(
-            i_s,
-            IssueType::NotCallable {
-                type_: Box::from("Module"),
-            },
-        );
-        Inferred::new_unknown()
+        todo!()
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
