@@ -2,18 +2,22 @@ use std::borrow::Cow;
 
 use super::params::has_overlapping_params;
 use super::{
-    matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
+    calculate_callable_type_vars_and_return, matches_params, CalculatedTypeArguments, FormatData,
+    Generics, Match, Matcher, MismatchReason, ResultContext,
 };
+use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParams, ClassType, Database, DbType, MetaclassState, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
+    CallableContent, CallableParams, ClassType, ComplexPoint, Database, DbType, MetaclassState,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Instance, LookupResult, MroIterator, NamedTupleValue, Value};
+use crate::value::{
+    Class, Instance, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Value,
+};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -1123,6 +1127,33 @@ impl<'a> Type<'a> {
         )
     }
 
+    pub fn execute<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        if let Some(cls) = self.maybe_class(i_s.db) {
+            return cls.execute(i_s, args, result_context, on_type_error);
+        }
+        match self.maybe_db_type().unwrap() {
+            DbType::Type(cls) => {
+                execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
+            }
+            _ => {
+                let t = self.format_short(i_s.db);
+                args.as_node_ref().add_typing_issue(
+                    i_s,
+                    IssueType::NotCallable {
+                        type_: format!("\"{}\"", t).into(),
+                    },
+                );
+                Inferred::new_unknown()
+            }
+        }
+    }
+
     pub fn on_any_class(
         &self,
         i_s: &InferenceState,
@@ -1328,5 +1359,90 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
         result.into_owned()
     } else {
         DbType::Never
+    }
+}
+
+pub fn execute_type_of_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    type_: &DbType,
+) -> Inferred {
+    match type_ {
+        #![allow(unreachable_code)]
+        // TODO remove this
+        tuple @ DbType::Tuple(tuple_content) => {
+            debug!("TODO this does not check the arguments");
+            return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                tuple.clone(),
+            )));
+            // TODO reenable this
+            let mut args_iterator = args.iter();
+            let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
+                let inf = arg.infer(i_s, &mut ResultContext::Known(&Type::new(tuple)));
+                (arg, inf)
+            } else {
+                debug!("TODO this does not check the arguments");
+                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                    tuple.clone(),
+                )));
+            };
+            if args_iterator.next().is_some() {
+                todo!()
+            }
+            Type::new(tuple).error_if_not_matches(
+                i_s,
+                &inferred_tup,
+                |i_s: &InferenceState<'db, '_>, t1, t2| {
+                    (on_type_error.callback)(i_s, None, &|_| todo!(), &arg, t1, t2);
+                    args.as_node_ref().to_db_lifetime(i_s.db)
+                },
+            );
+            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(tuple.clone())))
+        }
+        DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
+            .execute(i_s, args, result_context, on_type_error),
+        DbType::TypeVar(t) => {
+            if let Some(bound) = &t.type_var.bound {
+                execute_type_of_type(i_s, args, result_context, on_type_error, bound);
+                Inferred::execute_db_type(i_s, type_.clone())
+            } else {
+                todo!("{t:?}")
+            }
+        }
+        DbType::NewType(n) => {
+            let mut iterator = args.iter();
+            if let Some(first) = iterator.next() {
+                if iterator.next().is_some() {
+                    todo!()
+                }
+                // TODO match
+                Inferred::execute_db_type(i_s, type_.clone())
+            } else {
+                todo!()
+            }
+        }
+        DbType::Self_ => {
+            i_s.current_class()
+                .unwrap()
+                .execute(i_s, args, result_context, on_type_error);
+            Inferred::execute_db_type(i_s, DbType::Self_)
+        }
+        DbType::Any => Inferred::new_any(),
+        DbType::NamedTuple(nt) => {
+            let calculated_type_vars = calculate_callable_type_vars_and_return(
+                i_s,
+                None,
+                &nt.constructor,
+                args.iter(),
+                &|| args.as_node_ref(),
+                &mut ResultContext::Unknown,
+                on_type_error,
+            );
+            debug!("TODO use generics for namedtuple");
+            Inferred::execute_db_type(i_s, DbType::NamedTuple(nt.clone()))
+        }
+        _ => todo!("{:?}", type_),
     }
 }
