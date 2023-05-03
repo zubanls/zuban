@@ -14,9 +14,7 @@ use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{
-    calculate_callable_type_vars_and_return, execute_type_of_type, FormatData, ResultContext, Type,
-};
+use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -252,7 +250,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        execute_type_of_type(i_s, args, result_context, on_type_error, self.db_type)
+        todo!()
     }
 }
 
