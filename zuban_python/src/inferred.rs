@@ -20,11 +20,11 @@ use crate::matching::{
 use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
-    BoundMethod, BoundMethodFunction, Callable, Class, DictLiteral, FirstParamProperties, Function,
-    Instance, IteratorContent, Literal, Module, NamedTupleValue, NewTypeClass, NewTypeInstance,
-    NoneInstance, OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass,
-    RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass,
-    TypingAny, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
+    BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
+    IteratorContent, Literal, Module, NamedTupleValue, NewTypeClass, NewTypeInstance, NoneInstance,
+    OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple,
+    TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast,
+    TypingClass, TypingClassVar, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -1709,7 +1709,6 @@ fn run_on_specific<'db: 'a, 'a, T>(
                 callable(&mut i_s.with_simplified_annotation_instance(), instance)
             })
         }
-        Specific::Dict => callable(i_s, &DictLiteral::new(definition)),
         Specific::AnnotationOrTypeCommentWithTypeVars => {
             let db_type = definition
                 .file

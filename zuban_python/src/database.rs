@@ -383,7 +383,6 @@ pub enum Specific {
 
     Ellipsis,
     GeneratorComprehension,
-    Dict,
 
     SelfParam,
     Param,

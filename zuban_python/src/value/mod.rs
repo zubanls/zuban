@@ -3,7 +3,6 @@ mod callable;
 mod class;
 mod function;
 mod instance;
-mod iterable;
 mod literal;
 mod module;
 mod named_tuple;
@@ -11,8 +10,6 @@ mod none;
 mod tuple;
 mod type_alias;
 mod typing;
-
-use parsa_python_ast::{StarLikeExpression, StarLikeExpressionIterator};
 
 use crate::arguments::Argument;
 use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
@@ -27,7 +24,6 @@ pub use callable::Callable;
 pub use class::{Class, MroIterator};
 pub use function::{FirstParamProperties, Function, InferrableParam, OverloadedFunction};
 pub use instance::Instance;
-pub use iterable::DictLiteral;
 pub use literal::Literal;
 pub use module::Module;
 pub use named_tuple::NamedTupleValue;
