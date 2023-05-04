@@ -23,6 +23,22 @@ impl<'a> Tuple<'a> {
     pub fn as_db_type(&self) -> DbType {
         DbType::Tuple(self.content.clone())
     }
+
+    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
+        match &self.content.args {
+            Some(args @ TupleTypeArguments::FixedLength(ts)) => {
+                if args.has_type_var_tuple().is_some() {
+                    todo!()
+                } else {
+                    IteratorContent::FixedLengthTupleGenerics(ts.iter())
+                }
+            }
+            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                IteratorContent::Inferred(Inferred::execute_db_type(i_s, t.as_ref().clone()))
+            }
+            None => todo!(),
+        }
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
@@ -61,22 +77,6 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         }
         debug!("TODO tuple object lookups");
         LookupResult::None
-    }
-
-    fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
-        match &self.content.args {
-            Some(args @ TupleTypeArguments::FixedLength(ts)) => {
-                if args.has_type_var_tuple().is_some() {
-                    todo!()
-                } else {
-                    IteratorContent::FixedLengthTupleGenerics(ts.iter())
-                }
-            }
-            Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                IteratorContent::Inferred(Inferred::execute_db_type(i_s, t.as_ref().clone()))
-            }
-            None => todo!(),
-        }
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

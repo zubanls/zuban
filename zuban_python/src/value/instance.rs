@@ -131,6 +131,54 @@ impl<'a> Instance<'a> {
             Inferred::new_unknown()
         }
     }
+
+    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent<'a> {
+        if let ClassType::NamedTuple(ref named_tuple) =
+            self.class.use_cached_class_infos(i_s.db).class_type
+        {
+            // TODO this doesn't take care of the mro and could not be the first __iter__
+            return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
+        }
+        let mro_iterator = self.class.mro(i_s.db);
+        let finder = ClassMroFinder {
+            i_s,
+            instance: self,
+            mro_iterator,
+            from,
+            name: "__iter__",
+        };
+        for found_on_class in finder {
+            match found_on_class {
+                FoundOnClass::Attribute(inf) => {
+                    return IteratorContent::Inferred(
+                        inf.execute(i_s, &NoArguments::new(from)).execute_function(
+                            i_s,
+                            "__next__",
+                            from,
+                            &NoArguments::new(from),
+                            &|_| todo!(),
+                        ),
+                    );
+                }
+                FoundOnClass::UnresolvedDbType(Cow::Borrowed(db_type @ DbType::Tuple(t))) => {
+                    return Tuple::new(db_type, t).iter(i_s, from);
+                }
+                FoundOnClass::UnresolvedDbType(Cow::Owned(db_type @ DbType::Tuple(_))) => {
+                    debug!("TODO Owned tuples won't work with iter currently");
+                }
+                _ => (),
+            }
+        }
+        if !self.class.incomplete_mro(i_s.db) {
+            from.add_typing_issue(
+                i_s,
+                IssueType::NotIterable {
+                    type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
+                },
+            );
+        }
+        IteratorContent::Any
+    }
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
@@ -259,54 +307,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             },
         );
         Inferred::new_any()
-    }
-
-    fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        if let ClassType::NamedTuple(ref named_tuple) =
-            self.class.use_cached_class_infos(i_s.db).class_type
-        {
-            // TODO this doesn't take care of the mro and could not be the first __iter__
-            return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
-        }
-        let mro_iterator = self.class.mro(i_s.db);
-        let finder = ClassMroFinder {
-            i_s,
-            instance: self,
-            mro_iterator,
-            from,
-            name: "__iter__",
-        };
-        for found_on_class in finder {
-            match found_on_class {
-                FoundOnClass::Attribute(inf) => {
-                    return IteratorContent::Inferred(
-                        inf.execute(i_s, &NoArguments::new(from)).execute_function(
-                            i_s,
-                            "__next__",
-                            from,
-                            &NoArguments::new(from),
-                            &|_| todo!(),
-                        ),
-                    );
-                }
-                FoundOnClass::UnresolvedDbType(Cow::Borrowed(db_type @ DbType::Tuple(t))) => {
-                    return Tuple::new(db_type, t).iter(i_s, from);
-                }
-                FoundOnClass::UnresolvedDbType(Cow::Owned(db_type @ DbType::Tuple(_))) => {
-                    debug!("TODO Owned tuples won't work with iter currently");
-                }
-                _ => (),
-            }
-        }
-        if !self.class.incomplete_mro(i_s.db) {
-            from.add_typing_issue(
-                i_s,
-                IssueType::NotIterable {
-                    type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
-                },
-            );
-        }
-        IteratorContent::Any
     }
 
     fn as_instance(&self) -> Option<&Instance<'a>> {

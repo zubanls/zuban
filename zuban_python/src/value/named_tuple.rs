@@ -62,6 +62,13 @@ impl<'a> NamedTupleValue<'a> {
             .join(", ");
         format!("tuple[{types}, fallback={name}]",).into()
     }
+
+    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent<'a> {
+        let TupleTypeArguments::FixedLength(t) = self.nt.as_tuple().args.as_ref().unwrap() else {
+            unreachable!()
+        };
+        IteratorContent::FixedLengthTupleGenerics(t.iter())
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
@@ -124,12 +131,5 @@ impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
-    }
-
-    fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        let TupleTypeArguments::FixedLength(t) = self.nt.as_tuple().args.as_ref().unwrap() else {
-            unreachable!()
-        };
-        IteratorContent::FixedLengthTupleGenerics(t.iter())
     }
 }

@@ -13,7 +13,6 @@ mod typing;
 
 use crate::arguments::Argument;
 use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
-use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -292,17 +291,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         result_context: &mut ResultContext,
     ) -> Inferred {
         todo!("get_item not implemented for {self:?}")
-    }
-
-    fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        let t = self.as_type(i_s).format_short(i_s.db);
-        from.add_typing_issue(
-            i_s,
-            IssueType::NotIterable {
-                type_: format!("\"{}\"", t).into(),
-            },
-        );
-        IteratorContent::Any
     }
 
     fn as_instance(&self) -> Option<&Instance<'a>> {

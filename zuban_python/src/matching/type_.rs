@@ -16,7 +16,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
-    Callable, Class, Instance, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Value,
+    Callable, Class, Instance, IteratorContent, LookupResult, MroIterator, NamedTupleValue,
+    OnTypeError, Tuple, Value,
 };
 
 #[derive(Debug, Clone)]
@@ -71,6 +72,18 @@ impl<'a> Type<'a> {
                 DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
                 _ => None,
             },
+        }
+    }
+
+    #[inline]
+    pub fn maybe_borrowed_class(&self, db: &'a Database) -> Option<Class<'a>> {
+        match self {
+            Self::Class(c) => Some(*c),
+            Self::Type(Cow::Borrowed(t)) => match t {
+                DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
+                _ => None,
+            },
+            Self::Type(Cow::Owned(_)) => unreachable!(),
         }
     }
 
@@ -1172,6 +1185,31 @@ impl<'a> Type<'a> {
                     },
                 );
                 Inferred::new_unknown()
+            }
+        }
+    }
+
+    pub fn iter_on_borrowed<'slf>(
+        &self,
+        i_s: &InferenceState<'a, '_>,
+        from: NodeRef,
+    ) -> IteratorContent<'a> {
+        if let Some(cls) = self.maybe_borrowed_class(i_s.db) {
+            return Instance::new(cls, None).iter(i_s, from);
+        }
+        match self.maybe_borrowed_db_type().unwrap() {
+            t @ DbType::Tuple(content) => Tuple::new(t, content).iter(i_s, from),
+            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
+            DbType::Any | DbType::Never => IteratorContent::Any,
+            _ => {
+                let t = self.format_short(i_s.db);
+                from.add_typing_issue(
+                    i_s,
+                    IssueType::NotIterable {
+                        type_: format!("\"{}\"", t).into(),
+                    },
+                );
+                IteratorContent::Any
             }
         }
     }

@@ -165,6 +165,36 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
+    pub fn saved_class_as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'db> {
+        if let InferredState::Saved(definition, point) = &self.state {
+            match point.type_() {
+                PointType::Specific => match point.specific() {
+                    Specific::None => return Type::new(&DbType::None),
+                    Specific::Any => return Type::new(&DbType::Any),
+                    _ => (),
+                },
+                PointType::Complex => {
+                    let node_ref = NodeRef::from_link(i_s.db, *definition);
+                    match node_ref.complex() {
+                        Some(ComplexPoint::TypeInstance(ref t)) => {
+                            return Type::new(t);
+                        }
+                        /*
+                        Some(ComplexPoint::Class(c)) => {
+                            return Type::Class(Class::new(node_ref, c, Generics::NotDefinedYet, None));
+                        }
+                        */
+                        _ => (),
+                    }
+                }
+                PointType::Unknown => return Type::new(&DbType::Any),
+                _ => (),
+            }
+        }
+        dbg!(self.debug_info(i_s));
+        unreachable!()
+    }
+
     pub fn class_as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
         self.class_as_type(i_s).into_db_type(i_s.db)
     }
@@ -204,38 +234,6 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => callable(i_s, &NoneInstance()),
                 Specific::Any | Specific::Cycle => on_missing(i_s),
-                _ => todo!("{specific:?}"),
-            },
-            InferredState::UnsavedFileReference(file_index) => {
-                let f = i_s.db.loaded_python_file(*file_index);
-                callable(i_s, &Module::new(i_s.db, f))
-            }
-            InferredState::Unknown => on_missing(i_s),
-        }
-    }
-
-    #[inline]
-    pub fn internal_run_after_save<T>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'db>) -> T,
-        reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
-        on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
-    ) -> T {
-        match &self.state {
-            InferredState::Saved(definition, point) => run_on_saved(
-                i_s,
-                None,
-                *definition,
-                *point,
-                callable,
-                reducer,
-                on_missing,
-            ),
-            InferredState::UnsavedComplex(complex) => unreachable!(),
-            InferredState::UnsavedSpecific(specific) => match specific {
-                Specific::None => callable(i_s, &NoneInstance()),
-                Specific::Any => on_missing(i_s),
                 _ => todo!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
@@ -1430,13 +1428,10 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
     ) -> IteratorContent<'db> {
-        self.save_if_unsaved(i_s, from.file, from.node_index)
-            .internal_run_after_save(
-                i_s,
-                &mut |i_s, v| v.iter(i_s, from),
-                &|_, i1, i2| todo!(),
-                &mut |i_s| IteratorContent::Any,
-            )
+        let t = self
+            .save_if_unsaved(i_s, from.file, from.node_index)
+            .saved_class_as_type(i_s);
+        t.iter_on_borrowed(i_s, from)
     }
 }
 
