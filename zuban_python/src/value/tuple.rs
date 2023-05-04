@@ -5,7 +5,7 @@ use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::value::Instance;
 
@@ -116,9 +116,5 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 todo!()
             }
         }
-    }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        self.content.format(&FormatData::new_short(i_s.db)).into()
     }
 }

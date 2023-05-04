@@ -811,14 +811,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
             )
     }
 
-    fn description(&self, i_s: &InferenceState) -> String {
-        format!(
-            "{} {}",
-            format!("{:?}", self.kind()).to_lowercase(),
-            self.format_short(i_s.db),
-        )
-    }
-
     fn as_class(&self) -> Option<&Class> {
         Some(self)
     }

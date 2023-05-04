@@ -1,11 +1,10 @@
 use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
 use crate::arguments::Arguments;
-use crate::base_description;
 use crate::database::{CallableContent, DbType};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{calculate_callable_type_vars_and_return, FormatData, ResultContext, Type};
+use crate::matching::{calculate_callable_type_vars_and_return, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -66,9 +65,5 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
 
     fn as_callable(&self) -> Option<Callable<'a>> {
         Some(*self)
-    }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        base_description!(self) + &self.content.format(&FormatData::new_short(i_s.db))
     }
 }

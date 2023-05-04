@@ -323,14 +323,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             Type::Class(self.class)
         }
     }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        format!(
-            "{} {}",
-            format!("{:?}", self.kind()).to_lowercase(),
-            self.class.format_short(i_s.db),
-        )
-    }
 }
 
 enum FoundOnClass<'a> {

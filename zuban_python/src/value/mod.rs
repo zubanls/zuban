@@ -103,17 +103,6 @@ pub enum ValueKind {
 }
 
 #[macro_export]
-macro_rules! base_description {
-    ($value:ident) => {
-        format!(
-            "{} {}",
-            format!("{:?}", $value.kind()).to_lowercase(),
-            $value.name()
-        )
-    };
-}
-
-#[macro_export]
 macro_rules! base_qualified_name {
     ($value:ident, $db:ident, $name:expr) => {
         format!("{}.{}", $value.module($db).qualified_name($db), $name)
@@ -239,10 +228,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
 
     fn module(&self, db: &'a Database) -> Module<'a> {
         todo!("{:?}", self)
-    }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        base_description!(self)
     }
 
     fn lookup_internal(

@@ -1071,15 +1071,6 @@ impl<'db: 'slf, 'slf> Inferred {
         Some(self)
     }
 
-    pub fn description(&self, i_s: &InferenceState<'db, '_>) -> String {
-        self.internal_run(
-            i_s,
-            &mut |i_s, v| v.description(i_s),
-            &|_, i1, i2| format!("{i1}|{i2}"),
-            &mut |i_s| "Unknown".to_owned(),
-        )
-    }
-
     pub fn debug_info(&self, i_s: &InferenceState<'db, '_>) -> String {
         let details = match &self.state {
             InferredState::Saved(definition, point) => {
@@ -1094,7 +1085,7 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         format!(
             "description = {}\ndebug = {self:?}\ndetails = {details}",
-            self.description(i_s),
+            self.format_short(i_s),
         )
     }
 

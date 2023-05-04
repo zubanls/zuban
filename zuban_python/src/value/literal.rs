@@ -33,10 +33,6 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
         self.value.module(db)
     }
 
-    fn description(&self, i_s: &InferenceState) -> String {
-        self.value.description(i_s)
-    }
-
     fn lookup_internal(
         &self,
         i_s: &InferenceState,
