@@ -620,37 +620,6 @@ impl IntoIterator for GenericsList {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct IntersectionType {
-    pub entries: Rc<[CallableContent]>,
-}
-
-impl IntersectionType {
-    pub fn new_overload(entries: Rc<[CallableContent]>) -> Self {
-        debug_assert!(entries.len() > 1);
-        Self { entries }
-    }
-
-    pub fn iter(&self) -> impl Iterator<Item = &CallableContent> {
-        self.entries.iter()
-    }
-
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        match format_data.style {
-            FormatStyle::MypyRevealType => format!(
-                "Overload({})",
-                self.entries
-                    .iter()
-                    .map(|t| t.format(format_data))
-                    .collect::<Vec<_>>()
-                    .join(", ")
-            )
-            .into(),
-            _ => Box::from("overloaded function"),
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct UnionEntry {
     pub type_: DbType,
     pub format_index: usize,
@@ -746,7 +715,7 @@ impl UnionType {
 pub enum DbType {
     Class(PointLink, Option<GenericsList>),
     Union(UnionType),
-    FunctionOverload(IntersectionType),
+    FunctionOverload(Rc<[CallableContent]>),
     TypeVar(TypeVarUsage),
     Type(Rc<DbType>),
     Tuple(Rc<TupleContent>),
@@ -853,7 +822,18 @@ impl DbType {
                 Class::from_db_type(format_data.db, *link, generics).format(format_data)
             }
             Self::Union(union) => union.format(format_data),
-            Self::FunctionOverload(intersection) => intersection.format(format_data),
+            Self::FunctionOverload(callables) => match format_data.style {
+                FormatStyle::MypyRevealType => format!(
+                    "Overload({})",
+                    callables
+                        .iter()
+                        .map(|t| t.format(format_data))
+                        .collect::<Vec<_>>()
+                        .join(", ")
+                )
+                .into(),
+                _ => Box::from("overloaded function"),
+            },
             Self::TypeVar(t) => format_data.format_type_var_like(
                 &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)),
                 ParamsStyle::Unreachable,
@@ -1203,13 +1183,12 @@ impl DbType {
             Self::Class(link, generics) => {
                 Self::Class(*link, generics.as_ref().map(remap_generics))
             }
-            Self::FunctionOverload(intersection) => Self::FunctionOverload(IntersectionType {
-                entries: intersection
-                    .entries
+            Self::FunctionOverload(callables) => Self::FunctionOverload(
+                callables
                     .iter()
                     .map(|c| c.replace_type_var_likes_and_self(db, callable, replace_self))
                     .collect(),
-            }),
+            ),
             Self::Union(u) => {
                 let mut entries: Vec<UnionEntry> = Vec::with_capacity(u.entries.len());
                 let mut add = |type_, format_index| {
@@ -1557,13 +1536,12 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::FunctionOverload(intersection) => Self::FunctionOverload(IntersectionType {
-                entries: intersection
-                    .entries
+            Self::FunctionOverload(callables) => Self::FunctionOverload(
+                callables
                     .iter()
                     .map(|e| e.rewrite_late_bound_callables(manager))
                     .collect(),
-            }),
+            ),
             Self::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
             Self::Type(db_type) => {
                 Self::Type(Rc::new(db_type.rewrite_late_bound_callables(manager)))

@@ -11,10 +11,10 @@ use super::{LookupResult, Module, OnTypeError, Value};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, GenericItem, GenericsList, IntersectionType, Locality, Overload,
-    ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, Overload, ParamSpecUsage,
+    ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1624,7 +1624,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::FunctionOverload(IntersectionType::new_overload(
+        DbType::FunctionOverload(
             self.overload
                 .functions
                 .iter()
@@ -1633,7 +1633,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     function.as_callable(i_s, first)
                 })
                 .collect(),
-        ))
+        )
     }
 
     pub(super) fn execute_internal(
