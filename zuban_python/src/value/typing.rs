@@ -452,7 +452,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                     }
                     result
                 },
-                &|i_s, a, b| a.union(b),
+                &|i_s, a, b| a.union(i_s, b),
                 &mut |i_s| todo!(),
             )
         } else {
@@ -475,7 +475,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                 db_type,
                 None,
                 &mut |i_s, v| v.get_item(i_s, slice_type, result_context),
-                &|i_s, a, b| a.union(b),
+                &|i_s, a, b| a.union(i_s, b),
                 &mut |i_s| todo!(),
             )
         } else {

@@ -254,9 +254,12 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, '_>) -> Self,
     ) -> Self {
-        self.internal_run(i_s, callable, &|i_s, i1, i2| i1.union(i2), &mut |i_s| {
-            Inferred::new_unknown()
-        })
+        self.internal_run(
+            i_s,
+            callable,
+            &|i_s, i1, i2| i1.union(i_s, i2),
+            &mut |i_s| Inferred::new_unknown(),
+        )
     }
 
     pub fn run_mut(
@@ -706,7 +709,7 @@ impl<'db: 'slf, 'slf> Inferred {
         result_context: &mut ResultContext,
     ) -> Self {
         if result_context.expects_union(i_s) || self.is_union(i_s.db) || other.is_union(i_s.db) {
-            self.union(other)
+            self.union(i_s, other)
         } else {
             let second = other.class_as_type(i_s);
             let t = self.class_as_type(i_s).common_base_type(i_s, &second);
@@ -714,7 +717,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn union(self, other: Self) -> Self {
+    pub fn union(self, i_s: &InferenceState, other: Self) -> Self {
         if self.state == other.state {
             self
         } else {
@@ -744,12 +747,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn gather_union(callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
+    pub fn gather_union(i_s: &InferenceState, callable: impl FnOnce(&mut dyn FnMut(Self))) -> Self {
         let mut result: Option<Self> = None;
         let r = &mut result;
         callable(&mut |inferred| {
             *r = Some(match r.take() {
-                Some(i) => i.union(inferred),
+                Some(i) => i.union(i_s, inferred),
                 None => inferred,
             });
         });

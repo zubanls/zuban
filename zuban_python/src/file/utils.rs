@@ -267,7 +267,7 @@ pub fn infer_index(
                 .and_then(|mut inferred| {
                     for literal in literals {
                         if let Some(new_inf) = infer(i_s, literal) {
-                            inferred = inferred.union(new_inf);
+                            inferred = inferred.union(i_s, new_inf);
                         } else {
                             return None;
                         }

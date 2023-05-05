@@ -1161,7 +1161,7 @@ impl<'a> Type<'a> {
             DbType::Type(cls) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
             }
-            DbType::Union(union) => Inferred::gather_union(|gather| {
+            DbType::Union(union) => Inferred::gather_union(i_s, |gather| {
                 for entry in union.iter() {
                     gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
                 }
