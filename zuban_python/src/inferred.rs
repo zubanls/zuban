@@ -83,6 +83,16 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn new_bound_method(instance: AnyLink, mro_index: MroIndex, func_link: PointLink) -> Self {
+        Self {
+            state: InferredState::BoundMethod {
+                instance,
+                mro_index,
+                func_link,
+            },
+        }
+    }
+
     pub fn new_unsaved_specific(specific: Specific) -> Self {
         Self {
             state: InferredState::UnsavedSpecific(specific),
@@ -810,13 +820,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                             }
                         } else {
-                            Some(Self {
-                                state: InferredState::BoundMethod {
-                                    instance: get_inferred(i_s).as_any_link(i_s),
-                                    mro_index,
-                                    func_link: *definition,
-                                },
-                            })
+                            Some(Self::new_bound_method(
+                                get_inferred(i_s).as_any_link(i_s),
+                                mro_index,
+                                *definition,
+                            ))
                         };
                     }
                     Specific::ClassMethod => {
@@ -872,22 +880,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                     todo!()
                                 }
                             }
-                            let complex = ComplexPoint::BoundMethod(
+                            return Some(Self::new_bound_method(
                                 get_inferred(i_s).as_any_link(i_s),
                                 mro_index,
                                 *definition,
-                            );
-                            return Some(Self::new_unsaved_complex(complex));
+                            ));
                         }
                         ComplexPoint::TypeInstance(t) => match t {
                             DbType::Callable(c) => {
                                 // TODO should use create_signature_without_self!
-                                let complex = ComplexPoint::BoundMethod(
+                                return Some(Self::new_bound_method(
                                     get_inferred(i_s).as_any_link(i_s),
                                     mro_index,
                                     *definition,
-                                );
-                                return Some(Self::new_unsaved_complex(complex));
+                                ));
                             }
                             DbType::Class(link, generics) => {
                                 let inst = use_instance_with_ref(
