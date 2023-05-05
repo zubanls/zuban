@@ -1374,10 +1374,7 @@ impl<'db: 'slf, 'slf> Inferred {
             },
             InferredState::UnsavedComplex(c) => match c {
                 ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
-                    let inf = Inferred::from_any_link(i_s.db, instance_link);
-                    let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
-                    return load_bound_method(i_s, &instance, class, *mro_index, *func_link)
-                        .execute(i_s, args, result_context, on_type_error);
+                    unreachable!()
                 }
                 _ => (),
             },
