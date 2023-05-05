@@ -591,7 +591,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if p.calculated() && p.maybe_specific() == Some(Specific::Cycle) {
             return Self::new_saved(file, index, file.points.get(index));
         }
-        let point = match &self.state {
+        let point = match self.state {
             InferredState::Saved(definition, point) => {
                 // Overwriting strings needs to be possible, because of string annotations
                 if p.calculated()
@@ -635,9 +635,21 @@ impl<'db: 'slf, 'slf> Inferred {
                 Point::new_simple_specific(specific, Locality::Todo)
             }
             InferredState::UnsavedFileReference(file_index) => {
-                Point::new_file_reference(*file_index, Locality::Todo)
+                Point::new_file_reference(file_index, Locality::Todo)
             }
-            InferredState::BoundMethod { .. } => todo!(),
+            InferredState::BoundMethod {
+                instance,
+                mro_index,
+                func_link,
+            } => {
+                file.complex_points.insert(
+                    &file.points,
+                    index,
+                    ComplexPoint::BoundMethod(instance, mro_index, func_link),
+                    Locality::Todo,
+                );
+                return Self::new_saved(file, index, file.points.get(index));
+            }
             InferredState::Unknown => Point::new_unknown(file.file_index(), Locality::Todo),
         };
         file.points.set(index, point);
@@ -776,15 +788,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 PointType::Specific => match point.specific() {
                     Specific::Function => {
                         let func = prepare_func(i_s, *definition, func_class);
-                        let complex = if let Some(first_type) =
-                            func.first_param_annotation_type(i_s)
-                        {
+                        return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                             if let Some(t) =
                                 create_signature_without_self(i_s, func, instance, &first_type)
                             {
-                                ComplexPoint::TypeInstance(t)
+                                Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(t)))
                             } else {
-                                return if let Some(from) = from {
+                                if let Some(from) = from {
                                     let t = IssueType::InvalidSelfArgument {
                                         argument_type: instance.as_type(i_s).format_short(i_s.db),
                                         function_name: Box::from(func.name()),
@@ -797,16 +807,17 @@ impl<'db: 'slf, 'slf> Inferred {
                                     // ignore the type error and we basically say that the
                                     // attribute does not even exist.
                                     None
-                                };
+                                }
                             }
                         } else {
-                            ComplexPoint::BoundMethod(
-                                get_inferred(i_s).as_any_link(i_s),
-                                mro_index,
-                                *definition,
-                            )
+                            Some(Self {
+                                state: InferredState::BoundMethod {
+                                    instance: get_inferred(i_s).as_any_link(i_s),
+                                    mro_index,
+                                    func_link: *definition,
+                                },
+                            })
                         };
-                        return Some(Self::new_unsaved_complex(complex));
                     }
                     Specific::ClassMethod => {
                         let result =
@@ -1364,6 +1375,20 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
                 _ => (),
             },
+            InferredState::BoundMethod {
+                instance,
+                mro_index,
+                func_link,
+            } => {
+                let inf = Inferred::from_any_link(i_s.db, instance);
+                let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
+                return load_bound_method(i_s, &instance, class, *mro_index, *func_link).execute(
+                    i_s,
+                    args,
+                    result_context,
+                    on_type_error,
+                );
+            }
             _ => (),
         }
         self.class_as_type(i_s)
