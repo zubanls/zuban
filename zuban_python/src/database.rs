@@ -3648,7 +3648,7 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
-        assert_eq!(size_of::<TupleContent>(), 32);
+        assert_eq!(size_of::<TupleContent>(), 40);
         assert_eq!(size_of::<DbType>(), 32);
         assert_eq!(size_of::<ComplexPoint>(), 32);
         assert_eq!(size_of::<ClassStorage>(), 120);
