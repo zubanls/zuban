@@ -11,10 +11,10 @@ use super::{LookupResult, Module, OnTypeError, Value};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
-    StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, GenericItem, GenericsList, IntersectionType, Locality, Overload,
+    ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -58,21 +58,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     // - "(" for decorator caching
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
         Self { node_ref, class }
-    }
-
-    pub fn from_execution(
-        db: &'db Database,
-        execution: &Execution,
-        class: Option<Class<'class>>,
-    ) -> Self {
-        let f_func = db.loaded_python_file(execution.function.file);
-        Function::new(
-            NodeRef {
-                file: f_func,
-                node_index: execution.function.node_index,
-            },
-            class,
-        )
     }
 
     pub fn node(&self) -> FunctionDef<'a> {
@@ -134,23 +119,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let (check_args, func) = if func_node.index() == self.node_ref.node_index {
             (args, self)
         } else {
-            /*
-            let mut execution = args.outer_execution();
-            loop {
-                if let Some(exec) = execution {
-                    if func_node.index() == exec.function.node_index {
-                        // TODO this could be an instance as well
-                        // TODO in general check if this code still makes sense
-                        temporary_args = SimpleArguments::from_execution(i_s.db, exec);
-                        temporary_func = Function::from_execution(i_s.db, exec, None);
-                        break (&temporary_args as &dyn Arguments, &temporary_func);
-                    }
-                    execution = exec.in_.as_deref();
-                } else {
-                    return Inferred::new_unknown();
-                }
-            }
-            */
             debug!("TODO untyped param");
             return Inferred::new_unknown();
         };
