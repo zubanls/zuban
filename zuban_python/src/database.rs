@@ -510,23 +510,6 @@ pub enum ComplexPoint {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct Execution {
-    pub function: PointLink,
-    pub in_: Option<Box<Execution>>,
-    pub argument_node: PointLink,
-}
-
-impl Execution {
-    pub fn new(function: PointLink, argument_node: PointLink, in_: Option<&Execution>) -> Self {
-        Self {
-            function,
-            in_: in_.map(|x| Box::new(x.clone())),
-            argument_node,
-        }
-    }
-}
-
-#[derive(Debug, Clone, PartialEq)]
 pub struct TypeArguments {
     pub args: TupleTypeArguments,
 }
@@ -3658,7 +3641,6 @@ mod tests {
         assert_eq!(size_of::<ClassInfos>(), 48);
         assert_eq!(size_of::<PointLink>(), 8);
         assert_eq!(size_of::<AnyLink>(), 16);
-        assert_eq!(size_of::<Execution>(), 24);
         assert_eq!(size_of::<StringSlice>(), 12);
     }
 
