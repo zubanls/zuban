@@ -1275,20 +1275,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 on_type_error,
                             );
                         }
-                        ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
-                            let inf = Inferred::from_any_link(i_s.db, instance_link);
-                            let (instance, class) =
-                                load_bound_method_instance(i_s, &inf, *mro_index);
-                            return load_bound_method(
-                                i_s, &instance, class, *mro_index, *func_link,
-                            )
-                            .execute(
-                                i_s,
-                                args,
-                                result_context,
-                                on_type_error,
-                            );
-                        }
                         ComplexPoint::Class(cls) => {
                             return Class::new(
                                 NodeRef::from_link(i_s.db, *link),
@@ -1372,12 +1358,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         },
                     );
                     return Inferred::new_unknown();
-                }
-                _ => (),
-            },
-            InferredState::UnsavedComplex(c) => match c {
-                ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
-                    unreachable!()
                 }
                 _ => (),
             },
@@ -1470,16 +1450,6 @@ fn run_on_complex<'db: 'a, 'a, T>(
     on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
 ) -> T {
     match complex {
-        ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
-            // TODO this is potentially not needed, a class could lazily be fetched with a
-            // closure
-            let inf = Inferred::from_any_link(i_s.db, instance_link);
-            let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
-            callable(
-                i_s,
-                &load_bound_method(i_s, &instance, class, *mro_index, *func_link),
-            )
-        }
         ComplexPoint::FunctionOverload(overload) => callable(
             i_s,
             &OverloadedFunction::new(definition.unwrap(), overload, None),

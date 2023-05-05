@@ -495,7 +495,6 @@ pub enum AnyLink {
 pub enum ComplexPoint {
     TypeInstance(DbType),
     Class(Box<ClassStorage>),
-    BoundMethod(AnyLink, MroIndex, PointLink),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
@@ -3608,7 +3607,7 @@ mod tests {
         use std::mem::size_of;
         assert_eq!(size_of::<TupleContent>(), 40);
         assert_eq!(size_of::<DbType>(), 32);
-        assert_eq!(size_of::<ComplexPoint>(), 40);
+        assert_eq!(size_of::<ComplexPoint>(), 32);
         assert_eq!(size_of::<ClassStorage>(), 120);
         assert_eq!(size_of::<ClassInfos>(), 48);
         assert_eq!(size_of::<PointLink>(), 8);
