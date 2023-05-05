@@ -622,16 +622,12 @@ impl IntoIterator for GenericsList {
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntersectionType {
     pub entries: Box<[DbType]>,
-    pub format_as_overload: bool,
 }
 
 impl IntersectionType {
     pub fn new_overload(entries: Box<[DbType]>) -> Self {
         debug_assert!(entries.len() > 1);
-        Self {
-            entries,
-            format_as_overload: true,
-        }
+        Self { entries }
     }
 
     pub fn iter(&self) -> impl Iterator<Item = &DbType> {
@@ -639,21 +635,17 @@ impl IntersectionType {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        if self.format_as_overload {
-            match format_data.style {
-                FormatStyle::MypyRevealType => format!(
-                    "Overload({})",
-                    self.entries
-                        .iter()
-                        .map(|t| t.format(format_data))
-                        .collect::<Vec<_>>()
-                        .join(", ")
-                )
-                .into(),
-                _ => Box::from("overloaded function"),
-            }
-        } else {
-            todo!()
+        match format_data.style {
+            FormatStyle::MypyRevealType => format!(
+                "Overload({})",
+                self.entries
+                    .iter()
+                    .map(|t| t.format(format_data))
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+            .into(),
+            _ => Box::from("overloaded function"),
         }
     }
 }
@@ -1246,7 +1238,6 @@ impl DbType {
                     .iter()
                     .map(|e| e.replace_type_var_likes_and_self(db, callable, replace_self))
                     .collect(),
-                format_as_overload: intersection.format_as_overload,
             }),
             Self::Union(u) => {
                 let mut entries: Vec<UnionEntry> = Vec::with_capacity(u.entries.len());
@@ -1630,7 +1621,6 @@ impl DbType {
                     .iter()
                     .map(|e| e.rewrite_late_bound_callables(manager))
                     .collect(),
-                format_as_overload: intersection.format_as_overload,
             }),
             Self::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
             Self::Type(db_type) => {
