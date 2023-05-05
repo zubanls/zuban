@@ -1,6 +1,5 @@
 use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
 use std::borrow::Cow;
-use std::fmt;
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
@@ -39,10 +38,15 @@ enum InferredState {
     UnsavedFileReference(FileIndex),
     UnsavedComplex(ComplexPoint),
     UnsavedSpecific(Specific),
+    BoundMethod {
+        instance: AnyLink,
+        mro_index: MroIndex,
+        func_link: PointLink,
+    },
     Unknown,
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct Inferred {
     state: InferredState,
 }
@@ -244,6 +248,20 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => {
                 let f = i_s.db.loaded_python_file(*file_index);
                 callable(i_s, &Module::new(i_s.db, f))
+            }
+            InferredState::BoundMethod {
+                instance,
+                mro_index,
+                func_link,
+            } => {
+                // TODO this is potentially not needed, a class could lazily be fetched with a
+                // closure
+                let inf = Inferred::from_any_link(i_s.db, instance);
+                let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
+                callable(
+                    i_s,
+                    &load_bound_method(i_s, &instance, class, *mro_index, *func_link),
+                )
             }
             InferredState::Unknown => on_missing(i_s),
         }
@@ -495,6 +513,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
+            InferredState::BoundMethod { .. } => None,
             InferredState::Unknown => None,
         }
     }
@@ -618,6 +637,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedFileReference(file_index) => {
                 Point::new_file_reference(*file_index, Locality::Todo)
             }
+            InferredState::BoundMethod { .. } => todo!(),
             InferredState::Unknown => Point::new_unknown(file.file_index(), Locality::Todo),
         };
         file.points.set(index, point);
@@ -900,6 +920,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
+            InferredState::BoundMethod { .. } => todo!(),
             InferredState::Unknown => (),
         }
         Some(self)
@@ -999,6 +1020,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(complex) => (),
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
+            InferredState::BoundMethod { .. } => todo!(),
             InferredState::Unknown => (),
         }
         Some(self)
@@ -1028,6 +1050,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(complex) => AnyLink::Complex(Box::new(complex.clone())),
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
+            InferredState::BoundMethod { .. } => todo!(),
             InferredState::Unknown => todo!(),
         }
     }
@@ -1356,22 +1379,6 @@ impl<'db: 'slf, 'slf> Inferred {
             .save_if_unsaved(i_s, from.file, from.node_index)
             .saved_class_as_type(i_s);
         t.iter_on_borrowed(i_s, from)
-    }
-}
-
-impl fmt::Debug for Inferred {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        let mut s = f.debug_struct("Inferred");
-        match &self.state {
-            InferredState::Saved(definition, point) => {
-                s.field("definition", &definition).field("point", &point)
-            }
-            InferredState::UnsavedComplex(complex) => s.field("complex", &complex),
-            InferredState::UnsavedSpecific(specific) => s.field("specific", &specific),
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::Unknown => s.field("unknown", &true),
-        }
-        .finish()
     }
 }
 
