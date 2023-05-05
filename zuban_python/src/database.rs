@@ -496,7 +496,6 @@ pub enum ComplexPoint {
     TypeInstance(DbType),
     Class(Box<ClassStorage>),
     Union(Box<[AnyLink]>),
-    ExecutionInstance(PointLink, Box<Execution>),
     BoundMethod(AnyLink, MroIndex, PointLink),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),

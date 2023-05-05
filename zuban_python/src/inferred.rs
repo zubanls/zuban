@@ -1447,26 +1447,6 @@ fn run_on_complex<'db: 'a, 'a, T>(
     on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
 ) -> T {
     match complex {
-        ComplexPoint::ExecutionInstance(cls_definition, execution) => {
-            let def = NodeRef::from_link(i_s.db, *cls_definition);
-            let init = Function::from_execution(i_s.db, execution, None);
-            let complex = def.complex().unwrap();
-            if let ComplexPoint::Class(cls_storage) = complex {
-                /*
-                let args = SimpleArguments::from_execution(i_s.db, execution);
-                let class = Class::new(def, cls_storage, Generics::None, None);
-                debug_assert!(class.type_vars(i_s).is_none());
-                let instance = Instance::new(class, None);
-                // TODO is this MroIndex fine? probably not!
-                let instance_arg = KnownArguments::new(self, None);
-                let args = CombinedArguments::new(&instance_arg, &args);
-                callable(&mut i_s.with_func_and_args(&init, &args), &instance)
-                */
-                todo!()
-            } else {
-                unreachable!()
-            }
-        }
         ComplexPoint::Union(lst) => {
             let mut previous = None;
             for any_link in lst.iter() {
