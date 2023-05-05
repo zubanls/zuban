@@ -17,7 +17,6 @@ use crate::matching::{
     create_signature_without_self, replace_class_type_vars, FormatData, Generics, Matcher,
     ResultContext, Type,
 };
-use crate::name::{ValueName, ValueNameIterator, WithValueName};
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
@@ -252,50 +251,6 @@ impl<'db: 'slf, 'slf> Inferred {
         self.internal_run(i_s, callable, &|i_s, i1, i2| i1.union(i2), &mut |i_s| {
             Inferred::new_unknown()
         })
-    }
-
-    pub fn run_on_value_names<C, T>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        callable: &C,
-    ) -> ValueNameIterator<T>
-    where
-        C: Fn(&dyn ValueName<'db>) -> T,
-    {
-        self.internal_run(
-            i_s,
-            &mut |i_s, value| {
-                ValueNameIterator::Single(callable(&WithValueName::new(i_s.db, value)))
-            },
-            &|_, iter1, iter2| {
-                // Reducer
-                match iter1 {
-                    ValueNameIterator::Single(element1) => match iter2 {
-                        ValueNameIterator::Single(element2) => {
-                            ValueNameIterator::Multiple(vec![element1, element2])
-                        }
-                        ValueNameIterator::Multiple(mut list2) => {
-                            list2.push(element1);
-                            ValueNameIterator::Multiple(list2)
-                        }
-                        ValueNameIterator::Finished => ValueNameIterator::Single(element1),
-                    },
-                    ValueNameIterator::Multiple(mut list1) => match iter2 {
-                        ValueNameIterator::Single(element2) => {
-                            list1.push(element2);
-                            ValueNameIterator::Multiple(list1)
-                        }
-                        ValueNameIterator::Multiple(mut list2) => {
-                            list1.append(&mut list2);
-                            ValueNameIterator::Multiple(list1)
-                        }
-                        ValueNameIterator::Finished => ValueNameIterator::Multiple(list1),
-                    },
-                    ValueNameIterator::Finished => iter2,
-                }
-            },
-            &mut |i_s| ValueNameIterator::Finished,
-        )
     }
 
     pub fn run_mut(

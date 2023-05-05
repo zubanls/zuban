@@ -25,7 +25,7 @@ pub use diagnostics::DiagnosticConfig;
 use file::Leaf;
 use inference_state::InferenceState;
 use inferred::Inferred;
-use name::{Names, ValueName};
+use name::Names;
 use parsa_python_ast::CodeIndex;
 pub use value::ValueKind;
 
@@ -177,6 +177,7 @@ impl<'a> Script<'a> {
 
     pub fn complete(&self, position: Position) {}
 
+    /*
     pub fn infer_definition<C: Fn(&dyn ValueName<'a>) -> T, T>(
         &'a self,
         callable: &C,
@@ -191,6 +192,7 @@ impl<'a> Script<'a> {
         }
         .run_on_value_names(&i_s, callable)
     }
+    */
 
     /*
     pub fn infer_implementation(&self, position: Position) -> ValueNames {

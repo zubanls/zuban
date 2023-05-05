@@ -3,7 +3,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::{Value, ValueKind};
+use crate::value::Value;
 use parsa_python_ast::{CodeIndex, Name as ASTName};
 use std::fmt;
 use std::mem;
@@ -74,10 +74,6 @@ pub trait Name<'db>: fmt::Debug {
     fn is_definition(&self) -> bool {
         false
     }
-}
-
-pub trait ValueName<'db>: Name<'db> {
-    fn kind(&self) -> ValueKind;
 }
 
 pub struct TreeName<'db, F: File, N> {
@@ -151,7 +147,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     }
 }
 
-pub struct WithValueName<'db, 'a, 'b> {
+struct WithValueName<'db, 'a, 'b> {
     db: &'db Database,
     value: &'b dyn Value<'db, 'a>,
 }
@@ -216,13 +212,7 @@ impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
     */
 }
 
-impl<'db> ValueName<'db> for WithValueName<'db, '_, '_> {
-    fn kind(&self) -> ValueKind {
-        self.value.kind()
-    }
-}
-
-pub enum ValueNameIterator<T> {
+enum ValueNameIterator<T> {
     Single(T),
     Multiple(Vec<T>),
     Finished,
