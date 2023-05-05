@@ -306,6 +306,15 @@ impl<'a> Type<'a> {
                         }
                     },
                     Some(DbType::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, c2),
+                    Some(DbType::FunctionOverload(overload)) if variance == Variance::Covariant => {
+                        if matcher.is_matching_reverse() {
+                            todo!()
+                        }
+                        overload
+                            .iter()
+                            .any(|c2| Self::matches_callable(i_s, matcher, c1, c2).bool())
+                            .into()
+                    }
                     _ => Match::new_false(),
                 },
                 DbType::None => {
@@ -316,7 +325,7 @@ impl<'a> Type<'a> {
                     debug!("TODO write a test for this.");
                     let t1 = self.as_cow(i_s.db);
                     matcher.set_all_contained_type_vars_to_any(i_s, &t1);
-                    return Match::True { with_any: true };
+                    Match::True { with_any: true }
                 }
                 DbType::Any => Match::new_true(),
                 DbType::Never => Match::new_false(),
@@ -584,17 +593,6 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                /*
-                DbType::FunctionOverload(i2) if variance == Variance::Covariant => {
-                    if matcher.is_matching_reverse() {
-                        todo!()
-                    }
-                    return i2
-                        .iter()
-                        .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
-                        .into();
-                }
-                */
                 // Necessary to e.g. match int to Literal[1, 2]
                 DbType::Union(u2)
                     if variance == Variance::Covariant
