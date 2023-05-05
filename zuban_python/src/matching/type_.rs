@@ -584,6 +584,7 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
+                /*
                 DbType::FunctionOverload(i2) if variance == Variance::Covariant => {
                     if matcher.is_matching_reverse() {
                         todo!()
@@ -593,6 +594,7 @@ impl<'a> Type<'a> {
                         .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
                         .into();
                 }
+                */
                 // Necessary to e.g. match int to Literal[1, 2]
                 DbType::Union(u2)
                     if variance == Variance::Covariant

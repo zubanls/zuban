@@ -621,16 +621,16 @@ impl IntoIterator for GenericsList {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct IntersectionType {
-    pub entries: Box<[DbType]>,
+    pub entries: Rc<[CallableContent]>,
 }
 
 impl IntersectionType {
-    pub fn new_overload(entries: Box<[DbType]>) -> Self {
+    pub fn new_overload(entries: Rc<[CallableContent]>) -> Self {
         debug_assert!(entries.len() > 1);
         Self { entries }
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = &DbType> {
+    pub fn iter(&self) -> impl Iterator<Item = &CallableContent> {
         self.entries.iter()
     }
 
@@ -961,8 +961,9 @@ impl DbType {
                 }
             }
             Self::FunctionOverload(intersection) => {
-                for t in intersection.iter() {
-                    t.search_type_vars(found_type_var);
+                for callable in intersection.iter() {
+                    search_params(found_type_var, &callable.params);
+                    callable.result_type.search_type_vars(found_type_var)
                 }
             }
             Self::TypeVar(t) => found_type_var(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))),
@@ -1029,7 +1030,7 @@ impl DbType {
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
                 .iter()
-                .any(|t| t.has_any_internal(i_s, already_checked)),
+                .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
             Self::Type(db_type) => db_type.has_any_internal(i_s, already_checked),
             Self::Tuple(content) => content
@@ -1037,10 +1038,7 @@ impl DbType {
                 .as_ref()
                 .map(|args| args.has_any_internal(i_s, already_checked))
                 .unwrap_or(true),
-            Self::Callable(content) => {
-                content.result_type.has_any_internal(i_s, already_checked)
-                    || content.params.has_any_internal(i_s, already_checked)
-            }
+            Self::Callable(content) => content.has_any_internal(i_s, already_checked),
             Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
             Self::Any => true,
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
@@ -1087,34 +1085,7 @@ impl DbType {
                     TupleTypeArguments::ArbitraryLength(t) => t.has_self_type(),
                 })
                 .unwrap_or(false),
-            Self::Callable(content) => {
-                content.result_type.has_self_type()
-                    || match &content.params {
-                        CallableParams::Simple(params) => {
-                            params.iter().any(|param| match &param.param_specific {
-                                ParamSpecific::PositionalOnly(t)
-                                | ParamSpecific::PositionalOrKeyword(t)
-                                | ParamSpecific::KeywordOnly(t)
-                                | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(
-                                    t,
-                                ))
-                                | ParamSpecific::DoubleStarred(
-                                    DoubleStarredParamSpecific::ValueType(t),
-                                ) => t.has_self_type(),
-                                ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => {
-                                    false
-                                }
-                                ParamSpecific::DoubleStarred(
-                                    DoubleStarredParamSpecific::ParamSpecKwargs(_),
-                                ) => false,
-                            })
-                        }
-                        CallableParams::Any => false,
-                        CallableParams::WithParamSpec(types, param_spec) => {
-                            todo!()
-                        }
-                    }
-            }
+            Self::Callable(content) => content.has_self_type(),
             Self::Self_ => true,
             Self::NamedTuple(_) => {
                 debug!("TODO namedtuple has_self_type");
@@ -1236,7 +1207,7 @@ impl DbType {
                 entries: intersection
                     .entries
                     .iter()
-                    .map(|e| e.replace_type_var_likes_and_self(db, callable, replace_self))
+                    .map(|c| c.replace_type_var_likes_and_self(db, callable, replace_self))
                     .collect(),
             }),
             Self::Union(u) => {
@@ -1344,38 +1315,9 @@ impl DbType {
                 }),
                 None => TupleContent::new_empty(),
             }),
-            Self::Callable(content) => {
-                let mut type_vars = content.type_vars.clone().map(|t| t.into_vec());
-                let (params, remap_data) = Self::remap_callable_params(
-                    db,
-                    &content.params,
-                    &mut type_vars,
-                    Some(content.defined_at),
-                    callable,
-                    replace_self,
-                );
-                let mut result_type =
-                    content
-                        .result_type
-                        .replace_type_var_likes_and_self(db, callable, replace_self);
-                if let Some(remap_data) = remap_data {
-                    result_type = result_type.replace_type_var_likes_and_self(
-                        db,
-                        &mut |usage| {
-                            Self::remap_param_spec_inner(usage, content.defined_at, remap_data)
-                        },
-                        replace_self,
-                    );
-                }
-                Self::Callable(Rc::new(CallableContent {
-                    name: content.name,
-                    class_name: content.class_name,
-                    defined_at: content.defined_at,
-                    type_vars: type_vars.map(TypeVarLikes::from_vec),
-                    params,
-                    result_type,
-                }))
-            }
+            Self::Callable(content) => DbType::Callable(Rc::new(
+                content.replace_type_var_likes_and_self(db, callable, replace_self),
+            )),
             Self::Literal { .. } => self.clone(),
             Self::NewType(t) => Self::NewType(t.clone()),
             Self::RecursiveAlias(rec) => Self::RecursiveAlias(Rc::new(RecursiveAlias::new(
@@ -1650,81 +1592,7 @@ impl DbType {
             }),
             Self::Literal { .. } => self.clone(),
             Self::Callable(content) => {
-                let type_vars = manager
-                    .type_vars
-                    .iter()
-                    .filter_map(|t| {
-                        (t.most_outer_callable == Some(content.defined_at))
-                            .then(|| t.type_var_like.clone())
-                    })
-                    .collect::<Rc<_>>();
-                Self::Callable(Rc::new(CallableContent {
-                    name: content.name,
-                    class_name: content.class_name,
-                    defined_at: content.defined_at,
-                    type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes(type_vars)),
-                    params: match &content.params {
-                        CallableParams::Simple(params) => CallableParams::Simple(
-                            params
-                                .iter()
-                                .map(|p| CallableParam {
-                                    param_specific: match &p.param_specific {
-                                        ParamSpecific::PositionalOnly(t) => {
-                                            ParamSpecific::PositionalOnly(
-                                                t.rewrite_late_bound_callables(manager),
-                                            )
-                                        }
-                                        ParamSpecific::PositionalOrKeyword(t) => {
-                                            ParamSpecific::PositionalOrKeyword(
-                                                t.rewrite_late_bound_callables(manager),
-                                            )
-                                        }
-                                        ParamSpecific::KeywordOnly(t) => {
-                                            ParamSpecific::KeywordOnly(
-                                                t.rewrite_late_bound_callables(manager),
-                                            )
-                                        }
-                                        ParamSpecific::Starred(s) => {
-                                            ParamSpecific::Starred(match s {
-                                                StarredParamSpecific::ArbitraryLength(t) => {
-                                                    StarredParamSpecific::ArbitraryLength(
-                                                        t.rewrite_late_bound_callables(manager),
-                                                    )
-                                                }
-                                                StarredParamSpecific::ParamSpecArgs(_) => todo!(),
-                                            })
-                                        }
-                                        ParamSpecific::DoubleStarred(d) => {
-                                            ParamSpecific::DoubleStarred(match d {
-                                                DoubleStarredParamSpecific::ValueType(t) => {
-                                                    DoubleStarredParamSpecific::ValueType(
-                                                        t.rewrite_late_bound_callables(manager),
-                                                    )
-                                                }
-                                                DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
-                                                    todo!()
-                                                }
-                                            })
-                                        }
-                                    },
-                                    has_default: p.has_default,
-                                    name: p.name,
-                                })
-                                .collect(),
-                        ),
-                        CallableParams::Any => CallableParams::Any,
-                        CallableParams::WithParamSpec(types, param_spec) => {
-                            CallableParams::WithParamSpec(
-                                types
-                                    .iter()
-                                    .map(|t| t.rewrite_late_bound_callables(manager))
-                                    .collect(),
-                                manager.remap_param_spec(param_spec),
-                            )
-                        }
-                    },
-                    result_type: content.result_type.rewrite_late_bound_callables(manager),
-                }))
+                Self::Callable(Rc::new(content.rewrite_late_bound_callables(manager)))
             }
             Self::NewType(_) => todo!(),
             Self::RecursiveAlias(recursive_alias) => {
@@ -2170,6 +2038,143 @@ impl CallableContent {
             type_vars: None,
             params: CallableParams::Any,
             result_type: DbType::Any,
+        }
+    }
+
+    fn has_any_internal(
+        &self,
+        i_s: &InferenceState,
+        already_checked: &mut Vec<Rc<RecursiveAlias>>,
+    ) -> bool {
+        self.result_type.has_any_internal(i_s, already_checked)
+            || self.params.has_any_internal(i_s, already_checked)
+    }
+
+    fn has_self_type(&self) -> bool {
+        self.result_type.has_self_type() || match &self.params {
+            CallableParams::Simple(params) => {
+                params.iter().any(|param| match &param.param_specific {
+                    ParamSpecific::PositionalOnly(t)
+                    | ParamSpecific::PositionalOrKeyword(t)
+                    | ParamSpecific::KeywordOnly(t)
+                    | ParamSpecific::Starred(StarredParamSpecific::ArbitraryLength(t))
+                    | ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ValueType(t)) => {
+                        t.has_self_type()
+                    }
+                    ParamSpecific::Starred(StarredParamSpecific::ParamSpecArgs(_)) => false,
+                    ParamSpecific::DoubleStarred(DoubleStarredParamSpecific::ParamSpecKwargs(
+                        _,
+                    )) => false,
+                })
+            }
+            CallableParams::Any => false,
+            CallableParams::WithParamSpec(types, param_spec) => {
+                todo!()
+            }
+        }
+    }
+
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        let mut type_vars = self.type_vars.clone().map(|t| t.into_vec());
+        let (params, remap_data) = DbType::remap_callable_params(
+            db,
+            &self.params,
+            &mut type_vars,
+            Some(self.defined_at),
+            callable,
+            replace_self,
+        );
+        let mut result_type =
+            self.result_type
+                .replace_type_var_likes_and_self(db, callable, replace_self);
+        if let Some(remap_data) = remap_data {
+            result_type = result_type.replace_type_var_likes_and_self(
+                db,
+                &mut |usage| DbType::remap_param_spec_inner(usage, self.defined_at, remap_data),
+                replace_self,
+            );
+        }
+        CallableContent {
+            name: self.name,
+            class_name: self.class_name,
+            defined_at: self.defined_at,
+            type_vars: type_vars.map(TypeVarLikes::from_vec),
+            params,
+            result_type,
+        }
+    }
+
+    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> Self {
+        let type_vars = manager
+            .type_vars
+            .iter()
+            .filter_map(|t| {
+                (t.most_outer_callable == Some(self.defined_at)).then(|| t.type_var_like.clone())
+            })
+            .collect::<Rc<_>>();
+        CallableContent {
+            name: self.name,
+            class_name: self.class_name,
+            defined_at: self.defined_at,
+            type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes(type_vars)),
+            params: match &self.params {
+                CallableParams::Simple(params) => CallableParams::Simple(
+                    params
+                        .iter()
+                        .map(|p| CallableParam {
+                            param_specific: match &p.param_specific {
+                                ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
+                                    t.rewrite_late_bound_callables(manager),
+                                ),
+                                ParamSpecific::PositionalOrKeyword(t) => {
+                                    ParamSpecific::PositionalOrKeyword(
+                                        t.rewrite_late_bound_callables(manager),
+                                    )
+                                }
+                                ParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(
+                                    t.rewrite_late_bound_callables(manager),
+                                ),
+                                ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
+                                    StarredParamSpecific::ArbitraryLength(t) => {
+                                        StarredParamSpecific::ArbitraryLength(
+                                            t.rewrite_late_bound_callables(manager),
+                                        )
+                                    }
+                                    StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                                }),
+                                ParamSpecific::DoubleStarred(d) => {
+                                    ParamSpecific::DoubleStarred(match d {
+                                        DoubleStarredParamSpecific::ValueType(t) => {
+                                            DoubleStarredParamSpecific::ValueType(
+                                                t.rewrite_late_bound_callables(manager),
+                                            )
+                                        }
+                                        DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
+                                            todo!()
+                                        }
+                                    })
+                                }
+                            },
+                            has_default: p.has_default,
+                            name: p.name,
+                        })
+                        .collect(),
+                ),
+                CallableParams::Any => CallableParams::Any,
+                CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
+                    types
+                        .iter()
+                        .map(|t| t.rewrite_late_bound_callables(manager))
+                        .collect(),
+                    manager.remap_param_spec(param_spec),
+                ),
+            },
+            result_type: self.result_type.rewrite_late_bound_callables(manager),
         }
     }
 

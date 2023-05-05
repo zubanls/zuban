@@ -374,7 +374,11 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn as_db_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> DbType {
+    pub fn as_callable(
+        &self,
+        i_s: &InferenceState,
+        first: FirstParamProperties,
+    ) -> CallableContent {
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
         let defined_at = self.node_ref.as_link();
@@ -452,7 +456,11 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut callable =
             self.internal_as_db_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
         callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-        DbType::Callable(Rc::new(callable))
+        callable
+    }
+
+    pub fn as_db_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> DbType {
+        DbType::Callable(Rc::new(self.as_callable(i_s, first)))
     }
 
     pub fn classmethod_as_db_type(
@@ -1622,7 +1630,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 .iter()
                 .map(|link| {
                     let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                    function.as_db_type(i_s, first)
+                    function.as_callable(i_s, first)
                 })
                 .collect(),
         ))
