@@ -754,7 +754,7 @@ impl UnionType {
 pub enum DbType {
     Class(PointLink, Option<GenericsList>),
     Union(UnionType),
-    Intersection(IntersectionType),
+    FunctionOverload(IntersectionType),
     TypeVar(TypeVarUsage),
     Type(Rc<DbType>),
     Tuple(Rc<TupleContent>),
@@ -861,7 +861,7 @@ impl DbType {
                 Class::from_db_type(format_data.db, *link, generics).format(format_data)
             }
             Self::Union(union) => union.format(format_data),
-            Self::Intersection(intersection) => intersection.format(format_data),
+            Self::FunctionOverload(intersection) => intersection.format(format_data),
             Self::TypeVar(t) => format_data.format_type_var_like(
                 &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t)),
                 ParamsStyle::Unreachable,
@@ -968,7 +968,7 @@ impl DbType {
                     t.search_type_vars(found_type_var);
                 }
             }
-            Self::Intersection(intersection) => {
+            Self::FunctionOverload(intersection) => {
                 for t in intersection.iter() {
                     t.search_type_vars(found_type_var);
                 }
@@ -1035,7 +1035,7 @@ impl DbType {
         match self {
             Self::Class(_, Some(generics)) => search_in_generics(generics, already_checked),
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
-            Self::Intersection(intersection) => intersection
+            Self::FunctionOverload(intersection) => intersection
                 .iter()
                 .any(|t| t.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
@@ -1082,7 +1082,7 @@ impl DbType {
                 GenericItem::ParamSpecArgument(params) => todo!(),
             }),
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
-            Self::Intersection(intersection) => intersection.iter().any(|t| t.has_self_type()),
+            Self::FunctionOverload(intersection) => intersection.iter().any(|t| t.has_self_type()),
             Self::Type(t) => t.has_self_type(),
             Self::Tuple(content) => content
                 .args
@@ -1240,7 +1240,7 @@ impl DbType {
             Self::Class(link, generics) => {
                 Self::Class(*link, generics.as_ref().map(remap_generics))
             }
-            Self::Intersection(intersection) => Self::Intersection(IntersectionType {
+            Self::FunctionOverload(intersection) => Self::FunctionOverload(IntersectionType {
                 entries: intersection
                     .entries
                     .iter()
@@ -1624,7 +1624,7 @@ impl DbType {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            Self::Intersection(intersection) => Self::Intersection(IntersectionType {
+            Self::FunctionOverload(intersection) => Self::FunctionOverload(IntersectionType {
                 entries: intersection
                     .entries
                     .iter()

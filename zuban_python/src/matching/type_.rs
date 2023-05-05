@@ -222,7 +222,7 @@ impl<'a> Type<'a> {
                     _ => false,
                 },
                 DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
-                DbType::Intersection(intersection) => todo!(),
+                DbType::FunctionOverload(intersection) => todo!(),
                 DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(_) => todo!(),
                 DbType::Self_ => false, // TODO this is wrong
@@ -333,7 +333,7 @@ impl<'a> Type<'a> {
                 DbType::Union(union_type1) => {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
-                DbType::Intersection(intersection) => todo!(),
+                DbType::FunctionOverload(intersection) => todo!(),
                 DbType::Literal(literal1) => {
                     debug_assert!(!literal1.implicit);
                     match value_type.maybe_db_type() {
@@ -584,7 +584,7 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                DbType::Intersection(i2) if variance == Variance::Covariant => {
+                DbType::FunctionOverload(i2) if variance == Variance::Covariant => {
                     if matcher.is_matching_reverse() {
                         todo!()
                     }

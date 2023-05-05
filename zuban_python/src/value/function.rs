@@ -1616,7 +1616,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::Intersection(IntersectionType::new_overload(
+        DbType::FunctionOverload(IntersectionType::new_overload(
             self.overload
                 .functions
                 .iter()
