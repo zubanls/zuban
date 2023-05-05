@@ -652,10 +652,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
+                let inf = Inferred::from_any_link(i_s.db, &instance);
+                let (instance, class) = load_bound_method_instance(i_s, &inf, mro_index);
+                let bound_method = load_bound_method(i_s, &instance, class, mro_index, func_link);
                 file.complex_points.insert(
                     &file.points,
                     index,
-                    ComplexPoint::BoundMethod(instance, mro_index, func_link),
+                    ComplexPoint::TypeInstance(bound_method.as_type(i_s).into_db_type(i_s.db)),
                     Locality::Todo,
                 );
                 return Self::new_saved(file, index, file.points.get(index));
