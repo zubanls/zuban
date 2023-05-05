@@ -29,6 +29,13 @@ use crate::value::{Class, Module, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
 
+thread_local! {
+    static EMPTY_TUPLE: Rc<TupleContent> = Rc::new(TupleContent {
+        args: None,
+        tuple_class_generics: OnceCell::new(),
+    });
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct FileIndex(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
@@ -1985,10 +1992,7 @@ impl TupleContent {
     }
 
     pub fn new_empty() -> Rc<Self> {
-        Rc::new(Self {
-            args: None,
-            tuple_class_generics: OnceCell::new(),
-        })
+        EMPTY_TUPLE.with(|t| t.clone())
     }
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
