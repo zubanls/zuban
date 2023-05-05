@@ -301,12 +301,6 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition, point) = self.state {
             if point.type_() == PointType::Specific && point.specific() == Specific::Closure {
-                /*
-                return Inferred::new_unsaved_complex(ComplexPoint::Closure(
-                    definition,
-                    Box::new(i_s.args_as_execution().unwrap()),
-                ));
-                */
                 todo!()
             }
         }
@@ -325,12 +319,6 @@ impl<'db: 'slf, 'slf> Inferred {
             if point.type_() == PointType::Specific {
                 match point.specific() {
                     Specific::Closure => {
-                        /*
-                        return Inferred::new_unsaved_complex(ComplexPoint::Closure(
-                            definition,
-                            Box::new(i_s.args_as_execution().unwrap()),
-                        ));
-                        */
                         todo!()
                     }
                     Specific::Param | Specific::SelfParam => {
@@ -1522,18 +1510,6 @@ fn run_on_complex<'db: 'a, 'a, T>(
                 i_s,
                 &load_bound_method(i_s, &instance, class, *mro_index, *func_link),
             )
-        }
-        ComplexPoint::Closure(function, execution) => {
-            let f = i_s.db.loaded_python_file(function.file);
-            let func = Function::from_execution(i_s.db, execution, None);
-            /*
-            let args = SimpleArguments::from_execution(i_s.db, execution);
-            callable(
-                &mut i_s.with_func_and_args(&func, &args),
-                &Function::new(NodeRef::from_link(i_s.db, *function), None),
-            )
-            */
-            todo!()
         }
         ComplexPoint::FunctionOverload(overload) => callable(
             i_s,

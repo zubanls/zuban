@@ -499,7 +499,6 @@ pub enum ComplexPoint {
     Union(Box<[AnyLink]>),
     ExecutionInstance(PointLink, Box<Execution>),
     BoundMethod(AnyLink, MroIndex, PointLink),
-    Closure(PointLink, Box<Execution>),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
