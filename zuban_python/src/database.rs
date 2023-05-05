@@ -401,7 +401,6 @@ pub enum Specific {
     Property,
     Closure,
     // NoReturnFunction,  // TODO Remove or use?
-    // BoundMethod,       // TODO Remove or use?
     AnnotationOrTypeCommentClassInstance,
     AnnotationOrTypeCommentWithTypeVars,
     SimpleGeneric, // primary: primary '[' slices ']'
