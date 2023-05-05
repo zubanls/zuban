@@ -3,9 +3,7 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::Argument;
-use crate::database::{
-    ComplexPoint, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
-};
+use crate::database::{DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::Simple;
@@ -84,9 +82,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 });
                 // `found` might still be empty, because we matched Any.
-                found.map(|found| {
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(found)))
-                })
+                found.map(|found| Inferred::from_type(found))
             })
             .flatten()
     }

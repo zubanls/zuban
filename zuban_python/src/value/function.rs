@@ -396,10 +396,11 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             let mut callable_content = callable_content.into_owned();
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
-                Rc::new(callable_content),
-            ))))
-            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+            Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(
+                i_s,
+                decorator_ref.file,
+                decorator_ref.node_index,
+            )
         } else {
             new_inf.save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
         }
@@ -1242,9 +1243,7 @@ impl<'db> InferrableParam<'db, '_> {
                     ))
                 }
                 let t = TupleContent::new_fixed_length(list.into_boxed_slice());
-                Some(Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                    Box::new(DbType::Tuple(Rc::new(t))),
-                )))
+                Some(Inferred::from_type(DbType::Tuple(Rc::new(t))))
             }
             ParamInput::None => None,
         }

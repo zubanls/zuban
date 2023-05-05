@@ -8,8 +8,8 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParams, ClassType, ComplexPoint, Database, DbType, MetaclassState,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
+    CallableContent, CallableParams, ClassType, Database, DbType, MetaclassState, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1435,9 +1435,7 @@ pub fn execute_type_of_type<'db>(
         // TODO remove this
         tuple @ DbType::Tuple(tuple_content) => {
             debug!("TODO this does not check the arguments");
-            return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                tuple.clone(),
-            )));
+            return Inferred::execute_db_type(i_s, tuple.clone());
             // TODO reenable this
             let mut args_iterator = args.iter();
             let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
@@ -1445,9 +1443,7 @@ pub fn execute_type_of_type<'db>(
                 (arg, inf)
             } else {
                 debug!("TODO this does not check the arguments");
-                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                    tuple.clone(),
-                )));
+                return Inferred::execute_db_type(i_s, tuple.clone());
             };
             if args_iterator.next().is_some() {
                 todo!()
@@ -1460,7 +1456,7 @@ pub fn execute_type_of_type<'db>(
                     args.as_node_ref().to_db_lifetime(i_s.db)
                 },
             );
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(tuple.clone())))
+            Inferred::execute_db_type(i_s, tuple.clone())
         }
         DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
             .execute(i_s, args, result_context, on_type_error),

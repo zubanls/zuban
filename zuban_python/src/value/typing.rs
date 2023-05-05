@@ -59,13 +59,11 @@ impl TypingClass {
         if let Some(x) = iterator.next() {
             todo!()
         } else if let Some(first) = first {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-                Rc::new(
-                    first
-                        .infer(i_s, &mut ResultContext::Unknown)
-                        .class_as_db_type(i_s),
-                ),
-            ))))
+            Inferred::from_type(DbType::Type(Rc::new(
+                first
+                    .infer(i_s, &mut ResultContext::Unknown)
+                    .class_as_db_type(i_s),
+            )))
         } else {
             todo!()
         }

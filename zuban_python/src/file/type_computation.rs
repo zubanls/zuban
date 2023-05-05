@@ -285,7 +285,7 @@ macro_rules! compute_type_application {
                         false,
                     )))
                 } else {
-                    ComplexPoint::TypeInstance(Box::new(DbType::Type(Rc::new(db_type))))
+                    return Inferred::from_type(DbType::Type(Rc::new(db_type)))
                 }
             },
             TypeContent::Unknown => return Inferred::new_any(),
@@ -535,8 +535,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if is_implicit_optional {
                             d.make_optional()
                         }
-                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                            .save_redirect(self.inference.i_s, self.inference.file, expr.index());
+                        Inferred::from_type(d).save_redirect(
+                            self.inference.i_s,
+                            self.inference.file,
+                            expr.index(),
+                        );
                         self.inference.file.points.set(
                             annotation_index,
                             Point::new_simple_specific(
@@ -554,7 +557,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if is_implicit_optional {
             db_type.make_optional()
         }
-        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
+        let unsaved = Inferred::from_type(db_type);
         unsaved.save_redirect(self.inference.i_s, self.inference.file, annotation_index);
     }
 
@@ -2282,6 +2285,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 self.file.points.get(expr.index()).complex_index()
             }
         } else {
+            self.file.complex_points.get(point.complex_index());
             debug_assert_eq!(point.type_(), PointType::Complex, "{expr:?}");
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
@@ -2329,7 +2333,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             self.file.complex_points.insert(
                 &self.file.points,
                 node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
-                ComplexPoint::TypeInstance(Box::new(new_t)),
+                ComplexPoint::TypeInstance(new_t),
                 Locality::Todo,
             )
         }
@@ -2498,9 +2502,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     if let Some(tuple) = expr.maybe_tuple() {
                         let db_type =
                             inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
-                        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                            Box::new(db_type),
-                        ));
+                        let unsaved = Inferred::from_type(db_type);
                         unsaved.save_redirect(inference.i_s, f, index);
                     } else {
                         let mut x = type_computation_for_variable_annotation;
@@ -2524,9 +2526,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 StarExpressionContent::Tuple(t) => {
                     let index = star_exprs.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
                     let db_type = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
-                    let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                        Box::new(db_type),
-                    ));
+                    let unsaved = Inferred::from_type(db_type);
                     unsaved.save_redirect(self.i_s, f, index);
                     let complex_index = f.points.get(index).complex_index();
                     (

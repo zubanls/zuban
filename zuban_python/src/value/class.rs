@@ -735,10 +735,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     None => "".to_owned(),
                 }
             );
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
-                self.node_ref.as_link(),
-                generics_list,
-            ))))
+            Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list))
         } else {
             Inferred::new_any()
         }

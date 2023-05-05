@@ -119,6 +119,12 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::execute_db_type(i_s, t)
     }
 
+    pub fn from_type(t: DbType) -> Self {
+        Self {
+            state: InferredState::UnsavedComplex(ComplexPoint::TypeInstance(t)),
+        }
+    }
+
     pub fn execute_db_type(i_s: &InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
             DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, None)) => match c.as_ref()
@@ -131,16 +137,16 @@ impl<'db: 'slf, 'slf> Inferred {
             },
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
-            _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(Box::new(generic))),
+            _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(generic)),
         };
         Self { state }
     }
 
     pub fn create_instance(class: PointLink, generics: Option<Box<[GenericItem]>>) -> Self {
-        Self::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
+        Self::new_unsaved_complex(ComplexPoint::TypeInstance(DbType::Class(
             class,
             generics.map(GenericsList::new_generics),
-        ))))
+        )))
     }
 
     pub fn class_as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
@@ -337,9 +343,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             .inference(i_s)
                             .use_db_type_of_annotation_or_type_comment(definition.node_index);
                         let d = replace_class_type_vars(i_s, t, class);
-                        return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                            Box::new(d),
-                        ));
+                        return Inferred::execute_db_type(i_s, d);
                     }
                     _ => (),
                 }
@@ -467,7 +471,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::Class(c) => {
                                 Some(Class::new(definition, c, generics, None))
                             }
-                            ComplexPoint::TypeInstance(t) => match t.as_ref() {
+                            ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Type(t) => match t.as_ref() {
                                     DbType::Class(link, generics) => {
                                         Some(Class::from_db_type(i_s.db, *link, generics))
@@ -533,7 +537,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         if let Some(ComplexPoint::TypeInstance(t)) = self.maybe_complex_point(db) {
-            match t.as_ref() {
+            match t {
                 DbType::Union(t) => match t.iter().next() {
                     Some(DbType::Literal(_)) => {
                         UnionValue::Multiple(t.iter().map_while(|t| match t {
@@ -665,7 +669,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         )));
                     }
                     Some(ComplexPoint::TypeInstance(t)) => {
-                        if let DbType::Callable(c) = t.as_ref() {
+                        if let DbType::Callable(c) = t {
                             return Some(FunctionOrOverload::Callable(c.clone()));
                         }
                     }
@@ -673,7 +677,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 }
             }
             InferredState::UnsavedComplex(ComplexPoint::TypeInstance(t)) => {
-                if let DbType::Callable(c) = t.as_ref() {
+                if let DbType::Callable(c) = t {
                     return Some(FunctionOrOverload::Callable(c.clone()));
                 }
             }
@@ -784,7 +788,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(t) =
                                 create_signature_without_self(i_s, func, instance, &first_type)
                             {
-                                ComplexPoint::TypeInstance(Box::new(t))
+                                ComplexPoint::TypeInstance(t)
                             } else {
                                 return if let Some(from) = from {
                                     let t = IssueType::InvalidSelfArgument {
@@ -870,7 +874,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             );
                             return Some(Self::new_unsaved_complex(complex));
                         }
-                        ComplexPoint::TypeInstance(t) => match t.as_ref() {
+                        ComplexPoint::TypeInstance(t) => match t {
                             DbType::Callable(c) => {
                                 // TODO should use create_signature_without_self!
                                 let complex = ComplexPoint::BoundMethod(
@@ -986,7 +990,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         ComplexPoint::FunctionOverload(o) => {
                             todo!()
                         }
-                        ComplexPoint::TypeInstance(t) => match t.as_ref() {
+                        ComplexPoint::TypeInstance(t) => match t {
                             DbType::Callable(c) => {
                                 todo!()
                             }
@@ -1285,9 +1289,10 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         ComplexPoint::TypeAlias(alias) => {
                             if alias.is_class() {
-                                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                                    Box::new(alias.as_db_type_and_set_type_vars_any(i_s.db)),
-                                ));
+                                return Inferred::execute_db_type(
+                                    i_s,
+                                    alias.as_db_type_and_set_type_vars_any(i_s.db),
+                                );
                             }
                             args.as_node_ref().add_typing_issue(
                                 i_s,
@@ -1564,7 +1569,7 @@ fn load_bound_method<'a, 'b>(
             let func = OverloadedFunction::new(reference, overload, Some(class));
             BoundMethod::new(instance, mro_index, BoundMethodFunction::Overload(func))
         }
-        Some(ComplexPoint::TypeInstance(t)) => match t.as_ref() {
+        Some(ComplexPoint::TypeInstance(t)) => match t {
             DbType::Callable(c) => BoundMethod::new(
                 instance,
                 mro_index,

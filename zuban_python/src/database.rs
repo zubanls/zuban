@@ -495,7 +495,7 @@ pub enum ComplexPoint {
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
-    TypeInstance(Box<DbType>),
+    TypeInstance(DbType),
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Box<DbType>),

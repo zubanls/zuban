@@ -1418,12 +1418,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     StarLikeExpressionIterator::Empty => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
                 };
-                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                return Inferred::execute_db_type(
+                    self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("list"),
                         Some(GenericsList::new_generics(Box::new([result]))),
                     ),
-                )));
+                );
             }
             ListComprehension(_) => {
                 debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
@@ -1439,12 +1440,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Dict(dict) => {
                 let generics = self.create_dict_generics(dict, result_context);
-                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                return Inferred::execute_db_type(
+                    self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("dict"),
                         Some(generics),
                     ),
-                )));
+                );
             }
             DictComprehension(_) => todo!(),
             Set(set) => {
@@ -1512,9 +1514,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
         );
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
-            Rc::new(content),
-        ))))
+        Inferred::execute_db_type(self.i_s, DbType::Tuple(Rc::new(content)))
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);

@@ -2,7 +2,7 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
+    Database, DbType, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
@@ -343,9 +343,10 @@ impl<'db, 'a> Argument<'db, 'a> {
                         )
                     })
                     .collect();
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
-                    Rc::new(TupleContent::new_fixed_length(parts)),
-                ))))
+                Inferred::execute_db_type(
+                    i_s,
+                    DbType::Tuple(Rc::new(TupleContent::new_fixed_length(parts))),
+                )
             }
             ArgumentKind::Comprehension {
                 file,
@@ -354,9 +355,9 @@ impl<'db, 'a> Argument<'db, 'a> {
             } => file
                 .inference(&i_s.use_mode_of(func_i_s))
                 .infer_comprehension(*comprehension),
-            ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
-                ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
-            ),
+            ArgumentKind::ParamSpec { usage, .. } => {
+                Inferred::execute_db_type(func_i_s, DbType::ParamSpecArgs(usage.clone()))
+            }
             ArgumentKind::Overridden { inferred, .. } => inferred.clone(),
         }
     }
