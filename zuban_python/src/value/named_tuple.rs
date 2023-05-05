@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{IteratorContent, LookupResult, Value, ValueKind};
+use super::{IteratorContent, LookupResult, Value};
 use crate::database::{DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments};
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -72,10 +72,6 @@ impl<'a> NamedTupleValue<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
     fn name(&self) -> &str {
         self.nt.name(self.db)
     }

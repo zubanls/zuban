@@ -1,4 +1,4 @@
-use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Class, LookupResult, OnTypeError, Value};
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, DbType};
 use crate::debug;
@@ -41,10 +41,6 @@ impl<'a> Callable<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
     fn name(&self) -> &str {
         "Callable"
     }

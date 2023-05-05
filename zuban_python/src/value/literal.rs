@@ -1,4 +1,4 @@
-use super::{LookupResult, Module, Value, ValueKind};
+use super::{LookupResult, Module, Value};
 use crate::database::{Database, DbType, Literal as DbLiteral};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
@@ -17,10 +17,6 @@ impl<'db, 'a, 'b> Literal<'db, 'a, 'b> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
-    fn kind(&self) -> ValueKind {
-        self.value.kind()
-    }
-
     fn name(&self) -> &str {
         self.value.name()
     }

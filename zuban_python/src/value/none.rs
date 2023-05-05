@@ -1,4 +1,4 @@
-use super::{LookupResult, Value, ValueKind};
+use super::{LookupResult, Value};
 use crate::database::DbType;
 use crate::debug;
 use crate::getitem::SliceType;
@@ -11,10 +11,6 @@ use crate::node_ref::NodeRef;
 pub struct NoneInstance();
 
 impl<'db, 'a> Value<'db, 'a> for NoneInstance {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Constant
-    }
-
     fn name(&self) -> &str {
         "None"
     }

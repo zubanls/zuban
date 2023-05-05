@@ -7,7 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
-use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::{LookupResult, Module, OnTypeError, Value};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
@@ -950,10 +950,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 }
 
 impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
     fn name(&self) -> &str {
         let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
         func.name().as_str()
@@ -1695,10 +1691,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
     fn name(&self) -> &str {
         self.node_ref.as_code()
     }

@@ -1,4 +1,4 @@
-use super::{IteratorContent, LookupResult, Value, ValueKind};
+use super::{IteratorContent, LookupResult, Value};
 use crate::database::{DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::file::infer_index;
@@ -42,10 +42,6 @@ impl<'a> Tuple<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
     fn name(&self) -> &str {
         "tuple"
     }

@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use super::function::OverloadResult;
-use super::{Instance, LookupResult, Module, NamedTupleValue, OnTypeError, Value, ValueKind};
+use super::{Instance, LookupResult, Module, NamedTupleValue, OnTypeError, Value};
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassInfos, ClassStorage, ClassType,
@@ -746,10 +746,6 @@ impl<'db: 'a, 'a> Class<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for Class<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &'a str {
         self.node().name().as_str()
     }

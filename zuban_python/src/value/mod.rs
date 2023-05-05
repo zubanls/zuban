@@ -216,10 +216,6 @@ impl LookupResult {
 
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
 pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
-    fn kind(&self) -> ValueKind;
-
-    //fn file(&self) -> &'db dyn File;
-
     fn name(&self) -> &str;
 
     fn qualified_name(&self, db: &'a Database) -> String {

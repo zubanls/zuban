@@ -1,6 +1,6 @@
 use super::{
     Callable, FirstParamProperties, Function, Instance, LookupResult, OnTypeError,
-    OverloadedFunction, Value, ValueKind,
+    OverloadedFunction, Value,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
@@ -85,10 +85,6 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
-    fn kind(&self) -> ValueKind {
-        self.function.as_value().kind()
-    }
-
     fn name(&self) -> &str {
         self.function.as_value().name()
     }

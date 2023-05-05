@@ -1,6 +1,6 @@
 use std::fmt;
 
-use super::{LookupResult, Value, ValueKind};
+use super::{LookupResult, Value};
 
 use crate::database::{Database, FileIndex, PointLink};
 
@@ -40,10 +40,6 @@ impl<'a> Module<'a> {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
     fn name(&self) -> &'a str {
         // TODO this is not correct...
         let (dir, mut name) = self.db.vfs.dir_and_name(self.file.file_path(self.db));

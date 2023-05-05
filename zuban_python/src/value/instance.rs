@@ -4,7 +4,6 @@ use parsa_python_ast::Name;
 
 use super::{
     Class, IteratorContent, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Tuple, Value,
-    ValueKind,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, Database, DbType, PointLink};
@@ -182,10 +181,6 @@ impl<'a> Instance<'a> {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
     fn name(&self) -> &str {
         self.class.name()
     }

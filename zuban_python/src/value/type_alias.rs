@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{LookupResult, Value, ValueKind};
+use super::{LookupResult, Value};
 
 use crate::database::{DbType, TypeAlias as DbTypeAlias};
 use crate::debug;
@@ -23,10 +23,6 @@ impl<'a> TypeAlias<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         "TypeAlias"
     }

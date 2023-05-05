@@ -2,7 +2,7 @@ use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Class, Instance, LookupResult, OnTypeError, Value};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
@@ -73,10 +73,6 @@ impl TypingClass {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         match self.specific {
             Specific::TypingGeneric => "Generic",
@@ -144,10 +140,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
 pub struct TypingClassVar();
 
 impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         "ClassVar"
     }
@@ -194,10 +186,6 @@ impl<'a> TypingType<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
     fn name(&self) -> &str {
         "Type"
     }
@@ -256,10 +244,6 @@ impl fmt::Debug for TypingType<'_> {
 pub struct TypingAny();
 
 impl<'db, 'a> Value<'db, 'a> for TypingAny {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         "Any"
     }
@@ -340,10 +324,6 @@ impl<'db> TypingCast {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypingCast {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
     fn name(&self) -> &str {
         "cast"
     }
@@ -398,10 +378,6 @@ impl RevealTypeFunction {
 }
 
 impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
     fn name(&self) -> &'static str {
         "reveal_type"
     }
@@ -433,10 +409,6 @@ impl<'a> TypeVarInstance<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::TypeParameter
-    }
-
     fn name(&self) -> &'a str {
         self.type_var_usage.type_var.name(self.db)
     }
@@ -717,10 +689,6 @@ fn maybe_type_var(
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         "TypeVar"
     }
@@ -760,10 +728,6 @@ impl TypeVarTupleClass {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         "TypeVarTuple"
     }
@@ -916,10 +880,6 @@ impl ParamSpecClass {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         "ParamSpec"
     }
@@ -1051,10 +1011,6 @@ impl NewTypeClass {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
     fn name(&self) -> &str {
         "NewType"
     }
@@ -1143,10 +1099,6 @@ impl<'a> NewTypeInstance<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::TypeParameter
-    }
-
     fn name(&self) -> &'a str {
         self.new_type.name(self.db)
     }
