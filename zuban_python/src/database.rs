@@ -495,7 +495,6 @@ pub enum AnyLink {
 pub enum ComplexPoint {
     TypeInstance(DbType),
     Class(Box<ClassStorage>),
-    Union(Box<[AnyLink]>),
     BoundMethod(AnyLink, MroIndex, PointLink),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),

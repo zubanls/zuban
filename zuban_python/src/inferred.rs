@@ -1083,7 +1083,6 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn is_union(&self, db: &'db Database) -> bool {
         let check_complex_point = |c: &_| match c {
-            ComplexPoint::Union(_) => true,
             ComplexPoint::TypeInstance(t) => Type::new(t).is_union(),
             _ => false,
         };
@@ -1433,40 +1432,6 @@ fn run_on_complex<'db: 'a, 'a, T>(
     on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
 ) -> T {
     match complex {
-        ComplexPoint::Union(lst) => {
-            let mut previous = None;
-            for any_link in lst.iter() {
-                let result = match any_link {
-                    AnyLink::Reference(link) => {
-                        let reference = NodeRef::from_link(i_s.db, *link);
-                        run_on_saved(
-                            i_s,
-                            None,
-                            *link,
-                            reference.point(),
-                            callable,
-                            reducer,
-                            on_missing,
-                        )
-                    }
-                    AnyLink::Complex(c) => {
-                        run_on_complex(i_s, c, None, None, callable, reducer, on_missing)
-                    }
-                    AnyLink::SimpleSpecific(specific) => match specific {
-                        Specific::None => callable(i_s, &NoneInstance()),
-                        Specific::Any => on_missing(i_s),
-                        _ => todo!("not even sure if this should be a separate class {specific:?}"),
-                    },
-                    AnyLink::Unknown => on_missing(i_s),
-                };
-                if let Some(p) = previous {
-                    previous = Some(reducer(i_s, p, result))
-                } else {
-                    previous = Some(result)
-                }
-            }
-            previous.unwrap()
-        }
         ComplexPoint::BoundMethod(instance_link, mro_index, func_link) => {
             // TODO this is potentially not needed, a class could lazily be fetched with a
             // closure
