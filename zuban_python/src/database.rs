@@ -1358,13 +1358,13 @@ impl DbType {
                 callable,
                 replace_self,
             ))),
-            Self::Tuple(content) => Self::Tuple(Rc::new(match &content.args {
-                Some(args) => TupleContent {
+            Self::Tuple(content) => Self::Tuple(match &content.args {
+                Some(args) => Rc::new(TupleContent {
                     args: Some(remap_tuple_likes(args, callable, replace_self)),
                     tuple_class_generics: OnceCell::new(),
-                },
+                }),
                 None => TupleContent::new_empty(),
-            })),
+            }),
             Self::Callable(content) => {
                 let mut type_vars = content.type_vars.clone().map(|t| t.into_vec());
                 let (params, remap_data) = Self::remap_callable_params(
@@ -1668,7 +1668,7 @@ impl DbType {
                 Some(TupleTypeArguments::ArbitraryLength(t)) => Rc::new(
                     TupleContent::new_arbitrary_length(t.rewrite_late_bound_callables(manager)),
                 ),
-                None => Rc::new(TupleContent::new_empty()),
+                None => TupleContent::new_empty(),
             }),
             Self::Literal { .. } => self.clone(),
             Self::Callable(content) => {
@@ -1792,11 +1792,11 @@ impl DbType {
                 Self::Tuple(c2) => {
                     let c1 = rc_unwrap_or_clone(c1);
                     let c2 = rc_unwrap_or_clone(c2);
-                    Self::Tuple(Rc::new(match (c1.args, c2.args) {
+                    Self::Tuple(match (c1.args, c2.args) {
                         (Some(FixedLength(ts1)), Some(FixedLength(ts2)))
                             if ts1.len() == ts2.len() =>
                         {
-                            TupleContent::new_fixed_length(
+                            Rc::new(TupleContent::new_fixed_length(
                                 ts1.into_vec()
                                     .into_iter()
                                     .zip(ts2.into_vec().into_iter())
@@ -1811,15 +1811,15 @@ impl DbType {
                                         },
                                     })
                                     .collect(),
-                            )
+                            ))
                         }
                         (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
-                            TupleContent::new_arbitrary_length(
+                            Rc::new(TupleContent::new_arbitrary_length(
                                 t1.merge_matching_parts(t2.as_ref().clone()),
-                            )
+                            ))
                         }
                         _ => TupleContent::new_empty(),
-                    }))
+                    })
                 }
                 _ => Self::Any,
             },
@@ -1982,11 +1982,11 @@ impl TupleContent {
         }
     }
 
-    pub fn new_empty() -> Self {
-        Self {
+    pub fn new_empty() -> Rc<Self> {
+        Rc::new(Self {
             args: None,
             tuple_class_generics: OnceCell::new(),
-        }
+        })
     }
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
