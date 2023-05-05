@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use super::{IteratorContent, LookupResult, Value};
 use crate::database::{DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
@@ -12,11 +14,11 @@ use crate::value::Instance;
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
     db_type: &'a DbType,
-    content: &'a TupleContent,
+    content: &'a Rc<TupleContent>,
 }
 
 impl<'a> Tuple<'a> {
-    pub fn new(db_type: &'a DbType, content: &'a TupleContent) -> Self {
+    pub fn new(db_type: &'a DbType, content: &'a Rc<TupleContent>) -> Self {
         Self { db_type, content }
     }
 

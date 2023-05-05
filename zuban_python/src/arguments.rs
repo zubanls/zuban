@@ -1,4 +1,5 @@
 use std::mem;
+use std::rc::Rc;
 
 use crate::database::{
     ComplexPoint, Database, DbType, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
@@ -343,7 +344,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                     })
                     .collect();
                 Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
-                    TupleContent::new_fixed_length(parts),
+                    Rc::new(TupleContent::new_fixed_length(parts)),
                 ))))
             }
             ArgumentKind::Comprehension {

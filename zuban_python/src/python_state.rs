@@ -116,9 +116,9 @@ impl PythonState {
             mypy_extensions_var_arg_func: 0,
             type_of_object: DbType::Any, // Will be set later
             type_of_any: DbType::Type(Rc::new(DbType::Any)),
-            type_of_arbitrary_tuple: DbType::Type(Rc::new(
-                DbType::Tuple(TupleContent::new_empty()),
-            )),
+            type_of_arbitrary_tuple: DbType::Type(Rc::new(DbType::Tuple(Rc::new(
+                TupleContent::new_empty(),
+            )))),
         }
     }
 

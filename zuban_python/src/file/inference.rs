@@ -1512,7 +1512,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
         );
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
+        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
+            Rc::new(content),
+        ))))
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);

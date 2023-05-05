@@ -1,4 +1,5 @@
 use std::borrow::Cow;
+use std::rc::Rc;
 
 use super::params::has_overlapping_params;
 use super::{
@@ -1045,7 +1046,7 @@ impl<'a> Type<'a> {
                     if let Some(DbType::Tuple(t2)) = self.maybe_db_type() {
                         match (&t1.args, &t2.args) {
                             (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
-                                return DbType::Tuple(TupleContent::new_fixed_length(
+                                return DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
                                     ts1.iter()
                                         .zip(ts2.iter())
                                         .map(|(g1, g2)| match (g1, g2) {
@@ -1062,16 +1063,16 @@ impl<'a> Type<'a> {
                                             _ => todo!(),
                                         })
                                         .collect(),
-                                ))
+                                )))
                             }
                             (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
-                                return DbType::Tuple(TupleContent::new_arbitrary_length(
+                                return DbType::Tuple(Rc::new(TupleContent::new_arbitrary_length(
                                     Type::new(t1.as_ref()).try_to_resemble_context(
                                         i_s,
                                         matcher,
                                         &Type::new(t2.as_ref()),
                                     ),
-                                ))
+                                )))
                             }
                             (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
                                 /*

@@ -23,6 +23,7 @@ use crate::matching::Generics;
 use crate::matching::{common_base_type, FormatData, Generic, Matcher, ParamsStyle, Type};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
+use crate::utils::rc_unwrap_or_clone;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
 use crate::value::{Class, Module, Value};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
@@ -768,7 +769,7 @@ pub enum DbType {
     Intersection(IntersectionType),
     TypeVar(TypeVarUsage),
     Type(Rc<DbType>),
-    Tuple(TupleContent),
+    Tuple(Rc<TupleContent>),
     Callable(Rc<CallableContent>),
     RecursiveAlias(Rc<RecursiveAlias>),
     NewType(Rc<NewType>),
@@ -1357,13 +1358,13 @@ impl DbType {
                 callable,
                 replace_self,
             ))),
-            Self::Tuple(content) => Self::Tuple(match &content.args {
+            Self::Tuple(content) => Self::Tuple(Rc::new(match &content.args {
                 Some(args) => TupleContent {
                     args: Some(remap_tuple_likes(args, callable, replace_self)),
                     tuple_class_generics: OnceCell::new(),
                 },
                 None => TupleContent::new_empty(),
-            }),
+            })),
             Self::Callable(content) => {
                 let mut type_vars = content.type_vars.clone().map(|t| t.into_vec());
                 let (params, remap_data) = Self::remap_callable_params(
@@ -1648,22 +1649,26 @@ impl DbType {
                 Self::Type(Rc::new(db_type.rewrite_late_bound_callables(manager)))
             }
             Self::Tuple(content) => Self::Tuple(match &content.args {
-                Some(TupleTypeArguments::FixedLength(ts)) => TupleContent::new_fixed_length(
-                    ts.iter()
-                        .map(|g| match g {
-                            TypeOrTypeVarTuple::Type(t) => {
-                                TypeOrTypeVarTuple::Type(t.rewrite_late_bound_callables(manager))
-                            }
-                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
-                                TypeOrTypeVarTuple::TypeVarTuple(manager.remap_type_var_tuple(t))
-                            }
-                        })
-                        .collect(),
-                ),
-                Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                    TupleContent::new_arbitrary_length(t.rewrite_late_bound_callables(manager))
+                Some(TupleTypeArguments::FixedLength(ts)) => {
+                    Rc::new(TupleContent::new_fixed_length(
+                        ts.iter()
+                            .map(|g| match g {
+                                TypeOrTypeVarTuple::Type(t) => TypeOrTypeVarTuple::Type(
+                                    t.rewrite_late_bound_callables(manager),
+                                ),
+                                TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                                    TypeOrTypeVarTuple::TypeVarTuple(
+                                        manager.remap_type_var_tuple(t),
+                                    )
+                                }
+                            })
+                            .collect(),
+                    ))
                 }
-                None => TupleContent::new_empty(),
+                Some(TupleTypeArguments::ArbitraryLength(t)) => Rc::new(
+                    TupleContent::new_arbitrary_length(t.rewrite_late_bound_callables(manager)),
+                ),
+                None => Rc::new(TupleContent::new_empty()),
             }),
             Self::Literal { .. } => self.clone(),
             Self::Callable(content) => {
@@ -1784,30 +1789,38 @@ impl DbType {
                 _ => Self::Any,
             },
             Self::Tuple(c1) => match other {
-                Self::Tuple(c2) => Self::Tuple(match (c1.args, c2.args) {
-                    (Some(FixedLength(ts1)), Some(FixedLength(ts2))) if ts1.len() == ts2.len() => {
-                        TupleContent::new_fixed_length(
-                            ts1.into_vec()
-                                .into_iter()
-                                .zip(ts2.into_vec().into_iter())
-                                .map(|(t1, t2)| match (t1, t2) {
-                                    (
-                                        TypeOrTypeVarTuple::Type(t1),
-                                        TypeOrTypeVarTuple::Type(t2),
-                                    ) => TypeOrTypeVarTuple::Type(t1.merge_matching_parts(t2)),
-                                    (t1, t2) => match t1 == t2 {
-                                        true => t1,
-                                        false => todo!(),
-                                    },
-                                })
-                                .collect(),
-                        )
-                    }
-                    (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
-                        TupleContent::new_arbitrary_length(t1.merge_matching_parts(*t2))
-                    }
-                    _ => TupleContent::new_empty(),
-                }),
+                Self::Tuple(c2) => {
+                    let c1 = rc_unwrap_or_clone(c1);
+                    let c2 = rc_unwrap_or_clone(c2);
+                    Self::Tuple(Rc::new(match (c1.args, c2.args) {
+                        (Some(FixedLength(ts1)), Some(FixedLength(ts2)))
+                            if ts1.len() == ts2.len() =>
+                        {
+                            TupleContent::new_fixed_length(
+                                ts1.into_vec()
+                                    .into_iter()
+                                    .zip(ts2.into_vec().into_iter())
+                                    .map(|(t1, t2)| match (t1, t2) {
+                                        (
+                                            TypeOrTypeVarTuple::Type(t1),
+                                            TypeOrTypeVarTuple::Type(t2),
+                                        ) => TypeOrTypeVarTuple::Type(t1.merge_matching_parts(t2)),
+                                        (t1, t2) => match t1 == t2 {
+                                            true => t1,
+                                            false => todo!(),
+                                        },
+                                    })
+                                    .collect(),
+                            )
+                        }
+                        (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+                            TupleContent::new_arbitrary_length(
+                                t1.merge_matching_parts(t2.as_ref().clone()),
+                            )
+                        }
+                        _ => TupleContent::new_empty(),
+                    }))
+                }
                 _ => Self::Any,
             },
             Self::Callable(content1) => match other {
@@ -1874,9 +1887,11 @@ impl TypeOrTypeVarTuple {
     fn as_db_type(&self) -> DbType {
         match self {
             Self::Type(t) => t.clone(),
-            Self::TypeVarTuple(t) => DbType::Tuple(TupleContent::new_fixed_length(Box::new([
-                TypeOrTypeVarTuple::TypeVarTuple(t.clone()),
-            ]))),
+            Self::TypeVarTuple(t) => {
+                DbType::Tuple(Rc::new(TupleContent::new_fixed_length(Box::new([
+                    TypeOrTypeVarTuple::TypeVarTuple(t.clone()),
+                ]))))
+            }
         }
     }
 
@@ -3633,6 +3648,7 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
+        assert_eq!(size_of::<TupleContent>(), 32);
         assert_eq!(size_of::<DbType>(), 32);
         assert_eq!(size_of::<ComplexPoint>(), 32);
         assert_eq!(size_of::<ClassStorage>(), 120);

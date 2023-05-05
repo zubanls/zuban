@@ -600,7 +600,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 })),
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
-                SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
+                SpecialType::Tuple => DbType::Tuple(Rc::new(TupleContent::new_empty())),
                 SpecialType::LiteralString => DbType::Class(
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
                     None,
@@ -1261,8 +1261,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_db_type(first);
-                    return TypeContent::DbType(DbType::Tuple(TupleContent::new_arbitrary_length(
-                        t,
+                    return TypeContent::DbType(DbType::Tuple(Rc::new(
+                        TupleContent::new_arbitrary_length(t),
                     )));
                 }
             }
@@ -1288,7 +1288,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => Box::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
             }
         };
-        TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
+        TypeContent::DbType(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+            generics,
+        ))))
     }
 
     fn calculate_simplified_param_spec_generics<'y, I: Iterator<Item = SliceOrSimple<'y>>>(
@@ -2580,7 +2582,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 })
             })
             .collect();
-        DbType::Tuple(TupleContent::new_fixed_length(generics))
+        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(generics)))
     }
 
     pub fn check_for_type_comment(
@@ -2921,7 +2923,7 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
 fn wrap_starred(t: DbType) -> DbType {
     match &t {
         DbType::ParamSpecArgs(_) => t,
-        _ => DbType::Tuple(TupleContent::new_arbitrary_length(t)),
+        _ => DbType::Tuple(Rc::new(TupleContent::new_arbitrary_length(t))),
     }
 }
 

@@ -1243,7 +1243,7 @@ impl<'db> InferrableParam<'db, '_> {
                 }
                 let t = TupleContent::new_fixed_length(list.into_boxed_slice());
                 Some(Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                    Box::new(DbType::Tuple(t)),
+                    Box::new(DbType::Tuple(Rc::new(t))),
                 )))
             }
             ParamInput::None => None,
