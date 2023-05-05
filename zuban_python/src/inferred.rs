@@ -1934,6 +1934,6 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
-        assert_eq!(size_of::<Inferred>(), 32);
+        assert_eq!(size_of::<Inferred>(), 40);
     }
 }

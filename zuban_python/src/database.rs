@@ -494,6 +494,7 @@ pub enum AnyLink {
 // arrays. It therefore uses a lot of Rcs.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
+    TypeInstance(DbType),
     Class(Box<ClassStorage>),
     Union(Box<[AnyLink]>),
     ExecutionInstance(PointLink, Box<Execution>),
@@ -502,7 +503,6 @@ pub enum ComplexPoint {
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
     FunctionOverload(Box<Overload>),
-    TypeInstance(DbType),
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Box<DbType>),
@@ -3656,7 +3656,7 @@ mod tests {
         use std::mem::size_of;
         assert_eq!(size_of::<TupleContent>(), 40);
         assert_eq!(size_of::<DbType>(), 32);
-        assert_eq!(size_of::<ComplexPoint>(), 32);
+        assert_eq!(size_of::<ComplexPoint>(), 40);
         assert_eq!(size_of::<ClassStorage>(), 120);
         assert_eq!(size_of::<ClassInfos>(), 48);
         assert_eq!(size_of::<PointLink>(), 8);
