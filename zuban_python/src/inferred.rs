@@ -721,28 +721,11 @@ impl<'db: 'slf, 'slf> Inferred {
         if self.state == other.state {
             self
         } else {
-            let mut list = vec![];
-            let insert = |list: &mut Vec<AnyLink>, state| {
-                match state {
-                    InferredState::Saved(definition, _) => {
-                        list.push(AnyLink::Reference(definition));
-                    }
-                    InferredState::UnsavedComplex(complex) => match complex {
-                        ComplexPoint::Union(lst) => {
-                            list.extend(lst.iter().cloned());
-                        }
-                        _ => list.push(AnyLink::Complex(Box::new(complex))),
-                    },
-                    InferredState::UnsavedSpecific(specific) => {
-                        list.push(AnyLink::SimpleSpecific(specific))
-                    }
-                    InferredState::UnsavedFileReference(file_index) => todo!(),
-                    InferredState::Unknown => list.push(AnyLink::Unknown),
-                };
-            };
-            insert(&mut list, self.state);
-            insert(&mut list, other.state);
-            Self::new_unsaved_complex(ComplexPoint::Union(list.into_boxed_slice()))
+            Inferred::from_type(
+                self.class_as_type(i_s)
+                    .union(i_s.db, other.class_as_type(i_s))
+                    .into_db_type(i_s.db),
+            )
         }
     }
 
