@@ -483,6 +483,8 @@ pub enum AnyLink {
     Unknown,
 }
 
+// This is a core data structure and it should be kept as small as possible, because it's used in
+// arrays. It therefore uses a lot of Rcs.
 #[derive(Debug, Clone, PartialEq)]
 pub enum ComplexPoint {
     Class(Box<ClassStorage>),
@@ -496,7 +498,7 @@ pub enum ComplexPoint {
     TypeInstance(Box<DbType>),
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
-    NamedTupleDefinition(DbType),
+    NamedTupleDefinition(Box<DbType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),

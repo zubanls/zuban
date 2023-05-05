@@ -286,7 +286,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::NamedTupleDefinition(n)) = node_ref.complex() {
-                return Some(n.clone());
+                return Some(n.as_ref().clone());
             }
         }
         None
