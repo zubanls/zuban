@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    AnyLink, CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
+    CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
     Specific, TypeVarLike,
 };
@@ -1841,6 +1841,14 @@ fn infer_class_method(
     }
     let t = func.classmethod_as_db_type(i_s, &class, class_generics_not_defined_yet);
     Some(Inferred::execute_db_type(i_s, t))
+}
+
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnyLink {
+    Reference(PointLink),
+    Complex(Box<ComplexPoint>),
+    SimpleSpecific(Specific),
+    Unknown,
 }
 
 #[cfg(test)]

@@ -481,14 +481,6 @@ impl LocalityLink {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
-pub enum AnyLink {
-    Reference(PointLink),
-    Complex(Box<ComplexPoint>),
-    SimpleSpecific(Specific),
-    Unknown,
-}
-
 // This is a core data structure and it should be kept as small as possible, because it's used in
 // arrays. It therefore uses a lot of Rcs.
 #[derive(Debug, Clone, PartialEq)]
@@ -3611,7 +3603,6 @@ mod tests {
         assert_eq!(size_of::<ClassStorage>(), 120);
         assert_eq!(size_of::<ClassInfos>(), 48);
         assert_eq!(size_of::<PointLink>(), 8);
-        assert_eq!(size_of::<AnyLink>(), 16);
         assert_eq!(size_of::<StringSlice>(), 12);
     }
 
