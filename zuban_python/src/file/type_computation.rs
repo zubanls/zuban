@@ -1168,13 +1168,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         if iterator.next().is_none() {
             // We have no unfinished iterator and can therefore safely return.
-            Some(TypeContent::ClassWithoutTypeVar(
-                Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
-                    self.inference.i_s,
-                    self.inference.file,
-                    primary.unwrap().index(),
-                ),
-            ))
+            let node_ref = NodeRef::new(self.inference.file, primary.unwrap().index());
+            node_ref.set_point(Point::new_simple_specific(
+                Specific::SimpleGeneric,
+                Locality::Todo,
+            ));
+            Some(TypeContent::ClassWithoutTypeVar(node_ref.into_inferred()))
         } else {
             None
         }
