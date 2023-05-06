@@ -426,7 +426,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                     DbType::Class(link) => Instance::new(
                         Class::(NodeRef::from_link(i_s.db, *link), Generics::NotDefinedYet, None)
                             .unwrap(),
-                        &Inferred::new_unsaved_complex(ComplexPoint::Instance(*link, None)),
+                        &Inferred::from_type(DbType::Class(*link, None)),
                     )
                     .lookup_internal(i_s, name),
                     _ => todo!("{:?}", db_type),
