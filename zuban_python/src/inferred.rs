@@ -39,7 +39,7 @@ enum InferredState {
     UnsavedComplex(ComplexPoint),
     UnsavedSpecific(Specific),
     BoundMethod {
-        instance: AnyLink,
+        instance: BoundMethodInstance,
         mro_index: MroIndex,
         func_link: PointLink,
     },
@@ -83,7 +83,11 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_bound_method(instance: AnyLink, mro_index: MroIndex, func_link: PointLink) -> Self {
+    pub fn new_bound_method(
+        instance: BoundMethodInstance,
+        mro_index: MroIndex,
+        func_link: PointLink,
+    ) -> Self {
         Self {
             state: InferredState::BoundMethod {
                 instance,
@@ -266,7 +270,7 @@ impl<'db: 'slf, 'slf> Inferred {
             } => {
                 // TODO this is potentially not needed, a class could lazily be fetched with a
                 // closure
-                let inf = Inferred::from_any_link(i_s.db, instance);
+                let inf = Inferred::from_bound_method_instance(i_s.db, instance);
                 let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
                 callable(
                     i_s,
@@ -652,7 +656,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
-                let inf = Inferred::from_any_link(i_s.db, &instance);
+                let inf = Inferred::from_bound_method_instance(i_s.db, &instance);
                 let (instance, class) = load_bound_method_instance(i_s, &inf, mro_index);
                 let bound_method = load_bound_method(i_s, &instance, class, mro_index, func_link);
                 file.complex_points.insert(
@@ -824,7 +828,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                         } else {
                             Some(Self::new_bound_method(
-                                get_inferred(i_s).as_any_link(i_s),
+                                get_inferred(i_s).as_bound_method_instance(i_s),
                                 mro_index,
                                 *definition,
                             ))
@@ -884,7 +888,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                             }
                             return Some(Self::new_bound_method(
-                                get_inferred(i_s).as_any_link(i_s),
+                                get_inferred(i_s).as_bound_method_instance(i_s),
                                 mro_index,
                                 *definition,
                             ));
@@ -893,7 +897,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             DbType::Callable(c) => {
                                 // TODO should use create_signature_without_self!
                                 return Some(Self::new_bound_method(
-                                    get_inferred(i_s).as_any_link(i_s),
+                                    get_inferred(i_s).as_bound_method_instance(i_s),
                                     mro_index,
                                     *definition,
                                 ));
@@ -1064,10 +1068,12 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn as_any_link(&self, i_s: &InferenceState<'db, '_>) -> AnyLink {
+    fn as_bound_method_instance(&self, i_s: &InferenceState<'db, '_>) -> BoundMethodInstance {
         match &self.state {
-            InferredState::Saved(definition, _) => AnyLink::Reference(*definition),
-            InferredState::UnsavedComplex(complex) => AnyLink::Complex(Box::new(complex.clone())),
+            InferredState::Saved(definition, _) => BoundMethodInstance::Reference(*definition),
+            InferredState::UnsavedComplex(complex) => {
+                BoundMethodInstance::Complex(Box::new(complex.clone()))
+            }
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),
             InferredState::BoundMethod { .. } => todo!(),
@@ -1075,15 +1081,15 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    fn from_any_link(db: &'db Database, any: &AnyLink) -> Self {
+    fn from_bound_method_instance(db: &'db Database, any: &BoundMethodInstance) -> Self {
         match any {
-            AnyLink::Reference(def) => {
+            BoundMethodInstance::Reference(def) => {
                 let file = db.loaded_python_file(def.file);
                 Self::new_saved(file, def.node_index, file.points.get(def.node_index))
             }
-            AnyLink::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
-            AnyLink::SimpleSpecific(_) => todo!(),
-            AnyLink::Unknown => todo!(),
+            BoundMethodInstance::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
+            BoundMethodInstance::SimpleSpecific(_) => todo!(),
+            BoundMethodInstance::Unknown => todo!(),
         }
     }
 
@@ -1366,7 +1372,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
-                let inf = Inferred::from_any_link(i_s.db, instance);
+                let inf = Inferred::from_bound_method_instance(i_s.db, instance);
                 let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
                 return load_bound_method(i_s, &instance, class, *mro_index, *func_link).execute(
                     i_s,
@@ -1844,7 +1850,7 @@ fn infer_class_method(
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum AnyLink {
+pub enum BoundMethodInstance {
     Reference(PointLink),
     Complex(Box<ComplexPoint>),
     SimpleSpecific(Specific),
