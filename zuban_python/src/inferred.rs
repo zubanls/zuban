@@ -97,9 +97,9 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_unsaved_specific(specific: Specific) -> Self {
+    pub fn new_cycle() -> Self {
         Self {
-            state: InferredState::UnsavedSpecific(specific),
+            state: InferredState::UnsavedSpecific(Specific::Cycle),
         }
     }
 

@@ -1846,7 +1846,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
                     node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
-                    Some(Inferred::new_unsaved_specific(Specific::Cycle))
+                    Some(Inferred::new_cycle())
                 } else {
                     None
                 }
