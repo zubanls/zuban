@@ -1075,9 +1075,9 @@ impl<'db: 'slf, 'slf> Inferred {
                 BoundMethodInstance::Complex(Box::new(complex.clone()))
             }
             InferredState::UnsavedSpecific(specific) => todo!(),
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::BoundMethod { .. } => todo!(),
-            InferredState::Unknown => todo!(),
+            InferredState::UnsavedFileReference(file_index) => unreachable!(),
+            InferredState::BoundMethod { .. } => unreachable!(),
+            InferredState::Unknown => unreachable!(),
         }
     }
 
@@ -1088,8 +1088,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 Self::new_saved(file, def.node_index, file.points.get(def.node_index))
             }
             BoundMethodInstance::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
-            BoundMethodInstance::SimpleSpecific(_) => todo!(),
-            BoundMethodInstance::Unknown => todo!(),
         }
     }
 
@@ -1853,8 +1851,6 @@ fn infer_class_method(
 pub enum BoundMethodInstance {
     Reference(PointLink),
     Complex(Box<ComplexPoint>),
-    SimpleSpecific(Specific),
-    Unknown,
 }
 
 #[cfg(test)]
