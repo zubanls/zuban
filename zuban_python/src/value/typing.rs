@@ -88,15 +88,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         }
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
     fn as_typing_class(&self) -> Option<&TypingClass> {
         Some(self)
     }
@@ -140,15 +131,6 @@ pub struct TypingClassVar();
 impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
     fn name(&self) -> &str {
         "ClassVar"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
     }
 
     fn get_item(
@@ -246,15 +228,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
         "Any"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Any)
     }
@@ -326,15 +299,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
         "cast"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         todo!()
     }
@@ -378,15 +342,6 @@ impl RevealTypeFunction {
 impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
     fn name(&self) -> &'static str {
         "reveal_type"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
     }
 }
 
@@ -691,15 +646,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
         "TypeVar"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        LookupResult::None
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of TypeVarClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
@@ -728,15 +674,6 @@ impl TypeVarTupleClass {
 impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
     fn name(&self) -> &str {
         "TypeVarTuple"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        LookupResult::None
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
@@ -882,15 +819,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
         "ParamSpec"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        LookupResult::None
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of ParamSpecClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
@@ -1013,16 +941,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
         "NewType"
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        // TODO?
-        LookupResult::None
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         debug!("Type of NewTypeClass is probably wrong");
         Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
@@ -1099,15 +1017,6 @@ impl<'a> NewTypeInstance<'a> {
 impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
     fn name(&self) -> &'a str {
         self.new_type.name(self.db)
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

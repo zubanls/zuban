@@ -231,7 +231,9 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
-    ) -> LookupResult;
+    ) -> LookupResult {
+        todo!()
+    }
 
     fn should_add_lookup_error(&self, db: &Database) -> bool {
         true
