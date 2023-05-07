@@ -349,7 +349,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn class_as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
-        self.class_as_type(i_s).into_db_type(i_s.db)
+        self.class_as_type2(i_s).into_db_type(i_s.db)
     }
 
     pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
@@ -890,8 +890,8 @@ impl<'db: 'slf, 'slf> Inferred {
         if result_context.expects_union(i_s) || self.is_union(i_s.db) || other.is_union(i_s.db) {
             self.union(i_s, other)
         } else {
-            let second = other.class_as_type(i_s);
-            let t = self.class_as_type(i_s).common_base_type(i_s, &second);
+            let second = other.class_as_type2(i_s);
+            let t = self.class_as_type2(i_s).common_base_type(i_s, &second);
             Inferred::execute_db_type(i_s, t)
         }
     }
@@ -901,8 +901,8 @@ impl<'db: 'slf, 'slf> Inferred {
             self
         } else {
             Inferred::from_type(
-                self.class_as_type(i_s)
-                    .union(i_s.db, other.class_as_type(i_s))
+                self.class_as_type2(i_s)
+                    .union(i_s.db, other.class_as_type2(i_s))
                     .into_db_type(i_s.db),
             )
         }

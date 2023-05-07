@@ -272,7 +272,7 @@ impl<'a> Type<'a> {
                             // the subclass
                             let lookup = cls.lookup_internal(i_s, None, "__init__");
                             if let LookupResult::GotoName(_, init) = lookup {
-                                let t2 = init.class_as_type(i_s).into_db_type(i_s.db);
+                                let t2 = init.class_as_type2(i_s).into_db_type(i_s.db);
                                 if let DbType::Callable(c2) = t2 {
                                     let type_vars2 = cls.type_vars(i_s);
                                     // Since __init__ does not have a return, We need to check the params
