@@ -178,7 +178,11 @@ impl<'db: 'slf, 'slf> Inferred {
             ComplexPoint::TypeAlias(alias) => Type::owned(DbType::Type(Rc::new(
                 alias.as_db_type_and_set_type_vars_any(i_s.db),
             ))),
-            ComplexPoint::TypeVarLike(t) => todo!(),
+            ComplexPoint::TypeVarLike(t) => match t {
+                TypeVarLike::TypeVar(_) => Type::Class(i_s.db.python_state.type_var_class()),
+                TypeVarLike::TypeVarTuple(_) => todo!(),
+                TypeVarLike::ParamSpec(_) => todo!(),
+            },
             ComplexPoint::NewTypeDefinition(n) => {
                 Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
             }
@@ -1511,7 +1515,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             _ => (),
         }
-        self.class_as_type(i_s)
+        self.class_as_type2(i_s)
             .execute(i_s, Some(self), args, result_context, on_type_error)
     }
 
