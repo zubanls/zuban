@@ -631,6 +631,14 @@ impl<'a> Type<'a> {
                         variance,
                     )
                 }
+                DbType::Module(_) => {
+                    return self.matches(
+                        i_s,
+                        matcher,
+                        &Type::Class(i_s.db.python_state.module_type()),
+                        variance,
+                    )
+                }
                 _ => (),
             }
         }
@@ -972,10 +980,9 @@ impl<'a> Type<'a> {
             impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>,
         >,
     ) -> Match {
-        let value_type = value.class_as_type(i_s);
+        let value_type = value.class_as_type2(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
-            let value_type = value.class_as_type(i_s);
             let mut fmt1 = FormatData::new_short(i_s.db);
             let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);
             let mut input = value_type.format(&fmt1);
