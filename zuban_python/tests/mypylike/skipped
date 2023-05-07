@@ -19,7 +19,6 @@ testAssignmentToStarFromIterable
 testNamedTupleTypeReferenceToClassDerivedFrom
 testNamedTupleSelfTypeWithNamedTupleAsBase
 
-testSimplifyingUnionWithTypeTypes1
 testUseCovariantGenericOuterContext
 
 # raise with brackets and no parentheses

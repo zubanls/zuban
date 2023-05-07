@@ -231,12 +231,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::TypingTypeVarClass => todo!(),
                         Specific::TypingTypeVarTupleClass => todo!(),
                         Specific::TypingParamSpecClass => todo!(),
+                        Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
                         Specific::TypingProtocol
                         | Specific::TypingGeneric
                         | Specific::TypingTuple
                         | Specific::TypingUnion
                         | Specific::TypingOptional
-                        | Specific::TypingType
                         | Specific::TypingLiteral
                         | Specific::TypingAnnotated
                         | Specific::TypingNamedTuple
