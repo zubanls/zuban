@@ -113,10 +113,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
 pub struct TypingClassVar();
 
 impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
-    fn name(&self) -> &str {
-        "ClassVar"
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,
@@ -274,11 +270,7 @@ impl<'db> TypingCast {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingCast {
-    fn name(&self) -> &str {
-        "cast"
-    }
-}
+impl<'db, 'a> Value<'db, 'a> for TypingCast {}
 
 #[derive(Debug)]
 pub struct RevealTypeFunction();
@@ -315,11 +307,7 @@ impl RevealTypeFunction {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
-    fn name(&self) -> &'static str {
-        "reveal_type"
-    }
-}
+impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {}
 
 pub struct TypeVarInstance<'a> {
     db: &'a Database,
@@ -617,11 +605,7 @@ fn maybe_type_var(
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
-    fn name(&self) -> &str {
-        "TypeVar"
-    }
-}
+impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {}
 
 #[derive(Debug)]
 pub struct TypeVarTupleClass();
@@ -642,11 +626,7 @@ impl TypeVarTupleClass {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
-    fn name(&self) -> &str {
-        "TypeVarTuple"
-    }
-}
+impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {}
 
 fn maybe_type_var_tuple(
     i_s: &InferenceState,
@@ -780,11 +760,7 @@ impl ParamSpecClass {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
-    fn name(&self) -> &str {
-        "ParamSpec"
-    }
-}
+impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {}
 
 fn maybe_param_spec(
     i_s: &InferenceState,
@@ -897,11 +873,7 @@ impl NewTypeClass {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
-    fn name(&self) -> &str {
-        "NewType"
-    }
-}
+impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {}
 
 fn maybe_new_type<'db>(
     i_s: &InferenceState<'db, '_>,
@@ -970,8 +942,4 @@ impl<'a> NewTypeInstance<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
-    fn name(&self) -> &'a str {
-        self.new_type.name(self.db)
-    }
-}
+impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {}
