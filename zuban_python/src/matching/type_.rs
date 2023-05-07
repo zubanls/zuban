@@ -272,7 +272,7 @@ impl<'a> Type<'a> {
                             // the subclass
                             let lookup = cls.lookup_internal(i_s, None, "__init__");
                             if let LookupResult::GotoName(_, init) = lookup {
-                                let t2 = init.class_as_type2(i_s).into_db_type(i_s.db);
+                                let t2 = init.class_as_type(i_s).into_db_type(i_s.db);
                                 if let DbType::Callable(c2) = t2 {
                                     let type_vars2 = cls.type_vars(i_s);
                                     // Since __init__ does not have a return, We need to check the params
@@ -980,7 +980,7 @@ impl<'a> Type<'a> {
             impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>,
         >,
     ) -> Match {
-        let value_type = value.class_as_type2(i_s);
+        let value_type = value.class_as_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
             let mut fmt1 = FormatData::new_short(i_s.db);
