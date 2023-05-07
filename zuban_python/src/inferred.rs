@@ -322,36 +322,6 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn saved_class_as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'db> {
-        if let InferredState::Saved(definition, point) = &self.state {
-            match point.type_() {
-                PointType::Specific => match point.specific() {
-                    Specific::None => return Type::new(&DbType::None),
-                    Specific::Any => return Type::new(&DbType::Any),
-                    _ => (),
-                },
-                PointType::Complex => {
-                    let node_ref = NodeRef::from_link(i_s.db, *definition);
-                    match node_ref.complex() {
-                        Some(ComplexPoint::TypeInstance(ref t)) => {
-                            return Type::new(t);
-                        }
-                        /*
-                        Some(ComplexPoint::Class(c)) => {
-                            return Type::Class(Class::new(node_ref, c, Generics::NotDefinedYet, None));
-                        }
-                        */
-                        _ => (),
-                    }
-                }
-                PointType::Unknown => return Type::new(&DbType::Any),
-                _ => (),
-            }
-        }
-        dbg!(self.debug_info(i_s));
-        unreachable!()
-    }
-
     pub fn class_as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
         self.class_as_type2(i_s).into_db_type(i_s.db)
     }
@@ -1524,9 +1494,10 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
     ) -> IteratorContent<'db> {
-        let t = self
-            .save_if_unsaved(i_s, from.file, from.node_index)
-            .saved_class_as_type(i_s);
+        let inferred = self.save_if_unsaved(i_s, from.file, from.node_index);
+        let t = inferred.class_as_type2(i_s);
+        // TODO this is probably wrong and iter has to be rewritten.
+        let t: Type<'db> = unsafe { std::mem::transmute(t) };
         t.iter_on_borrowed(i_s, from)
     }
 }
