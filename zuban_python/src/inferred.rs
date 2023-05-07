@@ -167,6 +167,143 @@ impl<'db: 'slf, 'slf> Inferred {
         )))
     }
 
+    pub fn class_as_type2(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
+        let class_of_complex = |complex: &'slf _, definition: Option<_>| match complex {
+            ComplexPoint::FunctionOverload(overload) => {
+                let overload = OverloadedFunction::new(definition.unwrap(), overload, None);
+                overload.as_type(i_s)
+            }
+            ComplexPoint::TypeInstance(t) => Type::new(t),
+            ComplexPoint::TypeAlias(alias) => todo!(),
+            ComplexPoint::TypeVarLike(t) => todo!(),
+            ComplexPoint::NewTypeDefinition(n) => todo!(),
+            ComplexPoint::NamedTupleDefinition(n) => todo!(),
+            _ => {
+                unreachable!("Classes are handled earlier {complex:?}")
+            }
+        };
+        match &self.state {
+            InferredState::Saved(definition, point) => match point.type_() {
+                PointType::Specific => {
+                    let definition = NodeRef::from_link(i_s.db, *definition);
+                    let specific = point.specific();
+                    match specific {
+                        Specific::IntLiteral => Type::owned(DbType::Literal(DbLiteral {
+                            kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
+                            implicit: true,
+                        })),
+                        Specific::StringLiteral => Type::owned(DbType::Literal(DbLiteral {
+                            kind: LiteralKind::String(definition.as_link()),
+                            implicit: true,
+                        })),
+                        Specific::BoolLiteral => Type::owned(DbType::Literal(DbLiteral {
+                            kind: LiteralKind::Bool(definition.as_code() == "True"),
+                            implicit: true,
+                        })),
+                        Specific::BytesLiteral => Type::owned(DbType::Literal(DbLiteral {
+                            kind: LiteralKind::Bytes(definition.as_link()),
+                            implicit: true,
+                        })),
+                        Specific::Function => Function::new(definition, None).as_type(i_s),
+                        Specific::ClassMethod => todo!(),
+                        Specific::Property => todo!(),
+                        Specific::AnnotationOrTypeCommentClassInstance => {
+                            use_cached_annotation_type(
+                                i_s.db,
+                                definition.file,
+                                definition.as_annotation(),
+                            )
+                        }
+                        Specific::AnnotationOrTypeCommentWithTypeVars => {
+                            let db_type = definition
+                                .file
+                                .inference(i_s)
+                                .use_db_type_of_annotation_or_type_comment(definition.node_index);
+                            todo!()
+                        }
+                        Specific::SelfParam => Type::new(&DbType::Self_),
+                        Specific::TypingTypeVarClass => todo!(),
+                        Specific::TypingTypeVarTupleClass => todo!(),
+                        Specific::TypingParamSpecClass => todo!(),
+                        Specific::TypingProtocol
+                        | Specific::TypingGeneric
+                        | Specific::TypingTuple
+                        | Specific::TypingUnion
+                        | Specific::TypingOptional
+                        | Specific::TypingType
+                        | Specific::TypingLiteral
+                        | Specific::TypingAnnotated
+                        | Specific::TypingNamedTuple
+                        | Specific::CollectionsNamedTuple
+                        | Specific::TypingCallable => todo!(),
+                        Specific::Any | Specific::Cycle => todo!(),
+                        Specific::TypingCast => todo!(),
+                        Specific::TypingClassVar => todo!(),
+                        Specific::RevealTypeFunction => todo!(),
+                        Specific::None => Type::new(&DbType::None),
+                        Specific::TypingNewType => todo!(),
+                        Specific::TypingAny => todo!(),
+                        Specific::MypyExtensionsArg
+                        | Specific::MypyExtensionsDefaultArg
+                        | Specific::MypyExtensionsNamedArg
+                        | Specific::MypyExtensionsDefaultNamedArg
+                        | Specific::MypyExtensionsVarArg
+                        | Specific::MypyExtensionsKwArg => {
+                            let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
+                            todo!()
+                        }
+                        _ => {
+                            let instance = resolve_specific(i_s, specific);
+                            Type::Class(instance.class)
+                        }
+                    }
+                }
+                PointType::Complex => {
+                    let definition = NodeRef::from_link(i_s.db, *definition);
+                    let complex = definition.file.complex_points.get(point.complex_index());
+                    if let ComplexPoint::Class(cls_storage) = complex {
+                        Type::Class(Class::new(
+                            definition,
+                            cls_storage,
+                            Generics::NotDefinedYet,
+                            None,
+                        ))
+                    } else {
+                        class_of_complex(complex, Some(definition))
+                    }
+                }
+                PointType::Unknown => Type::new(&DbType::Any),
+                PointType::FileReference => {
+                    //Type::owned(DbType::Module(point.file_index()))
+                    todo!()
+                }
+                x => unreachable!("{x:?}"),
+            },
+            InferredState::UnsavedComplex(complex) => class_of_complex(complex, None),
+            InferredState::UnsavedSpecific(specific) => match specific {
+                Specific::None => Type::new(&DbType::None),
+                Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
+                _ => unreachable!("{specific:?}"),
+            },
+            InferredState::UnsavedFileReference(file_index) => {
+                //Type::owned(DbType::Module(file_index))
+                todo!()
+            }
+            InferredState::BoundMethod {
+                instance,
+                mro_index,
+                func_link,
+            } => {
+                // TODO this is potentially not needed, a class could lazily be fetched with a
+                // closure
+                let inf = Inferred::from_bound_method_instance(i_s.db, instance);
+                let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
+                load_bound_method(i_s, &instance, class, *mro_index, *func_link).as_type(i_s)
+            }
+            InferredState::Unknown => Type::new(&DbType::Any),
+        }
+    }
+
     pub fn class_as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
         match self.state {
             InferredState::Saved(definition, _) => {
