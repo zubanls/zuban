@@ -717,6 +717,7 @@ pub enum DbType {
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
     NamedTuple(Rc<NamedTuple>),
+    Module(FileIndex),
     Self_,
     None,
     Any,
@@ -877,6 +878,11 @@ impl DbType {
                     ),
                 }
             }
+            Self::Module(file_index) => format_data
+                .db
+                .python_state
+                .module_type()
+                .format(format_data),
         }
     }
 
@@ -957,13 +963,19 @@ impl DbType {
                 search_params(found_type_var, &content.params);
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(_, None) | Self::Any | Self::None | Self::Never | Self::Literal { .. } => {}
+            Self::Class(_, None)
+            | Self::Any
+            | Self::None
+            | Self::Never
+            | Self::Literal { .. }
+            | Self::Module(_)
+            | Self::Self_
+            | Self::NewType(_) => (),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
                     search_in_generics(found_type_var, generics)
                 }
             }
-            Self::Self_ | Self::NewType(_) => (),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
             Self::NamedTuple(_) => {
@@ -1030,7 +1042,7 @@ impl DbType {
                 }
             }
             Self::Self_ => todo!(),
-            Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) => false,
+            Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) | Self::Module(_) => false,
             Self::NamedTuple(nt) => todo!(),
         }
     }
@@ -1071,6 +1083,7 @@ impl DbType {
             | Self::ParamSpecArgs(_)
             | Self::ParamSpecKwargs(_)
             | Self::RecursiveAlias(_)
+            | Self::Module(_)
             | Self::TypeVar(_) => false,
         }
     }
@@ -1294,6 +1307,7 @@ impl DbType {
                 rec.link,
                 rec.generics.as_ref().map(remap_generics),
             ))),
+            Self::Module(file_index) => Self::Module(*file_index),
             Self::Self_ => replace_self(),
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
@@ -1574,6 +1588,7 @@ impl DbType {
             Self::ParamSpecArgs(usage) => todo!(),
             Self::ParamSpecKwargs(usage) => todo!(),
             Self::NamedTuple(_) => todo!(),
+            Self::Module(file_index) => Self::Module(*file_index),
         }
     }
 

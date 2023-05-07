@@ -263,10 +263,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                 }
                 PointType::Unknown => Type::new(&DbType::Any),
-                PointType::FileReference => {
-                    //Type::owned(DbType::Module(point.file_index()))
-                    todo!()
-                }
+                PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
                 x => unreachable!("{x:?}"),
             },
             InferredState::UnsavedComplex(complex) => class_of_complex(complex, None),
@@ -276,8 +273,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 _ => unreachable!("{specific:?}"),
             },
             InferredState::UnsavedFileReference(file_index) => {
-                //Type::owned(DbType::Module(file_index))
-                todo!()
+                Type::owned(DbType::Module(*file_index))
             }
             InferredState::BoundMethod {
                 instance,
@@ -1892,6 +1888,7 @@ pub fn run_on_db_type<'db: 'a, 'a, T>(
         }
         DbType::ParamSpecArgs(usage) => todo!(),
         DbType::ParamSpecKwargs(usage) => todo!(),
+        DbType::Module(file_index) => todo!(),
         DbType::NamedTuple(nt) => callable(i_s, &NamedTupleValue::new(i_s.db, &nt)),
     }
 }

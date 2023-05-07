@@ -228,6 +228,7 @@ impl<'a> Type<'a> {
                 DbType::Self_ => false, // TODO this is wrong
                 DbType::ParamSpecArgs(usage) => todo!(),
                 DbType::ParamSpecKwargs(usage) => todo!(),
+                DbType::Module(file_index) => todo!(),
                 DbType::NamedTuple(_) => todo!(),
             },
         }
@@ -409,6 +410,7 @@ impl<'a> Type<'a> {
                     }
                     _ => Match::new_false(),
                 },
+                DbType::Module(file_index) => todo!(),
             },
         };
         result
