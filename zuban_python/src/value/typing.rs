@@ -107,22 +107,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
     }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        match self.specific {
-            Specific::TypingGeneric
-            | Specific::TypingProtocol
-            | Specific::TypingUnion
-            | Specific::TypingOptional => todo!(),
-            Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
-            Specific::TypingCallable => todo!(),
-            Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
-            Specific::TypingAnnotated => todo!(),
-            Specific::TypingNamedTuple => todo!(),
-            Specific::CollectionsNamedTuple => todo!(),
-            _ => unreachable!("{:?}", self.specific),
-        }
-    }
 }
 
 #[derive(Debug)]
@@ -227,10 +211,6 @@ impl<'db, 'a> Value<'db, 'a> for TypingAny {
     fn name(&self) -> &str {
         "Any"
     }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Any)
-    }
 }
 
 #[derive(Debug)]
@@ -297,10 +277,6 @@ impl<'db> TypingCast {
 impl<'db, 'a> Value<'db, 'a> for TypingCast {
     fn name(&self) -> &str {
         "cast"
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        todo!()
     }
 }
 
@@ -645,11 +621,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
     fn name(&self) -> &str {
         "TypeVar"
     }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of TypeVarClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
-    }
 }
 
 #[derive(Debug)]
@@ -674,11 +645,6 @@ impl TypeVarTupleClass {
 impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
     fn name(&self) -> &str {
         "TypeVarTuple"
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of TypeVarTupleClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
 
@@ -818,11 +784,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
     fn name(&self) -> &str {
         "ParamSpec"
     }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of ParamSpecClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
-    }
 }
 
 fn maybe_param_spec(
@@ -940,11 +901,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
     fn name(&self) -> &str {
         "NewType"
     }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of NewTypeClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
-    }
 }
 
 fn maybe_new_type<'db>(
@@ -1017,11 +973,5 @@ impl<'a> NewTypeInstance<'a> {
 impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
     fn name(&self) -> &'a str {
         self.new_type.name(self.db)
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Rc::new(DbType::NewType(
-            self.new_type.clone(),
-        ))))
     }
 }
