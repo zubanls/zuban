@@ -207,13 +207,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => Function::new(definition, None).as_type(i_s),
                         Specific::ClassMethod => todo!(),
                         Specific::Property => todo!(),
-                        Specific::AnnotationOrTypeCommentClassInstance => {
-                            use_cached_annotation_type(
-                                i_s.db,
-                                definition.file,
-                                definition.as_annotation(),
-                            )
-                        }
+                        Specific::AnnotationOrTypeCommentClassInstance => definition
+                            .file
+                            .inference(i_s)
+                            .use_cached_annotation_or_type_comment_type_internal(
+                                definition.node_index,
+                                definition.add_to_node_index(2).as_expression(),
+                            ),
                         Specific::AnnotationOrTypeCommentWithTypeVars => {
                             let db_type = definition
                                 .file

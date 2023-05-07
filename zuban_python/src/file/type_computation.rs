@@ -2266,7 +2266,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         )
     }
 
-    fn use_cached_annotation_or_type_comment_type_internal(
+    // TODO make this private again
+    pub fn use_cached_annotation_or_type_comment_type_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
