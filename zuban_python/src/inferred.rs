@@ -174,10 +174,17 @@ impl<'db: 'slf, 'slf> Inferred {
                 overload.as_type(i_s)
             }
             ComplexPoint::TypeInstance(t) => Type::new(t),
-            ComplexPoint::TypeAlias(alias) => todo!(),
+            // TODO is this type correct with the Any?
+            ComplexPoint::TypeAlias(alias) => Type::owned(DbType::Type(Rc::new(
+                alias.as_db_type_and_set_type_vars_any(i_s.db),
+            ))),
             ComplexPoint::TypeVarLike(t) => todo!(),
-            ComplexPoint::NewTypeDefinition(n) => todo!(),
-            ComplexPoint::NamedTupleDefinition(n) => todo!(),
+            ComplexPoint::NewTypeDefinition(n) => {
+                Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
+            }
+            ComplexPoint::NamedTupleDefinition(n) => {
+                Type::owned(DbType::Type(Rc::new(n.as_ref().clone())))
+            }
             _ => {
                 unreachable!("Classes are handled earlier {complex:?}")
             }
@@ -346,7 +353,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
-        self.class_as_type(i_s).format(format_data)
+        self.class_as_type2(i_s).format(format_data)
     }
 
     pub fn format_short(&self, i_s: &InferenceState<'db, '_>) -> Box<str> {
