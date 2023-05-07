@@ -232,15 +232,17 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::TypingTypeVarTupleClass => todo!(),
                         Specific::TypingParamSpecClass => todo!(),
                         Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
+                        Specific::TypingTuple => {
+                            Type::new(&i_s.db.python_state.type_of_arbitrary_tuple)
+                        }
+                        Specific::CollectionsNamedTuple => todo!(),
                         Specific::TypingProtocol
                         | Specific::TypingGeneric
-                        | Specific::TypingTuple
                         | Specific::TypingUnion
                         | Specific::TypingOptional
                         | Specific::TypingLiteral
                         | Specific::TypingAnnotated
                         | Specific::TypingNamedTuple
-                        | Specific::CollectionsNamedTuple
                         | Specific::TypingCallable => todo!(),
                         Specific::TypingCast => todo!(),
                         Specific::TypingClassVar => todo!(),
