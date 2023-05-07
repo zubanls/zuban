@@ -564,15 +564,15 @@ impl GenericItem {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct GenericsList(Box<[GenericItem]>);
+pub struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
-    pub fn new_generics(parts: Box<[GenericItem]>) -> Self {
+    pub fn new_generics(parts: Rc<[GenericItem]>) -> Self {
         Self(parts)
     }
 
     pub fn generics_from_vec(parts: Vec<GenericItem>) -> Self {
-        Self::new_generics(parts.into_boxed_slice())
+        Self::new_generics(Rc::from(parts))
     }
 
     pub fn nth(&self, index: TypeVarIndex) -> Option<&GenericItem> {
@@ -598,15 +598,6 @@ impl std::ops::Index<TypeVarIndex> for GenericsList {
 
     fn index(&self, index: TypeVarIndex) -> &Self::Output {
         &self.0[index.0 as usize]
-    }
-}
-
-impl IntoIterator for GenericsList {
-    type Item = GenericItem;
-    type IntoIter = std::vec::IntoIter<Self::Item>;
-
-    fn into_iter(self) -> Self::IntoIter {
-        Vec::from(self.0).into_iter()
     }
 }
 
@@ -1598,10 +1589,12 @@ impl DbType {
         }
         let merge_generics = |g1: Option<GenericsList>, g2: Option<GenericsList>| {
             g1.map(|g1| {
+                // Performance issue: clone could probably be removed. Rc -> Vec check
+                // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
                 GenericsList::new_generics(
-                    g1.into_iter()
-                        .zip(g2.unwrap().into_iter())
-                        .map(|(t1, t2)| t1.merge_matching_parts(t2))
+                    g1.iter()
+                        .zip(g2.unwrap().iter())
+                        .map(|(t1, t2)| t1.clone().merge_matching_parts(t2.clone()))
                         .collect(),
                 )
             })
@@ -1818,7 +1811,7 @@ impl TupleContent {
 
     pub fn tuple_class_generics(&self, db: &Database) -> &GenericsList {
         self.tuple_class_generics.get_or_init(|| {
-            GenericsList::new_generics(Box::new([GenericItem::TypeArgument(
+            GenericsList::new_generics(Rc::new([GenericItem::TypeArgument(
                 self.args
                     .as_ref()
                     .map(|args| args.common_base_type(&InferenceState::new(db)))

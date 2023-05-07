@@ -2932,7 +2932,7 @@ fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
         DbType::ParamSpecKwargs(_) => t,
         _ => DbType::Class(
             db.python_state.builtins_point_link("dict"),
-            Some(GenericsList::new_generics(Box::new([
+            Some(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(DbType::Class(
                     db.python_state.builtins_point_link("str"),
                     None,

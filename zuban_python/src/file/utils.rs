@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use parsa_python_ast::{
     Dict, DictElement, Int, List, StarLikeExpression, StarLikeExpressionIterator,
 };
@@ -125,7 +127,7 @@ impl<'db> Inference<'db, '_, '_> {
             keys.format_short(self.i_s.db),
             values.format_short(self.i_s.db),
         );
-        GenericsList::new_generics(Box::new([
+        GenericsList::new_generics(Rc::new([
             GenericItem::TypeArgument(keys),
             GenericItem::TypeArgument(values),
         ]))
@@ -212,7 +214,7 @@ fn check_list_with_context<'db>(
     found.map(|inner| {
         DbType::Class(
             i_s.db.python_state.list_node_ref().as_link(),
-            Some(GenericsList::new_generics(Box::new([
+            Some(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(inner),
             ]))),
         )

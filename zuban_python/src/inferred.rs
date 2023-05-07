@@ -160,7 +160,7 @@ impl<'db: 'slf, 'slf> Inferred {
         Self { state }
     }
 
-    pub fn create_instance(class: PointLink, generics: Option<Box<[GenericItem]>>) -> Self {
+    pub fn create_instance(class: PointLink, generics: Option<Rc<[GenericItem]>>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::TypeInstance(DbType::Class(
             class,
             generics.map(GenericsList::new_generics),

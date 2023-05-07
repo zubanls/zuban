@@ -741,7 +741,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let generic = union.class_as_db_type(self.i_s);
                             let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(Box::new([GenericItem::TypeArgument(generic)])),
+                                Some(Rc::new([GenericItem::TypeArgument(generic)])),
                             );
                             self.assign_targets(
                                 star_target.as_target(),
@@ -753,7 +753,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let value = value_iterator.next(self.i_s).unwrap();
                             let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(Box::new([GenericItem::TypeArgument(
+                                Some(Rc::new([GenericItem::TypeArgument(
                                     value.class_as_db_type(self.i_s),
                                 )])),
                             );
@@ -1422,7 +1422,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("list"),
-                        Some(GenericsList::new_generics(Box::new([result]))),
+                        Some(GenericsList::new_generics(Rc::new([result]))),
                     ),
                 );
             }
@@ -1432,7 +1432,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("list"),
-                        Some(GenericsList::new_generics(Box::new([
+                        Some(GenericsList::new_generics(Rc::new([
                             GenericItem::TypeArgument(DbType::Any),
                         ]))),
                     ),
@@ -1453,7 +1453,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::create_instance(
                         self.i_s.db.python_state.builtins_point_link("set"),
-                        Some(Box::new([self.create_list_or_set_generics(elements)])),
+                        Some(Rc::new([self.create_list_or_set_generics(elements)])),
                     )
                     .save_redirect(self.i_s, self.file, atom.index());
                 } else {
