@@ -410,7 +410,7 @@ impl<'a> Type<'a> {
                     }
                     _ => Match::new_false(),
                 },
-                DbType::Module(file_index) => todo!(),
+                DbType::Module(file_index) => Match::new_false(),
             },
         };
         result

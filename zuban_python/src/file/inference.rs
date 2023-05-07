@@ -593,7 +593,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                     }
                     let inferred = self.infer_name_by_index(first_definition);
-                    inferred.class_as_type(self.i_s).error_if_not_matches(
+                    inferred.class_as_type2(self.i_s).error_if_not_matches(
                         self.i_s,
                         value,
                         |i_s, got, expected| {
