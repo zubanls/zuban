@@ -188,6 +188,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let definition = NodeRef::from_link(i_s.db, *definition);
                     let specific = point.specific();
                     match specific {
+                        Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
                         Specific::IntLiteral => Type::owned(DbType::Literal(DbLiteral {
                             kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
                             implicit: true,
@@ -207,20 +208,14 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => Function::new(definition, None).as_type(i_s),
                         Specific::ClassMethod => todo!(),
                         Specific::Property => todo!(),
-                        Specific::AnnotationOrTypeCommentClassInstance => definition
+                        Specific::AnnotationOrTypeCommentClassInstance
+                        | Specific::AnnotationOrTypeCommentWithTypeVars => definition
                             .file
                             .inference(i_s)
                             .use_cached_annotation_or_type_comment_type_internal(
                                 definition.node_index,
                                 definition.add_to_node_index(2).as_expression(),
                             ),
-                        Specific::AnnotationOrTypeCommentWithTypeVars => {
-                            let db_type = definition
-                                .file
-                                .inference(i_s)
-                                .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                            todo!()
-                        }
                         Specific::SelfParam => Type::new(&DbType::Self_),
                         Specific::TypingTypeVarClass => todo!(),
                         Specific::TypingTypeVarTupleClass => todo!(),
@@ -236,7 +231,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         | Specific::TypingNamedTuple
                         | Specific::CollectionsNamedTuple
                         | Specific::TypingCallable => todo!(),
-                        Specific::Any | Specific::Cycle => todo!(),
                         Specific::TypingCast => todo!(),
                         Specific::TypingClassVar => todo!(),
                         Specific::RevealTypeFunction => todo!(),
@@ -262,12 +256,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     let definition = NodeRef::from_link(i_s.db, *definition);
                     let complex = definition.file.complex_points.get(point.complex_index());
                     if let ComplexPoint::Class(cls_storage) = complex {
-                        Type::Class(Class::new(
-                            definition,
-                            cls_storage,
-                            Generics::NotDefinedYet,
-                            None,
-                        ))
+                        Class::new(definition, cls_storage, Generics::NotDefinedYet, None)
+                            .as_type(i_s)
                     } else {
                         class_of_complex(complex, Some(definition))
                     }
