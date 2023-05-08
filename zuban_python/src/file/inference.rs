@@ -1851,13 +1851,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     None
                 }
             });
-        if cfg!(feature = "zuban_debug") {
-            if let Some(inferred) = result.as_ref() {
-                if inferred.is_unknown() {
-                    debug!("Found unknown cache result: {node_index}");
-                }
-            }
-        }
         result
     }
 

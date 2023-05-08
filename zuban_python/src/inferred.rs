@@ -1184,14 +1184,6 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn is_unknown(&self) -> bool {
-        match &self.state {
-            InferredState::Saved(_, point) => matches!(point.type_(), PointType::Unknown),
-            InferredState::Unknown => true,
-            _ => false,
-        }
-    }
-
     pub fn is_union(&self, db: &'db Database) -> bool {
         let check_complex_point = |c: &_| match c {
             ComplexPoint::TypeInstance(t) => Type::new(t).is_union(),
