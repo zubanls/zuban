@@ -931,6 +931,7 @@ fn maybe_new_type<'db>(
 }
 
 #[derive(Debug)]
+#[allow(dead_code)]
 pub struct NewTypeInstance<'a> {
     db: &'a Database,
     new_type: &'a Rc<NewType>,

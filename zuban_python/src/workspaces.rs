@@ -165,10 +165,6 @@ impl WorkspaceFileIndex {
         Self(Cell::new(None))
     }
 
-    fn some(file_index: FileIndex) -> Self {
-        Self(Cell::new(Some(file_index)))
-    }
-
     pub fn set(&self, index: FileIndex) {
         self.0.set(Some(index));
     }

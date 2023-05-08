@@ -2,8 +2,8 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, ArgumentsIterator, AssignmentContent, BlockContent, ClassDef, Decoratee,
-    SimpleStmtContent, SimpleStmts, StmtContent, Target,
+    Argument, AssignmentContent, BlockContent, ClassDef, Decoratee, SimpleStmtContent, SimpleStmts,
+    StmtContent, Target,
 };
 
 use super::function::OverloadResult;
@@ -822,26 +822,6 @@ impl fmt::Debug for Class<'_> {
             .field("generics", &self.generics)
             .field("type_var_remap", &self.type_var_remap)
             .finish()
-    }
-}
-
-struct BasesIterator<'db> {
-    file: &'db PythonFile,
-    args: Option<ArgumentsIterator<'db>>,
-}
-
-impl<'db> BasesIterator<'db> {
-    fn next(&mut self, i_s: &InferenceState<'db, '_>) -> Option<Inferred> {
-        if let Some(args) = self.args.as_mut() {
-            match args.next() {
-                Some(Argument::Positional(p)) => {
-                    return Some(self.file.inference(i_s).infer_named_expression(p))
-                }
-                None => (),
-                other => todo!("{other:?}"),
-            }
-        }
-        None
     }
 }
 

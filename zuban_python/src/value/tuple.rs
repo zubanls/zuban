@@ -22,10 +22,6 @@ impl<'a> Tuple<'a> {
         Self { db_type, content }
     }
 
-    pub fn as_db_type(&self) -> DbType {
-        DbType::Tuple(self.content.clone())
-    }
-
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
         match &self.content.args {
             Some(args @ TupleTypeArguments::FixedLength(ts)) => {
