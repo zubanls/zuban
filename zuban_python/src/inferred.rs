@@ -316,7 +316,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     #[inline]
-    pub fn internal_run<'a, T>(
+    fn internal_run<'a, T>(
         &'a self,
         i_s: &InferenceState<'db, '_>,
         callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
