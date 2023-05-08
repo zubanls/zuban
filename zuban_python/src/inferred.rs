@@ -1184,17 +1184,6 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    pub fn maybe_simple<'a, T>(
-        &'a self,
-        i_s: &InferenceState<'db, '_>,
-        c: impl Fn(&dyn Value<'db, 'a>) -> Option<T>,
-    ) -> Option<T>
-    where
-        'db: 'a,
-    {
-        self.internal_run(i_s, &mut |i_s, v| c(v), &|_, i1, i2| None, &mut |i_s| None)
-    }
-
     pub fn is_unknown(&self) -> bool {
         match &self.state {
             InferredState::Saved(_, point) => matches!(point.type_(), PointType::Unknown),
