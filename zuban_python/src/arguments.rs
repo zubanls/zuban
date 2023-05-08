@@ -149,7 +149,6 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
 #[derive(Debug)]
 pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
-    mro_index: MroIndex,
     node_ref: NodeRef<'a>,
     is_bound_self: bool,
 }
@@ -177,7 +176,6 @@ impl<'a> KnownArguments<'a> {
         Self {
             inferred,
             node_ref,
-            mro_index: MroIndex(0),
             is_bound_self: false,
         }
     }
@@ -186,7 +184,6 @@ impl<'a> KnownArguments<'a> {
         Self {
             inferred,
             node_ref,
-            mro_index,
             is_bound_self: true,
         }
     }

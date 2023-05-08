@@ -7,6 +7,7 @@ use crate::name::TreePosition;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
+#[allow(dead_code)]  // TODO remove this
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueType {
     AttributeError { object: Box<str>, name: Box<str> },
@@ -172,6 +173,7 @@ impl<'db> Diagnostic<'db> {
         self.account_for_sub_file(self.node_file().node_start_position(self.issue.node_index))
     }
 
+    #[allow(dead_code)] // TODO remove this
     fn end_position(&self) -> TreePosition<'db> {
         self.account_for_sub_file(self.node_file().node_end_position(self.issue.node_index))
     }

@@ -1,7 +1,6 @@
-#![allow(unused_variables)]
-#![allow(dead_code)]
+#![allow(unused_variables)] // TODO remove this
 #![allow(clippy::needless_option_as_deref)] // This is simply wrong in some cases
-#![allow(clippy::too_many_arguments)] // For now this is easier, but probably enable again
+#![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
 mod arguments;
 mod database;
@@ -62,7 +61,6 @@ impl Project {
                 strict_optional: options.strict_optional,
                 implicit_optional: options.implicit_optional,
                 mypy_compatible: options.mypy_compatible,
-                is_django: false,
             },
         );
         Self { db }
@@ -117,7 +115,7 @@ pub struct PythonProject {
     strict_optional: bool,
     implicit_optional: bool,
     mypy_compatible: bool,
-    is_django: bool,
+    // is_django: bool,  // TODO maybe add?
 }
 
 #[derive(Debug, Clone, Copy)]

@@ -62,14 +62,6 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
 );
 pub type OnLookupError<'db, 'a> = &'a dyn Fn(&InferenceState<'db, '_>);
 
-enum ArrayType {
-    None,
-    Tuple,
-    List,
-    Dict,
-    Set,
-}
-
 #[derive(Debug, Eq, PartialEq)]
 pub enum ValueKind {
     Unknown = 0,
@@ -195,6 +187,8 @@ impl LookupResult {
         }
     }
 
+    /*
+     * TODO remove?
     fn map(self, c: impl FnOnce(Inferred) -> Inferred) -> Self {
         match self {
             Self::GotoName(link, inf) => Self::GotoName(link, c(inf)),
@@ -203,6 +197,7 @@ impl LookupResult {
             _ => self,
         }
     }
+    */
 
     fn and_then(self, c: impl FnOnce(Inferred) -> Option<Inferred>) -> Option<Self> {
         match self {

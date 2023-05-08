@@ -811,16 +811,6 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
-    fn get_saved(&self, db: &'db Database) -> Option<(NodeRef<'db>, Point)> {
-        match self.state {
-            InferredState::Saved(definition, point) => {
-                let definition = NodeRef::from_link(db, definition);
-                Some((definition, point))
-            }
-            _ => None,
-        }
-    }
-
     #[inline]
     pub fn gather_types_union(
         callable: impl FnOnce(&mut dyn FnMut(&InferenceState<'db, '_>, Self)),
@@ -1762,13 +1752,6 @@ fn load_builtin_instance_from_str<'db>(
     debug_assert_eq!(v.type_(), PointType::Redirect);
     debug_assert_eq!(v.file_index(), builtins.file_index());
     use_instance_with_ref(NodeRef::new(builtins, v.node_index()), Generics::None, None)
-}
-
-fn infer_instance_with_arguments_cls(i_s: &InferenceState, definition: NodeRef) -> Inferred {
-    definition
-        .file
-        .inference(i_s)
-        .infer_primary_or_atom(definition.as_primary().first())
 }
 
 fn use_instance_with_ref<'a>(

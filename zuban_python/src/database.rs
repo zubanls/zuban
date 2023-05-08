@@ -118,23 +118,23 @@ pub type ReplaceSelf<'x> = &'x mut dyn FnMut() -> DbType;
 // if true rest 22 bits reserved for Point details
 
 const IS_ANALIZED_BIT_INDEX: usize = 31;
-const IS_INVALIDATED_BIT_INDEX: usize = 30;
+// const IS_INVALIDATED_BIT_INDEX: usize = 30;
 const LOCALITY_BIT_INDEX: usize = 27; // Uses 3 bits
-const IN_MODULE_SCOPE_BIT_INDEX: usize = 26;
-const IS_NULLABLE_BIT_INDEX: usize = 25;
+                                      // const IN_MODULE_SCOPE_BIT_INDEX: usize = 26;
+                                      // const IS_NULLABLE_BIT_INDEX: usize = 25;
 const TYPE_BIT_INDEX: usize = 22; // Uses 3 bits
 
 const REST_MASK: u32 = 0b11_1111_1111_1111_1111_1111;
 const SPECIFIC_MASK: u32 = 0xFF; // 8 bits
-const MAX_TYPE_VAR: u32 = 0xFF; // 256
-const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
+                                 // const MAX_TYPE_VAR: u32 = 0xFF; // 256
+                                 // const FILE_MASK: u32 = 0xFFFFFF; // 24 bits
 const IS_ANALIZED_MASK: u32 = 1 << IS_ANALIZED_BIT_INDEX;
-const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
-const IS_NULLABLE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
+// const IN_MODULE_SCOPE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
+// const IS_NULLABLE_MASK: u32 = 1 << IN_MODULE_SCOPE_BIT_INDEX;
 const LOCALITY_MASK: u32 = 0b111 << LOCALITY_BIT_INDEX;
 const TYPE_MASK: u32 = 0b111 << TYPE_BIT_INDEX;
 
-const IS_EXTERN_MASK: u32 = 1 << 30;
+// const IS_EXTERN_MASK: u32 = 1 << 30;
 
 #[derive(Copy, Clone, Eq, PartialEq, Default)]
 pub struct Point {
@@ -240,11 +240,6 @@ impl Point {
 
     pub fn calculating(self) -> bool {
         self.flags == Specific::Calculating as u32
-    }
-
-    fn is_recursion_error(self) -> bool {
-        unimplemented!();
-        //self.flags & REST_MASK & 1 == 1
     }
 
     pub fn file_index(self) -> FileIndex {
@@ -1707,6 +1702,7 @@ pub enum TypeOrTypeVarTuple {
 }
 
 impl TypeOrTypeVarTuple {
+    #[allow(dead_code)] // TODO remove this
     fn as_db_type(&self) -> DbType {
         match self {
             Self::Type(t) => t.clone(),

@@ -1861,10 +1861,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result
     }
 
-    fn infer_multi_definition(&mut self, name_def: NameDefinition) -> Inferred {
-        self.infer_name_definition(name_def)
-    }
-
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred {
         self.infer_name(Name::by_index(&self.file.tree, node_index))
     }

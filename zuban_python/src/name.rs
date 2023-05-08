@@ -1,3 +1,5 @@
+#![allow(dead_code)] // TODO remove this
+
 use crate::database::Database;
 use crate::file::File;
 use crate::file::PythonFile;

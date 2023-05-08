@@ -35,10 +35,6 @@ pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<
     None
 }
 
-pub fn import_on_dir(db: &Database, name: &str) -> Option<FileIndex> {
-    todo!()
-}
-
 pub fn python_import(
     db: &Database,
     dir_path: &str,

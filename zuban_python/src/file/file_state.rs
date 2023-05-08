@@ -1,3 +1,4 @@
+#![allow(dead_code)] // TODO remove this
 use std::any::Any;
 use std::fmt;
 use std::fs;
