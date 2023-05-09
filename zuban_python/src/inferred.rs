@@ -167,93 +167,18 @@ impl<'db: 'slf, 'slf> Inferred {
         )))
     }
 
+    pub fn saved_as_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Type<'db>> {
+        match &self.state {
+            InferredState::Saved(definition, point) => {
+                Some(saved_as_type(i_s, *definition, *point))
+            }
+            _ => None,
+        }
+    }
+
     pub fn class_as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
         match &self.state {
-            InferredState::Saved(definition, point) => match point.type_() {
-                PointType::Specific => {
-                    let definition = NodeRef::from_link(i_s.db, *definition);
-                    let specific = point.specific();
-                    match specific {
-                        Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
-                        Specific::IntLiteral => Type::owned(DbType::Literal(DbLiteral {
-                            kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
-                            implicit: true,
-                        })),
-                        Specific::StringLiteral => Type::owned(DbType::Literal(DbLiteral {
-                            kind: LiteralKind::String(definition.as_link()),
-                            implicit: true,
-                        })),
-                        Specific::BoolLiteral => Type::owned(DbType::Literal(DbLiteral {
-                            kind: LiteralKind::Bool(definition.as_code() == "True"),
-                            implicit: true,
-                        })),
-                        Specific::BytesLiteral => Type::owned(DbType::Literal(DbLiteral {
-                            kind: LiteralKind::Bytes(definition.as_link()),
-                            implicit: true,
-                        })),
-                        Specific::Function => Function::new(definition, None).as_type(i_s),
-                        Specific::ClassMethod => todo!(),
-                        Specific::Property => todo!(),
-                        Specific::AnnotationOrTypeCommentClassInstance
-                        | Specific::AnnotationOrTypeCommentWithTypeVars => definition
-                            .file
-                            .inference(i_s)
-                            .use_cached_annotation_or_type_comment_type_internal(
-                                definition.node_index,
-                                definition.add_to_node_index(2).as_expression(),
-                            ),
-                        Specific::SelfParam => Type::new(&DbType::Self_),
-                        Specific::TypingTypeVarClass => todo!(),
-                        Specific::TypingTypeVarTupleClass => todo!(),
-                        Specific::TypingParamSpecClass => todo!(),
-                        Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
-                        Specific::TypingTuple => {
-                            Type::new(&i_s.db.python_state.type_of_arbitrary_tuple)
-                        }
-                        Specific::CollectionsNamedTuple => todo!(),
-                        Specific::TypingProtocol
-                        | Specific::TypingGeneric
-                        | Specific::TypingUnion
-                        | Specific::TypingOptional
-                        | Specific::TypingLiteral
-                        | Specific::TypingAnnotated
-                        | Specific::TypingNamedTuple
-                        | Specific::TypingCallable => todo!(),
-                        Specific::TypingCast => todo!(),
-                        Specific::TypingClassVar => todo!(),
-                        Specific::RevealTypeFunction => todo!(),
-                        Specific::None => Type::new(&DbType::None),
-                        Specific::TypingNewType => todo!(),
-                        Specific::TypingAny => todo!(),
-                        Specific::MypyExtensionsArg
-                        | Specific::MypyExtensionsDefaultArg
-                        | Specific::MypyExtensionsNamedArg
-                        | Specific::MypyExtensionsDefaultNamedArg
-                        | Specific::MypyExtensionsVarArg
-                        | Specific::MypyExtensionsKwArg => {
-                            let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
-                            todo!()
-                        }
-                        _ => {
-                            let instance = resolve_specific(i_s, specific);
-                            Type::Class(instance.class)
-                        }
-                    }
-                }
-                PointType::Complex => {
-                    let definition = NodeRef::from_link(i_s.db, *definition);
-                    let complex = definition.file.complex_points.get(point.complex_index());
-                    if let ComplexPoint::Class(cls_storage) = complex {
-                        Class::new(definition, cls_storage, Generics::NotDefinedYet, None)
-                            .as_type(i_s)
-                    } else {
-                        type_of_complex(i_s, complex, Some(definition))
-                    }
-                }
-                PointType::Unknown => Type::new(&DbType::Any),
-                PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
-                x => unreachable!("{x:?}"),
-            },
+            InferredState::Saved(definition, point) => saved_as_type(i_s, *definition, *point),
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => Type::new(&DbType::None),
@@ -1902,6 +1827,95 @@ fn type_of_complex<'db: 'x, 'x>(
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }
+    }
+}
+
+fn saved_as_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    definition: PointLink,
+    point: Point,
+) -> Type<'db> {
+    match point.type_() {
+        PointType::Specific => {
+            let definition = NodeRef::from_link(i_s.db, definition);
+            let specific = point.specific();
+            match specific {
+                Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
+                Specific::IntLiteral => Type::owned(DbType::Literal(DbLiteral {
+                    kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
+                    implicit: true,
+                })),
+                Specific::StringLiteral => Type::owned(DbType::Literal(DbLiteral {
+                    kind: LiteralKind::String(definition.as_link()),
+                    implicit: true,
+                })),
+                Specific::BoolLiteral => Type::owned(DbType::Literal(DbLiteral {
+                    kind: LiteralKind::Bool(definition.as_code() == "True"),
+                    implicit: true,
+                })),
+                Specific::BytesLiteral => Type::owned(DbType::Literal(DbLiteral {
+                    kind: LiteralKind::Bytes(definition.as_link()),
+                    implicit: true,
+                })),
+                Specific::Function => Function::new(definition, None).as_type(i_s),
+                Specific::ClassMethod => todo!(),
+                Specific::Property => todo!(),
+                Specific::AnnotationOrTypeCommentClassInstance
+                | Specific::AnnotationOrTypeCommentWithTypeVars => definition
+                    .file
+                    .inference(i_s)
+                    .use_cached_annotation_or_type_comment_type_internal(
+                        definition.node_index,
+                        definition.add_to_node_index(2).as_expression(),
+                    ),
+                Specific::SelfParam => Type::new(&DbType::Self_),
+                Specific::TypingTypeVarClass => todo!(),
+                Specific::TypingTypeVarTupleClass => todo!(),
+                Specific::TypingParamSpecClass => todo!(),
+                Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
+                Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
+                Specific::CollectionsNamedTuple => todo!(),
+                Specific::TypingProtocol
+                | Specific::TypingGeneric
+                | Specific::TypingUnion
+                | Specific::TypingOptional
+                | Specific::TypingLiteral
+                | Specific::TypingAnnotated
+                | Specific::TypingNamedTuple
+                | Specific::TypingCallable => todo!(),
+                Specific::TypingCast => todo!(),
+                Specific::TypingClassVar => todo!(),
+                Specific::RevealTypeFunction => todo!(),
+                Specific::None => Type::new(&DbType::None),
+                Specific::TypingNewType => todo!(),
+                Specific::TypingAny => todo!(),
+                Specific::MypyExtensionsArg
+                | Specific::MypyExtensionsDefaultArg
+                | Specific::MypyExtensionsNamedArg
+                | Specific::MypyExtensionsDefaultNamedArg
+                | Specific::MypyExtensionsVarArg
+                | Specific::MypyExtensionsKwArg => {
+                    let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
+                    todo!()
+                }
+                _ => {
+                    let instance = resolve_specific(i_s, specific);
+                    Type::Class(instance.class)
+                }
+            }
+        }
+        PointType::Complex => {
+            let definition = NodeRef::from_link(i_s.db, definition);
+            let complex = definition.file.complex_points.get(point.complex_index());
+            if let ComplexPoint::Class(cls_storage) = complex {
+                Class::new(definition, cls_storage, Generics::NotDefinedYet, None).as_type(i_s)
+            } else {
+                type_of_complex(i_s, complex, Some(definition))
+            }
+        }
+        PointType::Unknown => Type::new(&DbType::Any),
+        PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
+        x => unreachable!("{x:?}"),
     }
 }
 
