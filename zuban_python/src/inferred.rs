@@ -168,31 +168,6 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn class_as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
-        let class_of_complex = |complex: &'slf _, definition: Option<_>| match complex {
-            ComplexPoint::FunctionOverload(overload) => {
-                let overload = OverloadedFunction::new(definition.unwrap(), overload, None);
-                overload.as_type(i_s)
-            }
-            ComplexPoint::TypeInstance(t) => Type::new(t),
-            // TODO is this type correct with the Any?
-            ComplexPoint::TypeAlias(alias) => Type::owned(DbType::Type(Rc::new(
-                alias.as_db_type_and_set_type_vars_any(i_s.db),
-            ))),
-            ComplexPoint::TypeVarLike(t) => match t {
-                TypeVarLike::TypeVar(_) => Type::Class(i_s.db.python_state.type_var_class()),
-                TypeVarLike::TypeVarTuple(_) => todo!(),
-                TypeVarLike::ParamSpec(_) => todo!(),
-            },
-            ComplexPoint::NewTypeDefinition(n) => {
-                Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
-            }
-            ComplexPoint::NamedTupleDefinition(n) => {
-                Type::owned(DbType::Type(Rc::new(n.as_ref().clone())))
-            }
-            _ => {
-                unreachable!("Classes are handled earlier {complex:?}")
-            }
-        };
         match &self.state {
             InferredState::Saved(definition, point) => match point.type_() {
                 PointType::Specific => {
@@ -272,14 +247,14 @@ impl<'db: 'slf, 'slf> Inferred {
                         Class::new(definition, cls_storage, Generics::NotDefinedYet, None)
                             .as_type(i_s)
                     } else {
-                        class_of_complex(complex, Some(definition))
+                        type_of_complex(i_s, complex, Some(definition))
                     }
                 }
                 PointType::Unknown => Type::new(&DbType::Any),
                 PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
                 x => unreachable!("{x:?}"),
             },
-            InferredState::UnsavedComplex(complex) => class_of_complex(complex, None),
+            InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
             InferredState::UnsavedSpecific(specific) => match specific {
                 Specific::None => Type::new(&DbType::None),
                 Specific::Any | Specific::Cycle => Type::new(&DbType::Any),
@@ -1896,6 +1871,38 @@ fn infer_class_method(
     }
     let t = func.classmethod_as_db_type(i_s, &class, class_generics_not_defined_yet);
     Some(Inferred::execute_db_type(i_s, t))
+}
+
+fn type_of_complex<'db: 'x, 'x>(
+    i_s: &InferenceState<'db, '_>,
+    complex: &'x ComplexPoint,
+    definition: Option<NodeRef<'x>>,
+) -> Type<'x> {
+    match complex {
+        ComplexPoint::FunctionOverload(overload) => {
+            let overload = OverloadedFunction::new(definition.unwrap(), overload, None);
+            overload.as_type(i_s)
+        }
+        ComplexPoint::TypeInstance(t) => Type::new(t),
+        // TODO is this type correct with the Any?
+        ComplexPoint::TypeAlias(alias) => Type::owned(DbType::Type(Rc::new(
+            alias.as_db_type_and_set_type_vars_any(i_s.db),
+        ))),
+        ComplexPoint::TypeVarLike(t) => match t {
+            TypeVarLike::TypeVar(_) => Type::Class(i_s.db.python_state.type_var_class()),
+            TypeVarLike::TypeVarTuple(_) => todo!(),
+            TypeVarLike::ParamSpec(_) => todo!(),
+        },
+        ComplexPoint::NewTypeDefinition(n) => {
+            Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
+        }
+        ComplexPoint::NamedTupleDefinition(n) => {
+            Type::owned(DbType::Type(Rc::new(n.as_ref().clone())))
+        }
+        _ => {
+            unreachable!("Classes are handled earlier {complex:?}")
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
