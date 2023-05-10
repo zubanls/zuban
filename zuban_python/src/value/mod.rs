@@ -257,11 +257,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         name: &str,
         on_error: OnLookupError<'db, '_>,
     ) -> Inferred {
-        match self.lookup(i_s, node_ref, name, on_error) {
-            LookupResult::GotoName(_, inf) | LookupResult::UnknownName(inf) => inf,
-            LookupResult::FileReference(f) => todo!(),
-            LookupResult::None => Inferred::new_unknown(),
-        }
+        self.lookup(i_s, node_ref, name, on_error).into_inferred()
     }
 
     fn get_item(
