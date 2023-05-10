@@ -250,16 +250,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         result
     }
 
-    fn lookup_implicit(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        node_ref: Option<NodeRef>,
-        name: &str,
-        on_error: OnLookupError<'db, '_>,
-    ) -> Inferred {
-        self.lookup(i_s, node_ref, name, on_error).into_inferred()
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,

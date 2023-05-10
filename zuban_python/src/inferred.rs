@@ -1121,7 +1121,9 @@ impl<'db: 'slf, 'slf> Inferred {
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> Self {
         self.run_on_value(i_s, &mut |i_s, value| {
-            value.lookup_implicit(i_s, Some(from), name, on_lookup_error)
+            value
+                .lookup(i_s, Some(from), name, on_lookup_error)
+                .into_inferred()
         })
         .execute(i_s, args)
     }

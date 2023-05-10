@@ -501,7 +501,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
-                        .lookup_implicit(i_s, Some(node_ref), normal, &|i_s| {
+                        .lookup(i_s, Some(node_ref), normal, &|i_s| {
                             let left = value.as_type(i_s).format_short(i_s.db);
                             node_ref.add_typing_issue(
                                 i_s,
@@ -511,6 +511,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 },
                             );
                         })
+                        .into_inferred()
                         .execute_with_details(
                             i_s,
                             &KnownArguments::new(&right, node_ref),
@@ -689,9 +690,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let args = slice.as_args(*self.i_s);
                 base.run_on_value(self.i_s, &mut |i_s, v| {
                     debug!("Set Item on {}", v.name());
-                    v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {
+                    v.lookup(i_s, Some(node_ref), "__setitem__", &|i_s| {
                         debug!("TODO __setitem__ not found");
                     })
+                    .into_inferred()
                     .execute_with_details(
                         i_s,
                         &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
@@ -995,13 +997,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         )
                                     } else {
                                         let t = rvalue
-                                            .lookup_implicit(i_s, Some(from), "__iter__", &|i_s| {
+                                            .lookup(i_s, Some(from), "__iter__", &|i_s| {
                                                 let right = second.format_short(i_s);
                                                 from.add_typing_issue(
                                                     i_s,
                                                     IssueType::UnsupportedIn { right },
                                                 )
                                             })
+                                            .into_inferred()
                                             .execute(i_s, &NoArguments::new(from))
                                             .execute_function(
                                                 i_s,
@@ -1093,13 +1096,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         "+" => "unary +",
                         _ => unreachable!(),
                     };
-                    value.lookup_implicit(i_s, Some(node_ref), method_name, &|i_s| {
-                        let got = value.as_type(i_s).format_short(i_s.db);
-                        node_ref.add_typing_issue(
-                            i_s,
-                            IssueType::UnsupportedOperandForUnary { operand, got },
-                        )
-                    })
+                    value
+                        .lookup(i_s, Some(node_ref), method_name, &|i_s| {
+                            let got = value.as_type(i_s).format_short(i_s.db);
+                            node_ref.add_typing_issue(
+                                i_s,
+                                IssueType::UnsupportedOperandForUnary { operand, got },
+                            )
+                        })
+                        .into_inferred()
                 })
                 .execute(self.i_s, &NoArguments::new(node_ref))
             }
@@ -1199,13 +1204,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let result = if error.get() != LookupError::ShortCircuit {
                     let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
                     rvalue
-                        .lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
+                        .lookup(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
                             if left_op_method.as_ref().is_some() {
                                 error.set(LookupError::BothSidesError);
                             } else {
                                 error.set(LookupError::LeftError);
                             }
                         })
+                        .into_inferred()
                         .execute_with_details(
                             i_s,
                             &KnownArguments::new(&right_inf, node_ref),
