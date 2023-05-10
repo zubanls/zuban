@@ -499,35 +499,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
                 let left = self.infer_single_target(target);
-                let result = left.run_on_value(self.i_s, &mut |i_s, value| {
-                    value
-                        .lookup(i_s, Some(node_ref), normal, &|i_s, type_| {
-                            let left = type_.format_short(i_s.db);
-                            node_ref.add_typing_issue(
-                                i_s,
-                                IssueType::UnsupportedLeftOperand {
-                                    operand: Box::from(aug_assign.operand()),
-                                    left,
-                                },
-                            );
-                        })
-                        .into_inferred()
-                        .execute_with_details(
+                let result = left.lookup_and_execute_with_details(
+                    self.i_s,
+                    normal,
+                    node_ref,
+                    &KnownArguments::new(&right, node_ref),
+                    &|i_s, type_| {
+                        let left = type_.format_short(i_s.db);
+                        node_ref.add_typing_issue(
                             i_s,
-                            &KnownArguments::new(&right, node_ref),
-                            &mut ResultContext::Unknown,
-                            OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
-                                arg.as_node_ref().add_typing_issue(
-                                    i_s,
-                                    IssueType::UnsupportedOperand {
-                                        operand: Box::from(aug_assign.operand()),
-                                        left: class.unwrap().format_short(i_s.db),
-                                        right,
-                                    },
-                                )
-                            }),
+                            IssueType::UnsupportedLeftOperand {
+                                operand: Box::from(aug_assign.operand()),
+                                left,
+                            },
+                        );
+                    },
+                    OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
+                        arg.as_node_ref().add_typing_issue(
+                            i_s,
+                            IssueType::UnsupportedOperand {
+                                operand: Box::from(aug_assign.operand()),
+                                left: class.unwrap().format_short(i_s.db),
+                                right,
+                            },
                         )
-                });
+                    }),
+                );
                 if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
                     self.assign_single_target(target, &result, false, |_, index| {
                         // There is no need to save this, because it's never used
