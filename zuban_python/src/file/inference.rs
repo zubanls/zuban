@@ -1105,8 +1105,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             )
                         })
                         .into_inferred()
+                        .execute(self.i_s, &NoArguments::new(node_ref))
                 })
-                .execute(self.i_s, &NoArguments::new(node_ref))
             }
             ExpressionPart::AwaitPrimary(_) => todo!(),
         }

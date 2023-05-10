@@ -1124,8 +1124,8 @@ impl<'db: 'slf, 'slf> Inferred {
             value
                 .lookup(i_s, Some(from), name, on_lookup_error)
                 .into_inferred()
+                .execute(i_s, args)
         })
-        .execute(i_s, args)
     }
 
     pub fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
