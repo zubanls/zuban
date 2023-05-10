@@ -60,7 +60,7 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     Box<str>,
     Box<str>,
 );
-pub type OnLookupError<'db, 'a> = &'a dyn Fn(&InferenceState<'db, '_>);
+pub type OnLookupError<'db, 'a> = &'a dyn Fn(&InferenceState<'db, '_>, Type);
 
 #[derive(Debug, Eq, PartialEq)]
 pub enum ValueKind {
@@ -245,7 +245,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     ) -> LookupResult {
         let result = self.lookup_internal(i_s, node_ref, name);
         if matches!(result, LookupResult::None) && self.should_add_lookup_error(i_s.db) {
-            on_error(i_s);
+            on_error(i_s, self.as_type(i_s));
         }
         result
     }

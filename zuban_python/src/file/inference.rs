@@ -501,8 +501,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let left = self.infer_single_target(target);
                 let result = left.run_on_value(self.i_s, &mut |i_s, value| {
                     value
-                        .lookup(i_s, Some(node_ref), normal, &|i_s| {
-                            let left = value.as_type(i_s).format_short(i_s.db);
+                        .lookup(i_s, Some(node_ref), normal, &|i_s, type_| {
+                            let left = type_.format_short(i_s.db);
                             node_ref.add_typing_issue(
                                 i_s,
                                 IssueType::UnsupportedLeftOperand {
@@ -648,7 +648,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         i_s,
                                         Some(node_ref),
                                         name_definition.as_code(),
-                                        &|i_s| {
+                                        &|i_s, _| {
                                             add_attribute_error(
                                                 i_s,
                                                 node_ref,
@@ -690,7 +690,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let args = slice.as_args(*self.i_s);
                 base.run_on_value(self.i_s, &mut |i_s, v| {
                     debug!("Set Item on {}", v.name());
-                    v.lookup(i_s, Some(node_ref), "__setitem__", &|i_s| {
+                    v.lookup(i_s, Some(node_ref), "__setitem__", &|i_s, _| {
                         debug!("TODO __setitem__ not found");
                     })
                     .into_inferred()
@@ -952,7 +952,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     "__eq__",
                                     from,
                                     &KnownArguments::new(&second, from),
-                                    &|_| todo!(),
+                                    &|_, _| todo!(),
                                 )
                             }
                             ComparisonContent::Is(first, _, second)
@@ -997,7 +997,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         )
                                     } else {
                                         let t = rvalue
-                                            .lookup(i_s, Some(from), "__iter__", &|i_s| {
+                                            .lookup(i_s, Some(from), "__iter__", &|i_s, _| {
                                                 let right = second.format_short(i_s);
                                                 from.add_typing_issue(
                                                     i_s,
@@ -1011,7 +1011,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 "__next__",
                                                 from,
                                                 &NoArguments::new(from),
-                                                &|_| todo!(),
+                                                &|_, _| todo!(),
                                             )
                                             .class_as_type(i_s)
                                             .error_if_not_matches(i_s, &first, |i_s, got, _| {
@@ -1089,24 +1089,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 let node_ref = NodeRef::new(self.file, f.index());
-                inf.run_on_value(self.i_s, &mut |i_s, value| {
-                    let operand = match operand.as_code() {
-                        "~" => "~",
-                        "-" => "unary -",
-                        "+" => "unary +",
-                        _ => unreachable!(),
-                    };
-                    value
-                        .lookup(i_s, Some(node_ref), method_name, &|i_s| {
-                            let got = value.as_type(i_s).format_short(i_s.db);
-                            node_ref.add_typing_issue(
-                                i_s,
-                                IssueType::UnsupportedOperandForUnary { operand, got },
-                            )
-                        })
-                        .into_inferred()
-                        .execute(self.i_s, &NoArguments::new(node_ref))
-                })
+                inf.lookup_and_execute(
+                    self.i_s,
+                    method_name,
+                    node_ref,
+                    &NoArguments::new(node_ref),
+                    &|i_s, type_| {
+                        let operand = match operand.as_code() {
+                            "~" => "~",
+                            "-" => "unary -",
+                            "+" => "unary +",
+                            _ => unreachable!(),
+                        };
+                        let got = type_.format_short(i_s.db);
+                        node_ref.add_typing_issue(
+                            i_s,
+                            IssueType::UnsupportedOperandForUnary { operand, got },
+                        )
+                    },
+                )
             }
             ExpressionPart::AwaitPrimary(_) => todo!(),
         }
@@ -1204,7 +1205,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let result = if error.get() != LookupError::ShortCircuit {
                     let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
                     rvalue
-                        .lookup(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
+                        .lookup(i_s, Some(node_ref), op.reverse_magic_method, &|i_s, _| {
                             if left_op_method.as_ref().is_some() {
                                 error.set(LookupError::BothSidesError);
                             } else {
@@ -1309,7 +1310,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.lookup(i_s, Some(node_ref), name.as_str(), &|i_s| {
+                match value.lookup(i_s, Some(node_ref), name.as_str(), &|i_s, _| {
                     add_attribute_error(i_s, node_ref, value, name)
                 }) {
                     LookupResult::GotoName(link, inferred) => {

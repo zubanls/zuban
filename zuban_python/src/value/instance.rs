@@ -156,7 +156,7 @@ impl<'a> Instance<'a> {
                                 "__next__",
                                 from,
                                 &NoArguments::new(from),
-                                &|_| todo!(),
+                                &|_, _| todo!(),
                             ),
                     );
                 }
