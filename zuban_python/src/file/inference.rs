@@ -688,28 +688,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let node_ref = NodeRef::new(self.file, primary_target.index());
                 let slice = SliceType::new(self.file, primary_target.index(), slice_type);
                 let args = slice.as_args(*self.i_s);
-                base.run_on_value(self.i_s, &mut |i_s, v| {
-                    debug!("Set Item on {}", v.name());
-                    v.lookup(i_s, Some(node_ref), "__setitem__", &|i_s, _| {
+                debug!("Set Item on {}", base.format_short(self.i_s));
+                base.lookup_and_execute_with_details(
+                    self.i_s,
+                    "__setitem__",
+                    node_ref,
+                    &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
+                    &|i_s, _| {
                         debug!("TODO __setitem__ not found");
-                    })
-                    .into_inferred()
-                    .execute_with_details(
-                        i_s,
-                        &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
-                        &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
-                            arg.as_node_ref().add_typing_issue(
-                                i_s,
-                                IssueType::InvalidGetItem {
-                                    actual,
-                                    type_: class.unwrap().format_short(i_s.db),
-                                    expected,
-                                },
-                            )
-                        }),
-                    )
-                });
+                    },
+                    OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
+                        arg.as_node_ref().add_typing_issue(
+                            i_s,
+                            IssueType::InvalidGetItem {
+                                actual,
+                                type_: class.unwrap().format_short(i_s.db),
+                                expected,
+                            },
+                        )
+                    }),
+                );
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }
