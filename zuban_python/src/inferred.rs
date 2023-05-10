@@ -1112,7 +1112,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn execute_function(
+    pub fn lookup_and_execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         name: &str,

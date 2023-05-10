@@ -947,7 +947,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
                                 let from = NodeRef::new(self.file, op.index());
                                 // TODO this does not implement __ne__ for NotEquals
-                                first.execute_function(
+                                first.lookup_and_execute(
                                     self.i_s,
                                     "__eq__",
                                     from,
@@ -1006,7 +1006,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             })
                                             .into_inferred()
                                             .execute(i_s, &NoArguments::new(from))
-                                            .execute_function(
+                                            .lookup_and_execute(
                                                 i_s,
                                                 "__next__",
                                                 from,

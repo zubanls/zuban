@@ -150,13 +150,14 @@ impl<'a> Instance<'a> {
             match found_on_class {
                 FoundOnClass::Attribute(inf) => {
                     return IteratorContent::Inferred(
-                        inf.execute(i_s, &NoArguments::new(from)).execute_function(
-                            i_s,
-                            "__next__",
-                            from,
-                            &NoArguments::new(from),
-                            &|_| todo!(),
-                        ),
+                        inf.execute(i_s, &NoArguments::new(from))
+                            .lookup_and_execute(
+                                i_s,
+                                "__next__",
+                                from,
+                                &NoArguments::new(from),
+                                &|_| todo!(),
+                            ),
                     );
                 }
                 FoundOnClass::UnresolvedDbType(Cow::Borrowed(db_type @ DbType::Tuple(t))) => {
