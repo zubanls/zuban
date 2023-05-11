@@ -565,14 +565,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     MetaclassState::Some(link) => {
                         let instance =
                             Instance::new(Class::from_db_type(i_s.db, link, &None), None);
-                        let result = instance.lookup_internal(i_s, node_ref, name);
-                        if matches!(result, LookupResult::None)
-                            && !instance.should_add_lookup_error(i_s.db)
-                        {
-                            LookupResult::UnknownName(Inferred::new_unknown())
-                        } else {
-                            result
-                        }
+                        instance.lookup_internal(i_s, node_ref, name)
                     }
                     MetaclassState::Unknown => LookupResult::UnknownName(Inferred::new_unknown()),
                     MetaclassState::None => LookupResult::None,
