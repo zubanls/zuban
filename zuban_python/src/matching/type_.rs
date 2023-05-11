@@ -1359,6 +1359,27 @@ impl<'a> Type<'a> {
         }
     }
 
+    pub fn lookup<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: NodeRef,
+        name: &str,
+        on_lookup_error: OnLookupError<'db, '_>,
+    ) -> LookupResult {
+        let mut result = None;
+        self.run_after_lookup_on_each_union_member(i_s, None, from, name, &mut |lookup_result| {
+            if matches!(lookup_result, LookupResult::None) {
+                on_lookup_error(i_s, self);
+            }
+            if result.is_none() {
+                result = Some(lookup_result);
+            } else {
+                todo!()
+            }
+        });
+        result.unwrap_or_else(|| todo!())
+    }
+
     pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
