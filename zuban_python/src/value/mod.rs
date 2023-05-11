@@ -164,6 +164,10 @@ pub enum LookupResult {
 }
 
 impl LookupResult {
+    pub fn new_any() -> Self {
+        Self::UnknownName(Inferred::new_any())
+    }
+
     pub fn into_maybe_inferred(self) -> Option<Inferred> {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {

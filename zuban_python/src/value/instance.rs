@@ -232,11 +232,11 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 }
             }
         }
-        LookupResult::None
-    }
-
-    fn should_add_lookup_error(&self, db: &Database) -> bool {
-        self.class.should_add_lookup_error(db)
+        if self.class.should_add_lookup_error(i_s.db) {
+            LookupResult::None
+        } else {
+            LookupResult::new_any()
+        }
     }
 
     fn get_item(
