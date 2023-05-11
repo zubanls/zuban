@@ -1308,9 +1308,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.lookup(i_s, Some(node_ref), name.as_str(), &|i_s, _| {
-                    add_attribute_error(i_s, node_ref, value, name)
-                }) {
+                match value
+                    .as_type(i_s)
+                    .lookup(i_s, node_ref, name.as_str(), &|i_s, _| {
+                        add_attribute_error(i_s, node_ref, value, name)
+                    }) {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting
                         // it here can be overwritten.

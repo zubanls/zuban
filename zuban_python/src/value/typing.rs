@@ -171,6 +171,7 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
                 .current_class()
                 .unwrap()
                 .lookup_internal(i_s, node_ref, name),
+            DbType::Any => LookupResult::any(),
             _ => todo!("{:?}", self.db_type),
         }
     }

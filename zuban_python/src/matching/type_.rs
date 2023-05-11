@@ -1353,15 +1353,43 @@ impl<'a> Type<'a> {
                         .run_after_lookup_on_each_union_member(i_s, None, from, name, callable)
                 }
             }
-            DbType::Type(t) => {
-                callable(TypingType::new(i_s.db, t).lookup_internal(i_s, Some(from), name))
-            }
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Union(union) => {
+                    debug_assert!(!union.entries.is_empty());
+                    for t in union.iter() {
+                        callable(TypingType::new(i_s.db, t).lookup_internal(i_s, None, name))
+                    }
+                }
+                DbType::Any => callable(LookupResult::any()),
+                _ => callable(TypingType::new(i_s.db, t).lookup_internal(i_s, Some(from), name)),
+            },
             t @ DbType::Callable(c) => {
                 callable(Callable::new(t, c).lookup_internal(i_s, Some(from), name))
             }
             DbType::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
                 callable(Module::new(i_s.db, file).lookup_internal(i_s, Some(from), name))
+            }
+            DbType::Self_ => {
+                let current_class = i_s.current_class().unwrap();
+                let type_var_likes = current_class.type_vars(i_s);
+                callable(
+                    Instance::new(
+                        Class::from_position(
+                            current_class.node_ref.to_db_lifetime(i_s.db),
+                            Generics::Self_ {
+                                class_definition: current_class.node_ref.as_link(),
+                                type_var_likes: unsafe { std::mem::transmute(type_var_likes) },
+                            },
+                            None,
+                        ),
+                        from_inferred,
+                    )
+                    .lookup_internal(i_s, Some(from), name),
+                )
+            }
+            DbType::NamedTuple(nt) => {
+                callable(NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, Some(from), name))
             }
             DbType::Class(..) => unreachable!(),
             _ => todo!("{self:?}"),
@@ -1375,16 +1403,18 @@ impl<'a> Type<'a> {
         name: &str,
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
-        let mut result = None;
+        let mut result: Option<LookupResult> = None;
         self.run_after_lookup_on_each_union_member(i_s, None, from, name, &mut |lookup_result| {
             if matches!(lookup_result, LookupResult::None) {
                 on_lookup_error(i_s, self);
             }
-            if result.is_none() {
-                result = Some(lookup_result);
+            result = Some(if let Some(l) = result.take() {
+                LookupResult::UnknownName(
+                    l.into_inferred().union(i_s, lookup_result.into_inferred()),
+                )
             } else {
-                todo!()
-            }
+                lookup_result
+            })
         });
         result.unwrap_or_else(|| todo!())
     }
