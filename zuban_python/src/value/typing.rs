@@ -360,7 +360,7 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                 db_type,
                 None,
                 &mut |i_s, v| {
-                    let result = v.lookup_internal(i_s, node_ref, name);
+                    let result = v.as_type(i_s).lookup_without_error(i_s, node_ref, name);
                     if matches!(result, LookupResult::None) {
                         debug!(
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",

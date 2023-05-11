@@ -971,7 +971,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let from = NodeRef::new(self.file, op.index());
                                 second.run_on_value(self.i_s, &mut |i_s, rvalue| {
                                     if let Some(method) = rvalue
-                                        .lookup_internal(i_s, Some(from), "__contains__")
+                                        .as_type(i_s)
+                                        .lookup_without_error(i_s, Some(from), "__contains__")
                                         .into_maybe_inferred()
                                     {
                                         method.execute_with_details(
@@ -1170,7 +1171,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let mut had_error = false;
         let result = left.run_on_value(self.i_s, &mut |i_s, lvalue| {
             let left_op_method = lvalue
-                .lookup_internal(i_s, Some(node_ref), op.magic_method)
+                .as_type(i_s)
+                .lookup_without_error(i_s, Some(node_ref), op.magic_method)
                 .into_maybe_inferred();
             right.run_on_value(i_s, &mut |i_s, rvalue| {
                 let error = Cell::new(LookupError::NoError);

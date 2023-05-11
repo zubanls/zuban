@@ -97,7 +97,8 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
     ) -> LookupResult {
         self.function
             .as_value()
-            .lookup_internal(i_s, node_ref, name)
+            .as_type(i_s)
+            .lookup_without_error(i_s, node_ref, name)
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
