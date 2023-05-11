@@ -2,7 +2,7 @@ use std::fmt;
 
 use super::{LookupResult, Value};
 
-use crate::database::{Database, FileIndex, PointLink};
+use crate::database::{Database, DbType, FileIndex, PointLink};
 
 use crate::file::File;
 use crate::file::PythonFile;
@@ -94,6 +94,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::Class(i_s.db.python_state.module_type())
+        Type::owned(DbType::Module(self.file.file_index()))
     }
 }
