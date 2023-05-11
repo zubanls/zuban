@@ -153,8 +153,8 @@ impl<'a> Instance<'a> {
                         inf.execute(i_s, &NoArguments::new(from))
                             .lookup_and_execute(
                                 i_s,
-                                "__next__",
                                 from,
+                                "__next__",
                                 &NoArguments::new(from),
                                 &|_, _| todo!(),
                             ),

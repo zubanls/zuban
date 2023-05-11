@@ -1139,15 +1139,15 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn lookup_and_execute(
         &self,
         i_s: &InferenceState<'db, '_>,
-        name: &str,
         from: NodeRef,
+        name: &str,
         args: &dyn Arguments<'db>,
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> Self {
         self.lookup_and_execute_with_details(
             i_s,
-            name,
             from,
+            name,
             args,
             on_lookup_error,
             OnTypeError::new(&on_argument_type_error),
@@ -1157,12 +1157,13 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn lookup_and_execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
-        name: &str,
         from: NodeRef,
+        name: &str,
         args: &dyn Arguments<'db>,
         on_lookup_error: OnLookupError<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
+        //self.as_type(i_s).run_after_lookup_on_each_union_member
         self.run_on_value(i_s, &mut |i_s, value| {
             value
                 .lookup(i_s, Some(from), name, on_lookup_error)

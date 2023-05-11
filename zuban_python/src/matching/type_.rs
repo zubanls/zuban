@@ -1330,7 +1330,7 @@ impl<'a> Type<'a> {
         }
         match self.maybe_db_type().unwrap() {
             DbType::Class(..) => unreachable!(),
-            _ => todo!(),
+            _ => todo!("{self:?}"),
         }
     }
 

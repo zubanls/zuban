@@ -501,8 +501,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let left = self.infer_single_target(target);
                 let result = left.lookup_and_execute_with_details(
                     self.i_s,
-                    normal,
                     node_ref,
+                    normal,
                     &KnownArguments::new(&right, node_ref),
                     &|i_s, type_| {
                         let left = type_.format_short(i_s.db);
@@ -688,8 +688,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 debug!("Set Item on {}", base.format_short(self.i_s));
                 base.lookup_and_execute_with_details(
                     self.i_s,
-                    "__setitem__",
                     node_ref,
+                    "__setitem__",
                     &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
                     &|i_s, _| {
                         debug!("TODO __setitem__ not found");
@@ -944,8 +944,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 // TODO this does not implement __ne__ for NotEquals
                                 first.lookup_and_execute(
                                     self.i_s,
-                                    "__eq__",
                                     from,
+                                    "__eq__",
                                     &KnownArguments::new(&second, from),
                                     &|_, _| todo!(),
                                 )
@@ -1003,8 +1003,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             .execute(i_s, &NoArguments::new(from))
                                             .lookup_and_execute(
                                                 i_s,
-                                                "__next__",
                                                 from,
+                                                "__next__",
                                                 &NoArguments::new(from),
                                                 &|_, _| todo!(),
                                             )
@@ -1086,8 +1086,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let node_ref = NodeRef::new(self.file, f.index());
                 inf.lookup_and_execute(
                     self.i_s,
-                    method_name,
                     node_ref,
+                    method_name,
                     &NoArguments::new(node_ref),
                     &|i_s, type_| {
                         let operand = match operand.as_code() {
