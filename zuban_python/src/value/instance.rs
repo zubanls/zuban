@@ -179,14 +179,8 @@ impl<'a> Instance<'a> {
         }
         IteratorContent::Any
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
-    fn name(&self) -> &str {
-        self.class.name()
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -237,6 +231,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         } else {
             LookupResult::None
         }
+    }
+}
+
+impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
+    fn name(&self) -> &str {
+        self.class.name()
     }
 
     fn get_item(

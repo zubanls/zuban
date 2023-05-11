@@ -143,14 +143,8 @@ impl<'a> TypingType<'a> {
     pub fn new(db: &'a Database, db_type: &'a DbType) -> Self {
         Self { db, db_type }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
-    fn name(&self) -> &str {
-        "Type"
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -174,6 +168,12 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
             DbType::Any => LookupResult::any(),
             _ => todo!("{:?}", self.db_type),
         }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
+    fn name(&self) -> &str {
+        "Type"
     }
 
     fn get_item(
@@ -324,14 +324,8 @@ impl<'a> TypeVarInstance<'a> {
             type_var_usage,
         }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
-    fn name(&self) -> &'a str {
-        self.type_var_usage.type_var.name(self.db)
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -381,6 +375,12 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
             // should just use a precreated object() from somewhere.
             Instance::new(s.object_class(), None).lookup_internal(i_s, node_ref, name)
         }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
+    fn name(&self) -> &'a str {
+        self.type_var_usage.type_var.name(self.db)
     }
 
     fn get_item(

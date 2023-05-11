@@ -20,14 +20,8 @@ impl<'a> TypeAlias<'a> {
     pub fn new(alias: &'a DbTypeAlias) -> Self {
         Self { alias }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
-    fn name(&self) -> &str {
-        "TypeAlias"
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -35,6 +29,12 @@ impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     ) -> LookupResult {
         debug!("TODO this should at least have the object results");
         LookupResult::None
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
+    fn name(&self) -> &str {
+        "TypeAlias"
     }
 
     fn get_item(

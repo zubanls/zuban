@@ -82,14 +82,8 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             ),
         }
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
-    fn name(&self) -> &str {
-        self.function.as_value().name()
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -99,6 +93,12 @@ impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
             .as_value()
             .as_type(i_s)
             .lookup_without_error(i_s, node_ref, name)
+    }
+}
+
+impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
+    fn name(&self) -> &str {
+        self.function.as_value().name()
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

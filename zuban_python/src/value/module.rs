@@ -37,6 +37,32 @@ impl<'a> Module<'a> {
             python_import(db, p, dir, name)
         })
     }
+
+    pub fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.file
+            .symbol_table
+            .lookup_symbol(name)
+            .map(|i| {
+                LookupResult::GotoName(
+                    PointLink::new(self.file.file_index(), i),
+                    self.file.inference(i_s).infer_name_by_index(i),
+                )
+            })
+            .unwrap_or_else(|| {
+                self.sub_module(i_s.db, name)
+                    .map(|file_index| {
+                        // TODO this should probably move to the sub_module
+                        i_s.db.add_invalidates(file_index, self.file.file_index());
+                        LookupResult::FileReference(file_index)
+                    })
+                    .unwrap_or_else(|| LookupResult::None)
+            })
+    }
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
@@ -65,32 +91,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
 
     fn qualified_name(&self, db: &Database) -> String {
         self.name().to_owned()
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        self.file
-            .symbol_table
-            .lookup_symbol(name)
-            .map(|i| {
-                LookupResult::GotoName(
-                    PointLink::new(self.file.file_index(), i),
-                    self.file.inference(i_s).infer_name_by_index(i),
-                )
-            })
-            .unwrap_or_else(|| {
-                self.sub_module(i_s.db, name)
-                    .map(|file_index| {
-                        // TODO this should probably move to the sub_module
-                        i_s.db.add_invalidates(file_index, self.file.file_index());
-                        LookupResult::FileReference(file_index)
-                    })
-                    .unwrap_or_else(|| LookupResult::None)
-            })
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

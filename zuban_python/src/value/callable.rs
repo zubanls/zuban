@@ -38,14 +38,8 @@ impl<'a> Callable<'a> {
         let g_o = Type::new(&self.content.result_type);
         g_o.execute_and_resolve_type_vars(i_s, None, None, &calculated_type_vars)
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
-    fn name(&self) -> &str {
-        "Callable"
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -53,6 +47,12 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     ) -> LookupResult {
         debug!("TODO callable lookups");
         LookupResult::None
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
+    fn name(&self) -> &str {
+        "Callable"
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

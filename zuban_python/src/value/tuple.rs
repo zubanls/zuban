@@ -37,14 +37,8 @@ impl<'a> Tuple<'a> {
             None => todo!(),
         }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
-    fn name(&self) -> &str {
-        "tuple"
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -71,6 +65,12 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         }
         debug!("TODO tuple object lookups");
         LookupResult::None
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
+    fn name(&self) -> &str {
+        "tuple"
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

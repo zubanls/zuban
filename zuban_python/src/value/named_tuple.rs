@@ -69,14 +69,8 @@ impl<'a> NamedTupleValue<'a> {
         };
         IteratorContent::FixedLengthTupleGenerics(t.iter())
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
-    fn name(&self) -> &str {
-        self.nt.name(self.db)
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -98,6 +92,12 @@ impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
         }
         debug!("TODO lookup of NamedTuple base classes");
         LookupResult::None
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
+    fn name(&self) -> &str {
+        self.nt.name(self.db)
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

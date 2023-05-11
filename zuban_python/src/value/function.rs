@@ -924,15 +924,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             self.execute_internal(i_s, args, on_type_error, None, result_context)
         }
     }
-}
 
-impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
-    fn name(&self) -> &str {
-        let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
-        func.name().as_str()
-    }
-
-    fn lookup_internal(
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -940,6 +933,13 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     ) -> LookupResult {
         debug!("TODO Function lookup");
         LookupResult::None
+    }
+}
+
+impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
+    fn name(&self) -> &str {
+        let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
+        func.name().as_str()
     }
 
     fn get_item(
@@ -1668,15 +1668,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     fn name(&self) -> &str {
         self.node_ref.as_code()
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
     }
 
     fn get_item(

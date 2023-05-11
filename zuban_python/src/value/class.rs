@@ -738,6 +738,15 @@ impl<'db: 'a, 'a> Class<'a> {
             Inferred::new_any()
         }
     }
+
+    pub fn lookup_internal(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Class<'a> {
@@ -771,15 +780,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
 
     fn module(&self, db: &'a Database) -> Module<'a> {
         Module::new(db, self.node_ref.file)
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
     }
 
     fn get_item(

@@ -10,12 +10,8 @@ use crate::node_ref::NodeRef;
 #[derive(Debug)]
 pub struct NoneInstance();
 
-impl<'db, 'a> Value<'db, 'a> for NoneInstance {
-    fn name(&self) -> &str {
-        "None"
-    }
-
-    fn lookup_internal(
+impl NoneInstance {
+    pub fn lookup_internal(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -23,6 +19,12 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
     ) -> LookupResult {
         debug!("TODO None lookup");
         LookupResult::None
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for NoneInstance {
+    fn name(&self) -> &str {
+        "None"
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

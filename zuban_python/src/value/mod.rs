@@ -17,7 +17,6 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
-use crate::node_ref::NodeRef;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{Class, MroIterator};
@@ -225,15 +224,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
 
     fn module(&self, db: &'a Database) -> Module<'a> {
         todo!("{:?}", self)
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
     }
 
     fn get_item(
