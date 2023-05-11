@@ -1323,30 +1323,24 @@ impl<'a> Type<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         from_inferred: Option<&Inferred>,
-        from: NodeRef,
+        from: Option<NodeRef>,
         name: &str,
         callable: &mut impl FnMut(LookupResult),
     ) {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return callable(Instance::new(cls, from_inferred).lookup_internal(
-                i_s,
-                Some(from),
-                name,
-            ));
+            return callable(Instance::new(cls, from_inferred).lookup_internal(i_s, from, name));
         }
         match self.maybe_db_type().unwrap() {
             DbType::Any => callable(LookupResult::any()),
-            DbType::None => callable(NoneInstance().lookup_internal(i_s, Some(from), name)),
+            DbType::None => callable(NoneInstance().lookup_internal(i_s, from, name)),
             DbType::Literal(literal) => {
                 let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-                callable(Literal::new(*literal, &v).lookup_internal(i_s, Some(from), name))
+                callable(Literal::new(*literal, &v).lookup_internal(i_s, from, name))
             }
             t @ DbType::TypeVar(tv) => {
-                callable(TypeVarInstance::new(i_s.db, t, tv).lookup_internal(i_s, Some(from), name))
+                callable(TypeVarInstance::new(i_s.db, t, tv).lookup_internal(i_s, from, name))
             }
-            t @ DbType::Tuple(tup) => {
-                callable(Tuple::new(t, tup).lookup_internal(i_s, Some(from), name))
-            }
+            t @ DbType::Tuple(tup) => callable(Tuple::new(t, tup).lookup_internal(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
                     Type::new(t)
@@ -1361,14 +1355,14 @@ impl<'a> Type<'a> {
                     }
                 }
                 DbType::Any => callable(LookupResult::any()),
-                _ => callable(TypingType::new(i_s.db, t).lookup_internal(i_s, Some(from), name)),
+                _ => callable(TypingType::new(i_s.db, t).lookup_internal(i_s, from, name)),
             },
             t @ DbType::Callable(c) => {
-                callable(Callable::new(t, c).lookup_internal(i_s, Some(from), name))
+                callable(Callable::new(t, c).lookup_internal(i_s, from, name))
             }
             DbType::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
-                callable(Module::new(i_s.db, file).lookup_internal(i_s, Some(from), name))
+                callable(Module::new(i_s.db, file).lookup_internal(i_s, from, name))
             }
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();
@@ -1385,21 +1379,40 @@ impl<'a> Type<'a> {
                         ),
                         from_inferred,
                     )
-                    .lookup_internal(i_s, Some(from), name),
+                    .lookup_internal(i_s, from, name),
                 )
             }
             DbType::NamedTuple(nt) => {
-                callable(NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, Some(from), name))
+                callable(NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, from, name))
             }
             DbType::Class(..) => unreachable!(),
             _ => todo!("{self:?}"),
         }
     }
 
+    pub fn lookup_without_error<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.lookup_internal(i_s, from, name, &|_, _| ())
+    }
+
     pub fn lookup<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
+        name: &str,
+        on_lookup_error: OnLookupError<'db, '_>,
+    ) -> LookupResult {
+        self.lookup_internal(i_s, Some(from), name, on_lookup_error)
+    }
+
+    fn lookup_internal<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: Option<NodeRef>,
         name: &str,
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> LookupResult {

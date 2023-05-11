@@ -1143,7 +1143,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
             Some(self),
-            from,
+            Some(from),
             name,
             &mut |lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {
