@@ -1,8 +1,7 @@
-use super::{LookupResult, Module, Value};
+use super::{Module, Value};
 use crate::database::{Database, DbType, Literal as DbLiteral};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
-use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
 pub struct Literal<'db, 'a, 'b> {
@@ -27,15 +26,6 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
 
     fn module(&self, db: &'a Database) -> Module<'a> {
         self.value.module(db)
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        self.value.lookup_internal(i_s, node_ref, name)
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

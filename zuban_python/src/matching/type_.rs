@@ -1335,7 +1335,7 @@ impl<'a> Type<'a> {
             DbType::None => callable(NoneInstance().lookup_internal(i_s, from, name)),
             DbType::Literal(literal) => {
                 let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-                callable(Literal::new(*literal, &v).lookup_internal(i_s, from, name))
+                callable(v.lookup_internal(i_s, from, name))
             }
             t @ DbType::TypeVar(tv) => {
                 callable(TypeVarInstance::new(i_s.db, t, tv).lookup_internal(i_s, from, name))
