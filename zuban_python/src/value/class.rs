@@ -567,7 +567,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             Instance::new(Class::from_db_type(i_s.db, link, &None), None);
                         instance.lookup_internal(i_s, node_ref, name)
                     }
-                    MetaclassState::Unknown => LookupResult::UnknownName(Inferred::new_unknown()),
+                    MetaclassState::Unknown => LookupResult::new_any(),
                     MetaclassState::None => LookupResult::None,
                 }
             }
