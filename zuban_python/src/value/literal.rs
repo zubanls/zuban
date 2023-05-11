@@ -38,10 +38,6 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
         self.value.lookup_internal(i_s, node_ref, name)
     }
 
-    fn should_add_lookup_error(&self, db: &Database) -> bool {
-        self.value.should_add_lookup_error(db)
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Literal(self.db_literal))
     }
