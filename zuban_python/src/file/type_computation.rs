@@ -1744,9 +1744,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 DbType::None => TypeContent::DbType(DbType::None),
                 t @ DbType::Literal(_) => TypeContent::DbType(t),
                 DbType::Union(u)
-                    if u.entries
-                        .iter()
-                        .all(|e| matches!(e.type_, DbType::Literal(_) | DbType::None)) =>
+                    if u.iter()
+                        .all(|t| matches!(t, DbType::Literal(_) | DbType::None)) =>
                 {
                     TypeContent::DbType(DbType::Union(u))
                 }

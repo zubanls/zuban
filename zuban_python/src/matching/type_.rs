@@ -606,8 +606,8 @@ impl<'a> Type<'a> {
                         debug!("TODO matching reverse?");
                     }
                     let mut result: Option<Match> = None;
-                    for e in u2.entries.iter() {
-                        let r = self.matches(i_s, matcher, &Type::new(&e.type_), variance);
+                    for t in u2.iter() {
+                        let r = self.matches(i_s, matcher, &Type::new(t), variance);
                         if !r.bool() {
                             return r.bool().into();
                         } else {
@@ -1349,8 +1349,8 @@ impl<'a> Type<'a> {
                 callable(Tuple::new(t, tup).lookup_internal(i_s, Some(from), name))
             }
             DbType::Union(union) => {
-                for entry in union.entries.iter() {
-                    Type::new(&entry.type_)
+                for t in union.iter() {
+                    Type::new(t)
                         .run_after_lookup_on_each_union_member(i_s, None, from, name, callable)
                 }
             }

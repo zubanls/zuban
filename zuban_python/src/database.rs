@@ -639,9 +639,8 @@ impl UnionType {
                 // Fetch the literals in the front of the union and format them like Literal[1, 2]
                 // instead of Literal[1] | Literal[2].
                 let count = self
-                    .entries
                     .iter()
-                    .take_while(|e| matches!(e.type_, DbType::Literal(_)))
+                    .take_while(|t| matches!(t, DbType::Literal(_)))
                     .count();
                 if count > 1 {
                     let lit = format!(
@@ -649,7 +648,7 @@ impl UnionType {
                         iterator
                             .by_ref()
                             .take(count)
-                            .map(|l| match l.type_ {
+                            .map(|t| match t.type_ {
                                 DbType::Literal(l) => l.format_inner(format_data.db),
                                 _ => unreachable!(),
                             })
