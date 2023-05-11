@@ -992,7 +992,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         )
                                     } else {
                                         let t = rvalue
-                                            .lookup(i_s, Some(from), "__iter__", &|i_s, _| {
+                                            .as_type(i_s)
+                                            .lookup(i_s, from, "__iter__", &|i_s, _| {
                                                 let right = second.format_short(i_s);
                                                 from.add_typing_issue(
                                                     i_s,
@@ -1200,7 +1201,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let result = if error.get() != LookupError::ShortCircuit {
                     let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
                     rvalue
-                        .lookup(i_s, Some(node_ref), op.reverse_magic_method, &|i_s, _| {
+                        .as_type(i_s)
+                        .lookup(i_s, node_ref, op.reverse_magic_method, &|i_s, _| {
                             if left_op_method.as_ref().is_some() {
                                 error.set(LookupError::BothSidesError);
                             } else {

@@ -1354,6 +1354,9 @@ impl<'a> Type<'a> {
                         .run_after_lookup_on_each_union_member(i_s, None, from, name, callable)
                 }
             }
+            t @ DbType::Callable(c) => {
+                callable(Callable::new(t, c).lookup_internal(i_s, Some(from), name))
+            }
             DbType::Class(..) => unreachable!(),
             _ => todo!("{self:?}"),
         }
