@@ -12,7 +12,7 @@ use crate::matching::{
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, Value};
+use crate::value::{Class, Function};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {

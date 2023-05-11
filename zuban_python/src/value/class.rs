@@ -561,7 +561,7 @@ impl<'db: 'a, 'a> Class<'a> {
         match result {
             Some(LookupResult::None) | None => {
                 let class_infos = self.use_cached_class_infos(i_s.db);
-                match class_infos.metaclass {
+                let result = match class_infos.metaclass {
                     MetaclassState::Some(link) => {
                         let instance =
                             Instance::new(Class::from_db_type(i_s.db, link, &None), None);
@@ -569,6 +569,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                     MetaclassState::Unknown => LookupResult::any(),
                     MetaclassState::None => LookupResult::None,
+                };
+                if matches!(result, LookupResult::None) && !self.should_add_lookup_error(i_s.db) {
+                    LookupResult::any()
+                } else {
+                    result
                 }
             }
             Some(x) => x,
@@ -733,6 +738,10 @@ impl<'db: 'a, 'a> Class<'a> {
             Inferred::new_any()
         }
     }
+
+    pub fn should_add_lookup_error(&self, db: &Database) -> bool {
+        !self.incomplete_mro(db)
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Class<'a> {
@@ -775,10 +784,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         name: &str,
     ) -> LookupResult {
         self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
-    }
-
-    fn should_add_lookup_error(&self, db: &Database) -> bool {
-        !self.incomplete_mro(db)
     }
 
     fn get_item(
