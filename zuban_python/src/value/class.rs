@@ -278,7 +278,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         match meta_base {
                             BaseClass::DbType(DbType::Class(link, None)) => {
                                 let c = Class::from_db_type(i_s.db, link, &None);
-                                if !c.should_add_lookup_error(i_s.db)
+                                if c.incomplete_mro(i_s.db)
                                     || c.in_mro(
                                         i_s.db,
                                         &DbType::Class(
@@ -570,7 +570,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     MetaclassState::Unknown => LookupResult::any(),
                     MetaclassState::None => LookupResult::None,
                 };
-                if matches!(result, LookupResult::None) && !self.should_add_lookup_error(i_s.db) {
+                if matches!(result, LookupResult::None) && self.incomplete_mro(i_s.db) {
                     LookupResult::any()
                 } else {
                     result
@@ -737,10 +737,6 @@ impl<'db: 'a, 'a> Class<'a> {
         } else {
             Inferred::new_any()
         }
-    }
-
-    pub fn should_add_lookup_error(&self, db: &Database) -> bool {
-        !self.incomplete_mro(db)
     }
 }
 

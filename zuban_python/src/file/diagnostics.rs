@@ -550,7 +550,7 @@ impl<'db> Inference<'db, '_, '_> {
 fn valid_raise_type(db: &Database, t: Type) -> bool {
     let check = |link, generics| {
         let cls = Class::from_db_type(db, link, generics);
-        !cls.should_add_lookup_error(db) || cls.in_mro(db, &db.python_state.base_exception())
+        cls.incomplete_mro(db) || cls.in_mro(db, &db.python_state.base_exception())
     };
     match t.into_db_type(db) {
         DbType::Class(link, generics) => check(link, &generics),
