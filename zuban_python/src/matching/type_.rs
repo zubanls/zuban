@@ -18,7 +18,7 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
     Callable, Class, Instance, IteratorContent, LookupResult, MroIterator, NamedTupleValue,
-    OnTypeError, Tuple, Value,
+    OnLookupError, OnTypeError, Tuple, Value,
 };
 
 #[derive(Debug, Clone)]
@@ -1314,6 +1314,22 @@ impl<'a> Type<'a> {
             // TODO this does not not need to generate a db type
             Self::Class(c) => c.as_db_type(db).has_self_type(),
             Self::Type(t) => t.has_self_type(),
+        }
+    }
+
+    pub fn lookup<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: NodeRef,
+        name: &str,
+        on_lookup_error: OnLookupError<'db, '_>,
+    ) -> LookupResult {
+        if let Some(cls) = self.maybe_class(i_s.db) {
+            return cls.lookup(i_s, Some(from), name, on_lookup_error);
+        }
+        match self.maybe_db_type().unwrap() {
+            DbType::Class(..) => unreachable!(),
+            _ => todo!(),
         }
     }
 

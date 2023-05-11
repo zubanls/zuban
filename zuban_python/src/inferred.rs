@@ -1115,18 +1115,11 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn lookup(
         &self,
         i_s: &InferenceState<'db, '_>,
-        name: &str,
         from: NodeRef,
+        name: &str,
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
-        /*
-        self.run_on_value(i_s, &mut |i_s, value| {
-            value
-                .lookup(i_s, Some(from), name, on_lookup_error)
-                .into_inferred()
-        })
-        */
-        todo!()
+        self.as_type(i_s).lookup(i_s, from, name, on_lookup_error)
     }
 
     pub fn lookup_and_execute(
