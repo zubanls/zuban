@@ -1326,43 +1326,32 @@ impl<'a> Type<'a> {
         from: NodeRef,
         name: &str,
         callable: &mut impl FnMut(LookupResult),
-        on_lookup_error: OnLookupError<'db, '_>,
     ) {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return callable(Instance::new(cls, from_inferred).lookup(
+            return callable(Instance::new(cls, from_inferred).lookup_internal(
                 i_s,
                 Some(from),
                 name,
-                on_lookup_error,
             ));
         }
         match self.maybe_db_type().unwrap() {
             DbType::Any => callable(LookupResult::UnknownName(Inferred::new_any())),
-            DbType::None => callable(NoneInstance().lookup(i_s, Some(from), name, on_lookup_error)),
+            DbType::None => callable(NoneInstance().lookup_internal(i_s, Some(from), name)),
             DbType::Literal(literal) => {
                 let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-                callable(Literal::new(*literal, &v).lookup(i_s, Some(from), name, on_lookup_error))
+                callable(Literal::new(*literal, &v).lookup_internal(i_s, Some(from), name))
             }
-            t @ DbType::TypeVar(tv) => callable(TypeVarInstance::new(i_s.db, t, tv).lookup(
-                i_s,
-                Some(from),
-                name,
-                on_lookup_error,
-            )),
-            //DbType::Type(t) => callable(TypingType::new(i_s.db, t).lookup(i_s, Some(from), name, on_lookup_error)),
+            t @ DbType::TypeVar(tv) => {
+                callable(TypeVarInstance::new(i_s.db, t, tv).lookup_internal(i_s, Some(from), name))
+            }
+            //DbType::Type(t) => callable(TypingType::new(i_s.db, t).lookup_internal(i_s, Some(from), name)),
             t @ DbType::Tuple(tup) => {
-                callable(Tuple::new(t, tup).lookup(i_s, Some(from), name, on_lookup_error))
+                callable(Tuple::new(t, tup).lookup_internal(i_s, Some(from), name))
             }
             DbType::Union(union) => {
                 for entry in union.entries.iter() {
-                    Type::new(&entry.type_).run_after_lookup_on_each_union_member(
-                        i_s,
-                        None,
-                        from,
-                        name,
-                        callable,
-                        on_lookup_error,
-                    )
+                    Type::new(&entry.type_)
+                        .run_after_lookup_on_each_union_member(i_s, None, from, name, callable)
                 }
             }
             DbType::Class(..) => unreachable!(),

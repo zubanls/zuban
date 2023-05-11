@@ -1126,13 +1126,15 @@ impl<'db: 'slf, 'slf> Inferred {
             from,
             name,
             &mut |lookup_result| {
+                if matches!(lookup_result, LookupResult::None) {
+                    on_lookup_error(i_s, self.as_type(i_s));
+                }
                 if result.is_none() {
                     result = Some(lookup_result);
                 } else {
                     todo!()
                 }
             },
-            on_lookup_error,
         );
         result.unwrap_or_else(|| todo!())
     }
@@ -1171,6 +1173,9 @@ impl<'db: 'slf, 'slf> Inferred {
             from,
             name,
             &mut |lookup_result| {
+                if matches!(lookup_result, LookupResult::None) {
+                    on_lookup_error(i_s, self.as_type(i_s));
+                }
                 let inf = lookup_result.into_inferred().execute_with_details(
                     i_s,
                     args,
@@ -1183,7 +1188,6 @@ impl<'db: 'slf, 'slf> Inferred {
                     Some(inf)
                 }
             },
-            on_lookup_error,
         );
         result.unwrap_or_else(|| todo!())
     }
