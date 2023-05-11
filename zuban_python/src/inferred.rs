@@ -1122,6 +1122,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let mut result = None;
         self.as_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
+            Some(self),
             from,
             name,
             &mut |lookup_result| {
@@ -1163,13 +1164,28 @@ impl<'db: 'slf, 'slf> Inferred {
         on_lookup_error: OnLookupError<'db, '_>,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
-        //self.as_type(i_s).run_after_lookup_on_each_union_member
-        self.run_on_value(i_s, &mut |i_s, value| {
-            value
-                .lookup(i_s, Some(from), name, on_lookup_error)
-                .into_inferred()
-                .execute_with_details(i_s, args, &mut ResultContext::Unknown, on_type_error)
-        })
+        let mut result: Option<Inferred> = None;
+        self.as_type(i_s).run_after_lookup_on_each_union_member(
+            i_s,
+            Some(self),
+            from,
+            name,
+            &mut |lookup_result| {
+                let inf = lookup_result.into_inferred().execute_with_details(
+                    i_s,
+                    args,
+                    &mut ResultContext::Unknown,
+                    on_type_error,
+                );
+                result = if let Some(r) = result.take() {
+                    Some(r.union(i_s, inf))
+                } else {
+                    Some(inf)
+                }
+            },
+            on_lookup_error,
+        );
+        result.unwrap_or_else(|| todo!())
     }
 
     pub fn execute(&self, i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Self {
