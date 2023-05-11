@@ -1,15 +1,13 @@
 use std::rc::Rc;
 
-use super::{LookupResult, Value};
+use super::Value;
 
 use crate::database::{DbType, TypeAlias as DbTypeAlias};
-use crate::debug;
 
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
-use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub struct TypeAlias<'a> {
@@ -19,16 +17,6 @@ pub struct TypeAlias<'a> {
 impl<'a> TypeAlias<'a> {
     pub fn new(alias: &'a DbTypeAlias) -> Self {
         Self { alias }
-    }
-
-    pub fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        debug!("TODO this should at least have the object results");
-        LookupResult::None
     }
 }
 

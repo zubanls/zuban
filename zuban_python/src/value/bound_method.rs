@@ -1,13 +1,11 @@
 use super::{
-    Callable, FirstParamProperties, Function, Instance, LookupResult, OnTypeError,
-    OverloadedFunction, Value,
+    Callable, FirstParamProperties, Function, Instance, OnTypeError, OverloadedFunction, Value,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{ResultContext, Type};
-use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
@@ -81,18 +79,6 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 result_context,
             ),
         }
-    }
-
-    pub fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        self.function
-            .as_value()
-            .as_type(i_s)
-            .lookup_without_error(i_s, node_ref, name)
     }
 }
 
