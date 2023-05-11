@@ -17,7 +17,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
-    Callable, Class, Instance, IteratorContent, Literal, LookupResult, MroIterator,
+    Callable, Class, Instance, IteratorContent, Literal, LookupResult, Module, MroIterator,
     NamedTupleValue, NoneInstance, OnLookupError, OnTypeError, Tuple, TypeVarInstance, TypingType,
     Value,
 };
@@ -1344,7 +1344,6 @@ impl<'a> Type<'a> {
             t @ DbType::TypeVar(tv) => {
                 callable(TypeVarInstance::new(i_s.db, t, tv).lookup_internal(i_s, Some(from), name))
             }
-            //DbType::Type(t) => callable(TypingType::new(i_s.db, t).lookup_internal(i_s, Some(from), name)),
             t @ DbType::Tuple(tup) => {
                 callable(Tuple::new(t, tup).lookup_internal(i_s, Some(from), name))
             }
@@ -1354,8 +1353,15 @@ impl<'a> Type<'a> {
                         .run_after_lookup_on_each_union_member(i_s, None, from, name, callable)
                 }
             }
+            DbType::Type(t) => {
+                callable(TypingType::new(i_s.db, t).lookup_internal(i_s, Some(from), name))
+            }
             t @ DbType::Callable(c) => {
                 callable(Callable::new(t, c).lookup_internal(i_s, Some(from), name))
+            }
+            DbType::Module(file_index) => {
+                let file = i_s.db.loaded_python_file(*file_index);
+                callable(Module::new(i_s.db, file).lookup_internal(i_s, Some(from), name))
             }
             DbType::Class(..) => unreachable!(),
             _ => todo!("{self:?}"),

@@ -641,20 +641,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     .into_maybe_inferred()
                                 })
                                 .unwrap_or_else(|| {
-                                    v.lookup(
-                                        i_s,
-                                        Some(node_ref),
-                                        name_definition.as_code(),
-                                        &|i_s, _| {
-                                            add_attribute_error(
-                                                i_s,
-                                                node_ref,
-                                                v,
-                                                name_definition.name(),
-                                            )
-                                        },
-                                    )
-                                    .into_inferred()
+                                    v.as_type(i_s)
+                                        .lookup(
+                                            i_s,
+                                            node_ref,
+                                            name_definition.as_code(),
+                                            &|i_s, _| {
+                                                add_attribute_error(
+                                                    i_s,
+                                                    node_ref,
+                                                    v,
+                                                    name_definition.name(),
+                                                )
+                                            },
+                                        )
+                                        .into_inferred()
                                 })
                                 .as_type(i_s)
                                 .error_if_not_matches(i_s, value, |i_s, got, expected| {
