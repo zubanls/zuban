@@ -1464,7 +1464,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_unknown(),
                     },
                 });
-                let DbType::Union(u) = inf.class_as_type(i_s).into_db_type(i_s.db) else {
+                let DbType::Union(u) = inf.as_type(i_s).into_db_type(i_s.db) else {
                     unreachable!()
                 };
                 let mut unioned = DbType::Never;

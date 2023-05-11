@@ -176,7 +176,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn class_as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
+    pub fn as_type(&'slf self, i_s: &InferenceState<'db, '_>) -> Type<'slf> {
         match &self.state {
             InferredState::Saved(definition, point) => saved_as_type(i_s, *definition, *point),
             InferredState::UnsavedComplex(complex) => type_of_complex(i_s, complex, None),
@@ -204,11 +204,11 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn class_as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
-        self.class_as_type(i_s).into_db_type(i_s.db)
+        self.as_type(i_s).into_db_type(i_s.db)
     }
 
     pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
-        self.class_as_type(i_s).format(format_data)
+        self.as_type(i_s).format(format_data)
     }
 
     pub fn format_short(&self, i_s: &InferenceState<'db, '_>) -> Box<str> {
@@ -735,8 +735,8 @@ impl<'db: 'slf, 'slf> Inferred {
         if result_context.expects_union(i_s) || self.is_union(i_s.db) || other.is_union(i_s.db) {
             self.union(i_s, other)
         } else {
-            let second = other.class_as_type(i_s);
-            let t = self.class_as_type(i_s).common_base_type(i_s, &second);
+            let second = other.as_type(i_s);
+            let t = self.as_type(i_s).common_base_type(i_s, &second);
             Inferred::execute_db_type(i_s, t)
         }
     }
@@ -746,8 +746,8 @@ impl<'db: 'slf, 'slf> Inferred {
             self
         } else {
             Inferred::from_type(
-                self.class_as_type(i_s)
-                    .union(i_s.db, other.class_as_type(i_s))
+                self.as_type(i_s)
+                    .union(i_s.db, other.as_type(i_s))
                     .into_db_type(i_s.db),
             )
         }
@@ -1375,7 +1375,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             _ => (),
         }
-        self.class_as_type(i_s)
+        self.as_type(i_s)
             .execute(i_s, Some(self), args, result_context, on_type_error)
     }
 
@@ -1385,7 +1385,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
     ) -> IteratorContent<'db> {
         let inferred = self.save_if_unsaved(i_s, from.file, from.node_index);
-        let t = inferred.class_as_type(i_s);
+        let t = inferred.as_type(i_s);
         // TODO this is probably wrong and iter has to be rewritten.
         let t: Type<'db> = unsafe { std::mem::transmute(t) };
         t.iter_on_borrowed(i_s, from)

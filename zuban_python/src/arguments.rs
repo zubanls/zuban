@@ -439,7 +439,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 is_bound_self,
                 ..
             } => match is_bound_self {
-                false => vec![inferred.class_as_type(i_s).format_short(i_s.db)],
+                false => vec![inferred.as_type(i_s).format_short(i_s.db)],
                 true => vec![],
             },
             Self::Iterator {
@@ -542,7 +542,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
-                            match inf.class_as_type(i_s).maybe_borrowed_db_type() {
+                            match inf.as_type(i_s).maybe_borrowed_db_type() {
                                 Some(DbType::ParamSpecArgs(usage)) => {
                                     // TODO check for the next arg being **P.kwargs
                                     iterator.next();
@@ -569,7 +569,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(double_starred_expr.expression());
-                            let type_ = inf.class_as_type(i_s);
+                            let type_ = inf.as_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
                             let mut value_type = None;
                             if let Some(mro) = type_.mro(i_s.db) {

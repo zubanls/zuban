@@ -435,7 +435,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     r
                 } else {
                     let original_def = self.original_definition(assignment);
-                    let result_type = original_def.as_ref().map(|inf| inf.class_as_type(self.i_s));
+                    let result_type = original_def.as_ref().map(|inf| inf.as_type(self.i_s));
                     let mut result_context = match &result_type {
                         Some(t) => ResultContext::Known(t),
                         None => ResultContext::AssignmentNewDefinition,
@@ -589,7 +589,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                     }
                     let inferred = self.infer_name_by_index(first_definition);
-                    inferred.class_as_type(self.i_s).error_if_not_matches(
+                    inferred.as_type(self.i_s).error_if_not_matches(
                         self.i_s,
                         value,
                         |i_s, got, expected| {
@@ -656,7 +656,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     )
                                     .into_inferred()
                                 })
-                                .class_as_type(i_s)
+                                .as_type(i_s)
                                 .error_if_not_matches(i_s, value, |i_s, got, expected| {
                                     let node_ref = NodeRef::new(self.file, primary_target.index())
                                         .to_db_lifetime(i_s.db);
@@ -1008,7 +1008,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 &NoArguments::new(from),
                                                 &|_, _| todo!(),
                                             )
-                                            .class_as_type(i_s)
+                                            .as_type(i_s)
                                             .error_if_not_matches(i_s, &first, |i_s, got, _| {
                                                 let t = IssueType::UnsupportedOperand {
                                                     operand: Box::from("in"),
@@ -1122,7 +1122,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .inference(&i_s)
                             .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = (**c).clone();
-                        c.result_type = result.class_as_type(&i_s).into_db_type(i_s.db);
+                        c.result_type = result.as_type(&i_s).into_db_type(i_s.db);
                         Inferred::execute_db_type(&i_s, DbType::Callable(Rc::new(c)))
                     } else {
                         todo!()
