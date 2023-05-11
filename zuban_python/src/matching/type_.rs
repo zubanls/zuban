@@ -1335,7 +1335,7 @@ impl<'a> Type<'a> {
             ));
         }
         match self.maybe_db_type().unwrap() {
-            DbType::Any => callable(LookupResult::new_any()),
+            DbType::Any => callable(LookupResult::any()),
             DbType::None => callable(NoneInstance().lookup_internal(i_s, Some(from), name)),
             DbType::Literal(literal) => {
                 let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);

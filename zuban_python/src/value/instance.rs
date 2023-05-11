@@ -235,7 +235,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         if self.class.should_add_lookup_error(i_s.db) {
             LookupResult::None
         } else {
-            LookupResult::new_any()
+            LookupResult::any()
         }
     }
 

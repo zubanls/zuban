@@ -164,7 +164,7 @@ pub enum LookupResult {
 }
 
 impl LookupResult {
-    pub fn new_any() -> Self {
+    pub fn any() -> Self {
         Self::UnknownName(Inferred::new_any())
     }
 
