@@ -1317,15 +1317,16 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn lookup<'db>(
+    pub fn run_after_lookup_on_each_union_member<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
         name: &str,
+        callable: &mut impl FnMut(LookupResult),
         on_lookup_error: OnLookupError<'db, '_>,
-    ) -> LookupResult {
+    ) {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return cls.lookup(i_s, Some(from), name, on_lookup_error);
+            return callable(cls.lookup(i_s, Some(from), name, on_lookup_error));
         }
         match self.maybe_db_type().unwrap() {
             DbType::Class(..) => unreachable!(),

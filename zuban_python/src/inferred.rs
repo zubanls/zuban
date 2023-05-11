@@ -1119,7 +1119,21 @@ impl<'db: 'slf, 'slf> Inferred {
         name: &str,
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
-        self.as_type(i_s).lookup(i_s, from, name, on_lookup_error)
+        let mut result = None;
+        self.as_type(i_s).run_after_lookup_on_each_union_member(
+            i_s,
+            from,
+            name,
+            &mut |lookup_result| {
+                if result.is_none() {
+                    result = Some(lookup_result);
+                } else {
+                    todo!()
+                }
+            },
+            on_lookup_error,
+        );
+        result.unwrap_or_else(|| todo!())
     }
 
     pub fn lookup_and_execute(
