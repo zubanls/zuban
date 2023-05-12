@@ -642,7 +642,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 })
                                 .unwrap_or_else(|| {
                                     v.as_type(i_s)
-                                        .lookup(
+                                        .lookup_with_error(
                                             i_s,
                                             node_ref,
                                             name_definition.as_code(),
@@ -995,7 +995,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     } else {
                                         let t = rvalue
                                             .as_type(i_s)
-                                            .lookup(i_s, from, "__iter__", &|i_s, _| {
+                                            .lookup_with_error(i_s, from, "__iter__", &|i_s, _| {
                                                 let right = second.format_short(i_s);
                                                 from.add_typing_issue(
                                                     i_s,
@@ -1205,7 +1205,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
                     rvalue
                         .as_type(i_s)
-                        .lookup(i_s, node_ref, op.reverse_magic_method, &|i_s, _| {
+                        .lookup_with_error(i_s, node_ref, op.reverse_magic_method, &|i_s, _| {
                             if left_op_method.as_ref().is_some() {
                                 error.set(LookupError::BothSidesError);
                             } else {
@@ -1310,11 +1310,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
                 debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value
-                    .as_type(i_s)
-                    .lookup(i_s, node_ref, name.as_str(), &|i_s, _| {
-                        add_attribute_error(i_s, node_ref, value, name)
-                    }) {
+                match value.as_type(i_s).lookup_with_error(
+                    i_s,
+                    node_ref,
+                    name.as_str(),
+                    &|i_s, _| add_attribute_error(i_s, node_ref, value, name),
+                ) {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting
                         // it here can be overwritten.

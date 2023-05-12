@@ -1398,7 +1398,7 @@ impl<'a> Type<'a> {
         self.lookup_internal(i_s, from, name, &|_, _| ())
     }
 
-    pub fn lookup<'db>(
+    pub fn lookup_with_error<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
@@ -1408,6 +1408,7 @@ impl<'a> Type<'a> {
         self.lookup_internal(i_s, Some(from), name, on_lookup_error)
     }
 
+    #[inline]
     fn lookup_internal<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
