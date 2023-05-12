@@ -938,6 +938,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     pub fn qualified_name(&self, db: &'a Database) -> String {
         base_qualified_name!(self, db, self.name())
     }
+
+    fn module(&self, db: &'a Database) -> Module<'a> {
+        Module::new(db, self.node_ref.file)
+    }
 }
 
 impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
@@ -964,10 +968,6 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
 
     fn as_function(&self) -> Option<&Function<'a, 'class>> {
         Some(self)
-    }
-
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        Module::new(db, self.node_ref.file)
     }
 }
 

@@ -768,15 +768,15 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
     }
+
+    fn module(&self, db: &'a Database) -> Module<'a> {
+        Module::new(db, self.node_ref.file)
+    }
 }
 
 impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     fn name(&self) -> &'a str {
         self.node().name().as_str()
-    }
-
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        Module::new(db, self.node_ref.file)
     }
 
     fn get_item(

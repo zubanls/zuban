@@ -85,10 +85,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
         }
     }
 
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        *self
-    }
-
     fn as_module(&self) -> Option<&Self> {
         Some(self)
     }

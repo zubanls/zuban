@@ -12,7 +12,7 @@ mod type_alias;
 mod typing;
 
 use crate::arguments::Argument;
-use crate::database::{Database, DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
+use crate::database::{DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -216,10 +216,6 @@ impl LookupResult {
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
 pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn name(&self) -> &str {
-        todo!("{:?}", self)
-    }
-
-    fn module(&self, db: &'a Database) -> Module<'a> {
         todo!("{:?}", self)
     }
 

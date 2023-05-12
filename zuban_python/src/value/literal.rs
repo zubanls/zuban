@@ -1,5 +1,5 @@
-use super::{Module, Value};
-use crate::database::{Database, DbType, Literal as DbLiteral};
+use super::Value;
+use crate::database::{DbType, Literal as DbLiteral};
 use crate::inference_state::InferenceState;
 use crate::matching::Type;
 
@@ -18,10 +18,6 @@ impl<'db, 'a, 'b> Literal<'db, 'a, 'b> {
 impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
     fn name(&self) -> &str {
         self.value.name()
-    }
-
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        self.value.module(db)
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
