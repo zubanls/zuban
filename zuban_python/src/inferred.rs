@@ -83,7 +83,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_bound_method(
+    fn new_bound_method(
         instance: BoundMethodInstance,
         mro_index: MroIndex,
         func_link: PointLink,
@@ -195,8 +195,7 @@ impl<'db: 'slf, 'slf> Inferred {
             } => {
                 // TODO this is potentially not needed, a class could lazily be fetched with a
                 // closure
-                let inf = Inferred::from_bound_method_instance(i_s.db, instance);
-                let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
+                let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
                 load_bound_method(i_s, &instance, class, *mro_index, *func_link).as_type(i_s)
             }
             InferredState::Unknown => Type::new(&DbType::Any),
@@ -213,6 +212,39 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn format_short(&self, i_s: &InferenceState<'db, '_>) -> Box<str> {
         self.format(i_s, &FormatData::new_short(i_s.db))
+    }
+
+    fn load_bound_method_instance(
+        i_s: &InferenceState<'db, '_>,
+        instance: &'slf BoundMethodInstance,
+        mro_index: MroIndex,
+    ) -> (Instance<'slf>, Class<'slf>) {
+        let instance = Instance::new(
+            match instance {
+                BoundMethodInstance::Reference(def) => NodeRef::from_link(i_s.db, *def)
+                    .into_inferred()
+                    .saved_as_type(i_s)
+                    .unwrap()
+                    .maybe_borrowed_class(i_s.db)
+                    .unwrap(),
+                BoundMethodInstance::Complex(ComplexPoint::TypeInstance(DbType::Class(
+                    link,
+                    generics,
+                ))) => Class::from_db_type(i_s.db, *link, generics),
+                _ => unreachable!(),
+            },
+            None,
+        );
+
+        let class_t = instance
+            .class
+            .mro(i_s.db)
+            .nth(mro_index.0 as usize)
+            .unwrap()
+            .1;
+        // Mro classes are never owned, because they are saved on classes.
+        let class = class_t.expect_borrowed_class(i_s.db);
+        (instance, class)
     }
 
     #[inline]
@@ -255,8 +287,7 @@ impl<'db: 'slf, 'slf> Inferred {
             } => {
                 // TODO this is potentially not needed, a class could lazily be fetched with a
                 // closure
-                let inf = Inferred::from_bound_method_instance(i_s.db, instance);
-                let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
+                let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
                 callable(
                     i_s,
                     &load_bound_method(i_s, &instance, class, *mro_index, *func_link),
@@ -407,25 +438,6 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             _ => unreachable!("{:?}", self.state),
         }
-    }
-
-    fn expect_instance(&self, i_s: &InferenceState<'db, '_>) -> Instance<'db> {
-        let mut instance = None;
-        self.run_mut(
-            i_s,
-            &mut |i_s, v| {
-                // TODO this is a weird issue, probably a compiler bug...
-                // https://github.com/rust-lang/rust/issues/91942
-                let v: &dyn Value = unsafe { std::mem::transmute(v) };
-                if let Some(i) = v.as_instance() {
-                    instance = Some(*i);
-                } else {
-                    unreachable!("{self:?} -> {v:?}")
-                }
-            },
-            || unreachable!(),
-        );
-        instance.unwrap()
     }
 
     pub fn maybe_callable<'x>(
@@ -641,8 +653,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
-                let inf = Inferred::from_bound_method_instance(i_s.db, &instance);
-                let (instance, class) = load_bound_method_instance(i_s, &inf, mro_index);
+                let (instance, class) = Self::load_bound_method_instance(i_s, &instance, mro_index);
                 let bound_method = load_bound_method(i_s, &instance, class, mro_index, func_link);
                 file.complex_points.insert(
                     &file.points,
@@ -1044,23 +1055,11 @@ impl<'db: 'slf, 'slf> Inferred {
     fn as_bound_method_instance(&self, i_s: &InferenceState<'db, '_>) -> BoundMethodInstance {
         match &self.state {
             InferredState::Saved(definition, _) => BoundMethodInstance::Reference(*definition),
-            InferredState::UnsavedComplex(complex) => {
-                BoundMethodInstance::Complex(Box::new(complex.clone()))
-            }
+            InferredState::UnsavedComplex(complex) => BoundMethodInstance::Complex(complex.clone()),
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => unreachable!(),
             InferredState::BoundMethod { .. } => unreachable!(),
             InferredState::Unknown => unreachable!(),
-        }
-    }
-
-    fn from_bound_method_instance(db: &'db Database, any: &BoundMethodInstance) -> Self {
-        match any {
-            BoundMethodInstance::Reference(def) => {
-                let file = db.loaded_python_file(def.file);
-                Self::new_saved(file, def.node_index, file.points.get(def.node_index))
-            }
-            BoundMethodInstance::Complex(complex) => Self::new_unsaved_complex(*complex.clone()),
         }
     }
 
@@ -1363,8 +1362,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
-                let inf = Inferred::from_bound_method_instance(i_s.db, instance);
-                let (instance, class) = load_bound_method_instance(i_s, &inf, *mro_index);
+                let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
                 return load_bound_method(i_s, &instance, class, *mro_index, *func_link).execute(
                     i_s,
                     args,
@@ -1469,8 +1467,8 @@ fn run_on_complex<'db: 'a, 'a, T>(
     }
 }
 
-fn load_bound_method<'a, 'b>(
-    i_s: &InferenceState<'a, '_>,
+fn load_bound_method<'db: 'a, 'a, 'b>(
+    i_s: &InferenceState<'db, '_>,
     instance: &'b Instance<'a>,
     class: Class<'a>,
     mro_index: MroIndex,
@@ -1618,24 +1616,6 @@ fn run_on_specific<'db: 'a, 'a, T>(
             callable(i_s, &instance)
         }
     }
-}
-
-fn load_bound_method_instance<'db>(
-    i_s: &InferenceState<'db, '_>,
-    inf: &Inferred,
-    mro_index: MroIndex,
-) -> (Instance<'db>, Class<'db>) {
-    let instance = inf.expect_instance(i_s);
-
-    let class_t = instance
-        .class
-        .mro(i_s.db)
-        .nth(mro_index.0 as usize)
-        .unwrap()
-        .1;
-    // Mro classes are never owned, because they are saved on classes.
-    let class = class_t.expect_borrowed_class(i_s.db);
-    (instance, class)
 }
 
 fn resolve_specific<'db>(i_s: &InferenceState<'db, '_>, specific: Specific) -> Instance<'db> {
@@ -1957,9 +1937,9 @@ fn saved_as_type<'db>(
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub enum BoundMethodInstance {
+enum BoundMethodInstance {
     Reference(PointLink),
-    Complex(Box<ComplexPoint>),
+    Complex(ComplexPoint),
 }
 
 #[cfg(test)]
