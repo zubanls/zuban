@@ -1347,7 +1347,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
-                debug!("Get Item on {}", base.format_short(self.i_s));
+                // TODO enable this debug
+                //debug!("Get Item on {}", base.format_short(self.i_s));
                 base.run_on_value(self.i_s, &mut |i_s, value| {
                     value.get_item(
                         i_s,
