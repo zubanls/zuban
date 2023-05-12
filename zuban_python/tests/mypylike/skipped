@@ -29,6 +29,10 @@ testSelfTypeGenericClassNoClashClassMethodClassObject
 testTypingSelfAlternativeGenericConstructor
 testGenericNamedTupleCustomMethods
 
+testUnionTypeAlias
+testUnionTypeAlias2
+testCallableTypeAlias
+
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
 # raise from: Exception must be derived from BaseException

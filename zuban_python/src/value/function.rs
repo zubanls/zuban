@@ -16,7 +16,6 @@ use crate::database::{
     TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
-use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{
     use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
@@ -35,6 +34,7 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;
+use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {
@@ -933,6 +933,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     ) -> LookupResult {
         debug!("TODO Function lookup");
         LookupResult::None
+    }
+
+    pub fn qualified_name(&self, db: &'a Database) -> String {
+        base_qualified_name!(self, db, self.name())
     }
 }
 

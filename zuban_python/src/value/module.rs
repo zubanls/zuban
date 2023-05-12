@@ -38,6 +38,10 @@ impl<'a> Module<'a> {
         })
     }
 
+    pub fn qualified_name(&self, db: &Database) -> String {
+        self.name().to_owned()
+    }
+
     pub fn lookup(
         &self,
         i_s: &InferenceState,
@@ -87,10 +91,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
 
     fn as_module(&self) -> Option<&Self> {
         Some(self)
-    }
-
-    fn qualified_name(&self, db: &Database) -> String {
-        self.name().to_owned()
     }
 
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

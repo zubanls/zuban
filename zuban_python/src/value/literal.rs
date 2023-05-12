@@ -20,10 +20,6 @@ impl<'db, 'a> Value<'db, 'a> for Literal<'db, 'a, '_> {
         self.value.name()
     }
 
-    fn qualified_name(&self, db: &'a Database) -> String {
-        self.value.qualified_name(db)
-    }
-
     fn module(&self, db: &'a Database) -> Module<'a> {
         self.value.module(db)
     }

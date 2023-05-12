@@ -744,12 +744,6 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> LookupResult {
         self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
     }
-}
-
-impl<'db, 'a> Value<'db, 'a> for Class<'a> {
-    fn name(&self) -> &'a str {
-        self.node().name().as_str()
-    }
 
     fn qualified_name(&self, db: &Database) -> String {
         match self.class_storage.parent_scope {
@@ -773,6 +767,12 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
                 base_qualified_name!(self, db, format!("{}@{line}", self.name()))
             }
         }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for Class<'a> {
+    fn name(&self) -> &'a str {
+        self.node().name().as_str()
     }
 
     fn module(&self, db: &'a Database) -> Module<'a> {

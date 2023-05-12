@@ -25,7 +25,7 @@ use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::utils::rc_unwrap_or_clone;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
-use crate::value::{Class, Module, Value};
+use crate::value::{Class, Module};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
 

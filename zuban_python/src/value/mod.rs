@@ -219,10 +219,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
         todo!("{:?}", self)
     }
 
-    fn qualified_name(&self, db: &'a Database) -> String {
-        base_qualified_name!(self, db, self.name())
-    }
-
     fn module(&self, db: &'a Database) -> Module<'a> {
         todo!("{:?}", self)
     }
