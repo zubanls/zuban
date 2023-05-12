@@ -11,7 +11,7 @@ use crate::node_ref::NodeRef;
 pub struct NoneInstance();
 
 impl NoneInstance {
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,

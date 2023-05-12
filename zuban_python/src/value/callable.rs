@@ -39,7 +39,7 @@ impl<'a> Callable<'a> {
         g_o.execute_and_resolve_type_vars(i_s, None, None, &calculated_type_vars)
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,

@@ -883,9 +883,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                     Generics::new_maybe_list(generics),
                                     Some(&self),
                                 );
-                                if let Some(inf) = inst
-                                    .lookup_internal(i_s, from, "__get__")
-                                    .into_maybe_inferred()
+                                if let Some(inf) =
+                                    inst.lookup(i_s, from, "__get__").into_maybe_inferred()
                                 {
                                     let from = from.unwrap_or_else(|| todo!());
                                     let class_as_inferred = instance.class.as_inferred(i_s);
@@ -994,9 +993,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                     Generics::new_maybe_list(generics),
                                     Some(&self),
                                 );
-                                if let Some(inf) = inst
-                                    .lookup_internal(i_s, from, "__get__")
-                                    .into_maybe_inferred()
+                                if let Some(inf) =
+                                    inst.lookup(i_s, from, "__get__").into_maybe_inferred()
                                 {
                                     let from = from.unwrap_or_else(|| todo!());
                                     let class_as_inferred = class.as_inferred(i_s);

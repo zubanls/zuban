@@ -59,7 +59,7 @@ impl<'a> Instance<'a> {
                             }
                             if let Some(descriptor) = v.as_instance() {
                                 if let Some(set) = descriptor
-                                    .lookup_internal(i_s, Some(from), "__set__")
+                                    .lookup(i_s, Some(from), "__set__")
                                     .into_maybe_inferred()
                                 {
                                     had_set = true;
@@ -115,7 +115,7 @@ impl<'a> Instance<'a> {
     ) -> Inferred {
         let node_ref = args.as_node_ref();
         if let Some(inf) = self
-            .lookup_internal(i_s, Some(node_ref), "__call__")
+            .lookup(i_s, Some(node_ref), "__call__")
             .into_maybe_inferred()
         {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
@@ -180,7 +180,7 @@ impl<'a> Instance<'a> {
         IteratorContent::Any
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,

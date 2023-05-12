@@ -925,7 +925,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,

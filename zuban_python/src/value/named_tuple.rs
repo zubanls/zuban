@@ -70,7 +70,7 @@ impl<'a> NamedTupleValue<'a> {
         IteratorContent::FixedLengthTupleGenerics(t.iter())
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,

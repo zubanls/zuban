@@ -491,10 +491,7 @@ impl<'db: 'a, 'a> Class<'a> {
         for c in self.use_cached_class_infos(i_s.db).mro.iter() {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
-                if let Some(l) = other
-                    .lookup_internal(i_s, None, class_name)
-                    .into_maybe_inferred()
-                {
+                if let Some(l) = other.lookup(i_s, None, class_name).into_maybe_inferred() {
                     // TODO check signature details here!
                 } else {
                     return false;
@@ -565,7 +562,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     MetaclassState::Some(link) => {
                         let instance =
                             Instance::new(Class::from_db_type(i_s.db, link, &None), None);
-                        instance.lookup_internal(i_s, node_ref, name)
+                        instance.lookup(i_s, node_ref, name)
                     }
                     MetaclassState::Unknown => LookupResult::any(),
                     MetaclassState::None => LookupResult::None,
@@ -739,7 +736,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,

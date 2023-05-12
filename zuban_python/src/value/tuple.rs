@@ -38,7 +38,7 @@ impl<'a> Tuple<'a> {
         }
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,

@@ -144,7 +144,7 @@ impl<'a> TypingType<'a> {
         Self { db, db_type }
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -153,18 +153,16 @@ impl<'a> TypingType<'a> {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).lookup_internal(i_s, node_ref, name)
+                    TypingType::new(self.db, bound).lookup(i_s, node_ref, name)
                 } else {
                     todo!("{t:?}")
                 }
             }
-            DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
-                .lookup_internal(i_s, node_ref, name),
+            DbType::Class(link, generics_list) => {
+                Class::from_db_type(i_s.db, *link, generics_list).lookup(i_s, node_ref, name)
+            }
             DbType::Callable(_) => LookupResult::None,
-            DbType::Self_ => i_s
-                .current_class()
-                .unwrap()
-                .lookup_internal(i_s, node_ref, name),
+            DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, node_ref, name),
             DbType::Any => LookupResult::any(),
             _ => todo!("{:?}", self.db_type),
         }
@@ -325,7 +323,7 @@ impl<'a> TypeVarInstance<'a> {
         }
     }
 
-    pub fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -342,7 +340,7 @@ impl<'a> TypeVarInstance<'a> {
                             .unwrap(),
                         &Inferred::from_type(DbType::Class(*link, None)),
                     )
-                    .lookup_internal(i_s, name),
+                    .lookup(i_s, name),
                     _ => todo!("{:?}", db_type),
                 }
             }
@@ -373,7 +371,7 @@ impl<'a> TypeVarInstance<'a> {
             let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we
             // should just use a precreated object() from somewhere.
-            Instance::new(s.object_class(), None).lookup_internal(i_s, node_ref, name)
+            Instance::new(s.object_class(), None).lookup(i_s, node_ref, name)
         }
     }
 }

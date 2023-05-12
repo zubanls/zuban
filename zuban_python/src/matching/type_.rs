@@ -101,7 +101,7 @@ impl<'a> Type<'a> {
                 },
                 _ => self.maybe_class(i_s.db).and_then(|c| {
                     Instance::new(c, None)
-                        .lookup_internal(i_s, None, "__call__")
+                        .lookup(i_s, None, "__call__")
                         .into_maybe_inferred()
                         .and_then(|i| {
                             i.maybe_callable(i_s, true)
@@ -270,7 +270,7 @@ impl<'a> Type<'a> {
                             let cls = Class::from_db_type(i_s.db, *link, generics);
                             // TODO the __init__ should actually be looked up on the original class, not
                             // the subclass
-                            let lookup = cls.lookup_internal(i_s, None, "__init__");
+                            let lookup = cls.lookup(i_s, None, "__init__");
                             if let LookupResult::GotoName(_, init) = lookup {
                                 let t2 = init.as_type(i_s).into_db_type(i_s.db);
                                 if let DbType::Callable(c2) = t2 {
@@ -1327,19 +1327,19 @@ impl<'a> Type<'a> {
         callable: &mut impl FnMut(LookupResult),
     ) {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return callable(Instance::new(cls, from_inferred).lookup_internal(i_s, from, name));
+            return callable(Instance::new(cls, from_inferred).lookup(i_s, from, name));
         }
         match self.maybe_db_type().unwrap() {
             DbType::Any => callable(LookupResult::any()),
-            DbType::None => callable(NoneInstance().lookup_internal(i_s, from, name)),
+            DbType::None => callable(NoneInstance().lookup(i_s, from, name)),
             DbType::Literal(literal) => {
                 let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-                callable(v.lookup_internal(i_s, from, name))
+                callable(v.lookup(i_s, from, name))
             }
             t @ DbType::TypeVar(tv) => {
-                callable(TypeVarInstance::new(i_s.db, t, tv).lookup_internal(i_s, from, name))
+                callable(TypeVarInstance::new(i_s.db, t, tv).lookup(i_s, from, name))
             }
-            t @ DbType::Tuple(tup) => callable(Tuple::new(t, tup).lookup_internal(i_s, from, name)),
+            t @ DbType::Tuple(tup) => callable(Tuple::new(t, tup).lookup(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
                     Type::new(t)
@@ -1350,18 +1350,16 @@ impl<'a> Type<'a> {
                 DbType::Union(union) => {
                     debug_assert!(!union.entries.is_empty());
                     for t in union.iter() {
-                        callable(TypingType::new(i_s.db, t).lookup_internal(i_s, None, name))
+                        callable(TypingType::new(i_s.db, t).lookup(i_s, None, name))
                     }
                 }
                 DbType::Any => callable(LookupResult::any()),
-                _ => callable(TypingType::new(i_s.db, t).lookup_internal(i_s, from, name)),
+                _ => callable(TypingType::new(i_s.db, t).lookup(i_s, from, name)),
             },
-            t @ DbType::Callable(c) => {
-                callable(Callable::new(t, c).lookup_internal(i_s, from, name))
-            }
+            t @ DbType::Callable(c) => callable(Callable::new(t, c).lookup(i_s, from, name)),
             DbType::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
-                callable(Module::new(i_s.db, file).lookup_internal(i_s, from, name))
+                callable(Module::new(i_s.db, file).lookup(i_s, from, name))
             }
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();
@@ -1378,11 +1376,11 @@ impl<'a> Type<'a> {
                         ),
                         from_inferred,
                     )
-                    .lookup_internal(i_s, from, name),
+                    .lookup(i_s, from, name),
                 )
             }
             DbType::NamedTuple(nt) => {
-                callable(NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, from, name))
+                callable(NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name))
             }
             DbType::Class(..) => unreachable!(),
             _ => todo!("{self:?}"),
@@ -1438,9 +1436,7 @@ impl<'a> Type<'a> {
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(c, generics) => todo!(),
                 DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
-                DbType::NamedTuple(nt) => {
-                    NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, None, name)
-                }
+                DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, None, name),
                 DbType::Callable(t) => todo!(),
                 _ => todo!("{name:?} {self:?}"),
             },
