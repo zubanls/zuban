@@ -171,7 +171,8 @@ impl LookupResult {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {
             Self::GotoName(_, inf) | Self::UnknownName(inf) => Some(inf),
-            Self::None | Self::FileReference(_) => None,
+            Self::FileReference(f) => Some(Inferred::new_file_reference(f)),
+            Self::None => None,
         }
     }
 
