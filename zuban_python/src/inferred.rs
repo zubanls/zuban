@@ -1109,6 +1109,23 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    #[inline]
+    pub fn run_after_lookup_on_each_union_member(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: Option<NodeRef>,
+        name: &str,
+        callable: &mut impl FnMut(LookupResult),
+    ) {
+        self.as_type(i_s).run_after_lookup_on_each_union_member(
+            i_s,
+            Some(self),
+            from,
+            name,
+            callable,
+        )
+    }
+
     pub fn lookup_and_execute(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1137,28 +1154,22 @@ impl<'db: 'slf, 'slf> Inferred {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
         let mut result: Option<Inferred> = None;
-        self.as_type(i_s).run_after_lookup_on_each_union_member(
-            i_s,
-            Some(self),
-            Some(from),
-            name,
-            &mut |lookup_result| {
-                if matches!(lookup_result, LookupResult::None) {
-                    on_lookup_error(i_s, &self.as_type(i_s));
-                }
-                let inf = lookup_result.into_inferred().execute_with_details(
-                    i_s,
-                    args,
-                    &mut ResultContext::Unknown,
-                    on_type_error,
-                );
-                result = if let Some(r) = result.take() {
-                    Some(r.union(i_s, inf))
-                } else {
-                    Some(inf)
-                }
-            },
-        );
+        self.run_after_lookup_on_each_union_member(i_s, Some(from), name, &mut |lookup_result| {
+            if matches!(lookup_result, LookupResult::None) {
+                on_lookup_error(i_s, &self.as_type(i_s));
+            }
+            let inf = lookup_result.into_inferred().execute_with_details(
+                i_s,
+                args,
+                &mut ResultContext::Unknown,
+                on_type_error,
+            );
+            result = if let Some(r) = result.take() {
+                Some(r.union(i_s, inf))
+            } else {
+                Some(inf)
+            }
+        });
         result.unwrap_or_else(|| todo!())
     }
 
