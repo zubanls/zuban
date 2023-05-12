@@ -1393,7 +1393,7 @@ impl<'a> Type<'a> {
         from: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        self.lookup_internal(i_s, from, name, &|_, _| ())
+        self.lookup_helper(i_s, from, name, &|_, _| ())
     }
 
     pub fn lookup_with_error<'db>(
@@ -1403,11 +1403,11 @@ impl<'a> Type<'a> {
         name: &str,
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
-        self.lookup_internal(i_s, Some(from), name, on_lookup_error)
+        self.lookup_helper(i_s, Some(from), name, on_lookup_error)
     }
 
     #[inline]
-    fn lookup_internal<'db>(
+    fn lookup_helper<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: Option<NodeRef>,
