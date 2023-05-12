@@ -85,10 +85,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
         }
     }
 
-    fn as_module(&self) -> Option<&Self> {
-        Some(self)
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Module(self.file.file_index()))
     }

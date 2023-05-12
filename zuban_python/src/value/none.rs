@@ -31,10 +31,6 @@ impl<'db, 'a> Value<'db, 'a> for NoneInstance {
         Type::new(&DbType::None)
     }
 
-    fn is_none(&self) -> bool {
-        true
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,

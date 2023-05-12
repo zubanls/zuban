@@ -1683,10 +1683,6 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         //Inferred::new_unknown()
     }
 
-    fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'a>> {
-        Some(self)
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }

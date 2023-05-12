@@ -234,19 +234,7 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn as_callable(&self) -> Option<Callable<'a>> {
         None
     }
-    fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'a>> {
-        None
-    }
     fn as_class(&self) -> Option<&Class> {
-        None
-    }
-    fn is_any(&self) -> bool {
-        false
-    }
-    fn is_none(&self) -> bool {
-        false
-    }
-    fn as_module(&self) -> Option<&Module<'a>> {
         None
     }
 
