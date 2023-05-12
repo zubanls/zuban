@@ -1308,34 +1308,36 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let node_ref = NodeRef::new(self.file, node_index);
         match second {
-            PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
-                debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.as_type(i_s).lookup_with_error(
-                    i_s,
-                    node_ref,
-                    name.as_str(),
-                    &|i_s, _| add_attribute_error(i_s, node_ref, value, name),
-                ) {
-                    LookupResult::GotoName(link, inferred) => {
-                        // TODO this is not correct, because there can be multiple runs, so setting
-                        // it here can be overwritten.
-                        self.file.points.set(
-                            name.index(),
-                            Point::new_redirect(link.file, link.node_index, Locality::Todo),
-                        );
-                        inferred
+            PrimaryContent::Attribute(name) => {
+                debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
+                base.run_on_value(self.i_s, &mut |i_s, value| {
+                    match value.as_type(i_s).lookup_with_error(
+                        i_s,
+                        node_ref,
+                        name.as_str(),
+                        &|i_s, _| add_attribute_error(i_s, node_ref, value, name),
+                    ) {
+                        LookupResult::GotoName(link, inferred) => {
+                            // TODO this is not correct, because there can be multiple runs, so setting
+                            // it here can be overwritten.
+                            self.file.points.set(
+                                name.index(),
+                                Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                            );
+                            inferred
+                        }
+                        LookupResult::FileReference(file_index) => {
+                            self.file.points.set(
+                                name.index(),
+                                Point::new_file_reference(file_index, Locality::Todo),
+                            );
+                            Inferred::new_file_reference(file_index)
+                        }
+                        LookupResult::UnknownName(inferred) => inferred,
+                        LookupResult::None => Inferred::new_unknown(),
                     }
-                    LookupResult::FileReference(file_index) => {
-                        self.file.points.set(
-                            name.index(),
-                            Point::new_file_reference(file_index, Locality::Todo),
-                        );
-                        Inferred::new_file_reference(file_index)
-                    }
-                    LookupResult::UnknownName(inferred) => inferred,
-                    LookupResult::None => Inferred::new_unknown(),
-                }
-            }),
+                })
+            }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
                 let args = SimpleArguments::new(*self.i_s, f, node_index, details);

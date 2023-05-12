@@ -188,7 +188,6 @@ impl<'a> Script<'a> {
             Leaf::Keyword(keyword) => self.file().infer_operator_leaf(&self.project.db, keyword),
             Leaf::None | Leaf::String => todo!(),
         }
-        .run_on_value_names(&i_s, callable)
     }
     */
 
