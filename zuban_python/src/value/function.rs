@@ -965,10 +965,6 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
-
-    fn as_function(&self) -> Option<&Function<'a, 'class>> {
-        Some(self)
-    }
 }
 
 #[derive(Copy, Clone)]

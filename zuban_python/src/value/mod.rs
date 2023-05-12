@@ -231,9 +231,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn as_instance(&self) -> Option<&Instance<'a>> {
         None
     }
-    fn as_function(&self) -> Option<&Function<'a, '_>> {
-        None
-    }
     fn as_callable(&self) -> Option<Callable<'a>> {
         None
     }
