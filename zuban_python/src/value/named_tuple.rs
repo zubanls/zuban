@@ -93,14 +93,8 @@ impl<'a> NamedTupleValue<'a> {
         debug!("TODO lookup of NamedTuple base classes");
         LookupResult::None
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::NamedTuple(self.nt.clone()))
-    }
-
-    fn get_item(
+    pub fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
@@ -123,5 +117,11 @@ impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(DbType::NamedTuple(self.nt.clone()))
     }
 }

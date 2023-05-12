@@ -776,10 +776,8 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn name(&self) -> &'a str {
         self.node().name().as_str()
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for Class<'a> {
-    fn get_item(
+    pub fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
@@ -794,7 +792,9 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
     }
+}
 
+impl<'db, 'a> Value<'db, 'a> for Class<'a> {
     fn as_class(&self) -> Option<&Class> {
         Some(self)
     }

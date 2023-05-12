@@ -11,7 +11,6 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
-use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::{run_on_db_type, Inferred};
 use crate::matching::{FormatData, ResultContext, Type};
@@ -70,48 +69,12 @@ impl TypingClass {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .file
-            .inference(i_s)
-            .compute_type_application_on_typing_class(
-                self.specific,
-                *slice_type,
-                matches!(result_context, ResultContext::AssignmentNewDefinition),
-            )
-    }
-}
+impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {}
 
 #[derive(Debug)]
 pub struct TypingClassVar();
 
-impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => {
-                // TODO if it is a (), it's am empty tuple
-                simple.infer(i_s, &mut ResultContext::Unknown)
-            }
-            SliceTypeContent::Slice(x) => {
-                todo!()
-            }
-            SliceTypeContent::Slices(x) => {
-                todo!()
-            }
-        }
-    }
-}
+impl<'db, 'a> Value<'db, 'a> for TypingClassVar {}
 
 pub struct TypingType<'a> {
     db: &'a Database,
@@ -149,18 +112,6 @@ impl<'a> TypingType<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .as_node_ref()
-            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
-        Inferred::new_any()
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::Type(Cow::Owned(DbType::Type(Rc::new(self.db_type.clone()))))
     }
@@ -348,26 +299,6 @@ impl<'a> TypeVarInstance<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        if let Some(db_type) = &self.type_var_usage.type_var.bound {
-            run_on_db_type(
-                i_s,
-                db_type,
-                None,
-                &mut |i_s, v| v.get_item(i_s, slice_type, result_context),
-                &|i_s, a, b| a.union(i_s, b),
-                &mut |i_s| todo!(),
-            )
-        } else {
-            todo!()
-        }
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }

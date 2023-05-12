@@ -232,10 +232,8 @@ impl<'a> Instance<'a> {
             LookupResult::None
         }
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
-    fn get_item(
+    pub fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
@@ -300,7 +298,9 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
         );
         Inferred::new_any()
     }
+}
 
+impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
     fn as_instance(&self) -> Option<&Instance<'a>> {
         Some(self)
     }

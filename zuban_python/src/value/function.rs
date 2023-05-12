@@ -21,7 +21,6 @@ use crate::file::{
     use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{
@@ -950,18 +949,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 }
 
 impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .as_node_ref()
-            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
-        Inferred::new_unknown()
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
@@ -1670,19 +1657,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .as_node_ref()
-            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
-        todo!("Please write a test that checks this");
-        //Inferred::new_unknown()
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }

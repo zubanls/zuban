@@ -13,6 +13,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -1442,6 +1443,73 @@ impl<'a> Type<'a> {
                 DbType::Callable(t) => todo!(),
                 _ => todo!("{name:?} {self:?}"),
             },
+        }
+    }
+
+    pub fn get_item(
+        &self,
+        i_s: &InferenceState,
+        from_inferred: Option<&Inferred>,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        if let Some(cls) = self.maybe_class(i_s.db) {
+            return Instance::new(cls, from_inferred).get_item(i_s, slice_type, result_context);
+        }
+        match self.maybe_db_type().unwrap() {
+            DbType::Any => Inferred::new_any(),
+            t @ DbType::Tuple(tup) => Tuple::new(t, tup).get_item(i_s, slice_type, result_context),
+            DbType::NamedTuple(nt) => {
+                NamedTupleValue::new(i_s.db, nt).get_item(i_s, slice_type, result_context)
+            }
+            DbType::Union(union) => Inferred::gather_union(i_s, |callable| {
+                for t in union.iter() {
+                    callable(Type::new(t).get_item(i_s, None, slice_type, result_context))
+                }
+            }),
+            t @ DbType::TypeVar(tv) => {
+                if let Some(db_type) = &tv.type_var.bound {
+                    Type::new(db_type).get_item(i_s, None, slice_type, result_context)
+                } else {
+                    todo!()
+                }
+            }
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Class(link, generics) => Class::from_db_type(i_s.db, *link, generics)
+                    .get_item(i_s, slice_type, result_context),
+                _ => {
+                    slice_type
+                        .as_node_ref()
+                        .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                    Inferred::new_any()
+                }
+            },
+            DbType::NewType(new_type) => {
+                Type::new(new_type.type_(i_s)).get_item(i_s, None, slice_type, result_context)
+            }
+            DbType::RecursiveAlias(r) => Type::new(r.calculated_db_type(i_s.db)).get_item(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+            ),
+            DbType::Callable(_) => {
+                slice_type
+                    .as_node_ref()
+                    .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                Inferred::new_unknown()
+            }
+            DbType::FunctionOverload(_) => {
+                slice_type
+                    .as_node_ref()
+                    .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                todo!("Please write a test that checks this");
+            }
+            DbType::None => {
+                debug!("TODO None[...]");
+                Inferred::new_any()
+            }
+            _ => todo!("get_item not implemented for {self:?}"),
         }
     }
 

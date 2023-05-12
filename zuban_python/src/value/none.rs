@@ -1,10 +1,8 @@
 use super::{LookupResult, Value};
 use crate::database::DbType;
 use crate::debug;
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::Type;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
@@ -25,15 +23,5 @@ impl NoneInstance {
 impl<'db, 'a> Value<'db, 'a> for NoneInstance {
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&DbType::None)
-    }
-
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        debug!("TODO None[...]");
-        Inferred::new_any()
     }
 }

@@ -11,6 +11,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, use_cached_annotation_type, File, PythonFile};
+use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
     create_signature_without_self, replace_class_type_vars, FormatData, Generics, Matcher,
@@ -1385,6 +1386,79 @@ impl<'db: 'slf, 'slf> Inferred {
         }
         self.as_type(i_s)
             .execute(i_s, Some(self), args, result_context, on_type_error)
+    }
+
+    pub fn get_item(
+        &self,
+        i_s: &InferenceState,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        if let InferredState::Saved(link, point) = self.state {
+            match point.maybe_specific() {
+                Some(
+                    specific @ (Specific::TypingProtocol
+                    | Specific::TypingGeneric
+                    | Specific::TypingTuple
+                    | Specific::TypingUnion
+                    | Specific::TypingOptional
+                    | Specific::TypingType
+                    | Specific::TypingLiteral
+                    | Specific::TypingAnnotated
+                    | Specific::TypingNamedTuple
+                    | Specific::CollectionsNamedTuple
+                    | Specific::TypingCallable),
+                ) => {
+                    return slice_type
+                        .file
+                        .inference(i_s)
+                        .compute_type_application_on_typing_class(
+                            specific,
+                            *slice_type,
+                            matches!(result_context, ResultContext::AssignmentNewDefinition),
+                        )
+                }
+                Some(Specific::TypingClassVar) => {
+                    return match slice_type.unpack() {
+                        SliceTypeContent::Simple(simple) => {
+                            // TODO if it is a (), it's am empty tuple
+                            simple.infer(i_s, &mut ResultContext::Unknown)
+                        }
+                        SliceTypeContent::Slice(x) => {
+                            todo!()
+                        }
+                        SliceTypeContent::Slices(x) => {
+                            todo!()
+                        }
+                    }
+                }
+                _ => {
+                    let node_ref = NodeRef::from_link(i_s.db, link);
+                    match node_ref.complex() {
+                        Some(ComplexPoint::TypeAlias(ta)) => {
+                            return slice_type
+                                .file
+                                .inference(i_s)
+                                .compute_type_application_on_alias(
+                                    ta,
+                                    *slice_type,
+                                    matches!(
+                                        result_context,
+                                        ResultContext::AssignmentNewDefinition
+                                    ),
+                                )
+                        }
+                        Some(ComplexPoint::Class(c)) => {
+                            let class = Class::new(node_ref, c, Generics::NotDefinedYet, None);
+                            return class.get_item(i_s, slice_type, result_context);
+                        }
+                        _ => (),
+                    }
+                }
+            }
+        }
+        self.as_type(i_s)
+            .get_item(i_s, Some(self), slice_type, result_context)
     }
 
     pub fn save_and_iter(

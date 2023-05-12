@@ -66,14 +66,8 @@ impl<'a> Tuple<'a> {
         debug!("TODO tuple object lookups");
         LookupResult::None
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(self.db_type)
-    }
-
-    fn get_item(
+    pub fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
@@ -106,5 +100,11 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 todo!()
             }
         }
+    }
+}
+
+impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
+    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::new(self.db_type)
     }
 }

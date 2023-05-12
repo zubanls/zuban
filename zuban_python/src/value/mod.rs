@@ -13,10 +13,9 @@ mod typing;
 
 use crate::arguments::Argument;
 use crate::database::{DbType, FileIndex, PointLink, TypeOrTypeVarTuple};
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::Type;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
 pub use class::{Class, MroIterator};
@@ -215,15 +214,6 @@ impl LookupResult {
 
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
 pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        todo!("get_item not implemented for {self:?}")
-    }
-
     fn as_instance(&self) -> Option<&Instance<'a>> {
         None
     }
