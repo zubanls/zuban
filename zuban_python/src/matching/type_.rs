@@ -1383,6 +1383,8 @@ impl<'a> Type<'a> {
                 callable(NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name))
             }
             DbType::Class(..) => unreachable!(),
+            DbType::NewType(new_type) => Type::new(&new_type.type_(i_s))
+                .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
             _ => todo!("{self:?}"),
         }
     }

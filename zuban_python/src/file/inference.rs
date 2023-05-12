@@ -641,21 +641,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     .into_maybe_inferred()
                                 })
                                 .unwrap_or_else(|| {
-                                    v.as_type(i_s)
-                                        .lookup_with_error(
-                                            i_s,
-                                            node_ref,
-                                            name_definition.as_code(),
-                                            &|i_s, _| {
-                                                add_attribute_error(
-                                                    i_s,
-                                                    node_ref,
-                                                    v,
-                                                    name_definition.name(),
-                                                )
-                                            },
-                                        )
-                                        .into_inferred()
+                                    let t = v.as_type(i_s);
+                                    t.lookup_with_error(
+                                        i_s,
+                                        node_ref,
+                                        name_definition.as_code(),
+                                        &|i_s, t| {
+                                            add_attribute_error(
+                                                i_s,
+                                                node_ref,
+                                                t,
+                                                name_definition.name(),
+                                            )
+                                        },
+                                    )
+                                    .into_inferred()
                                 })
                                 .as_type(i_s)
                                 .error_if_not_matches(i_s, value, |i_s, got, expected| {
@@ -1310,33 +1310,30 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                base.run_on_value(self.i_s, &mut |i_s, value| {
-                    match value.as_type(i_s).lookup_with_error(
-                        i_s,
-                        node_ref,
-                        name.as_str(),
-                        &|i_s, _| add_attribute_error(i_s, node_ref, value, name),
-                    ) {
-                        LookupResult::GotoName(link, inferred) => {
-                            // TODO this is not correct, because there can be multiple runs, so setting
-                            // it here can be overwritten.
-                            self.file.points.set(
-                                name.index(),
-                                Point::new_redirect(link.file, link.node_index, Locality::Todo),
-                            );
-                            inferred
-                        }
-                        LookupResult::FileReference(file_index) => {
-                            self.file.points.set(
-                                name.index(),
-                                Point::new_file_reference(file_index, Locality::Todo),
-                            );
-                            Inferred::new_file_reference(file_index)
-                        }
-                        LookupResult::UnknownName(inferred) => inferred,
-                        LookupResult::None => Inferred::new_unknown(),
+                let lookup = base.as_type(self.i_s).lookup_with_error(
+                    self.i_s,
+                    node_ref,
+                    name.as_str(),
+                    &|i_s, t| add_attribute_error(i_s, node_ref, t, name),
+                );
+                match &lookup {
+                    LookupResult::GotoName(link, inferred) => {
+                        // TODO this is not correct, because there can be multiple runs, so setting
+                        // it here can be overwritten.
+                        self.file.points.set(
+                            name.index(),
+                            Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                        );
                     }
-                })
+                    LookupResult::FileReference(file_index) => {
+                        self.file.points.set(
+                            name.index(),
+                            Point::new_file_reference(*file_index, Locality::Todo),
+                        );
+                    }
+                    LookupResult::UnknownName(_) | LookupResult::None => (),
+                };
+                lookup.into_inferred()
             }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -1944,13 +1941,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 fn add_attribute_error<'db>(
     i_s: &InferenceState<'db, '_>,
     node_ref: NodeRef,
-    value: &dyn Value<'db, '_>,
+    t: &Type,
     name: Name,
 ) {
-    let object = if value.as_module().is_some() {
+    let object = if matches!(t.maybe_db_type(), Some(DbType::Module(_))) {
         Box::from("Module")
     } else {
-        format!("{:?}", value.as_type(i_s).format_short(i_s.db)).into()
+        format!("{:?}", t.format_short(i_s.db)).into()
     };
     node_ref.add_typing_issue(
         i_s,
