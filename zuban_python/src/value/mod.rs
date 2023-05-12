@@ -240,9 +240,6 @@ pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
     fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'a>> {
         None
     }
-    fn as_typing_class(&self) -> Option<&TypingClass> {
-        None
-    }
     fn as_class(&self) -> Option<&Class> {
         None
     }

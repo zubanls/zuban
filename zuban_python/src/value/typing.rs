@@ -88,10 +88,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         }
     }
 
-    fn as_typing_class(&self) -> Option<&TypingClass> {
-        Some(self)
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,
