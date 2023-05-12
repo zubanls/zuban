@@ -14,16 +14,6 @@ pub enum BoundMethodFunction<'a> {
     Callable(Callable<'a>),
 }
 
-impl<'db: 'a, 'a> BoundMethodFunction<'a> {
-    fn as_value(&self) -> &dyn Value<'db, 'a> {
-        match self {
-            Self::Function(f) => f,
-            Self::Overload(f) => f,
-            Self::Callable(c) => c,
-        }
-    }
-}
-
 #[derive(Debug)]
 pub struct BoundMethod<'a, 'b> {
     instance: &'b Instance<'a>,
@@ -83,10 +73,6 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
-    fn name(&self) -> &str {
-        self.function.as_value().name()
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         let t = match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, FirstParamProperties::Skip),

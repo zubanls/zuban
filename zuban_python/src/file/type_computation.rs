@@ -21,7 +21,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, Module, Value};
+use crate::value::{Class, Function, Module};
 
 pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 

@@ -71,23 +71,6 @@ impl TypingClass {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
-    fn name(&self) -> &str {
-        match self.specific {
-            Specific::TypingGeneric => "Generic",
-            Specific::TypingProtocol => "Protocol",
-            Specific::TypingTuple => "Tuple",
-            Specific::TypingCallable => "Callable",
-            Specific::TypingUnion => "Union",
-            Specific::TypingOptional => "Optional",
-            Specific::TypingType => "Type",
-            Specific::TypingLiteral => "Literal",
-            Specific::TypingAnnotated => "Annotated",
-            Specific::TypingNamedTuple => "NamedTuple",
-            Specific::CollectionsNamedTuple => "namedtuple",
-            _ => unreachable!("{:?}", self.specific),
-        }
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,
@@ -166,10 +149,6 @@ impl<'a> TypingType<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
-    fn name(&self) -> &str {
-        "Type"
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,
@@ -198,11 +177,7 @@ impl fmt::Debug for TypingType<'_> {
 #[derive(Debug)]
 pub struct TypingAny();
 
-impl<'db, 'a> Value<'db, 'a> for TypingAny {
-    fn name(&self) -> &str {
-        "Any"
-    }
-}
+impl<'db, 'a> Value<'db, 'a> for TypingAny {}
 
 #[derive(Debug)]
 pub struct TypingCast();
@@ -354,7 +329,7 @@ impl<'a> TypeVarInstance<'a> {
                             "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
                             v.as_type(i_s).format_short(i_s.db),
                             Type::new(db_type).format_short(i_s.db),
-                            self.name(),
+                            self.type_var_usage.type_var.name(self.db),
                             name,
                         );
                     }
@@ -373,10 +348,6 @@ impl<'a> TypeVarInstance<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
-    fn name(&self) -> &'a str {
-        self.type_var_usage.type_var.name(self.db)
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,

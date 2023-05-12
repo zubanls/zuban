@@ -96,10 +96,6 @@ impl<'a> NamedTupleValue<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
-    fn name(&self) -> &str {
-        self.nt.name(self.db)
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::NamedTuple(self.nt.clone()))
     }

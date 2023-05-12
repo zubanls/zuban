@@ -942,14 +942,14 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     fn module(&self, db: &'a Database) -> Module<'a> {
         Module::new(db, self.node_ref.file)
     }
-}
 
-impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
-    fn name(&self) -> &str {
+    pub fn name(&self) -> &str {
         let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
         func.name().as_str()
     }
+}
 
+impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
     fn get_item(
         &self,
         i_s: &InferenceState,
@@ -1663,13 +1663,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> Inferred {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     fn name(&self) -> &str {
         self.node_ref.as_code()
     }
+}
 
+impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
     fn get_item(
         &self,
         i_s: &InferenceState,

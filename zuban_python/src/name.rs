@@ -170,7 +170,8 @@ impl fmt::Debug for WithValueName<'_, '_, '_> {
 
 impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
     fn name(&self) -> &str {
-        self.value.name()
+        todo!()
+        //self.value.name()
     }
 
     fn file_path(&self) -> &str {

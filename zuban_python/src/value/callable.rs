@@ -51,10 +51,6 @@ impl<'a> Callable<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
-    fn name(&self) -> &str {
-        "Callable"
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }

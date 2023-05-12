@@ -38,6 +38,21 @@ impl<'a> Module<'a> {
         })
     }
 
+    pub fn name(&self) -> &'a str {
+        // TODO this is not correct...
+        let (dir, mut name) = self.db.vfs.dir_and_name(self.file.file_path(self.db));
+        if name.ends_with(".py") {
+            name = name.trim_end_matches(".py");
+        } else {
+            name = name.trim_end_matches(".pyi");
+        }
+        if name == "__init__" {
+            self.db.vfs.dir_and_name(dir.unwrap()).1
+        } else {
+            name
+        }
+    }
+
     pub fn qualified_name(&self, db: &Database) -> String {
         self.name().to_owned()
     }
@@ -70,21 +85,6 @@ impl<'a> Module<'a> {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
-    fn name(&self) -> &'a str {
-        // TODO this is not correct...
-        let (dir, mut name) = self.db.vfs.dir_and_name(self.file.file_path(self.db));
-        if name.ends_with(".py") {
-            name = name.trim_end_matches(".py");
-        } else {
-            name = name.trim_end_matches(".pyi");
-        }
-        if name == "__init__" {
-            self.db.vfs.dir_and_name(dir.unwrap()).1
-        } else {
-            name
-        }
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Module(self.file.file_index()))
     }

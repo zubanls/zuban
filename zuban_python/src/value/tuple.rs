@@ -69,10 +69,6 @@ impl<'a> Tuple<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
-    fn name(&self) -> &str {
-        "tuple"
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(self.db_type)
     }

@@ -21,10 +21,6 @@ impl<'a> TypeAlias<'a> {
 }
 
 impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
-    fn name(&self) -> &str {
-        "TypeAlias"
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,

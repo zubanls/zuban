@@ -235,10 +235,6 @@ impl<'a> Instance<'a> {
 }
 
 impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
-    fn name(&self) -> &str {
-        self.class.name()
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,

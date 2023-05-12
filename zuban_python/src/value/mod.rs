@@ -215,10 +215,6 @@ impl LookupResult {
 
 // Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
 pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
-    fn name(&self) -> &str {
-        todo!("{:?}", self)
-    }
-
     fn get_item(
         &self,
         i_s: &InferenceState,

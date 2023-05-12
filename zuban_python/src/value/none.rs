@@ -23,10 +23,6 @@ impl NoneInstance {
 }
 
 impl<'db, 'a> Value<'db, 'a> for NoneInstance {
-    fn name(&self) -> &str {
-        "None"
-    }
-
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::new(&DbType::None)
     }

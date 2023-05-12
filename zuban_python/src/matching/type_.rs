@@ -18,7 +18,7 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
     Callable, Class, Instance, IteratorContent, LookupResult, Module, MroIterator, NamedTupleValue,
-    NoneInstance, OnLookupError, OnTypeError, Tuple, TypeVarInstance, TypingType, Value,
+    NoneInstance, OnLookupError, OnTypeError, Tuple, TypeVarInstance, TypingType,
 };
 
 #[derive(Debug, Clone)]
