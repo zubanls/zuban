@@ -1319,6 +1319,18 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
+    pub fn run_on_each_union_type(&self, callable: &mut impl FnMut(&Type)) {
+        match self.maybe_db_type() {
+            Some(DbType::Union(union)) => {
+                for t in union.iter() {
+                    Type::new(t).run_on_each_union_type(callable)
+                }
+            }
+            _ => callable(self),
+        }
+    }
+
+    #[inline]
     pub fn run_after_lookup_on_each_union_member<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,

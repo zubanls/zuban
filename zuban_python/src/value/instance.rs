@@ -51,14 +51,14 @@ impl<'a> Instance<'a> {
                     .lookup_symbol(i_s, name.as_str())
                     .into_maybe_inferred()
                 {
-                    inf.resolve_class_type_vars(i_s, &self.class).run_mut(
-                        i_s,
-                        &mut |i_s, v| {
+                    inf.resolve_class_type_vars(i_s, &self.class)
+                        .as_type(i_s)
+                        .run_on_each_union_type(&mut |t| {
                             if had_no_set {
                                 todo!()
                             }
-                            if let Some(descriptor) = v.as_instance() {
-                                if let Some(set) = descriptor
+                            if let Some(descriptor) = t.maybe_class(i_s.db) {
+                                if let Some(set) = Instance::new(descriptor, None)
                                     .lookup(i_s, Some(from), "__set__")
                                     .into_maybe_inferred()
                                 {
@@ -97,9 +97,7 @@ impl<'a> Instance<'a> {
                                 }
                                 had_no_set = true;
                             }
-                        },
-                        || (),
-                    );
+                        });
                 }
             }
         }
