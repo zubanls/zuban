@@ -7,7 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
-use super::{LookupResult, Module, OnTypeError};
+use super::{Module, OnTypeError};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
@@ -28,8 +28,8 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, Matcher,
-    ResultContext, SignatureMatch, Type,
+    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, LookupResult,
+    Matcher, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::Class;

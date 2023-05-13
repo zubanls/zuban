@@ -1,13 +1,13 @@
 use std::rc::Rc;
 
-use super::{IteratorContent, LookupResult};
+use super::IteratorContent;
 use crate::database::{TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::ResultContext;
+use crate::matching::{LookupResult, ResultContext};
 use crate::node_ref::NodeRef;
 use crate::value::Instance;
 

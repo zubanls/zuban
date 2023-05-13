@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{IteratorContent, LookupResult};
+use super::IteratorContent;
 use crate::database::{DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments};
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -8,7 +8,7 @@ use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, ResultContext};
+use crate::matching::{FormatData, Generics, LookupResult, ResultContext};
 use crate::{database::Database, node_ref::NodeRef};
 
 #[derive(Debug)]

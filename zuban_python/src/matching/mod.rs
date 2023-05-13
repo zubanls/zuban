@@ -1,6 +1,7 @@
 mod format_data;
 mod generic;
 mod generics;
+mod lookup_result;
 mod match_;
 mod matcher;
 pub mod params;
@@ -11,6 +12,7 @@ mod utils;
 pub use format_data::{FormatData, ParamsStyle};
 pub use generic::Generic;
 pub use generics::{Generics, GenericsIterator};
+pub use lookup_result::LookupResult;
 pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub use matcher::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,

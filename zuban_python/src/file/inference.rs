@@ -16,10 +16,10 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, UnionValue};
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{FormatData, Generics, LookupResult, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
-use crate::value::{Class, Function, Instance, LookupResult, Module, OnTypeError};
+use crate::value::{Class, Function, Instance, Module, OnTypeError};
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,

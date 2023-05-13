@@ -2,9 +2,7 @@ use std::borrow::Cow;
 
 use parsa_python_ast::Name;
 
-use super::{
-    Class, IteratorContent, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Tuple,
-};
+use super::{Class, IteratorContent, MroIterator, NamedTupleValue, OnTypeError, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, DbType, PointLink};
 use crate::debug;
@@ -13,7 +11,7 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{LookupResult, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]

@@ -1,5 +1,3 @@
-use super::LookupResult;
-
 use crate::database::{Database, FileIndex, PointLink};
 
 use crate::file::File;
@@ -7,6 +5,7 @@ use crate::file::PythonFile;
 use crate::imports::python_import;
 use crate::inference_state::InferenceState;
 
+use crate::matching::LookupResult;
 use crate::node_ref::NodeRef;
 
 #[derive(Copy, Clone)]

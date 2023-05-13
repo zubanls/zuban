@@ -1,10 +1,10 @@
-use super::{Class, LookupResult, OnTypeError};
+use super::{Class, OnTypeError};
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, DbType};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{calculate_callable_type_vars_and_return, ResultContext, Type};
+use crate::matching::{calculate_callable_type_vars_and_return, LookupResult, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]

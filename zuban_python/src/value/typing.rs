@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Class, Instance, LookupResult, OnTypeError};
+use super::{Class, Instance, OnTypeError};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
@@ -12,7 +12,7 @@ use crate::diagnostics::IssueType;
 use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{FormatData, LookupResult, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
