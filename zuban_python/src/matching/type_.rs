@@ -1336,6 +1336,7 @@ impl<'a> Type<'a> {
                     Type::new(t).run_on_each_union_type(callable)
                 }
             }
+            Some(DbType::Never) => (),
             _ => callable(self),
         }
     }
@@ -1411,9 +1412,10 @@ impl<'a> Type<'a> {
                 self,
                 NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name),
             ),
-            DbType::Class(..) => unreachable!(),
+            DbType::Never => (),
             DbType::NewType(new_type) => Type::new(&new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
+            DbType::Class(..) => unreachable!(),
             _ => todo!("{self:?}"),
         }
     }
