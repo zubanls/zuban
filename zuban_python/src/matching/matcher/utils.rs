@@ -21,8 +21,8 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
+use crate::type_helpers::{Class, FirstParamProperties, Function, Instance};
 use crate::utils::rc_unwrap_or_clone;
-use crate::value::{Class, FirstParamProperties, Function, Instance};
 
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,

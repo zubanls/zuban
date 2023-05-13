@@ -6,7 +6,7 @@ use crate::database::{
     TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
-use crate::value::Function;
+use crate::type_helpers::Function;
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'a> {

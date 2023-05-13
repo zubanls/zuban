@@ -29,7 +29,7 @@ use crate::{
     database::{DbType, TypeOrTypeVarTuple},
     inference_state::InferenceState,
     inferred::Inferred,
-    value::Class,
+    type_helpers::Class,
 };
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;

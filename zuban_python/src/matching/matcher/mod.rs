@@ -23,7 +23,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function};
+use crate::type_helpers::{Class, Function};
 use type_var_matcher::{BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher};
 use utils::match_arguments_against_params;
 

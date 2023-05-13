@@ -18,7 +18,7 @@ use crate::matching::{
     LookupResult, Matcher, OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::value::{
+use crate::type_helpers::{
     BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
     NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeVarClass,
     TypeVarTupleClass, TypingCast, TypingClass,

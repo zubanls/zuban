@@ -12,7 +12,7 @@ use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType};
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::type_helpers::Class;
 
 #[derive(Debug, Clone)]
 enum BaseLookup<'file> {

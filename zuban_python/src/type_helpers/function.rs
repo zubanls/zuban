@@ -32,7 +32,7 @@ use crate::matching::{
     Matcher, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::type_helpers::Class;
 use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]

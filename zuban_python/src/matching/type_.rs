@@ -18,7 +18,7 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{
+use crate::type_helpers::{
     Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeVarInstance,
     TypingType,
 };

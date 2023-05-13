@@ -13,7 +13,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::type_helpers::Class;
 use crate::{debug, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {

@@ -8,7 +8,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, LookupResult, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::value::Instance;
+use crate::type_helpers::Instance;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {

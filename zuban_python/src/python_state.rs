@@ -9,7 +9,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, OverloadedFunction};
+use crate::type_helpers::{Class, Function, OverloadedFunction};
 use crate::{InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is

@@ -14,7 +14,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::Module;
+use crate::type_helpers::Module;
 
 #[derive(Clone, Copy)]
 pub struct NodeRef<'file> {

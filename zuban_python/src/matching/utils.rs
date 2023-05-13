@@ -1,6 +1,6 @@
 use crate::database::DbType;
 use crate::inference_state::InferenceState;
-use crate::value::Class;
+use crate::type_helpers::Class;
 
 pub fn replace_class_type_vars(i_s: &InferenceState, t: &DbType, class: &Class) -> DbType {
     let db = i_s.db;

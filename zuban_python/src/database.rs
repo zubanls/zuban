@@ -23,9 +23,9 @@ use crate::matching::Generics;
 use crate::matching::{common_base_type, FormatData, Generic, Matcher, ParamsStyle, Type};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
+use crate::type_helpers::{Class, Module};
 use crate::utils::rc_unwrap_or_clone;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
-use crate::value::{Class, Module};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
 
@@ -848,7 +848,7 @@ impl DbType {
                 format!("{}.kwargs", usage.param_spec.name(format_data.db)).into()
             }
             Self::NamedTuple(nt) => {
-                use crate::value::NamedTupleValue;
+                use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
                     FormatStyle::Short => NamedTupleValue::new(format_data.db, &nt)
                         .format_with_name(

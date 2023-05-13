@@ -18,8 +18,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, UnionValue};
 use crate::matching::{FormatData, Generics, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_helpers::{Class, Function, Instance, Module};
 use crate::utils::debug_indent;
-use crate::value::{Class, Function, Instance, Module};
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
