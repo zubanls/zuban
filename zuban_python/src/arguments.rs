@@ -8,9 +8,8 @@ use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{IteratorContent, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::value::IteratorContent;
 use crate::InferenceState;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,

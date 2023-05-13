@@ -14,14 +14,14 @@ use crate::file::{on_argument_type_error, use_cached_annotation_type, File, Pyth
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    create_signature_without_self, replace_class_type_vars, FormatData, Generics, LookupResult,
-    Matcher, ResultContext, Type,
+    create_signature_without_self, replace_class_type_vars, FormatData, Generics, IteratorContent,
+    LookupResult, Matcher, OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
-    IteratorContent, NewTypeClass, OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass,
-    RevealTypeFunction, TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
+    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeVarClass,
+    TypeVarTupleClass, TypingCast, TypingClass,
 };
 
 #[derive(Debug)]

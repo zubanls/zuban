@@ -8,7 +8,7 @@ use super::super::params::{
 };
 use super::super::{
     replace_class_type_vars, ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher,
-    MismatchReason, ResultContext, SignatureMatch, Type,
+    MismatchReason, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
@@ -22,7 +22,7 @@ use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::utils::rc_unwrap_or_clone;
-use crate::value::{Class, FirstParamProperties, Function, Instance, OnTypeError};
+use crate::value::{Class, FirstParamProperties, Function, Instance};
 
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,

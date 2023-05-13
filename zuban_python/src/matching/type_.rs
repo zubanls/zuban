@@ -4,7 +4,8 @@ use std::rc::Rc;
 use super::params::has_overlapping_params;
 use super::{
     calculate_callable_type_vars_and_return, matches_params, CalculatedTypeArguments, FormatData,
-    Generics, LookupResult, Match, Matcher, MismatchReason, ResultContext,
+    Generics, IteratorContent, LookupResult, Match, Matcher, MismatchReason, OnLookupError,
+    OnTypeError, ResultContext,
 };
 use crate::arguments::Arguments;
 use crate::database::{
@@ -18,8 +19,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
-    Callable, Class, Instance, IteratorContent, Module, MroIterator, NamedTupleValue,
-    OnLookupError, OnTypeError, Tuple, TypeVarInstance, TypingType,
+    Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeVarInstance,
+    TypingType,
 };
 
 #[derive(Debug, Clone)]

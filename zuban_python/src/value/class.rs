@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use super::function::OverloadResult;
-use super::{Instance, Module, NamedTupleValue, OnTypeError};
+use super::{Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassInfos, ClassStorage, ClassType,
@@ -26,7 +26,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
-    Generics, LookupResult, Match, ResultContext, Type,
+    Generics, LookupResult, Match, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};

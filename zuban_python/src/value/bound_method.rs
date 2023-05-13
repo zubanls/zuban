@@ -1,9 +1,9 @@
-use super::{Callable, FirstParamProperties, Function, Instance, OnTypeError, OverloadedFunction};
+use super::{Callable, FirstParamProperties, Function, Instance, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{OnTypeError, ResultContext, Type};
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
