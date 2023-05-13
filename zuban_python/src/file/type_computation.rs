@@ -107,7 +107,7 @@ impl InvalidVariableType<'_> {
                 add_typing_issue(IssueType::InvalidType(
                     format!(
                         "Variable \"{}.{}\" is not valid as a type",
-                        var_ref.in_module(db).qualified_name(db),
+                        var_ref.in_module().qualified_name(db),
                         var_ref.as_code().to_owned(),
                     )
                     .into(),
@@ -574,8 +574,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     IssueType::InvalidType(
                         format!(
                             "Module {:?} is not valid as a type",
-                            Module::new(self.inference.i_s.db, m)
-                                .qualified_name(self.inference.i_s.db),
+                            Module::new(m).qualified_name(self.inference.i_s.db),
                         )
                         .into(),
                     ),
@@ -786,9 +785,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Point::new_redirect(f.file_index(), index, Locality::Todo),
                         );
                         self.compute_type_name(name)
-                    } else if let Some(file_index) =
-                        Module::new(db, f).sub_module(db, name.as_str())
-                    {
+                    } else if let Some(file_index) = Module::new(f).sub_module(db, name.as_str()) {
                         db.add_invalidates(file_index, self.inference.file.file_index());
                         self.inference.file.points.set(
                             name.index(),

@@ -1391,7 +1391,7 @@ impl<'a> Type<'a> {
             t @ DbType::Callable(c) => callable(self, Callable::new(t, c).lookup(i_s, from, name)),
             DbType::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
-                callable(self, Module::new(i_s.db, file).lookup(i_s, from, name))
+                callable(self, Module::new(file).lookup(i_s, from, name))
             }
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();

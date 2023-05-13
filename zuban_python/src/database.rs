@@ -2238,7 +2238,7 @@ impl NewType {
         let node_ref = NodeRef::from_link(db, self.name_string);
         format!(
             "{}.{}",
-            node_ref.in_module(db).qualified_name(db),
+            node_ref.in_module().qualified_name(db),
             node_ref.maybe_str().unwrap().content()
         )
         .into()
@@ -2728,7 +2728,7 @@ impl TypeVar {
                 let node_ref = NodeRef::from_link(db, link);
                 format!(
                     "{}.{}",
-                    node_ref.in_module(db).qualified_name(db),
+                    node_ref.in_module().qualified_name(db),
                     node_ref.maybe_str().unwrap().content()
                 )
                 .into()
@@ -3103,7 +3103,7 @@ impl NamedTuple {
 
     pub fn qualified_name(&self, db: &Database) -> String {
         let file = db.loaded_python_file(self.name.file_index);
-        let module = Module::new(db, file).qualified_name(db);
+        let module = Module::new(file).qualified_name(db);
         format!("{module}.{}", self.name(db))
     }
 

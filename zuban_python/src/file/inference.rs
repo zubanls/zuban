@@ -209,7 +209,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let (import_name, name_def) = target.unpack();
 
                     let point = if let Some(import_file) = import_file {
-                        let module = Module::new(self.i_s.db, import_file);
+                        let module = Module::new(import_file);
 
                         if let Some(link) = import_file.lookup_global(import_name.as_str()) {
                             link.into_point_redirect()
@@ -232,7 +232,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                 self.i_s,
                                 IssueType::ImportAttributeError {
-                                    module_name: Box::from(module.name()),
+                                    module_name: Box::from(module.name(self.i_s.db)),
                                     name: Box::from(import_name.as_str()),
                                 },
                             );
@@ -292,7 +292,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Option<FileIndex> {
         let infer_name = |i_s, file_index, name: Name| {
             let file = self.i_s.db.loaded_python_file(file_index);
-            let module = Module::new(self.i_s.db, file);
+            let module = Module::new(file);
             let result = module.sub_module(self.i_s.db, name.as_str());
             if let Some(imported) = result {
                 debug!(
@@ -305,7 +305,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
             } else {
                 let node_ref = NodeRef::new(self.file, name.index());
-                let m = format!("{}.{}", module.name().to_owned(), name.as_str()).into();
+                let m = format!("{}.{}", module.name(self.i_s.db).to_owned(), name.as_str()).into();
                 node_ref.add_typing_issue(i_s, IssueType::ModuleNotFound { module_name: m });
             }
             result

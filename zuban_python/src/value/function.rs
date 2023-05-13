@@ -942,8 +942,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         base_qualified_name!(self, db, self.name())
     }
 
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        Module::new(db, self.node_ref.file)
+    fn module(&self) -> Module<'a> {
+        Module::new(self.node_ref.file)
     }
 
     pub fn name(&self) -> &str {

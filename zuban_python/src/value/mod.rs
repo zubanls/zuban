@@ -56,7 +56,7 @@ pub type OnLookupError<'db, 'a> = &'a dyn Fn(&InferenceState<'db, '_>, &Type);
 #[macro_export]
 macro_rules! base_qualified_name {
     ($value:ident, $db:ident, $name:expr) => {
-        format!("{}.{}", $value.module($db).qualified_name($db), $name)
+        format!("{}.{}", $value.module().qualified_name($db), $name)
     };
 }
 

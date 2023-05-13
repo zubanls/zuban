@@ -42,8 +42,8 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn in_module(&self, db: &'file Database) -> Module<'file> {
-        Module::new(db, self.file)
+    pub fn in_module(&self) -> Module<'file> {
+        Module::new(self.file)
     }
 
     pub fn to_db_lifetime(self, db: &Database) -> NodeRef {

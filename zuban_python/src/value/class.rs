@@ -768,8 +768,8 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        Module::new(db, self.node_ref.file)
+    fn module(&self) -> Module<'a> {
+        Module::new(self.node_ref.file)
     }
 
     pub fn name(&self) -> &'a str {

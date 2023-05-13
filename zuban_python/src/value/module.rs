@@ -1,5 +1,3 @@
-use std::fmt;
-
 use super::LookupResult;
 
 use crate::database::{Database, FileIndex, PointLink};
@@ -11,23 +9,14 @@ use crate::inference_state::InferenceState;
 
 use crate::node_ref::NodeRef;
 
-impl<'a> fmt::Debug for Module<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Module")
-            .field("file", &self.file.file_path(self.db))
-            .finish()
-    }
-}
-
 #[derive(Copy, Clone)]
 pub struct Module<'a> {
-    db: &'a Database,
     pub file: &'a PythonFile,
 }
 
 impl<'a> Module<'a> {
-    pub fn new(db: &'a Database, file: &'a PythonFile) -> Self {
-        Self { db, file }
+    pub fn new(file: &'a PythonFile) -> Self {
+        Self { file }
     }
 
     pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<FileIndex> {
@@ -37,23 +26,23 @@ impl<'a> Module<'a> {
         })
     }
 
-    pub fn name(&self) -> &'a str {
+    pub fn name(&self, db: &'a Database) -> &'a str {
         // TODO this is not correct...
-        let (dir, mut name) = self.db.vfs.dir_and_name(self.file.file_path(self.db));
+        let (dir, mut name) = db.vfs.dir_and_name(self.file.file_path(db));
         if name.ends_with(".py") {
             name = name.trim_end_matches(".py");
         } else {
             name = name.trim_end_matches(".pyi");
         }
         if name == "__init__" {
-            self.db.vfs.dir_and_name(dir.unwrap()).1
+            db.vfs.dir_and_name(dir.unwrap()).1
         } else {
             name
         }
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        self.name().to_owned()
+        self.name(db).to_owned()
     }
 
     pub fn lookup(
