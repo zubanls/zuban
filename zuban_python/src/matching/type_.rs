@@ -1325,22 +1325,26 @@ impl<'a> Type<'a> {
         from_inferred: Option<&Inferred>,
         from: Option<NodeRef>,
         name: &str,
-        callable: &mut impl FnMut(LookupResult),
+        callable: &mut impl FnMut(&Type, LookupResult),
     ) {
         if let Some(cls) = self.maybe_class(i_s.db) {
-            return callable(Instance::new(cls, from_inferred).lookup(i_s, from, name));
+            return callable(
+                self,
+                Instance::new(cls, from_inferred).lookup(i_s, from, name),
+            );
         }
         match self.maybe_db_type().unwrap() {
-            DbType::Any => callable(LookupResult::any()),
-            DbType::None => callable(NoneInstance().lookup(i_s, from, name)),
+            DbType::Any => callable(self, LookupResult::any()),
+            DbType::None => callable(self, NoneInstance().lookup(i_s, from, name)),
             DbType::Literal(literal) => {
                 let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-                callable(v.lookup(i_s, from, name))
+                callable(self, v.lookup(i_s, from, name))
             }
-            t @ DbType::TypeVar(tv) => {
-                callable(TypeVarInstance::new(i_s.db, t, tv).lookup(i_s, from, name))
-            }
-            t @ DbType::Tuple(tup) => callable(Tuple::new(t, tup).lookup(i_s, from, name)),
+            t @ DbType::TypeVar(tv) => callable(
+                self,
+                TypeVarInstance::new(i_s.db, t, tv).lookup(i_s, from, name),
+            ),
+            t @ DbType::Tuple(tup) => callable(self, Tuple::new(t, tup).lookup(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
                     Type::new(t)
@@ -1351,21 +1355,22 @@ impl<'a> Type<'a> {
                 DbType::Union(union) => {
                     debug_assert!(!union.entries.is_empty());
                     for t in union.iter() {
-                        callable(TypingType::new(i_s.db, t).lookup(i_s, None, name))
+                        callable(self, TypingType::new(i_s.db, t).lookup(i_s, None, name))
                     }
                 }
-                DbType::Any => callable(LookupResult::any()),
-                _ => callable(TypingType::new(i_s.db, t).lookup(i_s, from, name)),
+                DbType::Any => callable(self, LookupResult::any()),
+                _ => callable(self, TypingType::new(i_s.db, t).lookup(i_s, from, name)),
             },
-            t @ DbType::Callable(c) => callable(Callable::new(t, c).lookup(i_s, from, name)),
+            t @ DbType::Callable(c) => callable(self, Callable::new(t, c).lookup(i_s, from, name)),
             DbType::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
-                callable(Module::new(i_s.db, file).lookup(i_s, from, name))
+                callable(self, Module::new(i_s.db, file).lookup(i_s, from, name))
             }
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();
                 let type_var_likes = current_class.type_vars(i_s);
                 callable(
+                    self,
                     Instance::new(
                         Class::from_position(
                             current_class.node_ref.to_db_lifetime(i_s.db),
@@ -1380,9 +1385,10 @@ impl<'a> Type<'a> {
                     .lookup(i_s, from, name),
                 )
             }
-            DbType::NamedTuple(nt) => {
-                callable(NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name))
-            }
+            DbType::NamedTuple(nt) => callable(
+                self,
+                NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name),
+            ),
             DbType::Class(..) => unreachable!(),
             DbType::NewType(new_type) => Type::new(&new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
@@ -1418,18 +1424,24 @@ impl<'a> Type<'a> {
         on_lookup_error: OnLookupError<'db, '_>,
     ) -> LookupResult {
         let mut result: Option<LookupResult> = None;
-        self.run_after_lookup_on_each_union_member(i_s, None, from, name, &mut |lookup_result| {
-            if matches!(lookup_result, LookupResult::None) {
-                on_lookup_error(i_s, self);
-            }
-            result = Some(if let Some(l) = result.take() {
-                LookupResult::UnknownName(
-                    l.into_inferred().union(i_s, lookup_result.into_inferred()),
-                )
-            } else {
-                lookup_result
-            })
-        });
+        self.run_after_lookup_on_each_union_member(
+            i_s,
+            None,
+            from,
+            name,
+            &mut |_, lookup_result| {
+                if matches!(lookup_result, LookupResult::None) {
+                    on_lookup_error(i_s, self);
+                }
+                result = Some(if let Some(l) = result.take() {
+                    LookupResult::UnknownName(
+                        l.into_inferred().union(i_s, lookup_result.into_inferred()),
+                    )
+                } else {
+                    lookup_result
+                })
+            },
+        );
         result.unwrap_or_else(|| todo!())
     }
 

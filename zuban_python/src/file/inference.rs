@@ -969,61 +969,68 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let second =
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
                                 let from = NodeRef::new(self.file, op.index());
-                                second.run_on_value(self.i_s, &mut |i_s, rvalue| {
-                                    if let Some(method) = rvalue
-                                        .as_type(i_s)
-                                        .lookup_without_error(i_s, Some(from), "__contains__")
-                                        .into_maybe_inferred()
-                                    {
-                                        method.execute_with_details(
-                                            i_s,
-                                            &KnownArguments::new(&first, from),
-                                            &mut ResultContext::Unknown,
-                                            OnTypeError::new(&|i_s, _, _, _, got, _| {
-                                                let right =
-                                                    rvalue.as_type(i_s).format_short(i_s.db);
-                                                from.add_typing_issue(
-                                                    i_s,
-                                                    IssueType::UnsupportedOperand {
-                                                        operand: Box::from("in"),
-                                                        left: got,
-                                                        right,
+                                second.run_after_lookup_on_each_union_member(
+                                    self.i_s,
+                                    Some(from),
+                                    "__contains__",
+                                    &mut |r_type, lookup_result| {
+                                        if let Some(method) = lookup_result.into_maybe_inferred() {
+                                            method.execute_with_details(
+                                                self.i_s,
+                                                &KnownArguments::new(&first, from),
+                                                &mut ResultContext::Unknown,
+                                                OnTypeError::new(&|i_s, _, _, _, got, _| {
+                                                    let right = r_type.format_short(i_s.db);
+                                                    from.add_typing_issue(
+                                                        i_s,
+                                                        IssueType::UnsupportedOperand {
+                                                            operand: Box::from("in"),
+                                                            left: got,
+                                                            right,
+                                                        },
+                                                    );
+                                                }),
+                                            );
+                                        } else {
+                                            let t = r_type
+                                                .lookup_with_error(
+                                                    self.i_s,
+                                                    from,
+                                                    "__iter__",
+                                                    &|i_s, _| {
+                                                        let right = second.format_short(i_s);
+                                                        from.add_typing_issue(
+                                                            i_s,
+                                                            IssueType::UnsupportedIn { right },
+                                                        )
+                                                    },
+                                                )
+                                                .into_inferred()
+                                                .execute(self.i_s, &NoArguments::new(from))
+                                                .lookup_and_execute(
+                                                    self.i_s,
+                                                    from,
+                                                    "__next__",
+                                                    &NoArguments::new(from),
+                                                    &|_, _| todo!(),
+                                                )
+                                                .as_type(self.i_s)
+                                                .error_if_not_matches(
+                                                    self.i_s,
+                                                    &first,
+                                                    |i_s, got, _| {
+                                                        let t = IssueType::UnsupportedOperand {
+                                                            operand: Box::from("in"),
+                                                            left: got,
+                                                            right: r_type.format_short(i_s.db),
+                                                        };
+                                                        from.add_typing_issue(i_s, t);
+                                                        from.to_db_lifetime(i_s.db)
                                                     },
                                                 );
-                                            }),
-                                        )
-                                    } else {
-                                        let t = rvalue
-                                            .as_type(i_s)
-                                            .lookup_with_error(i_s, from, "__iter__", &|i_s, _| {
-                                                let right = second.format_short(i_s);
-                                                from.add_typing_issue(
-                                                    i_s,
-                                                    IssueType::UnsupportedIn { right },
-                                                )
-                                            })
-                                            .into_inferred()
-                                            .execute(i_s, &NoArguments::new(from))
-                                            .lookup_and_execute(
-                                                i_s,
-                                                from,
-                                                "__next__",
-                                                &NoArguments::new(from),
-                                                &|_, _| todo!(),
-                                            )
-                                            .as_type(i_s)
-                                            .error_if_not_matches(i_s, &first, |i_s, got, _| {
-                                                let t = IssueType::UnsupportedOperand {
-                                                    operand: Box::from("in"),
-                                                    left: got,
-                                                    right: rvalue.as_type(i_s).format_short(i_s.db),
-                                                };
-                                                from.add_typing_issue(i_s, t);
-                                                from.to_db_lifetime(i_s.db)
-                                            });
-                                        Inferred::new_unknown()
-                                    }
-                                });
+                                        }
+                                    },
+                                );
                                 Inferred::create_instance(
                                     self.i_s.db.python_state.builtins_point_link("bool"),
                                     None,
