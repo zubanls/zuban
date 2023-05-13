@@ -5,7 +5,6 @@ mod function;
 mod instance;
 mod module;
 mod named_tuple;
-mod none;
 mod tuple;
 mod typing;
 
@@ -21,7 +20,6 @@ pub use function::{FirstParamProperties, Function, InferrableParam, OverloadedFu
 pub use instance::Instance;
 pub use module::Module;
 pub use named_tuple::NamedTupleValue;
-pub use none::NoneInstance;
 pub use tuple::Tuple;
 pub use typing::{
     NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarInstance,

@@ -19,7 +19,7 @@ use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::value::{
     Callable, Class, Instance, IteratorContent, LookupResult, Module, MroIterator, NamedTupleValue,
-    NoneInstance, OnLookupError, OnTypeError, Tuple, TypeVarInstance, TypingType,
+    OnLookupError, OnTypeError, Tuple, TypeVarInstance, TypingType,
 };
 
 #[derive(Debug, Clone)]
@@ -1359,7 +1359,10 @@ impl<'a> Type<'a> {
         }
         match self.maybe_db_type().unwrap() {
             DbType::Any => callable(self, LookupResult::any()),
-            DbType::None => callable(self, NoneInstance().lookup(i_s, from, name)),
+            DbType::None => {
+                debug!("TODO None lookup");
+                callable(self, LookupResult::None)
+            }
             DbType::Literal(literal) => {
                 let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
                 callable(self, v.lookup(i_s, from, name))
