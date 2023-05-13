@@ -19,7 +19,7 @@ use crate::inferred::{Inferred, UnionValue};
 use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::utils::debug_indent;
-use crate::value::{Class, Function, LookupResult, Module, OnTypeError};
+use crate::value::{Class, Function, Instance, LookupResult, Module, OnTypeError};
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
@@ -609,67 +609,63 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if primary_target.as_code().contains("self") {
                     // TODO here we should do something as well.
                 } else {
+                    let i_s = self.i_s;
                     if is_definition {
                         NodeRef::new(self.file, primary_target.index())
-                            .add_typing_issue(self.i_s, IssueType::InvalidTypeDeclaration);
+                            .add_typing_issue(i_s, IssueType::InvalidTypeDeclaration);
                     }
                     let base = self.infer_primary_target_or_atom(primary_target.first());
                     let node_ref = NodeRef::new(self.file, primary_target.index());
-                    base.run_mut(
-                        self.i_s,
-                        &mut |i_s, v| {
-                            if let Some(instance) = v.as_instance() {
-                                if instance.checked_set_descriptor(
+                    base.as_type(i_s).run_on_each_union_type(&mut |t| {
+                        if let Some(cls) = t.maybe_class(i_s.db) {
+                            if Instance::new(cls, None).checked_set_descriptor(
+                                i_s,
+                                node_ref,
+                                name_definition.name(),
+                                value,
+                            ) {
+                                return;
+                            }
+                        }
+                        t.maybe_type_of_class(i_s.db)
+                            .and_then(|c| {
+                                // We need to handle class descriptors separately, because
+                                // there the __get__ descriptor should not be applied.
+                                c.lookup_with_or_without_descriptors(
+                                    i_s,
+                                    Some(node_ref),
+                                    name_definition.as_code(),
+                                    false,
+                                )
+                                .into_maybe_inferred()
+                            })
+                            .unwrap_or_else(|| {
+                                t.lookup_with_error(
                                     i_s,
                                     node_ref,
-                                    name_definition.name(),
-                                    value,
-                                ) {
-                                    return;
-                                }
-                            }
-                            v.as_class()
-                                .and_then(|c| {
-                                    // We need to handle class descriptors separately, because
-                                    // there the __get__ descriptor should not be applied.
-                                    c.lookup_with_or_without_descriptors(
-                                        i_s,
-                                        Some(node_ref),
-                                        name_definition.as_code(),
-                                        false,
-                                    )
-                                    .into_maybe_inferred()
-                                })
-                                .unwrap_or_else(|| {
-                                    let t = v.as_type(i_s);
-                                    t.lookup_with_error(
-                                        i_s,
-                                        node_ref,
-                                        name_definition.as_code(),
-                                        &|i_s, t| {
-                                            add_attribute_error(
-                                                i_s,
-                                                node_ref,
-                                                t,
-                                                name_definition.name(),
-                                            )
-                                        },
-                                    )
-                                    .into_inferred()
-                                })
-                                .as_type(i_s)
-                                .error_if_not_matches(i_s, value, |i_s, got, expected| {
-                                    let node_ref = NodeRef::new(self.file, primary_target.index())
-                                        .to_db_lifetime(i_s.db);
-                                    node_ref.add_typing_issue(
-                                        i_s,
-                                        IssueType::IncompatibleAssignment { got, expected },
-                                    );
-                                    node_ref
-                                });
-                        },
-                        || (),
-                    );
+                                    name_definition.as_code(),
+                                    &|i_s, t| {
+                                        add_attribute_error(
+                                            i_s,
+                                            node_ref,
+                                            t,
+                                            name_definition.name(),
+                                        )
+                                    },
+                                )
+                                .into_inferred()
+                            })
+                            .as_type(i_s)
+                            .error_if_not_matches(i_s, value, |i_s, got, expected| {
+                                let node_ref = NodeRef::new(self.file, primary_target.index())
+                                    .to_db_lifetime(i_s.db);
+                                node_ref.add_typing_issue(
+                                    i_s,
+                                    IssueType::IncompatibleAssignment { got, expected },
+                                );
+                                node_ref
+                            });
+                    });
                 }
                 // This mostly needs to be saved for self names
                 save(self.i_s, name_definition.index());

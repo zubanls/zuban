@@ -311,15 +311,6 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn run_mut(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        callable: &mut impl for<'a, 'b, 'c> FnMut(&InferenceState<'db, 'c>, &'b dyn Value<'db, 'a>),
-        mut on_missing: impl FnMut(),
-    ) {
-        self.internal_run(i_s, callable, &|_, i1, i2| (), &mut |i_s| on_missing())
-    }
-
     pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);

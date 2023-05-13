@@ -78,6 +78,16 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
+    pub fn maybe_type_of_class(&self, db: &'a Database) -> Option<Class<'_>> {
+        if let Some(DbType::Type(t)) = self.maybe_db_type() {
+            if let DbType::Class(link, generics) = t.as_ref() {
+                return Some(Class::from_db_type(db, *link, generics));
+            }
+        }
+        None
+    }
+
+    #[inline]
     pub fn maybe_borrowed_class(&self, db: &'a Database) -> Option<Class<'a>> {
         match self {
             Self::Class(c) => Some(*c),
