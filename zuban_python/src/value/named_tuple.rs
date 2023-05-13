@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{IteratorContent, LookupResult, Value};
+use super::{IteratorContent, LookupResult};
 use crate::database::{DbType, FormatStyle, NamedTuple, RecursiveAlias, TupleTypeArguments};
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -8,7 +8,7 @@ use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{FormatData, Generics, ResultContext};
 use crate::{database::Database, node_ref::NodeRef};
 
 #[derive(Debug)]
@@ -117,11 +117,5 @@ impl<'a> NamedTupleValue<'a> {
             SliceTypeContent::Slice(_) => todo!(),
             SliceTypeContent::Slices(_) => todo!(),
         }
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for NamedTupleValue<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::NamedTuple(self.nt.clone()))
     }
 }

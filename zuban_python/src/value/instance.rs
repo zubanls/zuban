@@ -3,7 +3,7 @@ use std::borrow::Cow;
 use parsa_python_ast::Name;
 
 use super::{
-    Class, IteratorContent, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Tuple, Value,
+    Class, IteratorContent, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Tuple,
 };
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, DbType, PointLink};
@@ -13,7 +13,7 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, ResultContext, Type};
+use crate::matching::{ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -118,7 +118,7 @@ impl<'a> Instance<'a> {
         {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
         } else {
-            let t = self.as_type(i_s).format_short(i_s.db);
+            let t = self.class.format_short(i_s.db);
             node_ref.add_typing_issue(
                 i_s,
                 IssueType::NotCallable {
@@ -158,8 +158,8 @@ impl<'a> Instance<'a> {
                             ),
                     );
                 }
-                FoundOnClass::UnresolvedDbType(Cow::Borrowed(db_type @ DbType::Tuple(t))) => {
-                    return Tuple::new(db_type, t).iter(i_s, from);
+                FoundOnClass::UnresolvedDbType(Cow::Borrowed(DbType::Tuple(t))) => {
+                    return Tuple::new(t).iter(i_s, from);
                 }
                 FoundOnClass::UnresolvedDbType(Cow::Owned(db_type @ DbType::Tuple(_))) => {
                     debug!("TODO Owned tuples won't work with iter currently");
@@ -278,11 +278,7 @@ impl<'a> Instance<'a> {
                 }
                 FoundOnClass::UnresolvedDbType(db_type) => match db_type.as_ref() {
                     DbType::Tuple(t) => {
-                        return Tuple::new(db_type.as_ref(), t).get_item(
-                            i_s,
-                            slice_type,
-                            result_context,
-                        );
+                        return Tuple::new(t).get_item(i_s, slice_type, result_context);
                     }
                     _ => (),
                 },
@@ -295,23 +291,6 @@ impl<'a> Instance<'a> {
             },
         );
         Inferred::new_any()
-    }
-}
-
-impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
-    fn as_instance(&self) -> Option<&Instance<'a>> {
-        Some(self)
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        if matches!(self.class.generics, Generics::Self_ { .. }) {
-            // The generics are only ever self for our own instance, because Generics::Self_ is
-            // only used for the current class.
-            debug_assert_eq!(i_s.current_class().unwrap().node_ref, self.class.node_ref);
-            Type::owned(DbType::Self_)
-        } else {
-            Type::Class(self.class)
-        }
     }
 }
 

@@ -1,8 +1,6 @@
-use super::{LookupResult, Value};
-use crate::database::DbType;
+use super::LookupResult;
 use crate::debug;
 use crate::inference_state::InferenceState;
-use crate::matching::Type;
 use crate::node_ref::NodeRef;
 
 #[derive(Debug)]
@@ -17,11 +15,5 @@ impl NoneInstance {
     ) -> LookupResult {
         debug!("TODO None lookup");
         LookupResult::None
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for NoneInstance {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(&DbType::None)
     }
 }

@@ -1,15 +1,14 @@
 use std::fmt;
 
-use super::{LookupResult, Value};
+use super::LookupResult;
 
-use crate::database::{Database, DbType, FileIndex, PointLink};
+use crate::database::{Database, FileIndex, PointLink};
 
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::imports::python_import;
 use crate::inference_state::InferenceState;
 
-use crate::matching::Type;
 use crate::node_ref::NodeRef;
 
 impl<'a> fmt::Debug for Module<'a> {
@@ -81,11 +80,5 @@ impl<'a> Module<'a> {
                     })
                     .unwrap_or_else(|| LookupResult::None)
             })
-    }
-}
-
-impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Module(self.file.file_index()))
     }
 }

@@ -1220,7 +1220,7 @@ impl<'a> Type<'a> {
             return Instance::new(cls, None).iter(i_s, from);
         }
         match self.maybe_borrowed_db_type().unwrap() {
-            t @ DbType::Tuple(content) => Tuple::new(t, content).iter(i_s, from),
+            DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
             DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
             DbType::Any | DbType::Never => IteratorContent::Any,
             _ => {
@@ -1368,7 +1368,7 @@ impl<'a> Type<'a> {
                 self,
                 TypeVarInstance::new(i_s.db, t, tv).lookup(i_s, from, name),
             ),
-            t @ DbType::Tuple(tup) => callable(self, Tuple::new(t, tup).lookup(i_s, from, name)),
+            DbType::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
                     Type::new(t)
@@ -1495,7 +1495,7 @@ impl<'a> Type<'a> {
         }
         match self.maybe_db_type().unwrap() {
             DbType::Any => Inferred::new_any(),
-            t @ DbType::Tuple(tup) => Tuple::new(t, tup).get_item(i_s, slice_type, result_context),
+            DbType::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
             DbType::NamedTuple(nt) => {
                 NamedTupleValue::new(i_s.db, nt).get_item(i_s, slice_type, result_context)
             }

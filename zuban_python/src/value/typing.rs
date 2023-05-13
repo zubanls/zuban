@@ -1,8 +1,7 @@
-use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Class, Instance, LookupResult, OnTypeError, Value};
+use super::{Class, Instance, LookupResult, OnTypeError};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
@@ -12,7 +11,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::inference_state::InferenceState;
-use crate::inferred::{run_on_db_type, Inferred};
+use crate::inferred::Inferred;
 use crate::matching::{FormatData, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
@@ -69,13 +68,6 @@ impl TypingClass {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {}
-
-#[derive(Debug)]
-pub struct TypingClassVar();
-
-impl<'db, 'a> Value<'db, 'a> for TypingClassVar {}
-
 pub struct TypingType<'a> {
     db: &'a Database,
     pub db_type: &'a DbType,
@@ -111,12 +103,6 @@ impl<'a> TypingType<'a> {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::Type(Cow::Owned(DbType::Type(Rc::new(self.db_type.clone()))))
-    }
-}
-
 impl fmt::Debug for TypingType<'_> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.debug_struct("TypingType")
@@ -124,11 +110,6 @@ impl fmt::Debug for TypingType<'_> {
             .finish()
     }
 }
-
-#[derive(Debug)]
-pub struct TypingAny();
-
-impl<'db, 'a> Value<'db, 'a> for TypingAny {}
 
 #[derive(Debug)]
 pub struct TypingCast();
@@ -191,8 +172,6 @@ impl<'db> TypingCast {
     }
 }
 
-impl<'db, 'a> Value<'db, 'a> for TypingCast {}
-
 #[derive(Debug)]
 pub struct RevealTypeFunction();
 
@@ -227,8 +206,6 @@ impl RevealTypeFunction {
         inferred
     }
 }
-
-impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {}
 
 pub struct TypeVarInstance<'a> {
     db: &'a Database,
@@ -269,38 +246,23 @@ impl<'a> TypeVarInstance<'a> {
             */
         }
         if let Some(db_type) = &type_var.bound {
-            run_on_db_type(
-                i_s,
-                db_type,
-                None,
-                &mut |i_s, v| {
-                    let result = v.as_type(i_s).lookup_without_error(i_s, node_ref, name);
-                    if matches!(result, LookupResult::None) {
-                        debug!(
-                            "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.as_type(i_s).format_short(i_s.db),
-                            Type::new(db_type).format_short(i_s.db),
-                            self.type_var_usage.type_var.name(self.db),
-                            name,
-                        );
-                    }
-                    result
-                },
-                &|i_s, a, b| a.union(i_s, b),
-                &mut |i_s| todo!(),
-            )
+            let result = Type::new(db_type).lookup_without_error(i_s, node_ref, name);
+            if matches!(result, LookupResult::None) {
+                debug!(
+                    "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
+                    db_type.format_short(i_s.db),
+                    Type::new(db_type).format_short(i_s.db),
+                    self.type_var_usage.type_var.name(self.db),
+                    name,
+                );
+            }
+            result
         } else {
             let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we
             // should just use a precreated object() from somewhere.
             Instance::new(s.object_class(), None).lookup(i_s, node_ref, name)
         }
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(self.db_type)
     }
 }
 
@@ -502,8 +464,6 @@ fn maybe_type_var(
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {}
-
 #[derive(Debug)]
 pub struct TypeVarTupleClass();
 
@@ -522,8 +482,6 @@ impl TypeVarTupleClass {
         }
     }
 }
-
-impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {}
 
 fn maybe_type_var_tuple(
     i_s: &InferenceState,
@@ -657,8 +615,6 @@ impl ParamSpecClass {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {}
-
 fn maybe_param_spec(
     i_s: &InferenceState,
     args: &dyn Arguments,
@@ -770,8 +726,6 @@ impl NewTypeClass {
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {}
-
 fn maybe_new_type<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
@@ -826,12 +780,3 @@ fn maybe_new_type<'db>(
         type_node_ref.as_link(),
     ))
 }
-
-#[derive(Debug)]
-#[allow(dead_code)]
-pub struct NewTypeInstance<'a> {
-    db: &'a Database,
-    new_type: &'a Rc<NewType>,
-}
-
-impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {}

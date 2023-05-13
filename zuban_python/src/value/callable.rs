@@ -1,4 +1,4 @@
-use super::{Class, LookupResult, OnTypeError, Value};
+use super::{Class, LookupResult, OnTypeError};
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, DbType};
 use crate::debug;
@@ -47,15 +47,5 @@ impl<'a> Callable<'a> {
     ) -> LookupResult {
         debug!("TODO callable lookups");
         LookupResult::None
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(self.db_type)
-    }
-
-    fn as_callable(&self) -> Option<Callable<'a>> {
-        Some(*self)
     }
 }

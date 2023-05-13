@@ -3,12 +3,10 @@ mod callable;
 mod class;
 mod function;
 mod instance;
-mod literal;
 mod module;
 mod named_tuple;
 mod none;
 mod tuple;
-mod type_alias;
 mod typing;
 
 use crate::arguments::Argument;
@@ -21,16 +19,13 @@ pub use callable::Callable;
 pub use class::{Class, MroIterator};
 pub use function::{FirstParamProperties, Function, InferrableParam, OverloadedFunction};
 pub use instance::Instance;
-pub use literal::Literal;
 pub use module::Module;
 pub use named_tuple::NamedTupleValue;
 pub use none::NoneInstance;
 pub use tuple::Tuple;
-pub use type_alias::TypeAlias;
 pub use typing::{
-    NewTypeClass, NewTypeInstance, ParamSpecClass, RevealTypeFunction, TypeVarClass,
-    TypeVarInstance, TypeVarTupleClass, TypingAny, TypingCast, TypingClass, TypingClassVar,
-    TypingType,
+    NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarInstance,
+    TypeVarTupleClass, TypingCast, TypingClass, TypingType,
 };
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;
@@ -209,22 +204,5 @@ impl LookupResult {
             // TODO is it ok that map does not include FileReference(_)?
             _ => Some(self),
         }
-    }
-}
-
-// Why HackyProof, see: https://github.com/rust-lang/rust/issues/92520
-pub trait Value<'db: 'a, 'a, HackyProof = &'a &'db ()>: std::fmt::Debug {
-    fn as_instance(&self) -> Option<&Instance<'a>> {
-        None
-    }
-    fn as_callable(&self) -> Option<Callable<'a>> {
-        None
-    }
-    fn as_class(&self) -> Option<&Class> {
-        None
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        todo!("{self:?}")
     }
 }

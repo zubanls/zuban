@@ -1,6 +1,4 @@
-use super::{
-    Callable, FirstParamProperties, Function, Instance, OnTypeError, OverloadedFunction, Value,
-};
+use super::{Callable, FirstParamProperties, Function, Instance, OnTypeError, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::MroIndex;
 use crate::inference_state::InferenceState;
@@ -70,14 +68,12 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             ),
         }
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for BoundMethod<'a, '_> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+    pub fn as_type<'db: 'a>(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         let t = match &self.function {
             BoundMethodFunction::Function(f) => f.as_db_type(i_s, FirstParamProperties::Skip),
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, FirstParamProperties::Skip),
-            BoundMethodFunction::Callable(c) => return c.as_type(i_s),
+            BoundMethodFunction::Callable(c) => return Type::new(c.db_type),
         };
         // TODO performance: it may be questionable that we allocate here again.
         Type::owned(t)

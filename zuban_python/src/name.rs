@@ -5,10 +5,8 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::Value;
 use parsa_python_ast::{CodeIndex, Name as ASTName};
 use std::fmt;
-use std::mem;
 
 type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
@@ -149,6 +147,7 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     }
 }
 
+/*
 struct WithValueName<'db, 'a, 'b> {
     db: &'db Database,
     value: &'b dyn Value<'db, 'a>,
@@ -240,3 +239,4 @@ impl<T> Iterator for ValueNameIterator<T> {
         }
     }
 }
+*/

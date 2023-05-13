@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use super::function::OverloadResult;
-use super::{Instance, LookupResult, Module, NamedTupleValue, OnTypeError, Value};
+use super::{Instance, LookupResult, Module, NamedTupleValue, OnTypeError};
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassInfos, ClassStorage, ClassType,
@@ -661,6 +661,10 @@ impl<'db: 'a, 'a> Class<'a> {
         DbType::Class(link, lst)
     }
 
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
+    }
+
     pub fn name2(&self) -> &'a str {
         // TODO merge this with Value::name
         self.node().name().as_str()
@@ -791,16 +795,6 @@ impl<'db: 'a, 'a> Class<'a> {
                 *slice_type,
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for Class<'a> {
-    fn as_class(&self) -> Option<&Class> {
-        Some(self)
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
     }
 }
 

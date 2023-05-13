@@ -7,7 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
-use super::{LookupResult, Module, OnTypeError, Value};
+use super::{LookupResult, Module, OnTypeError};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
@@ -460,6 +460,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 
     pub fn as_db_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> DbType {
         DbType::Callable(Rc::new(self.as_callable(i_s, first)))
+    }
+
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 
     pub fn classmethod_as_db_type(
@@ -945,12 +949,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     pub fn name(&self) -> &str {
         let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
         func.name().as_str()
-    }
-}
-
-impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 }
 
@@ -1623,6 +1621,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         )
     }
 
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
+    }
+
     pub(super) fn execute_internal(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1653,12 +1655,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn name(&self) -> &str {
         self.node_ref.as_code()
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 }
 

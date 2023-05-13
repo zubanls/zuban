@@ -1,25 +1,24 @@
 use std::rc::Rc;
 
-use super::{IteratorContent, LookupResult, Value};
-use crate::database::{DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
+use super::{IteratorContent, LookupResult};
+use crate::database::{TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::ResultContext;
 use crate::node_ref::NodeRef;
 use crate::value::Instance;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
-    db_type: &'a DbType,
     content: &'a Rc<TupleContent>,
 }
 
 impl<'a> Tuple<'a> {
-    pub fn new(db_type: &'a DbType, content: &'a Rc<TupleContent>) -> Self {
-        Self { db_type, content }
+    pub fn new(content: &'a Rc<TupleContent>) -> Self {
+        Self { content }
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
@@ -100,11 +99,5 @@ impl<'a> Tuple<'a> {
                 todo!()
             }
         }
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(self.db_type)
     }
 }

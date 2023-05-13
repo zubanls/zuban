@@ -20,9 +20,8 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
-    IteratorContent, Literal, LookupResult, NamedTupleValue, NewTypeClass, NoneInstance,
-    OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple,
-    TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingCast, TypingClass, TypingType, Value,
+    IteratorContent, LookupResult, NewTypeClass, OnLookupError, OnTypeError, OverloadedFunction,
+    ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
 };
 
 #[derive(Debug)]
@@ -663,7 +662,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             } else {
                                 if let Some(from) = from {
                                     let t = IssueType::InvalidSelfArgument {
-                                        argument_type: instance.as_type(i_s).format_short(i_s.db),
+                                        argument_type: instance.class.format_short(i_s.db),
                                         function_name: Box::from(func.name()),
                                         callable: func.as_type(i_s).format_short(i_s.db),
                                     };
@@ -691,7 +690,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, func_class);
                                 let t = IssueType::InvalidClassMethodFirstArgument {
-                                    argument_type: instance.class.as_type(i_s).format_short(i_s.db),
+                                    argument_type: instance.class.format_short(i_s.db),
                                     function_name: Box::from(func.name()),
                                     callable: func.as_type(i_s).format_short(i_s.db),
                                 };
@@ -824,7 +823,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, attribute_class);
                                 let t = IssueType::InvalidSelfArgument {
-                                    argument_type: class.as_type(i_s).format_short(i_s.db),
+                                    argument_type: class.format_short(i_s.db),
                                     function_name: Box::from(func.name()),
                                     callable: func.as_type(i_s).format_short(i_s.db),
                                 };
@@ -1412,108 +1411,6 @@ fn use_instance_with_ref<'a>(
 ) -> Instance<'a> {
     let class = Class::from_position(class_reference, generics, None);
     Instance::new(class, instance_reference)
-}
-
-pub fn run_on_db_type<'db: 'a, 'a, T>(
-    i_s: &InferenceState<'db, '_>,
-    db_type: &'a DbType,
-    definition: Option<&'a Inferred>,
-    callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-    reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
-    on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
-) -> T {
-    match db_type {
-        DbType::Class(link, generics) => {
-            let inst = use_instance_with_ref(
-                NodeRef::from_link(i_s.db, *link),
-                Generics::new_maybe_list(generics),
-                definition,
-            );
-            callable(i_s, &inst)
-        }
-        DbType::Union(lst) => lst
-            .iter()
-            .fold(None, |input, t| match input {
-                None => Some(run_on_db_type(i_s, t, None, callable, reducer, on_missing)),
-                Some(t1) => {
-                    let t2 = run_on_db_type(i_s, t, None, callable, reducer, on_missing);
-                    Some(reducer(i_s, t1, t2))
-                }
-            })
-            .unwrap(),
-        DbType::FunctionOverload(lst) => todo!(),
-        DbType::TypeVar(t) => callable(i_s, &TypeVarInstance::new(i_s.db, db_type, t)),
-        DbType::Tuple(content) => callable(i_s, &Tuple::new(db_type, content)),
-        DbType::Callable(content) => callable(i_s, &Callable::new(db_type, content)),
-        DbType::None => callable(i_s, &NoneInstance()),
-        DbType::Any => on_missing(i_s),
-        DbType::Never => on_missing(i_s),
-        DbType::Literal(literal) => {
-            let t = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-            callable(i_s, &Literal::new(*literal))
-        }
-        DbType::Type(t) => run_on_db_type_type(i_s, t, callable, reducer),
-        DbType::NewType(n) => {
-            let t = n.type_(i_s);
-            run_on_db_type(i_s, t, None, callable, reducer, on_missing)
-        }
-        DbType::RecursiveAlias(rec1) => run_on_db_type(
-            i_s,
-            rec1.calculated_db_type(i_s.db),
-            None,
-            callable,
-            reducer,
-            on_missing,
-        ),
-        DbType::Self_ => {
-            let current_class = i_s.current_class().unwrap();
-            let type_var_likes = current_class.type_vars(i_s);
-            callable(
-                i_s,
-                &Instance::new(
-                    Class::from_position(
-                        current_class.node_ref.to_db_lifetime(i_s.db),
-                        Generics::Self_ {
-                            class_definition: current_class.node_ref.as_link(),
-                            type_var_likes: unsafe { std::mem::transmute(type_var_likes) },
-                        },
-                        None,
-                    ),
-                    definition,
-                ),
-            )
-        }
-        DbType::ParamSpecArgs(usage) => todo!(),
-        DbType::ParamSpecKwargs(usage) => todo!(),
-        DbType::Module(file_index) => todo!(),
-        DbType::NamedTuple(nt) => callable(i_s, &NamedTupleValue::new(i_s.db, &nt)),
-    }
-}
-
-fn run_on_db_type_type<'db: 'a, 'a, T>(
-    i_s: &InferenceState<'db, '_>,
-    type_: &'a DbType,
-    callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-    reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
-) -> T {
-    match type_ {
-        DbType::Class(link, generics) => {
-            let class = Class::from_db_type(i_s.db, *link, generics);
-            callable(i_s, &class)
-        }
-        DbType::Union(lst) => lst
-            .iter()
-            .fold(None, |input, t| match input {
-                None => Some(run_on_db_type_type(i_s, t, callable, reducer)),
-                Some(t1) => {
-                    let t2 = run_on_db_type_type(i_s, t, callable, reducer);
-                    Some(reducer(i_s, t1, t2))
-                }
-            })
-            .unwrap(),
-        DbType::Never => todo!(),
-        _ => callable(i_s, &TypingType::new(i_s.db, type_)),
-    }
 }
 
 fn prepare_func<'db, 'class>(
