@@ -129,12 +129,9 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn execute_db_type_allocation_todo(
-        i_s: &InferenceState<'db, '_>,
-        v: &dyn Value<'db, '_>,
-    ) -> Self {
+    pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &Type) -> Self {
         // Everything that calls this should probably not allocate.
-        let t = v.as_type(i_s).into_db_type(i_s.db);
+        let t = t.as_db_type(i_s.db);
         Self::execute_db_type(i_s, t)
     }
 
@@ -296,19 +293,6 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::Unknown => on_missing(i_s),
         }
-    }
-
-    pub fn run_on_value(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, '_>) -> Self,
-    ) -> Self {
-        self.internal_run(
-            i_s,
-            callable,
-            &|i_s, i1, i2| i1.union(i_s, i2),
-            &mut |i_s| Inferred::new_unknown(),
-        )
     }
 
     pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {
