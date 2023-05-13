@@ -29,6 +29,9 @@ testSelfTypeGenericClassNoClashClassMethodClassObject
 testTypingSelfAlternativeGenericConstructor
 testGenericNamedTupleCustomMethods
 
+testBoundStaticMethod
+testParamSpecDecorator
+
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
 # raise from: Exception must be derived from BaseException

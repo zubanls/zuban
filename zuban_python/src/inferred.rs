@@ -424,18 +424,7 @@ impl<'db: 'slf, 'slf> Inferred {
     where
         'db: 'x,
     {
-        self.internal_run(
-            i_s,
-            &mut |i_s, v| {
-                if include_non_callables {
-                    v.as_type(i_s).maybe_callable(i_s)
-                } else {
-                    v.as_callable().map(|c| Cow::Borrowed(c.content))
-                }
-            },
-            &|_, _, _| None,
-            &mut |_| Some(Cow::Owned(CallableContent::new_any())),
-        )
+        self.as_type(i_s).maybe_callable(i_s)
     }
 
     pub fn maybe_class(&self, i_s: &InferenceState<'db, '_>) -> Option<Class<'db>> {

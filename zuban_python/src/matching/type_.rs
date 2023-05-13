@@ -110,6 +110,7 @@ impl<'a> Type<'a> {
                     }
                     _ => None,
                 },
+                Some(DbType::Any) => Some(Cow::Owned(CallableContent::new_any())),
                 _ => self.maybe_class(i_s.db).and_then(|c| {
                     Instance::new(c, None)
                         .lookup(i_s, None, "__call__")
