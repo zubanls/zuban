@@ -665,11 +665,6 @@ impl<'db: 'a, 'a> Class<'a> {
         Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
     }
 
-    pub fn name2(&self) -> &'a str {
-        // TODO merge this with Value::name
-        self.node().name().as_str()
-    }
-
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
         let name = self.name_string_slice();
         Rc::new(NamedTuple::new(
