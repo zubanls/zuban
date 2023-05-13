@@ -1,4 +1,4 @@
-use parsa_python_ast::{NodeIndex, Primary, PrimaryContent, PythonString};
+use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString};
 use std::borrow::Cow;
 use std::rc::Rc;
 
@@ -20,10 +20,9 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::value::{
     BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
-    IteratorContent, Literal, LookupResult, Module, NamedTupleValue, NewTypeClass, NewTypeInstance,
-    NoneInstance, OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass,
-    RevealTypeFunction, Tuple, TypeAlias, TypeVarClass, TypeVarInstance, TypeVarTupleClass,
-    TypingAny, TypingCast, TypingClass, TypingClassVar, TypingType, Value,
+    IteratorContent, Literal, LookupResult, NamedTupleValue, NewTypeClass, NoneInstance,
+    OnLookupError, OnTypeError, OverloadedFunction, ParamSpecClass, RevealTypeFunction, Tuple,
+    TypeVarClass, TypeVarInstance, TypeVarTupleClass, TypingCast, TypingClass, TypingType, Value,
 };
 
 #[derive(Debug)]
@@ -244,57 +243,6 @@ impl<'db: 'slf, 'slf> Inferred {
         let class = class_t.expect_borrowed_class(i_s.db);
         (instance, class)
     }
-
-    #[inline]
-    fn internal_run<'a, T>(
-        &'a self,
-        i_s: &InferenceState<'db, '_>,
-        callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-        reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
-        on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
-    ) -> T
-    where
-        'db: 'a,
-    {
-        match &self.state {
-            InferredState::Saved(definition, point) => run_on_saved(
-                i_s,
-                Some(self),
-                *definition,
-                *point,
-                callable,
-                reducer,
-                on_missing,
-            ),
-            InferredState::UnsavedComplex(complex) => {
-                run_on_complex(i_s, complex, None, None, callable, reducer, on_missing)
-            }
-            InferredState::UnsavedSpecific(specific) => match specific {
-                Specific::None => callable(i_s, &NoneInstance()),
-                Specific::Any | Specific::Cycle => on_missing(i_s),
-                _ => todo!("{specific:?}"),
-            },
-            InferredState::UnsavedFileReference(file_index) => {
-                let f = i_s.db.loaded_python_file(*file_index);
-                callable(i_s, &Module::new(i_s.db, f))
-            }
-            InferredState::BoundMethod {
-                instance,
-                mro_index,
-                func_link,
-            } => {
-                // TODO this is potentially not needed, a class could lazily be fetched with a
-                // closure
-                let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
-                callable(
-                    i_s,
-                    &load_bound_method(i_s, &instance, class, *mro_index, *func_link),
-                )
-            }
-            InferredState::Unknown => on_missing(i_s),
-        }
-    }
-
     pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {
         if let InferredState::Saved(definition, point) = self.state {
             let node_ref = NodeRef::from_link(i_s.db, definition);
@@ -365,55 +313,6 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         self
-    }
-
-    fn with_instance<'a, T>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        instance_reference: Option<&'a Self>,
-        generics: Option<Generics<'a>>,
-        callable: impl FnOnce(&InferenceState<'db, '_>, &Instance<'a>) -> T,
-    ) -> T
-    where
-        'db: 'a,
-    {
-        match &self.state {
-            InferredState::Saved(definition, point) => {
-                let definition = NodeRef::from_link(i_s.db, *definition);
-                if point.type_() == PointType::Specific {
-                    if let Specific::SimpleGeneric = point.specific() {
-                        let p = Primary::by_index(&definition.file.tree, definition.node_index);
-                        let cls = definition
-                            .file
-                            .inference(i_s)
-                            .infer_primary_or_atom(p.first());
-                        cls.with_instance(
-                            i_s,
-                            instance_reference,
-                            Some(Generics::new_simple_generic_slice(
-                                definition.file,
-                                p.expect_slice(),
-                            )),
-                            callable,
-                        )
-                    } else {
-                        unreachable!("{point:?}")
-                    }
-                } else {
-                    let g = generics.unwrap_or(Generics::NotDefinedYet);
-                    let class = Class::from_position(definition, g, None);
-                    if std::cfg!(debug_assertions) {
-                        // Hmmm, maybe enable this.
-                        if generics.is_none() && class.type_vars(i_s).is_some() {
-                            // TODO It's questionable that these generics are called NotDefinedYet,
-                            // because that's just wrong, it's defined as Any at this point. AFAIK.
-                        }
-                    }
-                    callable(i_s, &Instance::new(class, instance_reference))
-                }
-            }
-            _ => unreachable!("{:?}", self.state),
-        }
     }
 
     pub fn maybe_callable<'x>(
@@ -1443,84 +1342,6 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 }
 
-#[inline]
-fn run_on_saved<'db: 'a, 'a, T>(
-    i_s: &InferenceState<'db, '_>,
-    from_inferred: Option<&'a Inferred>,
-    definition: PointLink,
-    point: Point,
-    callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-    reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
-    on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
-) -> T {
-    match point.type_() {
-        PointType::Specific => run_on_specific(
-            i_s,
-            from_inferred,
-            definition,
-            point.specific(),
-            callable,
-            reducer,
-            on_missing,
-        ),
-        PointType::Complex => {
-            let definition = NodeRef::from_link(i_s.db, definition);
-            let complex = definition.file.complex_points.get(point.complex_index());
-            if let ComplexPoint::Class(cls_storage) = complex {
-                let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
-                callable(i_s, &class)
-            } else {
-                run_on_complex(
-                    i_s,
-                    complex,
-                    Some(definition),
-                    from_inferred,
-                    callable,
-                    reducer,
-                    on_missing,
-                )
-            }
-        }
-        PointType::Unknown => on_missing(i_s),
-        PointType::FileReference => {
-            let f = i_s.db.loaded_python_file(point.file_index());
-            callable(i_s, &Module::new(i_s.db, f))
-        }
-        x => unreachable!("{x:?}"),
-    }
-}
-
-fn run_on_complex<'db: 'a, 'a, T>(
-    i_s: &InferenceState<'db, '_>,
-    complex: &'a ComplexPoint,
-    definition: Option<NodeRef<'a>>,
-    from_inferred: Option<&'a Inferred>,
-    callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-    reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
-    on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
-) -> T {
-    match complex {
-        ComplexPoint::FunctionOverload(overload) => callable(
-            i_s,
-            &OverloadedFunction::new(definition.unwrap(), overload, None),
-        ),
-        ComplexPoint::TypeInstance(t) => {
-            let inf = definition.map(Inferred::from_saved_node_ref);
-            run_on_db_type(i_s, t, from_inferred, callable, reducer, on_missing)
-        }
-        ComplexPoint::TypeAlias(alias) => callable(i_s, &TypeAlias::new(alias)),
-        ComplexPoint::TypeVarLike(t) => callable(
-            i_s,
-            &Instance::new(i_s.db.python_state.object_class(), None),
-        ),
-        ComplexPoint::NewTypeDefinition(n) => callable(i_s, &NewTypeInstance::new(i_s.db, n)),
-        ComplexPoint::NamedTupleDefinition(n) => run_on_db_type_type(i_s, &n, callable, reducer),
-        _ => {
-            unreachable!("Classes are handled earlier {complex:?}")
-        }
-    }
-}
-
 fn load_bound_method<'db: 'a, 'a, 'b>(
     i_s: &InferenceState<'db, '_>,
     instance: &'b Instance<'a>,
@@ -1547,115 +1368,6 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
             BoundMethod::new(instance, mro_index, BoundMethodFunction::Function(func))
         }
         _ => unreachable!(),
-    }
-}
-
-#[inline]
-fn run_on_specific<'db: 'a, 'a, T>(
-    i_s: &InferenceState<'db, '_>,
-    from_inferred: Option<&'a Inferred>,
-    definition: PointLink,
-    specific: Specific,
-    callable: &mut impl FnMut(&InferenceState<'db, '_>, &dyn Value<'db, 'a>) -> T,
-    reducer: &impl Fn(&InferenceState<'db, '_>, T, T) -> T,
-    on_missing: &mut impl FnMut(&InferenceState<'db, '_>) -> T,
-) -> T {
-    let definition = NodeRef::from_link(i_s.db, definition);
-    match specific {
-        Specific::IntLiteral => {
-            let literal = Literal::new(DbLiteral {
-                kind: LiteralKind::Int(definition.expect_int().parse().unwrap()),
-                implicit: true,
-            });
-            callable(i_s, &literal)
-        }
-        Specific::StringLiteral => {
-            let instance = resolve_specific(i_s, specific);
-            let literal = Literal::new(DbLiteral {
-                kind: LiteralKind::String(definition.as_link()),
-                implicit: true,
-            });
-            callable(i_s, &literal)
-        }
-        Specific::BoolLiteral => {
-            let instance = resolve_specific(i_s, specific);
-            let literal = Literal::new(DbLiteral {
-                kind: LiteralKind::Bool(definition.as_code() == "True"),
-                implicit: true,
-            });
-            callable(i_s, &literal)
-        }
-        Specific::BytesLiteral => {
-            let instance = resolve_specific(i_s, specific);
-            let literal = Literal::new(DbLiteral {
-                kind: LiteralKind::Bytes(definition.as_link()),
-                implicit: true,
-            });
-            callable(i_s, &literal)
-        }
-        Specific::Function => callable(i_s, &Function::new(definition, None)),
-        Specific::ClassMethod => todo!(),
-        Specific::Property => todo!(),
-        Specific::AnnotationOrTypeCommentClassInstance => {
-            let expr_def = definition.add_to_node_index(2);
-            let inferred = expr_def
-                .file
-                .inference(i_s)
-                .check_point_cache(expr_def.node_index)
-                .unwrap();
-            inferred.with_instance(i_s, from_inferred, None, |i_s, instance| {
-                callable(&mut i_s.with_simplified_annotation_instance(), instance)
-            })
-        }
-        Specific::AnnotationOrTypeCommentWithTypeVars => {
-            let db_type = definition
-                .file
-                .inference(i_s)
-                .use_db_type_of_annotation_or_type_comment(definition.node_index);
-            run_on_db_type(i_s, db_type, from_inferred, callable, reducer, on_missing)
-        }
-        Specific::SelfParam => run_on_db_type(
-            i_s,
-            &DbType::Self_,
-            from_inferred,
-            callable,
-            reducer,
-            on_missing,
-        ),
-        Specific::TypingTypeVarClass => callable(i_s, &TypeVarClass()),
-        Specific::TypingTypeVarTupleClass => callable(i_s, &TypeVarTupleClass()),
-        Specific::TypingParamSpecClass => callable(i_s, &ParamSpecClass()),
-        Specific::TypingProtocol
-        | Specific::TypingGeneric
-        | Specific::TypingTuple
-        | Specific::TypingUnion
-        | Specific::TypingOptional
-        | Specific::TypingType
-        | Specific::TypingLiteral
-        | Specific::TypingAnnotated
-        | Specific::TypingNamedTuple
-        | Specific::CollectionsNamedTuple
-        | Specific::TypingCallable => callable(i_s, &TypingClass::new(specific)),
-        Specific::Any | Specific::Cycle => on_missing(i_s),
-        Specific::TypingCast => callable(i_s, &TypingCast()),
-        Specific::TypingClassVar => callable(i_s, &TypingClassVar()),
-        Specific::RevealTypeFunction => callable(i_s, &RevealTypeFunction()),
-        Specific::None => callable(i_s, &NoneInstance()),
-        Specific::TypingNewType => callable(i_s, &NewTypeClass()),
-        Specific::TypingAny => callable(i_s, &TypingAny()),
-        Specific::MypyExtensionsArg
-        | Specific::MypyExtensionsDefaultArg
-        | Specific::MypyExtensionsNamedArg
-        | Specific::MypyExtensionsDefaultNamedArg
-        | Specific::MypyExtensionsVarArg
-        | Specific::MypyExtensionsKwArg => {
-            let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
-            callable(i_s, &func)
-        }
-        _ => {
-            let instance = resolve_specific(i_s, specific);
-            callable(i_s, &instance)
-        }
     }
 }
 

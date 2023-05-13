@@ -834,10 +834,4 @@ pub struct NewTypeInstance<'a> {
     new_type: &'a Rc<NewType>,
 }
 
-impl<'a> NewTypeInstance<'a> {
-    pub fn new(db: &'a Database, new_type: &'a Rc<NewType>) -> Self {
-        Self { db, new_type }
-    }
-}
-
 impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {}

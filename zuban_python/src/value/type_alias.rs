@@ -12,12 +12,6 @@ pub struct TypeAlias<'a> {
     alias: &'a DbTypeAlias,
 }
 
-impl<'a> TypeAlias<'a> {
-    pub fn new(alias: &'a DbTypeAlias) -> Self {
-        Self { alias }
-    }
-}
-
 impl<'db, 'a> Value<'db, 'a> for TypeAlias<'a> {
     fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         Type::owned(DbType::Type(Rc::new(
