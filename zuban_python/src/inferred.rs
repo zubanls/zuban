@@ -690,7 +690,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, func_class);
                                 let t = IssueType::InvalidClassMethodFirstArgument {
-                                    argument_type: instance.class.format_short(i_s.db),
+                                    argument_type: instance.class.as_type(i_s).format_short(i_s.db),
                                     function_name: Box::from(func.name()),
                                     callable: func.as_type(i_s).format_short(i_s.db),
                                 };
@@ -823,7 +823,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(from) = from {
                                 let func = prepare_func(i_s, *definition, attribute_class);
                                 let t = IssueType::InvalidSelfArgument {
-                                    argument_type: class.format_short(i_s.db),
+                                    argument_type: class.as_type(i_s).format_short(i_s.db),
                                     function_name: Box::from(func.name()),
                                     callable: func.as_type(i_s).format_short(i_s.db),
                                 };
