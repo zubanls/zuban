@@ -1,5 +1,4 @@
 use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString};
-use std::borrow::Cow;
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
@@ -312,17 +311,6 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         self
-    }
-
-    pub fn maybe_callable<'x>(
-        &'x self,
-        i_s: &InferenceState<'db, '_>,
-        include_non_callables: bool,
-    ) -> Option<Cow<'x, CallableContent>>
-    where
-        'db: 'x,
-    {
-        self.as_type(i_s).maybe_callable(i_s)
     }
 
     pub fn maybe_class(&self, i_s: &InferenceState<'db, '_>) -> Option<Class<'db>> {

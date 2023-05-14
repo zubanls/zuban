@@ -100,27 +100,35 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Cow<'a, CallableContent>> {
+    pub fn maybe_callable(
+        &self,
+        i_s: &InferenceState,
+        include_non_callables: bool,
+    ) -> Option<Cow<'a, CallableContent>> {
         match self {
             Self::Type(Cow::Borrowed(DbType::Callable(c))) => Some(Cow::Borrowed(c)),
             _ => match self.maybe_db_type() {
-                Some(DbType::Callable(c)) => Some(Cow::Owned(c.as_ref().clone())),
-                Some(DbType::Type(t)) => match t.as_ref() {
+                Some(DbType::Callable(c)) if include_non_callables => {
+                    Some(Cow::Owned(c.as_ref().clone()))
+                }
+                Some(DbType::Type(t)) if include_non_callables => match t.as_ref() {
                     DbType::Class(link, generics) => {
                         todo!()
                     }
                     _ => None,
                 },
                 Some(DbType::Any) => Some(Cow::Owned(CallableContent::new_any())),
-                _ => self.maybe_class(i_s.db).and_then(|c| {
+                _ if include_non_callables => self.maybe_class(i_s.db).and_then(|c| {
                     Instance::new(c, None)
                         .lookup(i_s, None, "__call__")
                         .into_maybe_inferred()
                         .and_then(|i| {
-                            i.maybe_callable(i_s, true)
+                            i.as_type(i_s)
+                                .maybe_callable(i_s, include_non_callables)
                                 .map(|c| Cow::Owned(c.into_owned()))
                         })
                 }),
+                _ => None,
             },
         }
     }
