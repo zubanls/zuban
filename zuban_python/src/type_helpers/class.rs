@@ -720,16 +720,9 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(generics_list) =
             self.type_check_init_func(i_s, args, result_context, on_type_error)
         {
-            debug!(
-                "Class execute: {}{}",
-                self.name(),
-                match &generics_list {
-                    ClassGenerics::List(generics_list) => Generics::new_list(generics_list)
-                        .format(&FormatData::new_short(i_s.db), None),
-                    ClassGenerics::None => "".to_owned(),
-                }
-            );
-            Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list))
+            let result = Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list));
+            debug!("Class execute: {}", result.format_short(i_s));
+            result
         } else {
             Inferred::new_any()
         }
