@@ -5,12 +5,13 @@ use parsa_python_ast::*;
 use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, CallableWithParent, ComplexPoint, Database,
-    DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal, LiteralKind, Locality,
-    NamedTuple, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink,
-    PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent,
-    TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
+    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal,
+    LiteralKind, Locality, NamedTuple, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific,
+    Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
+    UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -405,7 +406,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::SpecialType(SpecialType::TypingNamedTuple) => BaseClass::NewNamedTuple,
             TypeContent::SpecialType(SpecialType::Type) => BaseClass::DbType(DbType::Class(
                 self.inference.i_s.db.python_state.type_node_ref().as_link(),
-                None,
+                ClassGenerics::None,
             )),
             TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
                 // TODO what is this case?
@@ -605,7 +606,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
                 SpecialType::LiteralString => DbType::Class(
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
-                    None,
+                    ClassGenerics::None,
                 ),
                 SpecialType::Literal => {
                     self.add_typing_issue(
@@ -1108,7 +1109,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         );
         TypeContent::DbType(match type_var_likes {
-            None => DbType::Class(class.node_ref.as_link(), None),
+            None => DbType::Class(class.node_ref.as_link(), ClassGenerics::None),
             Some(type_vars) => {
                 // Need to fill the generics, because we might have been in a
                 // ClassWithoutTypeVar case where the generic count is wrong.
@@ -1121,7 +1122,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 DbType::Class(
                     class.node_ref.as_link(),
-                    Some(GenericsList::generics_from_vec(generics)),
+                    ClassGenerics::List(GenericsList::generics_from_vec(generics)),
                 )
             }
         })
@@ -2873,7 +2874,7 @@ fn check_type_name<'db: 'file, 'file>(
                         Some(DbType::Any) => true,
                         Some(DbType::Type(t)) => match t.as_ref() {
                             DbType::Any => true,
-                            DbType::Class(c, None) => {
+                            DbType::Class(c, ClassGenerics::None) => {
                                 *c == i_s.db.python_state.object_node_ref().as_link()
                             }
                             _ => false,
@@ -2928,10 +2929,10 @@ fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
         DbType::ParamSpecKwargs(_) => t,
         _ => DbType::Class(
             db.python_state.builtins_point_link("dict"),
-            Some(GenericsList::new_generics(Rc::new([
+            ClassGenerics::List(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(DbType::Class(
                     db.python_state.builtins_point_link("str"),
-                    None,
+                    ClassGenerics::None,
                 )),
                 GenericItem::TypeArgument(t),
             ]))),

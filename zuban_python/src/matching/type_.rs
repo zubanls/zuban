@@ -9,8 +9,8 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParams, ClassType, Database, DbType, MetaclassState, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
+    CallableContent, CallableParams, ClassGenerics, ClassType, Database, DbType, MetaclassState,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -816,7 +816,7 @@ impl<'a> Type<'a> {
                 let class2 = Class::from_db_type(i_s.db, *c2, generics2);
                 match class2.use_cached_class_infos(i_s.db).metaclass {
                     MetaclassState::Some(link) => {
-                        let meta = Class::from_db_type(i_s.db, link, &None);
+                        let meta = Class::from_db_type(i_s.db, link, &ClassGenerics::None);
                         return Type::Class(*class1).matches(
                             i_s,
                             matcher,
@@ -1290,7 +1290,10 @@ impl<'a> Type<'a> {
                 // not only callable/callable
                 if let Some(DbType::Callable(c1)) = self.maybe_db_type() {
                     if let Some(DbType::Callable(c2)) = other.maybe_db_type() {
-                        return DbType::Class(i_s.db.python_state.function_point_link(), None);
+                        return DbType::Class(
+                            i_s.db.python_state.function_point_link(),
+                            ClassGenerics::None,
+                        );
                     }
                 }
             }

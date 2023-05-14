@@ -4,8 +4,8 @@ use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slice
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    Database, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, PointLink,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    ClassGenerics, Database, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage,
+    PointLink, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
 use crate::file::{use_cached_simple_generic_type, PythonFile};
@@ -53,10 +53,11 @@ impl<'a> Generics<'a> {
         Self::List(list, None)
     }
 
-    pub fn new_maybe_list(list: &'a Option<GenericsList>) -> Self {
-        list.as_ref()
-            .map(|l| Self::List(l, None))
-            .unwrap_or(Generics::None)
+    pub fn from_class_generics(g: &'a ClassGenerics) -> Self {
+        match g {
+            ClassGenerics::List(l) => Self::List(l, None),
+            ClassGenerics::None => Generics::None,
+        }
     }
 
     pub fn nth_usage<'db: 'a>(&self, db: &'db Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
@@ -178,15 +179,18 @@ impl<'a> Generics<'a> {
         &self,
         db: &Database,
         type_vars: Option<&TypeVarLikes>,
-    ) -> Option<GenericsList> {
-        type_vars.map(|type_vars| match self {
-            Self::NotDefinedYet => GenericsList::new_generics(
-                type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
-            ),
-            _ => {
-                GenericsList::new_generics(self.iter(db).map(|g| g.into_generic_item(db)).collect())
-            }
-        })
+    ) -> ClassGenerics {
+        match type_vars {
+            Some(type_vars) => ClassGenerics::List(match self {
+                Self::NotDefinedYet => GenericsList::new_generics(
+                    type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
+                ),
+                _ => GenericsList::new_generics(
+                    self.iter(db).map(|g| g.into_generic_item(db)).collect(),
+                ),
+            }),
+            None => ClassGenerics::None,
+        }
     }
 
     pub fn format(&self, format_data: &FormatData, expected: Option<usize>) -> String {

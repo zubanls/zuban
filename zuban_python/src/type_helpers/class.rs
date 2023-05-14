@@ -10,10 +10,10 @@ use super::function::OverloadResult;
 use super::{Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassInfos, ClassStorage, ClassType,
-    ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality, MetaclassState, MroIndex,
-    NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos, ClassStorage,
+    ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality, MetaclassState,
+    MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -54,12 +54,8 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn from_db_type(
-        db: &'db Database,
-        link: PointLink,
-        list: &'a Option<GenericsList>,
-    ) -> Self {
-        let generics = Generics::new_maybe_list(list);
+    pub fn from_db_type(db: &'db Database, link: PointLink, list: &'a ClassGenerics) -> Self {
+        let generics = Generics::from_class_generics(list);
         Self::from_position(NodeRef::from_link(db, link), generics, None)
     }
 
@@ -82,11 +78,14 @@ impl<'db: 'a, 'a> Class<'a> {
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<Option<GenericsList>> {
+    ) -> Option<ClassGenerics> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let Some(inf) = init.into_maybe_inferred() else {
             debug_assert!(self.incomplete_mro(i_s.db));
-            return Some(self.type_vars(i_s).map(|type_vars| type_vars.as_any_generic_list()))
+            return Some(match self.type_vars(i_s) {
+                Some(type_vars) => ClassGenerics::List(type_vars.as_any_generic_list()),
+                None => ClassGenerics::None,
+            })
         };
         match inf.init_as_function(i_s.db, class) {
             Some(FunctionOrOverload::Function(func)) => {
@@ -99,7 +98,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     result_context,
                     Some(on_type_error),
                 );
-                Some(calculated_type_args.type_arguments)
+                Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
                 let calculated_type_args = calculate_callable_type_vars_and_return(
@@ -111,14 +110,14 @@ impl<'db: 'a, 'a> Class<'a> {
                     result_context,
                     on_type_error,
                 );
-                Some(calculated_type_args.type_arguments)
+                Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
             {
-                OverloadResult::Single(func, _) => {
+                OverloadResult::Single(func) => {
                     // Execute the found function to create the diagnostics.
-                    let list = calculate_class_init_type_vars_and_return(
+                    let result = calculate_class_init_type_vars_and_return(
                         i_s,
                         self,
                         func,
@@ -126,9 +125,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         &|| args.as_node_ref(),
                         result_context,
                         Some(on_type_error),
-                    )
-                    .type_arguments;
-                    Some(list)
+                    );
+                    Some(result.type_arguments_into_class_generics())
                 }
                 OverloadResult::Union(t) => todo!(),
                 OverloadResult::NotFound => None,
@@ -276,14 +274,14 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(expr);
                         match meta_base {
-                            BaseClass::DbType(DbType::Class(link, None)) => {
-                                let c = Class::from_db_type(i_s.db, link, &None);
+                            BaseClass::DbType(DbType::Class(link, ClassGenerics::None)) => {
+                                let c = Class::from_db_type(i_s.db, link, &ClassGenerics::None);
                                 if c.incomplete_mro(i_s.db)
                                     || c.in_mro(
                                         i_s.db,
                                         &DbType::Class(
                                             i_s.db.python_state.type_node_ref().as_link(),
-                                            None,
+                                            ClassGenerics::None,
                                         ),
                                     )
                                 {
@@ -472,8 +470,8 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             MetaclassState::Some(link2) => match current {
                 MetaclassState::Some(link1) => {
-                    let t1 = Type::Class(Class::from_db_type(i_s.db, *link1, &None));
-                    let t2 = Type::Class(Class::from_db_type(i_s.db, link2, &None));
+                    let t1 = Type::Class(Class::from_db_type(i_s.db, *link1, &ClassGenerics::None));
+                    let t2 = Type::Class(Class::from_db_type(i_s.db, link2, &ClassGenerics::None));
                     if !t1.is_simple_sub_type_of(i_s, &t2).bool() {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
@@ -560,8 +558,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 let class_infos = self.use_cached_class_infos(i_s.db);
                 let result = match class_infos.metaclass {
                     MetaclassState::Some(link) => {
-                        let instance =
-                            Instance::new(Class::from_db_type(i_s.db, link, &None), None);
+                        let instance = Instance::new(
+                            Class::from_db_type(i_s.db, link, &ClassGenerics::None),
+                            None,
+                        );
                         instance.lookup(i_s, node_ref, name)
                     }
                     MetaclassState::Unknown => LookupResult::any(),
@@ -649,7 +649,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn generics_as_list(&self, db: &Database) -> Option<GenericsList> {
+    pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
         let type_vars = self.type_vars(&InferenceState::new(db));
         self.generics().as_generics_list(db, type_vars)
@@ -723,10 +723,10 @@ impl<'db: 'a, 'a> Class<'a> {
             debug!(
                 "Class execute: {}{}",
                 self.name(),
-                match generics_list.as_ref() {
-                    Some(generics_list) => Generics::new_list(generics_list)
+                match &generics_list {
+                    ClassGenerics::List(generics_list) => Generics::new_list(generics_list)
                         .format(&FormatData::new_short(i_s.db), None),
-                    None => "".to_owned(),
+                    ClassGenerics::None => "".to_owned(),
                 }
             );
             Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list))
@@ -847,7 +847,10 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                     DbType::Class(c, generics) => Type::Class(Class::from_position(
                         NodeRef::from_link(self.db, *c),
                         self.generics,
-                        generics.as_ref(),
+                        match generics {
+                            ClassGenerics::List(g) => Some(&g),
+                            ClassGenerics::None => None,
+                        },
                     )),
                     // TODO this is wrong, because it does not use generics.
                     _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {

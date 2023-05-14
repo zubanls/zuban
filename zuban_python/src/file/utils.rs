@@ -5,7 +5,9 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::Argument;
-use crate::database::{DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue};
+use crate::database::{
+    ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
+};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::Simple;
@@ -214,7 +216,7 @@ fn check_list_with_context<'db>(
     found.map(|inner| {
         DbType::Class(
             i_s.db.python_state.list_node_ref().as_link(),
-            Some(GenericsList::new_generics(Rc::new([
+            ClassGenerics::List(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(inner),
             ]))),
         )

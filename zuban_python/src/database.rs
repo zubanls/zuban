@@ -559,6 +559,21 @@ impl GenericItem {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub enum ClassGenerics {
+    List(GenericsList),
+    None,
+}
+
+impl ClassGenerics {
+    fn map_list(&self, callable: impl FnOnce(&GenericsList) -> GenericsList) -> Self {
+        match self {
+            Self::List(list) => Self::List(callable(list)),
+            Self::None => Self::None,
+        }
+    }
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct GenericsList(Rc<[GenericItem]>);
 
 impl GenericsList {
@@ -689,7 +704,7 @@ impl UnionType {
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
-    Class(PointLink, Option<GenericsList>),
+    Class(PointLink, ClassGenerics),
     Union(UnionType),
     FunctionOverload(Rc<[CallableContent]>),
     TypeVar(TypeVarUsage),
@@ -873,7 +888,7 @@ impl DbType {
 
     pub fn expect_class_generics(&self) -> &GenericsList {
         match self {
-            Self::Class(link, Some(generics)) => generics,
+            Self::Class(link, ClassGenerics::List(generics)) => generics,
             _ => unreachable!(),
         }
     }
@@ -916,7 +931,9 @@ impl DbType {
             }
         };
         match self {
-            Self::Class(_, Some(generics)) => search_in_generics(found_type_var, generics),
+            Self::Class(_, ClassGenerics::List(generics)) => {
+                search_in_generics(found_type_var, generics)
+            }
             Self::Union(u) => {
                 for t in u.iter() {
                     t.search_type_vars(found_type_var);
@@ -948,7 +965,7 @@ impl DbType {
                 search_params(found_type_var, &content.params);
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(_, None)
+            Self::Class(_, ClassGenerics::None)
             | Self::Any
             | Self::None
             | Self::Never
@@ -994,7 +1011,9 @@ impl DbType {
             })
         };
         match self {
-            Self::Class(_, Some(generics)) => search_in_generics(generics, already_checked),
+            Self::Class(_, ClassGenerics::List(generics)) => {
+                search_in_generics(generics, already_checked)
+            }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
                 .iter()
@@ -1007,7 +1026,10 @@ impl DbType {
                 .map(|args| args.has_any_internal(i_s, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
-            Self::Class(_, None) | Self::None | Self::Never | Self::Literal { .. } => false,
+            Self::Class(_, ClassGenerics::None)
+            | Self::None
+            | Self::Never
+            | Self::Literal { .. } => false,
             Self::Any => true,
             Self::NewType(n) => n.type_(i_s).has_any(i_s),
             Self::RecursiveAlias(recursive_alias) => {
@@ -1034,7 +1056,7 @@ impl DbType {
 
     pub fn has_self_type(&self) -> bool {
         match self {
-            Self::Class(_, Some(generics)) => generics.iter().any(|g| match g {
+            Self::Class(_, ClassGenerics::List(generics)) => generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.has_self_type(),
                 GenericItem::TypeArguments(_) => todo!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
@@ -1059,7 +1081,7 @@ impl DbType {
                 debug!("TODO namedtuple has_self_type");
                 false
             }
-            Self::Class(_, None)
+            Self::Class(_, ClassGenerics::None)
             | Self::None
             | Self::Never
             | Self::Literal { .. }
@@ -1169,9 +1191,7 @@ impl DbType {
             Self::Any => Self::Any,
             Self::None => Self::None,
             Self::Never => Self::Never,
-            Self::Class(link, generics) => {
-                Self::Class(*link, generics.as_ref().map(remap_generics))
-            }
+            Self::Class(link, generics) => Self::Class(*link, generics.map_list(remap_generics)),
             Self::FunctionOverload(callables) => Self::FunctionOverload(
                 callables
                     .iter()
@@ -1512,9 +1532,7 @@ impl DbType {
             Self::Any => Self::Any,
             Self::None => Self::None,
             Self::Never => Self::Never,
-            Self::Class(link, generics) => {
-                Self::Class(*link, generics.as_ref().map(rewrite_generics))
-            }
+            Self::Class(link, generics) => Self::Class(*link, generics.map_list(rewrite_generics)),
             Self::Union(u) => Self::Union(UnionType {
                 entries: u
                     .entries
@@ -1581,17 +1599,23 @@ impl DbType {
         if self == other {
             return self;
         }
-        let merge_generics = |g1: Option<GenericsList>, g2: Option<GenericsList>| {
-            g1.map(|g1| {
+        let merge_generics = |g1: ClassGenerics, g2: ClassGenerics| {
+            let l1 = match g1 {
+                ClassGenerics::List(l1) => l1,
+                ClassGenerics::None => return ClassGenerics::None,
+            };
+            let l2 = match g2 {
+                ClassGenerics::List(l2) => l2,
+                ClassGenerics::None => unreachable!(),
+            };
+            ClassGenerics::List(GenericsList::new_generics(
                 // Performance issue: clone could probably be removed. Rc -> Vec check
                 // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                GenericsList::new_generics(
-                    g1.iter()
-                        .zip(g2.unwrap().iter())
-                        .map(|(t1, t2)| t1.clone().merge_matching_parts(t2.clone()))
-                        .collect(),
-                )
-            })
+                l1.iter()
+                    .zip(l2.iter())
+                    .map(|(t1, t2)| t1.clone().merge_matching_parts(t2.clone()))
+                    .collect(),
+            ))
         };
         use TupleTypeArguments::*;
         match self {

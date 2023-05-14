@@ -3,9 +3,9 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
-    Specific, TypeVarLike,
+    CallableContent, ClassGenerics, ComplexPoint, Database, DbType, FileIndex, GenericItem,
+    GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink,
+    PointType, Specific, TypeVarLike,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -140,14 +140,15 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn execute_db_type(i_s: &InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
-            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, None)) => match c.as_ref()
-            {
-                DbType::Class(link, None) => {
-                    let node_ref = NodeRef::from_link(i_s.db, *link);
-                    InferredState::Saved(*link, node_ref.point())
+            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, ClassGenerics::None)) => {
+                match c.as_ref() {
+                    DbType::Class(link, ClassGenerics::None) => {
+                        let node_ref = NodeRef::from_link(i_s.db, *link);
+                        InferredState::Saved(*link, node_ref.point())
+                    }
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
-            },
+            }
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
             _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(generic)),
@@ -158,7 +159,10 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn create_instance(class: PointLink, generics: Option<Rc<[GenericItem]>>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::TypeInstance(DbType::Class(
             class,
-            generics.map(GenericsList::new_generics),
+            match generics {
+                Some(generics) => ClassGenerics::List(GenericsList::new_generics(generics)),
+                None => ClassGenerics::None,
+            },
         )))
     }
 
@@ -742,7 +746,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             DbType::Class(link, generics) => {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
-                                    Generics::new_maybe_list(generics),
+                                    Generics::from_class_generics(generics),
                                     Some(&self),
                                 );
                                 if let Some(inf) =
@@ -852,7 +856,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             DbType::Class(link, generics) => {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
-                                    Generics::new_maybe_list(generics),
+                                    Generics::from_class_generics(generics),
                                     Some(&self),
                                 );
                                 if let Some(inf) =

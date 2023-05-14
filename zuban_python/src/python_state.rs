@@ -3,7 +3,8 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, Specific, TupleContent,
+    ClassGenerics, ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink,
+    Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -293,12 +294,12 @@ impl PythonState {
 
     #[inline]
     pub fn object_db_type(&self) -> DbType {
-        DbType::Class(self.object_node_ref().as_link(), None)
+        DbType::Class(self.object_node_ref().as_link(), ClassGenerics::None)
     }
 
     #[inline]
     pub fn slice_db_type(&self) -> DbType {
-        DbType::Class(self.slice_node_ref().as_link(), None)
+        DbType::Class(self.slice_node_ref().as_link(), ClassGenerics::None)
     }
 
     #[inline]
@@ -352,7 +353,7 @@ impl PythonState {
                 self.builtins().file_index(),
                 self.builtins_base_exception_index,
             ),
-            None,
+            ClassGenerics::None,
         )
     }
 
@@ -423,7 +424,7 @@ impl PythonState {
                 LiteralKind::Bytes(_) => self.bytes_node_ref(),
             }
             .as_link(),
-            None,
+            ClassGenerics::None,
         )
     }
 }

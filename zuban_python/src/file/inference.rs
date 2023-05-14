@@ -6,9 +6,9 @@ use parsa_python_ast::*;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
-    Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType, Specific,
-    TupleContent, TypeOrTypeVarTuple,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, GenericItem,
+    GenericsList, Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType,
+    Specific, TupleContent, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1450,7 +1450,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("list"),
-                        Some(GenericsList::new_generics(Rc::new([result]))),
+                        ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
                     ),
                 );
             }
@@ -1460,7 +1460,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("list"),
-                        Some(GenericsList::new_generics(Rc::new([
+                        ClassGenerics::List(GenericsList::new_generics(Rc::new([
                             GenericItem::TypeArgument(DbType::Any),
                         ]))),
                     ),
@@ -1472,7 +1472,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("dict"),
-                        Some(generics),
+                        ClassGenerics::List(generics),
                     ),
                 );
             }

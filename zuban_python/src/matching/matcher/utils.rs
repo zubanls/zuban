@@ -14,8 +14,8 @@ use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParams, DbType, GenericItem, GenericsList, PointLink, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParams, ClassGenerics, DbType, GenericItem, GenericsList, PointLink,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -131,7 +131,10 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
             result_context,
             on_type_error,
         );
-        type_arguments.type_arguments = class.generics_as_list(i_s.db);
+        type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
+            ClassGenerics::List(generics_list) => Some(generics_list),
+            ClassGenerics::None => None,
+        };
         type_arguments
     } else {
         calculate_type_vars(
@@ -156,6 +159,15 @@ pub struct CalculatedTypeArguments {
     pub in_definition: PointLink,
     pub matches: SignatureMatch,
     pub type_arguments: Option<GenericsList>,
+}
+
+impl CalculatedTypeArguments {
+    pub fn type_arguments_into_class_generics(self) -> ClassGenerics {
+        match self.type_arguments {
+            Some(g) => ClassGenerics::List(g),
+            None => ClassGenerics::None,
+        }
+    }
 }
 
 impl CalculatedTypeArguments {
