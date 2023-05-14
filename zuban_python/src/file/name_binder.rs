@@ -35,6 +35,7 @@ enum Unresolved<'db> {
     },
     Lambda(Lambda<'db>),
     Comprehension(Comprehension<'db>),
+    #[allow(dead_code)] // TODO remove this
     DictComprehension(DictComprehension<'db>),
     Name(Name<'db>),
 }
@@ -55,6 +56,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     unresolved_self_vars: Vec<ClassDef<'db>>,
     annotation_names: Vec<Name<'db>>,
     file_index: FileIndex,
+    #[allow(dead_code)] // TODO remove this
     parent: Option<&'a NameBinder<'db, 'a>>,
 }
 
@@ -1040,13 +1042,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.points,
             name,
         )
-    }
-
-    fn lookup_name(&self, name: Name<'db>) -> Option<NodeIndex> {
-        self.symbol_table
-            .lookup_symbol(name.as_str())
-            // If the symbol is not defined in the symbol table, it can also be in a parent scope.
-            .or_else(|| self.parent.and_then(|parent| parent.lookup_name(name)))
     }
 
     fn index_unordered_references(&mut self) {

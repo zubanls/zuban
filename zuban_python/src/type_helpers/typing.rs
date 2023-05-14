@@ -1,8 +1,7 @@
-use std::borrow::Cow;
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Class, Instance, LookupResult, OnTypeError, Value, ValueKind};
+use super::{Class, Instance};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
@@ -11,10 +10,9 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
-use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
-use crate::inferred::{run_on_db_type, Inferred};
-use crate::matching::{calculate_callable_type_vars_and_return, FormatData, ResultContext, Type};
+use crate::inferred::Inferred;
+use crate::matching::{FormatData, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -26,76 +24,8 @@ impl TypingClass {
     pub fn new(specific: Specific) -> Self {
         Self { specific }
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        match self.specific {
-            Specific::TypingGeneric => "Generic",
-            Specific::TypingProtocol => "Protocol",
-            Specific::TypingTuple => "Tuple",
-            Specific::TypingCallable => "Callable",
-            Specific::TypingUnion => "Union",
-            Specific::TypingOptional => "Optional",
-            Specific::TypingType => "Type",
-            Specific::TypingLiteral => "Literal",
-            Specific::TypingAnnotated => "Annotated",
-            Specific::TypingNamedTuple => "NamedTuple",
-            Specific::CollectionsNamedTuple => "namedtuple",
-            _ => unreachable!("{:?}", self.specific),
-        }
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn as_typing_class(&self) -> Option<&TypingClass> {
-        Some(self)
-    }
-
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .file
-            .inference(i_s)
-            .compute_type_application_on_typing_class(
-                self.specific,
-                *slice_type,
-                matches!(result_context, ResultContext::AssignmentNewDefinition),
-            )
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        match self.specific {
-            Specific::TypingGeneric
-            | Specific::TypingProtocol
-            | Specific::TypingUnion
-            | Specific::TypingOptional => todo!(),
-            Specific::TypingTuple => Type::new(&i_s.db.python_state.type_of_arbitrary_tuple),
-            Specific::TypingCallable => todo!(),
-            Specific::TypingType => Type::new(&i_s.db.python_state.type_of_any),
-            Specific::TypingAnnotated => todo!(),
-            Specific::TypingNamedTuple => todo!(),
-            Specific::CollectionsNamedTuple => todo!(),
-            _ => unreachable!("{:?}", self.specific),
-        }
-    }
-
-    fn execute(
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -105,7 +35,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         if self.specific == Specific::TypingNamedTuple {
             return match new_typing_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    DbType::NamedTuple(rc),
+                    Box::new(DbType::NamedTuple(rc)),
                 )),
                 None => Inferred::new_any(),
             };
@@ -117,7 +47,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
                 .execute(i_s, args, result_context, on_type_error);
             return match new_collections_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    DbType::NamedTuple(rc),
+                    Box::new(DbType::NamedTuple(rc)),
                 )),
                 None => Inferred::new_any(),
             };
@@ -127,57 +57,13 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypingClass {
         if let Some(x) = iterator.next() {
             todo!()
         } else if let Some(first) = first {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Type(
-                Rc::new(
-                    first
-                        .infer(i_s, &mut ResultContext::Unknown)
-                        .class_as_db_type(i_s),
-                ),
-            ))))
+            Inferred::from_type(DbType::Type(Rc::new(
+                first
+                    .infer(i_s, &mut ResultContext::Unknown)
+                    .class_as_db_type(i_s),
+            )))
         } else {
             todo!()
-        }
-    }
-}
-
-#[derive(Debug)]
-pub struct TypingClassVar();
-
-impl<'db, 'a> Value<'db, 'a> for TypingClassVar {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        "ClassVar"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        match slice_type.unpack() {
-            SliceTypeContent::Simple(simple) => {
-                // TODO if it is a (), it's am empty tuple
-                simple.infer(i_s, &mut ResultContext::Unknown)
-            }
-            SliceTypeContent::Slice(x) => {
-                todo!()
-            }
-            SliceTypeContent::Slices(x) => {
-                todo!()
-            }
         }
     }
 }
@@ -191,18 +77,8 @@ impl<'a> TypingType<'a> {
     pub fn new(db: &'a Database, db_type: &'a DbType) -> Self {
         Self { db, db_type }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
-    fn name(&self) -> &str {
-        "Type"
-    }
-
-    fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -211,126 +87,17 @@ impl<'db, 'a> Value<'db, 'a> for TypingType<'a> {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).lookup_internal(i_s, node_ref, name)
+                    TypingType::new(self.db, bound).lookup(i_s, node_ref, name)
                 } else {
                     todo!("{t:?}")
                 }
             }
-            DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
-                .lookup_internal(i_s, node_ref, name),
+            DbType::Class(link, generics_list) => {
+                Class::from_db_type(i_s.db, *link, generics_list).lookup(i_s, node_ref, name)
+            }
             DbType::Callable(_) => LookupResult::None,
-            DbType::Self_ => i_s
-                .current_class()
-                .unwrap()
-                .lookup_internal(i_s, node_ref, name),
-            _ => todo!("{:?}", self.db_type),
-        }
-    }
-
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .as_node_ref()
-            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
-        Inferred::new_any()
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::Type(Cow::Owned(DbType::Type(Rc::new(self.db_type.clone()))))
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        match self.db_type {
-            #![allow(unreachable_code)]
-            // TODO remove this
-            DbType::Tuple(tuple_content) => {
-                debug!("TODO this does not check the arguments");
-                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                    self.db_type.clone(),
-                )));
-                // TODO reenable this
-                let mut args_iterator = args.iter();
-                let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
-                    let inf = arg.infer(i_s, &mut ResultContext::Known(&Type::new(self.db_type)));
-                    (arg, inf)
-                } else {
-                    debug!("TODO this does not check the arguments");
-                    return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                        self.db_type.clone(),
-                    )));
-                };
-                if args_iterator.next().is_some() {
-                    todo!()
-                }
-                Type::new(self.db_type).error_if_not_matches(
-                    i_s,
-                    &inferred_tup,
-                    |i_s: &InferenceState<'db, '_>, t1, t2| {
-                        (on_type_error.callback)(i_s, None, &|_| todo!(), &arg, t1, t2);
-                        args.as_node_ref().to_db_lifetime(i_s.db)
-                    },
-                );
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
-                    self.db_type.clone(),
-                )))
-            }
-            DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
-                .execute(i_s, args, result_context, on_type_error),
-            DbType::TypeVar(t) => {
-                if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).execute(
-                        i_s,
-                        args,
-                        result_context,
-                        on_type_error,
-                    );
-                    Inferred::execute_db_type(i_s, self.db_type.clone())
-                } else {
-                    todo!("{t:?}")
-                }
-            }
-            DbType::NewType(n) => {
-                let mut iterator = args.iter();
-                if let Some(first) = iterator.next() {
-                    if iterator.next().is_some() {
-                        todo!()
-                    }
-                    // TODO match
-                    Inferred::execute_db_type(i_s, self.db_type.clone())
-                } else {
-                    todo!()
-                }
-            }
-            DbType::Self_ => {
-                i_s.current_class()
-                    .unwrap()
-                    .execute(i_s, args, result_context, on_type_error);
-                Inferred::execute_db_type(i_s, DbType::Self_)
-            }
-            DbType::Any => Inferred::new_any(),
-            DbType::NamedTuple(nt) => {
-                let calculated_type_vars = calculate_callable_type_vars_and_return(
-                    i_s,
-                    None,
-                    &nt.constructor,
-                    args.iter(),
-                    &|| args.as_node_ref(),
-                    &mut ResultContext::Unknown,
-                    on_type_error,
-                );
-                debug!("TODO use generics for namedtuple");
-                Inferred::execute_db_type(i_s, DbType::NamedTuple(nt.clone()))
-            }
+            DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, node_ref, name),
+            DbType::Any => LookupResult::any(),
             _ => todo!("{:?}", self.db_type),
         }
     }
@@ -345,69 +112,10 @@ impl fmt::Debug for TypingType<'_> {
 }
 
 #[derive(Debug)]
-pub struct TypingAny();
-
-impl<'db, 'a> Value<'db, 'a> for TypingAny {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        "Any"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        todo!()
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments,
-        _: &mut ResultContext,
-        _: OnTypeError,
-    ) -> Inferred {
-        args.as_node_ref()
-            .add_typing_issue(i_s, IssueType::AnyNotCallable);
-        Inferred::new_any()
-    }
-}
-
-#[derive(Debug)]
 pub struct TypingCast();
 
-impl<'db, 'a> Value<'db, 'a> for TypingCast {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
-    fn name(&self) -> &str {
-        "cast"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        todo!()
-    }
-
-    fn execute(
+impl<'db> TypingCast {
+    pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -467,25 +175,8 @@ impl<'db, 'a> Value<'db, 'a> for TypingCast {
 #[derive(Debug)]
 pub struct RevealTypeFunction();
 
-impl<'db, 'a> Value<'db, 'a> for RevealTypeFunction {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
-    fn name(&self) -> &'static str {
-        "reveal_type"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn execute(
+impl RevealTypeFunction {
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -530,18 +221,8 @@ impl<'a> TypeVarInstance<'a> {
             type_var_usage,
         }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::TypeParameter
-    }
-
-    fn name(&self) -> &'a str {
-        self.type_var_usage.type_var.name(self.db)
-    }
-
-    fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -556,65 +237,32 @@ impl<'db, 'a> Value<'db, 'a> for TypeVarInstance<'a> {
                     DbType::Class(link) => Instance::new(
                         Class::(NodeRef::from_link(i_s.db, *link), Generics::NotDefinedYet, None)
                             .unwrap(),
-                        &Inferred::new_unsaved_complex(ComplexPoint::Instance(*link, None)),
+                        &Inferred::from_type(DbType::Class(*link, None)),
                     )
-                    .lookup_internal(i_s, name),
+                    .lookup(i_s, name),
                     _ => todo!("{:?}", db_type),
                 }
             }
             */
         }
         if let Some(db_type) = &type_var.bound {
-            run_on_db_type(
-                i_s,
-                db_type,
-                None,
-                &mut |i_s, v| {
-                    let result = v.lookup_internal(i_s, node_ref, name);
-                    if matches!(result, LookupResult::None) {
-                        debug!(
-                            "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            v.as_type(i_s).format_short(i_s.db),
-                            Type::new(db_type).format_short(i_s.db),
-                            self.name(),
-                            name,
-                        );
-                    }
-                    result
-                },
-                &|i_s, a, b| a.union(b),
-                &mut |i_s| todo!(),
-            )
+            let result = Type::new(db_type).lookup_without_error(i_s, node_ref, name);
+            if matches!(result, LookupResult::None) {
+                debug!(
+                    "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
+                    db_type.format_short(i_s.db),
+                    Type::new(db_type).format_short(i_s.db),
+                    self.type_var_usage.type_var.name(self.db),
+                    name,
+                );
+            }
+            result
         } else {
             let s = &i_s.db.python_state;
             // TODO it's kind of stupid that we recreate an instance object here all the time, we
             // should just use a precreated object() from somewhere.
-            Instance::new(s.object_class(), None).lookup_internal(i_s, node_ref, name)
+            Instance::new(s.object_class(), None).lookup(i_s, node_ref, name)
         }
-    }
-
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        if let Some(db_type) = &self.type_var_usage.type_var.bound {
-            run_on_db_type(
-                i_s,
-                db_type,
-                None,
-                &mut |i_s, v| v.get_item(i_s, slice_type, result_context),
-                &|i_s, a, b| a.union(b),
-                &mut |i_s| todo!(),
-            )
-        } else {
-            todo!()
-        }
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(self.db_type)
     }
 }
 
@@ -628,6 +276,22 @@ impl fmt::Debug for TypeVarInstance<'_> {
 
 #[derive(Debug)]
 pub struct TypeVarClass();
+
+impl TypeVarClass {
+    pub fn execute(
+        &self,
+        i_s: &InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError,
+    ) -> Inferred {
+        if let Some(t) = maybe_type_var(i_s, args, result_context) {
+            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
+        } else {
+            Inferred::new_unknown()
+        }
+    }
+}
 
 fn maybe_type_var(
     i_s: &InferenceState,
@@ -800,66 +464,11 @@ fn maybe_type_var(
     }
 }
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        "TypeVar"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        LookupResult::None
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError,
-    ) -> Inferred {
-        if let Some(t) = maybe_type_var(i_s, args, result_context) {
-            Inferred::new_unsaved_complex(ComplexPoint::TypeVarLike(t))
-        } else {
-            Inferred::new_unknown()
-        }
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of TypeVarClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
-    }
-}
-
 #[derive(Debug)]
 pub struct TypeVarTupleClass();
 
-impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        "TypeVarTuple"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        LookupResult::None
-    }
-
-    fn execute(
+impl TypeVarTupleClass {
+    pub fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -871,11 +480,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for TypeVarTupleClass {
         } else {
             Inferred::new_unknown()
         }
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of TypeVarTupleClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
 
@@ -995,25 +599,8 @@ fn maybe_type_var_tuple(
 #[derive(Debug)]
 pub struct ParamSpecClass();
 
-impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        "ParamSpec"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        LookupResult::None
-    }
-
-    fn execute(
+impl ParamSpecClass {
+    pub fn execute(
         &self,
         i_s: &InferenceState,
         args: &dyn Arguments,
@@ -1025,11 +612,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for ParamSpecClass {
         } else {
             Inferred::new_unknown()
         }
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of ParamSpecClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
 
@@ -1128,26 +710,8 @@ fn maybe_param_spec(
 #[derive(Debug)]
 pub struct NewTypeClass();
 
-impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
-    }
-
-    fn name(&self) -> &str {
-        "NewType"
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        // TODO?
-        LookupResult::None
-    }
-
-    fn execute(
+impl NewTypeClass {
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -1159,11 +723,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for NewTypeClass {
         } else {
             Inferred::new_unknown()
         }
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        debug!("Type of NewTypeClass is probably wrong");
-        Type::Type(Cow::Borrowed(&i_s.db.python_state.type_of_object))
     }
 }
 
@@ -1220,78 +779,4 @@ fn maybe_new_type<'db>(
         },
         type_node_ref.as_link(),
     ))
-}
-
-#[derive(Debug)]
-pub struct NewTypeInstance<'a> {
-    db: &'a Database,
-    new_type: &'a Rc<NewType>,
-}
-
-impl<'a> NewTypeInstance<'a> {
-    pub fn new(db: &'a Database, new_type: &'a Rc<NewType>) -> Self {
-        Self { db, new_type }
-    }
-}
-
-impl<'db, 'a> Value<'db, 'a> for NewTypeInstance<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::TypeParameter
-    }
-
-    fn name(&self) -> &'a str {
-        self.new_type.name(self.db)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        let mut iterator = args.iter();
-        if let Some(first_arg) = iterator.next() {
-            let t = Type::new(self.new_type.type_(i_s));
-            let inf = first_arg.infer(i_s, &mut ResultContext::Known(&t));
-            t.error_if_not_matches(i_s, &inf, |i_s: &InferenceState<'db, '_>, t1, t2| {
-                (on_type_error.callback)(
-                    i_s,
-                    None,
-                    &|_| Some(format!(" to \"{}\"", self.name()).into()),
-                    &first_arg,
-                    t1,
-                    t2,
-                );
-                args.as_node_ref().to_db_lifetime(i_s.db)
-            });
-        } else {
-            args.as_node_ref().add_typing_issue(
-                i_s,
-                IssueType::TooFewArguments(format!(" for \"{}\"", self.name()).into()),
-            );
-        }
-        if iterator.next().is_some() {
-            args.as_node_ref().add_typing_issue(
-                i_s,
-                IssueType::TooManyArguments(format!(" for \"{}\"", self.name()).into()),
-            );
-        }
-        Inferred::execute_db_type(i_s, DbType::NewType(self.new_type.clone()))
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Rc::new(DbType::NewType(
-            self.new_type.clone(),
-        ))))
-    }
 }

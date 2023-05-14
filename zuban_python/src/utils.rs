@@ -55,9 +55,12 @@ impl<T: ?Sized + Unpin> InsertOnlyVec<T> {
         unsafe { &*self.vec.get() }.get(index).map(|x| x as &T)
     }
 
+    /*
+     * TODO remove this?
     pub fn get_mut(&mut self, index: usize) -> Option<Pin<&mut T>> {
         self.vec.get_mut().get_mut(index).map(|x| x.as_mut())
     }
+    */
 
     pub fn push(&self, element: Pin<Box<T>>) {
         unsafe { &mut *self.vec.get() }.push(element);
@@ -103,12 +106,6 @@ impl<T: ?Sized> std::ops::Index<usize> for InsertOnlyVec<T> {
 impl<T: ?Sized + Unpin> std::ops::IndexMut<usize> for InsertOnlyVec<T> {
     fn index_mut(&mut self, index: usize) -> &mut T {
         &mut self.vec.get_mut()[index]
-    }
-}
-
-impl<K, V: fmt::Debug> InsertOnlyHashMap<K, V> {
-    pub fn len(&self) -> usize {
-        unsafe { &*self.map.get() }.len()
     }
 }
 

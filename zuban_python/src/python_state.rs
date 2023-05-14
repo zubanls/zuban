@@ -9,7 +9,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::matching::Generics;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, OverloadedFunction};
+use crate::type_helpers::{Class, Function, OverloadedFunction};
 use crate::{InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
@@ -64,7 +64,8 @@ pub struct PythonState {
     builtins_memoryview_index: NodeIndex,
     builtins_slice_index: NodeIndex,
     typing_mapping_index: NodeIndex,
-    typing_namedtuple_index: NodeIndex,
+    typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
+    typing_type_var: NodeIndex,
     types_module_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
@@ -107,6 +108,7 @@ impl PythonState {
             types_module_type_index: 0,
             typing_mapping_index: 0,
             typing_namedtuple_index: 0,
+            typing_type_var: 0,
             collections_namedtuple_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
@@ -219,6 +221,7 @@ impl PythonState {
         cache_index!(builtins_slice_index, db, builtins, "slice");
         cache_index!(typing_mapping_index, db, typing, "Mapping");
         cache_index!(typing_namedtuple_index, db, typing, "NamedTuple");
+        cache_index!(typing_type_var, db, typing, "TypeVar");
         cache_index!(types_module_type_index, db, types, "ModuleType");
 
         db.python_state.collections_namedtuple_index = db
@@ -362,6 +365,15 @@ impl PythonState {
 
     pub fn mapping_node_ref(&self) -> NodeRef {
         NodeRef::new(self.typing(), self.typing_mapping_index)
+    }
+
+    pub fn type_var_class(&self) -> Class {
+        debug_assert!(self.typing_type_var != 0);
+        Class::from_position(
+            NodeRef::new(self.typing(), self.typing_type_var),
+            Generics::None,
+            None,
+        )
     }
 
     pub fn collections_namedtuple_function(&self) -> Function {

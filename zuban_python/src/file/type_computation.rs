@@ -21,7 +21,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, Module, Value};
+use crate::type_helpers::{Class, Function, Module};
 
 pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 
@@ -107,7 +107,7 @@ impl InvalidVariableType<'_> {
                 add_typing_issue(IssueType::InvalidType(
                     format!(
                         "Variable \"{}.{}\" is not valid as a type",
-                        var_ref.in_module(db).qualified_name(db),
+                        var_ref.in_module().qualified_name(db),
                         var_ref.as_code().to_owned(),
                     )
                     .into(),
@@ -267,8 +267,8 @@ macro_rules! compute_type_application {
             TypeComputationOrigin::TypeApplication
         );
         let t = tcomp.$method $args;
-        Inferred::new_unsaved_complex(match t {
-            TypeContent::ClassWithoutTypeVar(inf) => return inf,
+        match t {
+            TypeContent::ClassWithoutTypeVar(inf) => inf,
             TypeContent::DbType(mut db_type) => {
                 let type_vars = tcomp.into_type_vars(|inf, recalculate_type_vars| {
                     db_type = recalculate_type_vars(&db_type);
@@ -277,20 +277,20 @@ macro_rules! compute_type_application {
                     if !$from_alias_definition {
                         todo!("{type_vars:?}")
                     }
-                    ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
+                    Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias::new_valid(
                         Some(type_vars),
                         $slice_type.as_node_ref().as_link(),
                         None,
                         Rc::new(db_type),
                         false,
-                    )))
+                    ))))
                 } else {
-                    ComplexPoint::TypeInstance(Box::new(DbType::Type(Rc::new(db_type))))
+                    Inferred::from_type(DbType::Type(Rc::new(db_type)))
                 }
             },
-            TypeContent::Unknown => return Inferred::new_any(),
+            TypeContent::Unknown => Inferred::new_any(),
             _ => todo!("type application: {t:?}"),
-        })
+        }
     }}
 }
 
@@ -535,8 +535,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         if is_implicit_optional {
                             d.make_optional()
                         }
-                        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(d)))
-                            .save_redirect(self.inference.i_s, self.inference.file, expr.index());
+                        Inferred::from_type(d).save_redirect(
+                            self.inference.i_s,
+                            self.inference.file,
+                            expr.index(),
+                        );
                         self.inference.file.points.set(
                             annotation_index,
                             Point::new_simple_specific(
@@ -554,7 +557,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         if is_implicit_optional {
             db_type.make_optional()
         }
-        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(db_type)));
+        let unsaved = Inferred::from_type(db_type);
         unsaved.save_redirect(self.inference.i_s, self.inference.file, annotation_index);
     }
 
@@ -571,8 +574,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     IssueType::InvalidType(
                         format!(
                             "Module {:?} is not valid as a type",
-                            Module::new(self.inference.i_s.db, m)
-                                .qualified_name(self.inference.i_s.db),
+                            Module::new(m).qualified_name(self.inference.i_s.db),
                         )
                         .into(),
                     ),
@@ -783,9 +785,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Point::new_redirect(f.file_index(), index, Locality::Todo),
                         );
                         self.compute_type_name(name)
-                    } else if let Some(file_index) =
-                        Module::new(db, f).sub_module(db, name.as_str())
-                    {
+                    } else if let Some(file_index) = Module::new(f).sub_module(db, name.as_str()) {
                         db.add_invalidates(file_index, self.inference.file.file_index());
                         self.inference.file.points.set(
                             name.index(),
@@ -1165,13 +1165,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         if iterator.next().is_none() {
             // We have no unfinished iterator and can therefore safely return.
-            Some(TypeContent::ClassWithoutTypeVar(
-                Inferred::new_unsaved_specific(Specific::SimpleGeneric).save_if_unsaved(
-                    self.inference.i_s,
-                    self.inference.file,
-                    primary.unwrap().index(),
-                ),
-            ))
+            let node_ref = NodeRef::new(self.inference.file, primary.unwrap().index());
+            node_ref.set_point(Point::new_simple_specific(
+                Specific::SimpleGeneric,
+                Locality::Todo,
+            ));
+            Some(TypeContent::ClassWithoutTypeVar(node_ref.into_inferred()))
         } else {
             None
         }
@@ -1261,8 +1260,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_db_type(first);
-                    return TypeContent::DbType(DbType::Tuple(TupleContent::new_arbitrary_length(
-                        t,
+                    return TypeContent::DbType(DbType::Tuple(Rc::new(
+                        TupleContent::new_arbitrary_length(t),
                     )));
                 }
             }
@@ -1288,7 +1287,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => Box::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
             }
         };
-        TypeContent::DbType(DbType::Tuple(TupleContent::new_fixed_length(generics)))
+        TypeContent::DbType(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+            generics,
+        ))))
     }
 
     fn calculate_simplified_param_spec_generics<'y, I: Iterator<Item = SliceOrSimple<'y>>>(
@@ -1740,9 +1741,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 DbType::None => TypeContent::DbType(DbType::None),
                 t @ DbType::Literal(_) => TypeContent::DbType(t),
                 DbType::Union(u)
-                    if u.entries
-                        .iter()
-                        .all(|e| matches!(e.type_, DbType::Literal(_) | DbType::None)) =>
+                    if u.iter()
+                        .all(|t| matches!(t, DbType::Literal(_) | DbType::None)) =>
                 {
                     TypeContent::DbType(DbType::Union(u))
                 }
@@ -2262,7 +2262,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         )
     }
 
-    fn use_cached_annotation_or_type_comment_type_internal(
+    // TODO make this private again
+    pub fn use_cached_annotation_or_type_comment_type_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
@@ -2280,6 +2281,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 self.file.points.get(expr.index()).complex_index()
             }
         } else {
+            self.file.complex_points.get(point.complex_index());
             debug_assert_eq!(point.type_(), PointType::Complex, "{expr:?}");
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
@@ -2327,7 +2329,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             self.file.complex_points.insert(
                 &self.file.points,
                 node_index + ANNOTATION_TO_EXPR_DIFFERENCE,
-                ComplexPoint::TypeInstance(Box::new(new_t)),
+                ComplexPoint::TypeInstance(new_t),
                 Locality::Todo,
             )
         }
@@ -2496,9 +2498,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     if let Some(tuple) = expr.maybe_tuple() {
                         let db_type =
                             inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
-                        let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                            Box::new(db_type),
-                        ));
+                        let unsaved = Inferred::from_type(db_type);
                         unsaved.save_redirect(inference.i_s, f, index);
                     } else {
                         let mut x = type_computation_for_variable_annotation;
@@ -2522,9 +2522,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 StarExpressionContent::Tuple(t) => {
                     let index = star_exprs.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
                     let db_type = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
-                    let unsaved = Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                        Box::new(db_type),
-                    ));
+                    let unsaved = Inferred::from_type(db_type);
                     unsaved.save_redirect(self.i_s, f, index);
                     let complex_index = f.points.get(index).complex_index();
                     (
@@ -2580,7 +2578,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 })
             })
             .collect();
-        DbType::Tuple(TupleContent::new_fixed_length(generics))
+        DbType::Tuple(Rc::new(TupleContent::new_fixed_length(generics)))
     }
 
     pub fn check_for_type_comment(
@@ -2921,7 +2919,7 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
 fn wrap_starred(t: DbType) -> DbType {
     match &t {
         DbType::ParamSpecArgs(_) => t,
-        _ => DbType::Tuple(TupleContent::new_arbitrary_length(t)),
+        _ => DbType::Tuple(Rc::new(TupleContent::new_arbitrary_length(t))),
     }
 }
 
@@ -2930,7 +2928,7 @@ fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
         DbType::ParamSpecKwargs(_) => t,
         _ => DbType::Class(
             db.python_state.builtins_point_link("dict"),
-            Some(GenericsList::new_generics(Box::new([
+            Some(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(DbType::Class(
                     db.python_state.builtins_point_link("str"),
                     None,

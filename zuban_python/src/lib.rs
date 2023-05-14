@@ -1,7 +1,6 @@
-#![allow(unused_variables)]
-#![allow(dead_code)]
+#![allow(unused_variables)] // TODO remove this
 #![allow(clippy::needless_option_as_deref)] // This is simply wrong in some cases
-#![allow(clippy::too_many_arguments)] // For now this is easier, but probably enable again
+#![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
 
 mod arguments;
 mod database;
@@ -16,8 +15,8 @@ mod matching;
 mod name;
 mod node_ref;
 mod python_state;
+mod type_helpers;
 mod utils;
-mod value;
 mod workspaces;
 
 use database::{Database, FileIndex};
@@ -25,9 +24,8 @@ pub use diagnostics::DiagnosticConfig;
 use file::Leaf;
 use inference_state::InferenceState;
 use inferred::Inferred;
-use name::{Names, ValueName};
+use name::Names;
 use parsa_python_ast::CodeIndex;
-pub use value::ValueKind;
 
 pub struct Project {
     db: Database,
@@ -62,7 +60,6 @@ impl Project {
                 strict_optional: options.strict_optional,
                 implicit_optional: options.implicit_optional,
                 mypy_compatible: options.mypy_compatible,
-                is_django: false,
             },
         );
         Self { db }
@@ -117,7 +114,7 @@ pub struct PythonProject {
     strict_optional: bool,
     implicit_optional: bool,
     mypy_compatible: bool,
-    is_django: bool,
+    // is_django: bool,  // TODO maybe add?
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -177,6 +174,7 @@ impl<'a> Script<'a> {
 
     pub fn complete(&self, position: Position) {}
 
+    /*
     pub fn infer_definition<C: Fn(&dyn ValueName<'a>) -> T, T>(
         &'a self,
         callable: &C,
@@ -189,8 +187,8 @@ impl<'a> Script<'a> {
             Leaf::Keyword(keyword) => self.file().infer_operator_leaf(&self.project.db, keyword),
             Leaf::None | Leaf::String => todo!(),
         }
-        .run_on_value_names(&i_s, callable)
     }
+    */
 
     /*
     pub fn infer_implementation(&self, position: Position) -> ValueNames {
@@ -269,6 +267,38 @@ impl<'a> Drop for Script<'a> {
     fn drop(&mut self) {
         self.project.db.release()
     }
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub enum ValueKind {
+    Unknown = 0,
+    // Taken from LSP, unused kinds are commented
+    //File = 1,
+    Module = 2,
+    Namespace = 3,
+    //Package = 4,
+    Class = 5,
+    Method = 6,
+    Property = 7,
+    Field = 8,
+    //Constructor = 9,
+    //Enum = 10,
+    //Interface = 11,
+    Function = 12,
+    //Variable = 13,
+    Constant = 14,
+    String = 15,
+    Number = 16,
+    Bool = 17,
+    Array = 18,
+    Object = 19, // From JavaScript objects -> Basically an instance
+    //Key = 20,
+    Null = 21,
+    //EnumMember = 22,
+    //Struct = 23,
+    //Event = 24,
+    //Operator = 25,
+    TypeParameter = 26,
 }
 
 #[cfg(test)]

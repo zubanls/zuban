@@ -2,12 +2,12 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, ArgumentsIterator, AssignmentContent, BlockContent, ClassDef, Decoratee,
-    SimpleStmtContent, SimpleStmts, StmtContent, Target,
+    Argument, AssignmentContent, BlockContent, ClassDef, Decoratee, SimpleStmtContent, SimpleStmts,
+    StmtContent, Target,
 };
 
 use super::function::OverloadResult;
-use super::{Instance, LookupResult, Module, NamedTupleValue, OnTypeError, Value, ValueKind};
+use super::{Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassInfos, ClassStorage, ClassType,
@@ -26,7 +26,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
-    Generics, Match, ResultContext, Type,
+    Generics, LookupResult, Match, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -278,7 +278,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         match meta_base {
                             BaseClass::DbType(DbType::Class(link, None)) => {
                                 let c = Class::from_db_type(i_s.db, link, &None);
-                                if !c.should_add_lookup_error(i_s.db)
+                                if c.incomplete_mro(i_s.db)
                                     || c.in_mro(
                                         i_s.db,
                                         &DbType::Class(
@@ -491,10 +491,7 @@ impl<'db: 'a, 'a> Class<'a> {
         for c in self.use_cached_class_infos(i_s.db).mro.iter() {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
-                if let Some(l) = other
-                    .lookup_internal(i_s, None, class_name)
-                    .into_maybe_inferred()
-                {
+                if let Some(l) = other.lookup(i_s, None, class_name).into_maybe_inferred() {
                     // TODO check signature details here!
                 } else {
                     return false;
@@ -561,21 +558,19 @@ impl<'db: 'a, 'a> Class<'a> {
         match result {
             Some(LookupResult::None) | None => {
                 let class_infos = self.use_cached_class_infos(i_s.db);
-                match class_infos.metaclass {
+                let result = match class_infos.metaclass {
                     MetaclassState::Some(link) => {
                         let instance =
                             Instance::new(Class::from_db_type(i_s.db, link, &None), None);
-                        let result = instance.lookup_internal(i_s, node_ref, name);
-                        if matches!(result, LookupResult::None)
-                            && !instance.should_add_lookup_error(i_s.db)
-                        {
-                            LookupResult::UnknownName(Inferred::new_unknown())
-                        } else {
-                            result
-                        }
+                        instance.lookup(i_s, node_ref, name)
                     }
-                    MetaclassState::Unknown => LookupResult::UnknownName(Inferred::new_unknown()),
+                    MetaclassState::Unknown => LookupResult::any(),
                     MetaclassState::None => LookupResult::None,
+                };
+                if matches!(result, LookupResult::None) && self.incomplete_mro(i_s.db) {
+                    LookupResult::any()
+                } else {
+                    result
                 }
             }
             Some(x) => x,
@@ -666,9 +661,8 @@ impl<'db: 'a, 'a> Class<'a> {
         DbType::Class(link, lst)
     }
 
-    pub fn name2(&self) -> &'a str {
-        // TODO merge this with Value::name
-        self.node().name().as_str()
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
     }
 
     fn named_tuple_from_class(&self, i_s: &InferenceState, cls: Class) -> Rc<NamedTuple> {
@@ -714,15 +708,40 @@ impl<'db: 'a, 'a> Class<'a> {
             result_type: DbType::None,
         }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for Class<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Class
+    pub fn execute(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        // TODO locality!!!
+        if let Some(generics_list) =
+            self.type_check_init_func(i_s, args, result_context, on_type_error)
+        {
+            debug!(
+                "Class execute: {}{}",
+                self.name(),
+                match generics_list.as_ref() {
+                    Some(generics_list) => Generics::new_list(generics_list)
+                        .format(&FormatData::new_short(i_s.db), None),
+                    None => "".to_owned(),
+                }
+            );
+            Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list))
+        } else {
+            Inferred::new_any()
+        }
     }
 
-    fn name(&self) -> &'a str {
-        self.node().name().as_str()
+    pub fn lookup(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
     }
 
     fn qualified_name(&self, db: &Database) -> String {
@@ -749,53 +768,15 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
         }
     }
 
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        Module::new(db, self.node_ref.file)
+    fn module(&self) -> Module<'a> {
+        Module::new(self.node_ref.file)
     }
 
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
+    pub fn name(&self) -> &'a str {
+        self.node().name().as_str()
     }
 
-    fn should_add_lookup_error(&self, db: &Database) -> bool {
-        !self.incomplete_mro(db)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        // TODO locality!!!
-        if let Some(generics_list) =
-            self.type_check_init_func(i_s, args, result_context, on_type_error)
-        {
-            debug!(
-                "Class execute: {}{}",
-                self.name(),
-                match generics_list.as_ref() {
-                    Some(generics_list) => Generics::new_list(generics_list)
-                        .format(&FormatData::new_short(i_s.db), None),
-                    None => "".to_owned(),
-                }
-            );
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Class(
-                self.node_ref.as_link(),
-                generics_list,
-            ))))
-        } else {
-            Inferred::new_any()
-        }
-    }
-
-    fn get_item(
+    pub fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
@@ -810,22 +791,6 @@ impl<'db, 'a> Value<'db, 'a> for Class<'a> {
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
     }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        format!(
-            "{} {}",
-            format!("{:?}", self.kind()).to_lowercase(),
-            self.format_short(i_s.db),
-        )
-    }
-
-    fn as_class(&self) -> Option<&Class> {
-        Some(self)
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(DbType::Type(Rc::new(self.as_db_type(i_s.db))))
-    }
 }
 
 impl fmt::Debug for Class<'_> {
@@ -837,26 +802,6 @@ impl fmt::Debug for Class<'_> {
             .field("generics", &self.generics)
             .field("type_var_remap", &self.type_var_remap)
             .finish()
-    }
-}
-
-struct BasesIterator<'db> {
-    file: &'db PythonFile,
-    args: Option<ArgumentsIterator<'db>>,
-}
-
-impl<'db> BasesIterator<'db> {
-    fn next(&mut self, i_s: &InferenceState<'db, '_>) -> Option<Inferred> {
-        if let Some(args) = self.args.as_mut() {
-            match args.next() {
-                Some(Argument::Positional(p)) => {
-                    return Some(self.file.inference(i_s).infer_named_expression(p))
-                }
-                None => (),
-                other => todo!("{other:?}"),
-            }
-        }
-        None
     }
 }
 

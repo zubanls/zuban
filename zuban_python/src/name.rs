@@ -1,12 +1,12 @@
+#![allow(dead_code)] // TODO remove this
+
 use crate::database::Database;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::{Value, ValueKind};
 use parsa_python_ast::{CodeIndex, Name as ASTName};
 use std::fmt;
-use std::mem;
 
 type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
@@ -74,10 +74,6 @@ pub trait Name<'db>: fmt::Debug {
     fn is_definition(&self) -> bool {
         false
     }
-}
-
-pub trait ValueName<'db>: Name<'db> {
-    fn kind(&self) -> ValueKind;
 }
 
 pub struct TreeName<'db, F: File, N> {
@@ -151,7 +147,8 @@ impl<'db> Name<'db> for TreeName<'db, PythonFile, ASTName<'db>> {
     }
 }
 
-pub struct WithValueName<'db, 'a, 'b> {
+/*
+struct WithValueName<'db, 'a, 'b> {
     db: &'db Database,
     value: &'b dyn Value<'db, 'a>,
 }
@@ -172,7 +169,8 @@ impl fmt::Debug for WithValueName<'_, '_, '_> {
 
 impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
     fn name(&self) -> &str {
-        self.value.name()
+        todo!()
+        //self.value.name()
     }
 
     fn file_path(&self) -> &str {
@@ -216,13 +214,7 @@ impl<'db> Name<'db> for WithValueName<'db, '_, '_> {
     */
 }
 
-impl<'db> ValueName<'db> for WithValueName<'db, '_, '_> {
-    fn kind(&self) -> ValueKind {
-        self.value.kind()
-    }
-}
-
-pub enum ValueNameIterator<T> {
+enum ValueNameIterator<T> {
     Single(T),
     Multiple(Vec<T>),
     Finished,
@@ -247,3 +239,4 @@ impl<T> Iterator for ValueNameIterator<T> {
         }
     }
 }
+*/

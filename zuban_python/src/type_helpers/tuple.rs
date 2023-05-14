@@ -1,40 +1,42 @@
-use super::{IteratorContent, LookupResult, Value, ValueKind};
-use crate::database::{DbType, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
+use std::rc::Rc;
+
+use crate::database::{TupleContent, TupleTypeArguments, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, ResultContext, Type};
+use crate::matching::{IteratorContent, LookupResult, ResultContext};
 use crate::node_ref::NodeRef;
-use crate::value::Instance;
+use crate::type_helpers::Instance;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Tuple<'a> {
-    db_type: &'a DbType,
-    content: &'a TupleContent,
+    content: &'a Rc<TupleContent>,
 }
 
 impl<'a> Tuple<'a> {
-    pub fn new(db_type: &'a DbType, content: &'a TupleContent) -> Self {
-        Self { db_type, content }
+    pub fn new(content: &'a Rc<TupleContent>) -> Self {
+        Self { content }
     }
 
-    pub fn as_db_type(&self) -> DbType {
-        DbType::Tuple(self.content.clone())
+    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
+        match &self.content.args {
+            Some(args @ TupleTypeArguments::FixedLength(ts)) => {
+                if args.has_type_var_tuple().is_some() {
+                    todo!()
+                } else {
+                    IteratorContent::FixedLengthTupleGenerics(ts.iter())
+                }
+            }
+            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                IteratorContent::Inferred(Inferred::execute_db_type(i_s, t.as_ref().clone()))
+            }
+            None => todo!(),
+        }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
-    fn name(&self) -> &str {
-        "tuple"
-    }
-
-    fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -63,27 +65,7 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
         LookupResult::None
     }
 
-    fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
-        match &self.content.args {
-            Some(args @ TupleTypeArguments::FixedLength(ts)) => {
-                if args.has_type_var_tuple().is_some() {
-                    todo!()
-                } else {
-                    IteratorContent::FixedLengthTupleGenerics(ts.iter())
-                }
-            }
-            Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                IteratorContent::Inferred(Inferred::execute_db_type(i_s, t.as_ref().clone()))
-            }
-            None => todo!(),
-        }
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(self.db_type)
-    }
-
-    fn get_item(
+    pub fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
@@ -116,9 +98,5 @@ impl<'db, 'a> Value<'db, 'a> for Tuple<'a> {
                 todo!()
             }
         }
-    }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        self.content.format(&FormatData::new_short(i_s.db)).into()
     }
 }

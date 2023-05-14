@@ -1,34 +1,21 @@
-use std::fmt;
-
-use super::{LookupResult, OnTypeError, Value, ValueKind};
-use crate::arguments::Arguments;
 use crate::database::{Database, FileIndex, PointLink};
-use crate::diagnostics::IssueType;
+
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::imports::python_import;
 use crate::inference_state::InferenceState;
-use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
-use crate::node_ref::NodeRef;
 
-impl<'a> fmt::Debug for Module<'a> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("Module")
-            .field("file", &self.file.file_path(self.db))
-            .finish()
-    }
-}
+use crate::matching::LookupResult;
+use crate::node_ref::NodeRef;
 
 #[derive(Copy, Clone)]
 pub struct Module<'a> {
-    db: &'a Database,
     pub file: &'a PythonFile,
 }
 
 impl<'a> Module<'a> {
-    pub fn new(db: &'a Database, file: &'a PythonFile) -> Self {
-        Self { db, file }
+    pub fn new(file: &'a PythonFile) -> Self {
+        Self { file }
     }
 
     pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<FileIndex> {
@@ -37,41 +24,27 @@ impl<'a> Module<'a> {
             python_import(db, p, dir, name)
         })
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
-    fn name(&self) -> &'a str {
+    pub fn name(&self, db: &'a Database) -> &'a str {
         // TODO this is not correct...
-        let (dir, mut name) = self.db.vfs.dir_and_name(self.file.file_path(self.db));
+        let (dir, mut name) = db.vfs.dir_and_name(self.file.file_path(db));
         if name.ends_with(".py") {
             name = name.trim_end_matches(".py");
         } else {
             name = name.trim_end_matches(".pyi");
         }
         if name == "__init__" {
-            self.db.vfs.dir_and_name(dir.unwrap()).1
+            db.vfs.dir_and_name(dir.unwrap()).1
         } else {
             name
         }
     }
 
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        *self
+    pub fn qualified_name(&self, db: &Database) -> String {
+        self.name(db).to_owned()
     }
 
-    fn as_module(&self) -> Option<&Self> {
-        Some(self)
-    }
-
-    fn qualified_name(&self, db: &Database) -> String {
-        self.name().to_owned()
-    }
-
-    fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -95,25 +68,5 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Module<'a> {
                     })
                     .unwrap_or_else(|| LookupResult::None)
             })
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        args.as_node_ref().add_typing_issue(
-            i_s,
-            IssueType::NotCallable {
-                type_: Box::from("Module"),
-            },
-        );
-        Inferred::new_unknown()
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::Class(i_s.db.python_state.module_type())
     }
 }

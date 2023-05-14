@@ -4,9 +4,7 @@ use std::rc::Rc;
 use parsa_python_ast::*;
 
 use super::{on_argument_type_error, File, PythonFile};
-use crate::arguments::{
-    Arguments, CombinedArguments, KnownArguments, NoArguments, SimpleArguments,
-};
+use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
     Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType, Specific,
@@ -18,10 +16,10 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::{Inferred, UnionValue};
-use crate::matching::{FormatData, Generics, ResultContext, Type};
+use crate::matching::{FormatData, Generics, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_helpers::{Class, Function, Instance, Module};
 use crate::utils::debug_indent;
-use crate::value::{Class, Function, LookupResult, Module, OnTypeError, Value};
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
     pub(super) file: &'file PythonFile,
@@ -211,7 +209,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let (import_name, name_def) = target.unpack();
 
                     let point = if let Some(import_file) = import_file {
-                        let module = Module::new(self.i_s.db, import_file);
+                        let module = Module::new(import_file);
 
                         if let Some(link) = import_file.lookup_global(import_name.as_str()) {
                             link.into_point_redirect()
@@ -234,7 +232,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                 self.i_s,
                                 IssueType::ImportAttributeError {
-                                    module_name: Box::from(module.name()),
+                                    module_name: Box::from(module.name(self.i_s.db)),
                                     name: Box::from(import_name.as_str()),
                                 },
                             );
@@ -294,7 +292,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Option<FileIndex> {
         let infer_name = |i_s, file_index, name: Name| {
             let file = self.i_s.db.loaded_python_file(file_index);
-            let module = Module::new(self.i_s.db, file);
+            let module = Module::new(file);
             let result = module.sub_module(self.i_s.db, name.as_str());
             if let Some(imported) = result {
                 debug!(
@@ -307,7 +305,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
             } else {
                 let node_ref = NodeRef::new(self.file, name.index());
-                let m = format!("{}.{}", module.name().to_owned(), name.as_str()).into();
+                let m = format!("{}.{}", module.name(self.i_s.db).to_owned(), name.as_str()).into();
                 node_ref.add_typing_issue(i_s, IssueType::ModuleNotFound { module_name: m });
             }
             result
@@ -437,7 +435,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     r
                 } else {
                     let original_def = self.original_definition(assignment);
-                    let result_type = original_def.as_ref().map(|inf| inf.class_as_type(self.i_s));
+                    let result_type = original_def.as_ref().map(|inf| inf.as_type(self.i_s));
                     let mut result_context = match &result_type {
                         Some(t) => ResultContext::Known(t),
                         None => ResultContext::AssignmentNewDefinition,
@@ -501,34 +499,32 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
                 let left = self.infer_single_target(target);
-                let result = left.run_on_value(self.i_s, &mut |i_s, value| {
-                    value
-                        .lookup_implicit(i_s, Some(node_ref), normal, &|i_s| {
-                            let left = value.as_type(i_s).format_short(i_s.db);
-                            node_ref.add_typing_issue(
-                                i_s,
-                                IssueType::UnsupportedLeftOperand {
-                                    operand: Box::from(aug_assign.operand()),
-                                    left,
-                                },
-                            );
-                        })
-                        .execute_with_details(
+                let result = left.lookup_and_execute_with_details(
+                    self.i_s,
+                    node_ref,
+                    normal,
+                    &KnownArguments::new(&right, node_ref),
+                    &|i_s, type_| {
+                        let left = type_.format_short(i_s.db);
+                        node_ref.add_typing_issue(
                             i_s,
-                            &KnownArguments::new(&right, node_ref),
-                            &mut ResultContext::Unknown,
-                            OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
-                                arg.as_node_ref().add_typing_issue(
-                                    i_s,
-                                    IssueType::UnsupportedOperand {
-                                        operand: Box::from(aug_assign.operand()),
-                                        left: class.unwrap().format_short(i_s.db),
-                                        right,
-                                    },
-                                )
-                            }),
+                            IssueType::UnsupportedLeftOperand {
+                                operand: Box::from(aug_assign.operand()),
+                                left,
+                            },
+                        );
+                    },
+                    OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
+                        arg.as_node_ref().add_typing_issue(
+                            i_s,
+                            IssueType::UnsupportedOperand {
+                                operand: Box::from(aug_assign.operand()),
+                                left: class.unwrap().format_short(i_s.db),
+                                right,
+                            },
                         )
-                });
+                    }),
+                );
                 if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
                     self.assign_single_target(target, &result, false, |_, index| {
                         // There is no need to save this, because it's never used
@@ -593,7 +589,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                     }
                     let inferred = self.infer_name_by_index(first_definition);
-                    inferred.class_as_type(self.i_s).error_if_not_matches(
+                    inferred.as_type(self.i_s).error_if_not_matches(
                         self.i_s,
                         value,
                         |i_s, got, expected| {
@@ -613,66 +609,63 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if primary_target.as_code().contains("self") {
                     // TODO here we should do something as well.
                 } else {
+                    let i_s = self.i_s;
                     if is_definition {
                         NodeRef::new(self.file, primary_target.index())
-                            .add_typing_issue(self.i_s, IssueType::InvalidTypeDeclaration);
+                            .add_typing_issue(i_s, IssueType::InvalidTypeDeclaration);
                     }
                     let base = self.infer_primary_target_or_atom(primary_target.first());
                     let node_ref = NodeRef::new(self.file, primary_target.index());
-                    base.run_mut(
-                        self.i_s,
-                        &mut |i_s, v| {
-                            if let Some(instance) = v.as_instance() {
-                                if instance.checked_set_descriptor(
+                    base.as_type(i_s).run_on_each_union_type(&mut |t| {
+                        if let Some(cls) = t.maybe_class(i_s.db) {
+                            if Instance::new(cls, None).checked_set_descriptor(
+                                i_s,
+                                node_ref,
+                                name_definition.name(),
+                                value,
+                            ) {
+                                return;
+                            }
+                        }
+                        t.maybe_type_of_class(i_s.db)
+                            .and_then(|c| {
+                                // We need to handle class descriptors separately, because
+                                // there the __get__ descriptor should not be applied.
+                                c.lookup_with_or_without_descriptors(
+                                    i_s,
+                                    Some(node_ref),
+                                    name_definition.as_code(),
+                                    false,
+                                )
+                                .into_maybe_inferred()
+                            })
+                            .unwrap_or_else(|| {
+                                t.lookup_with_error(
                                     i_s,
                                     node_ref,
-                                    name_definition.name(),
-                                    value,
-                                ) {
-                                    return;
-                                }
-                            }
-                            v.as_class()
-                                .and_then(|c| {
-                                    // We need to handle class descriptors separately, because
-                                    // there the __get__ descriptor should not be applied.
-                                    c.lookup_with_or_without_descriptors(
-                                        i_s,
-                                        Some(node_ref),
-                                        name_definition.as_code(),
-                                        false,
-                                    )
-                                    .into_maybe_inferred()
-                                })
-                                .unwrap_or_else(|| {
-                                    v.lookup(
-                                        i_s,
-                                        Some(node_ref),
-                                        name_definition.as_code(),
-                                        &|i_s| {
-                                            add_attribute_error(
-                                                i_s,
-                                                node_ref,
-                                                v,
-                                                name_definition.name(),
-                                            )
-                                        },
-                                    )
-                                    .into_inferred()
-                                })
-                                .class_as_type(i_s)
-                                .error_if_not_matches(i_s, value, |i_s, got, expected| {
-                                    let node_ref = NodeRef::new(self.file, primary_target.index())
-                                        .to_db_lifetime(i_s.db);
-                                    node_ref.add_typing_issue(
-                                        i_s,
-                                        IssueType::IncompatibleAssignment { got, expected },
-                                    );
-                                    node_ref
-                                });
-                        },
-                        || (),
-                    );
+                                    name_definition.as_code(),
+                                    &|i_s, t| {
+                                        add_attribute_error(
+                                            i_s,
+                                            node_ref,
+                                            t,
+                                            name_definition.name(),
+                                        )
+                                    },
+                                )
+                                .into_inferred()
+                            })
+                            .as_type(i_s)
+                            .error_if_not_matches(i_s, value, |i_s, got, expected| {
+                                let node_ref = NodeRef::new(self.file, primary_target.index())
+                                    .to_db_lifetime(i_s.db);
+                                node_ref.add_typing_issue(
+                                    i_s,
+                                    IssueType::IncompatibleAssignment { got, expected },
+                                );
+                                node_ref
+                            });
+                    });
                 }
                 // This mostly needs to be saved for self names
                 save(self.i_s, name_definition.index());
@@ -689,27 +682,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let node_ref = NodeRef::new(self.file, primary_target.index());
                 let slice = SliceType::new(self.file, primary_target.index(), slice_type);
                 let args = slice.as_args(*self.i_s);
-                base.run_on_value(self.i_s, &mut |i_s, v| {
-                    debug!("Set Item on {}", v.name());
-                    v.lookup_implicit(i_s, Some(node_ref), "__setitem__", &|i_s| {
+                debug!("Set Item on {}", base.format_short(self.i_s));
+                base.lookup_and_execute_with_details(
+                    self.i_s,
+                    node_ref,
+                    "__setitem__",
+                    &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
+                    &|i_s, _| {
                         debug!("TODO __setitem__ not found");
-                    })
-                    .execute_with_details(
-                        i_s,
-                        &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
-                        &mut ResultContext::Unknown,
-                        OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
-                            arg.as_node_ref().add_typing_issue(
-                                i_s,
-                                IssueType::InvalidGetItem {
-                                    actual,
-                                    type_: class.unwrap().format_short(i_s.db),
-                                    expected,
-                                },
-                            )
-                        }),
-                    )
-                });
+                    },
+                    OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
+                        arg.as_node_ref().add_typing_issue(
+                            i_s,
+                            IssueType::InvalidGetItem {
+                                actual,
+                                type_: class.unwrap().format_short(i_s.db),
+                                expected,
+                            },
+                        )
+                    }),
+                );
             }
             Target::Tuple(_) | Target::Starred(_) => unreachable!(),
         }
@@ -734,7 +726,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             todo!()
                         } else if let Some(len) = value_iterator.len() {
                             let fetch = len - normal;
-                            let union = Inferred::gather_union(|callable| {
+                            let union = Inferred::gather_union(self.i_s, |callable| {
                                 for _ in 0..(len - normal) {
                                     callable(value_iterator.next(self.i_s).unwrap());
                                 }
@@ -743,7 +735,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let generic = union.class_as_db_type(self.i_s);
                             let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(Box::new([GenericItem::TypeArgument(generic)])),
+                                Some(Rc::new([GenericItem::TypeArgument(generic)])),
                             );
                             self.assign_targets(
                                 star_target.as_target(),
@@ -755,7 +747,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let value = value_iterator.next(self.i_s).unwrap();
                             let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
-                                Some(Box::new([GenericItem::TypeArgument(
+                                Some(Rc::new([GenericItem::TypeArgument(
                                     value.class_as_db_type(self.i_s),
                                 )])),
                             );
@@ -822,10 +814,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     // TODO use this somewhere
                     /*
                     debug!("Found {} type vars in {}", type_vars.len(), expr.as_code());
-                    Inferred::new_unsaved_complex(ComplexPoint::TypeAlias(Box::new(TypeAlias {
+                    ComplexPoint::TypeAlias(Box::new(TypeAlias {
                         type_vars: type_vars.into_boxed_slice(),
                         db_type: self.infer_expression(expr).as_db_type(self.i_s),
-                    })))
+                    }))
                     */
                     todo!()
                 }
@@ -947,12 +939,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
                                 let from = NodeRef::new(self.file, op.index());
                                 // TODO this does not implement __ne__ for NotEquals
-                                first.execute_function(
+                                first.lookup_and_execute(
                                     self.i_s,
-                                    "__eq__",
                                     from,
+                                    "__eq__",
                                     &KnownArguments::new(&second, from),
-                                    &|_| todo!(),
+                                    &|_, _| todo!(),
                                 )
                             }
                             ComparisonContent::Is(first, _, second)
@@ -973,58 +965,68 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let second =
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
                                 let from = NodeRef::new(self.file, op.index());
-                                second.run_on_value(self.i_s, &mut |i_s, rvalue| {
-                                    if let Some(method) = rvalue
-                                        .lookup_internal(i_s, Some(from), "__contains__")
-                                        .into_maybe_inferred()
-                                    {
-                                        method.execute_with_details(
-                                            i_s,
-                                            &KnownArguments::new(&first, from),
-                                            &mut ResultContext::Unknown,
-                                            OnTypeError::new(&|i_s, _, _, _, got, _| {
-                                                let right =
-                                                    rvalue.as_type(i_s).format_short(i_s.db);
-                                                from.add_typing_issue(
-                                                    i_s,
-                                                    IssueType::UnsupportedOperand {
-                                                        operand: Box::from("in"),
-                                                        left: got,
-                                                        right,
+                                second.run_after_lookup_on_each_union_member(
+                                    self.i_s,
+                                    Some(from),
+                                    "__contains__",
+                                    &mut |r_type, lookup_result| {
+                                        if let Some(method) = lookup_result.into_maybe_inferred() {
+                                            method.execute_with_details(
+                                                self.i_s,
+                                                &KnownArguments::new(&first, from),
+                                                &mut ResultContext::Unknown,
+                                                OnTypeError::new(&|i_s, _, _, _, got, _| {
+                                                    let right = r_type.format_short(i_s.db);
+                                                    from.add_typing_issue(
+                                                        i_s,
+                                                        IssueType::UnsupportedOperand {
+                                                            operand: Box::from("in"),
+                                                            left: got,
+                                                            right,
+                                                        },
+                                                    );
+                                                }),
+                                            );
+                                        } else {
+                                            let t = r_type
+                                                .lookup_with_error(
+                                                    self.i_s,
+                                                    from,
+                                                    "__iter__",
+                                                    &|i_s, _| {
+                                                        let right = second.format_short(i_s);
+                                                        from.add_typing_issue(
+                                                            i_s,
+                                                            IssueType::UnsupportedIn { right },
+                                                        )
+                                                    },
+                                                )
+                                                .into_inferred()
+                                                .execute(self.i_s, &NoArguments::new(from))
+                                                .lookup_and_execute(
+                                                    self.i_s,
+                                                    from,
+                                                    "__next__",
+                                                    &NoArguments::new(from),
+                                                    &|_, _| todo!(),
+                                                )
+                                                .as_type(self.i_s)
+                                                .error_if_not_matches(
+                                                    self.i_s,
+                                                    &first,
+                                                    |i_s, got, _| {
+                                                        let t = IssueType::UnsupportedOperand {
+                                                            operand: Box::from("in"),
+                                                            left: got,
+                                                            right: r_type.format_short(i_s.db),
+                                                        };
+                                                        from.add_typing_issue(i_s, t);
+                                                        from.to_db_lifetime(i_s.db)
                                                     },
                                                 );
-                                            }),
-                                        )
-                                    } else {
-                                        let t = rvalue
-                                            .lookup_implicit(i_s, Some(from), "__iter__", &|i_s| {
-                                                let right = second.format_short(i_s);
-                                                from.add_typing_issue(
-                                                    i_s,
-                                                    IssueType::UnsupportedIn { right },
-                                                )
-                                            })
-                                            .execute(i_s, &NoArguments::new(from))
-                                            .execute_function(
-                                                i_s,
-                                                "__next__",
-                                                from,
-                                                &NoArguments::new(from),
-                                                &|_| todo!(),
-                                            )
-                                            .class_as_type(i_s)
-                                            .error_if_not_matches(i_s, &first, |i_s, got, _| {
-                                                let t = IssueType::UnsupportedOperand {
-                                                    operand: Box::from("in"),
-                                                    left: got,
-                                                    right: rvalue.as_type(i_s).format_short(i_s.db),
-                                                };
-                                                from.add_typing_issue(i_s, t);
-                                                from.to_db_lifetime(i_s.db)
-                                            });
-                                        Inferred::new_unknown()
-                                    }
-                                });
+                                        }
+                                    },
+                                );
                                 Inferred::create_instance(
                                     self.i_s.db.python_state.builtins_point_link("bool"),
                                     None,
@@ -1088,22 +1090,25 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 let node_ref = NodeRef::new(self.file, f.index());
-                inf.run_on_value(self.i_s, &mut |i_s, value| {
-                    let operand = match operand.as_code() {
-                        "~" => "~",
-                        "-" => "unary -",
-                        "+" => "unary +",
-                        _ => unreachable!(),
-                    };
-                    value.lookup_implicit(i_s, Some(node_ref), method_name, &|i_s| {
-                        let got = value.as_type(i_s).format_short(i_s.db);
+                inf.lookup_and_execute(
+                    self.i_s,
+                    node_ref,
+                    method_name,
+                    &NoArguments::new(node_ref),
+                    &|i_s, type_| {
+                        let operand = match operand.as_code() {
+                            "~" => "~",
+                            "-" => "unary -",
+                            "+" => "unary +",
+                            _ => unreachable!(),
+                        };
+                        let got = type_.format_short(i_s.db);
                         node_ref.add_typing_issue(
                             i_s,
                             IssueType::UnsupportedOperandForUnary { operand, got },
                         )
-                    })
-                })
-                .execute(self.i_s, &NoArguments::new(node_ref))
+                    },
+                )
             }
             ExpressionPart::AwaitPrimary(_) => todo!(),
         }
@@ -1123,7 +1128,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .inference(&i_s)
                             .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = (**c).clone();
-                        c.result_type = result.class_as_type(&i_s).into_db_type(i_s.db);
+                        c.result_type = result.as_type(&i_s).into_db_type(i_s.db);
                         Inferred::execute_db_type(&i_s, DbType::Callable(Rc::new(c)))
                     } else {
                         todo!()
@@ -1167,89 +1172,103 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let right = self.infer_expression_part(op.right, &mut ResultContext::Unknown);
         let node_ref = NodeRef::new(self.file, op.index);
         let mut had_error = false;
-        let result = left.run_on_value(self.i_s, &mut |i_s, lvalue| {
-            let left_op_method = lvalue
-                .lookup_internal(i_s, Some(node_ref), op.magic_method)
-                .into_maybe_inferred();
-            right.run_on_value(i_s, &mut |i_s, rvalue| {
-                let error = Cell::new(LookupError::NoError);
-                if let Some(left) = left_op_method.as_ref() {
-                    let had_left_error = Cell::new(false);
-                    let left_inf = Inferred::execute_db_type_allocation_todo(i_s, rvalue);
-                    let result = left.execute_with_details(
-                        i_s,
-                        &KnownArguments::new(&left_inf, node_ref),
-                        &mut ResultContext::Unknown,
-                        OnTypeError {
-                            on_overload_mismatch: Some(&|_, _| had_left_error.set(true)),
-                            callback: &|_, _, _, _, _, _| had_left_error.set(true),
-                        },
-                    );
-                    if !had_left_error.get() {
-                        return result;
-                    }
-                }
-                if op.shortcut_when_same_type {
-                    if let Some(left_instance) = lvalue.as_instance() {
-                        if let Some(right_instance) = rvalue.as_instance() {
-                            if left_instance.class.node_ref == right_instance.class.node_ref {
-                                error.set(LookupError::ShortCircuit);
+        let i_s = self.i_s;
+        let result = Inferred::gather_union(i_s, |add_to_union| {
+            left.run_after_lookup_on_each_union_member(
+                i_s,
+                Some(node_ref),
+                op.magic_method,
+                &mut |l_type, lookup_result| {
+                    let left_op_method = l_type
+                        .lookup_without_error(self.i_s, Some(node_ref), op.magic_method)
+                        .into_maybe_inferred();
+                    right.as_type(i_s).run_on_each_union_type(&mut |r_type| {
+                        let error = Cell::new(LookupError::NoError);
+                        if let Some(left) = left_op_method.as_ref() {
+                            let had_left_error = Cell::new(false);
+                            let right_inf = Inferred::execute_db_type_allocation_todo(i_s, r_type);
+                            let result = left.execute_with_details(
+                                i_s,
+                                &KnownArguments::new(&right_inf, node_ref),
+                                &mut ResultContext::Unknown,
+                                OnTypeError {
+                                    on_overload_mismatch: Some(&|_, _| had_left_error.set(true)),
+                                    callback: &|_, _, _, _, _, _| had_left_error.set(true),
+                                },
+                            );
+                            if !had_left_error.get() {
+                                return add_to_union(result);
                             }
                         }
-                    }
-                }
-                let result = if error.get() != LookupError::ShortCircuit {
-                    let right_inf = Inferred::execute_db_type_allocation_todo(i_s, lvalue);
-                    rvalue
-                        .lookup_implicit(i_s, Some(node_ref), op.reverse_magic_method, &|i_s| {
-                            if left_op_method.as_ref().is_some() {
-                                error.set(LookupError::BothSidesError);
-                            } else {
-                                error.set(LookupError::LeftError);
+                        if op.shortcut_when_same_type {
+                            if let Some(left_instance) = l_type.maybe_class(i_s.db) {
+                                if let Some(right_instance) = r_type.maybe_class(i_s.db) {
+                                    if left_instance.node_ref == right_instance.node_ref {
+                                        error.set(LookupError::ShortCircuit);
+                                    }
+                                }
+                            }
+                        }
+                        let result = if error.get() != LookupError::ShortCircuit {
+                            let left_inf = Inferred::execute_db_type_allocation_todo(i_s, l_type);
+                            r_type
+                                .lookup_with_error(
+                                    i_s,
+                                    node_ref,
+                                    op.reverse_magic_method,
+                                    &|i_s, _| {
+                                        if left_op_method.as_ref().is_some() {
+                                            error.set(LookupError::BothSidesError);
+                                        } else {
+                                            error.set(LookupError::LeftError);
+                                        }
+                                    },
+                                )
+                                .into_inferred()
+                                .execute_with_details(
+                                    i_s,
+                                    &KnownArguments::new(&left_inf, node_ref),
+                                    &mut ResultContext::Unknown,
+                                    OnTypeError {
+                                        on_overload_mismatch: Some(&|_, _| {
+                                            error.set(LookupError::BothSidesError)
+                                        }),
+                                        callback: &|_, _, _, _, _, _| {
+                                            error.set(LookupError::BothSidesError)
+                                        },
+                                    },
+                                )
+                        } else {
+                            Inferred::new_unknown()
+                        };
+                        add_to_union(match error.get() {
+                            LookupError::NoError => result,
+                            LookupError::BothSidesError => {
+                                had_error = true;
+                                let t = IssueType::UnsupportedOperand {
+                                    operand: Box::from(op.operand),
+                                    left: l_type.format_short(i_s.db),
+                                    right: r_type.format_short(i_s.db),
+                                };
+                                node_ref.add_typing_issue(i_s, t);
+                                Inferred::new_unknown()
+                            }
+                            LookupError::LeftError | LookupError::ShortCircuit => {
+                                had_error = true;
+                                let left = l_type.format_short(i_s.db);
+                                node_ref.add_typing_issue(
+                                    i_s,
+                                    IssueType::UnsupportedLeftOperand {
+                                        operand: Box::from(op.operand),
+                                        left,
+                                    },
+                                );
+                                Inferred::new_unknown()
                             }
                         })
-                        .execute_with_details(
-                            i_s,
-                            &KnownArguments::new(&right_inf, node_ref),
-                            &mut ResultContext::Unknown,
-                            OnTypeError {
-                                on_overload_mismatch: Some(&|_, _| {
-                                    error.set(LookupError::BothSidesError)
-                                }),
-                                callback: &|_, _, _, _, _, _| {
-                                    error.set(LookupError::BothSidesError)
-                                },
-                            },
-                        )
-                } else {
-                    Inferred::new_unknown()
-                };
-                match error.get() {
-                    LookupError::NoError => result,
-                    LookupError::BothSidesError => {
-                        had_error = true;
-                        let t = IssueType::UnsupportedOperand {
-                            operand: Box::from(op.operand),
-                            left: lvalue.as_type(i_s).format_short(i_s.db),
-                            right: rvalue.as_type(i_s).format_short(i_s.db),
-                        };
-                        node_ref.add_typing_issue(i_s, t);
-                        Inferred::new_unknown()
-                    }
-                    LookupError::LeftError | LookupError::ShortCircuit => {
-                        had_error = true;
-                        let left = lvalue.as_type(i_s).format_short(i_s.db);
-                        node_ref.add_typing_issue(
-                            i_s,
-                            IssueType::UnsupportedLeftOperand {
-                                operand: Box::from(op.operand),
-                                left,
-                            },
-                        );
-                        Inferred::new_unknown()
-                    }
-                }
-            })
+                    })
+                },
+            )
         });
         if had_error {
             let note = match (left.is_union(self.i_s.db), right.is_union(self.i_s.db)) {
@@ -1266,6 +1285,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             };
             node_ref.add_typing_issue(self.i_s, IssueType::Note(note));
         }
+        debug!(
+            "Operation between {} and {} results in {}",
+            left.format_short(i_s),
+            right.format_short(i_s),
+            result.format_short(i_s)
+        );
         result
     }
 
@@ -1303,11 +1328,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) -> Inferred {
         let node_ref = NodeRef::new(self.file, node_index);
         match second {
-            PrimaryContent::Attribute(name) => base.run_on_value(self.i_s, &mut |i_s, value| {
-                debug!("Lookup {}.{}", value.name(), name.as_str());
-                match value.lookup(i_s, Some(node_ref), name.as_str(), &|i_s| {
-                    add_attribute_error(i_s, node_ref, value, name)
-                }) {
+            PrimaryContent::Attribute(name) => {
+                debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
+                let lookup = base.as_type(self.i_s).lookup_with_error(
+                    self.i_s,
+                    node_ref,
+                    name.as_str(),
+                    &|i_s, t| add_attribute_error(i_s, node_ref, t, name),
+                );
+                match &lookup {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting
                         // it here can be overwritten.
@@ -1315,51 +1344,36 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             name.index(),
                             Point::new_redirect(link.file, link.node_index, Locality::Todo),
                         );
-                        inferred
                     }
                     LookupResult::FileReference(file_index) => {
                         self.file.points.set(
                             name.index(),
-                            Point::new_file_reference(file_index, Locality::Todo),
+                            Point::new_file_reference(*file_index, Locality::Todo),
                         );
-                        Inferred::new_file_reference(file_index)
                     }
-                    LookupResult::UnknownName(inferred) => inferred,
-                    LookupResult::None => Inferred::new_unknown(),
-                }
-            }),
+                    LookupResult::UnknownName(_) | LookupResult::None => (),
+                };
+                lookup.into_inferred()
+            }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
                 let args = SimpleArguments::new(*self.i_s, f, node_index, details);
-                base.internal_run(
+                base.execute_with_details(
                     self.i_s,
-                    &mut |i_s, value| {
-                        debug!("Execute {}", value.name());
-                        value.execute(
-                            i_s,
-                            &args,
-                            result_context,
-                            OnTypeError::new(&on_argument_type_error),
-                        )
-                    },
-                    &|i_s, i1, i2| i1.union(i2),
-                    &mut |i_s| {
-                        // Still need to calculate diagnostics for all the arguments
-                        args.iter().calculate_diagnostics(i_s);
-                        Inferred::new_unknown()
-                    },
+                    &args,
+                    result_context,
+                    OnTypeError::new(&on_argument_type_error),
                 )
             }
             PrimaryContent::GetItem(slice_type) => {
                 let f = self.file;
-                base.run_on_value(self.i_s, &mut |i_s, value| {
-                    debug!("Get Item on {}", value.name());
-                    value.get_item(
-                        i_s,
-                        &SliceType::new(f, node_index, slice_type),
-                        result_context,
-                    )
-                })
+                // TODO enable this debug
+                //debug!("Get Item on {}", base.format_short(self.i_s));
+                base.get_item(
+                    self.i_s,
+                    &SliceType::new(f, node_index, slice_type),
+                    result_context,
+                )
             }
         }
     }
@@ -1427,27 +1441,47 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     return result.save_redirect(self.i_s, self.file, atom.index());
                 }
                 let result = match list.unpack() {
-                    elements @ StarLikeExpressionIterator::Elements(_) => self
-                        .file
-                        .inference(self.i_s)
-                        .create_list_or_set_generics(elements),
+                    elements @ StarLikeExpressionIterator::Elements(_) => {
+                        self.create_list_or_set_generics(elements)
+                    }
                     StarLikeExpressionIterator::Empty => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
                 };
-                return Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(
+                return Inferred::execute_db_type(
+                    self.i_s,
                     DbType::Class(
                         self.i_s.db.python_state.builtins_point_link("list"),
-                        Some(GenericsList::new_generics(Box::new([result]))),
+                        Some(GenericsList::new_generics(Rc::new([result]))),
                     ),
-                )));
+                );
             }
-            ListComprehension(_) => Specific::List,
-            Dict(_) => Specific::Dict,
+            ListComprehension(_) => {
+                debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
+                return Inferred::execute_db_type(
+                    self.i_s,
+                    DbType::Class(
+                        self.i_s.db.python_state.builtins_point_link("list"),
+                        Some(GenericsList::new_generics(Rc::new([
+                            GenericItem::TypeArgument(DbType::Any),
+                        ]))),
+                    ),
+                );
+            }
+            Dict(dict) => {
+                let generics = self.create_dict_generics(dict, result_context);
+                return Inferred::execute_db_type(
+                    self.i_s,
+                    DbType::Class(
+                        self.i_s.db.python_state.builtins_point_link("dict"),
+                        Some(generics),
+                    ),
+                );
+            }
             DictComprehension(_) => todo!(),
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::create_instance(
                         self.i_s.db.python_state.builtins_point_link("set"),
-                        Some(Box::new([self.create_list_or_set_generics(elements)])),
+                        Some(Rc::new([self.create_list_or_set_generics(elements)])),
                     )
                     .save_redirect(self.i_s, self.file, atom.index());
                 } else {
@@ -1508,7 +1542,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
         );
-        Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(content))))
+        Inferred::execute_db_type(self.i_s, DbType::Tuple(Rc::new(content)))
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
@@ -1840,23 +1874,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
                     node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
-                    Some(Inferred::new_unsaved_specific(Specific::Cycle))
+                    Some(Inferred::new_cycle())
                 } else {
                     None
                 }
             });
-        if cfg!(feature = "zuban_debug") {
-            if let Some(inferred) = result.as_ref() {
-                if inferred.is_unknown() {
-                    debug!("Found unknown cache result: {node_index}");
-                }
-            }
-        }
         result
-    }
-
-    fn infer_multi_definition(&mut self, name_def: NameDefinition) -> Inferred {
-        self.infer_name_definition(name_def)
     }
 
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred {
@@ -1937,13 +1960,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 fn add_attribute_error<'db>(
     i_s: &InferenceState<'db, '_>,
     node_ref: NodeRef,
-    value: &dyn Value<'db, '_>,
+    t: &Type,
     name: Name,
 ) {
-    let object = if value.as_module().is_some() {
+    let object = if matches!(t.maybe_db_type(), Some(DbType::Module(_))) {
         Box::from("Module")
     } else {
-        format!("{:?}", value.as_type(i_s).format_short(i_s.db)).into()
+        format!("{:?}", t.format_short(i_s.db)).into()
     };
     node_ref.add_typing_issue(
         i_s,

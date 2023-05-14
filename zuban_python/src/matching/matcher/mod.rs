@@ -12,7 +12,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::params::{matches_simple_params, InferrableParamIterator2};
-use super::{FormatData, Generic, Match, ParamsStyle, SignatureMatch, Type};
+use super::{FormatData, Generic, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem,
@@ -23,7 +23,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function, OnTypeError};
+use crate::type_helpers::{Class, Function};
 use type_var_matcher::{BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher};
 use utils::match_arguments_against_params;
 

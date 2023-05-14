@@ -2,7 +2,7 @@ use std::cell::Cell;
 
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, Database};
-use crate::value::{Class, Function};
+use crate::type_helpers::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]
 enum Context<'db, 'a> {

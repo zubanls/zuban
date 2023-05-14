@@ -14,7 +14,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::value::Module;
+use crate::type_helpers::Module;
 
 #[derive(Clone, Copy)]
 pub struct NodeRef<'file> {
@@ -42,8 +42,8 @@ impl<'file> NodeRef<'file> {
         }
     }
 
-    pub fn in_module(&self, db: &'file Database) -> Module<'file> {
-        Module::new(db, self.file)
+    pub fn in_module(&self) -> Module<'file> {
+        Module::new(self.file)
     }
 
     pub fn to_db_lifetime(self, db: &Database) -> NodeRef {

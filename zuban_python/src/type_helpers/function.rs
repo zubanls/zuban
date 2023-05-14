@@ -7,22 +7,20 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
-use super::{LookupResult, Module, OnTypeError, Value, ValueKind};
+use super::Module;
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, Execution, GenericItem, GenericsList, IntersectionType, Locality,
-    Overload, ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific,
-    StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, Overload, ParamSpecUsage,
+    ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
-use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{
     use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
-use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::params::{
@@ -30,11 +28,12 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, Matcher,
-    ResultContext, SignatureMatch, Type,
+    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, LookupResult,
+    Matcher, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::value::Class;
+use crate::type_helpers::Class;
+use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {
@@ -58,21 +57,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
     // - "(" for decorator caching
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
         Self { node_ref, class }
-    }
-
-    pub fn from_execution(
-        db: &'db Database,
-        execution: &Execution,
-        class: Option<Class<'class>>,
-    ) -> Self {
-        let f_func = db.loaded_python_file(execution.function.file);
-        Function::new(
-            NodeRef {
-                file: f_func,
-                node_index: execution.function.node_index,
-            },
-            class,
-        )
     }
 
     pub fn node(&self) -> FunctionDef<'a> {
@@ -134,23 +118,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let (check_args, func) = if func_node.index() == self.node_ref.node_index {
             (args, self)
         } else {
-            /*
-            let mut execution = args.outer_execution();
-            loop {
-                if let Some(exec) = execution {
-                    if func_node.index() == exec.function.node_index {
-                        // TODO this could be an instance as well
-                        // TODO in general check if this code still makes sense
-                        temporary_args = SimpleArguments::from_execution(i_s.db, exec);
-                        temporary_func = Function::from_execution(i_s.db, exec, None);
-                        break (&temporary_args as &dyn Arguments, &temporary_func);
-                    }
-                    execution = exec.in_.as_deref();
-                } else {
-                    return Inferred::new_unknown();
-                }
-            }
-            */
             debug!("TODO untyped param");
             return Inferred::new_unknown();
         };
@@ -392,20 +359,25 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 ),
             );
         }
-        if let Some(callable_content) = new_inf.maybe_callable(i_s, false) {
+        if let Some(callable_content) = new_inf.as_type(i_s).maybe_callable(i_s, false) {
             let mut callable_content = callable_content.into_owned();
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
-            Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Callable(
-                Rc::new(callable_content),
-            ))))
-            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+            Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(
+                i_s,
+                decorator_ref.file,
+                decorator_ref.node_index,
+            )
         } else {
             new_inf.save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
         }
     }
 
-    pub fn as_db_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> DbType {
+    pub fn as_callable(
+        &self,
+        i_s: &InferenceState,
+        first: FirstParamProperties,
+    ) -> CallableContent {
         let mut params = self.iter_params().peekable();
         let mut self_type_var_usage = None;
         let defined_at = self.node_ref.as_link();
@@ -483,7 +455,15 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let mut callable =
             self.internal_as_db_type(i_s, params, self_type_var_usage.is_some(), as_db_type);
         callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-        DbType::Callable(Rc::new(callable))
+        callable
+    }
+
+    pub fn as_db_type(&self, i_s: &InferenceState, first: FirstParamProperties) -> DbType {
+        DbType::Callable(Rc::new(self.as_callable(i_s, first)))
+    }
+
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 
     pub fn classmethod_as_db_type(
@@ -927,29 +907,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             format!("def {type_var_str}{name}({args}) -> {result}").into()
         }
     }
-}
 
-impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
-    fn name(&self) -> &str {
-        let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
-        func.name().as_str()
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        debug!("TODO Function lookup");
-        LookupResult::None
-    }
-
-    fn execute(
+    pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -969,28 +928,27 @@ impl<'db, 'a, 'class> Value<'db, 'a> for Function<'a, 'class> {
         }
     }
 
-    fn get_item(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .as_node_ref()
-            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
-        Inferred::new_unknown()
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        debug!("TODO Function lookup");
+        LookupResult::None
     }
 
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
+    pub fn qualified_name(&self, db: &'a Database) -> String {
+        base_qualified_name!(self, db, self.name())
     }
 
-    fn as_function(&self) -> Option<&Function<'a, 'class>> {
-        Some(self)
+    fn module(&self) -> Module<'a> {
+        Module::new(self.node_ref.file)
     }
 
-    fn module(&self, db: &'a Database) -> Module<'a> {
-        Module::new(db, self.node_ref.file)
+    pub fn name(&self) -> &str {
+        let func = FunctionDef::by_index(&self.node_ref.file.tree, self.node_ref.node_index);
+        func.name().as_str()
     }
 }
 
@@ -1246,9 +1204,7 @@ impl<'db> InferrableParam<'db, '_> {
                     ))
                 }
                 let t = TupleContent::new_fixed_length(list.into_boxed_slice());
-                Some(Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(
-                    Box::new(DbType::Tuple(t)),
-                )))
+                Some(Inferred::from_type(DbType::Tuple(Rc::new(t))))
             }
             ParamInput::None => None,
         }
@@ -1493,7 +1449,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_unknown(),
                     },
                 });
-                let DbType::Union(u) = inf.class_as_type(i_s).into_db_type(i_s.db) else {
+                let DbType::Union(u) = inf.as_type(i_s).into_db_type(i_s.db) else {
                     unreachable!()
                 };
                 let mut unioned = DbType::Never;
@@ -1653,16 +1609,20 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::Intersection(IntersectionType::new_overload(
+        DbType::FunctionOverload(
             self.overload
                 .functions
                 .iter()
                 .map(|link| {
                     let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                    function.as_db_type(i_s, first)
+                    function.as_callable(i_s, first)
                 })
                 .collect(),
-        ))
+        )
+    }
+
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 
     pub(super) fn execute_internal(
@@ -1682,27 +1642,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Function
-    }
-
-    fn name(&self) -> &str {
-        self.node_ref.as_code()
-    }
-
-    fn lookup_internal(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        todo!()
-    }
-
-    fn execute(
+    pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -1712,25 +1653,8 @@ impl<'db, 'a> Value<'db, 'a> for OverloadedFunction<'a> {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
-    fn get_item(
-        &self,
-        i_s: &InferenceState,
-        slice_type: &SliceType,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        slice_type
-            .as_node_ref()
-            .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
-        todo!("Please write a test that checks this");
-        //Inferred::new_unknown()
-    }
-
-    fn as_overloaded_function(&self) -> Option<&OverloadedFunction<'a>> {
-        Some(self)
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
+    fn name(&self) -> &str {
+        self.node_ref.as_code()
     }
 }
 

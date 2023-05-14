@@ -1,11 +1,12 @@
-use super::{Class, LookupResult, OnTypeError, Value, ValueKind};
+use super::Class;
 use crate::arguments::Arguments;
-use crate::base_description;
 use crate::database::{CallableContent, DbType};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{calculate_callable_type_vars_and_return, FormatData, ResultContext, Type};
+use crate::matching::{
+    calculate_callable_type_vars_and_return, LookupResult, OnTypeError, ResultContext, Type,
+};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Copy, Clone)]
@@ -19,7 +20,7 @@ impl<'a> Callable<'a> {
         Self { db_type, content }
     }
 
-    pub(super) fn execute_internal<'db>(
+    pub fn execute_internal<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
@@ -39,18 +40,8 @@ impl<'a> Callable<'a> {
         let g_o = Type::new(&self.content.result_type);
         g_o.execute_and_resolve_type_vars(i_s, None, None, &calculated_type_vars)
     }
-}
 
-impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
-    }
-
-    fn name(&self) -> &str {
-        "Callable"
-    }
-
-    fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -58,27 +49,5 @@ impl<'db, 'a> Value<'db, 'a> for Callable<'a> {
     ) -> LookupResult {
         debug!("TODO callable lookups");
         LookupResult::None
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::new(self.db_type)
-    }
-
-    fn as_callable(&self) -> Option<Callable<'a>> {
-        Some(*self)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        self.execute_internal(i_s, args, on_type_error, None, result_context)
-    }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        base_description!(self) + &self.content.format(&FormatData::new_short(i_s.db))
     }
 }

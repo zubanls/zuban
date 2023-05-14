@@ -2,7 +2,7 @@ use parsa_python_ast::*;
 
 use crate::arguments::NoArguments;
 use crate::database::{
-    CallableParams, ComplexPoint, Locality, Point, PointType, Specific, Variance,
+    CallableParams, ComplexPoint, Database, DbType, Locality, Point, PointType, Specific, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -12,7 +12,7 @@ use crate::matching::{
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Function};
+use crate::type_helpers::{Class, Function};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -45,22 +45,10 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::YieldExpr(x) => {}
                 SimpleStmtContent::RaiseStmt(raise_stmt) => {
                     if let Some((expr, from_expr)) = raise_stmt.unpack() {
-                        let mut has_no_base_exception = false;
-                        self.infer_expression(expr).run_mut(
-                            self.i_s,
-                            &mut |i_s, value| {
-                                if !value.should_add_lookup_error(i_s.db) {
-                                    return
-                                }
-                                let Some(class) = value.as_class().copied().or_else(|| value.as_instance().map(|instance| instance.class)) else {
-                                    has_no_base_exception = true;
-                                    return
-                                };
-                                has_no_base_exception |= !class.in_mro(self.i_s.db, &self.i_s.db.python_state.base_exception());
-                            },
-                            &mut || (),
-                        );
-                        if has_no_base_exception {
+                        if !valid_raise_type(
+                            self.i_s.db,
+                            self.infer_expression(expr).as_type(self.i_s),
+                        ) {
                             NodeRef::new(self.file, expr.index()).add_typing_issue(
                                 self.i_s,
                                 IssueType::BaseExceptionExpectedForRaise,
@@ -250,7 +238,8 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 if o.implementing_function_has_decorators {
                     decorated = imp.decorated(self.i_s);
-                    implementation_callable_content = decorated.maybe_callable(self.i_s, true);
+                    implementation_callable_content =
+                        decorated.as_type(self.i_s).maybe_callable(self.i_s, true);
                     maybe_implementation = Some(imp);
                 }
             }
@@ -463,7 +452,7 @@ impl<'db> Inference<'db, '_, '_> {
             .infer_star_expressions(star_exprs, &mut ResultContext::Unknown)
             .save_and_iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
             .infer_all(self.i_s);
-        debug!("For loop input: {}", element.description(self.i_s));
+        debug!("For loop input: {}", element.format_short(self.i_s));
         self.assign_targets(
             star_targets.as_target(),
             element,
@@ -556,5 +545,23 @@ impl<'db> Inference<'db, '_, '_> {
             Target::Tuple(_) => todo!(),
             Target::Starred(_) => unreachable!(),
         }
+    }
+}
+
+fn valid_raise_type(db: &Database, t: Type) -> bool {
+    let check = |link, generics| {
+        let cls = Class::from_db_type(db, link, generics);
+        cls.incomplete_mro(db) || cls.in_mro(db, &db.python_state.base_exception())
+    };
+    match t.into_db_type(db) {
+        DbType::Class(link, generics) => check(link, &generics),
+        DbType::Type(t) => match t.as_ref() {
+            DbType::Class(link, generics) => check(*link, generics),
+            _ => return false,
+        },
+        DbType::Any => true,
+        DbType::Never => todo!(),
+        DbType::Union(union) => union.iter().all(|t| valid_raise_type(db, Type::new(t))),
+        _ => false,
     }
 }

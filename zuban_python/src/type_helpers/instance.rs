@@ -2,38 +2,32 @@ use std::borrow::Cow;
 
 use parsa_python_ast::Name;
 
-use super::{
-    Class, IteratorContent, LookupResult, MroIterator, NamedTupleValue, OnTypeError, Tuple, Value,
-    ValueKind,
-};
+use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, Database, DbType, PointLink};
+use crate::database::{ClassType, DbType, PointLink};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, ResultContext, Type};
+use crate::matching::{IteratorContent, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Instance<'a> {
     pub class: Class<'a>,
-    inferred_link: Option<NodeRef<'a>>,
+    inferred: Option<&'a Inferred>,
 }
 
 impl<'a> Instance<'a> {
-    pub fn new(class: Class<'a>, inferred_link: Option<NodeRef<'a>>) -> Self {
-        Self {
-            class,
-            inferred_link,
-        }
+    pub fn new(class: Class<'a>, inferred: Option<&'a Inferred>) -> Self {
+        Self { class, inferred }
     }
 
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
-        if let Some(inferred_link) = self.inferred_link {
-            Inferred::from_saved_node_ref(inferred_link)
+        if let Some(inferred) = self.inferred {
+            inferred.clone()
         } else {
             let t = self.class.as_db_type(i_s.db);
             Inferred::execute_db_type(i_s, t)
@@ -55,15 +49,15 @@ impl<'a> Instance<'a> {
                     .lookup_symbol(i_s, name.as_str())
                     .into_maybe_inferred()
                 {
-                    inf.resolve_class_type_vars(i_s, &self.class).run_mut(
-                        i_s,
-                        &mut |i_s, v| {
+                    inf.resolve_class_type_vars(i_s, &self.class)
+                        .as_type(i_s)
+                        .run_on_each_union_type(&mut |t| {
                             if had_no_set {
                                 todo!()
                             }
-                            if let Some(descriptor) = v.as_instance() {
-                                if let Some(set) = descriptor
-                                    .lookup_internal(i_s, Some(from), "__set__")
+                            if let Some(descriptor) = t.maybe_class(i_s.db) {
+                                if let Some(set) = Instance::new(descriptor, None)
+                                    .lookup(i_s, Some(from), "__set__")
                                     .into_maybe_inferred()
                                 {
                                     had_set = true;
@@ -101,26 +95,88 @@ impl<'a> Instance<'a> {
                                 }
                                 had_no_set = true;
                             }
-                        },
-                        || (),
-                    );
+                        });
                 }
             }
         }
         had_set
     }
-}
 
-impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
-    fn kind(&self) -> ValueKind {
-        ValueKind::Object
+    pub fn execute<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        let node_ref = args.as_node_ref();
+        if let Some(inf) = self
+            .lookup(i_s, Some(node_ref), "__call__")
+            .into_maybe_inferred()
+        {
+            inf.execute_with_details(i_s, args, result_context, on_type_error)
+        } else {
+            let t = self.class.format_short(i_s.db);
+            node_ref.add_typing_issue(
+                i_s,
+                IssueType::NotCallable {
+                    type_: format!("{:?}", t).into(),
+                },
+            );
+            Inferred::new_unknown()
+        }
     }
 
-    fn name(&self) -> &str {
-        self.class.name()
+    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent<'a> {
+        if let ClassType::NamedTuple(ref named_tuple) =
+            self.class.use_cached_class_infos(i_s.db).class_type
+        {
+            // TODO this doesn't take care of the mro and could not be the first __iter__
+            return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
+        }
+        let mro_iterator = self.class.mro(i_s.db);
+        let finder = ClassMroFinder {
+            i_s,
+            instance: self,
+            mro_iterator,
+            from,
+            name: "__iter__",
+        };
+        for found_on_class in finder {
+            match found_on_class {
+                FoundOnClass::Attribute(inf) => {
+                    return IteratorContent::Inferred(
+                        inf.execute(i_s, &NoArguments::new(from))
+                            .lookup_and_execute(
+                                i_s,
+                                from,
+                                "__next__",
+                                &NoArguments::new(from),
+                                &|_, _| todo!(),
+                            ),
+                    );
+                }
+                FoundOnClass::UnresolvedDbType(Cow::Borrowed(DbType::Tuple(t))) => {
+                    return Tuple::new(t).iter(i_s, from);
+                }
+                FoundOnClass::UnresolvedDbType(Cow::Owned(db_type @ DbType::Tuple(_))) => {
+                    debug!("TODO Owned tuples won't work with iter currently");
+                }
+                _ => (),
+            }
+        }
+        if !self.class.incomplete_mro(i_s.db) {
+            from.add_typing_issue(
+                i_s,
+                IssueType::NotIterable {
+                    type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
+                },
+            );
+        }
+        IteratorContent::Any
     }
 
-    fn lookup_internal(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
@@ -166,39 +222,14 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 }
             }
         }
-        LookupResult::None
-    }
-
-    fn should_add_lookup_error(&self, db: &Database) -> bool {
-        self.class.should_add_lookup_error(db)
-    }
-
-    fn execute(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        result_context: &mut ResultContext,
-        on_type_error: OnTypeError<'db, '_>,
-    ) -> Inferred {
-        let node_ref = args.as_node_ref();
-        if let Some(inf) = self
-            .lookup_internal(i_s, Some(node_ref), "__call__")
-            .into_maybe_inferred()
-        {
-            inf.execute_with_details(i_s, args, result_context, on_type_error)
+        if self.class.incomplete_mro(i_s.db) {
+            LookupResult::any()
         } else {
-            let t = self.as_type(i_s).format_short(i_s.db);
-            node_ref.add_typing_issue(
-                i_s,
-                IssueType::NotCallable {
-                    type_: format!("{:?}", t).into(),
-                },
-            );
-            Inferred::new_unknown()
+            LookupResult::None
         }
     }
 
-    fn get_item(
+    pub fn get_item(
         &self,
         i_s: &InferenceState,
         slice_type: &SliceType,
@@ -245,11 +276,7 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
                 }
                 FoundOnClass::UnresolvedDbType(db_type) => match db_type.as_ref() {
                     DbType::Tuple(t) => {
-                        return Tuple::new(db_type.as_ref(), t).get_item(
-                            i_s,
-                            slice_type,
-                            result_context,
-                        );
+                        return Tuple::new(t).get_item(i_s, slice_type, result_context);
                     }
                     _ => (),
                 },
@@ -262,77 +289,6 @@ impl<'db: 'a, 'a> Value<'db, 'a> for Instance<'a> {
             },
         );
         Inferred::new_any()
-    }
-
-    fn iter(&self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent<'a> {
-        if let ClassType::NamedTuple(ref named_tuple) =
-            self.class.use_cached_class_infos(i_s.db).class_type
-        {
-            // TODO this doesn't take care of the mro and could not be the first __iter__
-            return NamedTupleValue::new(i_s.db, named_tuple).iter(i_s, from);
-        }
-        let mro_iterator = self.class.mro(i_s.db);
-        let finder = ClassMroFinder {
-            i_s,
-            instance: self,
-            mro_iterator,
-            from,
-            name: "__iter__",
-        };
-        for found_on_class in finder {
-            match found_on_class {
-                FoundOnClass::Attribute(inf) => {
-                    return IteratorContent::Inferred(
-                        inf.execute(i_s, &NoArguments::new(from)).execute_function(
-                            i_s,
-                            "__next__",
-                            from,
-                            &NoArguments::new(from),
-                            &|_| todo!(),
-                        ),
-                    );
-                }
-                FoundOnClass::UnresolvedDbType(Cow::Borrowed(db_type @ DbType::Tuple(t))) => {
-                    return Tuple::new(db_type, t).iter(i_s, from);
-                }
-                FoundOnClass::UnresolvedDbType(Cow::Owned(db_type @ DbType::Tuple(_))) => {
-                    debug!("TODO Owned tuples won't work with iter currently");
-                }
-                _ => (),
-            }
-        }
-        if !self.class.incomplete_mro(i_s.db) {
-            from.add_typing_issue(
-                i_s,
-                IssueType::NotIterable {
-                    type_: format!("{:?}", self.class.format_short(i_s.db)).into(),
-                },
-            );
-        }
-        IteratorContent::Any
-    }
-
-    fn as_instance(&self) -> Option<&Instance<'a>> {
-        Some(self)
-    }
-
-    fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        if matches!(self.class.generics, Generics::Self_ { .. }) {
-            // The generics are only ever self for our own instance, because Generics::Self_ is
-            // only used for the current class.
-            debug_assert_eq!(i_s.current_class().unwrap().node_ref, self.class.node_ref);
-            Type::owned(DbType::Self_)
-        } else {
-            Type::Class(self.class)
-        }
-    }
-
-    fn description(&self, i_s: &InferenceState) -> String {
-        format!(
-            "{} {}",
-            format!("{:?}", self.kind()).to_lowercase(),
-            self.class.format_short(i_s.db),
-        )
     }
 }
 

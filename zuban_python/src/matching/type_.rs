@@ -1,19 +1,27 @@
 use std::borrow::Cow;
+use std::rc::Rc;
 
 use super::params::has_overlapping_params;
 use super::{
-    matches_params, CalculatedTypeArguments, FormatData, Generics, Match, Matcher, MismatchReason,
+    calculate_callable_type_vars_and_return, matches_params, CalculatedTypeArguments, FormatData,
+    Generics, IteratorContent, LookupResult, Match, Matcher, MismatchReason, OnLookupError,
+    OnTypeError, ResultContext,
 };
+use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParams, ClassType, Database, DbType, MetaclassState, TupleContent,
     TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
+use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
-use crate::value::{Class, Instance, LookupResult, MroIterator, NamedTupleValue, Value};
+use crate::type_helpers::{
+    Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeVarInstance,
+    TypingType,
+};
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -70,26 +78,57 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Cow<'a, CallableContent>> {
+    #[inline]
+    pub fn maybe_type_of_class(&self, db: &'a Database) -> Option<Class<'_>> {
+        if let Some(DbType::Type(t)) = self.maybe_db_type() {
+            if let DbType::Class(link, generics) = t.as_ref() {
+                return Some(Class::from_db_type(db, *link, generics));
+            }
+        }
+        None
+    }
+
+    #[inline]
+    pub fn maybe_borrowed_class(&self, db: &'a Database) -> Option<Class<'a>> {
+        match self {
+            Self::Class(c) => Some(*c),
+            Self::Type(Cow::Borrowed(t)) => match t {
+                DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
+                _ => None,
+            },
+            Self::Type(Cow::Owned(_)) => unreachable!(),
+        }
+    }
+
+    pub fn maybe_callable(
+        &self,
+        i_s: &InferenceState,
+        include_non_callables: bool,
+    ) -> Option<Cow<'a, CallableContent>> {
         match self {
             Self::Type(Cow::Borrowed(DbType::Callable(c))) => Some(Cow::Borrowed(c)),
             _ => match self.maybe_db_type() {
-                Some(DbType::Callable(c)) => Some(Cow::Owned(c.as_ref().clone())),
-                Some(DbType::Type(t)) => match t.as_ref() {
+                Some(DbType::Callable(c)) if include_non_callables => {
+                    Some(Cow::Owned(c.as_ref().clone()))
+                }
+                Some(DbType::Type(t)) if include_non_callables => match t.as_ref() {
                     DbType::Class(link, generics) => {
                         todo!()
                     }
                     _ => None,
                 },
-                _ => self.maybe_class(i_s.db).and_then(|c| {
+                Some(DbType::Any) => Some(Cow::Owned(CallableContent::new_any())),
+                _ if include_non_callables => self.maybe_class(i_s.db).and_then(|c| {
                     Instance::new(c, None)
-                        .lookup_internal(i_s, None, "__call__")
+                        .lookup(i_s, None, "__call__")
                         .into_maybe_inferred()
                         .and_then(|i| {
-                            i.maybe_callable(i_s, true)
+                            i.as_type(i_s)
+                                .maybe_callable(i_s, include_non_callables)
                                 .map(|c| Cow::Owned(c.into_owned()))
                         })
                 }),
+                _ => None,
             },
         }
     }
@@ -204,12 +243,13 @@ impl<'a> Type<'a> {
                     _ => false,
                 },
                 DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
-                DbType::Intersection(intersection) => todo!(),
+                DbType::FunctionOverload(intersection) => todo!(),
                 DbType::NewType(_) => todo!(),
                 DbType::RecursiveAlias(_) => todo!(),
                 DbType::Self_ => false, // TODO this is wrong
                 DbType::ParamSpecArgs(usage) => todo!(),
                 DbType::ParamSpecKwargs(usage) => todo!(),
+                DbType::Module(file_index) => todo!(),
                 DbType::NamedTuple(_) => todo!(),
             },
         }
@@ -251,9 +291,9 @@ impl<'a> Type<'a> {
                             let cls = Class::from_db_type(i_s.db, *link, generics);
                             // TODO the __init__ should actually be looked up on the original class, not
                             // the subclass
-                            let lookup = cls.lookup_internal(i_s, None, "__init__");
+                            let lookup = cls.lookup(i_s, None, "__init__");
                             if let LookupResult::GotoName(_, init) = lookup {
-                                let t2 = init.class_as_type(i_s).into_db_type(i_s.db);
+                                let t2 = init.as_type(i_s).into_db_type(i_s.db);
                                 if let DbType::Callable(c2) = t2 {
                                     let type_vars2 = cls.type_vars(i_s);
                                     // Since __init__ does not have a return, We need to check the params
@@ -288,6 +328,15 @@ impl<'a> Type<'a> {
                         }
                     },
                     Some(DbType::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, c2),
+                    Some(DbType::FunctionOverload(overload)) if variance == Variance::Covariant => {
+                        if matcher.is_matching_reverse() {
+                            todo!()
+                        }
+                        overload
+                            .iter()
+                            .any(|c2| Self::matches_callable(i_s, matcher, c1, c2).bool())
+                            .into()
+                    }
                     _ => Match::new_false(),
                 },
                 DbType::None => {
@@ -298,7 +347,7 @@ impl<'a> Type<'a> {
                     debug!("TODO write a test for this.");
                     let t1 = self.as_cow(i_s.db);
                     matcher.set_all_contained_type_vars_to_any(i_s, &t1);
-                    return Match::True { with_any: true };
+                    Match::True { with_any: true }
                 }
                 DbType::Any => Match::new_true(),
                 DbType::Never => Match::new_false(),
@@ -315,7 +364,7 @@ impl<'a> Type<'a> {
                 DbType::Union(union_type1) => {
                     self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
-                DbType::Intersection(intersection) => todo!(),
+                DbType::FunctionOverload(intersection) => todo!(),
                 DbType::Literal(literal1) => {
                     debug_assert!(!literal1.implicit);
                     match value_type.maybe_db_type() {
@@ -382,6 +431,7 @@ impl<'a> Type<'a> {
                     }
                     _ => Match::new_false(),
                 },
+                DbType::Module(file_index) => Match::new_false(),
             },
         };
         result
@@ -566,15 +616,6 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
-                DbType::Intersection(i2) if variance == Variance::Covariant => {
-                    if matcher.is_matching_reverse() {
-                        todo!()
-                    }
-                    return i2
-                        .iter()
-                        .any(|t2| self.simple_matches(i_s, &Type::new(t2), variance).bool())
-                        .into();
-                }
                 // Necessary to e.g. match int to Literal[1, 2]
                 DbType::Union(u2)
                     if variance == Variance::Covariant
@@ -585,8 +626,8 @@ impl<'a> Type<'a> {
                         debug!("TODO matching reverse?");
                     }
                     let mut result: Option<Match> = None;
-                    for e in u2.entries.iter() {
-                        let r = self.matches(i_s, matcher, &Type::new(&e.type_), variance);
+                    for t in u2.iter() {
+                        let r = self.matches(i_s, matcher, &Type::new(t), variance);
                         if !r.bool() {
                             return r.bool().into();
                         } else {
@@ -608,6 +649,14 @@ impl<'a> Type<'a> {
                     return self.simple_matches(
                         i_s,
                         &Type::Class(*i_s.current_class().unwrap()),
+                        variance,
+                    )
+                }
+                DbType::Module(_) => {
+                    return self.matches(
+                        i_s,
+                        matcher,
+                        &Type::Class(i_s.db.python_state.module_type()),
                         variance,
                     )
                 }
@@ -952,10 +1001,9 @@ impl<'a> Type<'a> {
             impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>, &MismatchReason) -> NodeRef<'db>,
         >,
     ) -> Match {
-        let value_type = value.class_as_type(i_s);
+        let value_type = value.as_type(i_s);
         let matches = self.is_super_type_of(i_s, matcher, &value_type);
         if let Match::False { ref reason, .. } = matches {
-            let value_type = value.class_as_type(i_s);
             let mut fmt1 = FormatData::new_short(i_s.db);
             let mut fmt2 = FormatData::with_matcher(i_s.db, matcher);
             let mut input = value_type.format(&fmt1);
@@ -1028,7 +1076,7 @@ impl<'a> Type<'a> {
                     if let Some(DbType::Tuple(t2)) = self.maybe_db_type() {
                         match (&t1.args, &t2.args) {
                             (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
-                                return DbType::Tuple(TupleContent::new_fixed_length(
+                                return DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
                                     ts1.iter()
                                         .zip(ts2.iter())
                                         .map(|(g1, g2)| match (g1, g2) {
@@ -1045,16 +1093,16 @@ impl<'a> Type<'a> {
                                             _ => todo!(),
                                         })
                                         .collect(),
-                                ))
+                                )))
                             }
                             (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
-                                return DbType::Tuple(TupleContent::new_arbitrary_length(
+                                return DbType::Tuple(Rc::new(TupleContent::new_arbitrary_length(
                                     Type::new(t1.as_ref()).try_to_resemble_context(
                                         i_s,
                                         matcher,
                                         &Type::new(t2.as_ref()),
                                     ),
-                                ))
+                                )))
                             }
                             (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
                                 /*
@@ -1121,6 +1169,80 @@ impl<'a> Type<'a> {
             &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
             &mut replace_self,
         )
+    }
+
+    pub fn execute<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        inferred_from: Option<&Inferred>,
+        args: &dyn Arguments<'db>,
+        result_context: &mut ResultContext,
+        on_type_error: OnTypeError<'db, '_>,
+    ) -> Inferred {
+        if let Some(cls) = self.maybe_class(i_s.db) {
+            return Instance::new(cls, inferred_from).execute(
+                i_s,
+                args,
+                result_context,
+                on_type_error,
+            );
+        }
+        match self.maybe_db_type().unwrap() {
+            DbType::Type(cls) => {
+                execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
+            }
+            DbType::Union(union) => Inferred::gather_union(i_s, |gather| {
+                for entry in union.iter() {
+                    gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
+                }
+            }),
+            t @ DbType::Callable(content) => Callable::new(t, content).execute_internal(
+                i_s,
+                args,
+                on_type_error,
+                None,
+                result_context,
+            ),
+            DbType::Any | DbType::Never => {
+                args.iter().calculate_diagnostics(i_s);
+                Inferred::new_unknown()
+            }
+            _ => {
+                let t = self.format_short(i_s.db);
+                args.as_node_ref().add_typing_issue(
+                    i_s,
+                    IssueType::NotCallable {
+                        type_: format!("\"{}\"", t).into(),
+                    },
+                );
+                Inferred::new_unknown()
+            }
+        }
+    }
+
+    pub fn iter_on_borrowed<'slf>(
+        &self,
+        i_s: &InferenceState<'a, '_>,
+        from: NodeRef,
+    ) -> IteratorContent<'a> {
+        if let Some(cls) = self.maybe_borrowed_class(i_s.db) {
+            return Instance::new(cls, None).iter(i_s, from);
+        }
+        match self.maybe_borrowed_db_type().unwrap() {
+            DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
+            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
+            DbType::Any | DbType::Never => IteratorContent::Any,
+            _ => {
+                let t = self.format_short(i_s.db);
+                from.add_typing_issue(
+                    i_s,
+                    IssueType::NotIterable {
+                        type_: format!("\"{}\"", t).into(),
+                    },
+                );
+                IteratorContent::Any
+            }
+        }
     }
 
     pub fn on_any_class(
@@ -1216,18 +1338,227 @@ impl<'a> Type<'a> {
         }
     }
 
+    #[inline]
+    pub fn run_on_each_union_type(&self, callable: &mut impl FnMut(&Type)) {
+        match self.maybe_db_type() {
+            Some(DbType::Union(union)) => {
+                for t in union.iter() {
+                    Type::new(t).run_on_each_union_type(callable)
+                }
+            }
+            Some(DbType::Never) => (),
+            _ => callable(self),
+        }
+    }
+
+    #[inline]
+    pub fn run_after_lookup_on_each_union_member<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from_inferred: Option<&Inferred>,
+        from: Option<NodeRef>,
+        name: &str,
+        callable: &mut impl FnMut(&Type, LookupResult),
+    ) {
+        if let Some(cls) = self.maybe_class(i_s.db) {
+            return callable(
+                self,
+                Instance::new(cls, from_inferred).lookup(i_s, from, name),
+            );
+        }
+        match self.maybe_db_type().unwrap() {
+            DbType::Any => callable(self, LookupResult::any()),
+            DbType::None => {
+                debug!("TODO None lookup");
+                callable(self, LookupResult::None)
+            }
+            DbType::Literal(literal) => {
+                let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
+                callable(self, v.lookup(i_s, from, name))
+            }
+            t @ DbType::TypeVar(tv) => callable(
+                self,
+                TypeVarInstance::new(i_s.db, t, tv).lookup(i_s, from, name),
+            ),
+            DbType::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
+            DbType::Union(union) => {
+                for t in union.iter() {
+                    Type::new(t)
+                        .run_after_lookup_on_each_union_member(i_s, None, from, name, callable)
+                }
+            }
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Union(union) => {
+                    debug_assert!(!union.entries.is_empty());
+                    for t in union.iter() {
+                        callable(self, TypingType::new(i_s.db, t).lookup(i_s, None, name))
+                    }
+                }
+                DbType::Any => callable(self, LookupResult::any()),
+                _ => callable(self, TypingType::new(i_s.db, t).lookup(i_s, from, name)),
+            },
+            t @ DbType::Callable(c) => callable(self, Callable::new(t, c).lookup(i_s, from, name)),
+            DbType::Module(file_index) => {
+                let file = i_s.db.loaded_python_file(*file_index);
+                callable(self, Module::new(file).lookup(i_s, from, name))
+            }
+            DbType::Self_ => {
+                let current_class = i_s.current_class().unwrap();
+                let type_var_likes = current_class.type_vars(i_s);
+                callable(
+                    self,
+                    Instance::new(
+                        Class::from_position(
+                            current_class.node_ref.to_db_lifetime(i_s.db),
+                            Generics::Self_ {
+                                class_definition: current_class.node_ref.as_link(),
+                                type_var_likes: unsafe { std::mem::transmute(type_var_likes) },
+                            },
+                            None,
+                        ),
+                        from_inferred,
+                    )
+                    .lookup(i_s, from, name),
+                )
+            }
+            DbType::NamedTuple(nt) => callable(
+                self,
+                NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name),
+            ),
+            DbType::Never => (),
+            DbType::NewType(new_type) => Type::new(&new_type.type_(i_s))
+                .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
+            DbType::Class(..) => unreachable!(),
+            _ => todo!("{self:?}"),
+        }
+    }
+
+    pub fn lookup_without_error<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.lookup_helper(i_s, from, name, &|_, _| ())
+    }
+
+    pub fn lookup_with_error<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: NodeRef,
+        name: &str,
+        on_lookup_error: OnLookupError<'db, '_>,
+    ) -> LookupResult {
+        self.lookup_helper(i_s, Some(from), name, on_lookup_error)
+    }
+
+    #[inline]
+    fn lookup_helper<'db>(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        from: Option<NodeRef>,
+        name: &str,
+        on_lookup_error: OnLookupError<'db, '_>,
+    ) -> LookupResult {
+        let mut result: Option<LookupResult> = None;
+        self.run_after_lookup_on_each_union_member(
+            i_s,
+            None,
+            from,
+            name,
+            &mut |_, lookup_result| {
+                if matches!(lookup_result, LookupResult::None) {
+                    on_lookup_error(i_s, self);
+                }
+                result = Some(if let Some(l) = result.take() {
+                    LookupResult::UnknownName(
+                        l.into_inferred().union(i_s, lookup_result.into_inferred()),
+                    )
+                } else {
+                    lookup_result
+                })
+            },
+        );
+        result.unwrap_or_else(|| todo!())
+    }
+
     pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         match self {
             Self::Class(c) => c.lookup_symbol(i_s, name),
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(c, generics) => todo!(),
                 DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
-                DbType::NamedTuple(nt) => {
-                    NamedTupleValue::new(i_s.db, nt).lookup_internal(i_s, None, name)
-                }
+                DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, None, name),
                 DbType::Callable(t) => todo!(),
                 _ => todo!("{name:?} {self:?}"),
             },
+        }
+    }
+
+    pub fn get_item(
+        &self,
+        i_s: &InferenceState,
+        from_inferred: Option<&Inferred>,
+        slice_type: &SliceType,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        if let Some(cls) = self.maybe_class(i_s.db) {
+            return Instance::new(cls, from_inferred).get_item(i_s, slice_type, result_context);
+        }
+        match self.maybe_db_type().unwrap() {
+            DbType::Any => Inferred::new_any(),
+            DbType::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
+            DbType::NamedTuple(nt) => {
+                NamedTupleValue::new(i_s.db, nt).get_item(i_s, slice_type, result_context)
+            }
+            DbType::Union(union) => Inferred::gather_union(i_s, |callable| {
+                for t in union.iter() {
+                    callable(Type::new(t).get_item(i_s, None, slice_type, result_context))
+                }
+            }),
+            t @ DbType::TypeVar(tv) => {
+                if let Some(db_type) = &tv.type_var.bound {
+                    Type::new(db_type).get_item(i_s, None, slice_type, result_context)
+                } else {
+                    todo!()
+                }
+            }
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Class(link, generics) => Class::from_db_type(i_s.db, *link, generics)
+                    .get_item(i_s, slice_type, result_context),
+                _ => {
+                    slice_type
+                        .as_node_ref()
+                        .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                    Inferred::new_any()
+                }
+            },
+            DbType::NewType(new_type) => {
+                Type::new(new_type.type_(i_s)).get_item(i_s, None, slice_type, result_context)
+            }
+            DbType::RecursiveAlias(r) => Type::new(r.calculated_db_type(i_s.db)).get_item(
+                i_s,
+                None,
+                slice_type,
+                result_context,
+            ),
+            DbType::Callable(_) => {
+                slice_type
+                    .as_node_ref()
+                    .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                Inferred::new_unknown()
+            }
+            DbType::FunctionOverload(_) => {
+                slice_type
+                    .as_node_ref()
+                    .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                todo!("Please write a test that checks this");
+            }
+            DbType::None => {
+                debug!("TODO None[...]");
+                Inferred::new_any()
+            }
+            _ => todo!("get_item not implemented for {self:?}"),
         }
     }
 
@@ -1328,5 +1659,86 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
         result.into_owned()
     } else {
         DbType::Never
+    }
+}
+
+pub fn execute_type_of_type<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+    result_context: &mut ResultContext,
+    on_type_error: OnTypeError<'db, '_>,
+    type_: &DbType,
+) -> Inferred {
+    match type_ {
+        #![allow(unreachable_code)]
+        // TODO remove this
+        tuple @ DbType::Tuple(tuple_content) => {
+            debug!("TODO this does not check the arguments");
+            return Inferred::execute_db_type(i_s, tuple.clone());
+            // TODO reenable this
+            let mut args_iterator = args.iter();
+            let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
+                let inf = arg.infer(i_s, &mut ResultContext::Known(&Type::new(tuple)));
+                (arg, inf)
+            } else {
+                debug!("TODO this does not check the arguments");
+                return Inferred::execute_db_type(i_s, tuple.clone());
+            };
+            if args_iterator.next().is_some() {
+                todo!()
+            }
+            Type::new(tuple).error_if_not_matches(
+                i_s,
+                &inferred_tup,
+                |i_s: &InferenceState<'db, '_>, t1, t2| {
+                    (on_type_error.callback)(i_s, None, &|_| todo!(), &arg, t1, t2);
+                    args.as_node_ref().to_db_lifetime(i_s.db)
+                },
+            );
+            Inferred::execute_db_type(i_s, tuple.clone())
+        }
+        DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
+            .execute(i_s, args, result_context, on_type_error),
+        DbType::TypeVar(t) => {
+            if let Some(bound) = &t.type_var.bound {
+                execute_type_of_type(i_s, args, result_context, on_type_error, bound);
+                Inferred::execute_db_type(i_s, type_.clone())
+            } else {
+                todo!("{t:?}")
+            }
+        }
+        DbType::NewType(n) => {
+            let mut iterator = args.iter();
+            if let Some(first) = iterator.next() {
+                if iterator.next().is_some() {
+                    todo!()
+                }
+                // TODO match
+                Inferred::execute_db_type(i_s, type_.clone())
+            } else {
+                todo!()
+            }
+        }
+        DbType::Self_ => {
+            i_s.current_class()
+                .unwrap()
+                .execute(i_s, args, result_context, on_type_error);
+            Inferred::execute_db_type(i_s, DbType::Self_)
+        }
+        DbType::Any => Inferred::new_any(),
+        DbType::NamedTuple(nt) => {
+            let calculated_type_vars = calculate_callable_type_vars_and_return(
+                i_s,
+                None,
+                &nt.constructor,
+                args.iter(),
+                &|| args.as_node_ref(),
+                &mut ResultContext::Unknown,
+                on_type_error,
+            );
+            debug!("TODO use generics for namedtuple");
+            Inferred::execute_db_type(i_s, DbType::NamedTuple(nt.clone()))
+        }
+        _ => todo!("{:?}", type_),
     }
 }

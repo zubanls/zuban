@@ -8,7 +8,7 @@ use super::super::params::{
 };
 use super::super::{
     replace_class_type_vars, ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher,
-    MismatchReason, ResultContext, SignatureMatch, Type,
+    MismatchReason, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
@@ -21,8 +21,8 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
+use crate::type_helpers::{Class, FirstParamProperties, Function, Instance};
 use crate::utils::rc_unwrap_or_clone;
-use crate::value::{Class, FirstParamProperties, Function, Instance, OnTypeError, Value};
 
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
@@ -761,11 +761,10 @@ pub fn create_signature_without_self(
 ) -> Option<DbType> {
     let type_vars = func.type_vars(i_s);
     let mut matcher = Matcher::new_function_matcher(Some(&instance.class), func, type_vars);
-    let instance_t = instance.as_type(i_s);
     if !matches!(expected_type.maybe_db_type(), Some(DbType::Self_)) {
         // TODO It is questionable that we do not match Self here
         if !expected_type
-            .is_super_type_of(i_s, &mut matcher, &instance_t)
+            .is_super_type_of(i_s, &mut matcher, &Type::Class(instance.class))
             .bool()
         {
             return None;

@@ -1,15 +1,15 @@
 use std::mem;
+use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
+    Database, DbType, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
-use crate::matching::{ResultContext, Type};
+use crate::matching::{IteratorContent, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::value::IteratorContent;
 use crate::InferenceState;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
@@ -148,7 +148,6 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
 #[derive(Debug)]
 pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
-    mro_index: MroIndex,
     node_ref: NodeRef<'a>,
     is_bound_self: bool,
 }
@@ -176,7 +175,6 @@ impl<'a> KnownArguments<'a> {
         Self {
             inferred,
             node_ref,
-            mro_index: MroIndex(0),
             is_bound_self: false,
         }
     }
@@ -185,7 +183,6 @@ impl<'a> KnownArguments<'a> {
         Self {
             inferred,
             node_ref,
-            mro_index,
             is_bound_self: true,
         }
     }
@@ -342,9 +339,10 @@ impl<'db, 'a> Argument<'db, 'a> {
                         )
                     })
                     .collect();
-                Inferred::new_unsaved_complex(ComplexPoint::TypeInstance(Box::new(DbType::Tuple(
-                    TupleContent::new_fixed_length(parts),
-                ))))
+                Inferred::execute_db_type(
+                    i_s,
+                    DbType::Tuple(Rc::new(TupleContent::new_fixed_length(parts))),
+                )
             }
             ArgumentKind::Comprehension {
                 file,
@@ -353,9 +351,9 @@ impl<'db, 'a> Argument<'db, 'a> {
             } => file
                 .inference(&i_s.use_mode_of(func_i_s))
                 .infer_comprehension(*comprehension),
-            ArgumentKind::ParamSpec { usage, .. } => Inferred::new_unsaved_complex(
-                ComplexPoint::TypeInstance(Box::new(DbType::ParamSpecArgs(usage.clone()))),
-            ),
+            ArgumentKind::ParamSpec { usage, .. } => {
+                Inferred::execute_db_type(func_i_s, DbType::ParamSpecArgs(usage.clone()))
+            }
             ArgumentKind::Overridden { inferred, .. } => inferred.clone(),
         }
     }
@@ -440,7 +438,7 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                 is_bound_self,
                 ..
             } => match is_bound_self {
-                false => vec![inferred.class_as_type(i_s).format_short(i_s.db)],
+                false => vec![inferred.as_type(i_s).format_short(i_s.db)],
                 true => vec![],
             },
             Self::Iterator {
@@ -543,7 +541,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
-                            match inf.class_as_type(i_s).maybe_borrowed_db_type() {
+                            match inf.as_type(i_s).maybe_borrowed_db_type() {
                                 Some(DbType::ParamSpecArgs(usage)) => {
                                     // TODO check for the next arg being **P.kwargs
                                     iterator.next();
@@ -570,7 +568,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let inf = file
                                 .inference(i_s)
                                 .infer_expression(double_starred_expr.expression());
-                            let type_ = inf.class_as_type(i_s);
+                            let type_ = inf.as_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
                             let mut value_type = None;
                             if let Some(mro) = type_.mro(i_s.db) {
