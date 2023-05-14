@@ -29,7 +29,6 @@ pub enum Generics<'a> {
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
     SimpleGenericSlices(&'a PythonFile, Slices<'a>),
     List(&'a GenericsList, Option<&'a Generics<'a>>),
-    DbType(&'a DbType),
     Self_ {
         class_definition: PointLink,
         type_var_likes: Option<&'a TypeVarLikes>,
@@ -134,13 +133,6 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
-            Self::DbType(g) => {
-                if n > 0 {
-                    todo!()
-                }
-                // TODO TypeVarTuple is this correct?
-                Generic::TypeArgument(Type::owned((*g).clone()))
-            }
             Self::NotDefinedYet => Generic::owned(type_var_like.as_any_generic_item()),
             Self::Self_ {
                 class_definition, ..
@@ -162,7 +154,6 @@ impl<'a> Generics<'a> {
                 GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
             }
             Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
-            Self::DbType(g) => GenericsIteratorItem::DbType(g),
             Self::Self_ {
                 class_definition,
                 type_var_likes,
@@ -267,7 +258,6 @@ impl<'a> GenericsIterator<'a> {
 enum GenericsIteratorItem<'a> {
     SimpleGenericSliceIterator(&'a PythonFile, SliceIterator<'a>),
     GenericsList(std::slice::Iter<'a, GenericItem>, Option<&'a Generics<'a>>),
-    DbType(&'a DbType),
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
     TypeVarLikeIterator {
         iterator: std::iter::Enumerate<std::slice::Iter<'a, TypeVarLike>>,
@@ -304,13 +294,6 @@ impl<'a> Iterator for GenericsIterator<'a> {
             GenericsIteratorItem::GenericsList(iterator, type_var_generics) => iterator
                 .next()
                 .map(|g| replace_class_vars!(self.db, g, type_var_generics)),
-            GenericsIteratorItem::DbType(g) => {
-                if self.ended {
-                    return None;
-                }
-                self.ended = true;
-                Some(Generic::TypeArgument(Type::new(g)))
-            }
             GenericsIteratorItem::TypeVarLikeIterator {
                 iterator,
                 definition,
