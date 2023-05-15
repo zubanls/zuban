@@ -331,7 +331,6 @@ impl PythonState {
     builtins_attribute_node_ref!(slice_node_ref, builtins_slice_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
-    node_ref_to_class!(pub str, str_node_ref);
     node_ref_to_class!(int, int_node_ref);
     node_ref_to_class!(float, float_node_ref);
     node_ref_to_class!(memoryview, memoryview_node_ref);

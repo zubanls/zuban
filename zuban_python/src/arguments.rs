@@ -581,7 +581,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                                 .generics()
                                                 .nth(i_s.db, &type_vars[0], 0)
                                                 .expect_type_argument();
-                                            let s = Type::Class(i_s.db.python_state.str());
+                                            let s = Type::owned(i_s.db.python_state.str_db_type());
                                             if !key.is_simple_same_type(i_s, &s).bool() {
                                                 node_ref.add_typing_issue(
                                                     i_s,

@@ -470,8 +470,8 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             MetaclassState::Some(link2) => match current {
                 MetaclassState::Some(link1) => {
-                    let t1 = Type::Class(Class::from_db_type(i_s.db, *link1, &ClassGenerics::None));
-                    let t2 = Type::Class(Class::from_db_type(i_s.db, link2, &ClassGenerics::None));
+                    let t1 = Type::owned(DbType::Class(*link1, ClassGenerics::None));
+                    let t2 = Type::owned(DbType::Class(link2, ClassGenerics::None));
                     if !t1.is_simple_sub_type_of(i_s, &t2).bool() {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
