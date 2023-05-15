@@ -905,27 +905,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
                 let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
-                Inferred::create_instance(
-                    self.i_s.db.python_state.builtins_point_link("bool"),
-                    None,
-                )
+                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Conjunction(and) => {
                 let (first, second) = and.unpack();
                 let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
                 let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
-                Inferred::create_instance(
-                    self.i_s.db.python_state.builtins_point_link("bool"),
-                    None,
-                )
+                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Inversion(inversion) => {
                 let expr = inversion.expression();
                 self.infer_expression_part(expr, &mut ResultContext::Unknown);
-                Inferred::create_instance(
-                    self.i_s.db.python_state.builtins_point_link("bool"),
-                    None,
-                )
+                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Comparisons(cmps) => {
                 Inferred::gather_types_union(|gather| {
@@ -953,10 +944,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.infer_expression_part(first, &mut ResultContext::Unknown);
                                 let second =
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
-                                Inferred::create_instance(
-                                    self.i_s.db.python_state.builtins_point_link("bool"),
-                                    None,
-                                )
+                                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
                             }
                             ComparisonContent::In(first, op, second)
                             | ComparisonContent::NotIn(first, op, second) => {
@@ -1027,10 +1015,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         }
                                     },
                                 );
-                                Inferred::create_instance(
-                                    self.i_s.db.python_state.builtins_point_link("bool"),
-                                    None,
-                                )
+                                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
                             }
                             ComparisonContent::Operation(op) => self.infer_operation(op),
                         };

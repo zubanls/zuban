@@ -335,6 +335,8 @@ impl PythonState {
 
     node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
