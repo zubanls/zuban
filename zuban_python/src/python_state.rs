@@ -370,10 +370,11 @@ impl PythonState {
 
     pub fn type_var_type(&self) -> Type {
         debug_assert!(self.typing_type_var != 0);
-        Type::owned(DbType::Class(
+        DbType::Class(
             PointLink::new(self.typing().file_index(), self.typing_type_var),
             ClassGenerics::None,
-        ))
+        )
+        .into()
     }
 
     pub fn collections_namedtuple_function(&self) -> Function {
