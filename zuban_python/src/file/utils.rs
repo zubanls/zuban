@@ -40,12 +40,7 @@ impl<'db> Inference<'db, '_, '_> {
             };
             // Just because we defined a literal somewhere, we should probably not infer that.
             if let DbType::Literal(l) = t {
-                t = self
-                    .i_s
-                    .db
-                    .python_state
-                    .literal_class(l.kind)
-                    .as_db_type(self.i_s.db);
+                t = self.i_s.db.python_state.literal_db_type(l.kind);
             }
             result.union_in_place(t);
         }

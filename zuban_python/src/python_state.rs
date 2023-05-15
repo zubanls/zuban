@@ -402,17 +402,8 @@ impl PythonState {
         OverloadedFunction::new(node_ref, overload, None)
     }
 
-    pub fn literal_class(&self, literal_kind: LiteralKind) -> Class {
-        Class::from_position(
-            match literal_kind {
-                LiteralKind::Int(_) => self.int_node_ref(),
-                LiteralKind::String(_) => self.str_node_ref(),
-                LiteralKind::Bool(_) => self.bool_node_ref(),
-                LiteralKind::Bytes(_) => self.bytes_node_ref(),
-            },
-            Generics::None,
-            None,
-        )
+    pub fn literal_type(&self, literal_kind: LiteralKind) -> Type {
+        Type::owned(self.literal_db_type(literal_kind))
     }
 
     pub fn literal_db_type(&self, literal_kind: LiteralKind) -> DbType {

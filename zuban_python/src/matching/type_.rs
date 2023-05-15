@@ -236,7 +236,10 @@ impl<'a> Type<'a> {
                     Some(DbType::Literal(literal2)) => {
                         literal1.value(i_s.db) == literal2.value(i_s.db)
                     }
-                    _ => Type::Class(i_s.db.python_state.literal_class(literal1.kind))
+                    _ => i_s
+                        .db
+                        .python_state
+                        .literal_type(literal1.kind)
                         .overlaps(i_s, other),
                 },
                 DbType::None => {
@@ -852,7 +855,7 @@ impl<'a> Type<'a> {
                     i_s,
                     matcher,
                     class1,
-                    &Type::Class(i_s.db.python_state.literal_class(literal.kind)),
+                    &i_s.db.python_state.literal_type(literal.kind),
                     variance,
                 );
             }
@@ -1392,8 +1395,8 @@ impl<'a> Type<'a> {
                 callable(self, LookupResult::None)
             }
             DbType::Literal(literal) => {
-                let v = Instance::new(i_s.db.python_state.literal_class(literal.kind), None);
-                callable(self, v.lookup(i_s, from, name))
+                let t = i_s.db.python_state.literal_type(literal.kind);
+                callable(self, t.lookup_without_error(i_s, from, name))
             }
             t @ DbType::TypeVar(tv) => callable(
                 self,
