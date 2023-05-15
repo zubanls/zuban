@@ -56,6 +56,7 @@ impl<'a> Generics<'a> {
         match g {
             ClassGenerics::List(l) => Self::List(l, None),
             ClassGenerics::None => Generics::None,
+            ClassGenerics::ExpressionWithClassTypes(_) => todo!(),
         }
     }
 

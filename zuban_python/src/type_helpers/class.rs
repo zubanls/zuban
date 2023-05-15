@@ -837,14 +837,14 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
-                    DbType::Class(c, generics) => Type::Class(Class::from_position(
-                        NodeRef::from_link(self.db, *c),
-                        self.generics,
-                        match generics {
-                            ClassGenerics::List(g) => Some(&g),
-                            ClassGenerics::None => None,
-                        },
-                    )),
+                    DbType::Class(c, generics) => {
+                        let n = NodeRef::from_link(self.db, *c);
+                        Type::Class(match generics {
+                            ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(&g)),
+                            ClassGenerics::None => Class::from_position(n, self.generics, None),
+                            ClassGenerics::ExpressionWithClassTypes(link) => todo!("Class::from_position(n, Generics::from_class_generics(generics), None)"),
+                        })
+                    }
                     // TODO this is wrong, because it does not use generics.
                     _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {
                         Type::new(c)

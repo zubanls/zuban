@@ -545,6 +545,7 @@ impl GenericItem {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClassGenerics {
     List(GenericsList),
+    ExpressionWithClassTypes(PointLink), // A class definition (no type vars or stuff like callables)
     None,
 }
 
@@ -552,6 +553,7 @@ impl ClassGenerics {
     fn map_list(&self, callable: impl FnOnce(&GenericsList) -> GenericsList) -> Self {
         match self {
             Self::List(list) => Self::List(callable(list)),
+            Self::ExpressionWithClassTypes(link) => Self::ExpressionWithClassTypes(*link),
             Self::None => Self::None,
         }
     }
@@ -949,7 +951,7 @@ impl DbType {
                 search_params(found_type_var, &content.params);
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(_, ClassGenerics::None)
+            Self::Class(_, ClassGenerics::None | ClassGenerics::ExpressionWithClassTypes(_))
             | Self::Any
             | Self::None
             | Self::Never
@@ -1010,7 +1012,7 @@ impl DbType {
                 .map(|args| args.has_any_internal(i_s, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
-            Self::Class(_, ClassGenerics::None)
+            Self::Class(_, ClassGenerics::None | ClassGenerics::ExpressionWithClassTypes(_))
             | Self::None
             | Self::Never
             | Self::Literal { .. } => false,
@@ -1065,7 +1067,7 @@ impl DbType {
                 debug!("TODO namedtuple has_self_type");
                 false
             }
-            Self::Class(_, ClassGenerics::None)
+            Self::Class(_, ClassGenerics::None | ClassGenerics::ExpressionWithClassTypes(_))
             | Self::None
             | Self::Never
             | Self::Literal { .. }
