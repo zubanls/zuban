@@ -1585,20 +1585,16 @@ impl<'a> Type<'a> {
         */
         // necessary.
         let merge_generics = |g1: ClassGenerics, g2: ClassGenerics| {
-            let l1 = match g1 {
-                ClassGenerics::List(l1) => l1,
-                ClassGenerics::None => return ClassGenerics::None,
-            };
-            let l2 = match g2 {
-                ClassGenerics::List(l2) => l2,
-                ClassGenerics::None => unreachable!(),
-            };
+            if matches!(g1, ClassGenerics::None) {
+                return ClassGenerics::None;
+            }
             ClassGenerics::List(GenericsList::new_generics(
                 // Performance issue: clone could probably be removed. Rc -> Vec check
                 // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                l1.iter()
-                    .zip(l2.iter())
-                    .map(|(t1, t2)| t1.clone().merge_matching_parts(db, t2.clone()))
+                Generics::from_class_generics(&g1)
+                    .iter(db)
+                    .zip(Generics::from_class_generics(&g2).iter(db))
+                    .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
                     .collect(),
             ))
         };

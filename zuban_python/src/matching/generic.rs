@@ -129,4 +129,21 @@ impl<'a> Generic<'a> {
             },
         }
     }
+
+    pub fn merge_matching_parts(self, db: &Database, other: Self) -> GenericItem {
+        match self {
+            Self::TypeArgument(t1) => match other {
+                Self::TypeArgument(t2) => {
+                    GenericItem::TypeArgument(t1.merge_matching_parts(db, t2).into_db_type(db))
+                }
+                _ => todo!("maybe unreachable?!"),
+            },
+            Self::TypeVarTuple(ts1) => match other {
+                Self::TypeArgument(_) => todo!(),
+                Self::TypeVarTuple(_) => todo!(),
+                Self::ParamSpecArgument(_) => todo!(),
+            },
+            Self::ParamSpecArgument(params) => todo!(),
+        }
+    }
 }

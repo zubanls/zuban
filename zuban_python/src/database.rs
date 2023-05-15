@@ -540,25 +540,6 @@ impl GenericItem {
             Self::ParamSpecArgument(_) => todo!(),
         }
     }
-
-    pub fn merge_matching_parts(self, db: &Database, other: Self) -> Self {
-        match self {
-            Self::TypeArgument(t1) => match other {
-                Self::TypeArgument(t2) => Self::TypeArgument(
-                    Type::owned(t1)
-                        .merge_matching_parts(db, Type::owned(t2))
-                        .into_db_type(db),
-                ),
-                _ => todo!("maybe unreachable?!"),
-            },
-            Self::TypeArguments(ts1) => match other {
-                Self::TypeArgument(_) => todo!(),
-                Self::TypeArguments(_) => todo!(),
-                Self::ParamSpecArgument(_) => todo!(),
-            },
-            Self::ParamSpecArgument(params) => todo!(),
-        }
-    }
 }
 
 #[derive(Debug, Clone, PartialEq)]
