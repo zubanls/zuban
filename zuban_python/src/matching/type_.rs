@@ -33,6 +33,18 @@ pub enum Type<'a> {
     Type(Cow<'a, DbType>),
 }
 
+impl<'x> From<&'x DbType> for Type<'x> {
+    fn from(item: &'x DbType) -> Self {
+        Self::Type(Cow::Borrowed(item))
+    }
+}
+
+impl From<DbType> for Type<'static> {
+    fn from(item: DbType) -> Self {
+        Self::Type(Cow::Owned(item))
+    }
+}
+
 impl<'a> Type<'a> {
     pub fn new(t: &'a DbType) -> Self {
         Self::Type(Cow::Borrowed(t))
@@ -163,21 +175,19 @@ impl<'a> Type<'a> {
         match other.maybe_db_type() {
             Some(DbType::TypeVar(t2_usage)) => {
                 return if let Some(bound) = &t2_usage.type_var.bound {
-                    self.overlaps(i_s, &Type::new(bound))
+                    self.overlaps(i_s, &bound.into())
                 } else if !t2_usage.type_var.restrictions.is_empty() {
                     t2_usage
                         .type_var
                         .restrictions
                         .iter()
-                        .all(|r2| self.overlaps(i_s, &Type::new(r2)))
+                        .all(|r2| self.overlaps(i_s, &r2.into()))
                 } else {
                     true
                 };
             }
             Some(DbType::Union(union_type2)) => {
-                return union_type2
-                    .iter()
-                    .any(|t| self.overlaps(i_s, &Type::new(t)))
+                return union_type2.iter().any(|t| self.overlaps(i_s, &t.into()))
             }
             Some(DbType::Any) => return false, // This is a fallback
             _ => (),
@@ -1638,7 +1648,7 @@ impl<'a> Type<'a> {
                         (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
                             Rc::new(TupleContent::new_arbitrary_length(
                                 Type::owned(*t1)
-                                    .merge_matching_parts(db, Type::new(t2.as_ref()))
+                                    .merge_matching_parts(db, t2.as_ref().into())
                                     .into_db_type(db),
                             ))
                         }
