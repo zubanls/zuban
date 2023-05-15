@@ -1362,9 +1362,9 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     }
 }
 
-fn resolve_specific<'db>(i_s: &InferenceState<'db, '_>, specific: Specific) -> Class<'db> {
+fn resolve_specific(i_s: &InferenceState, specific: Specific) -> Type<'static> {
     // TODO this should be using python_state.str_node_ref etc.
-    load_builtin_class_from_str(
+    load_builtin_type_from_str(
         i_s,
         match specific {
             Specific::String | Specific::StringLiteral => "str",
@@ -1379,10 +1379,7 @@ fn resolve_specific<'db>(i_s: &InferenceState<'db, '_>, specific: Specific) -> C
     )
 }
 
-fn load_builtin_class_from_str<'db>(
-    i_s: &InferenceState<'db, '_>,
-    name: &'static str,
-) -> Class<'db> {
+fn load_builtin_type_from_str(i_s: &InferenceState, name: &'static str) -> Type<'static> {
     let builtins = i_s.db.python_state.builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
     // TODO this is slow and ugly, please make sure to do this different
@@ -1393,7 +1390,10 @@ fn load_builtin_class_from_str<'db>(
     let v = builtins.points.get(node_index);
     debug_assert_eq!(v.type_(), PointType::Redirect);
     debug_assert_eq!(v.file_index(), builtins.file_index());
-    Class::from_position(NodeRef::new(builtins, v.node_index()), Generics::None, None)
+    Type::owned(DbType::Class(
+        PointLink::new(builtins.file_index(), v.node_index()),
+        ClassGenerics::None,
+    ))
 }
 
 fn use_instance_with_ref<'a>(
@@ -1557,10 +1557,7 @@ fn saved_as_type<'db>(
                     let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
                     todo!()
                 }
-                _ => {
-                    let cls = resolve_specific(i_s, specific);
-                    Type::Class(cls)
-                }
+                _ => resolve_specific(i_s, specific),
             }
         }
         PointType::Complex => {

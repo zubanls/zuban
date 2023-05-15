@@ -109,7 +109,12 @@ impl<'a> Type<'a> {
                 DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
                 _ => None,
             },
-            Self::Type(Cow::Owned(_)) => unreachable!(),
+            Self::Type(Cow::Owned(t)) => match t {
+                DbType::Class(link, ClassGenerics::None) => {
+                    Some(Class::from_db_type(db, *link, &ClassGenerics::None))
+                }
+                _ => unreachable!(),
+            },
         }
     }
 
