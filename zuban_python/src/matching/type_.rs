@@ -675,7 +675,7 @@ impl<'a> Type<'a> {
                     return self.matches(
                         i_s,
                         matcher,
-                        &Type::Class(i_s.db.python_state.module_type()),
+                        &i_s.db.python_state.module_db_type().into(),
                         variance,
                     )
                 }
@@ -835,11 +835,10 @@ impl<'a> Type<'a> {
                 let class2 = Class::from_db_type(i_s.db, *c2, generics2);
                 match class2.use_cached_class_infos(i_s.db).metaclass {
                     MetaclassState::Some(link) => {
-                        let meta = Class::from_db_type(i_s.db, link, &ClassGenerics::None);
                         return Type::Class(*class1).matches(
                             i_s,
                             matcher,
-                            &Type::Class(meta),
+                            &Type::owned(DbType::Class(link, ClassGenerics::None)),
                             variance,
                         );
                     }

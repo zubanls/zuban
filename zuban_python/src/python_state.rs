@@ -340,6 +340,7 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
     node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
 
     pub fn function_point_link(&self) -> PointLink {
         PointLink::new(self.builtins().file_index(), self.builtins_function_index)
@@ -358,10 +359,9 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn module_type(&self) -> Class {
+    fn module_node_ref(&self) -> NodeRef {
         debug_assert!(self.types_module_type_index != 0);
-        let node_ref = NodeRef::new(self.types(), self.types_module_type_index);
-        Class::from_position(node_ref, Generics::None, None)
+        NodeRef::new(self.types(), self.types_module_type_index)
     }
 
     pub fn mapping_node_ref(&self) -> NodeRef {

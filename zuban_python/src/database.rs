@@ -867,7 +867,7 @@ impl DbType {
             Self::Module(file_index) => format_data
                 .db
                 .python_state
-                .module_type()
+                .module_db_type()
                 .format(format_data),
         }
     }
