@@ -24,7 +24,6 @@ use crate::matching::{common_base_type, FormatData, Generic, Matcher, ParamsStyl
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::type_helpers::{Class, Module};
-use crate::utils::rc_unwrap_or_clone;
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
 use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
@@ -542,10 +541,14 @@ impl GenericItem {
         }
     }
 
-    pub fn merge_matching_parts(self, other: Self) -> Self {
+    pub fn merge_matching_parts(self, db: &Database, other: Self) -> Self {
         match self {
             Self::TypeArgument(t1) => match other {
-                Self::TypeArgument(t2) => Self::TypeArgument(t1.merge_matching_parts(t2)),
+                Self::TypeArgument(t2) => Self::TypeArgument(
+                    Type::owned(t1)
+                        .merge_matching_parts(db, Type::owned(t2))
+                        .into_db_type(db),
+                ),
                 _ => todo!("maybe unreachable?!"),
             },
             Self::TypeArguments(ts1) => match other {
@@ -1592,90 +1595,6 @@ impl DbType {
             Self::ParamSpecKwargs(usage) => todo!(),
             Self::NamedTuple(_) => todo!(),
             Self::Module(file_index) => Self::Module(*file_index),
-        }
-    }
-
-    pub fn merge_matching_parts(self, other: Self) -> Self {
-        if self == other {
-            return self;
-        }
-        let merge_generics = |g1: ClassGenerics, g2: ClassGenerics| {
-            let l1 = match g1 {
-                ClassGenerics::List(l1) => l1,
-                ClassGenerics::None => return ClassGenerics::None,
-            };
-            let l2 = match g2 {
-                ClassGenerics::List(l2) => l2,
-                ClassGenerics::None => unreachable!(),
-            };
-            ClassGenerics::List(GenericsList::new_generics(
-                // Performance issue: clone could probably be removed. Rc -> Vec check
-                // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                l1.iter()
-                    .zip(l2.iter())
-                    .map(|(t1, t2)| t1.clone().merge_matching_parts(t2.clone()))
-                    .collect(),
-            ))
-        };
-        use TupleTypeArguments::*;
-        match self {
-            Self::Class(link1, g1) => match other {
-                Self::Class(link2, g2) if link1 == link2 => {
-                    Self::Class(link1, merge_generics(g1, g2))
-                }
-                _ => Self::Any,
-            },
-            Self::Union(u1) => match other {
-                Self::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => Self::Union(u1),
-                _ => Self::Any,
-            },
-            Self::Tuple(c1) => match other {
-                Self::Tuple(c2) => {
-                    let c1 = rc_unwrap_or_clone(c1);
-                    let c2 = rc_unwrap_or_clone(c2);
-                    Self::Tuple(match (c1.args, c2.args) {
-                        (Some(FixedLength(ts1)), Some(FixedLength(ts2)))
-                            if ts1.len() == ts2.len() =>
-                        {
-                            Rc::new(TupleContent::new_fixed_length(
-                                ts1.into_vec()
-                                    .into_iter()
-                                    .zip(ts2.into_vec().into_iter())
-                                    .map(|(t1, t2)| match (t1, t2) {
-                                        (
-                                            TypeOrTypeVarTuple::Type(t1),
-                                            TypeOrTypeVarTuple::Type(t2),
-                                        ) => TypeOrTypeVarTuple::Type(t1.merge_matching_parts(t2)),
-                                        (t1, t2) => match t1 == t2 {
-                                            true => t1,
-                                            false => todo!(),
-                                        },
-                                    })
-                                    .collect(),
-                            ))
-                        }
-                        (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
-                            Rc::new(TupleContent::new_arbitrary_length(
-                                t1.merge_matching_parts(t2.as_ref().clone()),
-                            ))
-                        }
-                        _ => TupleContent::new_empty(),
-                    })
-                }
-                _ => Self::Any,
-            },
-            Self::Callable(content1) => match other {
-                Self::Callable(content2) => Self::Callable(Rc::new(CallableContent {
-                    name: content1.name.or(content2.name),
-                    class_name: content1.class_name.or(content2.class_name),
-                    defined_at: content1.defined_at,
-                    type_vars: None,
-                    params: CallableParams::Any,
-                    result_type: Self::Any,
-                })),
-                _ => Self::Any,
-            },
-            _ => Self::Any,
         }
     }
 

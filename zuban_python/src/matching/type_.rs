@@ -9,8 +9,8 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ClassType, Database, DbType, MetaclassState,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
+    CallableContent, CallableParams, ClassGenerics, ClassType, Database, DbType, GenericsList,
+    MetaclassState, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -22,6 +22,7 @@ use crate::type_helpers::{
     Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeVarInstance,
     TypingType,
 };
+use crate::utils::rc_unwrap_or_clone;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -1563,6 +1564,102 @@ impl<'a> Type<'a> {
             }
             _ => todo!("get_item not implemented for {self:?}"),
         }
+    }
+
+    pub fn merge_matching_parts(self, db: &Database, other: Self) -> Self {
+        // TODO performance there's a lot of into_db_type here, that should not really be
+        /*
+        if self.maybe_db_type() == other.maybe_db_type() {
+            return self;
+        }
+        */
+        // necessary.
+        let merge_generics = |g1: ClassGenerics, g2: ClassGenerics| {
+            let l1 = match g1 {
+                ClassGenerics::List(l1) => l1,
+                ClassGenerics::None => return ClassGenerics::None,
+            };
+            let l2 = match g2 {
+                ClassGenerics::List(l2) => l2,
+                ClassGenerics::None => unreachable!(),
+            };
+            ClassGenerics::List(GenericsList::new_generics(
+                // Performance issue: clone could probably be removed. Rc -> Vec check
+                // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+                l1.iter()
+                    .zip(l2.iter())
+                    .map(|(t1, t2)| t1.clone().merge_matching_parts(db, t2.clone()))
+                    .collect(),
+            ))
+        };
+        use TupleTypeArguments::*;
+        Type::owned(match self.into_db_type(db) {
+            DbType::Class(link1, g1) => match other.into_db_type(db) {
+                DbType::Class(link2, g2) if link1 == link2 => {
+                    DbType::Class(link1, merge_generics(g1, g2))
+                }
+                _ => DbType::Any,
+            },
+            DbType::Union(u1) => match other.into_db_type(db) {
+                DbType::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
+                    DbType::Union(u1)
+                }
+                _ => DbType::Any,
+            },
+            DbType::Tuple(c1) => match other.into_db_type(db) {
+                DbType::Tuple(c2) => {
+                    let c1 = rc_unwrap_or_clone(c1);
+                    let c2 = rc_unwrap_or_clone(c2);
+                    DbType::Tuple(match (c1.args, c2.args) {
+                        (Some(FixedLength(ts1)), Some(FixedLength(ts2)))
+                            if ts1.len() == ts2.len() =>
+                        {
+                            Rc::new(TupleContent::new_fixed_length(
+                                ts1.into_vec()
+                                    .into_iter()
+                                    .zip(ts2.into_vec().into_iter())
+                                    .map(|(t1, t2)| match (t1, t2) {
+                                        (
+                                            TypeOrTypeVarTuple::Type(t1),
+                                            TypeOrTypeVarTuple::Type(t2),
+                                        ) => TypeOrTypeVarTuple::Type(
+                                            Type::owned(t1)
+                                                .merge_matching_parts(db, Type::owned(t2))
+                                                .into_db_type(db),
+                                        ),
+                                        (t1, t2) => match t1 == t2 {
+                                            true => t1,
+                                            false => todo!(),
+                                        },
+                                    })
+                                    .collect(),
+                            ))
+                        }
+                        (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+                            Rc::new(TupleContent::new_arbitrary_length(
+                                Type::owned(*t1)
+                                    .merge_matching_parts(db, Type::new(t2.as_ref()))
+                                    .into_db_type(db),
+                            ))
+                        }
+                        _ => TupleContent::new_empty(),
+                    })
+                }
+                _ => DbType::Any,
+            },
+            DbType::Callable(content1) => match other.into_db_type(db) {
+                DbType::Callable(content2) => DbType::Callable(Rc::new(CallableContent {
+                    name: content1.name.or(content2.name),
+                    class_name: content1.class_name.or(content2.class_name),
+                    defined_at: content1.defined_at,
+                    type_vars: None,
+                    params: CallableParams::Any,
+                    result_type: DbType::Any,
+                })),
+                _ => DbType::Any,
+            },
+            _ => DbType::Any,
+        })
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {

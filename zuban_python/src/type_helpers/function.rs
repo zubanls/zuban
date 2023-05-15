@@ -1584,17 +1584,17 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        let mut t: Option<DbType> = None;
+        let mut t: Option<Type> = None;
         for link in self.overload.functions.iter() {
             let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let f_t = func.result_type(i_s).as_db_type(i_s.db);
+            let f_t = func.result_type(i_s);
             if let Some(old_t) = t.take() {
-                t = Some(old_t.merge_matching_parts(func.result_type(i_s).as_db_type(i_s.db)))
+                t = Some(old_t.merge_matching_parts(i_s.db, func.result_type(i_s)))
             } else {
                 t = Some(f_t);
             }
         }
-        Inferred::execute_db_type(i_s, t.unwrap())
+        Inferred::execute_db_type(i_s, t.unwrap().into_db_type(i_s.db))
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
