@@ -62,6 +62,7 @@ pub struct PythonState {
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
     builtins_dict_index: NodeIndex,
+    builtins_set_index: NodeIndex,
     builtins_bool_index: NodeIndex,
     builtins_int_index: NodeIndex,
     builtins_float_index: NodeIndex,
@@ -104,6 +105,7 @@ impl PythonState {
             builtins_list_index: 0,
             builtins_tuple_index: 0,
             builtins_dict_index: 0,
+            builtins_set_index: 0,
             builtins_bool_index: 0,
             builtins_int_index: 0,
             builtins_float_index: 0,
@@ -217,6 +219,7 @@ impl PythonState {
         cache_index!(builtins_type_index, db, builtins, "type");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
+        cache_index!(builtins_set_index, db, builtins, "set");
         cache_index!(builtins_bool_index, db, builtins, "bool");
         cache_index!(builtins_int_index, db, builtins, "int");
         cache_index!(builtins_float_index, db, builtins, "float");
@@ -313,9 +316,10 @@ impl PythonState {
 
     builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
     builtins_attribute_node_ref!(type_node_ref, builtins_type_index);
-    builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
     builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
     builtins_attribute_node_ref!(tuple_node_ref, builtins_tuple_index);
+    builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
+    builtins_attribute_node_ref!(set_node_ref, builtins_set_index);
     builtins_attribute_node_ref!(bool_node_ref, builtins_bool_index);
     builtins_attribute_node_ref!(int_node_ref, builtins_int_index);
     builtins_attribute_node_ref!(float_node_ref, builtins_float_index);
@@ -337,13 +341,6 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
     node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
-
-    pub fn builtins_point_link(&self, name: &str) -> PointLink {
-        // TODO I think these should all be available as cached PointLinks
-        let builtins = self.builtins();
-        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
-        PointLink::new(builtins.file_index(), node_index - NAME_TO_CLASS_DIFF)
-    }
 
     pub fn function_point_link(&self) -> PointLink {
         PointLink::new(self.builtins().file_index(), self.builtins_function_index)

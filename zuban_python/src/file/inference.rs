@@ -1434,7 +1434,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return Inferred::execute_db_type(
                     self.i_s,
                     DbType::Class(
-                        self.i_s.db.python_state.builtins_point_link("list"),
+                        self.i_s.db.python_state.list_node_ref().as_link(),
                         ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
                     ),
                 );
@@ -1444,7 +1444,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return Inferred::execute_db_type(
                     self.i_s,
                     DbType::Class(
-                        self.i_s.db.python_state.builtins_point_link("list"),
+                        self.i_s.db.python_state.list_node_ref().as_link(),
                         ClassGenerics::List(GenericsList::new_generics(Rc::new([
                             GenericItem::TypeArgument(DbType::Any),
                         ]))),
@@ -1456,7 +1456,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return Inferred::execute_db_type(
                     self.i_s,
                     DbType::Class(
-                        self.i_s.db.python_state.builtins_point_link("dict"),
+                        self.i_s.db.python_state.dict_node_ref().as_link(),
                         ClassGenerics::List(generics),
                     ),
                 );
@@ -1465,7 +1465,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::create_instance(
-                        self.i_s.db.python_state.builtins_point_link("set"),
+                        self.i_s.db.python_state.set_node_ref().as_link(),
                         Some(Rc::new([self.create_list_or_set_generics(elements)])),
                     )
                     .save_redirect(self.i_s, self.file, atom.index());
