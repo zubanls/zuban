@@ -38,6 +38,15 @@ macro_rules! node_ref_to_class {
     };
 }
 
+macro_rules! node_ref_to_db_type_class_without_generic {
+    ($vis:vis $name:ident, $from_node_ref:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> DbType {
+            DbType::Class(self.$from_node_ref().as_link(), ClassGenerics::None)
+        }
+    };
+}
+
 pub struct PythonState {
     pub project: PythonProject,
 
@@ -293,16 +302,6 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn object_db_type(&self) -> DbType {
-        DbType::Class(self.object_node_ref().as_link(), ClassGenerics::None)
-    }
-
-    #[inline]
-    pub fn slice_db_type(&self) -> DbType {
-        DbType::Class(self.slice_node_ref().as_link(), ClassGenerics::None)
-    }
-
-    #[inline]
     pub fn tuple_class<'db: 'a, 'a>(
         &'db self,
         db: &'db Database,
@@ -333,6 +332,9 @@ impl PythonState {
     node_ref_to_class!(float, float_node_ref);
     node_ref_to_class!(memoryview, memoryview_node_ref);
     node_ref_to_class!(bytearray, bytearray_node_ref);
+
+    node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
 
     pub fn builtins_point_link(&self, name: &str) -> PointLink {
         // TODO I think these should all be available as cached PointLinks
