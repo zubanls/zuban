@@ -8,7 +8,7 @@ use crate::database::{
 };
 use crate::file::File;
 use crate::file::PythonFile;
-use crate::matching::Generics;
+use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, OverloadedFunction};
 use crate::{InferenceState, PythonProject};
@@ -368,13 +368,12 @@ impl PythonState {
         NodeRef::new(self.typing(), self.typing_mapping_index)
     }
 
-    pub fn type_var_class(&self) -> Class {
+    pub fn type_var_type(&self) -> Type {
         debug_assert!(self.typing_type_var != 0);
-        Class::from_position(
-            NodeRef::new(self.typing(), self.typing_type_var),
-            Generics::None,
-            None,
-        )
+        Type::owned(DbType::Class(
+            PointLink::new(self.typing().file_index(), self.typing_type_var),
+            ClassGenerics::None,
+        ))
     }
 
     pub fn collections_namedtuple_function(&self) -> Function {

@@ -1473,7 +1473,7 @@ fn type_of_complex<'db: 'x, 'x>(
             alias.as_db_type_and_set_type_vars_any(i_s.db),
         ))),
         ComplexPoint::TypeVarLike(t) => match t {
-            TypeVarLike::TypeVar(_) => Type::Class(i_s.db.python_state.type_var_class()),
+            TypeVarLike::TypeVar(_) => i_s.db.python_state.type_var_type(),
             TypeVarLike::TypeVarTuple(_) => todo!(),
             TypeVarLike::ParamSpec(_) => todo!(),
         },
