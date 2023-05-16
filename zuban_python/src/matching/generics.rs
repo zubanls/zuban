@@ -28,7 +28,7 @@ macro_rules! replace_class_vars {
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'a> {
     ExpressionWithClassType(&'a PythonFile, Expression<'a>),
-    SimpleGenericSlices(&'a PythonFile, Slices<'a>),
+    SlicesWithClassTypes(&'a PythonFile, Slices<'a>),
     List(&'a GenericsList, Option<&'a Generics<'a>>),
     Self_ {
         class_definition: PointLink,
@@ -45,7 +45,7 @@ impl<'a> Generics<'a> {
                 Self::ExpressionWithClassType(file, named.expression())
             }
             SliceType::Slice(_) => unreachable!(),
-            SliceType::Slices(slices) => Self::SimpleGenericSlices(file, slices),
+            SliceType::Slices(slices) => Self::SlicesWithClassTypes(file, slices),
         }
     }
 
@@ -114,7 +114,7 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
-            Self::SimpleGenericSlices(file, slices) => Generic::TypeArgument(
+            Self::SlicesWithClassTypes(file, slices) => Generic::TypeArgument(
                 slices
                     .iter()
                     .nth(n)
@@ -155,7 +155,7 @@ impl<'a> Generics<'a> {
             Self::ExpressionWithClassType(file, expr) => {
                 GenericsIteratorItem::SimpleGenericExpression(file, *expr)
             }
-            Self::SimpleGenericSlices(file, slices) => {
+            Self::SlicesWithClassTypes(file, slices) => {
                 GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
             }
             Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
