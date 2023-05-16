@@ -134,6 +134,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
         type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
             ClassGenerics::List(generics_list) => Some(generics_list),
             ClassGenerics::ExpressionWithClassType(_) => todo!(),
+            ClassGenerics::SlicesWithClassTypes(_) => todo!(),
             ClassGenerics::None => None,
         };
         type_arguments

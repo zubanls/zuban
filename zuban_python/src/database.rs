@@ -545,7 +545,10 @@ impl GenericItem {
 #[derive(Debug, Clone, PartialEq)]
 pub enum ClassGenerics {
     List(GenericsList),
-    ExpressionWithClassType(PointLink), // A class definition (no type vars or stuff like callables)
+    // A class definition (no type vars or stuff like callables)
+    ExpressionWithClassType(PointLink),
+    // Multiple class definitions, e.g. [int, str], but not [T, str]
+    SlicesWithClassTypes(PointLink),
     None,
 }
 
@@ -554,6 +557,7 @@ impl ClassGenerics {
         match self {
             Self::List(list) => Self::List(callable(list)),
             Self::ExpressionWithClassType(link) => Self::ExpressionWithClassType(*link),
+            Self::SlicesWithClassTypes(link) => Self::SlicesWithClassTypes(*link),
             Self::None => Self::None,
         }
     }
@@ -951,7 +955,12 @@ impl DbType {
                 search_params(found_type_var, &content.params);
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(_, ClassGenerics::None | ClassGenerics::ExpressionWithClassType(_))
+            Self::Class(
+                _,
+                ClassGenerics::None
+                | ClassGenerics::ExpressionWithClassType(_)
+                | ClassGenerics::SlicesWithClassTypes(_),
+            )
             | Self::Any
             | Self::None
             | Self::Never
@@ -1012,7 +1021,12 @@ impl DbType {
                 .map(|args| args.has_any_internal(i_s, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
-            Self::Class(_, ClassGenerics::None | ClassGenerics::ExpressionWithClassType(_))
+            Self::Class(
+                _,
+                ClassGenerics::None
+                | ClassGenerics::ExpressionWithClassType(_)
+                | ClassGenerics::SlicesWithClassTypes(_),
+            )
             | Self::None
             | Self::Never
             | Self::Literal { .. } => false,
@@ -1067,7 +1081,12 @@ impl DbType {
                 debug!("TODO namedtuple has_self_type");
                 false
             }
-            Self::Class(_, ClassGenerics::None | ClassGenerics::ExpressionWithClassType(_))
+            Self::Class(
+                _,
+                ClassGenerics::None
+                | ClassGenerics::ExpressionWithClassType(_)
+                | ClassGenerics::SlicesWithClassTypes(_),
+            )
             | Self::None
             | Self::Never
             | Self::Literal { .. }

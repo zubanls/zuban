@@ -61,6 +61,10 @@ impl<'a> Generics<'a> {
                 let node_ref = NodeRef::from_link(db, *link);
                 Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
             }
+            ClassGenerics::SlicesWithClassTypes(link) => {
+                let node_ref = NodeRef::from_link(db, *link);
+                Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
+            }
         }
     }
 
@@ -187,6 +191,9 @@ impl<'a> Generics<'a> {
                         expr.index(),
                     ))
                 }
+                Self::SlicesWithClassTypes(file, slices) => ClassGenerics::SlicesWithClassTypes(
+                    PointLink::new(file.file_index(), slices.index()),
+                ),
                 _ => ClassGenerics::List(GenericsList::new_generics(
                     self.iter(db).map(|g| g.into_generic_item(db)).collect(),
                 )),

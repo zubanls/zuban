@@ -843,6 +843,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                             ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(&g)),
                             ClassGenerics::None => Class::from_position(n, self.generics, None),
                             ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, generics), None)"),
+                            ClassGenerics::SlicesWithClassTypes(link) => todo!(),
                         })
                     }
                     // TODO this is wrong, because it does not use generics.
