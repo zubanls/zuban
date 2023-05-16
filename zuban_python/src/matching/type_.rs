@@ -1598,9 +1598,9 @@ impl<'a> Type<'a> {
             ClassGenerics::List(GenericsList::new_generics(
                 // Performance issue: clone could probably be removed. Rc -> Vec check
                 // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                Generics::from_class_generics(&g1)
+                Generics::from_class_generics(db, &g1)
                     .iter(db)
-                    .zip(Generics::from_class_generics(&g2).iter(db))
+                    .zip(Generics::from_class_generics(db, &g2).iter(db))
                     .map(|(gi1, gi2)| gi1.merge_matching_parts(db, gi2))
                     .collect(),
             ))

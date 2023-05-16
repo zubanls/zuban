@@ -55,7 +55,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn from_db_type(db: &'db Database, link: PointLink, list: &'a ClassGenerics) -> Self {
-        let generics = Generics::from_class_generics(list);
+        let generics = Generics::from_class_generics(db, list);
         Self::from_position(NodeRef::from_link(db, link), generics, None)
     }
 
@@ -842,7 +842,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                         Type::Class(match generics {
                             ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(&g)),
                             ClassGenerics::None => Class::from_position(n, self.generics, None),
-                            ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(generics), None)"),
+                            ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, generics), None)"),
                         })
                     }
                     // TODO this is wrong, because it does not use generics.

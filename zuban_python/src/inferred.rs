@@ -746,7 +746,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             DbType::Class(link, generics) => {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
-                                    Generics::from_class_generics(generics),
+                                    Generics::from_class_generics(i_s.db, generics),
                                     Some(&self),
                                 );
                                 if let Some(inf) =
@@ -856,7 +856,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             DbType::Class(link, generics) => {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
-                                    Generics::from_class_generics(generics),
+                                    Generics::from_class_generics(i_s.db, generics),
                                     Some(&self),
                                 );
                                 if let Some(inf) =

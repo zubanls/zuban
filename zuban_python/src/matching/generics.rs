@@ -8,8 +8,9 @@ use crate::database::{
     PointLink, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
-use crate::file::{use_cached_simple_generic_type, PythonFile};
+use crate::file::{use_cached_simple_generic_type, File, PythonFile};
 use crate::inference_state::InferenceState;
+use crate::node_ref::NodeRef;
 
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
@@ -52,11 +53,14 @@ impl<'a> Generics<'a> {
         Self::List(list, None)
     }
 
-    pub fn from_class_generics(g: &'a ClassGenerics) -> Self {
+    pub fn from_class_generics(db: &'a Database, g: &'a ClassGenerics) -> Self {
         match g {
             ClassGenerics::List(l) => Self::List(l, None),
             ClassGenerics::None => Generics::None,
-            ClassGenerics::ExpressionWithClassType(_) => todo!(),
+            ClassGenerics::ExpressionWithClassType(link) => {
+                let node_ref = NodeRef::from_link(db, *link);
+                Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
+            }
         }
     }
 
@@ -173,14 +177,20 @@ impl<'a> Generics<'a> {
         type_vars: Option<&TypeVarLikes>,
     ) -> ClassGenerics {
         match type_vars {
-            Some(type_vars) => ClassGenerics::List(match self {
-                Self::NotDefinedYet => GenericsList::new_generics(
+            Some(type_vars) => match self {
+                Self::NotDefinedYet => ClassGenerics::List(GenericsList::new_generics(
                     type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
-                ),
-                _ => GenericsList::new_generics(
+                )),
+                Self::ExpressionWithClassType(file, expr) => {
+                    ClassGenerics::ExpressionWithClassType(PointLink::new(
+                        file.file_index(),
+                        expr.index(),
+                    ))
+                }
+                _ => ClassGenerics::List(GenericsList::new_generics(
                     self.iter(db).map(|g| g.into_generic_item(db)).collect(),
-                ),
-            }),
+                )),
+            },
             None => ClassGenerics::None,
         }
     }
