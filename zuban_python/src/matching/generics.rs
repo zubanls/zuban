@@ -26,7 +26,7 @@ macro_rules! replace_class_vars {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'a> {
-    SimpleGenericExpression(&'a PythonFile, Expression<'a>),
+    ExpressionWithClassType(&'a PythonFile, Expression<'a>),
     SimpleGenericSlices(&'a PythonFile, Slices<'a>),
     List(&'a GenericsList, Option<&'a Generics<'a>>),
     Self_ {
@@ -41,7 +41,7 @@ impl<'a> Generics<'a> {
     pub fn new_simple_generic_slice(file: &'a PythonFile, slice_type: SliceType<'a>) -> Self {
         match slice_type {
             SliceType::NamedExpression(named) => {
-                Self::SimpleGenericExpression(file, named.expression())
+                Self::ExpressionWithClassType(file, named.expression())
             }
             SliceType::Slice(_) => unreachable!(),
             SliceType::Slices(slices) => Self::SimpleGenericSlices(file, slices),
@@ -98,7 +98,7 @@ impl<'a> Generics<'a> {
         n: usize,
     ) -> Generic<'a> {
         match self {
-            Self::SimpleGenericExpression(file, expr) => {
+            Self::ExpressionWithClassType(file, expr) => {
                 if n == 0 {
                     Generic::TypeArgument(use_cached_simple_generic_type(db, file, *expr))
                 } else {
@@ -148,7 +148,7 @@ impl<'a> Generics<'a> {
 
     pub fn iter<'x>(&'x self, db: &'x Database) -> GenericsIterator<'x> {
         let item = match self {
-            Self::SimpleGenericExpression(file, expr) => {
+            Self::ExpressionWithClassType(file, expr) => {
                 GenericsIteratorItem::SimpleGenericExpression(file, *expr)
             }
             Self::SimpleGenericSlices(file, slices) => {
