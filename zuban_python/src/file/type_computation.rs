@@ -187,8 +187,8 @@ enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
     Class(NodeRef<'db>),
     SimpleGeneric {
-        inferred: Inferred,
-        link: PointLink,
+        node_ref: NodeRef<'db>,
+        class_link: PointLink,
         generics: ClassGenerics,
     },
     TypeAlias(&'db TypeAlias),
@@ -278,8 +278,8 @@ macro_rules! compute_type_application {
             TypeContent::Class(node_ref) => {
                 todo!()
             }
-            TypeContent::SimpleGeneric{link, generics, ..} => {
-                Inferred::from_type(DbType::Type(Rc::new(DbType::Class(link, generics))))
+            TypeContent::SimpleGeneric{class_link, generics, ..} => {
+                Inferred::from_type(DbType::Type(Rc::new(DbType::Class(class_link, generics))))
             }
             TypeContent::DbType(mut db_type) => {
                 let type_vars = tcomp.into_type_vars(|inf, recalculate_type_vars| {
@@ -581,7 +581,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let db = self.inference.i_s.db;
                 Class::with_undefined_generics(node_ref).as_db_type(db)
             }
-            TypeContent::SimpleGeneric { link, generics, .. } => DbType::Class(link, generics),
+            TypeContent::SimpleGeneric {
+                class_link,
+                generics,
+                ..
+            } => DbType::Class(class_link, generics),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
                 self.add_typing_issue(
@@ -739,16 +743,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
         if !self.inference.file.points.get(expr.index()).calculated() {
             match &type_content {
-                TypeContent::Class(node_ref) => {
+                TypeContent::Class(node_ref) | TypeContent::SimpleGeneric { node_ref, .. } => {
                     Inferred::from_saved_node_ref(*node_ref).save_redirect(
-                        self.inference.i_s,
-                        self.inference.file,
-                        expr.index(),
-                    );
-                    // TODO?
-                }
-                TypeContent::SimpleGeneric { inferred, .. } => {
-                    inferred.clone().save_redirect(
                         self.inference.i_s,
                         self.inference.file,
                         expr.index(),
@@ -833,8 +829,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let cls = Class::with_undefined_generics(node_ref);
                     self.check_attribute_on_class(cls, primary, name)
                 }
-                TypeContent::SimpleGeneric { link, generics, .. } => {
-                    let cls = Class::from_db_type(self.inference.i_s.db, link, &generics);
+                TypeContent::SimpleGeneric {
+                    class_link,
+                    generics,
+                    ..
+                } => {
+                    let cls = Class::from_db_type(self.inference.i_s.db, class_link, &generics);
                     self.check_attribute_on_class(cls, primary, name)
                 }
                 TypeContent::DbType(t) => match t {
@@ -905,7 +905,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Some(primary),
                         )
                     }
-                    TypeContent::SimpleGeneric { link, generics, .. } => {
+                    TypeContent::SimpleGeneric {
+                        class_link,
+                        generics,
+                        ..
+                    } => {
                         todo!()
                     }
                     TypeContent::DbType(d) => match d {
@@ -1214,14 +1218,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         if iterator.next().is_none() {
             // We have no unfinished iterator and can therefore safely return.
-            let node_ref = NodeRef::new(self.inference.file, primary.unwrap().index());
+            let node_ref = NodeRef::new(self.inference.file, primary.unwrap().index())
+                .to_db_lifetime(self.inference.i_s.db);
             node_ref.set_point(Point::new_simple_specific(
                 Specific::SimpleGeneric,
                 Locality::Todo,
             ));
             Some(TypeContent::SimpleGeneric {
-                inferred: Inferred::from_saved_node_ref(node_ref),
-                link: class.node_ref.as_link(),
+                node_ref,
+                class_link: class.node_ref.as_link(),
                 generics: match slice_type.ast_node {
                     ASTSliceType::NamedExpression(n) => ClassGenerics::ExpressionWithClassType(
                         PointLink::new(node_ref.file_index(), n.expression().index()),
