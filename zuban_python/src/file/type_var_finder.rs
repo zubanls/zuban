@@ -219,7 +219,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         }
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
-            TypeNameLookup::Class(link) => BaseLookup::Class(link),
+            TypeNameLookup::Class(link) => BaseLookup::Class(link.as_link()),
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 if self
                     .class

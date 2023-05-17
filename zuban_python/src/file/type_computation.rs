@@ -185,6 +185,7 @@ impl InvalidVariableType<'_> {
 #[derive(Debug, Clone)]
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
+    Class(NodeRef<'db>),
     ClassWithoutTypeVar {
         inferred: Inferred,
         link: PointLink,
@@ -205,7 +206,7 @@ enum TypeContent<'db, 'a> {
 #[derive(Debug)]
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
-    Class(PointLink),
+    Class(NodeRef<'db>),
     TypeVarLike(TypeVarLike),
     TypeAlias(&'db TypeAlias),
     NewType(Rc<NewType>),
@@ -571,6 +572,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
         match type_ {
+            TypeContent::Class(node_ref) => {
+                let db = self.inference.i_s.db;
+                Class::from_position(node_ref, Generics::NotDefinedYet, None).as_db_type(db)
+            }
             TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
                 DbType::Class(link, generics)
             }
@@ -815,6 +820,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::Unknown
                     }
                 }
+                TypeContent::Class(node_ref) => todo!(),
                 TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
                     let cls = Class::from_db_type(self.inference.i_s.db, link, &generics);
                     let point_type = cache_name_on_class(cls, self.inference.file, name);
@@ -884,6 +890,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
                 match base {
+                    TypeContent::Class(node_ref) => {
+                        let db = self.inference.i_s.db;
+                        self.compute_type_get_item_on_class(
+                            Class::from_position(node_ref, Generics::NotDefinedYet, None),
+                            s,
+                            Some(primary),
+                        )
+                    }
                     TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
                         let cls = Class::from_db_type(self.inference.i_s.db, link, &generics);
                         self.compute_type_get_item_on_class(cls, s, Some(primary))
@@ -1856,12 +1870,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
-            TypeNameLookup::Class(link) => TypeContent::ClassWithoutTypeVar {
-                inferred: Inferred::from_saved_node_ref(NodeRef::from_link(
-                    self.inference.i_s.db,
-                    link,
-                )),
-                link,
+            TypeNameLookup::Class(n) => TypeContent::ClassWithoutTypeVar {
+                inferred: Inferred::from_saved_node_ref(n),
+                link: n.as_link(),
                 generics: ClassGenerics::None,
             },
             TypeNameLookup::TypeVarLike(type_var_like) => {
@@ -2855,7 +2866,7 @@ fn check_type_name<'db: 'file, 'file>(
             name_def.file.inference(i_s).cache_class(name_def, c);
             let class_node_ref = NodeRef::new(name_node_ref.file, c.index());
             // Classes can be defined recursive, so use the NamedTuple stuff here.
-            TypeNameLookup::Class(class_node_ref.as_link())
+            TypeNameLookup::Class(class_node_ref)
         }
         TypeLike::Assignment(assignment) => {
             if name_node_ref.point().calculated() {
