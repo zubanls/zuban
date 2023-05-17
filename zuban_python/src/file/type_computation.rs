@@ -275,6 +275,9 @@ macro_rules! compute_type_application {
         );
         let t = tcomp.$method $args;
         match t {
+            TypeContent::Class(node_ref) => {
+                todo!()
+            }
             TypeContent::ClassWithoutTypeVar{link, generics, ..} => {
                 Inferred::from_type(DbType::Type(Rc::new(DbType::Class(link, generics))))
             }
@@ -509,7 +512,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut db_type = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
             None => match type_ {
-                TypeContent::ClassWithoutTypeVar { .. } if !is_implicit_optional => {
+                TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
+                    if !is_implicit_optional =>
+                {
                     debug_assert!(self.inference.file.points.get(expr.index()).calculated());
                     self.inference.file.points.set(
                         annotation_index,
@@ -735,12 +740,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ExpressionContent::Ternary(t) => todo!(),
         };
         if !self.inference.file.points.get(expr.index()).calculated() {
-            if let TypeContent::ClassWithoutTypeVar {
-                inferred,
-                link,
-                generics,
-            } = &type_content
-            {
+            if let TypeContent::Class(_) = &type_content {
+                todo!()
+            }
+            if let TypeContent::ClassWithoutTypeVar { inferred, .. } = &type_content {
                 inferred.clone().save_redirect(
                     self.inference.i_s,
                     self.inference.file,
@@ -883,7 +886,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => {
                     debug!("Invalid type execution: {base:?}");
                     TypeContent::InvalidVariable(InvalidVariableType::Execution {
-                        was_class: matches!(base, TypeContent::ClassWithoutTypeVar { .. }),
+                        was_class: matches!(
+                            base,
+                            TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
+                        ),
                     })
                 }
             },
@@ -1173,7 +1179,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type(slice_content);
                 self.check_restrictions(type_var, &slice_content, &t, || Box::from(class.name()));
-                if !matches!(t, TypeContent::ClassWithoutTypeVar { .. }) {
+                if !matches!(
+                    t,
+                    TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
+                ) {
                     // Backfill the generics
                     for slice_content in slice_type.iter().take(i) {
                         generics.push(GenericItem::TypeArgument(
@@ -2462,7 +2471,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     unreachable!()
                 };
                 match t {
-                    TypeContent::ClassWithoutTypeVar { .. }
+                    TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
                         if !comp.inference.i_s.db.python_state.project.mypy_compatible =>
                     {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
