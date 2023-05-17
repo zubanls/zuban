@@ -186,7 +186,7 @@ impl InvalidVariableType<'_> {
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
     Class(NodeRef<'db>),
-    ClassWithoutTypeVar {
+    SimpleGeneric {
         inferred: Inferred,
         link: PointLink,
         generics: ClassGenerics,
@@ -278,7 +278,7 @@ macro_rules! compute_type_application {
             TypeContent::Class(node_ref) => {
                 todo!()
             }
-            TypeContent::ClassWithoutTypeVar{link, generics, ..} => {
+            TypeContent::SimpleGeneric{link, generics, ..} => {
                 Inferred::from_type(DbType::Type(Rc::new(DbType::Class(link, generics))))
             }
             TypeContent::DbType(mut db_type) => {
@@ -512,7 +512,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut db_type = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
             None => match type_ {
-                TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
+                TypeContent::SimpleGeneric { .. } | TypeContent::Class(_)
                     if !is_implicit_optional =>
                 {
                     debug_assert!(self.inference.file.points.get(expr.index()).calculated());
@@ -581,9 +581,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let db = self.inference.i_s.db;
                 Class::with_undefined_generics(node_ref).as_db_type(db)
             }
-            TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
-                DbType::Class(link, generics)
-            }
+            TypeContent::SimpleGeneric { link, generics, .. } => DbType::Class(link, generics),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
                 self.add_typing_issue(
@@ -749,7 +747,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     // TODO?
                 }
-                TypeContent::ClassWithoutTypeVar { inferred, .. } => {
+                TypeContent::SimpleGeneric { inferred, .. } => {
                     inferred.clone().save_redirect(
                         self.inference.i_s,
                         self.inference.file,
@@ -835,7 +833,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let cls = Class::with_undefined_generics(node_ref);
                     self.check_attribute_on_class(cls, primary, name)
                 }
-                TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
+                TypeContent::SimpleGeneric { link, generics, .. } => {
                     let cls = Class::from_db_type(self.inference.i_s.db, link, &generics);
                     self.check_attribute_on_class(cls, primary, name)
                 }
@@ -891,7 +889,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::InvalidVariable(InvalidVariableType::Execution {
                         was_class: matches!(
                             base,
-                            TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
+                            TypeContent::SimpleGeneric { .. } | TypeContent::Class(_)
                         ),
                     })
                 }
@@ -907,9 +905,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Some(primary),
                         )
                     }
-                    TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
-                        let cls = Class::from_db_type(self.inference.i_s.db, link, &generics);
-                        self.compute_type_get_item_on_class(cls, s, Some(primary))
+                    TypeContent::SimpleGeneric { link, generics, .. } => {
+                        todo!()
                     }
                     TypeContent::DbType(d) => match d {
                         DbType::Any => TypeContent::DbType(d),
@@ -1123,8 +1120,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut generics = vec![];
 
         if let Some(tvs) = type_var_likes {
-            // First check if we can make a ClassWithoutTypeVar. This happens if all generics are
-            // ClassWithoutTypeVar.
+            // First check if we can make a SimpleGeneric. This happens if all generics are
+            // SimpleGeneric or classes.
             if let Some(result) = self.maybe_generic_class_without_type_var(
                 class,
                 slice_type,
@@ -1163,7 +1160,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             None => DbType::Class(class.node_ref.as_link(), ClassGenerics::None),
             Some(type_vars) => {
                 // Need to fill the generics, because we might have been in a
-                // ClassWithoutTypeVar case where the generic count is wrong.
+                // SimpleGeneric case where the generic count is wrong.
                 if generics.is_empty() {
                     for missing_type_var in type_vars.iter().skip(generics.len()) {
                         generics.push(missing_type_var.as_any_generic_item())
@@ -1199,10 +1196,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type(slice_content);
                 self.check_restrictions(type_var, &slice_content, &t, || Box::from(class.name()));
-                if !matches!(
-                    t,
-                    TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
-                ) {
+                if !matches!(t, TypeContent::SimpleGeneric { .. } | TypeContent::Class(_)) {
                     // Backfill the generics
                     for slice_content in slice_type.iter().take(i) {
                         generics.push(GenericItem::TypeArgument(
@@ -1225,7 +1219,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 Specific::SimpleGeneric,
                 Locality::Todo,
             ));
-            Some(TypeContent::ClassWithoutTypeVar {
+            Some(TypeContent::SimpleGeneric {
                 inferred: Inferred::from_saved_node_ref(node_ref),
                 link: class.node_ref.as_link(),
                 generics: match slice_type.ast_node {
@@ -2487,7 +2481,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     unreachable!()
                 };
                 match t {
-                    TypeContent::ClassWithoutTypeVar { .. } | TypeContent::Class(_)
+                    TypeContent::SimpleGeneric { .. } | TypeContent::Class(_)
                         if !comp.inference.i_s.db.python_state.project.mypy_compatible =>
                     {
                         cached_type_node_ref.set_point(Point::new_uncalculated());
