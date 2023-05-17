@@ -72,6 +72,11 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    #[inline]
+    pub fn with_undefined_generics(node_ref: NodeRef<'a>) -> Self {
+        Self::from_position(node_ref, Generics::NotDefinedYet, None)
+    }
+
     fn type_check_init_func(
         &self,
         i_s: &InferenceState<'db, '_>,

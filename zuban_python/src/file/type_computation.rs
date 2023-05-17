@@ -579,7 +579,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         match type_ {
             TypeContent::Class(node_ref) => {
                 let db = self.inference.i_s.db;
-                Class::from_position(node_ref, Generics::NotDefinedYet, None).as_db_type(db)
+                Class::with_undefined_generics(node_ref).as_db_type(db)
             }
             TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
                 DbType::Class(link, generics)
@@ -740,15 +740,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             ExpressionContent::Ternary(t) => todo!(),
         };
         if !self.inference.file.points.get(expr.index()).calculated() {
-            if let TypeContent::Class(_) = &type_content {
-                todo!()
-            }
-            if let TypeContent::ClassWithoutTypeVar { inferred, .. } = &type_content {
-                inferred.clone().save_redirect(
-                    self.inference.i_s,
-                    self.inference.file,
-                    expr.index(),
-                );
+            match &type_content {
+                TypeContent::Class(node_ref) => {
+                    Inferred::from_saved_node_ref(*node_ref).save_redirect(
+                        self.inference.i_s,
+                        self.inference.file,
+                        expr.index(),
+                    );
+                    // TODO?
+                }
+                TypeContent::ClassWithoutTypeVar { inferred, .. } => {
+                    inferred.clone().save_redirect(
+                        self.inference.i_s,
+                        self.inference.file,
+                        expr.index(),
+                    );
+                }
+                _ => (),
             }
         }
         type_content
@@ -823,18 +831,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::Unknown
                     }
                 }
-                TypeContent::Class(node_ref) => todo!(),
+                TypeContent::Class(node_ref) => {
+                    let cls = Class::with_undefined_generics(node_ref);
+                    self.check_attribute_on_class(cls, primary, name)
+                }
                 TypeContent::ClassWithoutTypeVar { link, generics, .. } => {
                     let cls = Class::from_db_type(self.inference.i_s.db, link, &generics);
-                    let point_type = cache_name_on_class(cls, self.inference.file, name);
-                    if point_type == PointType::Redirect {
-                        self.compute_type_name(name)
-                    } else {
-                        debug!("TypeComputation: Attribute on class not found");
-                        debug_assert_eq!(point_type, PointType::Unknown);
-                        self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
-                        TypeContent::Unknown
-                    }
+                    self.check_attribute_on_class(cls, primary, name)
                 }
                 TypeContent::DbType(t) => match t {
                     DbType::Class(c, g) => todo!(),
@@ -899,7 +902,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Class(node_ref) => {
                         let db = self.inference.i_s.db;
                         self.compute_type_get_item_on_class(
-                            Class::from_position(node_ref, Generics::NotDefinedYet, None),
+                            Class::with_undefined_generics(node_ref),
                             s,
                             Some(primary),
                         )
@@ -986,6 +989,23 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
+        }
+    }
+
+    fn check_attribute_on_class(
+        &mut self,
+        cls: Class,
+        primary: Primary,
+        name: Name<'x>,
+    ) -> TypeContent<'db, 'x> {
+        let point_type = cache_name_on_class(cls, self.inference.file, name);
+        if point_type == PointType::Redirect {
+            self.compute_type_name(name)
+        } else {
+            debug!("TypeComputation: Attribute on class not found");
+            debug_assert_eq!(point_type, PointType::Unknown);
+            self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
+            TypeContent::Unknown
         }
     }
 
@@ -1879,11 +1899,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
-            TypeNameLookup::Class(n) => TypeContent::ClassWithoutTypeVar {
-                inferred: Inferred::from_saved_node_ref(n),
-                link: n.as_link(),
-                generics: ClassGenerics::None,
-            },
+            TypeNameLookup::Class(n) => TypeContent::Class(n),
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars = true;
                 match (self.type_var_callback)(
