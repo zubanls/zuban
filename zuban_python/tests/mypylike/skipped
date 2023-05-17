@@ -29,6 +29,11 @@ testSelfTypeGenericClassNoClashClassMethodClassObject
 testTypingSelfAlternativeGenericConstructor
 testGenericNamedTupleCustomMethods
 
+testNewAnalyzerAliasesFixedFew
+testInheritanceFromGenericWithImplicitDynamicAndExternalAccess
+testAssertionLazilyWithIsNone
+testAssertionLazilyWithIsInstance
+
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
 # raise from: Exception must be derived from BaseException

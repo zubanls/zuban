@@ -4,20 +4,20 @@ use super::type_computation::{
     cache_name_on_class, SpecialType, TypeNameLookup, ASSIGNMENT_TYPE_CACHE_OFFSET,
 };
 use crate::database::{
-    Locality, Point, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager,
+    ClassGenerics, Locality, Point, PointLink, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes,
+    TypeVarManager,
 };
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType};
-use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
 
 #[derive(Debug, Clone)]
 enum BaseLookup<'file> {
     Module(&'file PythonFile),
-    Class(Inferred),
+    Class(PointLink),
     Protocol,
     Callable,
     Generic,
@@ -126,8 +126,9 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                             BaseLookup::Other
                         }
                     }
-                    BaseLookup::Class(i) => {
-                        let cls = i.maybe_class(self.inference.i_s).unwrap();
+                    BaseLookup::Class(link) => {
+                        let cls =
+                            Class::from_db_type(self.inference.i_s.db, link, &ClassGenerics::None);
                         let point_type = cache_name_on_class(cls, self.inference.file, name);
                         if point_type == PointType::Redirect {
                             self.find_in_name(name)
@@ -218,7 +219,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
         }
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => BaseLookup::Module(f),
-            TypeNameLookup::Class(i) => BaseLookup::Class(i),
+            TypeNameLookup::Class(link) => BaseLookup::Class(link),
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 if self
                     .class
