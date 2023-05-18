@@ -9,8 +9,9 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ClassType, Database, DbType, GenericsList,
-    MetaclassState, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType, Variance,
+    CallableContent, CallableParams, ClassGenerics, ClassType, ComplexPoint, Database, DbType,
+    GenericsList, MetaclassState, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -508,7 +509,7 @@ impl<'a> Type<'a> {
             .or(|| {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
                     if !matcher.ignore_promotions() {
-                        return self.check_promotion(i_s, matcher, class2);
+                        return self.check_promotion(i_s, matcher, class2.node_ref);
                     }
                 }
                 Match::new_false()
@@ -527,13 +528,19 @@ impl<'a> Type<'a> {
         &self,
         i_s: &InferenceState,
         matcher: &mut Matcher,
-        class2: Class,
+        class2_node_ref: NodeRef,
     ) -> Match {
-        if let Some(promote_to) = class2.class_storage.promote_to.get() {
-            let cls =
-                Class::from_position(NodeRef::from_link(i_s.db, promote_to), Generics::None, None);
-            self.is_same_type(i_s, matcher, &Type::Class(cls))
-                .or(|| self.check_promotion(i_s, matcher, cls))
+        let ComplexPoint::Class(storage) = class2_node_ref.complex().unwrap() else {
+            unreachable!()
+        };
+        if let Some(promote_to) = storage.promote_to.get() {
+            let cls_node_ref = NodeRef::from_link(i_s.db, promote_to);
+            self.is_same_type(
+                i_s,
+                matcher,
+                &Type::owned(DbType::Class(cls_node_ref.as_link(), ClassGenerics::None)),
+            )
+            .or(|| self.check_promotion(i_s, matcher, cls_node_ref))
         } else {
             Match::new_false()
         }
