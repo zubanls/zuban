@@ -793,6 +793,52 @@ impl<'a> Type<'a> {
         }
     }
 
+    fn matches_class(
+        i_s: &InferenceState,
+        matcher: &mut Matcher,
+        class1: &Class,
+        class2: &Class,
+        variance: Variance,
+    ) -> Match {
+        if class1.node_ref != class2.node_ref {
+            return Match::new_false();
+        }
+        if let Some(type_vars) = class1.type_vars(i_s) {
+            let c1_generics = class1.generics();
+            let c2_generics = class2.generics();
+            let result = c1_generics
+                .matches(i_s, matcher, c2_generics, type_vars)
+                .similar_if_false();
+            if !result.bool() {
+                let mut check = |i_s: &InferenceState, n| {
+                    let type_var_like = &type_vars[n];
+                    let t1 = c1_generics.nth_type_argument(i_s.db, type_var_like, n);
+                    if t1.is_any() {
+                        return false;
+                    }
+                    let t2 = c2_generics.nth_type_argument(i_s.db, type_var_like, n);
+                    if t2.is_any() {
+                        return false;
+                    }
+                    t1.is_super_type_of(i_s, matcher, &t2).bool()
+                };
+                if class1.node_ref == i_s.db.python_state.list_node_ref() && check(i_s, 0) {
+                    return Match::False {
+                        similar: true,
+                        reason: MismatchReason::SequenceInsteadOfListNeeded,
+                    };
+                } else if class1.node_ref == i_s.db.python_state.dict_node_ref() && check(i_s, 1) {
+                    return Match::False {
+                        similar: true,
+                        reason: MismatchReason::MappingInsteadOfDictNeeded,
+                    };
+                }
+            }
+            return result;
+        }
+        return Match::new_true();
+    }
+
     fn matches_class_against_type(
         i_s: &InferenceState,
         matcher: &mut Matcher,
@@ -801,44 +847,7 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
-            if class1.node_ref == class2.node_ref {
-                if let Some(type_vars) = class1.type_vars(i_s) {
-                    let c1_generics = class1.generics();
-                    let c2_generics = class2.generics();
-                    let result = c1_generics
-                        .matches(i_s, matcher, c2_generics, type_vars)
-                        .similar_if_false();
-                    if !result.bool() {
-                        let mut check = |i_s: &InferenceState, n| {
-                            let type_var_like = &type_vars[n];
-                            let t1 = c1_generics.nth_type_argument(i_s.db, type_var_like, n);
-                            if t1.is_any() {
-                                return false;
-                            }
-                            let t2 = c2_generics.nth_type_argument(i_s.db, type_var_like, n);
-                            if t2.is_any() {
-                                return false;
-                            }
-                            t1.is_super_type_of(i_s, matcher, &t2).bool()
-                        };
-                        if class1.node_ref == i_s.db.python_state.list_node_ref() && check(i_s, 0) {
-                            return Match::False {
-                                similar: true,
-                                reason: MismatchReason::SequenceInsteadOfListNeeded,
-                            };
-                        } else if class1.node_ref == i_s.db.python_state.dict_node_ref()
-                            && check(i_s, 1)
-                        {
-                            return Match::False {
-                                similar: true,
-                                reason: MismatchReason::MappingInsteadOfDictNeeded,
-                            };
-                        }
-                    }
-                    return result;
-                }
-                return Match::new_true();
-            }
+            return Self::matches_class(i_s, matcher, class1, &class2, variance);
         } else if let Some(DbType::Type(t2)) = value_type.maybe_db_type() {
             if let DbType::Class(c2, generics2) = t2.as_ref() {
                 let class2 = Class::from_db_type(i_s.db, *c2, generics2);
