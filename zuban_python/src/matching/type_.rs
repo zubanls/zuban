@@ -283,9 +283,11 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         let result = match self {
-            Self::Class(class) => Self::matches_class(i_s, matcher, class, value_type, variance),
+            Self::Class(class) => {
+                Self::matches_class_against_type(i_s, matcher, class, value_type, variance)
+            }
             Self::Type(t1) => match t1.as_ref() {
-                DbType::Class(link, generics) => Self::matches_class(
+                DbType::Class(link, generics) => Self::matches_class_against_type(
                     i_s,
                     matcher,
                     &Class::from_db_type(i_s.db, *link, generics),
@@ -791,7 +793,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    fn matches_class(
+    fn matches_class_against_type(
         i_s: &InferenceState,
         matcher: &mut Matcher,
         class1: &Class,
@@ -857,7 +859,7 @@ impl<'a> Type<'a> {
             }
         } else if variance == Variance::Covariant {
             if let Some(DbType::Literal(literal)) = value_type.maybe_db_type() {
-                return Self::matches_class(
+                return Self::matches_class_against_type(
                     i_s,
                     matcher,
                     class1,
@@ -1080,7 +1082,7 @@ impl<'a> Type<'a> {
         if let Some(class) = t.maybe_class(i_s.db) {
             if let Some(mro) = self.mro(i_s.db) {
                 for (_, value_type) in mro {
-                    if Self::matches_class(
+                    if Self::matches_class_against_type(
                         i_s,
                         &mut Matcher::default(),
                         &class,
