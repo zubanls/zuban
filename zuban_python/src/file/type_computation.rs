@@ -208,7 +208,7 @@ enum TypeContent<'db, 'a> {
 #[derive(Debug)]
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
-    Class(NodeRef<'db>),
+    Class { node_ref: NodeRef<'db> },
     TypeVarLike(TypeVarLike),
     TypeAlias(&'db TypeAlias),
     NewType(Rc<NewType>),
@@ -1903,7 +1903,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
-            TypeNameLookup::Class(node_ref) => TypeContent::Class { node_ref },
+            TypeNameLookup::Class { node_ref } => TypeContent::Class { node_ref },
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars = true;
                 match (self.type_var_callback)(
@@ -2893,9 +2893,10 @@ fn check_type_name<'db: 'file, 'file>(
                 new_name.name_definition().unwrap().index(),
             );
             name_def.file.inference(i_s).cache_class(name_def, c);
-            let class_node_ref = NodeRef::new(name_node_ref.file, c.index());
             // Classes can be defined recursive, so use the NamedTuple stuff here.
-            TypeNameLookup::Class(class_node_ref)
+            TypeNameLookup::Class {
+                node_ref: NodeRef::new(name_node_ref.file, c.index()),
+            }
         }
         TypeLike::Assignment(assignment) => {
             if name_node_ref.point().calculated() {
