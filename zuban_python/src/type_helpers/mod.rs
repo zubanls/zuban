@@ -10,7 +10,7 @@ mod typing;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::Callable;
-pub use class::{Class, MroIterator};
+pub use class::{Class, MroIterator, TypeOrClass};
 pub use function::{FirstParamProperties, Function, InferrableParam, OverloadedFunction};
 pub use instance::Instance;
 pub use module::Module;

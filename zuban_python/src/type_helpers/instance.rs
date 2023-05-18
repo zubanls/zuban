@@ -2,6 +2,7 @@ use std::borrow::Cow;
 
 use parsa_python_ast::Name;
 
+use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, DbType, PointLink};
@@ -11,7 +12,7 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{IteratorContent, LookupResult, OnTypeError, ResultContext, Type};
+use crate::matching::{IteratorContent, LookupResult, OnTypeError, ResultContext};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -44,7 +45,7 @@ impl<'a> Instance<'a> {
         let mut had_set = false;
         let mut had_no_set = false;
         for (mro_index, t) in self.class.mro(i_s.db) {
-            if let Some(class) = t.maybe_class(i_s.db) {
+            if let TypeOrClass::Class(class) = t {
                 if let Some(inf) = class
                     .lookup_symbol(i_s, name.as_str())
                     .into_maybe_inferred()
@@ -185,7 +186,7 @@ impl<'a> Instance<'a> {
         for (mro_index, class) in self.class.mro(i_s.db) {
             // First check class infos
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
-                if let Some(c) = class.maybe_class(i_s.db) {
+                if let TypeOrClass::Class(c) = class {
                     let i_s = i_s.with_class_context(&self.class);
                     inf.resolve_class_type_vars(&i_s.with_class_context(&c), &self.class)
                         .bind_instance_descriptors(
@@ -208,7 +209,7 @@ impl<'a> Instance<'a> {
                 Some(x) => return x,
             }
             // Then check self attributes
-            if let Some(c) = class.maybe_class(i_s.db) {
+            if let TypeOrClass::Class(c) = class {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
                     let i_s = i_s.with_class_context(&c);
                     return LookupResult::GotoName(
@@ -310,29 +311,29 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
 
     fn next(&mut self) -> Option<Self::Item> {
         for (mro_index, t) in self.mro_iterator.by_ref() {
-            if let Some(class) = t.maybe_class(self.i_s.db) {
-                let result = class
-                    .lookup_symbol(self.i_s, self.name)
-                    .and_then(|inf| {
-                        inf.resolve_class_type_vars(self.i_s, &self.instance.class)
-                            .bind_instance_descriptors(
-                                self.i_s,
-                                self.instance,
-                                class,
-                                |i_s| self.instance.as_inferred(i_s),
-                                Some(self.from),
-                                mro_index,
-                            )
-                    })
-                    .and_then(|lookup_result| lookup_result.into_maybe_inferred());
-                if let Some(result) = result {
-                    return Some(FoundOnClass::Attribute(result));
+            match t {
+                TypeOrClass::Class(class) => {
+                    let result = class
+                        .lookup_symbol(self.i_s, self.name)
+                        .and_then(|inf| {
+                            inf.resolve_class_type_vars(self.i_s, &self.instance.class)
+                                .bind_instance_descriptors(
+                                    self.i_s,
+                                    self.instance,
+                                    class,
+                                    |i_s| self.instance.as_inferred(i_s),
+                                    Some(self.from),
+                                    mro_index,
+                                )
+                        })
+                        .and_then(|lookup_result| lookup_result.into_maybe_inferred());
+                    if let Some(result) = result {
+                        return Some(FoundOnClass::Attribute(result));
+                    }
                 }
-            } else {
-                match t {
+                TypeOrClass::Type(t) => {
                     // Types are always precalculated in the class mro.
-                    Type::Type(t) => return Some(FoundOnClass::UnresolvedDbType(t)),
-                    _ => unreachable!(),
+                    return Some(FoundOnClass::UnresolvedDbType(t.into_cow(self.i_s.db)));
                 }
             }
         }

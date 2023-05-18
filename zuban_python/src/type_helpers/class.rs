@@ -529,7 +529,7 @@ impl<'db: 'a, 'a> Class<'a> {
         for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, self.incomplete_mro(i_s.db)) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
-                if let Type::Class(c) = c {
+                if let TypeOrClass::Class(c) = c {
                     return (result, Some(c));
                 } else {
                     return (result, None);
@@ -598,7 +598,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
             db,
-            Type::Class(*self),
+            TypeOrClass::Class(*self),
             self.generics,
             class_infos.mro.iter(),
             incomplete_mro || self.node_ref == db.python_state.object_node_ref(),
@@ -806,7 +806,7 @@ impl fmt::Debug for Class<'_> {
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
     generics: Generics<'a>,
-    class: Option<Type<'a>>,
+    class: Option<TypeOrClass<'a>>,
     iterator: std::slice::Iter<'a, DbType>,
     mro_index: u32,
     returned_object: bool,
@@ -815,7 +815,7 @@ pub struct MroIterator<'db, 'a> {
 impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
-        class: Type<'a>,
+        class: TypeOrClass<'a>,
         generics: Generics<'a>,
         iterator: std::slice::Iter<'a, DbType>,
         returned_object: bool,
@@ -831,20 +831,34 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     }
 }
 
+pub enum TypeOrClass<'a> {
+    Type(Type<'a>),
+    Class(Class<'a>),
+}
+
+impl<'a> TypeOrClass<'a> {
+    pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+        match self {
+            Self::Class(class) => class.lookup_symbol(i_s, name),
+            Self::Type(t) => t.lookup_symbol(i_s, name),
+        }
+    }
+}
+
 impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
-    type Item = (MroIndex, Type<'a>);
+    type Item = (MroIndex, TypeOrClass<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.class.is_some() {
             self.mro_index += 1;
-            Some((MroIndex(0), std::mem::take(&mut self.class).unwrap()))
+            Some((MroIndex(0), self.class.take().unwrap()))
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
                     DbType::Class(c, generics) => {
                         let n = NodeRef::from_link(self.db, *c);
-                        Type::Class(match generics {
+                        TypeOrClass::Class(match generics {
                             ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(&g)),
                             ClassGenerics::None => Class::from_position(n, self.generics, None),
                             ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, generics), None)"),
@@ -853,9 +867,9 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                     }
                     // TODO this is wrong, because it does not use generics.
                     _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {
-                        Type::new(c)
+                        TypeOrClass::Type(Type::new(c))
                     }
-                    _ => Type::owned(c.replace_type_var_likes_and_self(
+                    _ => TypeOrClass::Type(Type::owned(c.replace_type_var_likes_and_self(
                         self.db,
                         &mut |usage| {
                             self.generics
@@ -863,7 +877,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                                 .into_generic_item(self.db)
                         },
                         &mut || todo!(),
-                    )),
+                    ))),
                 },
             ));
             self.mro_index += 1;
@@ -872,7 +886,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
             self.returned_object = true;
             Some((
                 MroIndex(self.mro_index),
-                Type::Class(self.db.python_state.object_class()),
+                TypeOrClass::Class(self.db.python_state.object_class()),
             ))
         } else {
             None

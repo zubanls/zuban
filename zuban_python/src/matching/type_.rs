@@ -20,8 +20,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeVarInstance,
-    TypingType,
+    Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeOrClass,
+    TypeVarInstance, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -59,7 +59,7 @@ impl<'a> Type<'a> {
         Self::owned(self.into_db_type(db).union(other.into_db_type(db)))
     }
 
-    fn into_cow(self, db: &Database) -> Cow<'a, DbType> {
+    pub fn into_cow(self, db: &Database) -> Cow<'a, DbType> {
         match self {
             Self::Class(class) => Cow::Owned(class.as_db_type(db)),
             Self::Type(t) => t,
@@ -149,17 +149,6 @@ impl<'a> Type<'a> {
                 }),
                 _ => None,
             },
-        }
-    }
-
-    #[inline]
-    pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
-        match self {
-            Self::Class(c) => *c,
-            Self::Type(Cow::Borrowed(DbType::Class(link, generics))) => {
-                Class::from_db_type(db, *link, generics)
-            }
-            _ => unreachable!(),
         }
     }
 
@@ -486,6 +475,10 @@ impl<'a> Type<'a> {
         let m = match value_type.mro(i_s.db) {
             Some(mro) => {
                 for (_, t2) in mro {
+                    let t2 = match t2 {
+                        TypeOrClass::Class(c) => Type::Class(c),
+                        TypeOrClass::Type(t2) => t2,
+                    };
                     let m = self.matches_internal(i_s, matcher, &t2, Variance::Covariant);
                     if !matches!(
                         m,
@@ -705,7 +698,7 @@ impl<'a> Type<'a> {
                     let tuple_class = db.python_state.tuple_class(db, tup);
                     MroIterator::new(
                         db,
-                        Type::new(t),
+                        TypeOrClass::Type(Type::new(t)),
                         tuple_class.generics,
                         tuple_class.use_cached_class_infos(db).mro.iter(),
                         false,
@@ -998,13 +991,17 @@ impl<'a> Type<'a> {
         };
 
         for (_, c1) in class1.mro(i_s.db) {
-            if check(i_s, &c1, &Type::Class(class2)) {
-                return true;
+            if let TypeOrClass::Class(c1) = c1 {
+                if Self::overlaps_class(i_s, c1, class2) {
+                    return true;
+                }
             }
         }
         for (_, c2) in class2.mro(i_s.db) {
-            if check(i_s, &Type::Class(class1), &c2) {
-                return true;
+            if let TypeOrClass::Class(c2) = c2 {
+                if Self::overlaps_class(i_s, class1, c2) {
+                    return true;
+                }
             }
         }
         false
@@ -1090,17 +1087,34 @@ impl<'a> Type<'a> {
     ) -> DbType {
         if let Some(class) = t.maybe_class(i_s.db) {
             if let Some(mro) = self.mro(i_s.db) {
-                for (_, value_type) in mro {
-                    if Self::matches_class_against_type(
-                        i_s,
-                        &mut Matcher::default(),
-                        &class,
-                        &value_type,
-                        Variance::Covariant,
-                    )
-                    .bool()
-                    {
-                        return value_type.into_db_type(i_s.db);
+                for (_, type_or_class) in mro {
+                    match type_or_class {
+                        TypeOrClass::Class(value_class) => {
+                            if Self::matches_class(
+                                i_s,
+                                &mut Matcher::default(),
+                                &class,
+                                &value_class,
+                                Variance::Covariant,
+                            )
+                            .bool()
+                            {
+                                return value_class.as_db_type(i_s.db);
+                            }
+                        }
+                        TypeOrClass::Type(value_type) => {
+                            if Self::matches_class_against_type(
+                                i_s,
+                                &mut Matcher::default(),
+                                &class,
+                                &value_type,
+                                Variance::Covariant,
+                            )
+                            .bool()
+                            {
+                                return value_type.into_db_type(i_s.db);
+                            }
+                        }
                     }
                 }
             }
@@ -1314,6 +1328,15 @@ impl<'a> Type<'a> {
             (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s.db) {
                     for (_, c2) in c2.mro(i_s.db) {
+                        // TODO this needs to be removed I guess
+                        let c1 = match &c1 {
+                            TypeOrClass::Type(c1) => c1.clone(),
+                            TypeOrClass::Class(c1) => Type::Class(*c1),
+                        };
+                        let c2 = match c2 {
+                            TypeOrClass::Type(c2) => c2,
+                            TypeOrClass::Class(c2) => Type::Class(c2),
+                        };
                         if c1.is_simple_same_type(i_s, &c2).bool() {
                             return c1.as_db_type(i_s.db);
                         }

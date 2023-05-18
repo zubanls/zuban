@@ -19,8 +19,8 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
-    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeVarClass,
-    TypeVarTupleClass, TypingCast, TypingClass,
+    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass,
+    TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
 };
 
 #[derive(Debug)]
@@ -242,7 +242,9 @@ impl<'db: 'slf, 'slf> Inferred {
             .unwrap()
             .1;
         // Mro classes are never owned, because they are saved on classes.
-        let class = class_t.expect_borrowed_class(i_s.db);
+        let TypeOrClass::Class(class) = class_t else {
+            unreachable!()
+        };
         (instance, class)
     }
     pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {

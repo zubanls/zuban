@@ -21,7 +21,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, FirstParamProperties, Function, Instance};
+use crate::type_helpers::{Class, FirstParamProperties, Function, Instance, TypeOrClass};
 use crate::utils::rc_unwrap_or_clone;
 
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
@@ -332,7 +332,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         &mut Matcher::default(),
                         &mut |i_s, _, result_class| {
                             for (_, t) in class.mro(i_s.db) {
-                                if let Some(class) = t.maybe_class(i_s.db) {
+                                if let TypeOrClass::Class(class) = t {
                                     if result_class.node_ref == class.node_ref {
                                         add_generics_from_result_context_class(
                                             i_s,
