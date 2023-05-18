@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
+use parsa_python_ast::{Expression, SliceContent, SliceIterator, Slices};
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
@@ -39,16 +39,6 @@ pub enum Generics<'a> {
 }
 
 impl<'a> Generics<'a> {
-    pub fn new_simple_generic_slice(file: &'a PythonFile, slice_type: SliceType<'a>) -> Self {
-        match slice_type {
-            SliceType::NamedExpression(named) => {
-                Self::ExpressionWithClassType(file, named.expression())
-            }
-            SliceType::Slice(_) => unreachable!(),
-            SliceType::Slices(slices) => Self::SlicesWithClassTypes(file, slices),
-        }
-    }
-
     pub fn new_list(list: &'a GenericsList) -> Self {
         Self::List(list, None)
     }

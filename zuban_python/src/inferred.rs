@@ -1,4 +1,4 @@
-use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString};
+use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
@@ -319,39 +319,31 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn maybe_class(&self, i_s: &InferenceState<'db, '_>) -> Option<Class<'db>> {
-        let mut generics = None;
+    pub fn expect_class_or_simple_generic(&self, i_s: &InferenceState<'db, '_>) -> Type<'db> {
+        let mut generics = ClassGenerics::None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
                 let definition = NodeRef::from_link(i_s.db, *definition);
-                generics = Self::expect_generics(definition, *point);
+                generics = Self::expect_class_generics(definition, *point);
             }
         }
-        self.maybe_class_internal(i_s, generics.unwrap_or(Generics::NotDefinedYet))
+        let link = self.maybe_class_internal(i_s).unwrap();
+        Type::owned(DbType::Class(link, generics))
     }
 
-    fn maybe_class_internal<'a>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        generics: Generics<'a>,
-    ) -> Option<Class<'a>>
-    where
-        'db: 'a,
-    {
+    fn maybe_class_internal(&self, i_s: &InferenceState) -> Option<PointLink> {
         match &self.state {
-            InferredState::Saved(definition, point) => {
-                let definition = NodeRef::from_link(i_s.db, *definition);
+            InferredState::Saved(link, point) => {
+                let node_ref = NodeRef::from_link(i_s.db, *link);
                 match point.type_() {
                     PointType::Complex => {
-                        let complex = definition.file.complex_points.get(point.complex_index());
+                        let complex = node_ref.file.complex_points.get(point.complex_index());
                         match complex {
-                            ComplexPoint::Class(c) => {
-                                Some(Class::new(definition, c, generics, None))
-                            }
+                            ComplexPoint::Class(c) => Some(*link),
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Type(t) => match t.as_ref() {
                                     DbType::Class(link, generics) => {
-                                        Some(Class::from_db_type(i_s.db, *link, generics))
+                                        todo!()
                                     }
                                     _ => None,
                                 },
@@ -362,11 +354,11 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     PointType::Specific => match point.specific() {
                         Specific::SimpleGeneric => {
-                            let inferred = definition
+                            let inferred = node_ref
                                 .file
                                 .inference(i_s)
-                                .infer_primary_or_atom(definition.as_primary().first());
-                            inferred.maybe_class_internal(i_s, generics)
+                                .infer_primary_or_atom(node_ref.as_primary().first());
+                            inferred.maybe_class_internal(i_s)
                         }
                         _ => None,
                     },
@@ -920,22 +912,30 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    fn expect_generics(definition: NodeRef<'db>, point: Point) -> Option<Generics<'db>> {
+    fn expect_class_generics(definition: NodeRef<'db>, point: Point) -> ClassGenerics {
         if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
             let primary = definition.as_primary();
             match primary.second() {
                 PrimaryContent::GetItem(slice_type) => {
-                    return Some(Generics::new_simple_generic_slice(
-                        definition.file,
-                        slice_type,
-                    ))
+                    return match slice_type {
+                        ASTSliceType::NamedExpression(named) => {
+                            ClassGenerics::ExpressionWithClassType(PointLink::new(
+                                definition.file_index(),
+                                named.expression().index(),
+                            ))
+                        }
+                        ASTSliceType::Slice(_) => unreachable!(),
+                        ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
+                            PointLink::new(definition.file_index(), slices.index()),
+                        ),
+                    }
                 }
                 _ => {
                     unreachable!()
                 }
             }
         }
-        None
+        unreachable!()
     }
 
     pub fn is_union(&self, db: &'db Database) -> bool {

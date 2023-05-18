@@ -2363,7 +2363,9 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
             if point.specific() == Specific::AnnotationOrTypeCommentClassInstance {
-                return Type::Class(self.infer_expression(expr).maybe_class(self.i_s).unwrap());
+                return self
+                    .infer_expression(expr)
+                    .expect_class_or_simple_generic(self.i_s);
             } else {
                 debug_assert_eq!(
                     point.specific(),
@@ -3041,7 +3043,7 @@ pub fn use_cached_simple_generic_type<'db>(
         PointType::Redirect
     );
     let inferred = inference.check_point_cache(expr.index()).unwrap();
-    Type::Class(inferred.maybe_class(i_s).unwrap())
+    inferred.expect_class_or_simple_generic(i_s)
 }
 
 pub fn use_cached_annotation_type<'db: 'file, 'file>(
