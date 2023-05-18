@@ -187,6 +187,7 @@ enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
     Class {
         node_ref: NodeRef<'db>,
+        has_type_vars: bool,
     },
     SimpleGeneric {
         node_ref: NodeRef<'db>,
@@ -277,7 +278,7 @@ macro_rules! compute_type_application {
         );
         let t = tcomp.$method $args;
         match t {
-            TypeContent::Class{node_ref} => {
+            TypeContent::Class{node_ref, ..} => {
                 todo!()
             }
             TypeContent::SimpleGeneric{class_link, generics, ..} => {
@@ -579,7 +580,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
         match type_ {
-            TypeContent::Class { node_ref } => {
+            TypeContent::Class { node_ref, .. } => {
                 let db = self.inference.i_s.db;
                 Class::with_undefined_generics(node_ref).as_db_type(db)
             }
@@ -745,7 +746,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         };
         if !self.inference.file.points.get(expr.index()).calculated() {
             match &type_content {
-                TypeContent::Class { node_ref } | TypeContent::SimpleGeneric { node_ref, .. } => {
+                TypeContent::Class {
+                    node_ref,
+                    has_type_vars: true,
+                } => {
+                    let node_ref = *node_ref;
+                    // This essentially means we have a class with Any generics. This is not what
+                    // we want to be defined as a redirect and therefore we calculate Foo[Any, ...]
+                    return TypeContent::DbType(self.as_db_type(type_content, node_ref));
+                }
+                TypeContent::Class { node_ref, .. }
+                | TypeContent::SimpleGeneric { node_ref, .. } => {
                     Inferred::from_saved_node_ref(*node_ref).save_redirect(
                         self.inference.i_s,
                         self.inference.file,
@@ -827,7 +838,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeContent::Unknown
                     }
                 }
-                TypeContent::Class { node_ref } => {
+                TypeContent::Class { node_ref, .. } => {
                     let cls = Class::with_undefined_generics(node_ref);
                     self.check_attribute_on_class(cls, primary, name)
                 }
@@ -899,7 +910,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             PrimaryContent::GetItem(slice_type) => {
                 let s = SliceType::new(self.inference.file, primary.index(), slice_type);
                 match base {
-                    TypeContent::Class { node_ref } => {
+                    TypeContent::Class { node_ref, .. } => {
                         let db = self.inference.i_s.db;
                         self.compute_type_get_item_on_class(
                             Class::with_undefined_generics(node_ref),
@@ -1204,7 +1215,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.check_restrictions(type_var, &slice_content, &t, || Box::from(class.name()));
                 if !matches!(
                     t,
-                    TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
+                    TypeContent::SimpleGeneric { .. }
+                        | TypeContent::Class {
+                            has_type_vars: false,
+                            ..
+                        }
                 ) {
                     // Backfill the generics
                     for slice_content in slice_type.iter().take(i) {
@@ -1903,7 +1918,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
-            TypeNameLookup::Class { node_ref } => TypeContent::Class { node_ref },
+            TypeNameLookup::Class { node_ref } => TypeContent::Class {
+                node_ref,
+                has_type_vars: Class::with_undefined_generics(node_ref)
+                    .type_vars(self.inference.i_s)
+                    .is_some(),
+            },
             TypeNameLookup::TypeVarLike(type_var_like) => {
                 self.has_type_vars = true;
                 match (self.type_var_callback)(
