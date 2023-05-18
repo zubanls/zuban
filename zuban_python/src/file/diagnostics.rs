@@ -493,10 +493,16 @@ impl<'db> Inference<'db, '_, '_> {
                     if let Some(exception) = exception {
                         if !self
                             .infer_expression(exception)
-                            .maybe_class(self.i_s)
-                            .map(|class| {
-                                class
-                                    .in_mro(self.i_s.db, &self.i_s.db.python_state.base_exception())
+                            .as_type(self.i_s)
+                            .maybe_db_type()
+                            .and_then(|t| {
+                                let DbType::Type(t) = t else {
+                                    return None;
+                                };
+                                let db = self.i_s.db;
+                                Type::new(t)
+                                    .maybe_class(self.i_s.db)
+                                    .map(|cls| cls.in_mro(db, &db.python_state.base_exception()))
                             })
                             .unwrap_or(false)
                         {
