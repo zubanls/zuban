@@ -327,54 +327,34 @@ impl<'db: 'slf, 'slf> Inferred {
                 generics = Self::expect_class_generics(definition, *point);
             }
         }
-        let link = self.maybe_class_internal(i_s).unwrap();
+        let link = self.get_class_link(i_s);
         Type::owned(DbType::Class(link, generics))
     }
 
-    fn maybe_class_internal(&self, i_s: &InferenceState) -> Option<PointLink> {
-        match &self.state {
-            InferredState::Saved(link, point) => {
-                let node_ref = NodeRef::from_link(i_s.db, *link);
-                match point.type_() {
-                    PointType::Complex => {
-                        let complex = node_ref.file.complex_points.get(point.complex_index());
-                        match complex {
-                            ComplexPoint::Class(c) => Some(*link),
-                            ComplexPoint::TypeInstance(t) => match t {
-                                DbType::Type(t) => match t.as_ref() {
-                                    DbType::Class(link, generics) => {
-                                        todo!()
-                                    }
-                                    _ => None,
-                                },
-                                _ => None,
-                            },
-                            _ => None,
-                        }
-                    }
-                    PointType::Specific => match point.specific() {
-                        Specific::SimpleGeneric => {
-                            let inferred = node_ref
-                                .file
-                                .inference(i_s)
-                                .infer_primary_or_atom(node_ref.as_primary().first());
-                            inferred.maybe_class_internal(i_s)
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                }
+    fn get_class_link(&self, i_s: &InferenceState) -> PointLink {
+        let InferredState::Saved(link, point) = &self.state else {
+            unreachable!()
+        };
+        let node_ref = NodeRef::from_link(i_s.db, *link);
+        match point.type_() {
+            PointType::Complex => {
+                let complex = node_ref.file.complex_points.get(point.complex_index());
+                let ComplexPoint::Class(c) = complex else {
+                    unreachable!();
+                };
+                *link
             }
-            InferredState::UnsavedComplex(complex) => {
-                if let ComplexPoint::TypeInstance(g) = complex {
-                    return None; // TODO this was originally a return None for tuple class
+            PointType::Specific => match point.specific() {
+                Specific::SimpleGeneric => {
+                    let inferred = node_ref
+                        .file
+                        .inference(i_s)
+                        .infer_primary_or_atom(node_ref.as_primary().first());
+                    inferred.get_class_link(i_s)
                 }
-                todo!("{complex:?}")
-            }
-            InferredState::UnsavedSpecific(specific) => todo!(),
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::BoundMethod { .. } => None,
-            InferredState::Unknown => None,
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
         }
     }
 
@@ -913,29 +893,21 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     fn expect_class_generics(definition: NodeRef<'db>, point: Point) -> ClassGenerics {
-        if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
-            let primary = definition.as_primary();
-            match primary.second() {
-                PrimaryContent::GetItem(slice_type) => {
-                    return match slice_type {
-                        ASTSliceType::NamedExpression(named) => {
-                            ClassGenerics::ExpressionWithClassType(PointLink::new(
-                                definition.file_index(),
-                                named.expression().index(),
-                            ))
-                        }
-                        ASTSliceType::Slice(_) => unreachable!(),
-                        ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
-                            PointLink::new(definition.file_index(), slices.index()),
-                        ),
-                    }
-                }
-                _ => {
-                    unreachable!()
-                }
-            }
+        debug_assert_eq!(point.type_(), PointType::Specific);
+        debug_assert_eq!(point.specific(), Specific::SimpleGeneric);
+        let PrimaryContent::GetItem(slice_type) = definition.as_primary().second() else {
+            unreachable!();
+        };
+        match slice_type {
+            ASTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
+                PointLink::new(definition.file_index(), named.expression().index()),
+            ),
+            ASTSliceType::Slice(_) => unreachable!(),
+            ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(PointLink::new(
+                definition.file_index(),
+                slices.index(),
+            )),
         }
-        unreachable!()
     }
 
     pub fn is_union(&self, db: &'db Database) -> bool {
