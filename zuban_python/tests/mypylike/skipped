@@ -29,8 +29,6 @@ testSelfTypeGenericClassNoClashClassMethodClassObject
 testTypingSelfAlternativeGenericConstructor
 testGenericNamedTupleCustomMethods
 
-overload_class_type_var_implementation_match_and_mismatch
-
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
 # raise from: Exception must be derived from BaseException
@@ -1496,6 +1494,9 @@ testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
+
+# Overload needs type var matcher probably (and maybe also overlapping)
+overload_class_type_var_implementation_match_and_mismatch
 
 # - Signature of "f" incompatible with supertype "Parent"
 testSelfTypeOverrideCompatibility
