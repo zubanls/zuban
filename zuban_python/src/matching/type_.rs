@@ -843,33 +843,37 @@ impl<'a> Type<'a> {
     ) -> Match {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
             return Self::matches_class(i_s, matcher, class1, &class2, variance);
-        } else if let Some(DbType::Type(t2)) = value_type.maybe_db_type() {
-            if let DbType::Class(c2, generics2) = t2.as_ref() {
-                let class2 = Class::from_db_type(i_s.db, *c2, generics2);
-                match class2.use_cached_class_infos(i_s.db).metaclass {
-                    MetaclassState::Some(link) => {
-                        return Type::owned(class1.as_db_type(i_s.db)).matches(
-                            i_s,
-                            matcher,
-                            &Type::owned(DbType::Class(link, ClassGenerics::None)),
-                            variance,
-                        );
+        } else {
+            match value_type.maybe_db_type().unwrap() {
+                DbType::Type(t2) => {
+                    if let DbType::Class(c2, generics2) = t2.as_ref() {
+                        let class2 = Class::from_db_type(i_s.db, *c2, generics2);
+                        match class2.use_cached_class_infos(i_s.db).metaclass {
+                            MetaclassState::Some(link) => {
+                                return Type::owned(class1.as_db_type(i_s.db)).matches(
+                                    i_s,
+                                    matcher,
+                                    &Type::owned(DbType::Class(link, ClassGenerics::None)),
+                                    variance,
+                                );
+                            }
+                            MetaclassState::Unknown => {
+                                todo!()
+                            }
+                            MetaclassState::None => (),
+                        }
                     }
-                    MetaclassState::Unknown => {
-                        todo!()
-                    }
-                    MetaclassState::None => (),
                 }
-            }
-        } else if variance == Variance::Covariant {
-            if let Some(DbType::Literal(literal)) = value_type.maybe_db_type() {
-                return Self::matches_class_against_type(
-                    i_s,
-                    matcher,
-                    class1,
-                    &i_s.db.python_state.literal_type(literal.kind),
-                    variance,
-                );
+                DbType::Literal(literal) if variance == Variance::Covariant => {
+                    return Self::matches_class_against_type(
+                        i_s,
+                        matcher,
+                        class1,
+                        &i_s.db.python_state.literal_type(literal.kind),
+                        variance,
+                    );
+                }
+                _ => (),
             }
         }
         Match::new_false()
