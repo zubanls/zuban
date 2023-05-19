@@ -101,7 +101,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
             }
             if !checked {
                 // [2]
-                let matches = Type::Class(class).is_super_type_of(
+                let matches = Type::owned(class.as_db_type(i_s.db)).is_super_type_of(
                     &i_s.with_class_context(&class),
                     &mut matcher,
                     &t,
@@ -778,7 +778,11 @@ pub fn create_signature_without_self(
     if !matches!(expected_type.maybe_db_type(), Some(DbType::Self_)) {
         // TODO It is questionable that we do not match Self here
         if !expected_type
-            .is_super_type_of(i_s, &mut matcher, &Type::Class(instance.class))
+            .is_super_type_of(
+                i_s,
+                &mut matcher,
+                &Type::owned(instance.class.as_db_type(i_s.db)),
+            )
             .bool()
         {
             return None;

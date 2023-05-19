@@ -695,7 +695,7 @@ impl<'a> Type<'a> {
                 DbType::Self_ if variance == Variance::Covariant => {
                     return self.simple_matches(
                         i_s,
-                        &Type::Class(*i_s.current_class().unwrap()),
+                        &Type::owned(i_s.current_class().unwrap().as_db_type(i_s.db)),
                         variance,
                     )
                 }
