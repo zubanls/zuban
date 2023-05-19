@@ -813,7 +813,7 @@ impl<'a> Type<'a> {
             let c1_generics = class1.generics();
             let c2_generics = class2.generics();
             let result = c1_generics
-                .matches(i_s, matcher, c2_generics, type_vars)
+                .matches(i_s, matcher, c2_generics, type_vars, variance)
                 .similar_if_false();
             if !result.bool() {
                 let mut check = |i_s: &InferenceState, n| {

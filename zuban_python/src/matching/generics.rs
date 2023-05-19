@@ -229,14 +229,14 @@ impl<'a> Generics<'a> {
         matcher: &mut Matcher,
         value_generics: Self,
         type_vars: &TypeVarLikes,
+        variance: Variance,
     ) -> Match {
         let value_generics = value_generics.iter(i_s.db);
         let mut matches = Match::new_true();
         for ((t1, t2), tv) in self.iter(i_s.db).zip(value_generics).zip(type_vars.iter()) {
             let v = match tv {
-                TypeVarLike::TypeVar(t) => t.variance,
-                TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
-                TypeVarLike::ParamSpec(_) => Variance::Invariant,
+                TypeVarLike::TypeVar(t) if variance != Variance::Invariant => t.variance,
+                _ => Variance::Invariant,
             };
             matches &= t1.matches(i_s, matcher, &t2, v);
         }

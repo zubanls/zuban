@@ -29,6 +29,8 @@ testSelfTypeGenericClassNoClashClassMethodClassObject
 testTypingSelfAlternativeGenericConstructor
 testGenericNamedTupleCustomMethods
 
+generic_covariant_match
+
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
 # raise from: Exception must be derived from BaseException

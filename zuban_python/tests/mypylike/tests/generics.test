@@ -724,6 +724,7 @@ T = TypeVar('T')
 T_contra = TypeVar('T_contra', contravariant=True)
 
 class A(Generic[T_contra]): pass
+class B(Generic[T]): pass
 
 class C: ...
 class D(C): ...
@@ -758,3 +759,17 @@ reveal_type(k(c_c_c, c_c_d))  # N: Revealed type is "__main__.C"
 reveal_type(k(c_c_d, c_c_c))  # N: Revealed type is "__main__.C"
 reveal_type(l(c_c_ac, c_c_ad))  # N: Revealed type is "__main__.D"
 reveal_type(l(c_c_ad, c_c_ac))  # N: Revealed type is "__main__.D"
+
+[case nested_invariance]
+from typing import Generic, TypeVar, Sequence
+
+T = TypeVar('T')
+
+class X(Generic[T]): ...
+class C: ...
+class D(C): ...
+
+def x(x: X[Sequence[T]], y: X[Sequence[T]]) -> T: ...
+x_s_c: X[Sequence[C]]
+x_s_d: X[Sequence[D]]
+x(x_s_c, x_s_d)  # E: Argument 2 to "x" has incompatible type "X[Sequence[D]]"; expected "X[Sequence[C]]"
