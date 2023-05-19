@@ -235,7 +235,10 @@ impl<'a> Generics<'a> {
         let mut matches = Match::new_true();
         for ((t1, t2), tv) in self.iter(i_s.db).zip(value_generics).zip(type_vars.iter()) {
             let v = match tv {
-                TypeVarLike::TypeVar(t) if variance != Variance::Invariant => t.variance,
+                TypeVarLike::TypeVar(t) if variance == Variance::Covariant => t.variance,
+                TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
+                    t.variance.invert()
+                }
                 _ => Variance::Invariant,
             };
             matches &= t1.matches(i_s, matcher, &t2, v);
