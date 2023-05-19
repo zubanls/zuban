@@ -815,7 +815,7 @@ impl<'a> Type<'a> {
                     if t2.is_any() {
                         return false;
                     }
-                    t1.is_super_type_of(i_s, matcher, &t2).bool()
+                    t1.matches(i_s, matcher, &t2, variance).bool()
                 };
                 if class1.node_ref == i_s.db.python_state.list_node_ref() && check(i_s, 0) {
                     return Match::False {
