@@ -111,10 +111,12 @@ impl<'a> Type<'a> {
                 _ => None,
             },
             Self::Type(Cow::Owned(t)) => match t {
-                DbType::Class(link, ClassGenerics::None) => {
-                    Some(Class::from_db_type(db, *link, &ClassGenerics::None))
-                }
-                _ => unreachable!(),
+                DbType::Class(link, generics) => Some(Class::from_position(
+                    NodeRef::from_link(db, *link),
+                    Generics::from_non_list_class_generics(db, generics),
+                    None,
+                )),
+                _ => None,
             },
         }
     }
