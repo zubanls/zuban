@@ -1329,28 +1329,24 @@ impl<'a> Type<'a> {
         match (self.maybe_class(i_s.db), other.maybe_class(i_s.db)) {
             (Some(c1), Some(c2)) => {
                 for (_, c1) in c1.mro(i_s.db) {
-                    for (_, c2) in c2.mro(i_s.db) {
-                        // TODO this needs to be removed I guess
-                        let c1 = match &c1 {
-                            TypeOrClass::Type(c1) => c1.clone(),
-                            TypeOrClass::Class(c1) => Type::Class(*c1),
-                        };
-                        let c2 = match c2 {
-                            TypeOrClass::Type(c2) => c2,
-                            TypeOrClass::Class(c2) => Type::Class(c2),
-                        };
-                        // Avoid using the normal matching mechanism, because we do not want to use
-                        // protocols matching.
-                        if c1
-                            .matches_internal(
-                                i_s,
-                                &mut Matcher::default(),
-                                &c2,
-                                Variance::Invariant,
-                            )
-                            .bool()
-                        {
-                            return c1.as_db_type(i_s.db);
+                    match c1 {
+                        TypeOrClass::Type(c1) => (),
+                        TypeOrClass::Class(c1) => {
+                            for (_, c2) in c2.mro(i_s.db) {
+                                let TypeOrClass::Class(c2) = c2 else {
+                                    continue
+                                };
+                                let m = Self::matches_class(
+                                    i_s,
+                                    &mut Matcher::default(),
+                                    &c1,
+                                    &c2,
+                                    Variance::Invariant,
+                                );
+                                if m.bool() {
+                                    return c1.as_db_type(i_s.db);
+                                }
+                            }
                         }
                     }
                 }
