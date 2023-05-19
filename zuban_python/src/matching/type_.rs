@@ -804,7 +804,6 @@ impl<'a> Type<'a> {
         matcher: &mut Matcher,
         class1: &Class,
         class2: &Class,
-        variance: Variance,
     ) -> Match {
         if class1.node_ref != class2.node_ref {
             return Match::new_false();
@@ -853,7 +852,7 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
-            return Self::matches_class(i_s, matcher, class1, &class2, variance);
+            return Self::matches_class(i_s, matcher, class1, &class2);
         } else if let Some(DbType::Type(t2)) = value_type.maybe_db_type() {
             if let DbType::Class(c2, generics2) = t2.as_ref() {
                 let class2 = Class::from_db_type(i_s.db, *c2, generics2);
@@ -1108,7 +1107,6 @@ impl<'a> Type<'a> {
                                 &mut Matcher::default(),
                                 &class,
                                 &value_class,
-                                Variance::Covariant,
                             )
                             .bool()
                             {
