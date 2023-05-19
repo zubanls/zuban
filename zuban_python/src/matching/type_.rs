@@ -488,11 +488,24 @@ impl<'a> Type<'a> {
         let m = match value_type.mro(i_s.db) {
             Some(mro) => {
                 for (_, t2) in mro {
-                    let t2 = match t2 {
-                        TypeOrClass::Class(c) => Type::Class(c),
-                        TypeOrClass::Type(t2) => t2,
+                    let m = match t2 {
+                        TypeOrClass::Class(c2) => match self.maybe_class(i_s.db) {
+                            Some(c1) => {
+                                Self::matches_class(i_s, matcher, &c1, &c2, Variance::Covariant)
+                            }
+                            None => {
+                                // TODO performance: This might be slow, because it always
+                                // allocates when e.g.  Foo is passed to def x(f: Foo | None): ...
+                                // This is a bit unfortunate, especially because it loops over the
+                                // mro and allocates every time.
+                                let t2 = Type::owned(c2.as_db_type(i_s.db));
+                                self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
+                            }
+                        },
+                        TypeOrClass::Type(t2) => {
+                            self.matches_internal(i_s, matcher, &t2, Variance::Covariant)
+                        }
                     };
-                    let m = self.matches_internal(i_s, matcher, &t2, Variance::Covariant);
                     if !matches!(
                         m,
                         Match::False {
