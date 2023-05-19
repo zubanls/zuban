@@ -112,7 +112,6 @@ impl CalculatedTypeVarLike {
 pub struct TypeVarMatcher {
     pub(super) calculated_type_vars: Vec<CalculatedTypeVarLike>,
     pub(super) match_in_definition: PointLink,
-    pub match_reverse: bool, // For contravariance subtypes
 }
 
 impl TypeVarMatcher {
@@ -124,7 +123,6 @@ impl TypeVarMatcher {
         Self {
             calculated_type_vars,
             match_in_definition,
-            match_reverse: false,
         }
     }
 
