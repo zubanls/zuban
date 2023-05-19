@@ -748,25 +748,15 @@ impl<'a> Type<'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        let match_reverse = matcher.is_matching_reverse();
         match value_type.maybe_db_type() {
             Some(DbType::Union(u2)) => match variance {
                 Variance::Covariant => {
                     let mut matches = true;
-                    if match_reverse {
-                        for g1 in u1.iter() {
-                            let t1 = Type::new(g1);
-                            matches &= u2
-                                .iter()
-                                .any(|g2| t1.matches(i_s, matcher, &Type::new(g2), variance).bool())
-                        }
-                    } else {
-                        for g2 in u2.iter() {
-                            let t2 = Type::new(g2);
-                            matches &= u1
-                                .iter()
-                                .any(|g1| Type::new(g1).matches(i_s, matcher, &t2, variance).bool())
-                        }
+                    for g2 in u2.iter() {
+                        let t2 = Type::new(g2);
+                        matches &= u1
+                            .iter()
+                            .any(|g1| Type::new(g1).matches(i_s, matcher, &t2, variance).bool())
                     }
                     matches.into()
                 }
@@ -776,7 +766,6 @@ impl<'a> Type<'a> {
                 }
                 Variance::Contravariant => unreachable!(),
             },
-            // TODO doesn't match_reverse also matter here?
             _ => match variance {
                 Variance::Covariant => u1
                     .iter()
