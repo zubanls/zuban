@@ -202,7 +202,18 @@ impl<'a> Type<'a> {
             },
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => {
-                    Type::Class(Class::from_db_type(i_s.db, *link, generics)).overlaps(i_s, other)
+                    let class1 = Class::from_db_type(i_s.db, *link, generics);
+                    match other {
+                        Self::Class(class2) => Self::overlaps_class(i_s, class1, *class2),
+                        Self::Type(t2) => match t2.as_ref() {
+                            DbType::Class(l, g) => Self::overlaps_class(
+                                i_s,
+                                class1,
+                                Class::from_db_type(i_s.db, *l, g),
+                            ),
+                            _ => false,
+                        },
+                    }
                 }
                 DbType::Type(t1) => match other {
                     Self::Type(ref t2) => match t2.as_ref() {
