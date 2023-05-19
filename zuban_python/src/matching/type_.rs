@@ -1339,7 +1339,17 @@ impl<'a> Type<'a> {
                             TypeOrClass::Type(c2) => c2,
                             TypeOrClass::Class(c2) => Type::Class(c2),
                         };
-                        if c1.is_simple_same_type(i_s, &c2).bool() {
+                        // Avoid using the normal matching mechanism, because we do not want to use
+                        // protocols matching.
+                        if c1
+                            .matches_internal(
+                                i_s,
+                                &mut Matcher::default(),
+                                &c2,
+                                Variance::Invariant,
+                            )
+                            .bool()
+                        {
                             return c1.as_db_type(i_s.db);
                         }
                     }

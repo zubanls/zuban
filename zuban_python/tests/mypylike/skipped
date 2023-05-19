@@ -29,8 +29,6 @@ testSelfTypeGenericClassNoClashClassMethodClassObject
 testTypingSelfAlternativeGenericConstructor
 testGenericNamedTupleCustomMethods
 
-generic_covariant_match
-
 overload_class_type_var_implementation_match_and_mismatch
 
 # raise with brackets and no parentheses
