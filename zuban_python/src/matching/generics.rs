@@ -199,6 +199,7 @@ impl<'a> Generics<'a> {
                 Self::SlicesWithClassTypes(file, slices) => ClassGenerics::SlicesWithClassTypes(
                     PointLink::new(file.file_index(), slices.index()),
                 ),
+                Self::List(generics, None) => ClassGenerics::List((*generics).clone()),
                 _ => ClassGenerics::List(GenericsList::new_generics(
                     self.iter(db).map(|g| g.into_generic_item(db)).collect(),
                 )),

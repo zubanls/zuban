@@ -859,7 +859,7 @@ impl<'a> Type<'a> {
                 let class2 = Class::from_db_type(i_s.db, *c2, generics2);
                 match class2.use_cached_class_infos(i_s.db).metaclass {
                     MetaclassState::Some(link) => {
-                        return Type::Class(*class1).matches(
+                        return Type::owned(class1.as_db_type(i_s.db)).matches(
                             i_s,
                             matcher,
                             &Type::owned(DbType::Class(link, ClassGenerics::None)),
