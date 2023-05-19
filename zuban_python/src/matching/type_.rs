@@ -30,7 +30,6 @@ use crate::utils::rc_unwrap_or_clone;
 pub enum Type<'a> {
     // The reason why we do not use Class as a DbType as well is that this is an optimization to
     // avoid generating DbType for all possible cases (avoiding allocations).
-    Class(Class<'a>),
     Type(Cow<'a, DbType>),
 }
 
@@ -61,7 +60,6 @@ impl<'a> Type<'a> {
 
     pub fn into_cow(self, db: &Database) -> Cow<'a, DbType> {
         match self {
-            Self::Class(class) => Cow::Owned(class.as_db_type(db)),
             Self::Type(t) => t,
         }
     }
@@ -72,7 +70,6 @@ impl<'a> Type<'a> {
 
     pub fn as_cow(&self, db: &Database) -> Cow<DbType> {
         match self {
-            Self::Class(class) => Cow::Owned(class.as_db_type(db)),
             Self::Type(t) => Cow::Borrowed(t),
         }
     }
@@ -84,7 +81,6 @@ impl<'a> Type<'a> {
     #[inline]
     pub fn maybe_class(&self, db: &'a Database) -> Option<Class<'_>> {
         match self {
-            Self::Class(c) => Some(*c),
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
                 _ => None,
@@ -105,7 +101,6 @@ impl<'a> Type<'a> {
     #[inline]
     pub fn maybe_borrowed_class(&self, db: &'a Database) -> Option<Class<'a>> {
         match self {
-            Self::Class(c) => Some(*c),
             Self::Type(Cow::Borrowed(t)) => match t {
                 DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
                 _ => None,
@@ -156,7 +151,6 @@ impl<'a> Type<'a> {
 
     pub fn maybe_db_type(&self) -> Option<&DbType> {
         match self {
-            Self::Class(_) => None,
             Self::Type(t) => Some(t.as_ref()),
         }
     }
@@ -191,20 +185,10 @@ impl<'a> Type<'a> {
         }
 
         match self {
-            Self::Class(class1) => match other {
-                Self::Class(class2) => Self::overlaps_class(i_s, *class1, *class2),
-                Self::Type(t2) => match t2.as_ref() {
-                    DbType::Class(l, g) => {
-                        Self::overlaps_class(i_s, *class1, Class::from_db_type(i_s.db, *l, g))
-                    }
-                    _ => false,
-                },
-            },
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => {
                     let class1 = Class::from_db_type(i_s.db, *link, generics);
                     match other {
-                        Self::Class(class2) => Self::overlaps_class(i_s, class1, *class2),
                         Self::Type(t2) => match t2.as_ref() {
                             DbType::Class(l, g) => Self::overlaps_class(
                                 i_s,
@@ -220,7 +204,6 @@ impl<'a> Type<'a> {
                         DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
                         _ => false,
                     },
-                    _ => false,
                 },
                 DbType::Callable(c1) => match other {
                     Self::Type(ref t2) => match t2.as_ref() {
@@ -231,7 +214,6 @@ impl<'a> Type<'a> {
                         DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
                         _ => false,
                     },
-                    _ => false,
                 },
                 DbType::Any => true,
                 DbType::Never => todo!(),
@@ -262,7 +244,6 @@ impl<'a> Type<'a> {
                         DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
                         _ => false,
                     },
-                    _ => false,
                 },
                 DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
                 DbType::FunctionOverload(intersection) => todo!(),
@@ -285,9 +266,6 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         let result = match self {
-            Self::Class(class) => {
-                Self::matches_class_against_type(i_s, matcher, class, value_type, variance)
-            }
             Self::Type(t1) => match t1.as_ref() {
                 DbType::Class(link, generics) => Self::matches_class_against_type(
                     i_s,
@@ -715,7 +693,6 @@ impl<'a> Type<'a> {
 
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> Option<MroIterator<'db, '_>> {
         match self {
-            Self::Class(c) => Some(c.mro(db)),
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(link, generics) => {
                     Some(Class::from_db_type(db, *link, generics).mro(db))
@@ -1411,16 +1388,12 @@ impl<'a> Type<'a> {
 
     pub fn has_any(&self, i_s: &InferenceState) -> bool {
         match self {
-            // TODO this does not not need to generate a db type
-            Self::Class(c) => c.as_db_type(i_s.db).has_any(i_s),
             Self::Type(t) => t.has_any(i_s),
         }
     }
 
     pub fn has_explicit_self_type(&self, db: &Database) -> bool {
         match self {
-            // TODO this does not not need to generate a db type
-            Self::Class(c) => c.as_db_type(db).has_self_type(),
             Self::Type(t) => t.has_self_type(),
         }
     }
@@ -1571,7 +1544,6 @@ impl<'a> Type<'a> {
 
     pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         match self {
-            Self::Class(c) => c.lookup_symbol(i_s, name),
             Self::Type(t) => match t.as_ref() {
                 DbType::Class(c, generics) => todo!(),
                 DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
@@ -1743,7 +1715,6 @@ impl<'a> Type<'a> {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
-            Self::Class(c) => c.format(format_data),
             Self::Type(t) => t.format(format_data),
         }
     }
