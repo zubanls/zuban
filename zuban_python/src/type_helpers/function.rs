@@ -419,9 +419,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let self_type_var_usage = self_type_var_usage.as_ref();
 
         let as_db_type = |i_s: &InferenceState, t: Type| {
-            let t = t.as_db_type(i_s.db);
             let Some(func_class) = self.class else {
-                return t
+                return t.as_db_type(i_s.db)
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -524,9 +523,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             }
         };
         let as_db_type = |i_s: &InferenceState, t: Type| {
-            let t = t.as_db_type(i_s.db);
             let Some(func_class) = self.class else {
-                return t
+                return t.as_db_type(i_s.db)
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -782,7 +780,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 
         let format_type = |i_s: &InferenceState, t: Type| {
             if let Some(func_class) = self.class {
-                let t = t.as_cow(i_s.db).replace_type_var_likes_and_self(
+                let t = t.replace_type_var_likes_and_self(
                     i_s.db,
                     &mut |usage| {
                         let in_definition = usage.in_definition();

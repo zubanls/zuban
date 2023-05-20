@@ -9,9 +9,12 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ClassType, ComplexPoint, Database, DbType,
-    GenericsList, MetaclassState, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionType,
-    Variance,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ClassType, ComplexPoint,
+    Database, DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, MetaclassState,
+    NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
+    RecursiveAlias, StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias,
+    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -24,6 +27,9 @@ use crate::type_helpers::{
     TypeVarInstance, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
+
+pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
+pub type ReplaceSelf<'x> = &'x mut dyn FnMut() -> DbType;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
@@ -1157,11 +1163,669 @@ impl<'a> Type<'a> {
                 .map(|c| c.as_db_type(i_s.db))
                 .unwrap_or(DbType::Self_)
         };
-        self.as_cow(i_s.db).replace_type_var_likes_and_self(
+        self.replace_type_var_likes_and_self(
             i_s.db,
             &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
             &mut replace_self,
         )
+    }
+
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+    ) -> DbType {
+        self.replace_type_var_likes_and_self(db, callable, &mut || DbType::Self_)
+    }
+
+    pub fn replace_type_var_likes_and_self(
+        &self,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> DbType {
+        let remap_tuple_likes = |args: &TupleTypeArguments,
+                                 callable: ReplaceTypeVarLike,
+                                 replace_self: ReplaceSelf| {
+            match args {
+                TupleTypeArguments::FixedLength(ts) => {
+                    let mut new_args = vec![];
+                    for g in ts.iter() {
+                        match g {
+                            TypeOrTypeVarTuple::Type(t) => new_args.push(TypeOrTypeVarTuple::Type(
+                                Type::new(t).replace_type_var_likes_and_self(
+                                    db,
+                                    callable,
+                                    replace_self,
+                                ),
+                            )),
+                            TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                                match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
+                                    GenericItem::TypeArguments(new) => {
+                                        new_args.extend(match new.args {
+                                            TupleTypeArguments::FixedLength(fixed) => {
+                                                fixed.into_vec().into_iter()
+                                            }
+                                            TupleTypeArguments::ArbitraryLength(t) => {
+                                                match ts.len() {
+                                                    // TODO this might be wrong with different data types??
+                                                    1 => {
+                                                        return TupleTypeArguments::ArbitraryLength(
+                                                            t,
+                                                        )
+                                                    }
+                                                    _ => todo!(),
+                                                }
+                                            }
+                                        })
+                                    }
+                                    x => unreachable!("{x:?}"),
+                                }
+                            }
+                        }
+                    }
+                    TupleTypeArguments::FixedLength(new_args.into())
+                }
+                TupleTypeArguments::ArbitraryLength(t) => {
+                    TupleTypeArguments::ArbitraryLength(Box::new(
+                        Type::new(t).replace_type_var_likes_and_self(db, callable, replace_self),
+                    ))
+                }
+            }
+        };
+        let remap_generics = |generics: &GenericsList| {
+            GenericsList::new_generics(
+                generics
+                    .iter()
+                    .map(|g| match g {
+                        GenericItem::TypeArgument(t) => {
+                            GenericItem::TypeArgument(Type::new(t).replace_type_var_likes_and_self(
+                                db,
+                                callable,
+                                replace_self,
+                            ))
+                        }
+                        GenericItem::TypeArguments(ts) => {
+                            GenericItem::TypeArguments(TypeArguments {
+                                args: remap_tuple_likes(&ts.args, callable, replace_self),
+                            })
+                        }
+                        GenericItem::ParamSpecArgument(p) => {
+                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.into_vec());
+                            GenericItem::ParamSpecArgument(ParamSpecArgument::new(
+                                Self::remap_callable_params(
+                                    db,
+                                    &p.params,
+                                    &mut type_vars,
+                                    p.type_vars.as_ref().map(|t| t.in_definition),
+                                    callable,
+                                    replace_self,
+                                )
+                                .0,
+                                type_vars.map(|t| ParamSpecTypeVars {
+                                    type_vars: TypeVarLikes::from_vec(t),
+                                    in_definition: p.type_vars.as_ref().unwrap().in_definition,
+                                }),
+                            ))
+                        }
+                    })
+                    .collect(),
+            )
+        };
+        match self.as_ref() {
+            DbType::Any => DbType::Any,
+            DbType::None => DbType::None,
+            DbType::Never => DbType::Never,
+            DbType::Class(link, generics) => {
+                DbType::Class(*link, generics.map_list(remap_generics))
+            }
+            DbType::FunctionOverload(callables) => DbType::FunctionOverload(
+                callables
+                    .iter()
+                    .map(|c| {
+                        Self::replace_type_var_likes_and_self_for_callable(
+                            c,
+                            db,
+                            callable,
+                            replace_self,
+                        )
+                    })
+                    .collect(),
+            ),
+            DbType::Union(u) => {
+                let mut entries: Vec<UnionEntry> = Vec::with_capacity(u.entries.len());
+                let mut add = |type_, format_index| {
+                    if matches!(type_, DbType::None) && !db.python_state.project.strict_optional {
+                        return;
+                    }
+                    // Simplify duplicates & subclass removal
+                    let i_s = InferenceState::new(db);
+                    let mut matcher = Matcher::with_ignored_promotions();
+                    match &type_ {
+                        DbType::RecursiveAlias(r1) if r1.generics.is_some() => {
+                            // Recursive aliases need special handling, because the normal subtype
+                            // checking will call this function again if generics are available to
+                            // cache the type. In that case we just avoid complex matching and use
+                            // a simple heuristic. This won't affect correctness, it might just
+                            // display a bigger union than necessary.
+                            for entry in entries.iter() {
+                                if let DbType::RecursiveAlias(r2) = &entry.type_ {
+                                    if r1 == r2 {
+                                        return;
+                                    }
+                                }
+                            }
+                        }
+                        _ => {
+                            let t = Type::new(&type_);
+                            for entry in entries.iter_mut() {
+                                let current = Type::new(&entry.type_);
+                                if entry.type_.has_any(&i_s) || type_.has_any(&i_s) {
+                                    if entry.type_ == type_ {
+                                        return;
+                                    }
+                                } else {
+                                    match &entry.type_ {
+                                        DbType::RecursiveAlias(r) if r.generics.is_some() => (),
+                                        _ => {
+                                            if current
+                                                .is_super_type_of(&i_s, &mut matcher, &t)
+                                                .bool()
+                                            {
+                                                return; // Type is already in the union
+                                            }
+                                            if current.is_sub_type_of(&i_s, &mut matcher, &t).bool()
+                                            {
+                                                // The new type is more general and therefore needs to be used.
+                                                entry.type_ = type_;
+                                                return;
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    entries.push(UnionEntry {
+                        type_,
+                        format_index,
+                    })
+                };
+                for entry in u.entries.iter() {
+                    match Type::new(&entry.type_).replace_type_var_likes_and_self(
+                        db,
+                        callable,
+                        replace_self,
+                    ) {
+                        DbType::Union(inner) => {
+                            for inner_entry in inner.entries.into_vec().into_iter() {
+                                match inner_entry.type_ {
+                                    DbType::Union(_) => unreachable!(),
+                                    type_ => add(type_, entry.format_index),
+                                }
+                            }
+                        }
+                        type_ => add(type_, entry.format_index),
+                    }
+                }
+                match entries.len() {
+                    0 => DbType::None,
+                    1 => entries.into_iter().next().unwrap().type_,
+                    _ => {
+                        let mut union = UnionType {
+                            entries: entries.into_boxed_slice(),
+                            format_as_optional: u.format_as_optional,
+                        };
+                        union.sort_for_priority();
+                        DbType::Union(union)
+                    }
+                }
+            }
+            DbType::TypeVar(t) => match callable(TypeVarLikeUsage::TypeVar(Cow::Borrowed(t))) {
+                GenericItem::TypeArgument(t) => t,
+                GenericItem::TypeArguments(ts) => unreachable!(),
+                GenericItem::ParamSpecArgument(params) => todo!(),
+            },
+            DbType::Type(t) => DbType::Type(Rc::new(Type::new(t).replace_type_var_likes_and_self(
+                db,
+                callable,
+                replace_self,
+            ))),
+            DbType::Tuple(content) => DbType::Tuple(match &content.args {
+                Some(args) => Rc::new(TupleContent::new(remap_tuple_likes(
+                    args,
+                    callable,
+                    replace_self,
+                ))),
+                None => TupleContent::new_empty(),
+            }),
+            DbType::Callable(content) => {
+                DbType::Callable(Rc::new(Self::replace_type_var_likes_and_self_for_callable(
+                    content,
+                    db,
+                    callable,
+                    replace_self,
+                )))
+            }
+            DbType::Literal { .. } => self.as_db_type(db),
+            DbType::NewType(t) => DbType::NewType(t.clone()),
+            DbType::RecursiveAlias(rec) => DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                rec.link,
+                rec.generics.as_ref().map(remap_generics),
+            ))),
+            DbType::Module(file_index) => DbType::Module(*file_index),
+            DbType::Self_ => replace_self(),
+            DbType::ParamSpecArgs(usage) => todo!(),
+            DbType::ParamSpecKwargs(usage) => todo!(),
+            DbType::NamedTuple(nt) => {
+                let mut constructor = nt.constructor.as_ref().clone();
+                let CallableParams::Simple(params) = &constructor.params else {
+                    unreachable!();
+                };
+                constructor.params = CallableParams::Simple(
+                    params
+                        .iter()
+                        .map(|param| {
+                            let ParamSpecific::PositionalOrKeyword(t) = &param.param_specific else {
+                        unreachable!()
+                    };
+                            CallableParam {
+                                param_specific: ParamSpecific::PositionalOrKeyword(
+                                    Type::new(t).replace_type_var_likes_and_self(
+                                        db,
+                                        callable,
+                                        replace_self,
+                                    ),
+                                ),
+                                has_default: param.has_default,
+                                name: param.name,
+                            }
+                        })
+                        .collect(),
+                );
+                DbType::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
+            }
+        }
+    }
+
+    pub fn replace_type_var_likes_and_self_for_callable(
+        c: &CallableContent,
+        db: &Database,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> CallableContent {
+        let mut type_vars = c.type_vars.clone().map(|t| t.into_vec());
+        let (params, remap_data) = Self::remap_callable_params(
+            db,
+            &c.params,
+            &mut type_vars,
+            Some(c.defined_at),
+            callable,
+            replace_self,
+        );
+        let mut result_type =
+            Type::new(&c.result_type).replace_type_var_likes_and_self(db, callable, replace_self);
+        if let Some(remap_data) = remap_data {
+            result_type = Type::new(&result_type).replace_type_var_likes_and_self(
+                db,
+                &mut |usage| Self::remap_param_spec_inner(usage, c.defined_at, remap_data),
+                replace_self,
+            );
+        }
+        CallableContent {
+            name: c.name,
+            class_name: c.class_name,
+            defined_at: c.defined_at,
+            type_vars: type_vars.map(TypeVarLikes::from_vec),
+            params,
+            result_type,
+        }
+    }
+
+    fn rewrite_late_bound_callables_for_callable(
+        c: &CallableContent,
+        manager: &TypeVarManager,
+    ) -> CallableContent {
+        let type_vars = manager
+            .iter()
+            .filter_map(|t| {
+                (t.most_outer_callable == Some(c.defined_at)).then(|| t.type_var_like.clone())
+            })
+            .collect::<Rc<_>>();
+        CallableContent {
+            name: c.name,
+            class_name: c.class_name,
+            defined_at: c.defined_at,
+            type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes::new(type_vars)),
+            params: match &c.params {
+                CallableParams::Simple(params) => CallableParams::Simple(
+                    params
+                        .iter()
+                        .map(|p| CallableParam {
+                            param_specific: match &p.param_specific {
+                                ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
+                                    Type::new(t).rewrite_late_bound_callables(manager),
+                                ),
+                                ParamSpecific::PositionalOrKeyword(t) => {
+                                    ParamSpecific::PositionalOrKeyword(
+                                        Type::new(t).rewrite_late_bound_callables(manager),
+                                    )
+                                }
+                                ParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(
+                                    Type::new(t).rewrite_late_bound_callables(manager),
+                                ),
+                                ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
+                                    StarredParamSpecific::ArbitraryLength(t) => {
+                                        StarredParamSpecific::ArbitraryLength(
+                                            Type::new(t).rewrite_late_bound_callables(manager),
+                                        )
+                                    }
+                                    StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                                }),
+                                ParamSpecific::DoubleStarred(d) => {
+                                    ParamSpecific::DoubleStarred(match d {
+                                        DoubleStarredParamSpecific::ValueType(t) => {
+                                            DoubleStarredParamSpecific::ValueType(
+                                                Type::new(t).rewrite_late_bound_callables(manager),
+                                            )
+                                        }
+                                        DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
+                                            todo!()
+                                        }
+                                    })
+                                }
+                            },
+                            has_default: p.has_default,
+                            name: p.name,
+                        })
+                        .collect(),
+                ),
+                CallableParams::Any => CallableParams::Any,
+                CallableParams::WithParamSpec(types, param_spec) => CallableParams::WithParamSpec(
+                    types
+                        .iter()
+                        .map(|t| Type::new(t).rewrite_late_bound_callables(manager))
+                        .collect(),
+                    manager.remap_param_spec(param_spec),
+                ),
+            },
+            result_type: Type::new(&c.result_type).rewrite_late_bound_callables(manager),
+        }
+    }
+
+    fn remap_callable_params(
+        db: &Database,
+        params: &CallableParams,
+        type_vars: &mut Option<Vec<TypeVarLike>>,
+        in_definition: Option<PointLink>,
+        callable: ReplaceTypeVarLike,
+        replace_self: ReplaceSelf,
+    ) -> (CallableParams, Option<(PointLink, usize)>) {
+        let mut remap_data = None;
+        let new_params = match params {
+            CallableParams::Simple(params) => CallableParams::Simple(
+                params
+                    .iter()
+                    .map(|p| CallableParam {
+                        param_specific: match &p.param_specific {
+                            ParamSpecific::PositionalOnly(t) => ParamSpecific::PositionalOnly(
+                                Type::new(t).replace_type_var_likes_and_self(
+                                    db,
+                                    callable,
+                                    replace_self,
+                                ),
+                            ),
+                            ParamSpecific::PositionalOrKeyword(t) => {
+                                ParamSpecific::PositionalOrKeyword(
+                                    Type::new(t).replace_type_var_likes_and_self(
+                                        db,
+                                        callable,
+                                        replace_self,
+                                    ),
+                                )
+                            }
+                            ParamSpecific::KeywordOnly(t) => ParamSpecific::KeywordOnly(
+                                Type::new(t).replace_type_var_likes_and_self(
+                                    db,
+                                    callable,
+                                    replace_self,
+                                ),
+                            ),
+                            ParamSpecific::Starred(s) => ParamSpecific::Starred(match s {
+                                StarredParamSpecific::ArbitraryLength(t) => {
+                                    StarredParamSpecific::ArbitraryLength(
+                                        Type::new(t).replace_type_var_likes_and_self(
+                                            db,
+                                            callable,
+                                            replace_self,
+                                        ),
+                                    )
+                                }
+                                StarredParamSpecific::ParamSpecArgs(_) => todo!(),
+                            }),
+                            ParamSpecific::DoubleStarred(d) => {
+                                ParamSpecific::DoubleStarred(match d {
+                                    DoubleStarredParamSpecific::ValueType(t) => {
+                                        DoubleStarredParamSpecific::ValueType(
+                                            Type::new(t).replace_type_var_likes_and_self(
+                                                db,
+                                                callable,
+                                                replace_self,
+                                            ),
+                                        )
+                                    }
+                                    DoubleStarredParamSpecific::ParamSpecKwargs(_) => {
+                                        todo!()
+                                    }
+                                })
+                            }
+                        },
+                        has_default: p.has_default,
+                        name: p.name,
+                    })
+                    .collect(),
+            ),
+            CallableParams::Any => CallableParams::Any,
+            CallableParams::WithParamSpec(types, param_spec) => {
+                let result = callable(TypeVarLikeUsage::ParamSpec(Cow::Borrowed(param_spec)));
+                let GenericItem::ParamSpecArgument(mut new) = result else {
+                    unreachable!()
+                };
+                if let Some(new_spec_type_vars) = new.type_vars {
+                    if let Some(in_definition) = in_definition {
+                        let type_var_len = type_vars.as_ref().map(|t| t.len()).unwrap_or(0);
+                        remap_data = Some((new_spec_type_vars.in_definition, type_var_len));
+                        let new_params = Type::remap_callable_params(
+                            db,
+                            &new.params,
+                            &mut None,
+                            None,
+                            &mut |usage| {
+                                Type::remap_param_spec_inner(
+                                    usage,
+                                    in_definition,
+                                    remap_data.unwrap(),
+                                )
+                            },
+                            replace_self,
+                        );
+                        if let Some(type_vars) = type_vars.as_mut() {
+                            type_vars.extend(new_spec_type_vars.type_vars.into_vec());
+                        } else {
+                            *type_vars = Some(new_spec_type_vars.type_vars.into_vec());
+                        }
+                        new.params = new_params.0;
+                    } else {
+                        debug_assert!(type_vars.is_none());
+                        *type_vars = Some(new_spec_type_vars.type_vars.into_vec());
+                        todo!("Can probably just be removed")
+                    }
+                }
+                if types.is_empty() {
+                    new.params
+                } else {
+                    match new.params {
+                        CallableParams::Simple(params) => {
+                            // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+                            let mut params = Vec::from(params.as_ref());
+                            params.splice(
+                                0..0,
+                                types.iter().map(|t| CallableParam {
+                                    param_specific: ParamSpecific::PositionalOnly(
+                                        Type::new(t).replace_type_var_likes_and_self(
+                                            db,
+                                            callable,
+                                            replace_self,
+                                        ),
+                                    ),
+                                    name: None,
+                                    has_default: false,
+                                }),
+                            );
+                            CallableParams::Simple(Rc::from(params))
+                        }
+                        CallableParams::Any => CallableParams::Any,
+                        CallableParams::WithParamSpec(new_types, p) => {
+                            let mut types: Vec<DbType> = types
+                                .iter()
+                                .map(|t| {
+                                    Type::new(t).replace_type_var_likes_and_self(
+                                        db,
+                                        callable,
+                                        replace_self,
+                                    )
+                                })
+                                .collect();
+                            // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+                            types.extend(new_types.iter().cloned());
+                            CallableParams::WithParamSpec(types.into(), p)
+                        }
+                    }
+                }
+            }
+        };
+        (new_params, remap_data)
+    }
+
+    fn remap_param_spec_inner(
+        mut usage: TypeVarLikeUsage,
+        in_definition: PointLink,
+        remap_data: (PointLink, usize),
+    ) -> GenericItem {
+        if usage.in_definition() == remap_data.0 {
+            usage.update_in_definition_and_index(
+                in_definition,
+                (usage.index().as_usize() + remap_data.1).into(),
+            );
+        }
+        usage.into_generic_item()
+    }
+
+    pub fn rewrite_late_bound_callables(&self, manager: &TypeVarManager) -> DbType {
+        let rewrite_generics = |generics: &GenericsList| {
+            GenericsList::new_generics(
+                generics
+                    .iter()
+                    .map(|g| match g {
+                        GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
+                            Type::new(t).rewrite_late_bound_callables(manager),
+                        ),
+                        GenericItem::TypeArguments(ts) => todo!(),
+                        GenericItem::ParamSpecArgument(p) => GenericItem::ParamSpecArgument({
+                            debug_assert!(p.type_vars.is_none());
+                            ParamSpecArgument {
+                                params: match &p.params {
+                                    CallableParams::WithParamSpec(types, param_spec) => {
+                                        CallableParams::WithParamSpec(
+                                            types
+                                                .iter()
+                                                .map(|t| {
+                                                    Type::new(t)
+                                                        .rewrite_late_bound_callables(manager)
+                                                })
+                                                .collect(),
+                                            manager.remap_param_spec(param_spec),
+                                        )
+                                    }
+                                    CallableParams::Simple(x) => unreachable!(),
+                                    CallableParams::Any => unreachable!(),
+                                },
+                                type_vars: p.type_vars.clone(),
+                            }
+                        }),
+                    })
+                    .collect(),
+            )
+        };
+        match self.as_ref() {
+            DbType::Any => DbType::Any,
+            DbType::None => DbType::None,
+            DbType::Never => DbType::Never,
+            DbType::Class(link, generics) => {
+                DbType::Class(*link, generics.map_list(rewrite_generics))
+            }
+            DbType::Union(u) => DbType::Union(UnionType {
+                entries: u
+                    .entries
+                    .iter()
+                    .map(|e| UnionEntry {
+                        type_: Type::new(&e.type_).rewrite_late_bound_callables(manager),
+                        format_index: e.format_index,
+                    })
+                    .collect(),
+                format_as_optional: u.format_as_optional,
+            }),
+            DbType::FunctionOverload(callables) => DbType::FunctionOverload(
+                callables
+                    .iter()
+                    .map(|e| Self::rewrite_late_bound_callables_for_callable(e, manager))
+                    .collect(),
+            ),
+            DbType::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
+            DbType::Type(db_type) => DbType::Type(Rc::new(
+                Type::new(db_type).rewrite_late_bound_callables(manager),
+            )),
+            DbType::Tuple(content) => DbType::Tuple(match &content.args {
+                Some(TupleTypeArguments::FixedLength(ts)) => {
+                    Rc::new(TupleContent::new_fixed_length(
+                        ts.iter()
+                            .map(|g| match g {
+                                TypeOrTypeVarTuple::Type(t) => TypeOrTypeVarTuple::Type(
+                                    Type::new(t).rewrite_late_bound_callables(manager),
+                                ),
+                                TypeOrTypeVarTuple::TypeVarTuple(t) => {
+                                    TypeOrTypeVarTuple::TypeVarTuple(
+                                        manager.remap_type_var_tuple(t),
+                                    )
+                                }
+                            })
+                            .collect(),
+                    ))
+                }
+                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                    Rc::new(TupleContent::new_arbitrary_length(
+                        Type::new(t).rewrite_late_bound_callables(manager),
+                    ))
+                }
+                None => TupleContent::new_empty(),
+            }),
+            DbType::Literal { .. } => self.as_db_type(todo!()),
+            DbType::Callable(content) => DbType::Callable(Rc::new(
+                Self::rewrite_late_bound_callables_for_callable(content, manager),
+            )),
+            DbType::NewType(_) => todo!(),
+            DbType::RecursiveAlias(recursive_alias) => {
+                DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                    recursive_alias.link,
+                    recursive_alias.generics.as_ref().map(rewrite_generics),
+                )))
+            }
+            DbType::Self_ => DbType::Self_,
+            DbType::ParamSpecArgs(usage) => todo!(),
+            DbType::ParamSpecKwargs(usage) => todo!(),
+            DbType::NamedTuple(_) => todo!(),
+            DbType::Module(file_index) => DbType::Module(*file_index),
+        }
     }
 
     pub fn execute<'db>(
@@ -1818,5 +2482,121 @@ pub fn execute_type_of_type<'db>(
             Inferred::execute_db_type(i_s, DbType::NamedTuple(nt.clone()))
         }
         _ => todo!("{:?}", type_),
+    }
+}
+
+impl TypeAlias {
+    pub fn as_db_type_and_set_type_vars_any(&self, db: &Database) -> DbType {
+        if self.is_recursive() {
+            return DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                self.location,
+                self.type_vars.as_ref().map(|type_vars| {
+                    GenericsList::new_generics(
+                        type_vars
+                            .iter()
+                            .map(|tv| tv.as_any_generic_item())
+                            .collect(),
+                    )
+                }),
+            )));
+        }
+        let db_type = self.db_type_if_valid();
+        if self.type_vars.is_none() {
+            db_type.clone()
+        } else {
+            Type::new(db_type).replace_type_var_likes(db, &mut |t| match t.in_definition()
+                == self.location
+            {
+                true => t.as_type_var_like().as_any_generic_item(),
+                false => t.into_generic_item(),
+            })
+        }
+    }
+
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        remove_recursive_wrapper: bool,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+    ) -> Cow<DbType> {
+        if self.is_recursive() && !remove_recursive_wrapper {
+            return Cow::Owned(DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
+                self.location,
+                self.type_vars.as_ref().map(|type_vars| {
+                    GenericsList::new_generics(
+                        type_vars
+                            .iter()
+                            .enumerate()
+                            .map(|(i, type_var_like)| match type_var_like {
+                                TypeVarLike::TypeVar(type_var) => {
+                                    callable(TypeVarLikeUsage::TypeVar(Cow::Owned(TypeVarUsage {
+                                        type_var: type_var.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    })))
+                                }
+                                TypeVarLike::TypeVarTuple(t) => callable(
+                                    TypeVarLikeUsage::TypeVarTuple(Cow::Owned(TypeVarTupleUsage {
+                                        type_var_tuple: t.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    })),
+                                ),
+                                TypeVarLike::ParamSpec(p) => callable(TypeVarLikeUsage::ParamSpec(
+                                    Cow::Owned(ParamSpecUsage {
+                                        param_spec: p.clone(),
+                                        index: i.into(),
+                                        in_definition: self.location,
+                                    }),
+                                )),
+                            })
+                            .collect(),
+                    )
+                }),
+            ))));
+        }
+        let db_type = self.db_type_if_valid();
+        if self.type_vars.is_none() {
+            Cow::Borrowed(db_type)
+        } else {
+            Cow::Owned(Type::new(db_type).replace_type_var_likes(db, callable))
+        }
+    }
+}
+
+impl GenericItem {
+    pub fn replace_type_var_likes(
+        &self,
+        db: &Database,
+        callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
+        replace_self: ReplaceSelf,
+    ) -> Self {
+        match self {
+            Self::TypeArgument(t) => Self::TypeArgument(
+                Type::new(t).replace_type_var_likes_and_self(db, callable, replace_self),
+            ),
+            Self::TypeArguments(_) => todo!(),
+            Self::ParamSpecArgument(_) => todo!(),
+        }
+    }
+}
+
+impl RecursiveAlias {
+    pub fn calculated_db_type<'db: 'slf, 'slf>(&'slf self, db: &'db Database) -> &'slf DbType {
+        let alias = self.type_alias(db);
+        if self.generics.is_none() {
+            alias.db_type_if_valid()
+        } else {
+            self.calculated_db_type.get_or_init(|| {
+                self.type_alias(db)
+                    .replace_type_var_likes(db, true, &mut |t| {
+                        self.generics
+                            .as_ref()
+                            .map(|g| g.nth(t.index()).unwrap().clone())
+                            .unwrap()
+                    })
+                    .into_owned()
+            })
+        }
     }
 }

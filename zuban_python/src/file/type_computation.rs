@@ -2155,7 +2155,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     {
         if self.type_var_manager.has_late_bound_type_vars() {
             on_type_var_recalculation(self.inference, &|t| {
-                t.rewrite_late_bound_callables(&self.type_var_manager)
+                Type::new(t).rewrite_late_bound_callables(&self.type_var_manager)
             })
         }
         self.type_var_manager.into_type_vars()

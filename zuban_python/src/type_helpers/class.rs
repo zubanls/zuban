@@ -398,10 +398,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                             }
                                         }
                                         for base in cached_class_infos.mro.iter() {
-                                            mro.push(base.replace_type_var_likes(db, &mut |t| {
-                                                mro[mro_index].expect_class_generics()[t.index()]
+                                            mro.push(Type::new(base).replace_type_var_likes(
+                                                db,
+                                                &mut |t| {
+                                                    mro[mro_index].expect_class_generics()
+                                                        [t.index()]
                                                     .clone()
-                                            }));
+                                                },
+                                            ));
                                         }
                                     }
                                 }
@@ -869,15 +873,17 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                     _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {
                         TypeOrClass::Type(Type::new(c))
                     }
-                    _ => TypeOrClass::Type(Type::owned(c.replace_type_var_likes_and_self(
-                        self.db,
-                        &mut |usage| {
-                            self.generics
-                                .nth_usage(self.db, &usage)
-                                .into_generic_item(self.db)
-                        },
-                        &mut || todo!(),
-                    ))),
+                    _ => TypeOrClass::Type(Type::owned(
+                        Type::new(c).replace_type_var_likes_and_self(
+                            self.db,
+                            &mut |usage| {
+                                self.generics
+                                    .nth_usage(self.db, &usage)
+                                    .into_generic_item(self.db)
+                            },
+                            &mut || todo!(),
+                        ),
+                    )),
                 },
             ));
             self.mro_index += 1;

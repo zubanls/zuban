@@ -7,7 +7,7 @@ use crate::file::infer_index;
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, Generics, IteratorContent, LookupResult, ResultContext};
+use crate::matching::{FormatData, Generics, IteratorContent, LookupResult, ResultContext, Type};
 use crate::{database::Database, node_ref::NodeRef};
 
 #[derive(Debug)]
@@ -44,7 +44,7 @@ impl<'a> NamedTupleValue<'a> {
                 let t = p.param_specific.expect_positional_db_type_as_ref();
                 match generics {
                     Generics::NotDefinedYet | Generics::None => t.format(format_data),
-                    _ => t
+                    _ => Type::new(t)
                         .replace_type_var_likes_and_self(
                             format_data.db,
                             &mut |usage| {

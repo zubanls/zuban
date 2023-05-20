@@ -569,7 +569,7 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &DbType) -> DbType {
-        t.replace_type_var_likes(db, &mut |type_var_like_usage| {
+        Type::new(t).replace_type_var_likes(db, &mut |type_var_like_usage| {
             if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
                     let current = &type_var_matcher.calculated_type_vars
@@ -604,7 +604,7 @@ impl<'a> Matcher<'a> {
                         let type_var_remap = func_class.type_var_remap.unwrap();
                         match &type_var_remap[type_var_like_usage.index()] {
                             GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                self.replace_type_var_likes_for_nested_context(db, t),
+                                self.replace_type_var_likes_for_nested_context(db, &t),
                             ),
                             GenericItem::TypeArguments(_) => todo!(),
                             GenericItem::ParamSpecArgument(_) => todo!(),

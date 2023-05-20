@@ -68,8 +68,7 @@ impl<'db> Inference<'db, '_, '_> {
                             // As a fallback if there were only errors or no items at all, just use
                             // the given and expected result context as a type.
                             found = Some(
-                                list_cls
-                                    .as_db_type(i_s.db)
+                                Type::owned(list_cls.as_db_type(i_s.db))
                                     .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                         tv.as_type_var_like().as_any_generic_item()
                                     }),
