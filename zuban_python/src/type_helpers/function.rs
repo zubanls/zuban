@@ -10,7 +10,7 @@ use std::rc::Rc;
 use super::Module;
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ComplexPoint, Database, DbType,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, Overload, ParamSpecUsage,
     ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice, TupleContent,
     TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
@@ -254,7 +254,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             }
         });
         if !unbound_type_vars.is_empty() {
-            if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
+            if let DbType::TypeVar(t) = self.result_type(i_s).as_ref() {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     let node_ref = NodeRef::new(
                         self.node_ref.file,
@@ -419,9 +419,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let self_type_var_usage = self_type_var_usage.as_ref();
 
         let as_db_type = |i_s: &InferenceState, t: Type| {
-            let t = t.as_db_type(i_s.db);
             let Some(func_class) = self.class else {
-                return t
+                return t.as_db_type()
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -510,22 +509,22 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             if class_generics_not_defined_yet {
                 DbType::Class(
                     class.node_ref.as_link(),
-                    class.use_cached_type_vars(i_s.db).map(|tvls| {
-                        GenericsList::new_generics(
+                    match class.use_cached_type_vars(i_s.db) {
+                        Some(tvls) => ClassGenerics::List(GenericsList::new_generics(
                             tvls.iter()
                                 .map(|tvl| ensure_classmethod_type_var_like(tvl.clone()))
                                 .collect(),
-                        )
-                    }),
+                        )),
+                        None => ClassGenerics::None,
+                    },
                 )
             } else {
                 class.as_db_type(i_s.db)
             }
         };
         let as_db_type = |i_s: &InferenceState, t: Type| {
-            let t = t.as_db_type(i_s.db);
             let Some(func_class) = self.class else {
-                return t
+                return t.as_db_type()
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -781,7 +780,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 
         let format_type = |i_s: &InferenceState, t: Type| {
             if let Some(func_class) = self.class {
-                let t = t.as_cow(i_s.db).replace_type_var_likes_and_self(
+                let t = t.replace_type_var_likes_and_self(
                     i_s.db,
                     &mut |usage| {
                         let in_definition = usage.in_definition();
@@ -1032,7 +1031,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     WrappedDoubleStarred::ParamSpecKwargs(param_spec_usage)
                 }
                 _ => WrappedDoubleStarred::ValueType(t.map(|t| {
-                    let DbType::Class(_, Some(generics)) = t.maybe_borrowed_db_type().unwrap() else {
+                    let DbType::Class(_, ClassGenerics::List(generics)) = t.maybe_borrowed_db_type().unwrap() else {
                         unreachable!()
                     };
                     let GenericItem::TypeArgument(t) = &generics[1.into()] else {
@@ -1219,7 +1218,7 @@ pub struct OverloadedFunction<'a> {
 }
 
 pub enum OverloadResult<'a> {
-    Single(Function<'a, 'a>, Option<GenericsList>),
+    Single(Function<'a, 'a>),
     Union(DbType),
     NotFound,
 }
@@ -1286,18 +1285,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 class.unwrap().generics(),
                 Generics::None | Generics::NotDefinedYet
             );
-        let handle_result = |calculated_type_vars, function| {
-            let calculated = if has_already_calculated_class_generics {
-                if let Some(class) = class {
-                    class.generics_as_list(i_s.db)
-                } else {
-                    unreachable!();
-                }
-            } else {
-                calculated_type_vars
-            };
-            OverloadResult::Single(function, calculated)
-        };
         let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
@@ -1329,7 +1316,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             function.node().short_debug()
                         );
                         args.reset_cache();
-                        return handle_result(calculated_type_args.type_arguments, function);
+                        return OverloadResult::Single(function);
                     }
                 }
                 SignatureMatch::TrueWithAny { argument_indices } => {
@@ -1371,10 +1358,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             args.reset_cache();
         }
         if let Some((type_arguments, function, _)) = multi_any_match {
-            return handle_result(type_arguments, function);
+            return OverloadResult::Single(function);
         }
         if let Some((type_arguments, function)) = first_arbitrary_length_not_handled {
-            return handle_result(type_arguments, function);
+            return OverloadResult::Single(function);
         }
         if first_similar.is_none() && args.has_a_union_argument(i_s) {
             let mut non_union_args = vec![];
@@ -1402,7 +1389,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
             let calculated_type_args = match_signature(i_s, result_context, function);
-            return handle_result(calculated_type_args.type_arguments, function);
+            return OverloadResult::Single(function);
         } else {
             let function = Function::new(
                 NodeRef::from_link(i_s.db, self.overload.functions[0]),
@@ -1449,7 +1436,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_unknown(),
                     },
                 });
-                let DbType::Union(u) = inf.as_type(i_s).into_db_type(i_s.db) else {
+                let DbType::Union(u) = inf.as_type(i_s).into_db_type() else {
                     unreachable!()
                 };
                 let mut unioned = DbType::Never;
@@ -1595,17 +1582,17 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
-        let mut t: Option<DbType> = None;
+        let mut t: Option<Type> = None;
         for link in self.overload.functions.iter() {
             let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let f_t = func.result_type(i_s).as_db_type(i_s.db);
+            let f_t = func.result_type(i_s);
             if let Some(old_t) = t.take() {
-                t = Some(old_t.merge_matching_parts(func.result_type(i_s).as_db_type(i_s.db)))
+                t = Some(old_t.merge_matching_parts(i_s.db, func.result_type(i_s)))
             } else {
                 t = Some(f_t);
             }
         }
-        Inferred::execute_db_type(i_s, t.unwrap())
+        Inferred::execute_db_type(i_s, t.unwrap().into_db_type())
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
@@ -1635,9 +1622,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name());
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
-            OverloadResult::Single(func, _) => {
-                func.execute(i_s, args, result_context, on_type_error)
-            }
+            OverloadResult::Single(func) => func.execute(i_s, args, result_context, on_type_error),
             OverloadResult::Union(t) => Inferred::execute_db_type(i_s, t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
@@ -1672,8 +1657,8 @@ fn are_any_arguments_ambiguous_in_overload(
                 let n1 = NodeRef::from_link(db, p1.param_annotation_link);
                 let n2 = NodeRef::from_link(db, p2.param_annotation_link);
 
-                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type(db);
-                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type(db);
+                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type();
+                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type();
                 if t1 != t2 {
                     return true;
                 }

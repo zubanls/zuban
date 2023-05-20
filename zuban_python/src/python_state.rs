@@ -3,11 +3,12 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink, Specific, TupleContent,
+    ClassGenerics, ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink,
+    Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
-use crate::matching::Generics;
+use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, OverloadedFunction};
 use crate::{InferenceState, PythonProject};
@@ -37,6 +38,15 @@ macro_rules! node_ref_to_class {
     };
 }
 
+macro_rules! node_ref_to_db_type_class_without_generic {
+    ($vis:vis $name:ident, $from_node_ref:ident) => {
+        #[inline]
+        $vis fn $name(&self) -> DbType {
+            DbType::Class(self.$from_node_ref().as_link(), ClassGenerics::None)
+        }
+    };
+}
+
 pub struct PythonState {
     pub project: PythonProject,
 
@@ -52,6 +62,7 @@ pub struct PythonState {
     builtins_list_index: NodeIndex,
     builtins_tuple_index: NodeIndex,
     builtins_dict_index: NodeIndex,
+    builtins_set_index: NodeIndex,
     builtins_bool_index: NodeIndex,
     builtins_int_index: NodeIndex,
     builtins_float_index: NodeIndex,
@@ -94,6 +105,7 @@ impl PythonState {
             builtins_list_index: 0,
             builtins_tuple_index: 0,
             builtins_dict_index: 0,
+            builtins_set_index: 0,
             builtins_bool_index: 0,
             builtins_int_index: 0,
             builtins_float_index: 0,
@@ -207,6 +219,7 @@ impl PythonState {
         cache_index!(builtins_type_index, db, builtins, "type");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
+        cache_index!(builtins_set_index, db, builtins, "set");
         cache_index!(builtins_bool_index, db, builtins, "bool");
         cache_index!(builtins_int_index, db, builtins, "int");
         cache_index!(builtins_float_index, db, builtins, "float");
@@ -292,16 +305,6 @@ impl PythonState {
     }
 
     #[inline]
-    pub fn object_db_type(&self) -> DbType {
-        DbType::Class(self.object_node_ref().as_link(), None)
-    }
-
-    #[inline]
-    pub fn slice_db_type(&self) -> DbType {
-        DbType::Class(self.slice_node_ref().as_link(), None)
-    }
-
-    #[inline]
     pub fn tuple_class<'db: 'a, 'a>(
         &'db self,
         db: &'db Database,
@@ -313,9 +316,10 @@ impl PythonState {
 
     builtins_attribute_node_ref!(object_node_ref, builtins_object_index);
     builtins_attribute_node_ref!(type_node_ref, builtins_type_index);
-    builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
     builtins_attribute_node_ref!(list_node_ref, builtins_list_index);
     builtins_attribute_node_ref!(tuple_node_ref, builtins_tuple_index);
+    builtins_attribute_node_ref!(dict_node_ref, builtins_dict_index);
+    builtins_attribute_node_ref!(set_node_ref, builtins_set_index);
     builtins_attribute_node_ref!(bool_node_ref, builtins_bool_index);
     builtins_attribute_node_ref!(int_node_ref, builtins_int_index);
     builtins_attribute_node_ref!(float_node_ref, builtins_float_index);
@@ -327,18 +331,16 @@ impl PythonState {
     builtins_attribute_node_ref!(slice_node_ref, builtins_slice_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
-    node_ref_to_class!(pub str, str_node_ref);
     node_ref_to_class!(int, int_node_ref);
     node_ref_to_class!(float, float_node_ref);
     node_ref_to_class!(memoryview, memoryview_node_ref);
     node_ref_to_class!(bytearray, bytearray_node_ref);
 
-    pub fn builtins_point_link(&self, name: &str) -> PointLink {
-        // TODO I think these should all be available as cached PointLinks
-        let builtins = self.builtins();
-        let node_index = builtins.symbol_table.lookup_symbol(name).unwrap();
-        PointLink::new(builtins.file_index(), node_index - NAME_TO_CLASS_DIFF)
-    }
+    node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
 
     pub fn function_point_link(&self) -> PointLink {
         PointLink::new(self.builtins().file_index(), self.builtins_function_index)
@@ -352,28 +354,27 @@ impl PythonState {
                 self.builtins().file_index(),
                 self.builtins_base_exception_index,
             ),
-            None,
+            ClassGenerics::None,
         )
     }
 
     #[inline]
-    pub fn module_type(&self) -> Class {
+    fn module_node_ref(&self) -> NodeRef {
         debug_assert!(self.types_module_type_index != 0);
-        let node_ref = NodeRef::new(self.types(), self.types_module_type_index);
-        Class::from_position(node_ref, Generics::None, None)
+        NodeRef::new(self.types(), self.types_module_type_index)
     }
 
     pub fn mapping_node_ref(&self) -> NodeRef {
         NodeRef::new(self.typing(), self.typing_mapping_index)
     }
 
-    pub fn type_var_class(&self) -> Class {
+    pub fn type_var_type(&self) -> Type {
         debug_assert!(self.typing_type_var != 0);
-        Class::from_position(
-            NodeRef::new(self.typing(), self.typing_type_var),
-            Generics::None,
-            None,
+        DbType::Class(
+            PointLink::new(self.typing().file_index(), self.typing_type_var),
+            ClassGenerics::None,
         )
+        .into()
     }
 
     pub fn collections_namedtuple_function(&self) -> Function {
@@ -401,17 +402,8 @@ impl PythonState {
         OverloadedFunction::new(node_ref, overload, None)
     }
 
-    pub fn literal_class(&self, literal_kind: LiteralKind) -> Class {
-        Class::from_position(
-            match literal_kind {
-                LiteralKind::Int(_) => self.int_node_ref(),
-                LiteralKind::String(_) => self.str_node_ref(),
-                LiteralKind::Bool(_) => self.bool_node_ref(),
-                LiteralKind::Bytes(_) => self.bytes_node_ref(),
-            },
-            Generics::None,
-            None,
-        )
+    pub fn literal_type(&self, literal_kind: LiteralKind) -> Type {
+        Type::owned(self.literal_db_type(literal_kind))
     }
 
     pub fn literal_db_type(&self, literal_kind: LiteralKind) -> DbType {
@@ -423,7 +415,7 @@ impl PythonState {
                 LiteralKind::Bytes(_) => self.bytes_node_ref(),
             }
             .as_link(),
-            None,
+            ClassGenerics::None,
         )
     }
 }

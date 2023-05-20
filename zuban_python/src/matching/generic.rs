@@ -37,7 +37,7 @@ impl<'a> Generic<'a> {
 
     pub fn into_generic_item(self, db: &Database) -> GenericItem {
         match self {
-            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type(db)),
+            Self::TypeArgument(t) => GenericItem::TypeArgument(t.into_db_type()),
             Self::TypeVarTuple(ts) => GenericItem::TypeArguments(ts.into_owned()),
             Self::ParamSpecArgument(params) => GenericItem::ParamSpecArgument(params.into_owned()),
         }
@@ -116,8 +116,8 @@ impl<'a> Generic<'a> {
 
     pub fn maybe_simple_type_var_like(&self) -> Option<TypeVarLike> {
         match self {
-            Self::TypeArgument(t) => match t.maybe_db_type() {
-                Some(DbType::TypeVar(t)) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
+            Self::TypeArgument(t) => match t.as_ref() {
+                DbType::TypeVar(t) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
                 _ => None,
             },
             Self::TypeVarTuple(ts) => todo!(),
@@ -127,6 +127,23 @@ impl<'a> Generic<'a> {
                 }
                 _ => None,
             },
+        }
+    }
+
+    pub fn merge_matching_parts(self, db: &Database, other: Self) -> GenericItem {
+        match self {
+            Self::TypeArgument(t1) => match other {
+                Self::TypeArgument(t2) => {
+                    GenericItem::TypeArgument(t1.merge_matching_parts(db, t2).into_db_type())
+                }
+                _ => todo!("maybe unreachable?!"),
+            },
+            Self::TypeVarTuple(ts1) => match other {
+                Self::TypeArgument(_) => todo!(),
+                Self::TypeVarTuple(_) => todo!(),
+                Self::ParamSpecArgument(_) => todo!(),
+            },
+            Self::ParamSpecArgument(params) => todo!(),
         }
     }
 }

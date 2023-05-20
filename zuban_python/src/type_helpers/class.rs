@@ -10,10 +10,10 @@ use super::function::OverloadResult;
 use super::{Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassInfos, ClassStorage, ClassType,
-    ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality, MetaclassState, MroIndex,
-    NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos, ClassStorage,
+    ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality, MetaclassState,
+    MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -54,12 +54,8 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn from_db_type(
-        db: &'db Database,
-        link: PointLink,
-        list: &'a Option<GenericsList>,
-    ) -> Self {
-        let generics = Generics::new_maybe_list(list);
+    pub fn from_db_type(db: &'db Database, link: PointLink, list: &'a ClassGenerics) -> Self {
+        let generics = Generics::from_class_generics(db, list);
         Self::from_position(NodeRef::from_link(db, link), generics, None)
     }
 
@@ -76,17 +72,25 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    #[inline]
+    pub fn with_undefined_generics(node_ref: NodeRef<'a>) -> Self {
+        Self::from_position(node_ref, Generics::NotDefinedYet, None)
+    }
+
     fn type_check_init_func(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
-    ) -> Option<Option<GenericsList>> {
+    ) -> Option<ClassGenerics> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let Some(inf) = init.into_maybe_inferred() else {
             debug_assert!(self.incomplete_mro(i_s.db));
-            return Some(self.type_vars(i_s).map(|type_vars| type_vars.as_any_generic_list()))
+            return Some(match self.type_vars(i_s) {
+                Some(type_vars) => ClassGenerics::List(type_vars.as_any_generic_list()),
+                None => ClassGenerics::None,
+            })
         };
         match inf.init_as_function(i_s.db, class) {
             Some(FunctionOrOverload::Function(func)) => {
@@ -99,7 +103,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     result_context,
                     Some(on_type_error),
                 );
-                Some(calculated_type_args.type_arguments)
+                Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
                 let calculated_type_args = calculate_callable_type_vars_and_return(
@@ -111,14 +115,14 @@ impl<'db: 'a, 'a> Class<'a> {
                     result_context,
                     on_type_error,
                 );
-                Some(calculated_type_args.type_arguments)
+                Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
             {
-                OverloadResult::Single(func, _) => {
+                OverloadResult::Single(func) => {
                     // Execute the found function to create the diagnostics.
-                    let list = calculate_class_init_type_vars_and_return(
+                    let result = calculate_class_init_type_vars_and_return(
                         i_s,
                         self,
                         func,
@@ -126,9 +130,8 @@ impl<'db: 'a, 'a> Class<'a> {
                         &|| args.as_node_ref(),
                         result_context,
                         Some(on_type_error),
-                    )
-                    .type_arguments;
-                    Some(list)
+                    );
+                    Some(result.type_arguments_into_class_generics())
                 }
                 OverloadResult::Union(t) => todo!(),
                 OverloadResult::NotFound => None,
@@ -276,14 +279,14 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(expr);
                         match meta_base {
-                            BaseClass::DbType(DbType::Class(link, None)) => {
-                                let c = Class::from_db_type(i_s.db, link, &None);
+                            BaseClass::DbType(DbType::Class(link, ClassGenerics::None)) => {
+                                let c = Class::from_db_type(i_s.db, link, &ClassGenerics::None);
                                 if c.incomplete_mro(i_s.db)
                                     || c.in_mro(
                                         i_s.db,
                                         &DbType::Class(
                                             i_s.db.python_state.type_node_ref().as_link(),
-                                            None,
+                                            ClassGenerics::None,
                                         ),
                                     )
                                 {
@@ -395,10 +398,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                             }
                                         }
                                         for base in cached_class_infos.mro.iter() {
-                                            mro.push(base.replace_type_var_likes(db, &mut |t| {
-                                                mro[mro_index].expect_class_generics()[t.index()]
+                                            mro.push(Type::new(base).replace_type_var_likes(
+                                                db,
+                                                &mut |t| {
+                                                    mro[mro_index].expect_class_generics()
+                                                        [t.index()]
                                                     .clone()
-                                            }));
+                                                },
+                                            ));
                                         }
                                     }
                                 }
@@ -472,8 +479,8 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             MetaclassState::Some(link2) => match current {
                 MetaclassState::Some(link1) => {
-                    let t1 = Type::Class(Class::from_db_type(i_s.db, *link1, &None));
-                    let t2 = Type::Class(Class::from_db_type(i_s.db, link2, &None));
+                    let t1 = Type::owned(DbType::Class(*link1, ClassGenerics::None));
+                    let t2 = Type::owned(DbType::Class(link2, ClassGenerics::None));
                     if !t1.is_simple_sub_type_of(i_s, &t2).bool() {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
@@ -526,7 +533,7 @@ impl<'db: 'a, 'a> Class<'a> {
         for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, self.incomplete_mro(i_s.db)) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
-                if let Type::Class(c) = c {
+                if let TypeOrClass::Class(c) = c {
                     return (result, Some(c));
                 } else {
                     return (result, None);
@@ -560,8 +567,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 let class_infos = self.use_cached_class_infos(i_s.db);
                 let result = match class_infos.metaclass {
                     MetaclassState::Some(link) => {
-                        let instance =
-                            Instance::new(Class::from_db_type(i_s.db, link, &None), None);
+                        let instance = Instance::new(
+                            Class::from_db_type(i_s.db, link, &ClassGenerics::None),
+                            None,
+                        );
                         instance.lookup(i_s, node_ref, name)
                     }
                     MetaclassState::Unknown => LookupResult::any(),
@@ -593,7 +602,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
             db,
-            Type::Class(*self),
+            TypeOrClass::Class(*self),
             self.generics,
             class_infos.mro.iter(),
             incomplete_mro || self.node_ref == db.python_state.object_node_ref(),
@@ -645,11 +654,11 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
         match self.use_cached_type_vars(i_s.db).is_some() {
             false => Inferred::from_saved_node_ref(self.node_ref),
-            true => Inferred::execute_db_type(i_s, self.as_type(i_s).into_db_type(i_s.db)),
+            true => Inferred::execute_db_type(i_s, self.as_type(i_s).into_db_type()),
         }
     }
 
-    pub fn generics_as_list(&self, db: &Database) -> Option<GenericsList> {
+    pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
         // TODO we instantiate, because we cannot use use_cached_type_vars?
         let type_vars = self.type_vars(&InferenceState::new(db));
         self.generics().as_generics_list(db, type_vars)
@@ -720,16 +729,9 @@ impl<'db: 'a, 'a> Class<'a> {
         if let Some(generics_list) =
             self.type_check_init_func(i_s, args, result_context, on_type_error)
         {
-            debug!(
-                "Class execute: {}{}",
-                self.name(),
-                match generics_list.as_ref() {
-                    Some(generics_list) => Generics::new_list(generics_list)
-                        .format(&FormatData::new_short(i_s.db), None),
-                    None => "".to_owned(),
-                }
-            );
-            Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list))
+            let result = Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list));
+            debug!("Class execute: {}", result.format_short(i_s));
+            result
         } else {
             Inferred::new_any()
         }
@@ -808,7 +810,7 @@ impl fmt::Debug for Class<'_> {
 pub struct MroIterator<'db, 'a> {
     db: &'db Database,
     generics: Generics<'a>,
-    class: Option<Type<'a>>,
+    class: Option<TypeOrClass<'a>>,
     iterator: std::slice::Iter<'a, DbType>,
     mro_index: u32,
     returned_object: bool,
@@ -817,7 +819,7 @@ pub struct MroIterator<'db, 'a> {
 impl<'db, 'a> MroIterator<'db, 'a> {
     pub fn new(
         db: &'db Database,
-        class: Type<'a>,
+        class: TypeOrClass<'a>,
         generics: Generics<'a>,
         iterator: std::slice::Iter<'a, DbType>,
         returned_object: bool,
@@ -833,34 +835,54 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     }
 }
 
+pub enum TypeOrClass<'a> {
+    Type(Type<'a>),
+    Class(Class<'a>),
+}
+
+impl<'a> TypeOrClass<'a> {
+    pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+        match self {
+            Self::Class(class) => class.lookup_symbol(i_s, name),
+            Self::Type(t) => t.lookup_symbol(i_s, name),
+        }
+    }
+}
+
 impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
-    type Item = (MroIndex, Type<'a>);
+    type Item = (MroIndex, TypeOrClass<'a>);
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.class.is_some() {
             self.mro_index += 1;
-            Some((MroIndex(0), std::mem::take(&mut self.class).unwrap()))
+            Some((MroIndex(0), self.class.take().unwrap()))
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),
                 match c {
-                    DbType::Class(c, generics) => Type::Class(Class::from_position(
-                        NodeRef::from_link(self.db, *c),
-                        self.generics,
-                        generics.as_ref(),
-                    )),
+                    DbType::Class(c, generics) => {
+                        let n = NodeRef::from_link(self.db, *c);
+                        TypeOrClass::Class(match generics {
+                            ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(&g)),
+                            ClassGenerics::None => Class::from_position(n, self.generics, None),
+                            ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, generics), None)"),
+                            ClassGenerics::SlicesWithClassTypes(link) => todo!(),
+                        })
+                    }
                     // TODO this is wrong, because it does not use generics.
                     _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {
-                        Type::new(c)
+                        TypeOrClass::Type(Type::new(c))
                     }
-                    _ => Type::owned(c.replace_type_var_likes_and_self(
-                        self.db,
-                        &mut |usage| {
-                            self.generics
-                                .nth_usage(self.db, &usage)
-                                .into_generic_item(self.db)
-                        },
-                        &mut || todo!(),
+                    _ => TypeOrClass::Type(Type::owned(
+                        Type::new(c).replace_type_var_likes_and_self(
+                            self.db,
+                            &mut |usage| {
+                                self.generics
+                                    .nth_usage(self.db, &usage)
+                                    .into_generic_item(self.db)
+                            },
+                            &mut || todo!(),
+                        ),
                     )),
                 },
             ));
@@ -870,7 +892,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
             self.returned_object = true;
             Some((
                 MroIndex(self.mro_index),
-                Type::Class(self.db.python_state.object_class()),
+                TypeOrClass::Class(self.db.python_state.object_class()),
             ))
         } else {
             None
@@ -890,8 +912,7 @@ fn find_stmt_named_tuple_types(
                 AssignmentContent::WithAnnotation(target, annot, default) => match target {
                     Target::Name(name) => {
                         file.inference(i_s).ensure_cached_annotation(annot);
-                        let t =
-                            use_cached_annotation_type(i_s.db, file, annot).into_db_type(i_s.db);
+                        let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
                         vec.push(CallableParam {
                             param_specific: ParamSpecific::PositionalOrKeyword(t),
                             has_default: default.is_some(),

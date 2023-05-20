@@ -2,17 +2,16 @@ use crate::database::DbType;
 use crate::inference_state::InferenceState;
 use crate::type_helpers::Class;
 
+use super::Type;
+
 pub fn replace_class_type_vars(i_s: &InferenceState, t: &DbType, class: &Class) -> DbType {
     let db = i_s.db;
-    t.replace_type_var_likes_and_self(
-        i_s.db,
+    Type::new(t).replace_type_var_likes_and_self(
+        db,
         &mut |t| {
             if let Some(class) = i_s.current_class() {
                 if class.node_ref.as_link() == t.in_definition() {
-                    return class
-                        .generics()
-                        .nth_usage(i_s.db, &t)
-                        .into_generic_item(i_s.db);
+                    return class.generics().nth_usage(db, &t).into_generic_item(db);
                 }
             }
             t.into_generic_item()

@@ -1,15 +1,16 @@
 use std::borrow::Cow;
 
-use parsa_python_ast::{Expression, SliceContent, SliceIterator, SliceType, Slices};
+use parsa_python_ast::{Expression, SliceContent, SliceIterator, Slices};
 
 use super::{FormatData, Generic, Match, Matcher, Type};
 use crate::database::{
-    Database, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage, PointLink,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    ClassGenerics, Database, DbType, GenericItem, GenericsList, ParamSpecArgument, ParamSpecUsage,
+    PointLink, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::debug;
-use crate::file::{use_cached_simple_generic_type, PythonFile};
+use crate::file::{use_cached_simple_generic_type, File, PythonFile};
 use crate::inference_state::InferenceState;
+use crate::node_ref::NodeRef;
 
 macro_rules! replace_class_vars {
     ($db:expr, $g:ident, $type_var_generics:ident) => {
@@ -26,10 +27,9 @@ macro_rules! replace_class_vars {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Generics<'a> {
-    SimpleGenericExpression(&'a PythonFile, Expression<'a>),
-    SimpleGenericSlices(&'a PythonFile, Slices<'a>),
+    ExpressionWithClassType(&'a PythonFile, Expression<'a>),
+    SlicesWithClassTypes(&'a PythonFile, Slices<'a>),
     List(&'a GenericsList, Option<&'a Generics<'a>>),
-    DbType(&'a DbType),
     Self_ {
         class_definition: PointLink,
         type_var_likes: Option<&'a TypeVarLikes>,
@@ -39,24 +39,38 @@ pub enum Generics<'a> {
 }
 
 impl<'a> Generics<'a> {
-    pub fn new_simple_generic_slice(file: &'a PythonFile, slice_type: SliceType<'a>) -> Self {
-        match slice_type {
-            SliceType::NamedExpression(named) => {
-                Self::SimpleGenericExpression(file, named.expression())
-            }
-            SliceType::Slice(_) => unreachable!(),
-            SliceType::Slices(slices) => Self::SimpleGenericSlices(file, slices),
-        }
-    }
-
     pub fn new_list(list: &'a GenericsList) -> Self {
         Self::List(list, None)
     }
 
-    pub fn new_maybe_list(list: &'a Option<GenericsList>) -> Self {
-        list.as_ref()
-            .map(|l| Self::List(l, None))
-            .unwrap_or(Generics::None)
+    pub fn from_non_list_class_generics(db: &'a Database, g: &ClassGenerics) -> Self {
+        match g {
+            ClassGenerics::List(l) => unreachable!(),
+            ClassGenerics::None => Generics::None,
+            ClassGenerics::ExpressionWithClassType(link) => {
+                let node_ref = NodeRef::from_link(db, *link);
+                Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
+            }
+            ClassGenerics::SlicesWithClassTypes(link) => {
+                let node_ref = NodeRef::from_link(db, *link);
+                Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
+            }
+        }
+    }
+
+    pub fn from_class_generics(db: &'a Database, g: &'a ClassGenerics) -> Self {
+        match g {
+            ClassGenerics::List(l) => Self::List(l, None),
+            ClassGenerics::None => Generics::None,
+            ClassGenerics::ExpressionWithClassType(link) => {
+                let node_ref = NodeRef::from_link(db, *link);
+                Self::ExpressionWithClassType(node_ref.file, node_ref.as_expression())
+            }
+            ClassGenerics::SlicesWithClassTypes(link) => {
+                let node_ref = NodeRef::from_link(db, *link);
+                Self::SlicesWithClassTypes(node_ref.file, node_ref.as_slices())
+            }
+        }
     }
 
     pub fn nth_usage<'db: 'a>(&self, db: &'db Database, usage: &TypeVarLikeUsage) -> Generic<'a> {
@@ -97,7 +111,7 @@ impl<'a> Generics<'a> {
         n: usize,
     ) -> Generic<'a> {
         match self {
-            Self::SimpleGenericExpression(file, expr) => {
+            Self::ExpressionWithClassType(file, expr) => {
                 if n == 0 {
                     Generic::TypeArgument(use_cached_simple_generic_type(db, file, *expr))
                 } else {
@@ -109,7 +123,7 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
-            Self::SimpleGenericSlices(file, slices) => Generic::TypeArgument(
+            Self::SlicesWithClassTypes(file, slices) => Generic::TypeArgument(
                 slices
                     .iter()
                     .nth(n)
@@ -133,13 +147,6 @@ impl<'a> Generics<'a> {
                     todo!()
                 }
             }
-            Self::DbType(g) => {
-                if n > 0 {
-                    todo!()
-                }
-                // TODO TypeVarTuple is this correct?
-                Generic::TypeArgument(Type::owned((*g).clone()))
-            }
             Self::NotDefinedYet => Generic::owned(type_var_like.as_any_generic_item()),
             Self::Self_ {
                 class_definition, ..
@@ -154,14 +161,13 @@ impl<'a> Generics<'a> {
 
     pub fn iter<'x>(&'x self, db: &'x Database) -> GenericsIterator<'x> {
         let item = match self {
-            Self::SimpleGenericExpression(file, expr) => {
+            Self::ExpressionWithClassType(file, expr) => {
                 GenericsIteratorItem::SimpleGenericExpression(file, *expr)
             }
-            Self::SimpleGenericSlices(file, slices) => {
+            Self::SlicesWithClassTypes(file, slices) => {
                 GenericsIteratorItem::SimpleGenericSliceIterator(file, slices.iter())
             }
             Self::List(l, t) => GenericsIteratorItem::GenericsList(l.iter(), *t),
-            Self::DbType(g) => GenericsIteratorItem::DbType(g),
             Self::Self_ {
                 class_definition,
                 type_var_likes,
@@ -178,15 +184,28 @@ impl<'a> Generics<'a> {
         &self,
         db: &Database,
         type_vars: Option<&TypeVarLikes>,
-    ) -> Option<GenericsList> {
-        type_vars.map(|type_vars| match self {
-            Self::NotDefinedYet => GenericsList::new_generics(
-                type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
-            ),
-            _ => {
-                GenericsList::new_generics(self.iter(db).map(|g| g.into_generic_item(db)).collect())
-            }
-        })
+    ) -> ClassGenerics {
+        match type_vars {
+            Some(type_vars) => match self {
+                Self::NotDefinedYet => ClassGenerics::List(GenericsList::new_generics(
+                    type_vars.iter().map(|t| t.as_any_generic_item()).collect(),
+                )),
+                Self::ExpressionWithClassType(file, expr) => {
+                    ClassGenerics::ExpressionWithClassType(PointLink::new(
+                        file.file_index(),
+                        expr.index(),
+                    ))
+                }
+                Self::SlicesWithClassTypes(file, slices) => ClassGenerics::SlicesWithClassTypes(
+                    PointLink::new(file.file_index(), slices.index()),
+                ),
+                Self::List(generics, None) => ClassGenerics::List((*generics).clone()),
+                _ => ClassGenerics::List(GenericsList::new_generics(
+                    self.iter(db).map(|g| g.into_generic_item(db)).collect(),
+                )),
+            },
+            None => ClassGenerics::None,
+        }
     }
 
     pub fn format(&self, format_data: &FormatData, expected: Option<usize>) -> String {
@@ -210,14 +229,17 @@ impl<'a> Generics<'a> {
         matcher: &mut Matcher,
         value_generics: Self,
         type_vars: &TypeVarLikes,
+        variance: Variance,
     ) -> Match {
         let value_generics = value_generics.iter(i_s.db);
         let mut matches = Match::new_true();
         for ((t1, t2), tv) in self.iter(i_s.db).zip(value_generics).zip(type_vars.iter()) {
             let v = match tv {
-                TypeVarLike::TypeVar(t) => t.variance,
-                TypeVarLike::TypeVarTuple(_) => Variance::Invariant,
-                TypeVarLike::ParamSpec(_) => Variance::Invariant,
+                TypeVarLike::TypeVar(t) if variance == Variance::Covariant => t.variance,
+                TypeVarLike::TypeVar(t) if variance == Variance::Contravariant => {
+                    t.variance.invert()
+                }
+                _ => Variance::Invariant,
             };
             matches &= t1.matches(i_s, matcher, &t2, v);
         }
@@ -263,7 +285,6 @@ impl<'a> GenericsIterator<'a> {
 enum GenericsIteratorItem<'a> {
     SimpleGenericSliceIterator(&'a PythonFile, SliceIterator<'a>),
     GenericsList(std::slice::Iter<'a, GenericItem>, Option<&'a Generics<'a>>),
-    DbType(&'a DbType),
     SimpleGenericExpression(&'a PythonFile, Expression<'a>),
     TypeVarLikeIterator {
         iterator: std::iter::Enumerate<std::slice::Iter<'a, TypeVarLike>>,
@@ -300,13 +321,6 @@ impl<'a> Iterator for GenericsIterator<'a> {
             GenericsIteratorItem::GenericsList(iterator, type_var_generics) => iterator
                 .next()
                 .map(|g| replace_class_vars!(self.db, g, type_var_generics)),
-            GenericsIteratorItem::DbType(g) => {
-                if self.ended {
-                    return None;
-                }
-                self.ended = true;
-                Some(Generic::TypeArgument(Type::new(g)))
-            }
             GenericsIteratorItem::TypeVarLikeIterator {
                 iterator,
                 definition,

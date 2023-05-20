@@ -3,7 +3,7 @@ use parsa_python_ast::ParamKind;
 use super::{Match, Matcher};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableParam, CallableParams, Database, DbType, DoubleStarredParamSpecific, ParamSpecUsage,
+    CallableParam, CallableParams, Database, DoubleStarredParamSpecific, ParamSpecUsage,
     ParamSpecific, PointLink, StarredParamSpecific, TypeVarLikes, Variance,
 };
 use crate::debug;
@@ -345,7 +345,7 @@ pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>
                 // TODO it's weird that we are creating a new InferenceState, because of borrowing
                 // issues in this closure
                 if let Some(t) = to_type(db, *p) {
-                    if matches!(t.maybe_db_type(), Some(DbType::Any)) {
+                    if t.is_any() {
                         had_any_fallback_with_default = true;
                     }
                 }

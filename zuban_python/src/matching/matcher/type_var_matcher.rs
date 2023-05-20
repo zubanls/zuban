@@ -100,7 +100,7 @@ impl CalculatedTypeVarLike {
         debug_assert!(matches!(self.type_, BoundKind::Uncalculated));
         self.type_ = match g {
             Generic::TypeArgument(t) => {
-                BoundKind::TypeVar(TypeVarBound::Invariant(t.into_db_type(db)))
+                BoundKind::TypeVar(TypeVarBound::Invariant(t.into_db_type()))
             }
             Generic::TypeVarTuple(t) => todo!(),
             Generic::ParamSpecArgument(p) => todo!(),
@@ -112,7 +112,6 @@ impl CalculatedTypeVarLike {
 pub struct TypeVarMatcher {
     pub(super) calculated_type_vars: Vec<CalculatedTypeVarLike>,
     pub(super) match_in_definition: PointLink,
-    pub match_reverse: bool, // For contravariance subtypes
 }
 
 impl TypeVarMatcher {
@@ -124,7 +123,6 @@ impl TypeVarMatcher {
         Self {
             calculated_type_vars,
             match_in_definition,
-            match_reverse: false,
         }
     }
 
@@ -179,7 +177,7 @@ impl TypeVarMatcher {
         // Before setting the type var, we need to check if the constraints match.
         let mut mismatch_constraints = false;
         if !type_var.restrictions.is_empty() {
-            if let Some(DbType::TypeVar(t2)) = value_type.maybe_db_type() {
+            if let DbType::TypeVar(t2) = value_type.as_ref() {
                 if !t2.type_var.restrictions.is_empty() {
                     if current.calculated() {
                         todo!()
@@ -190,9 +188,8 @@ impl TypeVarMatcher {
                                 .bool()
                         })
                     }) {
-                        current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
-                            value_type.as_db_type(i_s.db),
-                        ));
+                        current.type_ =
+                            BoundKind::TypeVar(TypeVarBound::Invariant(value_type.as_db_type()));
                         return Match::new_true();
                     } else {
                         mismatch_constraints = true;
@@ -228,15 +225,14 @@ impl TypeVarMatcher {
         if mismatch_constraints {
             return Match::False {
                 reason: MismatchReason::ConstraintMismatch {
-                    expected: value_type.as_db_type(i_s.db),
+                    expected: value_type.as_db_type(),
                     type_var: type_var_usage.type_var.clone(),
                 },
                 similar: false,
             };
         }
-        current.type_ =
-            BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s.db), variance));
-        if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
+        current.type_ = BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(), variance));
+        if value_type.is_any() {
             Match::True { with_any: true }
         } else {
             Match::new_true()

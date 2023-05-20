@@ -289,7 +289,6 @@ testTrivialParametersHandledCorrectly
 
 # type var backtracking
 testUnionInference
-testMapWithOverloadedFunc
 unite_type_vars_mypy_issue_5874
 multiple_lambda_mypy_issue_4226
 
@@ -1494,6 +1493,9 @@ testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
+
+# Overload needs type var matcher probably (and maybe also overlapping)
+overload_class_type_var_implementation_match_and_mismatch
 
 # - Signature of "f" incompatible with supertype "Parent"
 testSelfTypeOverrideCompatibility

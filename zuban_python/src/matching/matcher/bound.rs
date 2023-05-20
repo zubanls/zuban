@@ -93,7 +93,7 @@ impl TypeVarBound {
         };
         if matches.bool() {
             // If we are between the bounds we might need to update lower/upper bounds
-            let db_other = other.as_db_type(i_s.db);
+            let db_other = other.as_db_type();
             match variance {
                 Variance::Invariant => *self = Self::Invariant(db_other),
                 Variance::Covariant => self.update_upper_bound(db_other),

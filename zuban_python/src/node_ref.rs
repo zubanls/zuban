@@ -3,7 +3,7 @@ use std::fmt;
 use parsa_python_ast::{
     Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression,
     Expression, Factor, FunctionDef, ImportFrom, Int, Name, NameDefinition, NamedExpression,
-    NodeIndex, Primary, PythonString, StarredExpression, StringLiteral,
+    NodeIndex, Primary, PythonString, Slices, StarredExpression, StringLiteral,
 };
 
 use crate::database::{
@@ -96,6 +96,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn as_expression(&self) -> Expression<'file> {
         Expression::by_index(&self.file.tree, self.node_index)
+    }
+
+    pub fn as_slices(&self) -> Slices<'file> {
+        Slices::by_index(&self.file.tree, self.node_index)
     }
 
     pub fn as_primary(&self) -> Primary<'file> {

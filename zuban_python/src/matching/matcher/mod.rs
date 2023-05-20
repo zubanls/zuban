@@ -40,6 +40,7 @@ pub struct Matcher<'a> {
     class: Option<&'a Class<'a>>,
     func_or_callable: Option<FunctionOrCallable<'a>>,
     ignore_promotions: bool,
+    match_reverse: bool, // For contravariance subtypes
 }
 
 impl<'a> Matcher<'a> {
@@ -60,11 +61,10 @@ impl<'a> Matcher<'a> {
         callable: &'a CallableContent,
         type_var_count: usize,
     ) -> Self {
-        let mut m = TypeVarMatcher::new(callable.defined_at, type_var_count);
-        m.match_reverse = true;
         Self {
-            type_var_matcher: Some(m),
+            type_var_matcher: Some(TypeVarMatcher::new(callable.defined_at, type_var_count)),
             func_or_callable: Some(FunctionOrCallable::Callable(callable)),
+            match_reverse: true,
             ..Self::default()
         }
     }
@@ -90,9 +90,7 @@ impl<'a> Matcher<'a> {
         type_vars: Option<&TypeVarLikes>,
     ) -> Self {
         let mut m = Self::new_function_matcher(class, function, type_vars);
-        if let Some(type_vars) = type_vars {
-            m.type_var_matcher.as_mut().unwrap().match_reverse = true;
-        }
+        m.match_reverse = true;
         m
     }
 
@@ -118,22 +116,14 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn is_matching_reverse(&self) -> bool {
-        self.type_var_matcher
-            .as_ref()
-            .map(|m| m.match_reverse)
-            .unwrap_or(false)
+        self.match_reverse
     }
 
     pub fn match_reverse<T, C: FnOnce(&mut Self) -> T>(&mut self, callable: C) -> T {
-        if let Some(matcher) = self.type_var_matcher.as_mut() {
-            matcher.match_reverse = !matcher.match_reverse;
-            let result = callable(self);
-            let matcher = self.type_var_matcher.as_mut().unwrap();
-            matcher.match_reverse = !matcher.match_reverse;
-            result
-        } else {
-            callable(self)
-        }
+        self.match_reverse = !self.match_reverse;
+        let result = callable(self);
+        self.match_reverse = !self.match_reverse;
+        result
     }
 
     pub fn match_or_add_type_var(
@@ -195,8 +185,8 @@ impl<'a> Matcher<'a> {
             }
             _ => (),
         };
-        match value_type.maybe_db_type() {
-            Some(DbType::TypeVar(t2)) => {
+        match value_type.as_ref() {
+            DbType::TypeVar(t2) => {
                 (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
             }
             _ => Match::new_false(),
@@ -579,7 +569,7 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn replace_type_var_likes_for_nested_context(&self, db: &Database, t: &DbType) -> DbType {
-        t.replace_type_var_likes(db, &mut |type_var_like_usage| {
+        Type::new(t).replace_type_var_likes(db, &mut |type_var_like_usage| {
             if let Some(type_var_matcher) = self.type_var_matcher.as_ref() {
                 if type_var_like_usage.in_definition() == type_var_matcher.match_in_definition {
                     let current = &type_var_matcher.calculated_type_vars
@@ -614,7 +604,7 @@ impl<'a> Matcher<'a> {
                         let type_var_remap = func_class.type_var_remap.unwrap();
                         match &type_var_remap[type_var_like_usage.index()] {
                             GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                self.replace_type_var_likes_for_nested_context(db, t),
+                                self.replace_type_var_likes_for_nested_context(db, &t),
                             ),
                             GenericItem::TypeArguments(_) => todo!(),
                             GenericItem::ParamSpecArgument(_) => todo!(),
@@ -658,6 +648,7 @@ impl<'a> Matcher<'a> {
             class: self.class,
             func_or_callable: self.func_or_callable,
             ignore_promotions: self.ignore_promotions,
+            match_reverse: self.match_reverse,
         };
         let result = callable(&mut inner_matcher);
         // Need to move back, because it was moved previously.

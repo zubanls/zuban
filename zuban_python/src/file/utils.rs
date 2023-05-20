@@ -5,7 +5,9 @@ use parsa_python_ast::{
 };
 
 use crate::arguments::Argument;
-use crate::database::{DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue};
+use crate::database::{
+    ClassGenerics, DbType, GenericItem, GenericsList, Literal, LiteralKind, LiteralValue,
+};
 use crate::diagnostics::IssueType;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::Simple;
@@ -38,12 +40,7 @@ impl<'db> Inference<'db, '_, '_> {
             };
             // Just because we defined a literal somewhere, we should probably not infer that.
             if let DbType::Literal(l) = t {
-                t = self
-                    .i_s
-                    .db
-                    .python_state
-                    .literal_class(l.kind)
-                    .as_db_type(self.i_s.db);
+                t = self.i_s.db.python_state.literal_db_type(l.kind);
             }
             result.union_in_place(t);
         }
@@ -71,8 +68,7 @@ impl<'db> Inference<'db, '_, '_> {
                             // As a fallback if there were only errors or no items at all, just use
                             // the given and expected result context as a type.
                             found = Some(
-                                list_cls
-                                    .as_db_type(i_s.db)
+                                Type::owned(list_cls.as_db_type(i_s.db))
                                     .replace_type_var_likes(self.i_s.db, &mut |tv| {
                                         tv.as_type_var_like().as_any_generic_item()
                                     }),
@@ -189,7 +185,7 @@ fn check_list_with_context<'db>(
                     found = Some(resembling);
                 }
             } else if i_s.is_checking_overload() {
-                let t = inferred.as_type(i_s).into_db_type(i_s.db);
+                let t = inferred.as_type(i_s).into_db_type();
                 if let Some(found) = &mut found {
                     found.union_in_place(t)
                 } else {
@@ -214,7 +210,7 @@ fn check_list_with_context<'db>(
     found.map(|inner| {
         DbType::Class(
             i_s.db.python_state.list_node_ref().as_link(),
-            Some(GenericsList::new_generics(Rc::new([
+            ClassGenerics::List(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(inner),
             ]))),
         )

@@ -6,9 +6,9 @@ use parsa_python_ast::*;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParams, ComplexPoint, DbType, FileIndex, GenericItem, GenericsList,
-    Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType, Specific,
-    TupleContent, TypeOrTypeVarTuple,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, GenericItem,
+    GenericsList, Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType,
+    Specific, TupleContent, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -905,27 +905,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let (first, second) = or.unpack();
                 let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
                 let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
-                Inferred::create_instance(
-                    self.i_s.db.python_state.builtins_point_link("bool"),
-                    None,
-                )
+                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Conjunction(and) => {
                 let (first, second) = and.unpack();
                 let first = self.infer_expression_part(first, &mut ResultContext::Unknown);
                 let second = self.infer_expression_part(second, &mut ResultContext::Unknown);
-                Inferred::create_instance(
-                    self.i_s.db.python_state.builtins_point_link("bool"),
-                    None,
-                )
+                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Inversion(inversion) => {
                 let expr = inversion.expression();
                 self.infer_expression_part(expr, &mut ResultContext::Unknown);
-                Inferred::create_instance(
-                    self.i_s.db.python_state.builtins_point_link("bool"),
-                    None,
-                )
+                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
             }
             ExpressionPart::Comparisons(cmps) => {
                 Inferred::gather_types_union(|gather| {
@@ -953,10 +944,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.infer_expression_part(first, &mut ResultContext::Unknown);
                                 let second =
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
-                                Inferred::create_instance(
-                                    self.i_s.db.python_state.builtins_point_link("bool"),
-                                    None,
-                                )
+                                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
                             }
                             ComparisonContent::In(first, op, second)
                             | ComparisonContent::NotIn(first, op, second) => {
@@ -1027,10 +1015,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         }
                                     },
                                 );
-                                Inferred::create_instance(
-                                    self.i_s.db.python_state.builtins_point_link("bool"),
-                                    None,
-                                )
+                                Inferred::from_type(self.i_s.db.python_state.bool_db_type())
                             }
                             ComparisonContent::Operation(op) => self.infer_operation(op),
                         };
@@ -1119,7 +1104,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
                 |i_s: &InferenceState<'db, '_>, type_| {
-                    if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
+                    if let DbType::Callable(c) = type_.as_ref() {
                         let i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
                         let rt = Type::new(&c.result_type);
@@ -1128,7 +1113,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .inference(&i_s)
                             .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = (**c).clone();
-                        c.result_type = result.as_type(&i_s).into_db_type(i_s.db);
+                        c.result_type = result.as_type(&i_s).into_db_type();
                         Inferred::execute_db_type(&i_s, DbType::Callable(Rc::new(c)))
                     } else {
                         todo!()
@@ -1449,8 +1434,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return Inferred::execute_db_type(
                     self.i_s,
                     DbType::Class(
-                        self.i_s.db.python_state.builtins_point_link("list"),
-                        Some(GenericsList::new_generics(Rc::new([result]))),
+                        self.i_s.db.python_state.list_node_ref().as_link(),
+                        ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
                     ),
                 );
             }
@@ -1459,8 +1444,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return Inferred::execute_db_type(
                     self.i_s,
                     DbType::Class(
-                        self.i_s.db.python_state.builtins_point_link("list"),
-                        Some(GenericsList::new_generics(Rc::new([
+                        self.i_s.db.python_state.list_node_ref().as_link(),
+                        ClassGenerics::List(GenericsList::new_generics(Rc::new([
                             GenericItem::TypeArgument(DbType::Any),
                         ]))),
                     ),
@@ -1471,8 +1456,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return Inferred::execute_db_type(
                     self.i_s,
                     DbType::Class(
-                        self.i_s.db.python_state.builtins_point_link("dict"),
-                        Some(generics),
+                        self.i_s.db.python_state.dict_node_ref().as_link(),
+                        ClassGenerics::List(generics),
                     ),
                 );
             }
@@ -1480,7 +1465,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Set(set) => {
                 if let elements @ StarLikeExpressionIterator::Elements(_) = set.unpack() {
                     return Inferred::create_instance(
-                        self.i_s.db.python_state.builtins_point_link("set"),
+                        self.i_s.db.python_state.set_node_ref().as_link(),
                         Some(Rc::new([self.create_list_or_set_generics(elements)])),
                     )
                     .save_redirect(self.i_s, self.file, atom.index());
@@ -1963,7 +1948,7 @@ fn add_attribute_error<'db>(
     t: &Type,
     name: Name,
 ) {
-    let object = if matches!(t.maybe_db_type(), Some(DbType::Module(_))) {
+    let object = if matches!(t.as_ref(), DbType::Module(_)) {
         Box::from("Module")
     } else {
         format!("{:?}", t.format_short(i_s.db)).into()

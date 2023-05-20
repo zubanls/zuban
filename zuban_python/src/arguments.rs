@@ -10,6 +10,7 @@ use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, ResultContext, Type};
 use crate::node_ref::NodeRef;
+use crate::type_helpers::TypeOrClass;
 use crate::InferenceState;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
@@ -573,7 +574,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let mut value_type = None;
                             if let Some(mro) = type_.mro(i_s.db) {
                                 for (_, t) in mro {
-                                    if let Some(class) = t.maybe_class(i_s.db) {
+                                    if let TypeOrClass::Class(class) = t {
                                         if class.node_ref == i_s.db.python_state.mapping_node_ref()
                                         {
                                             let type_vars = class.type_vars(i_s).unwrap();
@@ -581,7 +582,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                                 .generics()
                                                 .nth(i_s.db, &type_vars[0], 0)
                                                 .expect_type_argument();
-                                            let s = Type::Class(i_s.db.python_state.str());
+                                            let s = Type::owned(i_s.db.python_state.str_db_type());
                                             if !key.is_simple_same_type(i_s, &s).bool() {
                                                 node_ref.add_typing_issue(
                                                     i_s,
@@ -595,13 +596,13 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                                     .generics()
                                                     .nth(i_s.db, &type_vars[1], 1)
                                                     .expect_type_argument()
-                                                    .into_db_type(i_s.db),
+                                                    .into_db_type(),
                                             );
                                             break;
                                         }
                                     }
                                 }
-                            } else if type_.maybe_db_type() == Some(&DbType::Any) {
+                            } else if type_.is_any() {
                                 value_type = Some(DbType::Any);
                             }
                             let value_type = value_type.unwrap_or_else(|| {

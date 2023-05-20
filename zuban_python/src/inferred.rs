@@ -1,11 +1,11 @@
-use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString};
+use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, FileIndex, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
-    Specific, TypeVarLike,
+    CallableContent, ClassGenerics, ComplexPoint, Database, DbType, FileIndex, GenericItem,
+    GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink,
+    PointType, Specific, TypeVarLike,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -19,8 +19,8 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
-    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeVarClass,
-    TypeVarTupleClass, TypingCast, TypingClass,
+    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass,
+    TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
 };
 
 #[derive(Debug)]
@@ -128,7 +128,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &Type) -> Self {
         // Everything that calls this should probably not allocate.
-        let t = t.as_db_type(i_s.db);
+        let t = t.as_db_type();
         Self::execute_db_type(i_s, t)
     }
 
@@ -140,14 +140,15 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn execute_db_type(i_s: &InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
-            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, None)) => match c.as_ref()
-            {
-                DbType::Class(link, None) => {
-                    let node_ref = NodeRef::from_link(i_s.db, *link);
-                    InferredState::Saved(*link, node_ref.point())
+            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, ClassGenerics::None)) => {
+                match c.as_ref() {
+                    DbType::Class(link, ClassGenerics::None) => {
+                        let node_ref = NodeRef::from_link(i_s.db, *link);
+                        InferredState::Saved(*link, node_ref.point())
+                    }
+                    _ => unreachable!(),
                 }
-                _ => unreachable!(),
-            },
+            }
             DbType::None => return Inferred::new_none(),
             DbType::Any => return Inferred::new_any(),
             _ => InferredState::UnsavedComplex(ComplexPoint::TypeInstance(generic)),
@@ -158,7 +159,10 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn create_instance(class: PointLink, generics: Option<Rc<[GenericItem]>>) -> Self {
         Self::new_unsaved_complex(ComplexPoint::TypeInstance(DbType::Class(
             class,
-            generics.map(GenericsList::new_generics),
+            match generics {
+                Some(generics) => ClassGenerics::List(GenericsList::new_generics(generics)),
+                None => ClassGenerics::None,
+            },
         )))
     }
 
@@ -198,7 +202,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn class_as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
-        self.as_type(i_s).into_db_type(i_s.db)
+        self.as_type(i_s).into_db_type()
     }
 
     pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
@@ -220,8 +224,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     .into_inferred()
                     .saved_as_type(i_s)
                     .unwrap()
-                    .maybe_borrowed_class(i_s.db)
-                    .unwrap(),
+                    .expect_borrowed_class(i_s.db),
                 BoundMethodInstance::Complex(ComplexPoint::TypeInstance(DbType::Class(
                     link,
                     generics,
@@ -238,7 +241,9 @@ impl<'db: 'slf, 'slf> Inferred {
             .unwrap()
             .1;
         // Mro classes are never owned, because they are saved on classes.
-        let class = class_t.expect_borrowed_class(i_s.db);
+        let TypeOrClass::Class(class) = class_t else {
+            unreachable!()
+        };
         (instance, class)
     }
     pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {
@@ -313,70 +318,42 @@ impl<'db: 'slf, 'slf> Inferred {
         self
     }
 
-    pub fn maybe_class(&self, i_s: &InferenceState<'db, '_>) -> Option<Class<'db>> {
-        let mut generics = None;
+    pub fn expect_class_or_simple_generic(&self, i_s: &InferenceState<'db, '_>) -> Type<'db> {
+        let mut generics = ClassGenerics::None;
         if let InferredState::Saved(definition, point) = &self.state {
             if point.type_() == PointType::Specific {
                 let definition = NodeRef::from_link(i_s.db, *definition);
-                generics = Self::expect_generics(definition, *point);
+                generics = Self::expect_class_generics(definition, *point);
             }
         }
-        self.maybe_class_internal(i_s, generics.unwrap_or(Generics::NotDefinedYet))
+        let link = self.get_class_link(i_s);
+        Type::owned(DbType::Class(link, generics))
     }
 
-    fn maybe_class_internal<'a>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        generics: Generics<'a>,
-    ) -> Option<Class<'a>>
-    where
-        'db: 'a,
-    {
-        match &self.state {
-            InferredState::Saved(definition, point) => {
-                let definition = NodeRef::from_link(i_s.db, *definition);
-                match point.type_() {
-                    PointType::Complex => {
-                        let complex = definition.file.complex_points.get(point.complex_index());
-                        match complex {
-                            ComplexPoint::Class(c) => {
-                                Some(Class::new(definition, c, generics, None))
-                            }
-                            ComplexPoint::TypeInstance(t) => match t {
-                                DbType::Type(t) => match t.as_ref() {
-                                    DbType::Class(link, generics) => {
-                                        Some(Class::from_db_type(i_s.db, *link, generics))
-                                    }
-                                    _ => None,
-                                },
-                                _ => None,
-                            },
-                            _ => None,
-                        }
-                    }
-                    PointType::Specific => match point.specific() {
-                        Specific::SimpleGeneric => {
-                            let inferred = definition
-                                .file
-                                .inference(i_s)
-                                .infer_primary_or_atom(definition.as_primary().first());
-                            inferred.maybe_class_internal(i_s, generics)
-                        }
-                        _ => None,
-                    },
-                    _ => None,
-                }
+    fn get_class_link(&self, i_s: &InferenceState) -> PointLink {
+        let InferredState::Saved(link, point) = &self.state else {
+            unreachable!()
+        };
+        let node_ref = NodeRef::from_link(i_s.db, *link);
+        match point.type_() {
+            PointType::Complex => {
+                let complex = node_ref.file.complex_points.get(point.complex_index());
+                let ComplexPoint::Class(c) = complex else {
+                    unreachable!();
+                };
+                *link
             }
-            InferredState::UnsavedComplex(complex) => {
-                if let ComplexPoint::TypeInstance(g) = complex {
-                    return None; // TODO this was originally a return None for tuple class
+            PointType::Specific => match point.specific() {
+                Specific::SimpleGeneric => {
+                    let inferred = node_ref
+                        .file
+                        .inference(i_s)
+                        .infer_primary_or_atom(node_ref.as_primary().first());
+                    inferred.get_class_link(i_s)
                 }
-                todo!("{complex:?}")
-            }
-            InferredState::UnsavedSpecific(specific) => todo!(),
-            InferredState::UnsavedFileReference(file_index) => todo!(),
-            InferredState::BoundMethod { .. } => None,
-            InferredState::Unknown => None,
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
         }
     }
 
@@ -509,7 +486,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 file.complex_points.insert(
                     &file.points,
                     index,
-                    ComplexPoint::TypeInstance(bound_method.as_type(i_s).into_db_type(i_s.db)),
+                    ComplexPoint::TypeInstance(bound_method.as_type(i_s).into_db_type()),
                     Locality::Todo,
                 );
                 return Self::new_saved(file, index, file.points.get(index));
@@ -610,7 +587,7 @@ impl<'db: 'slf, 'slf> Inferred {
             Inferred::from_type(
                 self.as_type(i_s)
                     .union(i_s.db, other.as_type(i_s))
-                    .into_db_type(i_s.db),
+                    .into_db_type(),
             )
         }
     }
@@ -742,7 +719,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             DbType::Class(link, generics) => {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
-                                    Generics::new_maybe_list(generics),
+                                    Generics::from_class_generics(i_s.db, generics),
                                     Some(&self),
                                 );
                                 if let Some(inf) =
@@ -852,7 +829,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             DbType::Class(link, generics) => {
                                 let inst = use_instance_with_ref(
                                     NodeRef::from_link(i_s.db, *link),
-                                    Generics::new_maybe_list(generics),
+                                    Generics::from_class_generics(i_s.db, generics),
                                     Some(&self),
                                 );
                                 if let Some(inf) =
@@ -914,22 +891,22 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    fn expect_generics(definition: NodeRef<'db>, point: Point) -> Option<Generics<'db>> {
-        if point.type_() == PointType::Specific && point.specific() == Specific::SimpleGeneric {
-            let primary = definition.as_primary();
-            match primary.second() {
-                PrimaryContent::GetItem(slice_type) => {
-                    return Some(Generics::new_simple_generic_slice(
-                        definition.file,
-                        slice_type,
-                    ))
-                }
-                _ => {
-                    unreachable!()
-                }
-            }
+    fn expect_class_generics(definition: NodeRef<'db>, point: Point) -> ClassGenerics {
+        debug_assert_eq!(point.type_(), PointType::Specific);
+        debug_assert_eq!(point.specific(), Specific::SimpleGeneric);
+        let PrimaryContent::GetItem(slice_type) = definition.as_primary().second() else {
+            unreachable!();
+        };
+        match slice_type {
+            ASTSliceType::NamedExpression(named) => ClassGenerics::ExpressionWithClassType(
+                PointLink::new(definition.file_index(), named.expression().index()),
+            ),
+            ASTSliceType::Slice(_) => unreachable!(),
+            ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(PointLink::new(
+                definition.file_index(),
+                slices.index(),
+            )),
         }
-        None
     }
 
     pub fn is_union(&self, db: &'db Database) -> bool {
@@ -1358,9 +1335,9 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     }
 }
 
-fn resolve_specific<'db>(i_s: &InferenceState<'db, '_>, specific: Specific) -> Instance<'db> {
+fn resolve_specific(i_s: &InferenceState, specific: Specific) -> Type<'static> {
     // TODO this should be using python_state.str_node_ref etc.
-    load_builtin_instance_from_str(
+    load_builtin_type_from_str(
         i_s,
         match specific {
             Specific::String | Specific::StringLiteral => "str",
@@ -1375,10 +1352,7 @@ fn resolve_specific<'db>(i_s: &InferenceState<'db, '_>, specific: Specific) -> I
     )
 }
 
-fn load_builtin_instance_from_str<'db>(
-    i_s: &InferenceState<'db, '_>,
-    name: &'static str,
-) -> Instance<'db> {
+fn load_builtin_type_from_str(i_s: &InferenceState, name: &'static str) -> Type<'static> {
     let builtins = i_s.db.python_state.builtins();
     let node_index = builtins.lookup_global(name).unwrap().node_index - 1;
     // TODO this is slow and ugly, please make sure to do this different
@@ -1389,7 +1363,10 @@ fn load_builtin_instance_from_str<'db>(
     let v = builtins.points.get(node_index);
     debug_assert_eq!(v.type_(), PointType::Redirect);
     debug_assert_eq!(v.file_index(), builtins.file_index());
-    use_instance_with_ref(NodeRef::new(builtins, v.node_index()), Generics::None, None)
+    Type::owned(DbType::Class(
+        PointLink::new(builtins.file_index(), v.node_index()),
+        ClassGenerics::None,
+    ))
 }
 
 fn use_instance_with_ref<'a>(
@@ -1469,7 +1446,7 @@ fn type_of_complex<'db: 'x, 'x>(
             alias.as_db_type_and_set_type_vars_any(i_s.db),
         ))),
         ComplexPoint::TypeVarLike(t) => match t {
-            TypeVarLike::TypeVar(_) => Type::Class(i_s.db.python_state.type_var_class()),
+            TypeVarLike::TypeVar(_) => i_s.db.python_state.type_var_type(),
             TypeVarLike::TypeVarTuple(_) => todo!(),
             TypeVarLike::ParamSpec(_) => todo!(),
         },
@@ -1553,10 +1530,7 @@ fn saved_as_type<'db>(
                     let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
                     todo!()
                 }
-                _ => {
-                    let instance = resolve_specific(i_s, specific);
-                    Type::Class(instance.class)
-                }
+                _ => resolve_specific(i_s, specific),
             }
         }
         PointType::Complex => {

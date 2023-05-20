@@ -14,14 +14,14 @@ use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParams, DbType, GenericItem, GenericsList, PointLink, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParams, ClassGenerics, DbType, GenericItem, GenericsList, PointLink,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, FirstParamProperties, Function, Instance};
+use crate::type_helpers::{Class, FirstParamProperties, Function, Instance, TypeOrClass};
 use crate::utils::rc_unwrap_or_clone;
 
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
@@ -101,7 +101,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
             }
             if !checked {
                 // [2]
-                let matches = Type::Class(class).is_super_type_of(
+                let matches = Type::owned(class.as_db_type(i_s.db)).is_super_type_of(
                     &i_s.with_class_context(&class),
                     &mut matcher,
                     &t,
@@ -131,7 +131,12 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
             result_context,
             on_type_error,
         );
-        type_arguments.type_arguments = class.generics_as_list(i_s.db);
+        type_arguments.type_arguments = match class.generics_as_list(i_s.db) {
+            ClassGenerics::List(generics_list) => Some(generics_list),
+            ClassGenerics::ExpressionWithClassType(_) => todo!(),
+            ClassGenerics::SlicesWithClassTypes(_) => todo!(),
+            ClassGenerics::None => None,
+        };
         type_arguments
     } else {
         calculate_type_vars(
@@ -156,6 +161,15 @@ pub struct CalculatedTypeArguments {
     pub in_definition: PointLink,
     pub matches: SignatureMatch,
     pub type_arguments: Option<GenericsList>,
+}
+
+impl CalculatedTypeArguments {
+    pub fn type_arguments_into_class_generics(self) -> ClassGenerics {
+        match self.type_arguments {
+            Some(g) => ClassGenerics::List(g),
+            None => ClassGenerics::None,
+        }
+    }
 }
 
 impl CalculatedTypeArguments {
@@ -270,7 +284,7 @@ fn add_generics_from_result_context_class(
             Generic::TypeArgument(g) => {
                 if !g.is_any() {
                     let mut bound = TypeVarBound::new(
-                        g.as_db_type(i_s.db),
+                        g.as_db_type(),
                         match type_var_like {
                             TypeVarLike::TypeVar(t) => t.variance,
                             _ => unreachable!(),
@@ -318,7 +332,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                         &mut Matcher::default(),
                         &mut |i_s, _, result_class| {
                             for (_, t) in class.mro(i_s.db) {
-                                if let Some(class) = t.maybe_class(i_s.db) {
+                                if let TypeOrClass::Class(class) = t {
                                     if result_class.node_ref == class.node_ref {
                                         add_generics_from_result_context_class(
                                             i_s,
@@ -761,10 +775,14 @@ pub fn create_signature_without_self(
 ) -> Option<DbType> {
     let type_vars = func.type_vars(i_s);
     let mut matcher = Matcher::new_function_matcher(Some(&instance.class), func, type_vars);
-    if !matches!(expected_type.maybe_db_type(), Some(DbType::Self_)) {
+    if !matches!(expected_type.as_ref(), DbType::Self_) {
         // TODO It is questionable that we do not match Self here
         if !expected_type
-            .is_super_type_of(i_s, &mut matcher, &Type::Class(instance.class))
+            .is_super_type_of(
+                i_s,
+                &mut matcher,
+                &Type::owned(instance.class.as_db_type(i_s.db)),
+            )
             .bool()
         {
             return None;
@@ -788,25 +806,26 @@ pub fn create_signature_without_self(
         if !old_type_vars.is_empty() {
             callable_content.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
         }
-        t = DbType::Callable(Rc::new(callable_content)).replace_type_var_likes_and_self(
-            i_s.db,
-            &mut |usage| {
-                let index = usage.index().as_usize();
-                if usage.in_definition() == func.node_ref.as_link() {
-                    let c = &calculated[index];
-                    if c.calculated() {
-                        return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
+        t = Type::owned(DbType::Callable(Rc::new(callable_content)))
+            .replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |usage| {
+                    let index = usage.index().as_usize();
+                    if usage.in_definition() == func.node_ref.as_link() {
+                        let c = &calculated[index];
+                        if c.calculated() {
+                            return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
+                        }
                     }
-                }
-                let new_index = calculated
-                    .iter()
-                    .take(index)
-                    .filter(|c| !c.calculated())
-                    .count();
-                usage.into_generic_item_with_new_index(new_index.into())
-            },
-            &mut || DbType::Self_,
-        );
+                    let new_index = calculated
+                        .iter()
+                        .take(index)
+                        .filter(|c| !c.calculated())
+                        .count();
+                    usage.into_generic_item_with_new_index(new_index.into())
+                },
+                &mut || DbType::Self_,
+            );
     }
     // TODO this should not be run separately, we do two replacements here.
     Some(replace_class_type_vars(i_s, &t, &instance.class))

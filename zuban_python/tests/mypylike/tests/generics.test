@@ -683,8 +683,8 @@ def foo(x: T, y: T) -> T: ...
 x: list[Sequence[int]]
 y: list[Sequence[object]]
 
-reveal_type(foo(x, y)) # N: Revealed type is "list[typing.Sequence[object]]"
-reveal_type(foo(y, x)) # N: Revealed type is "list[typing.Sequence[object]]"
+reveal_type(foo(x, y)) # N: Revealed type is "object"
+reveal_type(foo(y, x)) # N: Revealed type is "object"
 
 [case class_attribute_inheritance_access]
 from typing import TypeVar, Generic
@@ -716,3 +716,60 @@ class C(B[str, float]): ...
 reveal_type(A[int, str]().x)  # N: Revealed type is "tuple[str, int]"
 reveal_type(B[int, str]().x)  # N: Revealed type is "tuple[tuple[str], list[int]]"
 reveal_type(C().x)  # N: Revealed type is "tuple[tuple[float], list[str]]"
+
+[case different_variances]
+from typing import Generic, TypeVar, Callable, List, Sequence
+
+T = TypeVar('T')
+T_contra = TypeVar('T_contra', contravariant=True)
+
+class A(Generic[T_contra]): pass
+class B(Generic[T]): pass
+
+class C: ...
+class D(C): ...
+
+def g(x: Sequence[T], y: Sequence[T]) -> T: ...
+def h(x: A[T], y: A[T]) -> T: ...
+def i(x: Callable[[Sequence[T]], None], y: Callable[[Sequence[T]], None]) -> T: ...
+def j(x: Callable[[A[T]], None], y: Callable[[A[T]], None]) -> T: ...
+def k(x: Callable[[Callable[[Sequence[T]], None]], None], y: Callable[[Callable[[Sequence[T]], None]], None]) -> T: ...
+def l(x: Callable[[Callable[[A[T]], None]], None], y: Callable[[Callable[[A[T]], None]], None]) -> T: ...
+
+c: Sequence[C]
+d: Sequence[D]
+ac: A[C]
+ad: A[D]
+c_c: Callable[[Sequence[C]], None]
+c_d: Callable[[Sequence[D]], None]
+c_ac: Callable[[A[C]], None]
+c_ad: Callable[[A[D]], None]
+c_c_c: Callable[[Callable[[Sequence[C]], None]], None]
+c_c_d: Callable[[Callable[[Sequence[D]], None]], None]
+c_c_ac: Callable[[Callable[[A[C]], None]], None]
+c_c_ad: Callable[[Callable[[A[D]], None]], None]
+
+reveal_type(g(c, d))  # N: Revealed type is "__main__.C"
+reveal_type(h(ac, ad))  # N: Revealed type is "__main__.D"
+reveal_type(i(c_c, c_d))  # N: Revealed type is "__main__.D"
+reveal_type(i(c_d, c_c))  # N: Revealed type is "__main__.D"
+reveal_type(j(c_ac, c_ad))  # N: Revealed type is "__main__.C"
+reveal_type(j(c_ad, c_ac))  # N: Revealed type is "__main__.C"
+reveal_type(k(c_c_c, c_c_d))  # N: Revealed type is "__main__.C"
+reveal_type(k(c_c_d, c_c_c))  # N: Revealed type is "__main__.C"
+reveal_type(l(c_c_ac, c_c_ad))  # N: Revealed type is "__main__.D"
+reveal_type(l(c_c_ad, c_c_ac))  # N: Revealed type is "__main__.D"
+
+[case nested_invariance]
+from typing import Generic, TypeVar, Sequence
+
+T = TypeVar('T')
+
+class X(Generic[T]): ...
+class C: ...
+class D(C): ...
+
+def x(x: X[Sequence[T]], y: X[Sequence[T]]) -> T: ...
+x_s_c: X[Sequence[C]]
+x_s_d: X[Sequence[D]]
+x(x_s_c, x_s_d)  # E: Argument 2 to "x" has incompatible type "X[Sequence[D]]"; expected "X[Sequence[C]]"
