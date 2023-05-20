@@ -1436,6 +1436,16 @@ fn type_of_complex<'db: 'x, 'x>(
     definition: Option<NodeRef<'x>>,
 ) -> Type<'x> {
     match complex {
+        ComplexPoint::Class(cls_storage) => {
+            // This can only ever happen for saved definitions, therefore we can unwrap.
+            Class::new(
+                definition.unwrap(),
+                cls_storage,
+                Generics::NotDefinedYet,
+                None,
+            )
+            .as_type(i_s)
+        }
         ComplexPoint::FunctionOverload(overload) => {
             let overload = OverloadedFunction::new(definition.unwrap(), overload, None);
             overload.as_type(i_s)
@@ -1536,11 +1546,7 @@ fn saved_as_type<'db>(
         PointType::Complex => {
             let definition = NodeRef::from_link(i_s.db, definition);
             let complex = definition.file.complex_points.get(point.complex_index());
-            if let ComplexPoint::Class(cls_storage) = complex {
-                Class::new(definition, cls_storage, Generics::NotDefinedYet, None).as_type(i_s)
-            } else {
-                type_of_complex(i_s, complex, Some(definition))
-            }
+            type_of_complex(i_s, complex, Some(definition))
         }
         PointType::Unknown => Type::new(&DbType::Any),
         PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
