@@ -284,7 +284,7 @@ fn add_generics_from_result_context_class(
             Generic::TypeArgument(g) => {
                 if !g.is_any() {
                     let mut bound = TypeVarBound::new(
-                        g.as_db_type(i_s.db),
+                        g.as_db_type(),
                         match type_var_like {
                             TypeVarLike::TypeVar(t) => t.variance,
                             _ => unreachable!(),

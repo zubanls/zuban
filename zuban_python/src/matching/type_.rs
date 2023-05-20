@@ -64,7 +64,7 @@ impl<'a> Type<'a> {
         self.0.into_owned()
     }
 
-    pub fn as_db_type(&self, db: &Database) -> DbType {
+    pub fn as_db_type(&self) -> DbType {
         self.0.as_ref().clone()
     }
 
@@ -1397,7 +1397,7 @@ impl<'a> Type<'a> {
                     replace_self,
                 )))
             }
-            DbType::Literal { .. } => self.as_db_type(db),
+            DbType::Literal { .. } => self.as_db_type(),
             DbType::NewType(t) => DbType::NewType(t.clone()),
             DbType::RecursiveAlias(rec) => DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(
                 rec.link,
@@ -1799,7 +1799,7 @@ impl<'a> Type<'a> {
                 }
                 None => TupleContent::new_empty(),
             }),
-            DbType::Literal { .. } => self.as_db_type(todo!()),
+            DbType::Literal { .. } => self.as_db_type(),
             DbType::Callable(content) => DbType::Callable(Rc::new(
                 Self::rewrite_late_bound_callables_for_callable(content, manager),
             )),

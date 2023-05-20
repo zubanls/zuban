@@ -420,7 +420,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 
         let as_db_type = |i_s: &InferenceState, t: Type| {
             let Some(func_class) = self.class else {
-                return t.as_db_type(i_s.db)
+                return t.as_db_type()
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -524,7 +524,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         };
         let as_db_type = |i_s: &InferenceState, t: Type| {
             let Some(func_class) = self.class else {
-                return t.as_db_type(i_s.db)
+                return t.as_db_type()
             };
             t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -1657,8 +1657,8 @@ fn are_any_arguments_ambiguous_in_overload(
                 let n1 = NodeRef::from_link(db, p1.param_annotation_link);
                 let n2 = NodeRef::from_link(db, p2.param_annotation_link);
 
-                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type(db);
-                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type(db);
+                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type();
+                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type();
                 if t1 != t2 {
                     return true;
                 }
