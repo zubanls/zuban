@@ -27,31 +27,27 @@ use crate::utils::rc_unwrap_or_clone;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
-pub enum Type<'a> {
-    // The reason why we do not use Class as a DbType as well is that this is an optimization to
-    // avoid generating DbType for all possible cases (avoiding allocations).
-    Type(Cow<'a, DbType>),
-}
+pub struct Type<'a>(Cow<'a, DbType>);
 
 impl<'x> From<&'x DbType> for Type<'x> {
     fn from(item: &'x DbType) -> Self {
-        Self::Type(Cow::Borrowed(item))
+        Self(Cow::Borrowed(item))
     }
 }
 
 impl From<DbType> for Type<'static> {
     fn from(item: DbType) -> Self {
-        Self::Type(Cow::Owned(item))
+        Self(Cow::Owned(item))
     }
 }
 
 impl<'a> Type<'a> {
     pub fn new(t: &'a DbType) -> Self {
-        Self::Type(Cow::Borrowed(t))
+        Self(Cow::Borrowed(t))
     }
 
     pub fn owned(t: DbType) -> Self {
-        Self::Type(Cow::Owned(t))
+        Self(Cow::Owned(t))
     }
 
     pub fn union(self, db: &Database, other: Self) -> Self {
@@ -59,9 +55,7 @@ impl<'a> Type<'a> {
     }
 
     pub fn into_cow(self, db: &Database) -> Cow<'a, DbType> {
-        match self {
-            Self::Type(t) => t,
-        }
+        self.0
     }
 
     pub fn into_db_type(self, db: &Database) -> DbType {
@@ -69,22 +63,27 @@ impl<'a> Type<'a> {
     }
 
     pub fn as_cow(&self, db: &Database) -> Cow<DbType> {
-        match self {
-            Self::Type(t) => Cow::Borrowed(t),
-        }
+        Cow::Borrowed(self.as_ref())
     }
 
     pub fn as_db_type(&self, db: &Database) -> DbType {
         self.as_cow(db).into_owned()
     }
 
+    pub fn as_ref(&self) -> &DbType {
+        self.0.as_ref()
+    }
+
+    pub fn maybe_db_type(&self) -> Option<&DbType> {
+        // TODO remove this
+        Some(self.0.as_ref())
+    }
+
     #[inline]
     pub fn maybe_class(&self, db: &'a Database) -> Option<Class<'_>> {
-        match self {
-            Self::Type(t) => match t.as_ref() {
-                DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
-                _ => None,
-            },
+        match self.as_ref() {
+            DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
+            _ => None,
         }
     }
 
@@ -100,19 +99,17 @@ impl<'a> Type<'a> {
 
     #[inline]
     pub fn maybe_borrowed_class(&self, db: &'a Database) -> Option<Class<'a>> {
-        match self {
-            Self::Type(Cow::Borrowed(t)) => match t {
+        match self.0 {
+            Cow::Borrowed(t) => match t {
                 DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
                 _ => None,
             },
-            Self::Type(Cow::Owned(t)) => match t {
-                DbType::Class(link, generics) => Some(Class::from_position(
-                    NodeRef::from_link(db, *link),
-                    Generics::from_non_list_class_generics(db, generics),
-                    None,
-                )),
-                _ => None,
-            },
+            Cow::Owned(DbType::Class(link, ref generics)) => Some(Class::from_position(
+                NodeRef::from_link(db, link),
+                Generics::from_non_list_class_generics(db, generics),
+                None,
+            )),
+            _ => None,
         }
     }
 
@@ -121,19 +118,19 @@ impl<'a> Type<'a> {
         i_s: &InferenceState,
         include_non_callables: bool,
     ) -> Option<Cow<'a, CallableContent>> {
-        match self {
-            Self::Type(Cow::Borrowed(DbType::Callable(c))) => Some(Cow::Borrowed(c)),
-            _ => match self.maybe_db_type() {
-                Some(DbType::Callable(c)) if include_non_callables => {
+        match self.0 {
+            Cow::Borrowed(DbType::Callable(c)) => Some(Cow::Borrowed(c)),
+            _ => match self.as_ref() {
+                DbType::Callable(c) if include_non_callables => {
                     Some(Cow::Owned(c.as_ref().clone()))
                 }
-                Some(DbType::Type(t)) if include_non_callables => match t.as_ref() {
+                DbType::Type(t) if include_non_callables => match t.as_ref() {
                     DbType::Class(link, generics) => {
                         todo!()
                     }
                     _ => None,
                 },
-                Some(DbType::Any) => Some(Cow::Owned(CallableContent::new_any())),
+                DbType::Any => Some(Cow::Owned(CallableContent::new_any())),
                 _ if include_non_callables => self.maybe_class(i_s.db).and_then(|c| {
                     Instance::new(c, None)
                         .lookup(i_s, None, "__call__")
@@ -149,22 +146,16 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_db_type(&self) -> Option<&DbType> {
-        match self {
-            Self::Type(t) => Some(t.as_ref()),
-        }
-    }
-
     pub fn maybe_borrowed_db_type(&self) -> Option<&'a DbType> {
-        match self {
-            Self::Type(Cow::Borrowed(t)) => Some(t),
+        match self.0 {
+            Cow::Borrowed(t) => Some(t),
             _ => None,
         }
     }
 
     pub fn overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
-        match other.maybe_db_type() {
-            Some(DbType::TypeVar(t2_usage)) => {
+        match other.as_ref() {
+            DbType::TypeVar(t2_usage) => {
                 return if let Some(bound) = &t2_usage.type_var.bound {
                     self.overlaps(i_s, &bound.into())
                 } else if !t2_usage.type_var.restrictions.is_empty() {
@@ -177,84 +168,68 @@ impl<'a> Type<'a> {
                     true
                 };
             }
-            Some(DbType::Union(union_type2)) => {
+            DbType::Union(union_type2) => {
                 return union_type2.iter().any(|t| self.overlaps(i_s, &t.into()))
             }
-            Some(DbType::Any) => return false, // This is a fallback
+            DbType::Any => return false, // This is a fallback
             _ => (),
         }
 
-        match self {
-            Self::Type(t1) => match t1.as_ref() {
-                DbType::Class(link, generics) => {
-                    let class1 = Class::from_db_type(i_s.db, *link, generics);
-                    match other {
-                        Self::Type(t2) => match t2.as_ref() {
-                            DbType::Class(l, g) => Self::overlaps_class(
-                                i_s,
-                                class1,
-                                Class::from_db_type(i_s.db, *l, g),
-                            ),
-                            _ => false,
-                        },
+        match self.as_ref() {
+            DbType::Class(link, generics) => {
+                let class1 = Class::from_db_type(i_s.db, *link, generics);
+                match other.as_ref() {
+                    DbType::Class(l, g) => {
+                        Self::overlaps_class(i_s, class1, Class::from_db_type(i_s.db, *l, g))
                     }
+                    _ => false,
                 }
-                DbType::Type(t1) => match other {
-                    Self::Type(ref t2) => match t2.as_ref() {
-                        DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
-                        _ => false,
-                    },
-                },
-                DbType::Callable(c1) => match other {
-                    Self::Type(ref t2) => match t2.as_ref() {
-                        DbType::Callable(c2) => {
-                            Type::new(&c1.result_type).overlaps(i_s, &Type::new(&c2.result_type))
-                                && has_overlapping_params(i_s, &c1.params, &c2.params)
-                        }
-                        DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
-                        _ => false,
-                    },
-                },
-                DbType::Any => true,
-                DbType::Never => todo!(),
-                DbType::Literal(literal1) => match other.maybe_db_type() {
-                    Some(DbType::Literal(literal2)) => {
-                        literal1.value(i_s.db) == literal2.value(i_s.db)
-                    }
-                    _ => i_s
-                        .db
-                        .python_state
-                        .literal_type(literal1.kind)
-                        .overlaps(i_s, other),
-                },
-                DbType::None => {
-                    matches!(other, Self::Type(t2) if matches!(t2.as_ref(), DbType::None))
-                }
-                DbType::TypeVar(t1) => {
-                    if let Some(db_t) = &t1.type_var.bound {
-                        Type::new(db_t).overlaps(i_s, other)
-                    } else if !t1.type_var.restrictions.is_empty() {
-                        todo!("{other:?}")
-                    } else {
-                        true
-                    }
-                }
-                DbType::Tuple(t1) => match other {
-                    Self::Type(t2) => match t2.as_ref() {
-                        DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
-                        _ => false,
-                    },
-                },
-                DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
-                DbType::FunctionOverload(intersection) => todo!(),
-                DbType::NewType(_) => todo!(),
-                DbType::RecursiveAlias(_) => todo!(),
-                DbType::Self_ => false, // TODO this is wrong
-                DbType::ParamSpecArgs(usage) => todo!(),
-                DbType::ParamSpecKwargs(usage) => todo!(),
-                DbType::Module(file_index) => todo!(),
-                DbType::NamedTuple(_) => todo!(),
+            }
+            DbType::Type(t1) => match other.as_ref() {
+                DbType::Type(t2) => Type::new(t1).overlaps(i_s, &Type::new(t2)),
+                _ => false,
             },
+            DbType::Callable(c1) => match other.as_ref() {
+                DbType::Callable(c2) => {
+                    Type::new(&c1.result_type).overlaps(i_s, &Type::new(&c2.result_type))
+                        && has_overlapping_params(i_s, &c1.params, &c2.params)
+                }
+                DbType::Type(t2) => Type::new(self.as_ref()).overlaps(i_s, &Type::new(t2)),
+                _ => false,
+            },
+            DbType::Any => true,
+            DbType::Never => todo!(),
+            DbType::Literal(literal1) => match other.as_ref() {
+                DbType::Literal(literal2) => literal1.value(i_s.db) == literal2.value(i_s.db),
+                _ => i_s
+                    .db
+                    .python_state
+                    .literal_type(literal1.kind)
+                    .overlaps(i_s, other),
+            },
+            DbType::None => matches!(other.as_ref(), DbType::None),
+            DbType::TypeVar(t1) => {
+                if let Some(db_t) = &t1.type_var.bound {
+                    Type::new(db_t).overlaps(i_s, other)
+                } else if !t1.type_var.restrictions.is_empty() {
+                    todo!("{other:?}")
+                } else {
+                    true
+                }
+            }
+            DbType::Tuple(t1) => match other.as_ref() {
+                DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
+                _ => false,
+            },
+            DbType::Union(union) => union.iter().any(|t| Type::new(t).overlaps(i_s, other)),
+            DbType::FunctionOverload(intersection) => todo!(),
+            DbType::NewType(_) => todo!(),
+            DbType::RecursiveAlias(_) => todo!(),
+            DbType::Self_ => false, // TODO this is wrong
+            DbType::ParamSpecArgs(usage) => todo!(),
+            DbType::ParamSpecKwargs(usage) => todo!(),
+            DbType::Module(file_index) => todo!(),
+            DbType::NamedTuple(_) => todo!(),
         }
     }
 
@@ -265,178 +240,172 @@ impl<'a> Type<'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        let result = match self {
-            Self::Type(t1) => match t1.as_ref() {
-                DbType::Class(link, generics) => Self::matches_class_against_type(
-                    i_s,
-                    matcher,
-                    &Class::from_db_type(i_s.db, *link, generics),
-                    value_type,
-                    variance,
-                ),
-                DbType::Type(t1) => match value_type.maybe_db_type() {
-                    Some(DbType::Type(t2)) => Type::new(t1)
-                        .matches(i_s, matcher, &Type::new(t2), variance)
-                        .similar_if_false(),
-                    _ => Match::new_false(),
-                },
-                DbType::TypeVar(t1) => {
-                    if matcher.is_matching_reverse() {
-                        Match::new_false()
-                    } else {
-                        matcher.match_or_add_type_var(i_s, t1, value_type, variance)
-                    }
+        match self.as_ref() {
+            DbType::Class(link, generics) => Self::matches_class_against_type(
+                i_s,
+                matcher,
+                &Class::from_db_type(i_s.db, *link, generics),
+                value_type,
+                variance,
+            ),
+            DbType::Type(t1) => match value_type.as_ref() {
+                DbType::Type(t2) => Type::new(t1)
+                    .matches(i_s, matcher, &Type::new(t2), variance)
+                    .similar_if_false(),
+                _ => Match::new_false(),
+            },
+            DbType::TypeVar(t1) => {
+                if matcher.is_matching_reverse() {
+                    Match::new_false()
+                } else {
+                    matcher.match_or_add_type_var(i_s, t1, value_type, variance)
                 }
-                DbType::Callable(c1) => match value_type.maybe_db_type() {
-                    Some(DbType::Type(t2)) => match t2.as_ref() {
-                        DbType::Class(link, generics) => {
-                            let cls = Class::from_db_type(i_s.db, *link, generics);
-                            // TODO the __init__ should actually be looked up on the original class, not
-                            // the subclass
-                            let lookup = cls.lookup(i_s, None, "__init__");
-                            if let LookupResult::GotoName(_, init) = lookup {
-                                let c2 = init.as_type(i_s).into_db_type(i_s.db);
-                                if let DbType::Callable(c2) = c2 {
-                                    let type_vars2 = cls.type_vars(i_s);
-                                    // Since __init__ does not have a return, We need to check the params
-                                    // of the __init__ functions and the class as a return type separately.
-                                    return Type::new(&c1.result_type).is_super_type_of(
-                                        i_s,
-                                        matcher,
-                                        &Type::new(t2),
-                                    ) & matches_params(
-                                        i_s,
-                                        matcher,
-                                        &c1.params,
-                                        &c2.params,
-                                        type_vars2.map(|t| (t, cls.node_ref.as_link())),
-                                        Variance::Contravariant,
-                                        true, // Ignore the first param
-                                    );
-                                }
-                            }
-                            Match::new_false()
-                        }
-                        _ => {
-                            if matches!(&c1.params, CallableParams::Any) {
-                                Type::new(&c1.result_type).is_super_type_of(
+            }
+            DbType::Callable(c1) => match value_type.as_ref() {
+                DbType::Type(t2) => match t2.as_ref() {
+                    DbType::Class(link, generics) => {
+                        let cls = Class::from_db_type(i_s.db, *link, generics);
+                        // TODO the __init__ should actually be looked up on the original class, not
+                        // the subclass
+                        let lookup = cls.lookup(i_s, None, "__init__");
+                        if let LookupResult::GotoName(_, init) = lookup {
+                            let c2 = init.as_type(i_s).into_db_type(i_s.db);
+                            if let DbType::Callable(c2) = c2 {
+                                let type_vars2 = cls.type_vars(i_s);
+                                // Since __init__ does not have a return, We need to check the params
+                                // of the __init__ functions and the class as a return type separately.
+                                return Type::new(&c1.result_type).is_super_type_of(
                                     i_s,
                                     matcher,
-                                    &Type::new(t2.as_ref()),
-                                )
-                            } else {
-                                Match::new_false()
+                                    &Type::new(t2),
+                                ) & matches_params(
+                                    i_s,
+                                    matcher,
+                                    &c1.params,
+                                    &c2.params,
+                                    type_vars2.map(|t| (t, cls.node_ref.as_link())),
+                                    Variance::Contravariant,
+                                    true, // Ignore the first param
+                                );
                             }
                         }
-                    },
-                    Some(DbType::Callable(c2)) => Self::matches_callable(i_s, matcher, c1, c2),
-                    Some(DbType::FunctionOverload(overload)) if variance == Variance::Covariant => {
-                        if matcher.is_matching_reverse() {
-                            todo!()
-                        }
-                        overload
-                            .iter()
-                            .any(|c2| Self::matches_callable(i_s, matcher, c1, c2).bool())
-                            .into()
+                        Match::new_false()
                     }
-                    _ => Match::new_false(),
+                    _ => {
+                        if matches!(&c1.params, CallableParams::Any) {
+                            Type::new(&c1.result_type).is_super_type_of(
+                                i_s,
+                                matcher,
+                                &Type::new(t2.as_ref()),
+                            )
+                        } else {
+                            Match::new_false()
+                        }
+                    }
                 },
-                DbType::None => {
-                    matches!(value_type, Self::Type(ref t2) if matches!(t2.as_ref(), DbType::None))
+                DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
+                DbType::FunctionOverload(overload) if variance == Variance::Covariant => {
+                    if matcher.is_matching_reverse() {
+                        todo!()
+                    }
+                    overload
+                        .iter()
+                        .any(|c2| Self::matches_callable(i_s, matcher, c1, c2).bool())
                         .into()
                 }
-                DbType::Any if matcher.is_matching_reverse() => {
-                    debug!("TODO write a test for this.");
-                    let t1 = self.as_cow(i_s.db);
-                    matcher.set_all_contained_type_vars_to_any(i_s, &t1);
-                    Match::True { with_any: true }
+                _ => Match::new_false(),
+            },
+            DbType::None => matches!(value_type.as_ref(), DbType::None).into(),
+            DbType::Any if matcher.is_matching_reverse() => {
+                debug!("TODO write a test for this.");
+                let t1 = self.as_cow(i_s.db);
+                matcher.set_all_contained_type_vars_to_any(i_s, &t1);
+                Match::True { with_any: true }
+            }
+            DbType::Any => Match::new_true(),
+            DbType::Never => Match::new_false(),
+            DbType::Tuple(t1) => match value_type.as_ref() {
+                DbType::Tuple(t2) => {
+                    Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
                 }
-                DbType::Any => Match::new_true(),
-                DbType::Never => Match::new_false(),
-                DbType::Tuple(t1) => match value_type.maybe_db_type() {
-                    Some(DbType::Tuple(t2)) => {
-                        Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
-                    }
-                    Some(DbType::NamedTuple(t2)) => {
-                        Self::matches_tuple(i_s, matcher, t1, t2.as_tuple(), variance)
-                            .similar_if_false()
+                DbType::NamedTuple(t2) => {
+                    Self::matches_tuple(i_s, matcher, t1, t2.as_tuple(), variance)
+                        .similar_if_false()
+                }
+                _ => Match::new_false(),
+            },
+            DbType::Union(union_type1) => {
+                self.matches_union(i_s, matcher, union_type1, value_type, variance)
+            }
+            DbType::FunctionOverload(intersection) => todo!(),
+            DbType::Literal(literal1) => {
+                debug_assert!(!literal1.implicit);
+                match value_type.as_ref() {
+                    DbType::Literal(literal2) => {
+                        (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
                     }
                     _ => Match::new_false(),
-                },
-                DbType::Union(union_type1) => {
-                    self.matches_union(i_s, matcher, union_type1, value_type, variance)
                 }
-                DbType::FunctionOverload(intersection) => todo!(),
-                DbType::Literal(literal1) => {
-                    debug_assert!(!literal1.implicit);
-                    match value_type.maybe_db_type() {
-                        Some(DbType::Literal(literal2)) => {
-                            (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
+            }
+            DbType::NewType(new_type1) => match value_type.as_ref() {
+                DbType::NewType(new_type2) => (new_type1 == new_type2).into(),
+                _ => Match::new_false(),
+            },
+            DbType::RecursiveAlias(rec1) => {
+                if let Some(class) = value_type.maybe_class(i_s.db) {
+                    let cls_db_type = value_type.as_db_type(i_s.db);
+                    // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
+                    matcher.avoid_recursion(rec1, cls_db_type, |matcher| {
+                        let g = rec1.calculated_db_type(i_s.db);
+                        Type::new(g).matches_internal(i_s, matcher, value_type, variance)
+                    })
+                } else {
+                    match value_type.as_ref() {
+                        t @ DbType::RecursiveAlias(rec2) => {
+                            matcher.avoid_recursion(rec1, t.clone(), |matcher| {
+                                let t1 = rec1.calculated_db_type(i_s.db);
+                                let t2 = rec2.calculated_db_type(i_s.db);
+                                Type::new(t1).matches_internal(
+                                    i_s,
+                                    matcher,
+                                    &Type::new(t2),
+                                    variance,
+                                )
+                            })
                         }
-                        _ => Match::new_false(),
-                    }
-                }
-                DbType::NewType(new_type1) => match value_type.maybe_db_type() {
-                    Some(DbType::NewType(new_type2)) => (new_type1 == new_type2).into(),
-                    _ => Match::new_false(),
-                },
-                DbType::RecursiveAlias(rec1) => {
-                    if let Some(class) = value_type.maybe_class(i_s.db) {
-                        let cls_db_type = value_type.as_db_type(i_s.db);
-                        // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
-                        matcher.avoid_recursion(rec1, cls_db_type, |matcher| {
+                        _ => {
                             let g = rec1.calculated_db_type(i_s.db);
                             Type::new(g).matches_internal(i_s, matcher, value_type, variance)
-                        })
-                    } else {
-                        match value_type.maybe_db_type() {
-                            Some(t @ DbType::RecursiveAlias(rec2)) => {
-                                matcher.avoid_recursion(rec1, t.clone(), |matcher| {
-                                    let t1 = rec1.calculated_db_type(i_s.db);
-                                    let t2 = rec2.calculated_db_type(i_s.db);
-                                    Type::new(t1).matches_internal(
-                                        i_s,
-                                        matcher,
-                                        &Type::new(t2),
-                                        variance,
-                                    )
-                                })
-                            }
-                            _ => {
-                                let g = rec1.calculated_db_type(i_s.db);
-                                Type::new(g).matches_internal(i_s, matcher, value_type, variance)
-                            }
                         }
                     }
                 }
-                DbType::Self_ => match value_type.maybe_db_type() {
-                    Some(DbType::Self_) => Match::new_true(),
-                    _ => Match::new_false(),
-                },
-                DbType::ParamSpecArgs(usage1) => match value_type.maybe_db_type() {
-                    Some(DbType::ParamSpecArgs(usage2)) => (usage1 == usage2).into(),
-                    _ => Match::new_false(),
-                },
-                DbType::ParamSpecKwargs(usage1) => match value_type.maybe_db_type() {
-                    Some(DbType::ParamSpecKwargs(usage2)) => (usage1 == usage2).into(),
-                    _ => Match::new_false(),
-                },
-                DbType::NamedTuple(nt1) => match value_type.maybe_db_type() {
-                    Some(DbType::NamedTuple(nt2)) => {
-                        let c1 = &nt1.constructor;
-                        let c2 = &nt2.constructor;
-                        if c1.type_vars.is_some() || c2.type_vars.is_some() {
-                            todo!()
-                        } else {
-                            (c1.defined_at == c2.defined_at).into()
-                        }
-                    }
-                    _ => Match::new_false(),
-                },
-                DbType::Module(file_index) => Match::new_false(),
+            }
+            DbType::Self_ => match value_type.as_ref() {
+                DbType::Self_ => Match::new_true(),
+                _ => Match::new_false(),
             },
-        };
-        result
+            DbType::ParamSpecArgs(usage1) => match value_type.as_ref() {
+                DbType::ParamSpecArgs(usage2) => (usage1 == usage2).into(),
+                _ => Match::new_false(),
+            },
+            DbType::ParamSpecKwargs(usage1) => match value_type.as_ref() {
+                DbType::ParamSpecKwargs(usage2) => (usage1 == usage2).into(),
+                _ => Match::new_false(),
+            },
+            DbType::NamedTuple(nt1) => match value_type.as_ref() {
+                DbType::NamedTuple(nt2) => {
+                    let c1 = &nt1.constructor;
+                    let c2 = &nt2.constructor;
+                    if c1.type_vars.is_some() || c2.type_vars.is_some() {
+                        todo!()
+                    } else {
+                        (c1.defined_at == c2.defined_at).into()
+                    }
+                }
+                _ => Match::new_false(),
+            },
+            DbType::Module(file_index) => Match::new_false(),
+        }
     }
 
     pub fn is_sub_type_of(
@@ -609,106 +578,101 @@ impl<'a> Type<'a> {
         }
         // 3. Check if the value_type is special like Any or a Typevar and needs to be checked
         //    again.
-        if let Type::Type(t2) = value_type {
-            match t2.as_ref() {
-                DbType::Any if matcher.is_matching_reverse() => return Match::new_true(),
-                DbType::Any => {
-                    let t1 = self.as_cow(i_s.db);
-                    matcher.set_all_contained_type_vars_to_any(i_s, &t1);
-                    return Match::True { with_any: true };
-                }
-                DbType::None if !i_s.db.python_state.project.strict_optional => {
-                    return Match::new_true()
-                }
-                DbType::TypeVar(t2) => {
-                    if matcher.is_matching_reverse() {
-                        return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
-                    }
-                    if variance == Variance::Covariant {
-                        if let Some(bound) = &t2.type_var.bound {
-                            let m = self.simple_matches(i_s, &Type::new(bound), variance);
-                            if m.bool() {
-                                return m;
-                            }
-                        } else if !t2.type_var.restrictions.is_empty() {
-                            let m =
-                                t2.type_var.restrictions.iter().all(|r| {
-                                    self.simple_matches(i_s, &Type::new(r), variance).bool()
-                                });
-                            if m {
-                                return Match::new_true();
-                            }
-                        }
-                    }
-                }
-                // Necessary to e.g. match int to Literal[1, 2]
-                DbType::Union(u2)
-                    if variance == Variance::Covariant
-                    // Union matching was already done.
-                    && !self.is_union() =>
-                {
-                    if matcher.is_matching_reverse() {
-                        debug!("TODO matching reverse?");
-                    }
-                    let mut result: Option<Match> = None;
-                    for t in u2.iter() {
-                        let r = self.matches(i_s, matcher, &Type::new(t), variance);
-                        if !r.bool() {
-                            return r.bool().into();
-                        } else {
-                            if let Some(old) = result {
-                                result = Some(old & r)
-                            } else {
-                                result = Some(r)
-                            }
-                        }
-                    }
-                    return result.unwrap();
-                }
-                DbType::NewType(n2) => {
-                    let t = n2.type_(i_s);
-                    return self.matches(i_s, matcher, &Type::new(t), variance);
-                }
-                DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
-                DbType::Self_ if variance == Variance::Covariant => {
-                    return self.simple_matches(
-                        i_s,
-                        &Type::owned(i_s.current_class().unwrap().as_db_type(i_s.db)),
-                        variance,
-                    )
-                }
-                DbType::Module(_) => {
-                    return self.matches(
-                        i_s,
-                        matcher,
-                        &i_s.db.python_state.module_db_type().into(),
-                        variance,
-                    )
-                }
-                _ => (),
+        match value_type.as_ref() {
+            DbType::Any if matcher.is_matching_reverse() => return Match::new_true(),
+            DbType::Any => {
+                let t1 = self.as_cow(i_s.db);
+                matcher.set_all_contained_type_vars_to_any(i_s, &t1);
+                return Match::True { with_any: true };
             }
+            DbType::None if !i_s.db.python_state.project.strict_optional => {
+                return Match::new_true()
+            }
+            DbType::TypeVar(t2) => {
+                if matcher.is_matching_reverse() {
+                    return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
+                }
+                if variance == Variance::Covariant {
+                    if let Some(bound) = &t2.type_var.bound {
+                        let m = self.simple_matches(i_s, &Type::new(bound), variance);
+                        if m.bool() {
+                            return m;
+                        }
+                    } else if !t2.type_var.restrictions.is_empty() {
+                        let m = t2
+                            .type_var
+                            .restrictions
+                            .iter()
+                            .all(|r| self.simple_matches(i_s, &Type::new(r), variance).bool());
+                        if m {
+                            return Match::new_true();
+                        }
+                    }
+                }
+            }
+            // Necessary to e.g. match int to Literal[1, 2]
+            DbType::Union(u2)
+                if variance == Variance::Covariant
+                // Union matching was already done.
+                && !self.is_union() =>
+            {
+                if matcher.is_matching_reverse() {
+                    debug!("TODO matching reverse?");
+                }
+                let mut result: Option<Match> = None;
+                for t in u2.iter() {
+                    let r = self.matches(i_s, matcher, &Type::new(t), variance);
+                    if !r.bool() {
+                        return r.bool().into();
+                    } else {
+                        if let Some(old) = result {
+                            result = Some(old & r)
+                        } else {
+                            result = Some(r)
+                        }
+                    }
+                }
+                return result.unwrap();
+            }
+            DbType::NewType(n2) => {
+                let t = n2.type_(i_s);
+                return self.matches(i_s, matcher, &Type::new(t), variance);
+            }
+            DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
+            DbType::Self_ if variance == Variance::Covariant => {
+                return self.simple_matches(
+                    i_s,
+                    &Type::owned(i_s.current_class().unwrap().as_db_type(i_s.db)),
+                    variance,
+                )
+            }
+            DbType::Module(_) => {
+                return self.matches(
+                    i_s,
+                    matcher,
+                    &i_s.db.python_state.module_db_type().into(),
+                    variance,
+                )
+            }
+            _ => (),
         }
         Match::new_false()
     }
 
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> Option<MroIterator<'db, '_>> {
-        match self {
-            Self::Type(t) => match t.as_ref() {
-                DbType::Class(link, generics) => {
-                    Some(Class::from_db_type(db, *link, generics).mro(db))
-                }
-                DbType::Tuple(tup) => Some({
-                    let tuple_class = db.python_state.tuple_class(db, tup);
-                    MroIterator::new(
-                        db,
-                        TypeOrClass::Type(Type::new(t)),
-                        tuple_class.generics,
-                        tuple_class.use_cached_class_infos(db).mro.iter(),
-                        false,
-                    )
-                }),
-                _ => None,
-            },
+        match self.as_ref() {
+            DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics).mro(db)),
+            DbType::Tuple(tup) => Some({
+                let tuple_class = db.python_state.tuple_class(db, tup);
+                MroIterator::new(
+                    db,
+                    TypeOrClass::Type(Type::new(self.as_ref())),
+                    tuple_class.generics,
+                    tuple_class.use_cached_class_infos(db).mro.iter(),
+                    false,
+                )
+            }),
+            _ => None,
         }
     }
 
@@ -834,7 +798,7 @@ impl<'a> Type<'a> {
         if let Some(class2) = value_type.maybe_class(i_s.db) {
             return Self::matches_class(i_s, matcher, class1, &class2, variance);
         } else {
-            match value_type.maybe_db_type().unwrap() {
+            match value_type.as_ref() {
                 DbType::Type(t2) => {
                     if let DbType::Class(c2, generics2) = t2.as_ref() {
                         let class2 = Class::from_db_type(i_s.db, *c2, generics2);
@@ -1115,70 +1079,68 @@ impl<'a> Type<'a> {
                 }
             }
         }
-        if let Some(db_type) = t.maybe_db_type() {
-            use TupleTypeArguments::*;
-            match db_type {
-                DbType::Tuple(t1) => {
-                    if let Some(DbType::Tuple(t2)) = self.maybe_db_type() {
-                        match (&t1.args, &t2.args) {
-                            (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
-                                return DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
-                                    ts1.iter()
-                                        .zip(ts2.iter())
-                                        .map(|(g1, g2)| match (g1, g2) {
-                                            (
-                                                TypeOrTypeVarTuple::Type(g1),
-                                                TypeOrTypeVarTuple::Type(g2),
-                                            ) => TypeOrTypeVarTuple::Type(
-                                                Type::new(g2).try_to_resemble_context(
-                                                    i_s,
-                                                    matcher,
-                                                    &Type::new(g1),
-                                                ),
+        use TupleTypeArguments::*;
+        match t.as_ref() {
+            DbType::Tuple(t1) => {
+                if let DbType::Tuple(t2) = self.as_ref() {
+                    match (&t1.args, &t2.args) {
+                        (Some(FixedLength(ts1)), Some(FixedLength(ts2))) => {
+                            return DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                                ts1.iter()
+                                    .zip(ts2.iter())
+                                    .map(|(g1, g2)| match (g1, g2) {
+                                        (
+                                            TypeOrTypeVarTuple::Type(g1),
+                                            TypeOrTypeVarTuple::Type(g2),
+                                        ) => TypeOrTypeVarTuple::Type(
+                                            Type::new(g2).try_to_resemble_context(
+                                                i_s,
+                                                matcher,
+                                                &Type::new(g1),
                                             ),
-                                            _ => todo!(),
-                                        })
-                                        .collect(),
-                                )))
-                            }
-                            (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
-                                return DbType::Tuple(Rc::new(TupleContent::new_arbitrary_length(
-                                    Type::new(t1.as_ref()).try_to_resemble_context(
-                                        i_s,
-                                        matcher,
-                                        &Type::new(t2.as_ref()),
-                                    ),
-                                )))
-                            }
-                            (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
-                                /*
-                                let t1 = Type::new(t1);
-                                generics2
-                                    .iter()
-                                    .all(|g2| {
-                                        let t2 = Type::new(g2);
-                                        t1.is_super_type_of(i_s, matcher, &t2).bool()
+                                        ),
+                                        _ => todo!(),
                                     })
-                                    .into()
-                                */
-                                todo!()
-                            }
-                            (Some(FixedLength(ts1)), Some(ArbitraryLength(t2))) => unreachable!(),
-                            _ => (),
+                                    .collect(),
+                            )))
                         }
+                        (Some(ArbitraryLength(t1)), Some(ArbitraryLength(t2))) => {
+                            return DbType::Tuple(Rc::new(TupleContent::new_arbitrary_length(
+                                Type::new(t1.as_ref()).try_to_resemble_context(
+                                    i_s,
+                                    matcher,
+                                    &Type::new(t2.as_ref()),
+                                ),
+                            )))
+                        }
+                        (Some(ArbitraryLength(t1)), Some(FixedLength(ts2))) => {
+                            /*
+                            let t1 = Type::new(t1);
+                            generics2
+                                .iter()
+                                .all(|g2| {
+                                    let t2 = Type::new(g2);
+                                    t1.is_super_type_of(i_s, matcher, &t2).bool()
+                                })
+                                .into()
+                            */
+                            todo!()
+                        }
+                        (Some(FixedLength(ts1)), Some(ArbitraryLength(t2))) => unreachable!(),
+                        _ => (),
                     }
                 }
-                DbType::TypeVar(_) => {
-                    if matcher.might_have_defined_type_vars() {
-                        let t = Type::owned(
-                            matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type),
-                        );
-                        return self.try_to_resemble_context(i_s, &mut Matcher::default(), &t);
-                    }
-                }
-                DbType::Type(t1) => todo!(),
-                _ => (),
             }
+            DbType::TypeVar(_) => {
+                if matcher.might_have_defined_type_vars() {
+                    let t = Type::owned(
+                        matcher.replace_type_var_likes_for_nested_context(i_s.db, t.as_ref()),
+                    );
+                    return self.try_to_resemble_context(i_s, &mut Matcher::default(), &t);
+                }
+            }
+            DbType::Type(t1) => todo!(),
+            _ => (),
         }
         self.into_db_type(i_s.db)
     }
@@ -1233,7 +1195,7 @@ impl<'a> Type<'a> {
                 on_type_error,
             );
         }
-        match self.maybe_db_type().unwrap() {
+        match self.as_ref() {
             DbType::Type(cls) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, cls.as_ref())
             }
@@ -1300,11 +1262,11 @@ impl<'a> Type<'a> {
         if let Some(class) = self.maybe_class(i_s.db) {
             callable(i_s, matcher, &class)
         } else {
-            match self.maybe_db_type() {
-                Some(DbType::Union(union_type)) => union_type
+            match self.as_ref() {
+                DbType::Union(union_type) => union_type
                     .iter()
                     .any(|t| Type::new(t).on_any_class(i_s, matcher, callable)),
-                Some(db_type @ DbType::TypeVar(_)) => {
+                db_type @ DbType::TypeVar(_) => {
                     if matcher.might_have_defined_type_vars() {
                         Type::owned(
                             matcher.replace_type_var_likes_for_nested_context(i_s.db, db_type),
@@ -1349,8 +1311,8 @@ impl<'a> Type<'a> {
             (None, None) => {
                 // TODO this should also be done for function/callable and callable/function and
                 // not only callable/callable
-                if let Some(DbType::Callable(c1)) = self.maybe_db_type() {
-                    if let Some(DbType::Callable(c2)) = other.maybe_db_type() {
+                if let DbType::Callable(c1) = self.as_ref() {
+                    if let DbType::Callable(c2) = other.as_ref() {
                         return DbType::Class(
                             i_s.db.python_state.function_point_link(),
                             ClassGenerics::None,
@@ -1367,46 +1329,40 @@ impl<'a> Type<'a> {
         if let (Some(c1), Some(c2)) = (self.maybe_class(db), other.maybe_class(db)) {
             (c1.node_ref == c2.node_ref).then(|| Box::from(c1.name()))
         } else {
-            match (self.maybe_db_type(), other.maybe_db_type()) {
-                (Some(DbType::Type(_)), Some(DbType::Type(_))) => Some(Box::from("type")),
-                (Some(DbType::Tuple(_)), Some(DbType::Tuple(_))) => Some(Box::from("tuple")),
-                (Some(DbType::Callable(_)), Some(DbType::Callable(_))) => {
-                    Some(Box::from("callable"))
-                }
+            match (self.as_ref(), other.as_ref()) {
+                (DbType::Type(_), DbType::Type(_)) => Some(Box::from("type")),
+                (DbType::Tuple(_), DbType::Tuple(_)) => Some(Box::from("tuple")),
+                (DbType::Callable(_), DbType::Callable(_)) => Some(Box::from("callable")),
                 _ => None,
             }
         }
     }
 
     pub fn is_union(&self) -> bool {
-        matches!(self.maybe_db_type(), Some(DbType::Union(_)))
+        matches!(self.as_ref(), DbType::Union(_))
     }
 
     pub fn is_any(&self) -> bool {
-        matches!(self, Type::Type(t) if matches!(t.as_ref(), DbType::Any))
+        matches!(self.as_ref(), DbType::Any)
     }
 
     pub fn has_any(&self, i_s: &InferenceState) -> bool {
-        match self {
-            Self::Type(t) => t.has_any(i_s),
-        }
+        self.0.has_any(i_s)
     }
 
     pub fn has_explicit_self_type(&self, db: &Database) -> bool {
-        match self {
-            Self::Type(t) => t.has_self_type(),
-        }
+        self.as_ref().has_self_type()
     }
 
     #[inline]
     pub fn run_on_each_union_type(&self, callable: &mut impl FnMut(&Type)) {
-        match self.maybe_db_type() {
-            Some(DbType::Union(union)) => {
+        match self.as_ref() {
+            DbType::Union(union) => {
                 for t in union.iter() {
                     Type::new(t).run_on_each_union_type(callable)
                 }
             }
-            Some(DbType::Never) => (),
+            DbType::Never => (),
             _ => callable(self),
         }
     }
@@ -1426,7 +1382,7 @@ impl<'a> Type<'a> {
                 Instance::new(cls, from_inferred).lookup(i_s, from, name),
             );
         }
-        match self.maybe_db_type().unwrap() {
+        match self.as_ref() {
             DbType::Any => callable(self, LookupResult::any()),
             DbType::None => {
                 debug!("TODO None lookup");
@@ -1543,14 +1499,12 @@ impl<'a> Type<'a> {
     }
 
     pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        match self {
-            Self::Type(t) => match t.as_ref() {
-                DbType::Class(c, generics) => todo!(),
-                DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
-                DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, None, name),
-                DbType::Callable(t) => todo!(),
-                _ => todo!("{name:?} {self:?}"),
-            },
+        match self.as_ref() {
+            DbType::Class(c, generics) => todo!(),
+            DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
+            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, None, name),
+            DbType::Callable(t) => todo!(),
+            _ => todo!("{name:?} {self:?}"),
         }
     }
 
@@ -1564,7 +1518,7 @@ impl<'a> Type<'a> {
         if let Some(cls) = self.maybe_class(i_s.db) {
             return Instance::new(cls, from_inferred).get_item(i_s, slice_type, result_context);
         }
-        match self.maybe_db_type().unwrap() {
+        match self.as_ref() {
             DbType::Any => Inferred::new_any(),
             DbType::Tuple(tup) => Tuple::new(tup).get_item(i_s, slice_type, result_context),
             DbType::NamedTuple(nt) => {
@@ -1714,9 +1668,7 @@ impl<'a> Type<'a> {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        match self {
-            Self::Type(t) => t.format(format_data),
-        }
+        self.as_ref().format(format_data)
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {
@@ -1802,7 +1754,7 @@ pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
                 TypeOrTypeVarTuple::Type(t) => t,
                 TypeOrTypeVarTuple::TypeVarTuple(_) => return i_s.db.python_state.object_db_type(),
             };
-            result = Cow::Owned(Type::Type(result).common_base_type(i_s, &Type::new(t)));
+            result = Cow::Owned(Type(result).common_base_type(i_s, &Type::new(t)));
         }
         result.into_owned()
     } else {
