@@ -224,8 +224,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     .into_inferred()
                     .saved_as_type(i_s)
                     .unwrap()
-                    .maybe_borrowed_class(i_s.db)
-                    .unwrap(),
+                    .expect_borrowed_class(i_s.db),
                 BoundMethodInstance::Complex(ComplexPoint::TypeInstance(DbType::Class(
                     link,
                     generics,

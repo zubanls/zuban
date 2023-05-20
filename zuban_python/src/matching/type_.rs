@@ -91,18 +91,18 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
-    pub fn maybe_borrowed_class(&self, db: &'a Database) -> Option<Class<'a>> {
+    pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
         match self.0 {
             Cow::Borrowed(t) => match t {
-                DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
-                _ => None,
+                DbType::Class(link, generics) => Class::from_db_type(db, *link, generics),
+                _ => unreachable!(),
             },
-            Cow::Owned(DbType::Class(link, ref generics)) => Some(Class::from_position(
+            Cow::Owned(DbType::Class(link, ref generics)) => Class::from_position(
                 NodeRef::from_link(db, link),
                 Generics::from_non_list_class_generics(db, generics),
                 None,
-            )),
-            _ => None,
+            ),
+            _ => unreachable!(),
         }
     }
 
@@ -1868,10 +1868,10 @@ impl<'a> Type<'a> {
         i_s: &InferenceState<'a, '_>,
         from: NodeRef,
     ) -> IteratorContent<'a> {
-        if let Some(cls) = self.maybe_borrowed_class(i_s.db) {
-            return Instance::new(cls, None).iter(i_s, from);
-        }
         match self.maybe_borrowed_db_type().unwrap() {
+            DbType::Class(l, g) => {
+                Instance::new(Class::from_db_type(i_s.db, *l, g), None).iter(i_s, from)
+            }
             DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
             DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
             DbType::Any | DbType::Never => IteratorContent::Any,
