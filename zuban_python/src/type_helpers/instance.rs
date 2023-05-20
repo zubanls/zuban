@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
@@ -12,7 +10,7 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{IteratorContent, LookupResult, OnTypeError, ResultContext};
+use crate::matching::{IteratorContent, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -157,13 +155,13 @@ impl<'a> Instance<'a> {
                             ),
                     );
                 }
-                FoundOnClass::UnresolvedDbType(Cow::Borrowed(DbType::Tuple(t))) => {
-                    return Tuple::new(t).iter(i_s, from);
+                FoundOnClass::UnresolvedType(t) => {
+                    if let Some(DbType::Tuple(tup)) = t.maybe_borrowed_db_type() {
+                        return Tuple::new(tup).iter(i_s, from);
+                    } else {
+                        debug!("TODO Owned tuples won't work with iter currently");
+                    }
                 }
-                FoundOnClass::UnresolvedDbType(Cow::Owned(db_type @ DbType::Tuple(_))) => {
-                    debug!("TODO Owned tuples won't work with iter currently");
-                }
-                _ => (),
             }
         }
         if !self.class.incomplete_mro(i_s.db) {
@@ -275,7 +273,7 @@ impl<'a> Instance<'a> {
                         }),
                     );
                 }
-                FoundOnClass::UnresolvedDbType(db_type) => match db_type.as_ref() {
+                FoundOnClass::UnresolvedType(t) => match t.as_ref() {
                     DbType::Tuple(t) => {
                         return Tuple::new(t).get_item(i_s, slice_type, result_context);
                     }
@@ -295,7 +293,7 @@ impl<'a> Instance<'a> {
 
 enum FoundOnClass<'a> {
     Attribute(Inferred),
-    UnresolvedDbType(Cow<'a, DbType>),
+    UnresolvedType(Type<'a>),
 }
 
 struct ClassMroFinder<'db, 'a, 'd> {
@@ -333,7 +331,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                 }
                 TypeOrClass::Type(t) => {
                     // Types are always precalculated in the class mro.
-                    return Some(FoundOnClass::UnresolvedDbType(t.into_cow(self.i_s.db)));
+                    return Some(FoundOnClass::UnresolvedType(t));
                 }
             }
         }

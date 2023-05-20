@@ -60,12 +60,8 @@ impl<'a> Type<'a> {
         Self::owned(self.into_db_type(db).union(other.into_db_type(db)))
     }
 
-    pub fn into_cow(self, db: &Database) -> Cow<'a, DbType> {
-        self.0
-    }
-
     pub fn into_db_type(self, db: &Database) -> DbType {
-        self.into_cow(db).into_owned()
+        self.0.into_owned()
     }
 
     pub fn as_cow(&self, db: &Database) -> Cow<DbType> {
@@ -73,7 +69,7 @@ impl<'a> Type<'a> {
     }
 
     pub fn as_db_type(&self, db: &Database) -> DbType {
-        self.as_cow(db).into_owned()
+        self.0.as_ref().clone()
     }
 
     pub fn as_ref(&self) -> &DbType {
