@@ -64,10 +64,6 @@ impl<'a> Type<'a> {
         self.0.into_owned()
     }
 
-    pub fn as_cow(&self, db: &Database) -> Cow<DbType> {
-        Cow::Borrowed(self.as_ref())
-    }
-
     pub fn as_db_type(&self, db: &Database) -> DbType {
         self.0.as_ref().clone()
     }
@@ -316,8 +312,7 @@ impl<'a> Type<'a> {
             DbType::None => matches!(value_type.as_ref(), DbType::None).into(),
             DbType::Any if matcher.is_matching_reverse() => {
                 debug!("TODO write a test for this.");
-                let t1 = self.as_cow(i_s.db);
-                matcher.set_all_contained_type_vars_to_any(i_s, &t1);
+                matcher.set_all_contained_type_vars_to_any(i_s, &self.as_ref());
                 Match::True { with_any: true }
             }
             DbType::Any => Match::new_true(),
@@ -572,8 +567,7 @@ impl<'a> Type<'a> {
         match value_type.as_ref() {
             DbType::Any if matcher.is_matching_reverse() => return Match::new_true(),
             DbType::Any => {
-                let t1 = self.as_cow(i_s.db);
-                matcher.set_all_contained_type_vars_to_any(i_s, &t1);
+                matcher.set_all_contained_type_vars_to_any(i_s, &self.as_ref());
                 return Match::True { with_any: true };
             }
             DbType::None if !i_s.db.python_state.project.strict_optional => {
