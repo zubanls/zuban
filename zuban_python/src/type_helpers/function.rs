@@ -1436,7 +1436,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         inferred: Inferred::new_unknown(),
                     },
                 });
-                let DbType::Union(u) = inf.as_type(i_s).into_db_type(i_s.db) else {
+                let DbType::Union(u) = inf.as_type(i_s).into_db_type() else {
                     unreachable!()
                 };
                 let mut unioned = DbType::Never;
@@ -1592,7 +1592,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 t = Some(f_t);
             }
         }
-        Inferred::execute_db_type(i_s, t.unwrap().into_db_type(i_s.db))
+        Inferred::execute_db_type(i_s, t.unwrap().into_db_type())
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {

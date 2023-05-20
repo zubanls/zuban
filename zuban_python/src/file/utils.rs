@@ -185,7 +185,7 @@ fn check_list_with_context<'db>(
                     found = Some(resembling);
                 }
             } else if i_s.is_checking_overload() {
-                let t = inferred.as_type(i_s).into_db_type(i_s.db);
+                let t = inferred.as_type(i_s).into_db_type();
                 if let Some(found) = &mut found {
                     found.union_in_place(t)
                 } else {

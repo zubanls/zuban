@@ -57,10 +57,10 @@ impl<'a> Type<'a> {
     }
 
     pub fn union(self, db: &Database, other: Self) -> Self {
-        Self::owned(self.into_db_type(db).union(other.into_db_type(db)))
+        Self::owned(self.into_db_type().union(other.into_db_type()))
     }
 
-    pub fn into_db_type(self, db: &Database) -> DbType {
+    pub fn into_db_type(self) -> DbType {
         self.0.into_owned()
     }
 
@@ -263,7 +263,7 @@ impl<'a> Type<'a> {
                         // the subclass
                         let lookup = cls.lookup(i_s, None, "__init__");
                         if let LookupResult::GotoName(_, init) = lookup {
-                            let c2 = init.as_type(i_s).into_db_type(i_s.db);
+                            let c2 = init.as_type(i_s).into_db_type();
                             if let DbType::Callable(c2) = c2 {
                                 let type_vars2 = cls.type_vars(i_s);
                                 // Since __init__ does not have a return, We need to check the params
@@ -1055,7 +1055,7 @@ impl<'a> Type<'a> {
                                 )
                                 .bool()
                                 {
-                                    return value_type.into_db_type(i_s.db);
+                                    return value_type.into_db_type();
                                 }
                             }
                         }
@@ -1123,7 +1123,7 @@ impl<'a> Type<'a> {
             DbType::Type(t1) => todo!(),
             _ => (),
         }
-        self.into_db_type(i_s.db)
+        self.into_db_type()
     }
 
     pub fn execute_and_resolve_type_vars(
@@ -2230,20 +2230,20 @@ impl<'a> Type<'a> {
             ))
         };
         use TupleTypeArguments::*;
-        Type::owned(match self.into_db_type(db) {
-            DbType::Class(link1, g1) => match other.into_db_type(db) {
+        Type::owned(match self.into_db_type() {
+            DbType::Class(link1, g1) => match other.into_db_type() {
                 DbType::Class(link2, g2) if link1 == link2 => {
                     DbType::Class(link1, merge_generics(g1, g2))
                 }
                 _ => DbType::Any,
             },
-            DbType::Union(u1) => match other.into_db_type(db) {
+            DbType::Union(u1) => match other.into_db_type() {
                 DbType::Union(u2) if u1.iter().all(|x| u2.iter().any(|y| x == y)) => {
                     DbType::Union(u1)
                 }
                 _ => DbType::Any,
             },
-            DbType::Tuple(c1) => match other.into_db_type(db) {
+            DbType::Tuple(c1) => match other.into_db_type() {
                 DbType::Tuple(c2) => {
                     let c1 = rc_unwrap_or_clone(c1);
                     let c2 = rc_unwrap_or_clone(c2);
@@ -2262,7 +2262,7 @@ impl<'a> Type<'a> {
                                         ) => TypeOrTypeVarTuple::Type(
                                             Type::owned(t1)
                                                 .merge_matching_parts(db, Type::owned(t2))
-                                                .into_db_type(db),
+                                                .into_db_type(),
                                         ),
                                         (t1, t2) => match t1 == t2 {
                                             true => t1,
@@ -2276,7 +2276,7 @@ impl<'a> Type<'a> {
                             Rc::new(TupleContent::new_arbitrary_length(
                                 Type::owned(*t1)
                                     .merge_matching_parts(db, t2.as_ref().into())
-                                    .into_db_type(db),
+                                    .into_db_type(),
                             ))
                         }
                         _ => TupleContent::new_empty(),
@@ -2284,7 +2284,7 @@ impl<'a> Type<'a> {
                 }
                 _ => DbType::Any,
             },
-            DbType::Callable(content1) => match other.into_db_type(db) {
+            DbType::Callable(content1) => match other.into_db_type() {
                 DbType::Callable(content2) => DbType::Callable(Rc::new(CallableContent {
                     name: content1.name.or(content2.name),
                     class_name: content1.class_name.or(content2.class_name),

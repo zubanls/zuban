@@ -202,7 +202,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn class_as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
-        self.as_type(i_s).into_db_type(i_s.db)
+        self.as_type(i_s).into_db_type()
     }
 
     pub fn format(&self, i_s: &InferenceState<'db, '_>, format_data: &FormatData) -> Box<str> {
@@ -487,7 +487,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 file.complex_points.insert(
                     &file.points,
                     index,
-                    ComplexPoint::TypeInstance(bound_method.as_type(i_s).into_db_type(i_s.db)),
+                    ComplexPoint::TypeInstance(bound_method.as_type(i_s).into_db_type()),
                     Locality::Todo,
                 );
                 return Self::new_saved(file, index, file.points.get(index));
@@ -588,7 +588,7 @@ impl<'db: 'slf, 'slf> Inferred {
             Inferred::from_type(
                 self.as_type(i_s)
                     .union(i_s.db, other.as_type(i_s))
-                    .into_db_type(i_s.db),
+                    .into_db_type(),
             )
         }
     }

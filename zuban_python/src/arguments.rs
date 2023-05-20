@@ -596,7 +596,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                                     .generics()
                                                     .nth(i_s.db, &type_vars[1], 1)
                                                     .expect_type_argument()
-                                                    .into_db_type(i_s.db),
+                                                    .into_db_type(),
                                             );
                                             break;
                                         }

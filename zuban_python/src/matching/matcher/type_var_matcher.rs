@@ -100,7 +100,7 @@ impl CalculatedTypeVarLike {
         debug_assert!(matches!(self.type_, BoundKind::Uncalculated));
         self.type_ = match g {
             Generic::TypeArgument(t) => {
-                BoundKind::TypeVar(TypeVarBound::Invariant(t.into_db_type(db)))
+                BoundKind::TypeVar(TypeVarBound::Invariant(t.into_db_type()))
             }
             Generic::TypeVarTuple(t) => todo!(),
             Generic::ParamSpecArgument(p) => todo!(),

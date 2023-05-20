@@ -654,7 +654,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
         match self.use_cached_type_vars(i_s.db).is_some() {
             false => Inferred::from_saved_node_ref(self.node_ref),
-            true => Inferred::execute_db_type(i_s, self.as_type(i_s).into_db_type(i_s.db)),
+            true => Inferred::execute_db_type(i_s, self.as_type(i_s).into_db_type()),
         }
     }
 
@@ -912,8 +912,7 @@ fn find_stmt_named_tuple_types(
                 AssignmentContent::WithAnnotation(target, annot, default) => match target {
                     Target::Name(name) => {
                         file.inference(i_s).ensure_cached_annotation(annot);
-                        let t =
-                            use_cached_annotation_type(i_s.db, file, annot).into_db_type(i_s.db);
+                        let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
                         vec.push(CallableParam {
                             param_specific: ParamSpecific::PositionalOrKeyword(t),
                             has_default: default.is_some(),
