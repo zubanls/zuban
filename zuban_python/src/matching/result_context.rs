@@ -50,9 +50,9 @@ impl<'a> ResultContext<'a, '_> {
         }
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
-            |i_s: &InferenceState<'db, '_>, type_| match type_.maybe_db_type() {
-                Some(DbType::Literal(_)) => true,
-                Some(DbType::Union(items)) => items.iter().any(|i| matches!(i, DbType::Literal(_))),
+            |i_s: &InferenceState<'db, '_>, type_| match type_.as_ref() {
+                DbType::Literal(_) => true,
+                DbType::Union(items) => items.iter().any(|i| matches!(i, DbType::Literal(_))),
                 _ => false,
             },
         )
@@ -62,7 +62,7 @@ impl<'a> ResultContext<'a, '_> {
     pub fn expects_union<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
         match self {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {
-                matches!(type_.maybe_db_type(), Some(DbType::Union(_)))
+                matches!(type_.as_ref(), DbType::Union(_))
             }
             Self::Unknown | Self::ExpectLiteral | Self::AssignmentNewDefinition => false,
         }

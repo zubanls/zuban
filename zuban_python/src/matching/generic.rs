@@ -116,8 +116,8 @@ impl<'a> Generic<'a> {
 
     pub fn maybe_simple_type_var_like(&self) -> Option<TypeVarLike> {
         match self {
-            Self::TypeArgument(t) => match t.maybe_db_type() {
-                Some(DbType::TypeVar(t)) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
+            Self::TypeArgument(t) => match t.as_ref() {
+                DbType::TypeVar(t) => Some(TypeVarLike::TypeVar(t.type_var.clone())),
                 _ => None,
             },
             Self::TypeVarTuple(ts) => todo!(),

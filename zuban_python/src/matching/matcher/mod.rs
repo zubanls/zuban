@@ -185,8 +185,8 @@ impl<'a> Matcher<'a> {
             }
             _ => (),
         };
-        match value_type.maybe_db_type() {
-            Some(DbType::TypeVar(t2)) => {
+        match value_type.as_ref() {
+            DbType::TypeVar(t2) => {
                 (t1.index == t2.index && t1.in_definition == t2.in_definition).into()
             }
             _ => Match::new_false(),

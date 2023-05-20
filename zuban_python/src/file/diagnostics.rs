@@ -491,21 +491,18 @@ impl<'db> Inference<'db, '_, '_> {
                 TryBlockType::Except(b) => {
                     let (exception, _name_def, block) = b.unpack();
                     if let Some(exception) = exception {
-                        if !self
-                            .infer_expression(exception)
-                            .as_type(self.i_s)
-                            .maybe_db_type()
-                            .and_then(|t| {
-                                let DbType::Type(t) = t else {
-                                    return None;
-                                };
+                        let inf = self.infer_expression(exception);
+                        let was_base_exception = match inf.as_type(self.i_s).as_ref() {
+                            DbType::Type(t) => {
                                 let db = self.i_s.db;
                                 Type::new(t)
                                     .maybe_class(self.i_s.db)
                                     .map(|cls| cls.in_mro(db, &db.python_state.base_exception()))
-                            })
-                            .unwrap_or(false)
-                        {
+                                    .unwrap_or(false)
+                            }
+                            _ => false,
+                        };
+                        if !was_base_exception {
                             NodeRef::new(self.file, exception.index())
                                 .add_typing_issue(self.i_s, IssueType::BaseExceptionExpected);
                         }

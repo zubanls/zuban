@@ -254,7 +254,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             }
         });
         if !unbound_type_vars.is_empty() {
-            if let Some(DbType::TypeVar(t)) = self.result_type(i_s).maybe_db_type() {
+            if let DbType::TypeVar(t) = self.result_type(i_s).as_ref() {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     let node_ref = NodeRef::new(
                         self.node_ref.file,

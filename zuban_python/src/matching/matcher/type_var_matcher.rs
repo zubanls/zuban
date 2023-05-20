@@ -177,7 +177,7 @@ impl TypeVarMatcher {
         // Before setting the type var, we need to check if the constraints match.
         let mut mismatch_constraints = false;
         if !type_var.restrictions.is_empty() {
-            if let Some(DbType::TypeVar(t2)) = value_type.maybe_db_type() {
+            if let DbType::TypeVar(t2) = value_type.as_ref() {
                 if !t2.type_var.restrictions.is_empty() {
                     if current.calculated() {
                         todo!()
@@ -234,7 +234,7 @@ impl TypeVarMatcher {
         }
         current.type_ =
             BoundKind::TypeVar(TypeVarBound::new(value_type.as_db_type(i_s.db), variance));
-        if matches!(value_type.maybe_db_type(), Some(DbType::Any)) {
+        if value_type.is_any() {
             Match::True { with_any: true }
         } else {
             Match::new_true()

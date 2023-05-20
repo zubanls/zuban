@@ -2961,11 +2961,10 @@ fn check_type_name<'db: 'file, 'file>(
         }
         TypeLike::ParamName(annotation) => TypeNameLookup::InvalidVariable({
             let as_base_class_any = annotation
-                .map(|a| {
-                    match use_cached_annotation_type(i_s.db, name_node_ref.file, a).maybe_db_type()
-                    {
-                        Some(DbType::Any) => true,
-                        Some(DbType::Type(t)) => match t.as_ref() {
+                .map(
+                    |a| match use_cached_annotation_type(i_s.db, name_node_ref.file, a).as_ref() {
+                        DbType::Any => true,
+                        DbType::Type(t) => match t.as_ref() {
                             DbType::Any => true,
                             DbType::Class(c, ClassGenerics::None) => {
                                 *c == i_s.db.python_state.object_node_ref().as_link()
@@ -2973,8 +2972,8 @@ fn check_type_name<'db: 'file, 'file>(
                             _ => false,
                         },
                         _ => false,
-                    }
-                })
+                    },
+                )
                 .unwrap_or(true);
             if as_base_class_any {
                 InvalidVariableType::ParamNameAsBaseClassAny(name_node_ref)

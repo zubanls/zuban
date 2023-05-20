@@ -74,11 +74,6 @@ impl<'a> Type<'a> {
         self.0.as_ref()
     }
 
-    pub fn maybe_db_type(&self) -> Option<&DbType> {
-        // TODO remove this
-        Some(self.0.as_ref())
-    }
-
     #[inline]
     pub fn maybe_class(&self, db: &'a Database) -> Option<Class<'_>> {
         match self.as_ref() {
@@ -89,7 +84,7 @@ impl<'a> Type<'a> {
 
     #[inline]
     pub fn maybe_type_of_class(&self, db: &'a Database) -> Option<Class<'_>> {
-        if let Some(DbType::Type(t)) = self.maybe_db_type() {
+        if let DbType::Type(t) = self.as_ref() {
             if let DbType::Class(link, generics) = t.as_ref() {
                 return Some(Class::from_db_type(db, *link, generics));
             }
@@ -680,12 +675,7 @@ impl<'a> Type<'a> {
         self.maybe_class(db)
             .map(|c| {
                 let m = c.is_object_class(db);
-                if m.bool()
-                    && value_type
-                        .maybe_db_type()
-                        .map(|t| matches!(t, DbType::Any))
-                        .unwrap_or(false)
-                {
+                if m.bool() && matches!(value_type.as_ref(), DbType::Any) {
                     Match::True { with_any: true }
                 } else {
                     m
@@ -702,8 +692,8 @@ impl<'a> Type<'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
-        match value_type.maybe_db_type() {
-            Some(DbType::Union(u2)) => match variance {
+        match value_type.as_ref() {
+            DbType::Union(u2) => match variance {
                 Variance::Covariant => {
                     let mut matches = true;
                     for g2 in u2.iter() {
@@ -1578,7 +1568,7 @@ impl<'a> Type<'a> {
     pub fn merge_matching_parts(self, db: &Database, other: Self) -> Self {
         // TODO performance there's a lot of into_db_type here, that should not really be
         /*
-        if self.maybe_db_type() == other.maybe_db_type() {
+        if self.as_ref() == other.as_ref() {
             return self;
         }
         */

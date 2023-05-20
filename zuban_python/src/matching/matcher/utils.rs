@@ -775,7 +775,7 @@ pub fn create_signature_without_self(
 ) -> Option<DbType> {
     let type_vars = func.type_vars(i_s);
     let mut matcher = Matcher::new_function_matcher(Some(&instance.class), func, type_vars);
-    if !matches!(expected_type.maybe_db_type(), Some(DbType::Self_)) {
+    if !matches!(expected_type.as_ref(), DbType::Self_) {
         // TODO It is questionable that we do not match Self here
         if !expected_type
             .is_super_type_of(

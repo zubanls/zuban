@@ -1104,7 +1104,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .with_type_if_exists_and_replace_type_var_likes(
                 self.i_s,
                 |i_s: &InferenceState<'db, '_>, type_| {
-                    if let Some(DbType::Callable(c)) = type_.maybe_db_type() {
+                    if let DbType::Callable(c) = type_.as_ref() {
                         let i_s = i_s.with_lambda_callable(c);
                         let (params, expr) = lambda.unpack();
                         let rt = Type::new(&c.result_type);
@@ -1948,7 +1948,7 @@ fn add_attribute_error<'db>(
     t: &Type,
     name: Name,
 ) {
-    let object = if matches!(t.maybe_db_type(), Some(DbType::Module(_))) {
+    let object = if matches!(t.as_ref(), DbType::Module(_)) {
         Box::from("Module")
     } else {
         format!("{:?}", t.format_short(i_s.db)).into()
