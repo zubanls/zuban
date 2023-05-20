@@ -602,7 +602,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                         }
                                     }
                                 }
-                            } else if type_.maybe_db_type() == Some(&DbType::Any) {
+                            } else if type_.is_any() {
                                 value_type = Some(DbType::Any);
                             }
                             let value_type = value_type.unwrap_or_else(|| {
