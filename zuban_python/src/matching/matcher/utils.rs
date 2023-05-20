@@ -136,6 +136,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
             ClassGenerics::ExpressionWithClassType(_) => todo!(),
             ClassGenerics::SlicesWithClassTypes(_) => todo!(),
             ClassGenerics::None => None,
+            ClassGenerics::NotDefinedYet => unreachable!(),
         };
         type_arguments
     } else {

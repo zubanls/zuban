@@ -530,6 +530,7 @@ pub enum ClassGenerics {
     ExpressionWithClassType(PointLink),
     // Multiple class definitions, e.g. [int, str], but not [T, str]
     SlicesWithClassTypes(PointLink),
+    NotDefinedYet,
     None,
 }
 
@@ -537,9 +538,7 @@ impl ClassGenerics {
     pub fn map_list(&self, callable: impl FnOnce(&GenericsList) -> GenericsList) -> Self {
         match self {
             Self::List(list) => Self::List(callable(list)),
-            Self::ExpressionWithClassType(link) => Self::ExpressionWithClassType(*link),
-            Self::SlicesWithClassTypes(link) => Self::SlicesWithClassTypes(*link),
-            Self::None => Self::None,
+            _ => self.clone(),
         }
     }
 }
@@ -936,12 +935,7 @@ impl DbType {
                 search_params(found_type_var, &content.params);
                 content.result_type.search_type_vars(found_type_var)
             }
-            Self::Class(
-                _,
-                ClassGenerics::None
-                | ClassGenerics::ExpressionWithClassType(_)
-                | ClassGenerics::SlicesWithClassTypes(_),
-            )
+            Self::Class(..)
             | Self::Any
             | Self::None
             | Self::Never
@@ -989,6 +983,9 @@ impl DbType {
         match self {
             Self::Class(_, ClassGenerics::List(generics)) => {
                 search_in_generics(generics, already_checked)
+            }
+            Self::Class(_, ClassGenerics::NotDefinedYet) => {
+                todo!()
             }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
@@ -1062,12 +1059,7 @@ impl DbType {
                 debug!("TODO namedtuple has_self_type");
                 false
             }
-            Self::Class(
-                _,
-                ClassGenerics::None
-                | ClassGenerics::ExpressionWithClassType(_)
-                | ClassGenerics::SlicesWithClassTypes(_),
-            )
+            Self::Class(..)
             | Self::None
             | Self::Never
             | Self::Literal { .. }

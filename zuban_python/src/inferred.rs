@@ -1438,13 +1438,10 @@ fn type_of_complex<'db: 'x, 'x>(
     match complex {
         ComplexPoint::Class(cls_storage) => {
             // This can only ever happen for saved definitions, therefore we can unwrap.
-            Class::new(
-                definition.unwrap(),
-                cls_storage,
-                Generics::NotDefinedYet,
-                None,
-            )
-            .as_type(i_s)
+            Type::owned(DbType::Type(Rc::new(DbType::Class(
+                definition.unwrap().as_link(),
+                ClassGenerics::NotDefinedYet,
+            ))))
         }
         ComplexPoint::FunctionOverload(overload) => {
             let overload = OverloadedFunction::new(definition.unwrap(), overload, None);
