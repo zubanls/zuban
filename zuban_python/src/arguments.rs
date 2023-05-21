@@ -542,28 +542,24 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .inference(i_s)
                                 .infer_expression(starred_expr.expression());
                             let node_ref = NodeRef::new(file, starred_expr.index());
-                            match inf.as_type(i_s).maybe_borrowed_db_type() {
-                                Some(DbType::ParamSpecArgs(usage)) => {
+                            return match inf.as_type(i_s).as_ref() {
+                                DbType::ParamSpecArgs(usage) => {
                                     // TODO check for the next arg being **P.kwargs
                                     iterator.next();
-                                    return Some(BaseArgumentReturn::Argument(
-                                        ArgumentKind::ParamSpec {
-                                            usage: usage.clone(),
-                                            node_ref: NodeRef::new(file, starred_expr.index()),
-                                            position: i + 1,
-                                        },
-                                    ));
+                                    Some(BaseArgumentReturn::Argument(ArgumentKind::ParamSpec {
+                                        usage: usage.clone(),
+                                        node_ref: NodeRef::new(file, starred_expr.index()),
+                                        position: i + 1,
+                                    }))
                                 }
                                 _ => {
-                                    return Some(BaseArgumentReturn::ArgsKwargs(
-                                        ArgsKwargsIterator::Args {
-                                            iterator: inf.save_and_iter(i_s, node_ref),
-                                            node_ref,
-                                            position: i + 1,
-                                        },
-                                    ));
+                                    Some(BaseArgumentReturn::ArgsKwargs(ArgsKwargsIterator::Args {
+                                        iterator: inf.save_and_iter(i_s, node_ref),
+                                        node_ref,
+                                        position: i + 1,
+                                    }))
                                 }
-                            }
+                            };
                         }
                         ASTArgument::DoubleStarred(double_starred_expr) => {
                             let inf = file
