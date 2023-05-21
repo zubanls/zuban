@@ -1868,13 +1868,13 @@ impl<'a> Type<'a> {
         i_s: &InferenceState<'a, '_>,
         from: NodeRef,
     ) -> IteratorContent<'a> {
-        match self.maybe_borrowed_db_type().unwrap() {
-            DbType::Class(l, g) => {
+        match self.maybe_borrowed_db_type() {
+            Some(DbType::Class(l, g)) => {
                 Instance::new(Class::from_db_type(i_s.db, *l, g), None).iter(i_s, from)
             }
-            DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
-            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
-            DbType::Any | DbType::Never => IteratorContent::Any,
+            Some(DbType::Tuple(content)) => Tuple::new(content).iter(i_s, from),
+            Some(DbType::NamedTuple(nt)) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
+            Some(DbType::Any | DbType::Never) => IteratorContent::Any,
             _ => {
                 let t = self.format_short(i_s.db);
                 from.add_typing_issue(
