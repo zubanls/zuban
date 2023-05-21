@@ -482,10 +482,10 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         };
         if let Some(param) = params.next() {
             if let Some(t) = param.annotation(i_s) {
-                match t.maybe_borrowed_db_type() {
-                    Some(DbType::Type(t)) => {
+                match t.as_ref() {
+                    DbType::Type(t) => {
                         if let DbType::TypeVar(usage) = t.as_ref() {
-                            class_method_type_var_usage = Some(usage);
+                            class_method_type_var_usage = Some(usage.clone());
                             type_vars.remove(0);
                         }
                     }
@@ -554,7 +554,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                         }
                         result
                     } else if in_definition == defined_at {
-                        if let Some(u) = class_method_type_var_usage {
+                        if let Some(u) = &class_method_type_var_usage {
                             if u.index == usage.index() {
                                 return GenericItem::TypeArgument(get_class_method_class());
                             } else {
