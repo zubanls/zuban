@@ -2060,7 +2060,7 @@ impl<'a> Type<'a> {
                             current_class.node_ref.to_db_lifetime(i_s.db),
                             Generics::Self_ {
                                 class_definition: current_class.node_ref.as_link(),
-                                type_var_likes: unsafe { std::mem::transmute(type_var_likes) },
+                                type_var_likes,
                             },
                             None,
                         ),
