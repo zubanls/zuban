@@ -484,7 +484,7 @@ pub enum ComplexPoint {
     FunctionOverload(Box<Overload>),
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
-    NamedTupleDefinition(Box<DbType>),
+    NamedTupleDefinition(Rc<DbType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),

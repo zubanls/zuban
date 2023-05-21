@@ -1458,9 +1458,7 @@ fn type_of_complex<'db: 'x, 'x>(
         ComplexPoint::NewTypeDefinition(n) => {
             Type::owned(DbType::Type(Rc::new(DbType::NewType(n.clone()))))
         }
-        ComplexPoint::NamedTupleDefinition(n) => {
-            Type::owned(DbType::Type(Rc::new(n.as_ref().clone())))
-        }
+        ComplexPoint::NamedTupleDefinition(n) => Type::owned(DbType::Type(n.clone())),
         _ => {
             unreachable!("Classes are handled earlier {complex:?}")
         }

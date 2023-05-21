@@ -35,7 +35,7 @@ impl TypingClass {
         if self.specific == Specific::TypingNamedTuple {
             return match new_typing_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    Box::new(DbType::NamedTuple(rc)),
+                    Rc::new(DbType::NamedTuple(rc)),
                 )),
                 None => Inferred::new_any(),
             };
@@ -47,7 +47,7 @@ impl TypingClass {
                 .execute(i_s, args, result_context, on_type_error);
             return match new_collections_named_tuple(i_s, args) {
                 Some(rc) => Inferred::new_unsaved_complex(ComplexPoint::NamedTupleDefinition(
-                    Box::new(DbType::NamedTuple(rc)),
+                    Rc::new(DbType::NamedTuple(rc)),
                 )),
                 None => Inferred::new_any(),
             };
