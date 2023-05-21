@@ -1299,9 +1299,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
     ) -> IteratorContent<'db> {
         let inferred = self.save_if_unsaved(i_s, from.file, from.node_index);
-        let t = inferred.as_type(i_s);
-        // TODO this is probably wrong and iter has to be rewritten.
-        let t: Type<'db> = unsafe { std::mem::transmute(t) };
+        let t = inferred.saved_as_type(i_s).unwrap();
         t.iter_on_borrowed(i_s, from)
     }
 }
