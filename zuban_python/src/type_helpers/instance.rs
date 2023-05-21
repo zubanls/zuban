@@ -159,7 +159,8 @@ impl<'a> Instance<'a> {
                     if let Some(DbType::Tuple(tup)) = t.maybe_borrowed_db_type() {
                         return Tuple::new(tup).iter(i_s, from);
                     } else {
-                        debug!("TODO Owned tuples won't work with iter currently");
+                        // Might happen when generics are passed to a tuple
+                        todo!("TODO Owned tuples won't work with iter currently");
                     }
                 }
             }
