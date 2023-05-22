@@ -1875,6 +1875,8 @@ impl<'a> Type<'a> {
             Some(DbType::Tuple(content)) => Tuple::new(content).iter(i_s, from),
             Some(DbType::NamedTuple(nt)) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
             Some(DbType::Any | DbType::Never) => IteratorContent::Any,
+            Some(DbType::NewType(n)) => Type::new(n.type_(i_s)).iter_on_borrowed(i_s, from),
+            Some(DbType::Self_) => todo!(), //Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => {
                 if let DbType::Class(l, ClassGenerics::None) = self.as_ref() {
                     return Instance::new(
