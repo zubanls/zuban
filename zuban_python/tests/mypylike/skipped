@@ -624,11 +624,7 @@ testUnionAttributeAccess
 testOverloadBadArgumentsInferredToAny2
 
 # Union iter()
-testUnionMultiassignSingle
-testUnionMultiassignDouble
-testUnionMultiassignGeneric
 testUnionMultiassignAny
-testUnionMultiassignNotJoin
 testUnionMultiassignRebind
 testUnionMultiassignAlreadyDeclared
 testUnionMultiassignIndexed
@@ -640,20 +636,12 @@ testUnionOfNonIterableUnpacking
 testUnionAlwaysTooMany
 testUnionAlwaysTooFew
 testUnionUnpacking*
-testNestedUnionUnpackingFromNestedTuples
 testNestedUnionUnpackingFromNestedTuplesBinder
 testUnpackUnionNoCrashOnPartialNone
 testUnpackUnionNoCrashOnPartialNone2
 testUnpackUnionNoCrashOnPartialNoneBinder
-testUnpackUnionNoCrashOnPartialNoneList
-testReusingInferredForIndex
-testReusingInferredForIndex2
-testNestedProtocolUnions
 testNestedProtocolGenericUnions
 testNestedProtocolGenericUnionsDeep
-testNestedInstanceUnsimplifiedUnion
-testNestedInstanceTypeAlias
-testNestedInstanceTypeAliasUnsimplifiedUnion
 # Tuple iter fixes
 testTupleBaseClass
 
@@ -2109,6 +2097,7 @@ testTypeAnnotationNeededMultipleAssignment
 testAssignmentToStarMissingAnnotation
 testForLoopOverEmptyTuple
 testTupleWithoutContext
+testReusingInferredForIndex2
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames

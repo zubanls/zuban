@@ -64,6 +64,7 @@ pub enum IteratorContent<'a> {
     Inferred(Inferred),
     // The code before makes sure that no type var tuples are passed.
     FixedLengthTupleGenerics(std::slice::Iter<'a, TypeOrTypeVarTuple>),
+    Union(Vec<IteratorContent<'a>>),
     Empty,
     Any,
 }
@@ -81,6 +82,11 @@ impl IteratorContent<'_> {
                     })
                 }),
             ),
+            Self::Union(iterators) => Inferred::gather_union(i_s, |add| {
+                for iterator in iterators {
+                    add(iterator.infer_all(i_s))
+                }
+            }),
             Self::Empty => todo!(),
             Self::Any => Inferred::new_any(),
         }
@@ -98,6 +104,18 @@ impl IteratorContent<'_> {
                     },
                 )
             }),
+            Self::Union(iterators) => {
+                let mut had_next = false;
+                let result = Inferred::gather_union(i_s, |add| {
+                    for iterator in iterators {
+                        if let Some(inf) = iterator.next(i_s) {
+                            had_next = true;
+                            add(inf)
+                        }
+                    }
+                });
+                had_next.then_some(result)
+            }
             Self::Empty => todo!(),
             Self::Any => Some(Inferred::new_any()),
         }
@@ -107,6 +125,7 @@ impl IteratorContent<'_> {
         match self {
             Self::Inferred(_) | Self::Any => None,
             Self::FixedLengthTupleGenerics(t) => Some(t.len()),
+            Self::Union(iterators) => todo!(),
             Self::Empty => todo!(),
         }
     }
