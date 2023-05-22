@@ -1876,6 +1876,13 @@ impl<'a> Type<'a> {
             Some(DbType::NamedTuple(nt)) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
             Some(DbType::Any | DbType::Never) => IteratorContent::Any,
             _ => {
+                if let DbType::Class(l, ClassGenerics::None) = self.as_ref() {
+                    return Instance::new(
+                        Class::from_db_type(i_s.db, *l, &ClassGenerics::None),
+                        None,
+                    )
+                    .iter(i_s, from);
+                }
                 let t = self.format_short(i_s.db);
                 from.add_typing_issue(
                     i_s,
