@@ -507,6 +507,7 @@ testNamedTupleSelfTypeReplace
 testNamedTupleSelfTypeMake
 testNamedTupleTypingSelfMethod
 testGenericNamedTupleMethods
+testUnionUnpackingInForTuple
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleMissingClassAttribute
@@ -625,21 +626,8 @@ testOverloadBadArgumentsInferredToAny2
 
 # Union iter()
 testUnionMultiassignAny
-testUnionMultiassignRebind
-testUnionMultiassignAlreadyDeclared
-testUnionMultiassignIndexed
-testUnionMultiassignIndexedWithError
-testUnionMultiassignPacked
+# union iterable context inference broken
 testUnpackingUnionOfListsInFunction
-testUnionOfVariableLengthTupleUnpacking
-testUnionOfNonIterableUnpacking
-testUnionAlwaysTooMany
-testUnionAlwaysTooFew
-testUnionUnpacking*
-testNestedUnionUnpackingFromNestedTuplesBinder
-testUnpackUnionNoCrashOnPartialNone
-testUnpackUnionNoCrashOnPartialNone2
-testUnpackUnionNoCrashOnPartialNoneBinder
 testNestedProtocolGenericUnions
 testNestedProtocolGenericUnionsDeep
 # Tuple iter fixes
@@ -1347,6 +1335,7 @@ testImportInClassBody
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
+testUnionOfNonIterableUnpacking
 # List unpacking
 testMultipleAssignmentWithLists
 testMultipleAssignmentWithListsInInitialization
@@ -1404,6 +1393,7 @@ testNamedTupleJoinTuple
 testInferOptionalDictKeyValueTypes
 testIndexingAsLvalue
 testInplaceSetitem
+testUnionMultiassignIndexedWithError
 
 # inplace operator methods
 testInplaceOperatorMethods
@@ -1649,6 +1639,8 @@ testBasicRecursiveNamedTupleSpecial
 testBasicRecursiveNamedTupleClass
 testNamedTupleUpdateNonRecursiveToRecursiveFine
 testTupleOverlapDifferentTuples
+testUnpackUnionNoCrashOnPartialNone
+testUnpackUnionNoCrashOnPartialNone2
 # narrowing with or/and
 testRestrictedTypeAnd
 testRestrictedTypeOr
@@ -1689,6 +1681,12 @@ testTupleTypeCompatibleWithIterable
 testAugmentedAssignmentIntFloat
 testAugmentedAssignmentIntFloatMember
 testAugmentedAssignmentIntFloatDict
+testUnionMultiassignRebind
+testUnionMultiassignAlreadyDeclared
+testUnionMultiassignPacked
+testUnpackUnionNoCrashOnPartialNoneBinder
+testNestedUnionUnpackingFromNestedTuplesBinder
+testUnionUnpackingDoubleBinder
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
@@ -2207,6 +2205,11 @@ testMultipleAssignmentWithDynamic
 testMultipleAssignmentWithInvalidNumberOfValues
 testInitializationWithMultipleValues
 testNestedTupleAssignment2
+testUnionAlwaysTooMany
+testUnionAlwaysTooFew
+testUnionOfVariableLengthTupleUnpacking
+# Union IteratorContent len() call
+testUnionUnpackingChainedList2
 # "Unsupported target for indexed assignment ("tuple[A, B]")"
 testAssigningToTupleItems
 # star unpacking for tuples
