@@ -2129,9 +2129,9 @@ impl<'a> Type<'a> {
             None,
             from,
             name,
-            &mut |_, lookup_result| {
+            &mut |t, lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {
-                    on_lookup_error(i_s, self);
+                    on_lookup_error(i_s, t);
                 }
                 result = Some(if let Some(l) = result.take() {
                     LookupResult::UnknownName(

@@ -620,10 +620,6 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# Union attribute error: Item "D" of "C | D" has no attribute "y"
-testUnionAttributeAccess
-testOverloadBadArgumentsInferredToAny2
-
 # union iterable context inference broken
 testUnpackingUnionOfListsInFunction
 testNestedProtocolGenericUnions

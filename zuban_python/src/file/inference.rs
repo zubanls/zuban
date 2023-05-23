@@ -615,8 +615,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .add_typing_issue(i_s, IssueType::InvalidTypeDeclaration);
                     }
                     let base = self.infer_primary_target_or_atom(primary_target.first());
+                    let base = base.as_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
-                    base.as_type(i_s).run_on_each_union_type(&mut |t| {
+                    base.run_on_each_union_type(&mut |t| {
                         if let Some(cls) = t.maybe_class(i_s.db) {
                             if Instance::new(cls, None).checked_set_descriptor(
                                 i_s,
@@ -648,6 +649,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         add_attribute_error(
                                             i_s,
                                             node_ref,
+                                            &base,
                                             t,
                                             name_definition.name(),
                                         )
@@ -1314,13 +1316,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let node_ref = NodeRef::new(self.file, node_index);
         match second {
             PrimaryContent::Attribute(name) => {
-                debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                let lookup = base.as_type(self.i_s).lookup_with_error(
-                    self.i_s,
-                    node_ref,
-                    name.as_str(),
-                    &|i_s, t| add_attribute_error(i_s, node_ref, t, name),
+                let base = base.as_type(self.i_s);
+                debug!(
+                    "Lookup {}.{}",
+                    base.format_short(self.i_s.db),
+                    name.as_str()
                 );
+                let lookup =
+                    base.lookup_with_error(self.i_s, node_ref, name.as_str(), &|i_s, t| {
+                        add_attribute_error(i_s, node_ref, &base, t, name)
+                    });
                 match &lookup {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting
@@ -1945,6 +1950,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 fn add_attribute_error<'db>(
     i_s: &InferenceState<'db, '_>,
     node_ref: NodeRef,
+    full_type: &Type,
     t: &Type,
     name: Name,
 ) {
@@ -1953,11 +1959,16 @@ fn add_attribute_error<'db>(
     } else {
         format!("{:?}", t.format_short(i_s.db)).into()
     };
+    let name = Box::from(name.as_str());
     node_ref.add_typing_issue(
         i_s,
-        IssueType::AttributeError {
-            object,
-            name: Box::from(name.as_str()),
+        match full_type.is_union() {
+            false => IssueType::AttributeError { object, name },
+            true => IssueType::UnionAttributeError {
+                object,
+                union: full_type.format_short(i_s.db),
+                name,
+            },
         },
     );
 }

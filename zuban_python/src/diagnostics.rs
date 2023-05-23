@@ -11,6 +11,7 @@ use crate::node_ref::NodeRef;
 #[rustfmt::skip]  // This is way more readable if we are not auto-formatting this.
 pub(crate) enum IssueType {
     AttributeError { object: Box<str>, name: Box<str> },
+    UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
@@ -199,6 +200,7 @@ impl<'db> Diagnostic<'db> {
         use IssueType::*;
         let error = match &self.issue.type_ {
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
+            UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),
             ImportAttributeError{module_name, name} => {
                 format!("Module {module_name:?} has no attribute {name:?}")
             }
