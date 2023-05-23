@@ -620,7 +620,7 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# union iterable context inference broken
+# union list context inference
 testUnpackingUnionOfListsInFunction
 testNestedProtocolGenericUnions
 testNestedProtocolGenericUnionsDeep

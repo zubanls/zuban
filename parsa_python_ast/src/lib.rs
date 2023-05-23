@@ -2,6 +2,7 @@ mod strings;
 
 use std::borrow::Cow;
 use std::iter::{Skip, StepBy};
+use std::ops::Range;
 use std::str::from_utf8;
 
 use parsa_python::{
@@ -505,6 +506,16 @@ impl<'db> List<'db> {
         } else {
             assert_eq!(n.type_(), PyNodeType::Keyword);
             StarLikeExpressionIterator::Empty
+        }
+    }
+    pub fn node_index_range(&self) -> Range<NodeIndex> {
+        let mut iterator = self.node.iter_children();
+        let first = iterator.next().unwrap().index;
+        let second = iterator.next().unwrap();
+        if second.is_type(Nonterminal(star_named_expressions)) {
+            first..iterator.next().unwrap().index
+        } else {
+            first..second.index
         }
     }
 }
