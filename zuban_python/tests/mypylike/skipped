@@ -624,8 +624,6 @@ testNoTypeCheckDecoratorSemanticError
 testUnionAttributeAccess
 testOverloadBadArgumentsInferredToAny2
 
-# Union iter()
-testUnionMultiassignAny
 # union iterable context inference broken
 testUnpackingUnionOfListsInFunction
 testNestedProtocolGenericUnions
