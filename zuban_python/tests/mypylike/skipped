@@ -5,6 +5,7 @@ testUsingNumbersType
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testForwardBoundFunctionScopeWorks
 
+# iter on Self
 testNamedTupleTypeReferenceToClassDerivedFrom
 testNamedTupleSelfTypeWithNamedTupleAsBase
 
