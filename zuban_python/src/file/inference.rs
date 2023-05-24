@@ -1032,13 +1032,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         if let ExpressionPart::Atom(atom) = right {
                             if let AtomContent::Int(i) = atom.unpack() {
                                 return if let Some(i) = self.parse_int(i, result_context) {
-                                    Inferred::execute_db_type(
-                                        self.i_s,
-                                        DbType::Literal(Literal {
-                                            kind: LiteralKind::Int(-i),
-                                            implicit: true,
-                                        }),
-                                    )
+                                    Inferred::from_type(DbType::Literal(Literal {
+                                        kind: LiteralKind::Int(-i),
+                                        implicit: true,
+                                    }))
                                 } else {
                                     let point =
                                         Point::new_simple_specific(Specific::Int, Locality::Todo);
@@ -1063,13 +1060,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     match inf.maybe_literal(self.i_s.db) {
                         UnionValue::Single(literal) => {
                             if let LiteralKind::Int(i) = &literal.kind {
-                                return Inferred::execute_db_type(
-                                    self.i_s,
-                                    DbType::Literal(Literal {
-                                        kind: LiteralKind::Int(-i),
-                                        implicit: true,
-                                    }),
-                                );
+                                return Inferred::from_type(DbType::Literal(Literal {
+                                    kind: LiteralKind::Int(-i),
+                                    implicit: true,
+                                }));
                             }
                         }
                         UnionValue::Multiple(literals) => todo!(),
@@ -1116,7 +1110,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .infer_expression_without_cache(expr, &mut ResultContext::Known(&rt));
                         let mut c = (**c).clone();
                         c.result_type = result.as_type(&i_s).into_db_type();
-                        Inferred::execute_db_type(&i_s, DbType::Callable(Rc::new(c)))
+                        Inferred::from_type(DbType::Callable(Rc::new(c)))
                     } else {
                         todo!()
                     }
@@ -1135,7 +1129,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         params: CallableParams::Simple(Rc::new([])),
                         result_type: result.class_as_db_type(self.i_s),
                     };
-                    Inferred::execute_db_type(self.i_s, DbType::Callable(Rc::new(c)))
+                    Inferred::from_type(DbType::Callable(Rc::new(c)))
                 } else {
                     todo!()
                 }
@@ -1436,35 +1430,26 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     StarLikeExpressionIterator::Empty => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
                 };
-                return Inferred::execute_db_type(
-                    self.i_s,
-                    DbType::Class(
-                        self.i_s.db.python_state.list_node_ref().as_link(),
-                        ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
-                    ),
-                );
+                return Inferred::from_type(DbType::Class(
+                    self.i_s.db.python_state.list_node_ref().as_link(),
+                    ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
+                ));
             }
             ListComprehension(_) => {
                 debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
-                return Inferred::execute_db_type(
-                    self.i_s,
-                    DbType::Class(
-                        self.i_s.db.python_state.list_node_ref().as_link(),
-                        ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                            GenericItem::TypeArgument(DbType::Any),
-                        ]))),
-                    ),
-                );
+                return Inferred::from_type(DbType::Class(
+                    self.i_s.db.python_state.list_node_ref().as_link(),
+                    ClassGenerics::List(GenericsList::new_generics(Rc::new([
+                        GenericItem::TypeArgument(DbType::Any),
+                    ]))),
+                ));
             }
             Dict(dict) => {
                 let generics = self.create_dict_generics(dict, result_context);
-                return Inferred::execute_db_type(
-                    self.i_s,
-                    DbType::Class(
-                        self.i_s.db.python_state.dict_node_ref().as_link(),
-                        ClassGenerics::List(generics),
-                    ),
-                );
+                return Inferred::from_type(DbType::Class(
+                    self.i_s.db.python_state.dict_node_ref().as_link(),
+                    ClassGenerics::List(generics),
+                ));
             }
             DictComprehension(_) => todo!(),
             Set(set) => {
@@ -1532,7 +1517,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))
         );
-        Inferred::execute_db_type(self.i_s, DbType::Tuple(Rc::new(content)))
+        Inferred::from_type(DbType::Tuple(Rc::new(content)))
     }
 
     check_point_cache_with!(pub infer_primary_target, Self::_infer_primary_target, PrimaryTarget);
@@ -1748,10 +1733,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         if func.node_ref.point().maybe_specific().unwrap()
                                             == Specific::ClassMethod
                                         {
-                                            Inferred::execute_db_type(
-                                                self.i_s,
-                                                DbType::Type(Rc::new(DbType::Self_)),
-                                            )
+                                            Inferred::from_type(DbType::Type(Rc::new(
+                                                DbType::Self_,
+                                            )))
                                         } else {
                                             Inferred::new_saved(self.file, node_index, point)
                                         }
@@ -1779,10 +1763,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                             if p.type_()
                                                                 == ParamKind::PositionalOrKeyword
                                                             {
-                                                                Inferred::execute_db_type(
-                                                                    self.i_s,
-                                                                    t.clone(),
-                                                                )
+                                                                Inferred::from_type(t.clone())
                                                             } else {
                                                                 todo!()
                                                             }

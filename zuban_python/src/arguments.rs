@@ -340,10 +340,9 @@ impl<'db, 'a> Argument<'db, 'a> {
                         )
                     })
                     .collect();
-                Inferred::execute_db_type(
-                    i_s,
-                    DbType::Tuple(Rc::new(TupleContent::new_fixed_length(parts))),
-                )
+                Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+                    parts,
+                ))))
             }
             ArgumentKind::Comprehension {
                 file,
@@ -353,7 +352,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                 .inference(&i_s.use_mode_of(func_i_s))
                 .infer_comprehension(*comprehension),
             ArgumentKind::ParamSpec { usage, .. } => {
-                Inferred::execute_db_type(func_i_s, DbType::ParamSpecArgs(usage.clone()))
+                Inferred::from_type(DbType::ParamSpecArgs(usage.clone()))
             }
             ArgumentKind::Overridden { inferred, .. } => inferred.clone(),
         }
@@ -616,7 +615,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             });
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Kwargs {
-                                    inferred_value: Inferred::execute_db_type(i_s, value_type),
+                                    inferred_value: Inferred::from_type(value_type),
                                     node_ref,
                                     position: i + 1,
                                 },
@@ -673,7 +672,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     SliceTypeContent::Slice(slices) => {
                         let t = i_s.db.python_state.slice_db_type();
                         Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
-                            inferred: Inferred::execute_db_type(&i_s, t),
+                            inferred: Inferred::from_type(t),
                             position: 1,
                             node_ref: slices.as_node_ref(),
                             in_args_or_kwargs_and_arbitrary_len: false,

@@ -28,7 +28,7 @@ impl<'a> Instance<'a> {
             inferred.clone()
         } else {
             let t = self.class.as_db_type(i_s.db);
-            Inferred::execute_db_type(i_s, t)
+            Inferred::from_type(t)
         }
     }
 

@@ -2712,7 +2712,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             db_type = recalculate_type_vars(&db_type);
         });
         debug_assert!(type_vars.is_empty());
-        Inferred::execute_db_type(self.i_s, db_type)
+        Inferred::from_type(db_type)
     }
 
     pub fn compute_type_var_constraint(&mut self, expr: Expression) -> Option<DbType> {

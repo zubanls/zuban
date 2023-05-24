@@ -31,7 +31,7 @@ impl<'a> Tuple<'a> {
                 }
             }
             Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                IteratorContent::Inferred(Inferred::execute_db_type(i_s, t.as_ref().clone()))
+                IteratorContent::Inferred(Inferred::from_type(t.as_ref().clone()))
             }
             None => todo!(),
         }

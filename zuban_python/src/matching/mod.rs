@@ -73,15 +73,14 @@ impl IteratorContent<'_> {
     pub fn infer_all(self, i_s: &InferenceState) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
-            Self::FixedLengthTupleGenerics(generics) => Inferred::execute_db_type(
-                i_s,
-                generics.fold(DbType::Never, |a, b| {
+            Self::FixedLengthTupleGenerics(generics) => {
+                Inferred::from_type(generics.fold(DbType::Never, |a, b| {
                     a.union(match b {
                         TypeOrTypeVarTuple::Type(b) => b.clone(),
                         TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
                     })
-                }),
-            ),
+                }))
+            }
             Self::Union(iterators) => Inferred::gather_union(i_s, |add| {
                 for iterator in iterators {
                     add(iterator.infer_all(i_s))
@@ -96,13 +95,10 @@ impl IteratorContent<'_> {
         match self {
             Self::Inferred(inferred) => Some(inferred.clone()),
             Self::FixedLengthTupleGenerics(t) => t.next().map(|t| {
-                Inferred::execute_db_type(
-                    i_s,
-                    match t {
-                        TypeOrTypeVarTuple::Type(t) => t.clone(),
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
-                    },
-                )
+                Inferred::from_type(match t {
+                    TypeOrTypeVarTuple::Type(t) => t.clone(),
+                    TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                })
             }),
             Self::Union(iterators) => {
                 let mut had_next = false;

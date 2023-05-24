@@ -1446,7 +1446,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     let non_union_args_len = non_union_args.len();
                     non_union_args.last_mut().unwrap().kind = ArgumentKind::Overridden {
                         original: nxt_arg,
-                        inferred: Inferred::execute_db_type(i_s, entry.type_),
+                        inferred: Inferred::from_type(entry.type_),
                     };
                     let r = self.check_union_math(
                         i_s,
@@ -1592,7 +1592,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 t = Some(f_t);
             }
         }
-        Inferred::execute_db_type(i_s, t.unwrap().into_db_type())
+        Inferred::from_type(t.unwrap().into_db_type())
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
@@ -1623,7 +1623,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         debug!("Execute overloaded function {}", self.name());
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
             OverloadResult::Single(func) => func.execute(i_s, args, result_context, on_type_error),
-            OverloadResult::Union(t) => Inferred::execute_db_type(i_s, t),
+            OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
     }

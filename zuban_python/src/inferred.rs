@@ -129,7 +129,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn execute_db_type_allocation_todo(i_s: &InferenceState<'db, '_>, t: &Type) -> Self {
         // Everything that calls this should probably not allocate.
         let t = t.as_db_type();
-        Self::execute_db_type(i_s, t)
+        Self::from_type(t)
     }
 
     pub fn from_type(t: DbType) -> Self {
@@ -309,7 +309,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             .inference(i_s)
                             .use_db_type_of_annotation_or_type_comment(definition.node_index);
                         let d = replace_class_type_vars(i_s, t, class);
-                        return Inferred::execute_db_type(i_s, d);
+                        return Inferred::from_type(d);
                     }
                     _ => (),
                 }
@@ -576,7 +576,7 @@ impl<'db: 'slf, 'slf> Inferred {
         } else {
             let second = other.as_type(i_s);
             let t = self.as_type(i_s).common_base_type(i_s, &second);
-            Inferred::execute_db_type(i_s, t)
+            Inferred::from_type(t)
         }
     }
 
@@ -693,8 +693,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     })
                                     .collect();
                                 if results.len() == 1 {
-                                    return Some(Inferred::execute_db_type(
-                                        i_s,
+                                    return Some(Inferred::from_type(
                                         results.into_iter().next().unwrap(),
                                     ));
                                 } else if results.len() != o.functions.len() {
@@ -780,7 +779,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         );
                         let t = func
                             .as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass(class));
-                        return Some(Inferred::execute_db_type(i_s, t));
+                        return Some(Inferred::from_type(t));
                     }
                     Specific::ClassMethod => {
                         let result = infer_class_method(i_s, *class, attribute_class, *definition);
@@ -812,7 +811,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             .inference(i_s)
                             .use_db_type_of_annotation_or_type_comment(definition.node_index);
                         let t = replace_class_type_vars(i_s, t, class);
-                        return Some(Inferred::execute_db_type(i_s, t));
+                        return Some(Inferred::from_type(t));
                     }
                     _ => (),
                 },
@@ -1131,8 +1130,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         ComplexPoint::TypeAlias(alias) => {
                             if alias.is_class() {
-                                return Inferred::execute_db_type(
-                                    i_s,
+                                return Inferred::from_type(
                                     alias.as_db_type_and_set_type_vars_any(i_s.db),
                                 );
                             }
@@ -1185,7 +1183,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     ),
                                 );
                             }
-                            return Self::execute_db_type(i_s, DbType::NewType(new_type.clone()));
+                            return Self::from_type(DbType::NewType(new_type.clone()));
                         }
                         _ => (),
                     }
@@ -1425,7 +1423,7 @@ fn infer_class_method(
         }
     }
     let t = func.classmethod_as_db_type(i_s, &class, class_generics_not_defined_yet);
-    Some(Inferred::execute_db_type(i_s, t))
+    Some(Inferred::from_type(t))
 }
 
 fn type_of_complex<'db: 'x, 'x>(

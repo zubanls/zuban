@@ -77,17 +77,15 @@ impl<'a> NamedTupleValue<'a> {
     ) -> LookupResult {
         for p in self.nt.params() {
             if name == p.name.unwrap().as_str(i_s.db) {
-                return LookupResult::UnknownName(Inferred::execute_db_type(
-                    i_s,
+                return LookupResult::UnknownName(Inferred::from_type(
                     p.param_specific.expect_positional_db_type_as_ref().clone(),
                 ));
             }
         }
         if name == "__init__" {
-            return LookupResult::UnknownName(Inferred::execute_db_type(
-                i_s,
-                DbType::Callable(self.nt.constructor.clone()),
-            ));
+            return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(
+                self.nt.constructor.clone(),
+            )));
         }
         debug!("TODO lookup of NamedTuple base classes");
         LookupResult::None
@@ -102,8 +100,7 @@ impl<'a> NamedTupleValue<'a> {
         match slice_type.unpack() {
             SliceTypeContent::Simple(simple) => infer_index(i_s, simple, |index| {
                 if let Some(p) = self.nt.params().get(index) {
-                    Some(Inferred::execute_db_type(
-                        i_s,
+                    Some(Inferred::from_type(
                         p.param_specific.expect_positional_db_type_as_ref().clone(),
                     ))
                 } else {

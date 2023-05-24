@@ -1138,7 +1138,7 @@ impl<'a> Type<'a> {
             "Resolved type vars: {}",
             Type::new(&db_type).format_short(i_s.db)
         );
-        Inferred::execute_db_type(i_s, db_type)
+        Inferred::from_type(db_type)
     }
 
     fn internal_resolve_type_vars(
@@ -2422,7 +2422,7 @@ pub fn execute_type_of_type<'db>(
         // TODO remove this
         tuple @ DbType::Tuple(tuple_content) => {
             debug!("TODO this does not check the arguments");
-            return Inferred::execute_db_type(i_s, tuple.clone());
+            return Inferred::from_type(tuple.clone());
             // TODO reenable this
             let mut args_iterator = args.iter();
             let (arg, inferred_tup) = if let Some(arg) = args_iterator.next() {
@@ -2430,7 +2430,7 @@ pub fn execute_type_of_type<'db>(
                 (arg, inf)
             } else {
                 debug!("TODO this does not check the arguments");
-                return Inferred::execute_db_type(i_s, tuple.clone());
+                return Inferred::from_type(tuple.clone());
             };
             if args_iterator.next().is_some() {
                 todo!()
@@ -2443,14 +2443,14 @@ pub fn execute_type_of_type<'db>(
                     args.as_node_ref().to_db_lifetime(i_s.db)
                 },
             );
-            Inferred::execute_db_type(i_s, tuple.clone())
+            Inferred::from_type(tuple.clone())
         }
         DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
             .execute(i_s, args, result_context, on_type_error),
         DbType::TypeVar(t) => {
             if let Some(bound) = &t.type_var.bound {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
-                Inferred::execute_db_type(i_s, type_.clone())
+                Inferred::from_type(type_.clone())
             } else {
                 todo!("{t:?}")
             }
@@ -2462,7 +2462,7 @@ pub fn execute_type_of_type<'db>(
                     todo!()
                 }
                 // TODO match
-                Inferred::execute_db_type(i_s, type_.clone())
+                Inferred::from_type(type_.clone())
             } else {
                 todo!()
             }
@@ -2471,7 +2471,7 @@ pub fn execute_type_of_type<'db>(
             i_s.current_class()
                 .unwrap()
                 .execute(i_s, args, result_context, on_type_error);
-            Inferred::execute_db_type(i_s, DbType::Self_)
+            Inferred::from_type(DbType::Self_)
         }
         DbType::Any => Inferred::new_any(),
         DbType::NamedTuple(nt) => {
@@ -2485,7 +2485,7 @@ pub fn execute_type_of_type<'db>(
                 on_type_error,
             );
             debug!("TODO use generics for namedtuple");
-            Inferred::execute_db_type(i_s, DbType::NamedTuple(nt.clone()))
+            Inferred::from_type(DbType::NamedTuple(nt.clone()))
         }
         _ => todo!("{:?}", type_),
     }
