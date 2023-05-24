@@ -21,6 +21,8 @@ with debug enabled:
 
 ### Profiling
 
+    sudo apt-get install linux-tools-generic
+    cargo install flamegraph
     sudo sysctl -w kernel.perf_event_paranoid=1  # Might be needed
     flamegraph cargo test blackbox --release
     firefox flamegraph.svg
