@@ -8,7 +8,7 @@ use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArg
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, GenericItem,
     GenericsList, Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType,
-    Specific, TupleContent, TypeOrTypeVarTuple,
+    Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -117,24 +117,40 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             },
             StmtContent::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {
+                    let get_type = |t: &_| match t {
+                        // No need to check these here, this is done when calculating diagnostics
+                        DbType::Type(t) => match t.as_ref() {
+                            DbType::Class(link, generics) => DbType::Class(*link, generics.clone()),
+                            _ => todo!(),
+                        },
+                        _ => todo!(),
+                    };
                     if let TryBlockType::Except(except_clause) = block {
                         if let (Some(expr), Some(name_def), _) = except_clause.unpack() {
                             let inf = self.infer_expression(expr);
-                            let t = match inf.as_type(self.i_s).as_ref() {
-                                DbType::Type(t) => match t.as_ref() {
-                                    DbType::Class(link, generics) => {
-                                        DbType::Class(*link, generics.clone())
-                                    }
-                                    _ => todo!(),
-                                },
-                                _ => todo!(),
+                            let new = match inf.as_type(self.i_s).as_ref() {
+                                DbType::Tuple(content) => {
+                                    Inferred::gather_types_union(|add| match &content.args {
+                                        Some(TupleTypeArguments::FixedLength(ts)) => {
+                                            for t in ts.iter() {
+                                                match t {
+                                                    TypeOrTypeVarTuple::Type(t) => add(
+                                                        self.i_s,
+                                                        Inferred::from_type(get_type(t)),
+                                                    ),
+                                                    TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+                                                }
+                                            }
+                                        }
+                                        Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                                            todo!()
+                                        }
+                                        _ => todo!(),
+                                    })
+                                }
+                                t => Inferred::from_type(get_type(t)),
                             };
-                            Inferred::from_type(t).maybe_save_redirect(
-                                self.i_s,
-                                self.file,
-                                name_def.index(),
-                                true,
-                            );
+                            new.maybe_save_redirect(self.i_s, self.file, name_def.index(), true);
                         }
                     }
                 }
