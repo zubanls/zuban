@@ -15,23 +15,13 @@ testRaiseClassObjectCustomInit
 testRaiseFromStatement
 testRaiseFromClassobject
 # Exception uses type instead of instance
-testSimpleTryExcept
-testSimpleTryExcept2
-testBaseClassAsExceptionTypeInExcept
-testMultipleExceptHandlers
-testTryExceptStatement
-testTryExceptWithinFunction
 testExceptionVariableReuseInDeferredNode4
 testExceptionVariableReuseInDeferredNode5
 testExceptionVariableReuseInDeferredNode6
-testArbitraryExpressionAsExceptionType
 testTupleValueAsExceptionType
-testOverloadedExceptionType
-testExceptionIsType
 testExceptionVariableReuseInDeferredNode1
 testExceptionVariableReuseInDeferredNode2
 testExceptionVariableReuseInDeferredNode3
-testTryExceptWithMultipleHandlers
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
 

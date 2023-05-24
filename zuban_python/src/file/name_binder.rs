@@ -544,11 +544,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         latest_return_or_yield =
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);
                         if let Some(name_def) = name_def {
-                            self.add_redirect_definition(
-                                name_def,
-                                expression.index() as u32,
-                                false,
-                            );
+                            self.add_new_definition(name_def, Point::new_uncalculated(), false)
                         }
                     }
                     self.index_block(block, ordered, false)

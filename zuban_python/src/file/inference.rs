@@ -115,6 +115,30 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 _ => unreachable!(),
             },
+            StmtContent::TryStmt(try_stmt) => {
+                for block in try_stmt.iter_blocks() {
+                    if let TryBlockType::Except(except_clause) = block {
+                        if let (Some(expr), Some(name_def), _) = except_clause.unpack() {
+                            let inf = self.infer_expression(expr);
+                            let t = match inf.as_type(self.i_s).as_ref() {
+                                DbType::Type(t) => match t.as_ref() {
+                                    DbType::Class(link, generics) => {
+                                        DbType::Class(*link, generics.clone())
+                                    }
+                                    _ => todo!(),
+                                },
+                                _ => todo!(),
+                            };
+                            Inferred::from_type(t).maybe_save_redirect(
+                                self.i_s,
+                                self.file,
+                                name_def.index(),
+                                true,
+                            );
+                        }
+                    }
+                }
+            }
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
     }
