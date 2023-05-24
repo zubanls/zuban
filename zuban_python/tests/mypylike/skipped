@@ -15,9 +15,6 @@ testRaiseClassObjectCustomInit
 testRaiseFromStatement
 testRaiseFromClassobject
 # Exception uses type instead of instance
-testExceptionVariableReuseInDeferredNode4
-testExceptionVariableReuseInDeferredNode5
-testExceptionVariableReuseInDeferredNode6
 testTupleValueAsExceptionType
 testExceptionVariableReuseInDeferredNode1
 testExceptionVariableReuseInDeferredNode2
@@ -1672,6 +1669,9 @@ testUnionMultiassignPacked
 testUnpackUnionNoCrashOnPartialNoneBinder
 testNestedUnionUnpackingFromNestedTuplesBinder
 testUnionUnpackingDoubleBinder
+testExceptionVariableReuseInDeferredNode4
+testExceptionVariableReuseInDeferredNode5
+testExceptionVariableReuseInDeferredNode6
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
