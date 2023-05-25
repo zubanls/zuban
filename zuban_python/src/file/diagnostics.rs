@@ -9,14 +9,13 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::getitem::SliceType;
+use crate::inferred::add_attribute_error;
 use crate::matching::{
     matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function};
-
-use super::inference::add_attribute_error;
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -569,12 +568,9 @@ impl<'db> Inference<'db, '_, '_> {
                 // TODO this should still be implemented
                 //self.infer_single_target(target);
                 let node_ref = NodeRef::new(self.file, name_def.index());
-                let base = self.infer_primary_target_or_atom(primary_target.first());
-                let base = base.as_type(self.i_s);
-                // We do a normal lookup to check that the attriute is there.
-                base.lookup_with_error(self.i_s, node_ref, name_def.as_code(), &|t| {
-                    add_attribute_error(self.i_s, node_ref, &base, t, name_def.as_code())
-                });
+                // We do a normal lookup to check that the attribute is there.
+                self.infer_primary_target_or_atom(primary_target.first())
+                    .lookup_with_error(self.i_s, node_ref, name_def.as_code());
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());

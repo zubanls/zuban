@@ -979,6 +979,18 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
+    pub fn lookup_with_error(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        node_ref: NodeRef,
+        name: &str,
+    ) -> LookupResult {
+        let base_type = self.as_type(i_s);
+        base_type.lookup_with_error(i_s, node_ref, name, &|t| {
+            add_attribute_error(i_s, node_ref, &base_type, t, name)
+        })
+    }
+
     pub fn lookup_and_execute(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1593,4 +1605,30 @@ mod tests {
         use std::mem::size_of;
         assert_eq!(size_of::<Inferred>(), 48);
     }
+}
+
+pub fn add_attribute_error<'db>(
+    i_s: &InferenceState<'db, '_>,
+    node_ref: NodeRef,
+    full_type: &Type,
+    t: &Type,
+    name: &str,
+) {
+    let object = if matches!(t.as_ref(), DbType::Module(_)) {
+        Box::from("Module")
+    } else {
+        format!("{:?}", t.format_short(i_s.db)).into()
+    };
+    let name = Box::from(name);
+    node_ref.add_typing_issue(
+        i_s,
+        match full_type.is_union() {
+            false => IssueType::AttributeError { object, name },
+            true => IssueType::UnionAttributeError {
+                object,
+                union: full_type.format_short(i_s.db),
+                name,
+            },
+        },
+    );
 }

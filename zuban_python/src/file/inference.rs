@@ -15,7 +15,7 @@ use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
-use crate::inferred::{Inferred, UnionValue};
+use crate::inferred::{add_attribute_error, Inferred, UnionValue};
 use crate::matching::{FormatData, Generics, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, Instance, Module};
@@ -1345,15 +1345,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let node_ref = NodeRef::new(self.file, node_index);
         match second {
             PrimaryContent::Attribute(name) => {
-                let base = base.as_type(self.i_s);
-                debug!(
-                    "Lookup {}.{}",
-                    base.format_short(self.i_s.db),
-                    name.as_str()
-                );
-                let lookup = base.lookup_with_error(self.i_s, node_ref, name.as_str(), &|t| {
-                    add_attribute_error(self.i_s, node_ref, &base, t, name.as_code())
-                });
+                debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
+                let lookup = base.lookup_with_error(self.i_s, node_ref, name.as_str());
                 match &lookup {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting
@@ -1960,30 +1953,4 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let clauses = for_if_clauses.iter();
         todo!()
     }
-}
-
-pub fn add_attribute_error<'db>(
-    i_s: &InferenceState<'db, '_>,
-    node_ref: NodeRef,
-    full_type: &Type,
-    t: &Type,
-    name: &str,
-) {
-    let object = if matches!(t.as_ref(), DbType::Module(_)) {
-        Box::from("Module")
-    } else {
-        format!("{:?}", t.format_short(i_s.db)).into()
-    };
-    let name = Box::from(name);
-    node_ref.add_typing_issue(
-        i_s,
-        match full_type.is_union() {
-            false => IssueType::AttributeError { object, name },
-            true => IssueType::UnionAttributeError {
-                object,
-                union: full_type.format_short(i_s.db),
-                name,
-            },
-        },
-    );
 }
