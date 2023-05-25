@@ -10,7 +10,6 @@ use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
-use crate::inferred::add_attribute_error;
 use crate::matching::{
     matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
     ResultContext, Type,
