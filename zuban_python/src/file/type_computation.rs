@@ -1603,12 +1603,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.add_typing_issue(next.as_node_ref(), IssueType::OptionalMustHaveOneArgument);
         }
         let t = self.compute_slice_db_type(first);
-        let was_union = Type::new(&t).is_union();
-        let mut t = t.union(DbType::None);
+        let format_as_optional = !Type::new(&t).is_union();
+        let mut t = t.union_with_details(DbType::None, format_as_optional);
         let DbType::Union(union_type) = &mut t else {unreachable!()};
-        if !was_union {
-            union_type.format_as_optional = true;
-        }
         union_type.sort_for_priority();
         TypeContent::DbType(t)
     }
