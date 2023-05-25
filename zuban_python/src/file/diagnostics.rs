@@ -561,13 +561,17 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_del_stmt_diagnostics(&mut self, target: Target) {
         match target {
-            Target::Name(name_def) => todo!(),
+            Target::Name(name_def) => debug!("TODO del name"),
             Target::NameExpression(_, _) => {
                 // TODO this should still be implemented
                 //self.infer_single_target(target);
             }
-            Target::IndexExpression(t) => todo!(),
-            Target::Tuple(_) => todo!(),
+            Target::IndexExpression(t) => debug!("TODO del foo[0]"),
+            Target::Tuple(targets) => {
+                for target in targets {
+                    self.calc_del_stmt_diagnostics(target)
+                }
+            }
             Target::Starred(_) => unreachable!(),
         }
     }

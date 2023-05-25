@@ -304,7 +304,7 @@ create_grammar!(
         ) &("."|"["|"(")
         | t_primary "[" slices "]"
         | t_primary "." name_definition
-    t_atom: name_definition | "(" [targets] ")" | "[" [targets] "]"
+    t_atom:? name_definition | "(" [targets] ")" | "[" [targets] "]"
     name_definition: Name
 
     strings: (String | fstring)+

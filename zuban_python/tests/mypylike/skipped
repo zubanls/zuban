@@ -1903,10 +1903,6 @@ testNewNamedTupleWithMethods
 
 # del statement
 testIndexedDel
-testDelGlobalName
-testDelLocalName
-testDelMultipleThings
-testDelMultipleThingsInvalid
 testDelStmtWithIndex
 testDelStmtWithAttribute
 testDelStatementWithTuple
@@ -2389,6 +2385,7 @@ testInvalidLvalueWithExplicitType
 testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
+testDelMultipleThingsInvalid
 
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException
