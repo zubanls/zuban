@@ -75,10 +75,13 @@ impl IteratorContent<'_> {
             Self::Inferred(inferred) => inferred,
             Self::FixedLengthTupleGenerics(generics) => {
                 Inferred::from_type(generics.fold(DbType::Never, |a, b| {
-                    a.union(match b {
-                        TypeOrTypeVarTuple::Type(b) => b.clone(),
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
-                    })
+                    a.union(
+                        i_s.db,
+                        match b {
+                            TypeOrTypeVarTuple::Type(b) => b.clone(),
+                            TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                        },
+                    )
                 }))
             }
             Self::Union(iterators) => Inferred::gather_union(i_s, |add| {

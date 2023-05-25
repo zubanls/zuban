@@ -695,15 +695,20 @@ pub enum DbType {
 }
 
 impl DbType {
-    pub fn union(self, other: DbType) -> Self {
-        self.union_with_details(other, false)
+    pub fn union(self, db: &Database, other: DbType) -> Self {
+        self.union_with_details(db, other, false)
     }
 
-    pub fn make_optional(&mut self) {
-        *self = mem::replace(self, Self::Never).union_with_details(DbType::None, true);
+    pub fn make_optional(&mut self, db: &Database) {
+        *self = mem::replace(self, Self::Never).union_with_details(db, DbType::None, true);
     }
 
-    pub fn union_with_details(self, other: DbType, mut format_as_optional: bool) -> Self {
+    pub fn union_with_details(
+        self,
+        db: &Database,
+        other: DbType,
+        mut format_as_optional: bool,
+    ) -> Self {
         let entries = match self {
             Self::Union(u1) => {
                 let mut vec = u1.entries.into_vec();
@@ -771,8 +776,8 @@ impl DbType {
         Self::Union(t)
     }
 
-    pub fn union_in_place(&mut self, other: DbType) {
-        *self = mem::replace(self, Self::Never).union(other);
+    pub fn union_in_place(&mut self, db: &Database, other: DbType) {
+        *self = mem::replace(self, Self::Never).union(db, other);
     }
 
     pub fn format_short(&self, db: &Database) -> Box<str> {

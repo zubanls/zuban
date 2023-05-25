@@ -42,7 +42,7 @@ impl<'db> Inference<'db, '_, '_> {
             if let DbType::Literal(l) = t {
                 t = self.i_s.db.python_state.literal_db_type(l.kind);
             }
-            result.union_in_place(t);
+            result.union_in_place(self.i_s.db, t);
         }
         GenericItem::TypeArgument(result)
     }
@@ -104,14 +104,14 @@ impl<'db> Inference<'db, '_, '_> {
                         .infer_expression(key_value.key())
                         .class_as_db_type(self.i_s);
                     match keys.as_mut() {
-                        Some(keys) => keys.union_in_place(key_t),
+                        Some(keys) => keys.union_in_place(self.i_s.db, key_t),
                         None => keys = Some(key_t),
                     };
                     let value_t = self
                         .infer_expression(key_value.value())
                         .class_as_db_type(self.i_s);
                     match values.as_mut() {
-                        Some(values) => values.union_in_place(value_t),
+                        Some(values) => values.union_in_place(self.i_s.db, value_t),
                         None => values = Some(value_t),
                     };
                 }
@@ -185,14 +185,14 @@ fn check_list_with_context<'db>(
                     .as_type(i_s)
                     .try_to_resemble_context(i_s, matcher, &generic_t);
                 if let Some(found) = &mut found {
-                    found.union_in_place(resembling)
+                    found.union_in_place(i_s.db, resembling)
                 } else {
                     found = Some(resembling);
                 }
             } else if i_s.is_checking_overload() {
                 let t = inferred.as_type(i_s).into_db_type();
                 if let Some(found) = &mut found {
-                    found.union_in_place(t)
+                    found.union_in_place(i_s.db, t)
                 } else {
                     found = Some(t);
                 }

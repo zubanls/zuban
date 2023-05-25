@@ -57,7 +57,7 @@ impl<'a> Type<'a> {
     }
 
     pub fn union(self, db: &Database, other: Self) -> Self {
-        Self::owned(self.into_db_type().union(other.into_db_type()))
+        Self::owned(self.into_db_type().union(db, other.into_db_type()))
     }
 
     pub fn into_db_type(self) -> DbType {

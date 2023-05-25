@@ -550,7 +550,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index()));
                     if self.has_type_vars {
                         if is_implicit_optional {
-                            d.make_optional()
+                            d.make_optional(self.inference.i_s.db)
                         }
                         Inferred::from_type(d).save_redirect(
                             self.inference.i_s,
@@ -572,7 +572,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         };
         if is_implicit_optional {
-            db_type.make_optional()
+            db_type.make_optional(self.inference.i_s.db)
         }
         let unsaved = Inferred::from_type(db_type);
         unsaved.save_redirect(self.inference.i_s, self.inference.file, annotation_index);
@@ -802,7 +802,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 // TODO this should only merge in annotation contexts
                 let second = self.compute_type_expression_part(b);
                 let second = self.as_db_type(second, NodeRef::new(self.inference.file, b.index()));
-                TypeContent::DbType(first.union(second))
+                TypeContent::DbType(first.union(self.inference.i_s.db, second))
             }
             _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
         }
@@ -1604,7 +1604,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         let t = self.compute_slice_db_type(first);
         let format_as_optional = !Type::new(&t).is_union();
-        let mut t = t.union_with_details(DbType::None, format_as_optional);
+        let mut t = t.union_with_details(self.inference.i_s.db, DbType::None, format_as_optional);
         let DbType::Union(union_type) = &mut t else {unreachable!()};
         union_type.sort_for_priority();
         TypeContent::DbType(t)
