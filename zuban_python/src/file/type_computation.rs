@@ -1824,8 +1824,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             t => match self.as_db_type(t, slice.as_node_ref()) {
                 DbType::Any => TypeContent::Unknown,
-                DbType::None => TypeContent::DbType(DbType::None),
-                t @ DbType::Literal(_) => TypeContent::DbType(t),
+                t @ (DbType::None | DbType::Literal(_)) => TypeContent::DbType(t),
                 DbType::Union(u)
                     if u.iter()
                         .all(|t| matches!(t, DbType::Literal(_) | DbType::None)) =>
