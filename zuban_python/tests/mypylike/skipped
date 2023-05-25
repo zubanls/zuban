@@ -1364,6 +1364,9 @@ testNamedTupleJoinNamedTuple
 testNamedTupleJoinTuple
 # except join? B and C when A :> B and A :> C
 testTupleValueAsExceptionType
+testExceptWithMultipleTypes3
+testExceptWithMultipleTypes4
+testExceptWithAnyTypes
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
@@ -1908,10 +1911,6 @@ testDelStatementWithAssignmentTuple
 testDelStatementWithAssignmentList
 testDelStatementWithConditions
 
-# Except with multiple exceptions in parentheses
-testExceptWithMultipleTypes3
-testExceptWithMultipleTypes4
-testExceptWithAnyTypes
 # "Trying to read deleted variable "e"
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable

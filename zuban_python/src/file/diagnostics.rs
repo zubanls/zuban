@@ -9,6 +9,7 @@ use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::getitem::SliceType;
+use crate::inference_state::InferenceState;
 use crate::inferred::add_attribute_error;
 use crate::matching::{
     matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
@@ -501,30 +502,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let (exception, _name_def, block) = b.unpack();
                     if let Some(exception) = exception {
                         let inf = self.infer_expression(exception);
-                        let is_type = |t: &_| match t {
-                            DbType::Type(t) => {
-                                let db = self.i_s.db;
-                                Type::new(t.as_ref())
-                                    .maybe_class(self.i_s.db)
-                                    .map(|cls| cls.in_mro(db, &db.python_state.base_exception()))
-                                    .unwrap_or(false)
-                            }
-                            _ => false,
-                        };
-                        let was_base_exception = match inf.as_type(self.i_s).as_ref() {
-                            DbType::Tuple(content) => match &content.args {
-                                Some(TupleTypeArguments::FixedLength(ts)) => {
-                                    ts.iter().all(|t| match t {
-                                        TypeOrTypeVarTuple::Type(t) => is_type(t),
-                                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
-                                    })
-                                }
-                                Some(TupleTypeArguments::ArbitraryLength(t)) => is_type(t),
-                                _ => todo!(),
-                            },
-                            t => is_type(t),
-                        };
-                        if !was_base_exception {
+                        if !is_valid_except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true) {
                             NodeRef::new(self.file, exception.index())
                                 .add_typing_issue(self.i_s, IssueType::BaseExceptionExpected);
                         }
@@ -608,6 +586,30 @@ fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
             .iter()
             .all(|t| valid_raise_type(db, Type::new(t), allow_none)),
         DbType::None if allow_none => true,
+        _ => false,
+    }
+}
+
+fn is_valid_except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> bool {
+    match t {
+        DbType::Type(t) => {
+            let db = i_s.db;
+            Type::new(t.as_ref())
+                .maybe_class(i_s.db)
+                .map(|cls| cls.in_mro(db, &db.python_state.base_exception()))
+                .unwrap_or(false)
+        }
+        DbType::Tuple(content) if allow_tuple => match &content.args {
+            Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().all(|t| match t {
+                TypeOrTypeVarTuple::Type(t) => is_valid_except_type(i_s, t, false),
+                TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+            }),
+            Some(TupleTypeArguments::ArbitraryLength(t)) => is_valid_except_type(i_s, t, false),
+            _ => todo!(),
+        },
+        DbType::Union(union) => union
+            .iter()
+            .all(|t| is_valid_except_type(i_s, t, allow_tuple)),
         _ => false,
     }
 }
