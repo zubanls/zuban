@@ -544,10 +544,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     node_ref,
                     normal,
                     &KnownArguments::new(&right, node_ref),
-                    &|i_s, type_| {
-                        let left = type_.format_short(i_s.db);
+                    &|type_| {
+                        let left = type_.format_short(self.i_s.db);
                         node_ref.add_typing_issue(
-                            i_s,
+                            self.i_s,
                             IssueType::UnsupportedLeftOperand {
                                 operand: Box::from(aug_assign.operand()),
                                 left,
@@ -685,9 +685,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     node_ref,
                                     name_definition.as_code(),
-                                    &|i_s, t| {
+                                    &|t| {
                                         add_attribute_error(
-                                            i_s,
+                                            self.i_s,
                                             node_ref,
                                             &base,
                                             t,
@@ -730,7 +730,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     node_ref,
                     "__setitem__",
                     &CombinedArguments::new(&args, &KnownArguments::new(value, node_ref)),
-                    &|i_s, _| {
+                    &|_| {
                         debug!("TODO __setitem__ not found");
                     },
                     OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
@@ -977,7 +977,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     from,
                                     "__eq__",
                                     &KnownArguments::new(&second, from),
-                                    &|_, _| todo!(),
+                                    &|_| todo!(),
                                 )
                             }
                             ComparisonContent::Is(first, _, second)
@@ -1023,10 +1023,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     self.i_s,
                                                     from,
                                                     "__iter__",
-                                                    &|i_s, _| {
-                                                        let right = second.format_short(i_s);
+                                                    &|_| {
+                                                        let right = second.format_short(self.i_s);
                                                         from.add_typing_issue(
-                                                            i_s,
+                                                            self.i_s,
                                                             IssueType::UnsupportedIn { right },
                                                         )
                                                     },
@@ -1038,7 +1038,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     from,
                                                     "__next__",
                                                     &NoArguments::new(from),
-                                                    &|_, _| todo!(),
+                                                    &|_| todo!(),
                                                 )
                                                 .as_type(self.i_s)
                                                 .error_if_not_matches(
@@ -1116,16 +1116,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     node_ref,
                     method_name,
                     &NoArguments::new(node_ref),
-                    &|i_s, type_| {
+                    &|type_| {
                         let operand = match operand.as_code() {
                             "~" => "~",
                             "-" => "unary -",
                             "+" => "unary +",
                             _ => unreachable!(),
                         };
-                        let got = type_.format_short(i_s.db);
+                        let got = type_.format_short(self.i_s.db);
                         node_ref.add_typing_issue(
-                            i_s,
+                            self.i_s,
                             IssueType::UnsupportedOperandForUnary { operand, got },
                         )
                     },
@@ -1233,18 +1233,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let result = if error.get() != LookupError::ShortCircuit {
                             let left_inf = Inferred::execute_db_type_allocation_todo(i_s, l_type);
                             r_type
-                                .lookup_with_error(
-                                    i_s,
-                                    node_ref,
-                                    op.reverse_magic_method,
-                                    &|i_s, _| {
-                                        if left_op_method.as_ref().is_some() {
-                                            error.set(LookupError::BothSidesError);
-                                        } else {
-                                            error.set(LookupError::LeftError);
-                                        }
-                                    },
-                                )
+                                .lookup_with_error(i_s, node_ref, op.reverse_magic_method, &|_| {
+                                    if left_op_method.as_ref().is_some() {
+                                        error.set(LookupError::BothSidesError);
+                                    } else {
+                                        error.set(LookupError::LeftError);
+                                    }
+                                })
                                 .into_inferred()
                                 .execute_with_details(
                                     i_s,
@@ -1356,10 +1351,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     base.format_short(self.i_s.db),
                     name.as_str()
                 );
-                let lookup =
-                    base.lookup_with_error(self.i_s, node_ref, name.as_str(), &|i_s, t| {
-                        add_attribute_error(i_s, node_ref, &base, t, name.as_code())
-                    });
+                let lookup = base.lookup_with_error(self.i_s, node_ref, name.as_str(), &|t| {
+                    add_attribute_error(self.i_s, node_ref, &base, t, name.as_code())
+                });
                 match &lookup {
                     LookupResult::GotoName(link, inferred) => {
                         // TODO this is not correct, because there can be multiple runs, so setting

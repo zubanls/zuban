@@ -985,7 +985,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         name: &str,
         args: &dyn Arguments<'db>,
-        on_lookup_error: OnLookupError<'db, '_>,
+        on_lookup_error: OnLookupError,
     ) -> Self {
         self.lookup_and_execute_with_details(
             i_s,
@@ -1003,7 +1003,7 @@ impl<'db: 'slf, 'slf> Inferred {
         from: NodeRef,
         name: &str,
         args: &dyn Arguments<'db>,
-        on_lookup_error: OnLookupError<'db, '_>,
+        on_lookup_error: OnLookupError,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
         let mut result: Option<Inferred> = None;
@@ -1013,7 +1013,7 @@ impl<'db: 'slf, 'slf> Inferred {
             name,
             &mut |_, lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {
-                    on_lookup_error(i_s, &self.as_type(i_s));
+                    on_lookup_error(&self.as_type(i_s));
                 }
                 let inf = lookup_result.into_inferred().execute_with_details(
                     i_s,

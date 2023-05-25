@@ -572,7 +572,7 @@ impl<'db> Inference<'db, '_, '_> {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 let base = base.as_type(self.i_s);
                 // We do a normal lookup to check that the attriute is there.
-                base.lookup_with_error(self.i_s, node_ref, name_def.as_code(), &|_, t| {
+                base.lookup_with_error(self.i_s, node_ref, name_def.as_code(), &|t| {
                     add_attribute_error(self.i_s, node_ref, &base, t, name_def.as_code())
                 });
             }
@@ -589,9 +589,7 @@ impl<'db> Inference<'db, '_, '_> {
                     node_ref,
                     "__delitem__",
                     &slice_type.as_args(*i_s),
-                    &|_, t| {
-                        add_attribute_error(i_s, node_ref, &base.as_type(i_s), t, "__delitem__")
-                    },
+                    &|t| add_attribute_error(i_s, node_ref, &base.as_type(i_s), t, "__delitem__"),
                 );
             }
             Target::Tuple(targets) => {

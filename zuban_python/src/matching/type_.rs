@@ -2102,7 +2102,7 @@ impl<'a> Type<'a> {
         from: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        self.lookup_helper(i_s, from, name, &|_, _| ())
+        self.lookup_helper(i_s, from, name, &|_| ())
     }
 
     pub fn lookup_with_error<'db>(
@@ -2110,7 +2110,7 @@ impl<'a> Type<'a> {
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
         name: &str,
-        on_lookup_error: OnLookupError<'db, '_>,
+        on_lookup_error: OnLookupError,
     ) -> LookupResult {
         self.lookup_helper(i_s, Some(from), name, on_lookup_error)
     }
@@ -2121,7 +2121,7 @@ impl<'a> Type<'a> {
         i_s: &InferenceState<'db, '_>,
         from: Option<NodeRef>,
         name: &str,
-        on_lookup_error: OnLookupError<'db, '_>,
+        on_lookup_error: OnLookupError,
     ) -> LookupResult {
         let mut result: Option<LookupResult> = None;
         self.run_after_lookup_on_each_union_member(
@@ -2131,7 +2131,7 @@ impl<'a> Type<'a> {
             name,
             &mut |t, lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {
-                    on_lookup_error(i_s, t);
+                    on_lookup_error(t);
                 }
                 result = Some(if let Some(l) = result.take() {
                     LookupResult::UnknownName(

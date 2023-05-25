@@ -57,7 +57,7 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     Box<str>,
     Box<str>,
 );
-pub type OnLookupError<'db, 'a> = &'a dyn Fn(&InferenceState<'db, '_>, &Type);
+pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 
 #[derive(Debug, Clone)]
 pub enum IteratorContent<'a> {
