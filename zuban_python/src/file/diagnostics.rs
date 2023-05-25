@@ -578,15 +578,10 @@ impl<'db> Inference<'db, '_, '_> {
                     unreachable!()
                 };
                 let slice_type = SliceType::new(self.file, primary_target.index(), s);
-                let i_s = self.i_s;
                 let node_ref = slice_type.as_node_ref();
-                base.lookup_and_execute(
-                    i_s,
-                    node_ref,
-                    "__delitem__",
-                    &slice_type.as_args(*i_s),
-                    &|t| add_attribute_error(i_s, node_ref, &base.as_type(i_s), t, "__delitem__"),
-                );
+                base.lookup_with_error(self.i_s, node_ref, "__delitem__")
+                    .into_inferred()
+                    .execute(self.i_s, &slice_type.as_args(*self.i_s));
             }
             Target::Tuple(targets) => {
                 for target in targets {
