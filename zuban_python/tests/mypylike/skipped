@@ -154,18 +154,18 @@ testInconsistentMroLocalRef
 testGenericTypeBody1
 # import cycle
 testBoundGenericMethodParamSpecFine
-# Cycles
 testCyclicUndefinedImportWithName
 testCyclicUndefinedImportWithStar1
 testCyclicUndefinedImportWithStar2
 testCyclicUndefinedImportWithStar3
 testNewAnalyzerTypeAnnotationCycle4
 testBoundGenericMethodFine
-testSelfReferentialSubscriptExpression
+# C = C Cycle
 testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
 testConditionalExceptionAlias
 testListAssignmentUnequalAmountToUnpack
+testSelfReferentialSubscriptExpression
 testNewAnalyzerMemberNameMatchesNamedTuple
 
 # Module attributes
