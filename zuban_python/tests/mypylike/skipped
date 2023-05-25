@@ -1909,8 +1909,6 @@ testDelStatementWithAssignmentList
 testDelStatementWithConditions
 
 # Except with multiple exceptions in parentheses
-testExceptWithMultipleTypes
-testExceptWithMultipleTypes2
 testExceptWithMultipleTypes3
 testExceptWithMultipleTypes4
 testExceptWithAnyTypes
