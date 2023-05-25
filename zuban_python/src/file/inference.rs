@@ -117,14 +117,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             },
             StmtContent::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {
-                    let get_type = |t: &_| match t {
-                        // No need to check these here, this is done when calculating diagnostics
-                        DbType::Type(t) => match t.as_ref() {
-                            DbType::Class(link, generics) => DbType::Class(*link, generics.clone()),
-                            _ => todo!(),
-                        },
-                        _ => todo!(),
-                    };
+                    fn instantiate(t: &DbType) -> DbType {
+                        match t {
+                            // No need to check these here, this is done when calculating diagnostics
+                            DbType::Type(t) => match t.as_ref() {
+                                DbType::Class(link, generics) => {
+                                    DbType::Class(*link, generics.clone())
+                                }
+                                _ => todo!(),
+                            },
+                            DbType::Any => DbType::Any,
+                            _ => todo!("{t:?}"),
+                        }
+                    }
                     if let TryBlockType::Except(except_clause) = block {
                         if let (Some(expr), Some(name_def), _) = except_clause.unpack() {
                             let inf = self.infer_expression(expr);
@@ -136,19 +141,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 match t {
                                                     TypeOrTypeVarTuple::Type(t) => add(
                                                         self.i_s,
-                                                        Inferred::from_type(get_type(t)),
+                                                        Inferred::from_type(instantiate(t)),
                                                     ),
                                                     TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                                                 }
                                             }
                                         }
                                         Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                                            todo!()
+                                            add(self.i_s, Inferred::from_type(instantiate(t)))
                                         }
                                         _ => todo!(),
                                     })
                                 }
-                                t => Inferred::from_type(get_type(t)),
+                                t => Inferred::from_type(instantiate(t)),
                             };
                             new.maybe_save_redirect(self.i_s, self.file, name_def.index(), true);
                         }

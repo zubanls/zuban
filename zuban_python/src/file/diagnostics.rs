@@ -519,9 +519,7 @@ impl<'db> Inference<'db, '_, '_> {
                                         TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
                                     })
                                 }
-                                Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                                    todo!()
-                                }
+                                Some(TupleTypeArguments::ArbitraryLength(t)) => is_type(t),
                                 _ => todo!(),
                             },
                             t => is_type(t),
