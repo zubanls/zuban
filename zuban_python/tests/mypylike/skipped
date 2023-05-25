@@ -15,7 +15,6 @@ testRaiseClassObjectCustomInit
 testRaiseFromStatement
 testRaiseFromClassobject
 # Exception uses type instead of instance
-testTupleValueAsExceptionType
 testExceptionVariableReuseInDeferredNode1
 testExceptionVariableReuseInDeferredNode2
 testExceptionVariableReuseInDeferredNode3
@@ -1370,6 +1369,8 @@ testTupleSubclassJoinIrregular
 # namedtuple joins
 testNamedTupleJoinNamedTuple
 testNamedTupleJoinTuple
+# except join? B and C when A :> B and A :> C
+testTupleValueAsExceptionType
 
 # __setitem__
 testInferOptionalDictKeyValueTypes

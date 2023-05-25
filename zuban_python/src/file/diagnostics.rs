@@ -2,7 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::NoArguments;
 use crate::database::{
-    CallableParams, ComplexPoint, Database, DbType, Locality, Point, PointType, Specific, Variance,
+    CallableParams, ComplexPoint, Database, DbType, Locality, Point, PointType, Specific,
+    TupleTypeArguments, TypeOrTypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -492,15 +493,30 @@ impl<'db> Inference<'db, '_, '_> {
                     let (exception, _name_def, block) = b.unpack();
                     if let Some(exception) = exception {
                         let inf = self.infer_expression(exception);
-                        let was_base_exception = match inf.as_type(self.i_s).as_ref() {
+                        let is_type = |t: &_| match t {
                             DbType::Type(t) => {
                                 let db = self.i_s.db;
-                                Type::new(t)
+                                Type::new(t.as_ref())
                                     .maybe_class(self.i_s.db)
                                     .map(|cls| cls.in_mro(db, &db.python_state.base_exception()))
                                     .unwrap_or(false)
                             }
                             _ => false,
+                        };
+                        let was_base_exception = match inf.as_type(self.i_s).as_ref() {
+                            DbType::Tuple(content) => match &content.args {
+                                Some(TupleTypeArguments::FixedLength(ts)) => {
+                                    ts.iter().all(|t| match t {
+                                        TypeOrTypeVarTuple::Type(t) => is_type(t),
+                                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+                                    })
+                                }
+                                Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                                    todo!()
+                                }
+                                _ => todo!(),
+                            },
+                            t => is_type(t),
                         };
                         if !was_base_exception {
                             NodeRef::new(self.file, exception.index())
