@@ -565,9 +565,16 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_del_stmt_diagnostics(&mut self, target: Target) {
         match target {
             Target::Name(name_def) => debug!("TODO del name"),
-            Target::NameExpression(_, _) => {
+            Target::NameExpression(primary_target, name_def) => {
                 // TODO this should still be implemented
                 //self.infer_single_target(target);
+                let node_ref = NodeRef::new(self.file, name_def.index());
+                let base = self.infer_primary_target_or_atom(primary_target.first());
+                let base = base.as_type(self.i_s);
+                // We do a normal lookup to check that the attriute is there.
+                base.lookup_with_error(self.i_s, node_ref, name_def.as_code(), &|_, t| {
+                    add_attribute_error(self.i_s, node_ref, &base, t, name_def.as_code())
+                });
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
