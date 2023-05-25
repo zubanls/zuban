@@ -14,10 +14,6 @@ testRaiseClassObjectCustomInit
 # raise from: Exception must be derived from BaseException
 testRaiseFromStatement
 testRaiseFromClassobject
-# Exception uses type instead of instance
-testExceptionVariableReuseInDeferredNode1
-testExceptionVariableReuseInDeferredNode2
-testExceptionVariableReuseInDeferredNode3
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
 
@@ -1832,6 +1828,11 @@ testRedefineFunctionDefinedAsVariableInitializedToEmptyList
 # NewType Redefinition
 testNewAnalyzerNewTypeRedefinition
 testNewTypeRedefiningVariablesFails
+
+# except redefinition
+testExceptionVariableReuseInDeferredNode1
+testExceptionVariableReuseInDeferredNode2
+testExceptionVariableReuseInDeferredNode3
 
 # Invalid type comment or annotation, because of weird annotations
 testFastParseTypeCommentSyntaxError
