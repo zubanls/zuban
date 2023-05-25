@@ -1901,14 +1901,11 @@ testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 testNewNamedTupleWithMethods
 
-# del statement
-testIndexedDel
-testDelStatementWithTuple
+# "Trying to read deleted variable "Foo""
 testDelStmtWithTypeInfo
 testDelStatementWithAssignmentSimple
 testDelStatementWithAssignmentTuple
 testDelStatementWithAssignmentList
-testDelStatementWithAssignmentClass
 testDelStatementWithConditions
 
 # Except with multiple exceptions in parentheses
