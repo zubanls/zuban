@@ -171,7 +171,6 @@ testNewAnalyzerMemberNameMatchesNamedTuple
 # Module attributes
 testModuleImplicitAttributes
 testSpecialAttrsAreAvaliableInClasses
-testSpecialModulesNameImplicitAttr
 # Function attributes
 testInvalidRvalueTypeInInferredMultipleLvarDefinition
 testOverlappingClassCallables

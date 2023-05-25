@@ -5,7 +5,7 @@ use crate::file::PythonFile;
 use crate::imports::python_import;
 use crate::inference_state::InferenceState;
 
-use crate::matching::LookupResult;
+use crate::matching::{LookupResult, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Copy, Clone)]
@@ -59,14 +59,16 @@ impl<'a> Module<'a> {
                     self.file.inference(i_s).infer_name_by_index(i),
                 )
             })
+            .or_else(|| {
+                self.sub_module(i_s.db, name).map(|file_index| {
+                    // TODO this should probably move to the sub_module
+                    i_s.db.add_invalidates(file_index, self.file.file_index());
+                    LookupResult::FileReference(file_index)
+                })
+            })
             .unwrap_or_else(|| {
-                self.sub_module(i_s.db, name)
-                    .map(|file_index| {
-                        // TODO this should probably move to the sub_module
-                        i_s.db.add_invalidates(file_index, self.file.file_index());
-                        LookupResult::FileReference(file_index)
-                    })
-                    .unwrap_or_else(|| LookupResult::None)
+                Type::owned(i_s.db.python_state.module_db_type())
+                    .lookup_without_error(i_s, node_ref, name)
             })
     }
 }
