@@ -691,7 +691,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             node_ref,
                                             &base,
                                             t,
-                                            name_definition.name(),
+                                            name_definition.as_code(),
                                         )
                                     },
                                 )
@@ -1358,7 +1358,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
                 let lookup =
                     base.lookup_with_error(self.i_s, node_ref, name.as_str(), &|i_s, t| {
-                        add_attribute_error(i_s, node_ref, &base, t, name)
+                        add_attribute_error(i_s, node_ref, &base, t, name.as_code())
                     });
                 match &lookup {
                     LookupResult::GotoName(link, inferred) => {
@@ -1573,7 +1573,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         .save_redirect(self.i_s, self.file, primary_target.index())
     }
 
-    fn infer_primary_target_or_atom(&mut self, t: PrimaryTargetOrAtom) -> Inferred {
+    pub fn infer_primary_target_or_atom(&mut self, t: PrimaryTargetOrAtom) -> Inferred {
         match t {
             PrimaryTargetOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
             PrimaryTargetOrAtom::PrimaryTarget(p) => self.infer_primary_target(p),
@@ -1968,19 +1968,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     }
 }
 
-fn add_attribute_error<'db>(
+pub fn add_attribute_error<'db>(
     i_s: &InferenceState<'db, '_>,
     node_ref: NodeRef,
     full_type: &Type,
     t: &Type,
-    name: Name,
+    name: &str,
 ) {
     let object = if matches!(t.as_ref(), DbType::Module(_)) {
         Box::from("Module")
     } else {
         format!("{:?}", t.format_short(i_s.db)).into()
     };
-    let name = Box::from(name.as_str());
+    let name = Box::from(name);
     node_ref.add_typing_issue(
         i_s,
         match full_type.is_union() {

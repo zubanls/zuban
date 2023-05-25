@@ -1903,7 +1903,6 @@ testNewNamedTupleWithMethods
 
 # del statement
 testIndexedDel
-testDelStmtWithIndex
 testDelStmtWithAttribute
 testDelStatementWithTuple
 testDelStmtWithTypeInfo

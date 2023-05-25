@@ -8,12 +8,15 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::Inference;
+use crate::getitem::SliceType;
 use crate::matching::{
     matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function};
+
+use super::inference::add_attribute_error;
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -566,7 +569,24 @@ impl<'db> Inference<'db, '_, '_> {
                 // TODO this should still be implemented
                 //self.infer_single_target(target);
             }
-            Target::IndexExpression(t) => debug!("TODO del foo[0]"),
+            Target::IndexExpression(primary_target) => {
+                let base = self.infer_primary_target_or_atom(primary_target.first());
+                let PrimaryContent::GetItem(s) = primary_target.second() else {
+                    unreachable!()
+                };
+                let slice_type = SliceType::new(self.file, primary_target.index(), s);
+                let i_s = self.i_s;
+                let node_ref = slice_type.as_node_ref();
+                base.lookup_and_execute(
+                    i_s,
+                    node_ref,
+                    "__delitem__",
+                    &slice_type.as_args(*i_s),
+                    &|_, t| {
+                        add_attribute_error(i_s, node_ref, &base.as_type(i_s), t, "__delitem__")
+                    },
+                );
+            }
             Target::Tuple(targets) => {
                 for target in targets {
                     self.calc_del_stmt_diagnostics(target)
