@@ -8,7 +8,7 @@ use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArg
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, GenericItem,
     GenericsList, Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType,
-    Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
+    Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -117,45 +117,20 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             },
             StmtContent::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {
-                    fn instantiate(t: &DbType) -> DbType {
-                        match t {
-                            // No need to check these here, this is done when calculating diagnostics
-                            DbType::Type(t) => match t.as_ref() {
-                                DbType::Class(link, generics) => {
-                                    DbType::Class(*link, generics.clone())
-                                }
-                                _ => todo!(),
-                            },
-                            DbType::Any => DbType::Any,
-                            _ => todo!("{t:?}"),
-                        }
-                    }
                     if let TryBlockType::Except(except_clause) = block {
                         if let (Some(expr), Some(name_def), _) = except_clause.unpack() {
                             let inf = self.infer_expression(expr);
-                            let new = match inf.as_type(self.i_s).as_ref() {
-                                DbType::Tuple(content) => {
-                                    Inferred::gather_types_union(|add| match &content.args {
-                                        Some(TupleTypeArguments::FixedLength(ts)) => {
-                                            for t in ts.iter() {
-                                                match t {
-                                                    TypeOrTypeVarTuple::Type(t) => add(
-                                                        self.i_s,
-                                                        Inferred::from_type(instantiate(t)),
-                                                    ),
-                                                    TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
-                                                }
-                                            }
-                                        }
-                                        Some(TupleTypeArguments::ArbitraryLength(t)) => {
-                                            add(self.i_s, Inferred::from_type(instantiate(t)))
-                                        }
-                                        _ => todo!(),
-                                    })
-                                }
-                                t => Inferred::from_type(instantiate(t)),
-                            };
-                            new.maybe_save_redirect(self.i_s, self.file, name_def.index(), true);
+                            Inferred::from_type(instantiate_except(
+                                self.i_s,
+                                inf.as_type(self.i_s).as_ref(),
+                                true,
+                            ))
+                            .maybe_save_redirect(
+                                self.i_s,
+                                self.file,
+                                name_def.index(),
+                                true,
+                            );
                         }
                     }
                 }
@@ -1957,5 +1932,45 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let (expr, for_if_clauses) = comprehension.unpack();
         let clauses = for_if_clauses.iter();
         todo!()
+    }
+}
+
+fn instantiate_except(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> DbType {
+    match t {
+        // No need to check these here, this is done when calculating diagnostics
+        DbType::Type(t) => match t.as_ref() {
+            DbType::Class(link, generics) => DbType::Class(*link, generics.clone()),
+            _ => todo!(),
+        },
+        DbType::Any => DbType::Any,
+        DbType::Tuple(content) => Inferred::gather_types_union(|add| match &content.args {
+            Some(TupleTypeArguments::FixedLength(ts)) => {
+                for t in ts.iter() {
+                    match t {
+                        TypeOrTypeVarTuple::Type(t) => {
+                            add(i_s, Inferred::from_type(instantiate_except(i_s, t, false)))
+                        }
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+                    }
+                }
+            }
+            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                add(i_s, Inferred::from_type(instantiate_except(i_s, t, false)))
+            }
+            _ => todo!(),
+        })
+        .as_type(i_s)
+        .into_db_type(),
+        DbType::Union(union) => DbType::Union(UnionType::new(
+            union
+                .entries
+                .iter()
+                .map(|e| UnionEntry {
+                    type_: instantiate_except(i_s, &e.type_, allow_tuple),
+                    format_index: e.format_index,
+                })
+                .collect(),
+        )),
+        _ => todo!("{t:?}"),
     }
 }
