@@ -1577,6 +1577,16 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 "{:?}",
                 name
             );
+            if let Some(inf) = Type::owned(self.i_s.db.python_state.module_db_type())
+                .lookup_without_error(
+                    self.i_s,
+                    Some(NodeRef::new(self.file, name.index())),
+                    name.as_code(),
+                )
+                .into_maybe_inferred()
+            {
+                return inf.save_redirect(self.i_s, self.file, name.index());
+            }
             // TODO check star imports
             NodeRef::new(self.file, name.index()).add_typing_issue(
                 self.i_s,
