@@ -46,14 +46,9 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::YieldExpr(x) => {}
                 SimpleStmtContent::RaiseStmt(raise_stmt) => {
                     if let Some((expr, from_expr)) = raise_stmt.unpack() {
-                        if !valid_raise_type(
-                            self.i_s.db,
-                            self.infer_expression(expr).as_type(self.i_s),
-                        ) {
-                            NodeRef::new(self.file, expr.index()).add_typing_issue(
-                                self.i_s,
-                                IssueType::BaseExceptionExpectedForRaise,
-                            );
+                        self.check_valid_raise_type(expr, false);
+                        if let Some(from_expr) = from_expr {
+                            self.check_valid_raise_type(from_expr, true)
                         }
                     }
                 }
@@ -83,6 +78,17 @@ impl<'db> Inference<'db, '_, '_> {
                     self.calc_del_stmt_diagnostics(d.target());
                 }
             }
+        }
+    }
+
+    fn check_valid_raise_type(&mut self, expr: Expression, allow_none: bool) {
+        if !valid_raise_type(
+            self.i_s.db,
+            self.infer_expression(expr).as_type(self.i_s),
+            allow_none,
+        ) {
+            NodeRef::new(self.file, expr.index())
+                .add_typing_issue(self.i_s, IssueType::BaseExceptionExpectedForRaise);
         }
     }
 
@@ -567,7 +573,7 @@ impl<'db> Inference<'db, '_, '_> {
     }
 }
 
-fn valid_raise_type(db: &Database, t: Type) -> bool {
+fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
     let check = |link, generics| {
         let cls = Class::from_db_type(db, link, generics);
         cls.incomplete_mro(db) || cls.in_mro(db, &db.python_state.base_exception())
@@ -580,7 +586,10 @@ fn valid_raise_type(db: &Database, t: Type) -> bool {
         },
         DbType::Any => true,
         DbType::Never => todo!(),
-        DbType::Union(union) => union.iter().all(|t| valid_raise_type(db, Type::new(t))),
+        DbType::Union(union) => union
+            .iter()
+            .all(|t| valid_raise_type(db, Type::new(t), allow_none)),
+        DbType::None if allow_none => true,
         _ => false,
     }
 }

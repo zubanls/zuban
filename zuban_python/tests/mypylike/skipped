@@ -11,9 +11,6 @@ testNamedTupleSelfTypeWithNamedTupleAsBase
 
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
-# raise from: Exception must be derived from BaseException
-testRaiseFromStatement
-testRaiseFromClassobject
 # tuple assignment tuple[Any, ...] to tuple[A, A]
 testSubtypingWithNamedTupleType
 
@@ -1929,6 +1926,7 @@ testExceptWithAnyTypes
 # "Trying to read deleted variable "e"
 testReuseTryExceptionVariable
 testReuseDefinedTryExceptionVariable
+testRaiseFromStatement
 
 # With statement
 testWithStmtAndInvalidExit
