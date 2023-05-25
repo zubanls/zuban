@@ -16,7 +16,7 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import};
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
-use crate::matching::{FormatData, Generics, LookupResult, OnTypeError, ResultContext, Type};
+use crate::matching::{FormatData, Generics, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, Instance, Module};
 use crate::utils::debug_indent;
@@ -1326,25 +1326,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                let lookup = base.lookup_with_error(self.i_s, node_ref, name.as_str());
-                match &lookup {
-                    LookupResult::GotoName(link, inferred) => {
-                        // TODO this is not correct, because there can be multiple runs, so setting
-                        // it here can be overwritten.
-                        self.file.points.set(
-                            name.index(),
-                            Point::new_redirect(link.file, link.node_index, Locality::Todo),
-                        );
-                    }
-                    LookupResult::FileReference(file_index) => {
-                        self.file.points.set(
-                            name.index(),
-                            Point::new_file_reference(*file_index, Locality::Todo),
-                        );
-                    }
-                    LookupResult::UnknownName(_) | LookupResult::None => (),
-                };
-                lookup.into_inferred()
+                base.lookup_with_error(self.i_s, node_ref, name.as_str())
+                    .save_name(self.i_s, self.file, name)
+                    .unwrap_or_else(Inferred::new_unknown)
             }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -1583,9 +1567,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Some(NodeRef::new(self.file, name.index())),
                     name.as_code(),
                 )
-                .into_maybe_inferred()
+                .save_name(self.i_s, self.file, name)
             {
-                return inf.save_redirect(self.i_s, self.file, name.index());
+                return inf;
             }
             // TODO check star imports
             NodeRef::new(self.file, name.index()).add_typing_issue(

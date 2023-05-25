@@ -1,4 +1,7 @@
-use crate::database::{FileIndex, PointLink};
+use parsa_python_ast::Name;
+
+use crate::database::{FileIndex, Locality, Point, PointLink};
+use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
@@ -38,6 +41,32 @@ impl LookupResult {
             },
             None => other,
         }
+    }
+
+    pub fn save_name(
+        self,
+        i_s: &InferenceState,
+        file: &PythonFile,
+        name: Name,
+    ) -> Option<Inferred> {
+        match &self {
+            LookupResult::GotoName(link, inferred) => {
+                // TODO this is not correct, because there can be multiple runs, so setting
+                // it here can be overwritten.
+                file.points.set(
+                    name.index(),
+                    Point::new_redirect(link.file, link.node_index, Locality::Todo),
+                );
+            }
+            LookupResult::FileReference(file_index) => {
+                file.points.set(
+                    name.index(),
+                    Point::new_file_reference(*file_index, Locality::Todo),
+                );
+            }
+            LookupResult::UnknownName(_) | LookupResult::None => (),
+        };
+        self.into_maybe_inferred()
     }
 
     /*
