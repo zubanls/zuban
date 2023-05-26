@@ -179,8 +179,6 @@ testMetaclassMemberAccessViaType3
 # Bound with Union: Item "{}" of the upper bound "{}" of type variable "{}" has no attribute "{}"
 testTypeVarBoundToOldUnionAttributeAccess
 testTypeVarBoundToNewUnionAttributeAccess
-testUnboundedTypevarUnpacking
-# Tuple Bound with iter unpacking
 testIterableBoundUnpacking
 # Bound not respected
 testLiteralAndGenericsRespectsUpperBound
