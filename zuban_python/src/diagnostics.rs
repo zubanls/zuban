@@ -12,6 +12,7 @@ use crate::node_ref::NodeRef;
 pub(crate) enum IssueType {
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
+    UnionAttributeErrorOfUpperBound(Box<str>),
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
@@ -201,6 +202,7 @@ impl<'db> Diagnostic<'db> {
         let error = match &self.issue.type_ {
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),
+            UnionAttributeErrorOfUpperBound(s) => s.to_string(),
             ImportAttributeError{module_name, name} => {
                 format!("Module {module_name:?} has no attribute {name:?}")
             }

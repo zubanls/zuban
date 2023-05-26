@@ -176,11 +176,8 @@ testOverlappingClassCallables
 testTypeEquivalentTypeAnyEdgeCase
 testMetaclassMemberAccessViaType3
 
-# Bound with Union: Item "{}" of the upper bound "{}" of type variable "{}" has no attribute "{}"
-testTypeVarBoundToOldUnionAttributeAccess
-testTypeVarBoundToNewUnionAttributeAccess
-testIterableBoundUnpacking
 # Bound not respected
+testIterableBoundUnpacking
 testLiteralAndGenericsRespectsUpperBound
 testWideOuterContextEmptyError
 # Value of type variable "P" of "new_pro" cannot be "U"

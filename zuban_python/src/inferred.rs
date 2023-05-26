@@ -1620,6 +1620,21 @@ pub fn add_attribute_error<'db>(
         format!("{:?}", t.format_short(i_s.db)).into()
     };
     let name = Box::from(name);
+    if let DbType::TypeVar(usage) = full_type.as_ref() {
+        if let Some(bound) = &usage.type_var.bound {
+            if Type::new(bound).is_union() {
+                let bound = bound.format_short(i_s.db);
+                let type_var_name = usage.type_var.name(i_s.db);
+                node_ref.add_typing_issue(
+                    i_s,
+                    IssueType::UnionAttributeErrorOfUpperBound(format!(
+                        r#"Item {object} of the upper bound "{bound}" of type variable "{type_var_name}" has no attribute "{name}""#
+                    ).into())
+                );
+                return;
+            }
+        }
+    }
     node_ref.add_typing_issue(
         i_s,
         match full_type.is_union() {
