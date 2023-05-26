@@ -2735,12 +2735,22 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             TypeComputationOrigin::Constraint,
         );
         let t = comp.compute_type(expr);
-        if matches!(t, TypeContent::InvalidVariable(_)) {
-            // TODO this is a bit weird and should probably generate other errors
-            node_ref.add_typing_issue(comp.inference.i_s, IssueType::TypeVarTypeExpected);
-            return None;
+        match t {
+            TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
+                invalid.add_issue(
+                    comp.inference.i_s.db,
+                    |t| node_ref.add_typing_issue(comp.inference.i_s, t),
+                    comp.origin,
+                );
+                None
+            }
+            TypeContent::InvalidVariable(_) => {
+                // TODO this is a bit weird and should probably generate other errors
+                node_ref.add_typing_issue(comp.inference.i_s, IssueType::TypeVarTypeExpected);
+                None
+            }
+            _ => Some(comp.as_db_type(t, node_ref)),
         }
-        Some(comp.as_db_type(t, node_ref))
     }
 
     pub fn compute_new_type_constraint(&mut self, expr: Expression) -> DbType {

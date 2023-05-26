@@ -101,6 +101,7 @@ pub(crate) enum IssueType {
     InvalidStmtInNamedTuple,
     InvalidSecondArgumentToNamedTuple { name: &'static str },
     UnexpectedArgumentsTo { name: &'static str },
+    UnexpectedArgumentTo { name: &'static str },
     TupleExpectedAsNamedTupleField,
     NamedTupleNamesCannotStartWithUnderscore { name: &'static str, field_names: Box<str> },
     NamedTupleInvalidFieldName,
@@ -441,6 +442,8 @@ impl<'db> Diagnostic<'db> {
                 format!("List or tuple literal expected as the second argument to \"{name}()\""),
             UnexpectedArgumentsTo{name} =>
                 format!("Unexpected arguments to \"{name}()\""),
+            UnexpectedArgumentTo{name} =>
+                format!("Unexpected argument to \"{name}()\""),
             TupleExpectedAsNamedTupleField => "Tuple expected as \"NamedTuple()\" field".to_string(),
             NamedTupleNamesCannotStartWithUnderscore{name, field_names} => format!(
                 "\"{name}()\" field names cannot start with an underscore: {field_names}"),

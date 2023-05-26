@@ -360,7 +360,10 @@ fn maybe_type_var(
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::Overridden { .. }
-                | ArgumentKind::ParamSpec { .. } => unreachable!(),
+                | ArgumentKind::ParamSpec { .. } => {
+                    arg.as_node_ref()
+                        .add_typing_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" });
+                }
             }
         }
         if restrictions.len() == 1 {

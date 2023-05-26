@@ -183,9 +183,6 @@ testWideOuterContextEmptyError
 testTypeUsingTypeCTwoTypeVars
 testOverloadedCallWithVariableTypes
 
-# *args on TypeVar
-testInvalidTypevarValues
-
 # Tuple type var context
 testTupleContextFromIterable
 testComplexTypeInferenceWithTuple
