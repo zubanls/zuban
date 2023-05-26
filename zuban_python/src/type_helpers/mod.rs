@@ -17,8 +17,8 @@ pub use module::Module;
 pub use named_tuple::NamedTupleValue;
 pub use tuple::Tuple;
 pub use typing::{
-    NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarInstance,
-    TypeVarTupleClass, TypingCast, TypingClass, TypingType,
+    NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarTupleClass, TypingCast,
+    TypingClass, TypingType,
 };
 
 #[macro_export]

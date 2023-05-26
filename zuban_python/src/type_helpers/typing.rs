@@ -1,11 +1,11 @@
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Class, Instance};
+use super::Class;
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
-    TypeVarLike, TypeVarName, TypeVarTuple, TypeVarUsage, Variance,
+    TypeVarLike, TypeVarName, TypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -204,73 +204,6 @@ impl RevealTypeFunction {
             todo!()
         }
         inferred
-    }
-}
-
-pub struct TypeVarInstance<'a> {
-    db: &'a Database,
-    db_type: &'a DbType,
-    type_var_usage: &'a TypeVarUsage,
-}
-
-impl<'a> TypeVarInstance<'a> {
-    pub fn new(db: &'a Database, db_type: &'a DbType, type_var_usage: &'a TypeVarUsage) -> Self {
-        Self {
-            db,
-            db_type,
-            type_var_usage,
-        }
-    }
-
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        let type_var = &self.type_var_usage.type_var;
-        if !type_var.restrictions.is_empty() {
-            debug!("TODO type var values");
-            /*
-            for db_type in self.type_var_usage.type_var.restrictions.iter() {
-                return match db_type {
-                    DbType::Class(link) => Instance::new(
-                        Class::(NodeRef::from_link(i_s.db, *link), Generics::NotDefinedYet, None)
-                            .unwrap(),
-                        &Inferred::from_type(DbType::Class(*link, None)),
-                    )
-                    .lookup(i_s, name),
-                    _ => todo!("{:?}", db_type),
-                }
-            }
-            */
-        }
-        if let Some(db_type) = &type_var.bound {
-            let result = Type::new(db_type).lookup_without_error(i_s, node_ref, name);
-            if matches!(result, LookupResult::None) {
-                debug!(
-                    "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                    db_type.format_short(i_s.db),
-                    Type::new(db_type).format_short(i_s.db),
-                    self.type_var_usage.type_var.name(self.db),
-                    name,
-                );
-            }
-            result
-        } else {
-            let s = &i_s.db.python_state;
-            // TODO it's kind of stupid that we recreate an instance object here all the time, we
-            // should just use a precreated object() from somewhere.
-            Instance::new(s.object_class(), None).lookup(i_s, node_ref, name)
-        }
-    }
-}
-
-impl fmt::Debug for TypeVarInstance<'_> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        f.debug_struct("TypeVarInstance")
-            .field("db_type", &self.db_type)
-            .finish()
     }
 }
 

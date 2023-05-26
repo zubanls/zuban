@@ -23,8 +23,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeOrClass,
-    TypeVarInstance, TypingType,
+    Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeOrClass, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -2043,10 +2042,48 @@ impl<'a> Type<'a> {
                 let t = i_s.db.python_state.literal_type(literal.kind);
                 callable(self, t.lookup_without_error(i_s, from, name))
             }
-            t @ DbType::TypeVar(tv) => callable(
-                self,
-                TypeVarInstance::new(i_s.db, t, tv).lookup(i_s, from, name),
-            ),
+            t @ DbType::TypeVar(tv) => {
+                if !tv.type_var.restrictions.is_empty() {
+                    debug!("TODO type var values");
+                    /*
+                    for db_type in self.type_var_usage.type_var.restrictions.iter() {
+                        return match db_type {
+                            DbType::Class(link) => Instance::new(
+                                Class::(NodeRef::from_link(i_s.db, *link), Generics::NotDefinedYet, None)
+                                    .unwrap(),
+                                &Inferred::from_type(DbType::Class(*link, None)),
+                            )
+                            .lookup(i_s, name),
+                            _ => todo!("{:?}", db_type),
+                        }
+                    }
+                    */
+                }
+                if let Some(t) = &tv.type_var.bound {
+                    Type::new(t)
+                        .run_after_lookup_on_each_union_member(i_s, None, from, name, callable);
+                    /*
+                    if matches!(result, LookupResult::None) {
+                        debug!(
+                            "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
+                            db_type.format_short(i_s.db),
+                            Type::new(db_type).format_short(i_s.db),
+                            tv.type_var.name(i_s.db),
+                            name,
+                        );
+                    }
+                    result
+                    */
+                } else {
+                    let s = &i_s.db.python_state;
+                    // TODO it's kind of stupid that we recreate an instance object here all the time, we
+                    // should just use a precreated object() from somewhere.
+                    callable(
+                        self,
+                        Instance::new(s.object_class(), None).lookup(i_s, from, name),
+                    )
+                }
+            }
             DbType::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
