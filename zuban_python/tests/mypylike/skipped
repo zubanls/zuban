@@ -87,8 +87,6 @@ testTypeCheckNamedModule
 testTypeCheckNamedModule2
 testTypeCheckNamedModule3
 testInferOptionalFromDefaultNone
-# __contains__ on None (no-strict-optional)
-testOptionalIterator
 
 # In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
@@ -2273,6 +2271,9 @@ testRefreshOptions
 testCaseInsensitivityDir
 testPreferPackageOverFileCase
 testClassicPackageInsideNamespacePackageCase
+
+# Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
+testOptionalIterator
 
 # strict optional with config file
 testNewAnalyzerTypeArgBoundCheckWithStrictOptional
