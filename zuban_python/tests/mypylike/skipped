@@ -177,7 +177,6 @@ testTypeEquivalentTypeAnyEdgeCase
 testMetaclassMemberAccessViaType3
 
 # Bound not respected
-testIterableBoundUnpacking
 testLiteralAndGenericsRespectsUpperBound
 testWideOuterContextEmptyError
 # Value of type variable "P" of "new_pro" cannot be "U"

@@ -1881,6 +1881,9 @@ impl<'a> Type<'a> {
                 }
                 IteratorContent::Union(items)
             }
+            Some(DbType::TypeVar(tv)) if tv.type_var.bound.is_some() => {
+                Type::new(tv.type_var.bound.as_ref().unwrap()).iter_on_borrowed(i_s, from)
+            }
             Some(DbType::NewType(n)) => Type::new(n.type_(i_s)).iter_on_borrowed(i_s, from),
             Some(DbType::Self_) => todo!(), //Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => {
