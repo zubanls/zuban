@@ -169,7 +169,6 @@ testNewAnalyzerMemberNameMatchesNamedTuple
 # Module attributes
 testModuleImplicitAttributes
 # Function attributes
-testInvalidRvalueTypeInInferredMultipleLvarDefinition
 testOverlappingClassCallables
 # type attributes
 testTypeEquivalentTypeAnyEdgeCase
