@@ -171,10 +171,6 @@ testModuleImplicitAttributes
 # Function attributes
 testInvalidRvalueTypeInInferredMultipleLvarDefinition
 testOverlappingClassCallables
-# None attributes
-testNoneHasBool
-testEqNone
-testInferEqualsStillOptionalWithBothOptional
 # type attributes
 testTypeEquivalentTypeAnyEdgeCase
 testMetaclassMemberAccessViaType3

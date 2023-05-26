@@ -78,6 +78,7 @@ pub struct PythonState {
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
     types_module_type_index: NodeIndex,
+    types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
@@ -118,6 +119,7 @@ impl PythonState {
             builtins_memoryview_index: 0,
             builtins_slice_index: 0,
             types_module_type_index: 0,
+            types_none_type_index: 0,
             typing_mapping_index: 0,
             typing_namedtuple_index: 0,
             typing_type_var: 0,
@@ -236,6 +238,7 @@ impl PythonState {
         cache_index!(typing_namedtuple_index, db, typing, "NamedTuple");
         cache_index!(typing_type_var, db, typing, "TypeVar");
         cache_index!(types_module_type_index, db, types, "ModuleType");
+        cache_index!(types_none_type_index, db, types, "NoneType");
 
         db.python_state.collections_namedtuple_index = db
             .python_state
@@ -356,6 +359,19 @@ impl PythonState {
             ),
             ClassGenerics::None,
         )
+    }
+
+    #[inline]
+    fn none_type_node_ref(&self) -> NodeRef {
+        debug_assert!(self.types_none_type_index != 0);
+        NodeRef::new(self.types(), self.types_none_type_index)
+    }
+
+    pub fn none_type(&self) -> Type {
+        Type::owned(DbType::Class(
+            self.none_type_node_ref().as_link(),
+            ClassGenerics::None,
+        ))
     }
 
     #[inline]

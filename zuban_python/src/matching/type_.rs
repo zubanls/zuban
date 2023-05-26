@@ -2032,10 +2032,13 @@ impl<'a> Type<'a> {
                 )
             }
             DbType::Any => callable(self, LookupResult::any()),
-            DbType::None => {
-                debug!("TODO None lookup");
-                callable(self, LookupResult::None)
-            }
+            DbType::None => callable(
+                self,
+                i_s.db
+                    .python_state
+                    .none_type()
+                    .lookup_without_error(i_s, from, name),
+            ),
             DbType::Literal(literal) => {
                 let t = i_s.db.python_state.literal_type(literal.kind);
                 callable(self, t.lookup_without_error(i_s, from, name))
