@@ -139,8 +139,10 @@ testUnificationDictWithEmptyListLeft
 testUnificationDictWithEmptyListRight
 testMisguidedSetItem
 testOperatorWithEmptyListAndSum
+testOrOperationWithGenericOperands
+testOrOperationInferredFromContext
 
-# Union Not matching type vars
+# Union not matching type vars (None | Any and int | None leads to None | Any)
 testJoinUnionWithUnionAndAny
 testNoComplainInferredNoneStrict
 
@@ -173,10 +175,6 @@ testOverlappingClassCallables
 # type attributes
 testTypeEquivalentTypeAnyEdgeCase
 testMetaclassMemberAccessViaType3
-
-# boolean operators
-testOrOperationWithGenericOperands
-testOrOperationInferredFromContext
 
 # Bound with Union: Item "{}" of the upper bound "{}" of type variable "{}" has no attribute "{}"
 testTypeVarBoundToOldUnionAttributeAccess
