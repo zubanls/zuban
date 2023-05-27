@@ -668,7 +668,10 @@ testParamSpecLiteralsTypeApplication
 # Param Spec lambda type inference
 testParamSpecInferredFromLambda
 
+# Random protocol things
 testRefreshTyping
+testProtocolToNonProtocol
+testTupleIterable
 # NewType with Protocol
 testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNoCrashForwardRefToBrokenDoubleNewType

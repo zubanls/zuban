@@ -494,19 +494,27 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn check_protocol_match(&self, i_s: &InferenceState<'db, '_>, other: Self) -> bool {
-        for c in self.mro(i_s.db) {
-            let symbol_table = &self.class_storage.class_symbol_table;
+    pub fn check_protocol_match(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        other: Self,
+        variance: Variance,
+    ) -> bool {
+        for (mro_index, c) in self.mro(i_s.db) {
+            let TypeOrClass::Class(c) = c else {
+                todo!()
+            };
+            let symbol_table = &c.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 if let Some(l) = other.lookup(i_s, None, class_name).into_maybe_inferred() {
-                    let m = self
+                    let m = c
                         .lookup(i_s, None, class_name)
                         .into_inferred()
                         .as_type(i_s)
-                        .simple_matches(i_s, &l.as_type(i_s), Variance::Invariant);
+                        .simple_matches(i_s, &l.as_type(i_s), variance);
                     dbg!(
                         l.as_type(i_s).format_short(i_s.db),
-                        self.lookup(i_s, None, class_name)
+                        c.lookup(i_s, None, class_name)
                             .into_inferred()
                             .as_type(i_s)
                             .format_short(i_s.db)
