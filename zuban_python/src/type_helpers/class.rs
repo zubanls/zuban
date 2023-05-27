@@ -500,7 +500,7 @@ impl<'db: 'a, 'a> Class<'a> {
         other: Self,
         variance: Variance,
     ) -> bool {
-        for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, true) {
+        for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 todo!()
             };
@@ -552,7 +552,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
     ) -> (LookupResult, Option<Class>) {
-        for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, self.incomplete_mro(i_s.db)) {
+        for (mro_index, c) in self.mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db)) {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let TypeOrClass::Class(c) = c {
@@ -616,10 +616,10 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn mro_with_incomplete_mro(
+    fn mro_maybe_without_object(
         &self,
         db: &'db Database,
-        incomplete_mro: bool,
+        without_object: bool,
     ) -> MroIterator<'db, 'a> {
         let class_infos = self.use_cached_class_infos(db);
         MroIterator::new(
@@ -627,12 +627,12 @@ impl<'db: 'a, 'a> Class<'a> {
             TypeOrClass::Class(*self),
             self.generics,
             class_infos.mro.iter(),
-            incomplete_mro || self.node_ref == db.python_state.object_node_ref(),
+            without_object || self.node_ref == db.python_state.object_node_ref(),
         )
     }
 
     pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
-        self.mro_with_incomplete_mro(db, self.node_ref == db.python_state.object_node_ref())
+        self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
     }
 
     pub fn in_mro(&self, db: &'db Database, t: &DbType) -> bool {
