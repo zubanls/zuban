@@ -668,6 +668,16 @@ testParamSpecLiteralsTypeApplication
 # Param Spec lambda type inference
 testParamSpecInferredFromLambda
 
+# NewType with Protocol
+testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
+testNoCrashForwardRefToBrokenDoubleNewType
+testNoCrashForwardRefToBrokenDoubleNewTypeClass
+# iterable matching of [] 
+testDictFromIterableAndKeywordArg3
+# Namedtuple issues with protocols
+testNamedTupleWithInvalidItems
+testNamedTupleWithInvalidItems2
+testNamedTupleNoBytes
 # Protocol
 testProtocolUpdateTypeInVariable
 testProtocolUpdateTypeInFunction

@@ -843,7 +843,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let file = i_s.db.loaded_python_file(definition.file);
                         match file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(o) => {
-                                todo!()
+                                debug!("TODO function overload class descriptor");
                             }
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => {

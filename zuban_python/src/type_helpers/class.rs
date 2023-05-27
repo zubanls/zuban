@@ -13,7 +13,7 @@ use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos, ClassStorage,
     ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality, MetaclassState,
     MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -495,10 +495,21 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn check_protocol_match(&self, i_s: &InferenceState<'db, '_>, other: Self) -> bool {
-        for c in self.use_cached_class_infos(i_s.db).mro.iter() {
+        for c in self.mro(i_s.db) {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 if let Some(l) = other.lookup(i_s, None, class_name).into_maybe_inferred() {
+                    /*
+                    let m = self.lookup(i_s, None, class_name).into_inferred().as_type(i_s).simple_matches(
+                        i_s,
+                        &l.as_type(i_s),
+                        Variance::Invariant
+                    );
+                    dbg!(l.as_type(i_s), self.lookup(i_s, None, class_name).into_inferred().as_type(i_s));
+                    if !m.bool() {
+                        return false
+                    }
+                    */
                     // TODO check signature details here!
                 } else {
                     return false;

@@ -1338,6 +1338,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 match_signature(i_s, result_context, function);
                                 todo!("Add a test")
                             }
+                            debug!(
+                                "Decided overload with any for {} (called on #{}): {:?}",
+                                self.name(),
+                                args.as_node_ref().line(),
+                                function.node().short_debug()
+                            );
+                            args.reset_cache();
                             return OverloadResult::NotFound;
                         }
                     } else {
@@ -1358,6 +1365,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             args.reset_cache();
         }
         if let Some((type_arguments, function, _)) = multi_any_match {
+            debug!(
+                "Decided overload with any fallback for {} (called on #{}): {:?}",
+                self.name(),
+                args.as_node_ref().line(),
+                function.node().short_debug()
+            );
             return OverloadResult::Single(function);
         }
         if let Some((type_arguments, function)) = first_arbitrary_length_not_handled {
