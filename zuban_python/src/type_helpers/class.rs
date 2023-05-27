@@ -499,18 +499,21 @@ impl<'db: 'a, 'a> Class<'a> {
             let symbol_table = &self.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 if let Some(l) = other.lookup(i_s, None, class_name).into_maybe_inferred() {
-                    /*
-                    let m = self.lookup(i_s, None, class_name).into_inferred().as_type(i_s).simple_matches(
-                        i_s,
-                        &l.as_type(i_s),
-                        Variance::Invariant
+                    let m = self
+                        .lookup(i_s, None, class_name)
+                        .into_inferred()
+                        .as_type(i_s)
+                        .simple_matches(i_s, &l.as_type(i_s), Variance::Invariant);
+                    dbg!(
+                        l.as_type(i_s).format_short(i_s.db),
+                        self.lookup(i_s, None, class_name)
+                            .into_inferred()
+                            .as_type(i_s)
+                            .format_short(i_s.db)
                     );
-                    dbg!(l.as_type(i_s), self.lookup(i_s, None, class_name).into_inferred().as_type(i_s));
                     if !m.bool() {
-                        return false
+                        return false;
                     }
-                    */
-                    // TODO check signature details here!
                 } else {
                     return false;
                 }

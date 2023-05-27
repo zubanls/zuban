@@ -668,6 +668,7 @@ testParamSpecLiteralsTypeApplication
 # Param Spec lambda type inference
 testParamSpecInferredFromLambda
 
+testRefreshTyping
 # NewType with Protocol
 testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNoCrashForwardRefToBrokenDoubleNewType
