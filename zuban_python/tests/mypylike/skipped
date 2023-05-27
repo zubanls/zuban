@@ -670,7 +670,6 @@ testParamSpecInferredFromLambda
 
 # Random protocol things
 testRefreshTyping
-testProtocolToNonProtocol
 testTupleIterable
 # NewType with Protocol
 testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass

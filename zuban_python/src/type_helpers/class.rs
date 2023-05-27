@@ -500,7 +500,7 @@ impl<'db: 'a, 'a> Class<'a> {
         other: Self,
         variance: Variance,
     ) -> bool {
-        for (mro_index, c) in self.mro(i_s.db) {
+        for (mro_index, c) in self.mro_with_incomplete_mro(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 todo!()
             };
@@ -616,7 +616,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn mro_with_incomplete_mro(
+    fn mro_with_incomplete_mro(
         &self,
         db: &'db Database,
         incomplete_mro: bool,
