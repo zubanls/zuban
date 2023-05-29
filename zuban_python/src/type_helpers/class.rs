@@ -547,8 +547,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
+        const MAX_MISSING_MEMBERS: usize = 2;
         if !missing_members.is_empty() {
-            if protocol_member_count > 1 {
+            if protocol_member_count > 1 && missing_members.len() <= MAX_MISSING_MEMBERS {
                 notes.push(
                     format!(
                         r#""{}" is missing following "{}" protocol member:"#,

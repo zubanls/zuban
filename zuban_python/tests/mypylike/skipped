@@ -695,8 +695,6 @@ testBuiltinClassMethod
 testDivmod
 testSubtypingTupleIsSized
 
-testGenericClassMethodAnnotationDecorator
-
 # TypeVarTuple
 testTypeVarTupleMixed
 testTypeVarTupleChaining
