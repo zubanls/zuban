@@ -33,7 +33,7 @@ impl SignatureMatch {
     }
 }
 
-#[derive(Clone, Debug)]
+#[derive(Debug)]
 pub enum Match {
     False {
         similar: bool,

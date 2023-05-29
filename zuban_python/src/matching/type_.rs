@@ -988,7 +988,7 @@ impl<'a> Type<'a> {
             }
             debug!(
                 "Mismatch between {input:?} and {wanted:?} -> {:?}",
-                matches.clone()
+                &matches
             );
             if let Some(callback) = callback {
                 let node_ref = callback(i_s, input, wanted, reason);
