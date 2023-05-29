@@ -539,7 +539,21 @@ impl<'db: 'a, 'a> Class<'a> {
                         };
                     }
                 } else {
-                    return Match::new_false();
+                    notes.push(
+                        format!(
+                            r#""{}" is missing following "{}" protocol member:"#,
+                            other.class.format_short(i_s.db),
+                            self.format_short(i_s.db)
+                        )
+                        .into(),
+                    );
+                    notes.push(format!("    {name}").into());
+                    return Match::False {
+                        similar: false,
+                        reason: MismatchReason::ProtocolMismatches {
+                            notes: notes.into_boxed_slice(),
+                        },
+                    };
                 }
             }
         }
