@@ -26,7 +26,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
-    Generics, LookupResult, Match, OnTypeError, ResultContext, Type,
+    Generics, LookupResult, Match, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::{base_qualified_name, debug};
@@ -499,29 +499,51 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         other: Self,
         variance: Variance,
-    ) -> bool {
+    ) -> Match {
         let other = Instance::new(other, None);
+        let mut notes = vec![];
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 todo!()
             };
             let symbol_table = &c.class_storage.class_symbol_table;
-            for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
-                if let Some(l) = other.lookup(i_s, None, class_name).into_maybe_inferred() {
-                    let m = Instance::new(c, None)
-                        .lookup(i_s, None, class_name)
-                        .into_inferred()
-                        .as_type(i_s)
-                        .simple_matches(i_s, &l.as_type(i_s), variance);
+            for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
+                if let Some(l) = other.lookup(i_s, None, name).into_maybe_inferred() {
+                    let inf1 = Instance::new(c, None)
+                        .lookup(i_s, None, name)
+                        .into_inferred();
+                    let t1 = inf1.as_type(i_s);
+                    let t2 = l.as_type(i_s);
+                    let m = t1.simple_matches(i_s, &t2, variance);
                     if !m.bool() {
-                        return false;
+                        notes.push(
+                            format!(
+                                "Following member(s) of \"{}\" have conflicts:",
+                                other.class.format_short(i_s.db)
+                            )
+                            .into(),
+                        );
+                        notes.push(
+                            format!(
+                                r#"    {name}: expected "{}", got "{}""#,
+                                t1.format_short(i_s.db),
+                                t2.format_short(i_s.db)
+                            )
+                            .into(),
+                        );
+                        return Match::False {
+                            similar: false,
+                            reason: MismatchReason::ProtocolMismatches {
+                                notes: notes.into_boxed_slice(),
+                            },
+                        };
                     }
                 } else {
-                    return false;
+                    return Match::new_false();
                 }
             }
         }
-        true
+        Match::new_true()
     }
 
     pub fn lookup_symbol(&self, i_s: &InferenceState<'db, '_>, name: &str) -> LookupResult {

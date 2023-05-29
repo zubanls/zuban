@@ -678,23 +678,16 @@ testDictFromIterableAndKeywordArg3
 testNamedTupleWithInvalidItems
 testNamedTupleWithInvalidItems2
 testNamedTupleNoBytes
+# "Cannot instantiate abstract class "C" with abstract attribute "x""
+testNonProtocolToProtocol
+# "NewType cannot be used with protocol classes"
+testCannotUseNewTypeWithProtocols
+# Recursion error
+testSelfTypeProtocolClassmethodMatch
 # Protocol
-testProtocolUpdateTypeInVariable
-testProtocolUpdateTypeInFunction
-testProtocolUpdateTypeInClass
 testProtocolAddAttrInFunction
 testProtocolRemoveAttrInClass
-testProtocolConcreteUpdateTypeFunction
-testProtocolConcreteUpdateTypeMethodGeneric
-testProtocolConcreteUpdateBaseGeneric
-testProtocolUpdateBaseGeneric
-testProtocolChangeGeneric
-testNonProtocolToProtocol
-testInvalidateProtocolViaSuperClass
-testProtocolInvalidateConcreteViaSuperClassUpdateType
-testTwoProtocolsTwoFilesCrossedUpdateType-only_when_nocache
 testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
-testProtocolVsProtocolSubUpdated
 testProtocolVsProtocolSuperUpdated2
 testProtocolVsProtocolSuperUpdated3
 testProtocolMultipleUpdates
@@ -703,13 +696,9 @@ testWeAreCarefullWithBuiltinProtocolsBase
 testModuleAsProtocolImplementationFine
 testMixinAllowedWithProtocol
 testBadClassLevelDecoratorHack
-testSelfTypeProtocolClassmethodMatch
-testCannotUseNewTypeWithProtocols
 testBuiltinClassMethod
 testDivmod
 testSubtypingTupleIsSized
-# Duck typing
-testOverloadingAndDucktypeCompatibility
 
 # TypeVarTuple
 testTypeVarTupleMixed
@@ -2408,6 +2397,7 @@ testListWithDucktypeCompatibility
 testListWithDucktypeCompatibilityAndTransitivity
 testSimpleDucktypeDecorator
 testDucktypeTransitivityDecorator
+testOverloadingAndDucktypeCompatibility
 
 # Probably won't support Type Var formatting
 testQualifiedTypeVariableName

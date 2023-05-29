@@ -51,6 +51,9 @@ pub enum MismatchReason {
         expected: DbType,
         type_var: Rc<TypeVar>,
     },
+    ProtocolMismatches {
+        notes: Box<[Box<str>]>,
+    },
     SequenceInsteadOfListNeeded,
     MappingInsteadOfDictNeeded,
 }

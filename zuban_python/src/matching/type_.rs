@@ -557,7 +557,7 @@ impl<'a> Type<'a> {
             // TODO this should probably be checked before normal mro checking?!
             if class1.use_cached_class_infos(i_s.db).class_type == ClassType::Protocol {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
-                    return class1.check_protocol_match(i_s, class2, variance).into();
+                    return class1.check_protocol_match(i_s, class2, variance);
                 }
             }
         }
@@ -1010,6 +1010,11 @@ impl<'a> Type<'a> {
                                 maybe: "Mapping",
                             },
                         );
+                    }
+                    MismatchReason::ProtocolMismatches { notes } => {
+                        for note in notes.iter() {
+                            node_ref.add_typing_issue(i_s, IssueType::Note(note.clone()));
+                        }
                     }
                     _ => (),
                 }
