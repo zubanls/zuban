@@ -500,12 +500,16 @@ impl<'db: 'a, 'a> Class<'a> {
         other: Self,
         variance: Variance,
     ) -> Match {
-        let other = Instance::new(other, None);
+        let mut missing_members = vec![];
         let mut notes = vec![];
+
+        let other = Instance::new(other, None);
+        let mut protocol_member_count = 0;
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 todo!()
             };
+            protocol_member_count += c.class_storage.class_symbol_table.len();
             let symbol_table = &c.class_storage.class_symbol_table;
             for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 if let Some(l) = other.lookup(i_s, None, name).into_maybe_inferred() {
@@ -539,23 +543,30 @@ impl<'db: 'a, 'a> Class<'a> {
                         };
                     }
                 } else {
-                    notes.push(
-                        format!(
-                            r#""{}" is missing following "{}" protocol member:"#,
-                            other.class.format_short(i_s.db),
-                            self.format_short(i_s.db)
-                        )
-                        .into(),
-                    );
-                    notes.push(format!("    {name}").into());
-                    return Match::False {
-                        similar: false,
-                        reason: MismatchReason::ProtocolMismatches {
-                            notes: notes.into_boxed_slice(),
-                        },
-                    };
+                    missing_members.push(name);
                 }
             }
+        }
+        if !missing_members.is_empty() {
+            if protocol_member_count > 1 {
+                notes.push(
+                    format!(
+                        r#""{}" is missing following "{}" protocol member:"#,
+                        other.class.format_short(i_s.db),
+                        self.format_short(i_s.db)
+                    )
+                    .into(),
+                );
+                for name in missing_members {
+                    notes.push(format!("    {name}").into());
+                }
+            }
+            return Match::False {
+                similar: false,
+                reason: MismatchReason::ProtocolMismatches {
+                    notes: notes.into_boxed_slice(),
+                },
+            };
         }
         Match::new_true()
     }

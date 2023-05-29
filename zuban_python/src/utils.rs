@@ -115,6 +115,11 @@ impl<K: Eq + Hash, V: fmt::Debug + Clone> InsertOnlyHashMap<K, V> {
         unsafe { &*self.map.get() }.get(key).cloned()
     }
 
+    pub fn len(&self) -> usize {
+        let map = unsafe { &mut *self.map.get() };
+        map.len()
+    }
+
     pub fn insert(&self, key: K, value: V) -> Option<V> {
         let map = unsafe { &mut *self.map.get() };
         map.insert(key, value)
@@ -235,6 +240,10 @@ impl SymbolTable {
     pub unsafe fn iter_on_finished_table(&self) -> impl Iterator<Item = (&str, &NodeIndex)> {
         // This should only ever be called on a table that is not still mutated.
         self.symbols.iter().map(|(k, v)| (k.as_str(), v))
+    }
+
+    pub fn len(&self) -> usize {
+        self.symbols.len()
     }
 
     pub fn add_or_replace_symbol(&self, name: Name) -> Option<NodeIndex> {

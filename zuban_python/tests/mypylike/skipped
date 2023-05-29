@@ -696,11 +696,6 @@ testDivmod
 testSubtypingTupleIsSized
 
 testGenericClassMethodAnnotationDecorator
-testProtocolConcreteRemoveAttrVariable
-testProtocolInvalidateConcreteViaSuperClassAddAttr
-testProtocolInvalidateConcreteViaSuperClassRemoveAttr
-testProtocolsInvalidateByRemovingBase
-testProtocolVsProtocolSuperUpdated
 
 # TypeVarTuple
 testTypeVarTupleMixed
