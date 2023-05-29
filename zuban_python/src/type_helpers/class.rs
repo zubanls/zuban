@@ -500,6 +500,7 @@ impl<'db: 'a, 'a> Class<'a> {
         other: Self,
         variance: Variance,
     ) -> bool {
+        let other = Instance::new(other, None);
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 todo!()
@@ -507,18 +508,11 @@ impl<'db: 'a, 'a> Class<'a> {
             let symbol_table = &c.class_storage.class_symbol_table;
             for (class_name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 if let Some(l) = other.lookup(i_s, None, class_name).into_maybe_inferred() {
-                    let m = c
+                    let m = Instance::new(c, None)
                         .lookup(i_s, None, class_name)
                         .into_inferred()
                         .as_type(i_s)
                         .simple_matches(i_s, &l.as_type(i_s), variance);
-                    dbg!(
-                        l.as_type(i_s).format_short(i_s.db),
-                        c.lookup(i_s, None, class_name)
-                            .into_inferred()
-                            .as_type(i_s)
-                            .format_short(i_s.db)
-                    );
                     if !m.bool() {
                         return false;
                     }
