@@ -684,10 +684,11 @@ testNonProtocolToProtocol
 testCannotUseNewTypeWithProtocols
 # Recursion error
 testSelfTypeProtocolClassmethodMatch
-# Protocol
-testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
+# ... has no attribute "__iter__" (not iterable)
 testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
+# Protocol
+testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
 testModuleAsProtocolImplementationFine
 testMixinAllowedWithProtocol
 testBadClassLevelDecoratorHack
