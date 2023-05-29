@@ -951,7 +951,7 @@ impl<'a> Type<'a> {
         i_s: &InferenceState<'db, '_>,
         value: &Inferred,
         callback: impl FnOnce(&InferenceState<'db, '_>, Box<str>, Box<str>) -> NodeRef<'db>,
-    ) -> Match {
+    ) {
         self.error_if_not_matches_with_matcher(
             i_s,
             &mut Matcher::default(),
@@ -961,7 +961,7 @@ impl<'a> Type<'a> {
                     callback(i_s, t1, t2)
                 },
             ),
-        )
+        );
     }
 
     pub fn error_if_not_matches_with_matcher<'db>(
