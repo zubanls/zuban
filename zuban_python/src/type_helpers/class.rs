@@ -527,14 +527,30 @@ impl<'db: 'a, 'a> Class<'a> {
                             )
                             .into(),
                         );
-                        notes.push(
-                            format!(
-                                r#"    {name}: expected "{}", got "{}""#,
-                                t1.format_short(i_s.db),
-                                t2.format_short(i_s.db)
-                            )
-                            .into(),
-                        );
+                        match (t1.as_ref(), t2.as_ref()) {
+                            (DbType::Callable(_), DbType::Callable(_)) => {
+                                let s1 = c.lookup(i_s, None, name).into_inferred().format(
+                                    i_s,
+                                    &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),
+                                );
+                                let s2 = t2.format(&FormatData::with_style(
+                                    i_s.db,
+                                    FormatStyle::MypyRevealType,
+                                ));
+                                notes.push("    Expected:".into());
+                                notes.push(format!("        {s1}").into());
+                                notes.push("    Got:".into());
+                                notes.push(format!("        {s2}").into());
+                            }
+                            _ => notes.push(
+                                format!(
+                                    r#"    {name}: expected "{}", got "{}""#,
+                                    t1.format_short(i_s.db),
+                                    t2.format_short(i_s.db)
+                                )
+                                .into(),
+                            ),
+                        };
                         return Match::False {
                             similar: false,
                             reason: MismatchReason::ProtocolMismatches {
