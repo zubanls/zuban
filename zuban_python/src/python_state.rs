@@ -503,6 +503,7 @@ fn typing_changes(
     set_typing_inference(t, "Annotated", Specific::TypingAnnotated);
     set_typing_inference(t, "reveal_type", Specific::RevealTypeFunction);
     set_typing_inference(t, "NamedTuple", Specific::TypingNamedTuple);
+    set_typing_inference(t, "Protocol", Specific::TypingProtocol);
 }
 
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
