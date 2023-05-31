@@ -1,6 +1,7 @@
+use super::function::format_pretty_function_like;
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, DbType};
+use crate::database::{CallableContent, CallableParams, DbType};
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
@@ -49,5 +50,28 @@ impl<'a> Callable<'a> {
     ) -> LookupResult {
         debug!("TODO callable lookups");
         LookupResult::None
+    }
+}
+
+pub fn format_pretty_callable(i_s: &InferenceState, callable: &CallableContent) -> Box<str> {
+    match &callable.params {
+        CallableParams::Simple(params) => {
+            let x = params
+                .iter()
+                .next()
+                .and_then(|p| p.param_specific.maybe_positional_db_type())
+                .map(|t| t.format_short(i_s.db));
+            format_pretty_function_like(
+                i_s,
+                None,
+                callable.class_name.map(|c| c.as_str(i_s.db)) == x.as_deref(),
+                callable.name.map(|s| s.as_str(i_s.db)).unwrap_or(""),
+                callable.type_vars.as_ref(),
+                params.iter(),
+                Some(Type::new(&callable.result_type)),
+            )
+        }
+        CallableParams::WithParamSpec(_, _) => todo!(),
+        CallableParams::Any => todo!(),
     }
 }

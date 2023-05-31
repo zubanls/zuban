@@ -732,7 +732,6 @@ testBuiltinClassMethod
 testDivmod
 testSubtypingTupleIsSized
 
-testGenericMethodWithProtocol2
 testAutomaticProtocolVariance
 testGenericProtocolsInference1
 testProtocolGenericInference2

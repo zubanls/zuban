@@ -790,6 +790,12 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         format_pretty_function_like(
             i_s,
             self.class,
+            self.class.is_some()
+                && self
+                    .iter_params()
+                    .next()
+                    .map(|t| t.annotation(i_s).is_none())
+                    .unwrap_or(false),
             self.name(),
             self.type_vars(i_s),
             self.iter_params(),
@@ -1574,6 +1580,7 @@ fn are_any_arguments_ambiguous_in_overload(
 pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     i_s: &InferenceState<'db, '_>,
     class: Option<Class>,
+    avoid_self_annotation: bool,
     name: &str,
     type_vars: Option<&TypeVarLikes>,
     params: impl Iterator<Item = P>,
@@ -1625,26 +1632,25 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 ParamKind::DoubleStarred => "**",
                 _ => "",
             };
-            let mut out =
-                if i == 0 && class.is_some() && stars.is_empty() && annotation_str.is_none() {
-                    p.name(i_s.db).unwrap().to_owned()
+            let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
+                p.name(i_s.db).unwrap().to_owned()
+            } else {
+                let mut out = if current_kind == ParamKind::PositionalOnly {
+                    annotation_str.unwrap_or_else(|| Box::from("Any")).into()
                 } else {
-                    let mut out = if current_kind == ParamKind::PositionalOnly {
-                        annotation_str.unwrap_or_else(|| Box::from("Any")).into()
-                    } else {
-                        format!(
-                            "{stars}{}: {}",
-                            p.name(i_s.db).unwrap(),
-                            annotation_str.as_deref().unwrap_or("Any")
-                        )
-                    };
-                    if previous_kind == Some(ParamKind::PositionalOnly)
-                        && current_kind != ParamKind::PositionalOnly
-                    {
-                        out = format!("/, {out}")
-                    }
-                    out
+                    format!(
+                        "{stars}{}: {}",
+                        p.name(i_s.db).unwrap(),
+                        annotation_str.as_deref().unwrap_or("Any")
+                    )
                 };
+                if previous_kind == Some(ParamKind::PositionalOnly)
+                    && current_kind != ParamKind::PositionalOnly
+                {
+                    out = format!("/, {out}")
+                }
+                out
+            };
             if p.has_default() {
                 out += " = ...";
             }

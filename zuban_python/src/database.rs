@@ -1284,6 +1284,13 @@ impl ParamSpecific {
         }
     }
 
+    pub fn maybe_positional_db_type(&self) -> Option<&DbType> {
+        match self {
+            Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => Some(t),
+            _ => None,
+        }
+    }
+
     pub fn expect_positional_db_type(self) -> DbType {
         match self {
             Self::PositionalOnly(t) | Self::PositionalOrKeyword(t) => t,

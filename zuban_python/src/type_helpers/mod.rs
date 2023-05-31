@@ -9,7 +9,7 @@ mod tuple;
 mod typing;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
-pub use callable::Callable;
+pub use callable::{format_pretty_callable, Callable};
 pub use class::{Class, MroIterator, TypeOrClass};
 pub use function::{FirstParamProperties, Function, InferrableParam, OverloadedFunction};
 pub use instance::Instance;

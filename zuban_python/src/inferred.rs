@@ -828,7 +828,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(from) = from {
                                 from.add_typing_issue(i_s, IssueType::AmbigousClassVariableAccess);
                             } else {
-                                todo!()
+                                return None;
                             }
                             let file = i_s.db.loaded_python_file(definition.file);
                             let t = file

@@ -29,6 +29,7 @@ use crate::matching::{
     Generics, LookupResult, Match, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
+use crate::type_helpers::format_pretty_callable;
 use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
@@ -527,16 +528,25 @@ impl<'db: 'a, 'a> Class<'a> {
                             )
                             .into(),
                         );
-                        match (t1.as_ref(), t2.as_ref()) {
-                            (DbType::Callable(_), DbType::Callable(_)) => {
-                                let s1 = c.lookup(i_s, None, name).into_inferred().format(
-                                    i_s,
-                                    &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),
-                                );
+                        match (
+                            c.lookup(i_s, None, name)
+                                .into_inferred()
+                                .as_type(i_s)
+                                .as_ref(),
+                            other
+                                .class
+                                .lookup(i_s, None, name)
+                                .into_inferred()
+                                .as_type(i_s)
+                                .as_ref(),
+                        ) {
+                            (DbType::Callable(c1), DbType::Callable(c2)) => {
                                 let s2 = t2.format(&FormatData::with_style(
                                     i_s.db,
                                     FormatStyle::MypyRevealType,
                                 ));
+                                let s1 = format_pretty_callable(i_s, c1);
+                                let s2 = format_pretty_callable(i_s, c2);
                                 notes.push("    Expected:".into());
                                 notes.push(format!("        {s1}").into());
                                 notes.push("    Got:".into());
