@@ -28,8 +28,8 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, LookupResult,
-    Matcher, OnTypeError, ResultContext, SignatureMatch, Type,
+    ArgumentIndexWithParam, CalculatedTypeArguments, Generic, Generics, LookupResult, OnTypeError,
+    ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -795,9 +795,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     },
                     &mut || todo!(),
                 );
-                t.format(&FormatData::with_matcher(i_s.db, &Matcher::default()))
+                t.format_short(i_s.db)
             } else {
-                t.format(&FormatData::with_matcher(i_s.db, &Matcher::default()))
+                t.format_short(i_s.db)
             }
         };
         let return_type = |i_s: &InferenceState, annotation| {
