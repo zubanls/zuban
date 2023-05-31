@@ -778,133 +778,23 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         // Make sure annotations/type vars are calculated
         self.type_vars(i_s);
 
-        let format_type = |i_s: &InferenceState, t: Type| {
-            if let Some(func_class) = self.class {
-                let t = t.replace_type_var_likes_and_self(
-                    i_s.db,
-                    &mut |usage| {
-                        let in_definition = usage.in_definition();
-                        if in_definition == func_class.node_ref.as_link() {
-                            func_class
-                                .generics()
-                                .nth_usage(i_s.db, &usage)
-                                .into_generic_item(i_s.db)
-                        } else {
-                            usage.into_generic_item()
-                        }
-                    },
-                    &mut || todo!(),
-                );
-                t.format_short(i_s.db)
-            } else {
-                t.format_short(i_s.db)
-            }
-        };
-        let return_type = |i_s: &InferenceState, annotation| {
-            let t = self
+        let node = self.node();
+        let ret = match node.return_annotation() {
+            Some(annotation) => self
                 .node_ref
                 .file
                 .inference(i_s)
-                .use_cached_return_annotation_type(annotation);
-            format_type(i_s, t)
+                .use_cached_return_annotation_type(annotation),
+            None => Type::new(&DbType::Any),
         };
-        let node = self.node();
-        let mut previous_kind = None;
-        let mut args = self
-            .iter_params()
-            .enumerate()
-            .map(|(i, p)| {
-                let annotation_str = match p.specific(i_s.db) {
-                    WrappedParamSpecific::PositionalOnly(t)
-                    | WrappedParamSpecific::PositionalOrKeyword(t)
-                    | WrappedParamSpecific::KeywordOnly(t)
-                    | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
-                    | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                        t.map(|t| format_type(i_s, t))
-                    }
-                    WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
-                    WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(
-                        u,
-                    )) => todo!(),
-                };
-                let current_kind = p.kind(i_s.db);
-                let stars = match current_kind {
-                    ParamKind::Starred => "*",
-                    ParamKind::DoubleStarred => "**",
-                    _ => "",
-                };
-                let mut out = if i == 0
-                    && self.class.is_some()
-                    && stars.is_empty()
-                    && annotation_str.is_none()
-                {
-                    p.name(i_s.db).unwrap().to_owned()
-                } else {
-                    let mut out = if current_kind == ParamKind::PositionalOnly {
-                        annotation_str.unwrap_or_else(|| Box::from("Any")).into()
-                    } else {
-                        format!(
-                            "{stars}{}: {}",
-                            p.name(i_s.db).unwrap(),
-                            annotation_str.as_deref().unwrap_or("Any")
-                        )
-                    };
-                    if previous_kind == Some(ParamKind::PositionalOnly)
-                        && current_kind != ParamKind::PositionalOnly
-                    {
-                        out = format!("/, {out}")
-                    }
-                    out
-                };
-                if p.has_default() {
-                    out += " = ...";
-                }
-                previous_kind = Some(current_kind);
-                out
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
-        if previous_kind == Some(ParamKind::PositionalOnly) {
-            args += ", /";
-        }
-        let ret = node.return_annotation().map(|a| return_type(i_s, a));
-        let name = self.name();
-        let type_var_string = self.type_vars(i_s).map(|type_vars| {
-            format!(
-                "[{}] ",
-                type_vars
-                    .iter()
-                    .map(|t| match t {
-                        TypeVarLike::TypeVar(t) => {
-                            let mut s = t.name(i_s.db).to_owned();
-                            if let Some(bound) = &t.bound {
-                                s += &format!(" <: {}", Type::new(bound).format_short(i_s.db));
-                            } else if !t.restrictions.is_empty() {
-                                s += &format!(
-                                    " in ({})",
-                                    t.restrictions
-                                        .iter()
-                                        .map(|t| Type::new(t).format_short(i_s.db))
-                                        .collect::<Vec<_>>()
-                                        .join(", ")
-                                );
-                            }
-                            s
-                        }
-                        TypeVarLike::TypeVarTuple(t) => todo!(),
-                        TypeVarLike::ParamSpec(s) => todo!(),
-                    })
-                    .collect::<Vec<_>>()
-                    .join(", "),
-            )
-        });
-        let type_var_str = type_var_string.as_deref().unwrap_or("");
-        let result = ret.as_deref().unwrap_or("Any");
-        if is_init {
-            format!("def {type_var_str}{name}({args})").into()
-        } else {
-            format!("def {type_var_str}{name}({args}) -> {result}").into()
-        }
+        format_pretty_function_like(
+            i_s,
+            self.class,
+            self.name(),
+            self.type_vars(i_s),
+            self.iter_params(),
+            (!is_init).then_some(ret),
+        )
     }
 
     pub fn execute(
@@ -1679,4 +1569,128 @@ fn are_any_arguments_ambiguous_in_overload(
         }
     }
     false
+}
+
+pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
+    i_s: &InferenceState<'db, '_>,
+    class: Option<Class>,
+    name: &str,
+    type_vars: Option<&TypeVarLikes>,
+    params: impl Iterator<Item = P>,
+    return_type: Option<Type>,
+) -> Box<str> {
+    let format_type = |t: Type| {
+        if let Some(func_class) = class {
+            let t = t.replace_type_var_likes_and_self(
+                i_s.db,
+                &mut |usage| {
+                    let in_definition = usage.in_definition();
+                    if in_definition == func_class.node_ref.as_link() {
+                        func_class
+                            .generics()
+                            .nth_usage(i_s.db, &usage)
+                            .into_generic_item(i_s.db)
+                    } else {
+                        usage.into_generic_item()
+                    }
+                },
+                &mut || todo!(),
+            );
+            t.format_short(i_s.db)
+        } else {
+            t.format_short(i_s.db)
+        }
+    };
+
+    let mut previous_kind = None;
+    let mut args = params
+        .enumerate()
+        .map(|(i, p)| {
+            let annotation_str = match p.specific(i_s.db) {
+                WrappedParamSpecific::PositionalOnly(t)
+                | WrappedParamSpecific::PositionalOrKeyword(t)
+                | WrappedParamSpecific::KeywordOnly(t)
+                | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
+                | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
+                    t.map(format_type)
+                }
+                WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
+                WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
+                    todo!()
+                }
+            };
+            let current_kind = p.kind(i_s.db);
+            let stars = match current_kind {
+                ParamKind::Starred => "*",
+                ParamKind::DoubleStarred => "**",
+                _ => "",
+            };
+            let mut out =
+                if i == 0 && class.is_some() && stars.is_empty() && annotation_str.is_none() {
+                    p.name(i_s.db).unwrap().to_owned()
+                } else {
+                    let mut out = if current_kind == ParamKind::PositionalOnly {
+                        annotation_str.unwrap_or_else(|| Box::from("Any")).into()
+                    } else {
+                        format!(
+                            "{stars}{}: {}",
+                            p.name(i_s.db).unwrap(),
+                            annotation_str.as_deref().unwrap_or("Any")
+                        )
+                    };
+                    if previous_kind == Some(ParamKind::PositionalOnly)
+                        && current_kind != ParamKind::PositionalOnly
+                    {
+                        out = format!("/, {out}")
+                    }
+                    out
+                };
+            if p.has_default() {
+                out += " = ...";
+            }
+            previous_kind = Some(current_kind);
+            out
+        })
+        .collect::<Vec<_>>()
+        .join(", ");
+    if previous_kind == Some(ParamKind::PositionalOnly) {
+        args += ", /";
+    }
+    let type_var_string = type_vars.map(|type_vars| {
+        format!(
+            "[{}] ",
+            type_vars
+                .iter()
+                .map(|t| match t {
+                    TypeVarLike::TypeVar(t) => {
+                        let mut s = t.name(i_s.db).to_owned();
+                        if let Some(bound) = &t.bound {
+                            s += &format!(" <: {}", Type::new(bound).format_short(i_s.db));
+                        } else if !t.restrictions.is_empty() {
+                            s += &format!(
+                                " in ({})",
+                                t.restrictions
+                                    .iter()
+                                    .map(|t| Type::new(t).format_short(i_s.db))
+                                    .collect::<Vec<_>>()
+                                    .join(", ")
+                            );
+                        }
+                        s
+                    }
+                    TypeVarLike::TypeVarTuple(t) => todo!(),
+                    TypeVarLike::ParamSpec(s) => todo!(),
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+        )
+    });
+    let type_var_str = type_var_string.as_deref().unwrap_or("");
+    let result_string = return_type.map(format_type);
+
+    if let Some(result_string) = result_string {
+        format!("def {type_var_str}{name}({args}) -> {result_string}").into()
+    } else {
+        format!("def {type_var_str}{name}({args})").into()
+    }
 }
