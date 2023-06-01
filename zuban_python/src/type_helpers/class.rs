@@ -495,6 +495,10 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    pub fn is_protocol(&self, db: &Database) -> bool {
+        self.use_cached_class_infos(db).class_type == ClassType::Protocol
+    }
+
     pub fn check_protocol_match(
         &self,
         i_s: &InferenceState<'db, '_>,

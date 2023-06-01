@@ -553,7 +553,7 @@ impl<'a> Type<'a> {
         // 2. Check if it is a class with a protocol
         if let Some(class1) = self.maybe_class(i_s.db) {
             // TODO this should probably be checked before normal mro checking?!
-            if class1.use_cached_class_infos(i_s.db).class_type == ClassType::Protocol {
+            if class1.is_protocol(i_s.db) {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
                     return matcher.avoid_recursion(
                         self.as_ref(),
