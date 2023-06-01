@@ -28,7 +28,7 @@ use utils::match_arguments_against_params;
 
 struct CheckedTypeRecursion<'a> {
     type1: &'a DbType,
-    type2: DbType,
+    type2: &'a DbType,
     previously_checked: Option<&'a CheckedTypeRecursion<'a>>,
 }
 
@@ -627,7 +627,7 @@ impl<'a> Matcher<'a> {
     pub fn avoid_recursion(
         &mut self,
         type1: &DbType,
-        type2: DbType,
+        type2: &DbType,
         callable: impl FnOnce(&mut Matcher) -> Match,
     ) -> Match {
         let mut type_recursion = self.checking_type_recursion.as_ref();
