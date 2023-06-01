@@ -580,8 +580,8 @@ impl<'db: 'a, 'a> Class<'a> {
                 notes.push(
                     format!(
                         r#""{}" is missing following "{}" protocol member:"#,
-                        other.class.format_short(i_s.db),
-                        self.format_short(i_s.db)
+                        other.class.name(),
+                        self.name()
                     )
                     .into(),
                 );

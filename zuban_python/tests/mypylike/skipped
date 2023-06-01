@@ -733,7 +733,6 @@ testBuiltinClassMethod
 testDivmod
 testSubtypingTupleIsSized
 
-testGenericSubProtocols
 testGenericSubProtocolsExtensionInvariant
 testGenericSubProtocolsExtensionCovariant
 testProtocolAttrAccessDecoratedGetAttrDunder
