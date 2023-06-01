@@ -725,6 +725,7 @@ testWeAreCarefullWithBuiltinProtocolsBase
 testPropertyInProtocols
 testSettablePropertyInProtocols
 testProtocolMethodVsAttributeErrors2
+testRecursiveProtocols1
 # small protocol formatting issues
 testGenericSubProtocolsExtensionCovariant
 # non-strict optional protocol issues not shown
@@ -743,7 +744,6 @@ testSimpleProtocolTwoMethodsMerge
 
 testNoneDisablesProtocolSubclassingWithStrictOptional
 testGenericSubProtocolsExtensionInvariant
-testRecursiveProtocols1
 testRecursiveProtocols2
 testRecursiveProtocolSubtleMismatch
 testMutuallyRecursiveProtocols

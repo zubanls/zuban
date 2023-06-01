@@ -9,14 +9,13 @@ pub use utils::{
 };
 
 use std::borrow::Cow;
-use std::rc::Rc;
 
 use super::params::{matches_simple_params, InferrableParamIterator2};
 use super::{FormatData, Generic, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem,
-    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
+    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
     StarredParamSpecific, TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVarLikeUsage,
     TypeVarLikes, TypeVarUsage, Variance,
 };
@@ -28,7 +27,7 @@ use type_var_matcher::{BoundKind, CalculatedTypeVarLike, FunctionOrCallable, Typ
 use utils::match_arguments_against_params;
 
 struct CheckedTypeRecursion<'a> {
-    recursive_alias1: Rc<RecursiveAlias>,
+    type1: &'a DbType,
     type2: DbType,
     previously_checked: Option<&'a CheckedTypeRecursion<'a>>,
 }
@@ -627,13 +626,13 @@ impl<'a> Matcher<'a> {
 
     pub fn avoid_recursion(
         &mut self,
-        recursive_alias1: &Rc<RecursiveAlias>,
+        type1: &DbType,
         type2: DbType,
         callable: impl FnOnce(&mut Matcher) -> Match,
     ) -> Match {
         let mut type_recursion = self.checking_type_recursion.as_ref();
         while let Some(tr) = type_recursion {
-            if recursive_alias1 == &tr.recursive_alias1 && type2 == tr.type2 {
+            if type1 == tr.type1 && type2 == tr.type2 {
                 return Match::new_true();
             }
             type_recursion = tr.previously_checked;
@@ -641,7 +640,7 @@ impl<'a> Matcher<'a> {
         let mut inner_matcher = Matcher {
             type_var_matcher: self.type_var_matcher.take(),
             checking_type_recursion: Some(CheckedTypeRecursion {
-                recursive_alias1: recursive_alias1.clone(),
+                type1,
                 type2,
                 previously_checked: self.checking_type_recursion.as_ref(),
             }),

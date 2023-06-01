@@ -343,17 +343,17 @@ impl<'a> Type<'a> {
                 DbType::NewType(new_type2) => (new_type1 == new_type2).into(),
                 _ => Match::new_false(),
             },
-            DbType::RecursiveAlias(rec1) => {
+            t1 @ DbType::RecursiveAlias(rec1) => {
                 match value_type.as_ref() {
                     t2 @ DbType::Class(link, generics) => {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
-                        matcher.avoid_recursion(rec1, t2.clone(), |matcher| {
+                        matcher.avoid_recursion(t1, t2.clone(), |matcher| {
                             let g = rec1.calculated_db_type(i_s.db);
                             Type::new(g).matches_internal(i_s, matcher, value_type, variance)
                         })
                     }
                     t @ DbType::RecursiveAlias(rec2) => {
-                        matcher.avoid_recursion(rec1, t.clone(), |matcher| {
+                        matcher.avoid_recursion(t1, t.clone(), |matcher| {
                             let t1 = rec1.calculated_db_type(i_s.db);
                             let t2 = rec2.calculated_db_type(i_s.db);
                             Type::new(t1).matches_internal(i_s, matcher, &Type::new(t2), variance)
