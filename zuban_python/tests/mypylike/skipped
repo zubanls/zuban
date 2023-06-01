@@ -724,8 +724,11 @@ testWeAreCarefullWithBuiltinProtocolsBase
 # Protocol properties
 testPropertyInProtocols
 testSettablePropertyInProtocols
+testProtocolMethodVsAttributeErrors2
 # small protocol formatting issues
 testGenericSubProtocolsExtensionCovariant
+# non-strict optional protocol issues not shown
+testNoneDisablesProtocolImplementation
 # Protocol
 testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
 testModuleAsProtocolImplementationFine
@@ -735,13 +738,11 @@ testBuiltinClassMethod
 testDivmod
 testSubtypingTupleIsSized
 
-testGenericSubProtocolsExtensionInvariant
-testProtocolAttrAccessDecoratedGetAttrDunder
 testSimpleProtocolOneMethodOverride
 testSimpleProtocolTwoMethodsMerge
-testProtocolMethodVsAttributeErrors2
-testNoneDisablesProtocolImplementation
+
 testNoneDisablesProtocolSubclassingWithStrictOptional
+testGenericSubProtocolsExtensionInvariant
 testRecursiveProtocols1
 testRecursiveProtocols2
 testRecursiveProtocolSubtleMismatch
@@ -772,7 +773,6 @@ testBasicSizedProtocol
 testErrorsForProtocolsInDifferentPlaces
 testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
-testClassesGetattrWithProtocols
 testProtocolIncompatibilityWithGenericMethod
 testProtocolIncompatibilityWithGenericMethodBounded
 testProtocolIncompatibilityWithGenericRestricted
@@ -1381,6 +1381,8 @@ testDecoratedGetattr
 testGetattrWithCall
 testGetattrSignature
 testIterableUnpackingWithGetAttr
+testProtocolAttrAccessDecoratedGetAttrDunder
+testClassesGetattrWithProtocols
 
 # __setattr__
 testSetattr
