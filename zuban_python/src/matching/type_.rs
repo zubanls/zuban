@@ -557,7 +557,7 @@ impl<'a> Type<'a> {
             // TODO this should probably be checked before normal mro checking?!
             if class1.use_cached_class_infos(i_s.db).class_type == ClassType::Protocol {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
-                    return class1.check_protocol_match(i_s, class2, variance);
+                    return class1.check_protocol_match(i_s, matcher, class2, variance);
                 }
             }
         }

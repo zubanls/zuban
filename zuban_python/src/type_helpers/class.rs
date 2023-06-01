@@ -26,7 +26,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
-    Generics, LookupResult, Match, MismatchReason, OnTypeError, ResultContext, Type,
+    Generics, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::format_pretty_callable;
@@ -498,6 +498,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn check_protocol_match(
         &self,
         i_s: &InferenceState<'db, '_>,
+        matcher: &mut Matcher,
         other: Self,
         variance: Variance,
     ) -> Match {
@@ -519,7 +520,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         .into_inferred();
                     let t1 = inf1.as_type(i_s);
                     let t2 = l.as_type(i_s);
-                    let m = t1.simple_matches(i_s, &t2, variance);
+                    let m = t1.matches(i_s, matcher, &t2, variance);
                     if !m.bool() {
                         notes.push(
                             format!(

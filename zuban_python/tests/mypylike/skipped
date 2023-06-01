@@ -710,6 +710,7 @@ testProtocolsCannotInheritFromNormal
 testProtocolVarianceWithCallableAndList
 testProtocolVarianceWithUnusedVariable
 testSubtleBadVarianceInProtocols
+testAutomaticProtocolVariance
 # "Protocol member P.x expected settable variable, got read-only attribute"
 testFinalAttributeProtocol
 testModuleAsProtocolImplementationFinal
@@ -732,10 +733,6 @@ testBuiltinClassMethod
 testDivmod
 testSubtypingTupleIsSized
 
-testAutomaticProtocolVariance
-testGenericProtocolsInference1
-testProtocolGenericInference2
-testProtocolGenericInferenceCovariant
 testGenericSubProtocols
 testGenericSubProtocolsExtensionInvariant
 testGenericSubProtocolsExtensionCovariant
