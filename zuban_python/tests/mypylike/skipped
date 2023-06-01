@@ -724,6 +724,8 @@ testWeAreCarefullWithBuiltinProtocolsBase
 # Protocol properties
 testPropertyInProtocols
 testSettablePropertyInProtocols
+# small protocol formatting issues
+testGenericSubProtocolsExtensionCovariant
 # Protocol
 testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
 testModuleAsProtocolImplementationFine
@@ -734,7 +736,6 @@ testDivmod
 testSubtypingTupleIsSized
 
 testGenericSubProtocolsExtensionInvariant
-testGenericSubProtocolsExtensionCovariant
 testProtocolAttrAccessDecoratedGetAttrDunder
 testSimpleProtocolOneMethodOverride
 testSimpleProtocolTwoMethodsMerge

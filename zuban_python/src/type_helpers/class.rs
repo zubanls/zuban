@@ -504,6 +504,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> Match {
         let mut missing_members = vec![];
         let mut notes = vec![];
+        let mut had_conflict_note = false;
 
         let other = Instance::new(other, None);
         let mut protocol_member_count = 0;
@@ -522,13 +523,16 @@ impl<'db: 'a, 'a> Class<'a> {
                     let t2 = l.as_type(i_s);
                     let m = t1.matches(i_s, matcher, &t2, variance);
                     if !m.bool() {
-                        notes.push(
-                            format!(
-                                "Following member(s) of \"{}\" have conflicts:",
-                                other.class.format_short(i_s.db)
-                            )
-                            .into(),
-                        );
+                        if !had_conflict_note {
+                            had_conflict_note = true;
+                            notes.push(
+                                format!(
+                                    "Following member(s) of \"{}\" have conflicts:",
+                                    other.class.format_short(i_s.db)
+                                )
+                                .into(),
+                            );
+                        }
                         match (
                             c.lookup(i_s, None, name)
                                 .into_inferred()
@@ -562,12 +566,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                 .into(),
                             ),
                         };
-                        return Match::False {
-                            similar: false,
-                            reason: MismatchReason::ProtocolMismatches {
-                                notes: notes.into_boxed_slice(),
-                            },
-                        };
                     }
                 } else {
                     missing_members.push(name);
@@ -575,7 +573,8 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         const MAX_MISSING_MEMBERS: usize = 2;
-        if !missing_members.is_empty() {
+        let missing_members_empty = missing_members.is_empty();
+        if !missing_members_empty {
             if protocol_member_count > 1 && missing_members.len() <= MAX_MISSING_MEMBERS {
                 notes.push(
                     format!(
@@ -589,14 +588,17 @@ impl<'db: 'a, 'a> Class<'a> {
                     notes.push(format!("    {name}").into());
                 }
             }
-            return Match::False {
+        }
+        if notes.is_empty() && missing_members_empty {
+            Match::new_true()
+        } else {
+            Match::False {
                 similar: false,
                 reason: MismatchReason::ProtocolMismatches {
                     notes: notes.into_boxed_slice(),
                 },
-            };
+            }
         }
-        Match::new_true()
     }
 
     pub fn lookup_symbol(&self, i_s: &InferenceState<'db, '_>, name: &str) -> LookupResult {
