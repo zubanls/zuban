@@ -550,16 +550,16 @@ impl<'a> Type<'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
+        let mut m = Match::new_false();
         // 2. Check if it is a class with a protocol
         if let Some(class1) = self.maybe_class(i_s.db) {
             // TODO this should probably be checked before normal mro checking?!
             if class1.is_protocol(i_s.db) {
-                if let Some(class2) = value_type.maybe_class(i_s.db) {
-                    return matcher.avoid_recursion(
-                        self.as_ref(),
-                        value_type.as_ref(),
-                        |matcher| class1.check_protocol_match(i_s, matcher, class2, variance),
-                    );
+                m = matcher.avoid_recursion(self.as_ref(), value_type.as_ref(), |matcher| {
+                    class1.check_protocol_match(i_s, matcher, value_type, variance)
+                });
+                if m.bool() {
+                    return m;
                 }
             }
         }
@@ -633,16 +633,18 @@ impl<'a> Type<'a> {
                 )
             }
             DbType::Module(_) => {
-                return self.matches(
-                    i_s,
-                    matcher,
-                    &i_s.db.python_state.module_db_type().into(),
-                    variance,
-                )
+                m = m.or(|| {
+                    self.matches(
+                        i_s,
+                        matcher,
+                        &i_s.db.python_state.module_db_type().into(),
+                        variance,
+                    )
+                })
             }
             _ => (),
         }
-        Match::new_false()
+        m
     }
 
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> Option<MroIterator<'db, '_>> {

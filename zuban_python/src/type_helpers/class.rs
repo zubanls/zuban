@@ -503,14 +503,13 @@ impl<'db: 'a, 'a> Class<'a> {
         &self,
         i_s: &InferenceState<'db, '_>,
         matcher: &mut Matcher,
-        other: Self,
+        other: &Type,
         variance: Variance,
     ) -> Match {
         let mut missing_members = vec![];
         let mut notes = vec![];
         let mut had_conflict_note = false;
 
-        let other = Instance::new(other, None);
         let mut protocol_member_count = 0;
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
@@ -519,7 +518,10 @@ impl<'db: 'a, 'a> Class<'a> {
             protocol_member_count += c.class_storage.class_symbol_table.len();
             let symbol_table = &c.class_storage.class_symbol_table;
             for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
-                if let Some(l) = other.lookup(i_s, None, name).into_maybe_inferred() {
+                if let Some(l) = other
+                    .lookup_without_error(i_s, None, name)
+                    .into_maybe_inferred()
+                {
                     let inf1 = Instance::new(c, None)
                         .lookup(i_s, None, name)
                         .into_inferred();
@@ -530,46 +532,50 @@ impl<'db: 'a, 'a> Class<'a> {
                         if !had_conflict_note {
                             had_conflict_note = true;
                             notes.push(
-                                format!(
-                                    "Following member(s) of \"{}\" have conflicts:",
-                                    other.class.format_short(i_s.db)
-                                )
+                                match other.as_ref() {
+                                    DbType::Module(file_index) => format!(
+                                        "Following member(s) of Module \"{}\" have conflicts:",
+                                        Module::new(i_s.db.loaded_python_file(*file_index))
+                                            .qualified_name(i_s.db)
+                                    ),
+                                    _ => format!(
+                                        "Following member(s) of \"{}\" have conflicts:",
+                                        other.format_short(i_s.db).to_string()
+                                    ),
+                                }
                                 .into(),
                             );
                         }
-                        match (
-                            c.lookup(i_s, None, name)
-                                .into_inferred()
-                                .as_type(i_s)
-                                .as_ref(),
-                            other
-                                .class
-                                .lookup(i_s, None, name)
-                                .into_inferred()
-                                .as_type(i_s)
-                                .as_ref(),
-                        ) {
-                            (DbType::Callable(c1), DbType::Callable(c2)) => {
-                                let s2 = t2.format(&FormatData::with_style(
-                                    i_s.db,
-                                    FormatStyle::MypyRevealType,
-                                ));
-                                let s1 = format_pretty_callable(i_s, c1);
-                                let s2 = format_pretty_callable(i_s, c2);
-                                notes.push("    Expected:".into());
-                                notes.push(format!("        {s1}").into());
-                                notes.push("    Got:".into());
-                                notes.push(format!("        {s2}").into());
-                            }
-                            _ => notes.push(
-                                format!(
-                                    r#"    {name}: expected "{}", got "{}""#,
-                                    t1.format_short(i_s.db),
-                                    t2.format_short(i_s.db)
-                                )
-                                .into(),
+                        let mut add_error =
+                            |full1: &Type, full2: &Type| match (full1.as_ref(), full2.as_ref()) {
+                                (DbType::Callable(c1), DbType::Callable(c2)) => {
+                                    let s2 = t2.format(&FormatData::with_style(
+                                        i_s.db,
+                                        FormatStyle::MypyRevealType,
+                                    ));
+                                    let s1 = format_pretty_callable(i_s, c1);
+                                    let s2 = format_pretty_callable(i_s, c2);
+                                    notes.push("    Expected:".into());
+                                    notes.push(format!("        {s1}").into());
+                                    notes.push("    Got:".into());
+                                    notes.push(format!("        {s2}").into());
+                                }
+                                _ => notes.push(
+                                    format!(
+                                        r#"    {name}: expected "{}", got "{}""#,
+                                        t1.format_short(i_s.db),
+                                        t2.format_short(i_s.db)
+                                    )
+                                    .into(),
+                                ),
+                            };
+                        match other.maybe_class(i_s.db) {
+                            Some(cls) => add_error(
+                                &c.lookup(i_s, None, name).into_inferred().as_type(i_s),
+                                &cls.lookup(i_s, None, name).into_inferred().as_type(i_s),
                             ),
-                        };
+                            None => add_error(&t1, &t2),
+                        }
                     }
                 } else {
                     missing_members.push(name);
@@ -580,10 +586,17 @@ impl<'db: 'a, 'a> Class<'a> {
         let missing_members_empty = missing_members.is_empty();
         if !missing_members_empty {
             if protocol_member_count > 1 && missing_members.len() <= MAX_MISSING_MEMBERS {
+                let tmp;
                 notes.push(
                     format!(
                         r#""{}" is missing following "{}" protocol member:"#,
-                        other.class.name(),
+                        match other.maybe_class(i_s.db) {
+                            Some(cls) => cls.name(),
+                            None => {
+                                tmp = other.format_short(i_s.db);
+                                tmp.as_ref()
+                            }
+                        },
                         self.name()
                     )
                     .into(),

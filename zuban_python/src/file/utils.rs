@@ -230,11 +230,15 @@ pub fn on_argument_type_error(
     t1: Box<str>,
     t2: Box<str>,
 ) {
+    let t1 = match t1.as_ref() {
+        "ModuleType" => "Module".to_string(),
+        t1 => format!("\"{t1}\""),
+    };
     arg.as_node_ref().add_typing_issue(
         i_s,
         IssueType::ArgumentIssue(
             format!(
-                "Argument {}{} has incompatible type \"{t1}\"; expected \"{t2}\"",
+                "Argument {}{} has incompatible type {t1}; expected \"{t2}\"",
                 arg.human_readable_index(),
                 error_text(" to ").as_deref().unwrap_or(""),
             )
