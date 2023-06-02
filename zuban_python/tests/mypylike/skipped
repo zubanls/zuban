@@ -693,6 +693,8 @@ testEmptyBodyWithFinal
 # "Cannot instantiate protocol class "P""
 testCannotInstantiateProtocol
 testInstantiationProtocolInTypeForAliases
+# Protocol instantiations in classmethods
+testInstantiationProtocolInTypeForClassMethods
 # "Can only assign concrete classes to a variable of type "Type[P]""
 testInstantiationProtocolInTypeForVariables
 # "NewType cannot be used with protocol classes"
@@ -700,6 +702,7 @@ testCannotUseNewTypeWithProtocols
 # Recursion error
 testSelfTypeProtocolClassmethodMatch
 testSelfTypesWithProtocolsBehaveAsWithNominal
+testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
 # "Protocol members cannot be defined via assignment to self"
 testProhibitSelfDefinitionInProtocols
 # "All bases of a protocol must be protocols"
@@ -731,6 +734,8 @@ testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 testGenericSubProtocolsExtensionCovariant
 # non-strict optional protocol issues not shown
 testNoneDisablesProtocolImplementation
+# Context inference for protocols
+testTupleContextFromIterable2
 # Protocol
 testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
 testModuleAsProtocolImplementationFine
@@ -746,8 +751,6 @@ testRecursiveProtocolSubtleMismatch
 
 testNoneDisablesProtocolSubclassingWithStrictOptional
 testGenericSubProtocolsExtensionInvariant
-testTwoUncomfortablyIncompatibleProtocolsWithoutRunningInIssue9771
-testHashable
 testWeirdRecursiveInferenceForProtocols-skip
 testStaticAndClassMethodsInProtocols
 testOverloadedMethodsInProtocols

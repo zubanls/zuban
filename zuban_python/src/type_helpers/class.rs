@@ -702,7 +702,9 @@ impl<'db: 'a, 'a> Class<'a> {
             TypeOrClass::Class(*self),
             self.generics,
             class_infos.mro.iter(),
-            without_object || self.node_ref == db.python_state.object_node_ref(),
+            without_object
+                || self.node_ref == db.python_state.object_node_ref()
+                || class_infos.class_type == ClassType::Protocol,
         )
     }
 
