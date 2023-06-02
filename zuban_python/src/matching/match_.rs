@@ -82,6 +82,14 @@ impl Match {
         result
     }
 
+    pub fn all<T>(items: impl Iterator<Item = T>, mut callable: impl FnMut(T) -> Self) -> Self {
+        let mut result = Self::new_true();
+        for item in items {
+            result &= callable(item);
+        }
+        result
+    }
+
     pub fn bool(&self) -> bool {
         matches!(self, Self::True { .. })
     }

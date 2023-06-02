@@ -707,14 +707,9 @@ impl<'a> Type<'a> {
                 Variance::Covariant => Match::any(u1.iter(), |g| {
                     Type::new(g).matches(i_s, matcher, value_type, variance)
                 }),
-                Variance::Invariant => u1
-                    .iter()
-                    .all(|g| {
-                        Type::new(g)
-                            .matches(i_s, matcher, value_type, variance)
-                            .bool()
-                    })
-                    .into(),
+                Variance::Invariant => Match::all(u1.iter(), |g| {
+                    Type::new(g).matches(i_s, matcher, value_type, variance)
+                }),
                 Variance::Contravariant => unreachable!(),
             },
         }
