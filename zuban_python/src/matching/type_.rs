@@ -688,14 +688,14 @@ impl<'a> Type<'a> {
         match value_type.as_ref() {
             DbType::Union(u2) => match variance {
                 Variance::Covariant => {
-                    let mut matches = true;
+                    let mut matches = Match::new_true();
                     for g2 in u2.iter() {
                         let t2 = Type::new(g2);
-                        matches &= u1
-                            .iter()
-                            .any(|g1| Type::new(g1).matches(i_s, matcher, &t2, variance).bool())
+                        matches &= Match::any(u1.iter(), |g1| {
+                            Type::new(g1).matches(i_s, matcher, &t2, variance)
+                        })
                     }
-                    matches.into()
+                    matches
                 }
                 Variance::Invariant => {
                     self.is_super_type_of(i_s, matcher, value_type)
@@ -704,14 +704,9 @@ impl<'a> Type<'a> {
                 Variance::Contravariant => unreachable!(),
             },
             _ => match variance {
-                Variance::Covariant => u1
-                    .iter()
-                    .any(|g| {
-                        Type::new(g)
-                            .matches(i_s, matcher, value_type, variance)
-                            .bool()
-                    })
-                    .into(),
+                Variance::Covariant => Match::any(u1.iter(), |g| {
+                    Type::new(g).matches(i_s, matcher, value_type, variance)
+                }),
                 Variance::Invariant => u1
                     .iter()
                     .all(|g| {

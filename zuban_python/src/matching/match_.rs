@@ -70,6 +70,18 @@ impl Match {
         Self::True { with_any: false }
     }
 
+    pub fn any<T>(items: impl Iterator<Item = T>, mut callable: impl FnMut(T) -> Self) -> Self {
+        let mut result = Self::new_true();
+        for item in items {
+            let r = callable(item);
+            if r.bool() {
+                return r;
+            }
+            result &= r;
+        }
+        result
+    }
+
     pub fn bool(&self) -> bool {
         matches!(self, Self::True { .. })
     }
