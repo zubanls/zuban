@@ -506,7 +506,10 @@ impl<'db: 'a, 'a> Class<'a> {
         other: &Type,
         variance: Variance,
     ) -> Match {
+        const SHOW_MAX_MISMATCHES: usize = 2;
+        const MAX_MISSING_MEMBERS: usize = 2;
         let mut missing_members = vec![];
+        let mut mismatches = 0;
         let mut notes = vec![];
         let mut had_conflict_note = false;
 
@@ -569,12 +572,15 @@ impl<'db: 'a, 'a> Class<'a> {
                                     .into(),
                                 ),
                             };
-                        match other.maybe_class(i_s.db) {
-                            Some(cls) => add_error(
-                                &c.lookup(i_s, None, name).into_inferred().as_type(i_s),
-                                &cls.lookup(i_s, None, name).into_inferred().as_type(i_s),
-                            ),
-                            None => add_error(&t1, &t2),
+                        mismatches += 1;
+                        if mismatches <= SHOW_MAX_MISMATCHES {
+                            match other.maybe_class(i_s.db) {
+                                Some(cls) => add_error(
+                                    &c.lookup(i_s, None, name).into_inferred().as_type(i_s),
+                                    &cls.lookup(i_s, None, name).into_inferred().as_type(i_s),
+                                ),
+                                None => add_error(&t1, &t2),
+                            }
                         }
                     }
                 } else {
@@ -582,7 +588,15 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
             }
         }
-        const MAX_MISSING_MEMBERS: usize = 2;
+        if mismatches > SHOW_MAX_MISMATCHES {
+            notes.push(
+                format!(
+                    "    <{} more conflict(s) not shown>",
+                    mismatches - SHOW_MAX_MISMATCHES
+                )
+                .into(),
+            );
+        }
         let missing_members_empty = missing_members.is_empty();
         if !missing_members_empty {
             if protocol_member_count > 1 && missing_members.len() <= MAX_MISSING_MEMBERS {

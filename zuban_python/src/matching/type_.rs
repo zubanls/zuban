@@ -329,7 +329,7 @@ impl<'a> Type<'a> {
             DbType::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
-            DbType::FunctionOverload(intersection) => todo!(),
+            DbType::FunctionOverload(intersection) => todo!("{value_type:?}"),
             DbType::Literal(literal1) => {
                 debug_assert!(!literal1.implicit);
                 match value_type.as_ref() {
