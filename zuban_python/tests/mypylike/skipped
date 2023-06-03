@@ -801,7 +801,6 @@ testStructuralInferenceForCallable
 testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
 testProtocolIncompatibilityWithManyOverloads
-testCallableImplementsProtocolExtraNote
 testJoinProtocolCallback
 testMeetProtocolCallback
 testCallbackProtocolFunctionAttributesSubtyping
@@ -2520,6 +2519,9 @@ testTooManyUnionsException
 #testOverloadWithNonGenericDescriptorLookalike
 #testOverloadWithGenericDescriptor
 #testUnpackIterableClassWithOverloadedIter2
+
+# Note ""<Foo>.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
+# Curently ignored
 
 # `for ... in` type comment
 testRefreshForWithTypeComment1

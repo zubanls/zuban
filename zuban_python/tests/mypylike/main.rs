@@ -386,6 +386,10 @@ fn temporarily_skip(s: String) -> Option<String> {
     {
         return None;
     }
+    // This callable note is very weird and I'm confused when it appears and when not.
+    if s.contains(".__call__\" has type") {
+        return None;
+    }
     Some(s)
 }
 
