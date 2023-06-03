@@ -9,11 +9,11 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ClassType, ComplexPoint,
-    Database, DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, MetaclassState,
-    NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
-    RecursiveAlias, StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias,
-    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
+    DoubleStarredParamSpecific, GenericItem, GenericsList, MetaclassState, NamedTuple,
+    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
+    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
+    TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
     TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
@@ -329,7 +329,10 @@ impl<'a> Type<'a> {
             DbType::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
-            DbType::FunctionOverload(intersection) => todo!("{value_type:?}"),
+            DbType::FunctionOverload(intersection) => Match::all(intersection.iter(), |c| {
+                Type::owned(DbType::Callable(Rc::new(c.clone())))
+                    .matches_internal(i_s, matcher, value_type, variance)
+            }),
             DbType::Literal(literal1) => {
                 debug_assert!(!literal1.implicit);
                 match value_type.as_ref() {
@@ -2103,7 +2106,7 @@ impl<'a> Type<'a> {
                 DbType::Any => callable(self, LookupResult::any()),
                 _ => callable(self, TypingType::new(i_s.db, t).lookup(i_s, from, name)),
             },
-            DbType::Callable(_) => {
+            DbType::Callable(_) | DbType::FunctionOverload(_) => {
                 debug!("TODO callable lookups");
                 callable(self, LookupResult::None)
             }
