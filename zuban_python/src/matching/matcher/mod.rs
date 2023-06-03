@@ -172,8 +172,8 @@ impl<'a> Matcher<'a> {
                     // class C:  # Forgot to add type params here
                     //     def __init__(self, t: T) -> None: pass
                 } else {
-                    todo!(
-                        "Probably nested generic functions??? {:?}",
+                    debug!(
+                        "TODO Maybe nested generic functions??? {:?}",
                         t1.in_definition,
                     )
                 }
