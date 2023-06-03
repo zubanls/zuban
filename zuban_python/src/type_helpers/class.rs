@@ -584,6 +584,17 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 } else {
+                    // It is possible to match a Callable against a Protocol that only implements
+                    // __call__.
+                    if name == "__call__" && matches!(other.as_ref(), DbType::Callable(_)) {
+                        let inf1 = Instance::new(c, None)
+                            .lookup(i_s, None, name)
+                            .into_inferred();
+                        let t1 = inf1.as_type(i_s);
+                        if t1.matches(i_s, matcher, &other, variance).bool() {
+                            continue;
+                        }
+                    }
                     missing_members.push(name);
                 }
             }
