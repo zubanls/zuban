@@ -765,6 +765,14 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match value_type.as_ref() {
+            DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
+            DbType::Class(..) => {
+                if let Some(c2) = value_type.maybe_callable(i_s, true) {
+                    Self::matches_callable(i_s, matcher, c1, &c2)
+                } else {
+                    Match::new_false()
+                }
+            }
             DbType::Type(t2) => match t2.as_ref() {
                 DbType::Class(link, generics) => {
                     let cls = Class::from_db_type(i_s.db, *link, generics);
@@ -806,7 +814,6 @@ impl<'a> Type<'a> {
                     }
                 }
             },
-            DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
             DbType::FunctionOverload(overload) if variance == Variance::Covariant => {
                 if matcher.is_matching_reverse() {
                     todo!()
