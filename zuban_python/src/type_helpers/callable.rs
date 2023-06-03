@@ -2,13 +2,9 @@ use super::function::format_pretty_function_like;
 use super::Class;
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, CallableParams, DbType};
-use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{
-    calculate_callable_type_vars_and_return, LookupResult, OnTypeError, ResultContext, Type,
-};
-use crate::node_ref::NodeRef;
+use crate::matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
@@ -40,16 +36,6 @@ impl<'a> Callable<'a> {
         );
         let g_o = Type::new(&self.content.result_type);
         g_o.execute_and_resolve_type_vars(i_s, None, None, &calculated_type_vars)
-    }
-
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
-        debug!("TODO callable lookups");
-        LookupResult::None
     }
 }
 

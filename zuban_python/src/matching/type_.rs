@@ -2103,7 +2103,10 @@ impl<'a> Type<'a> {
                 DbType::Any => callable(self, LookupResult::any()),
                 _ => callable(self, TypingType::new(i_s.db, t).lookup(i_s, from, name)),
             },
-            t @ DbType::Callable(c) => callable(self, Callable::new(t, c).lookup(i_s, from, name)),
+            DbType::Callable(_) => {
+                debug!("TODO callable lookups");
+                callable(self, LookupResult::None)
+            }
             DbType::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
                 callable(self, Module::new(file).lookup(i_s, from, name))
