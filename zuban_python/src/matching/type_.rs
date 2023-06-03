@@ -818,10 +818,9 @@ impl<'a> Type<'a> {
                 if matcher.is_matching_reverse() {
                     todo!()
                 }
-                overload
-                    .iter()
-                    .any(|c2| Self::matches_callable(i_s, matcher, c1, c2).bool())
-                    .into()
+                Match::any(overload.iter(), |c2| {
+                    Self::matches_callable(i_s, matcher, c1, c2)
+                })
             }
             _ => Match::new_false(),
         }
