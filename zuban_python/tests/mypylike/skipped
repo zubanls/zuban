@@ -782,9 +782,6 @@ testCallableProtocolVsProtocol
 # regressions
 testUnionsOfNormalClassesWithProtocols
 testTypePromotionsDontInterfereWithProtocols
-# old protocol tests
-testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
-testDivmod
 # meet/join protocol
 testJoinProtocolWithProtocol
 testJoinOfIncompatibleProtocols
@@ -807,7 +804,9 @@ testProtocolTypeTypeInstanceMethod
 testProtocolTypeTypeSelfTypeInstanceMethod
 # Direct access on Protocol classes
 testProtocolsAlwaysABCs
-# new protocol tests
+# random protocol tests
+testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
+testDivmod
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
 testProtocolClassObjectPureCallback
