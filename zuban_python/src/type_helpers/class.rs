@@ -541,6 +541,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                         Module::new(i_s.db.loaded_python_file(*file_index))
                                             .qualified_name(i_s.db)
                                     ),
+                                    DbType::Type(t) => format!(
+                                        "Following member(s) of \"{}\" have conflicts:",
+                                        t.format_short(i_s.db).to_string()
+                                    ),
                                     _ => format!(
                                         "Following member(s) of \"{}\" have conflicts:",
                                         other.format_short(i_s.db).to_string()
