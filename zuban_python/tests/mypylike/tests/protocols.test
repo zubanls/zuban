@@ -1,0 +1,24 @@
+[case protocol_class_access_with_self_type_check_without_ignoring_params_names]
+-- From testProtocolTypeTypeSelfTypeInstanceMethod
+from typing import Protocol, Type, TypeVar, Union
+
+T = TypeVar("T")
+class P(Protocol):
+    def foo(ob, self: T) -> T: ...
+
+class B:
+    def foo(self: T) -> T: ...
+class C:
+    def foo(self: T) -> Union[T, int]: ...
+
+def test(arg: P) -> None: ...
+b: Type[B]
+c: Type[C]
+test(b)  # OK
+test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P" \
+         # N: Following member(s) of "C" have conflicts: \
+         # N:     Expected: \
+         # N:         def [T] foo(self: T) -> T \
+         # N:     Got: \
+         # N:         def [T] foo(self: T) -> Union[T, int]
+
