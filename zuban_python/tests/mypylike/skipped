@@ -810,7 +810,6 @@ testProtocolsAlwaysABCs
 # new protocol tests
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
-testMatchProtocolAgainstOverloadWithMultipleMatchingItems
 testProtocolClassObjectPureCallback
 testProtocolClassObjectCallableError
 # Protocol inference
