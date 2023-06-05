@@ -332,22 +332,21 @@ impl PythonState {
     builtins_attribute_node_ref!(bytearray_node_ref, builtins_bytearray_index);
     builtins_attribute_node_ref!(memoryview_node_ref, builtins_memoryview_index);
     builtins_attribute_node_ref!(slice_node_ref, builtins_slice_index);
+    builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
     node_ref_to_class!(float, float_node_ref);
     node_ref_to_class!(memoryview, memoryview_node_ref);
     node_ref_to_class!(bytearray, bytearray_node_ref);
+    node_ref_to_class!(pub function_class, function_node_ref);
 
     node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
     node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
     node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
-
-    pub fn function_point_link(&self) -> PointLink {
-        PointLink::new(self.builtins().file_index(), self.builtins_function_index)
-    }
+    node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
 
     #[inline]
     pub fn base_exception(&self) -> DbType {

@@ -1983,10 +1983,7 @@ impl<'a> Type<'a> {
                 // not only callable/callable
                 if let DbType::Callable(c1) = self.as_ref() {
                     if let DbType::Callable(c2) = other.as_ref() {
-                        return DbType::Class(
-                            i_s.db.python_state.function_point_link(),
-                            ClassGenerics::None,
-                        );
+                        return i_s.db.python_state.function_db_type();
                     }
                 }
             }
@@ -2123,10 +2120,10 @@ impl<'a> Type<'a> {
                 DbType::Any => callable(self, LookupResult::any()),
                 _ => callable(self, TypingType::new(i_s.db, t).lookup(i_s, from, name)),
             },
-            DbType::Callable(_) | DbType::FunctionOverload(_) => {
-                debug!("TODO callable lookups");
-                callable(self, LookupResult::None)
-            }
+            DbType::Callable(_) | DbType::FunctionOverload(_) => callable(
+                self,
+                Instance::new(i_s.db.python_state.function_class(), None).lookup(i_s, from, name),
+            ),
             DbType::Module(file_index) => {
                 let file = i_s.db.loaded_python_file(*file_index);
                 callable(self, Module::new(file).lookup(i_s, from, name))
