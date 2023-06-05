@@ -209,8 +209,8 @@ impl<'file> NodeRef<'file> {
         self.file.add_typing_issue(i_s, issue)
     }
 
-    pub fn into_inferred(self) -> Inferred {
-        Inferred::new_saved2(self.file, self.node_index)
+    pub fn into_saved_inferred(self) -> Inferred {
+        Inferred::from_saved_node_ref(self)
     }
 
     pub fn line(&self) -> usize {

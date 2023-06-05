@@ -219,7 +219,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let instance = Instance::new(
             match instance {
                 BoundMethodInstance::Reference(def) => NodeRef::from_link(i_s.db, *def)
-                    .into_inferred()
+                    .into_saved_inferred()
                     .saved_as_type(i_s)
                     .unwrap()
                     .expect_borrowed_class(i_s.db),

@@ -342,7 +342,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let FunctionParent::Decorated(decorated) = node.parent() else {
             unreachable!();
         };
-        let mut new_inf = Inferred::new_saved2(self.node_ref.file, self.node_ref.node_index);
+        let mut new_inf = Inferred::from_saved_node_ref(self.node_ref);
         for decorator in decorated.decorators().iter_reverse() {
             let i = self
                 .node_ref
