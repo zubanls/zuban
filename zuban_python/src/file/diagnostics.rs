@@ -251,7 +251,7 @@ impl<'db> Inference<'db, '_, '_> {
                 if o.implementing_function_has_decorators {
                     decorated = imp.decorated(self.i_s);
                     implementation_callable_content =
-                        decorated.as_type(self.i_s).maybe_callable(self.i_s, true);
+                        decorated.as_type(self.i_s).maybe_callable(self.i_s);
                     maybe_implementation = Some(imp);
                 }
             }

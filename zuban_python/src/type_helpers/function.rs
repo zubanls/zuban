@@ -359,8 +359,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 ),
             );
         }
-        if let Some(callable_content) = new_inf.as_type(i_s).maybe_callable(i_s, false) {
-            let mut callable_content = callable_content.into_owned();
+        if let DbType::Callable(callable_content) = new_inf.as_type(i_s).as_ref() {
+            let mut callable_content = (**callable_content).clone();
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
             Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(

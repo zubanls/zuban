@@ -105,32 +105,26 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_callable(
-        &self,
-        i_s: &InferenceState,
-        include_non_callables: bool,
-    ) -> Option<Cow<'a, CallableContent>> {
+    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Cow<'a, CallableContent>> {
         match self.0 {
             Cow::Borrowed(DbType::Callable(c)) => Some(Cow::Borrowed(c)),
             _ => match self.as_ref() {
-                DbType::Callable(c) if include_non_callables => {
-                    Some(Cow::Owned(c.as_ref().clone()))
-                }
-                DbType::Type(t) if include_non_callables => match t.as_ref() {
+                DbType::Callable(c) => Some(Cow::Owned(c.as_ref().clone())),
+                DbType::Type(t) => match t.as_ref() {
                     DbType::Class(link, generics) => {
                         todo!()
                     }
                     _ => None,
                 },
                 DbType::Any => Some(Cow::Owned(CallableContent::new_any())),
-                DbType::Class(link, generics) if include_non_callables => {
+                DbType::Class(link, generics) => {
                     let cls = Class::from_db_type(i_s.db, *link, generics);
                     Instance::new(cls, None)
                         .lookup(i_s, None, "__call__")
                         .into_maybe_inferred()
                         .and_then(|i| {
                             i.as_type(i_s)
-                                .maybe_callable(i_s, include_non_callables)
+                                .maybe_callable(i_s)
                                 .map(|c| Cow::Owned(c.into_owned()))
                         })
                 }
@@ -767,7 +761,7 @@ impl<'a> Type<'a> {
         match value_type.as_ref() {
             DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
             DbType::Class(..) => {
-                if let Some(c2) = value_type.maybe_callable(i_s, true) {
+                if let Some(c2) = value_type.maybe_callable(i_s) {
                     Self::matches_callable(i_s, matcher, c1, &c2)
                 } else {
                     Match::new_false()
