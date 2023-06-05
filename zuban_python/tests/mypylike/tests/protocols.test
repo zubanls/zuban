@@ -22,3 +22,7 @@ test(c)  # E: Argument 1 to "test" has incompatible type "Type[C]"; expected "P"
          # N:     Got: \
          # N:         def [T] foo(self: T) -> Union[T, int]
 
+[case protocol_with_ellipsis_default]
+from typing import Protocol
+class Foo(Protocol):
+    def foo(self, x: int = ...) -> None: ...

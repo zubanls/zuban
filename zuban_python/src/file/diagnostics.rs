@@ -368,7 +368,9 @@ impl<'db> Inference<'db, '_, '_> {
                             .error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
                                 let node_ref =
                                     NodeRef::new(self.file, default.index()).to_db_lifetime(i_s.db);
-                                if self.file.is_stub(self.i_s.db) && default.is_ellipsis_literal() {
+                                if self.file.is_stub_or_in_protocol(self.i_s)
+                                    && default.is_ellipsis_literal()
+                                {
                                     // In stubs it is allowed to do stuff like:
                                     // def foo(x: int = ...) -> int: ...
                                     return node_ref;

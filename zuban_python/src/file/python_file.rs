@@ -282,6 +282,15 @@ impl<'db> PythonFile {
         db.file_path(self.file_index()).ends_with(".pyi")
     }
 
+    pub fn is_stub_or_in_protocol(&self, i_s: &InferenceState) -> bool {
+        if let Some(current_class) = i_s.current_class() {
+            if current_class.is_protocol(i_s.db) {
+                return true;
+            }
+        }
+        self.is_stub(i_s.db)
+    }
+
     pub fn reset_non_name_cache_between(&self, range: Range<NodeIndex>) {
         for i in range {
             if NodeRef::new(self, i).maybe_name().is_none() {
