@@ -61,14 +61,6 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_saved2(file: &'db PythonFile, node_index: NodeIndex) -> Self {
-        // TODO rethink this method and new_saved
-        let node_ref = NodeRef { file, node_index };
-        Self {
-            state: InferredState::Saved(node_ref.as_link()),
-        }
-    }
-
     pub fn new_saved(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
         Self {
             state: InferredState::Saved(PointLink::new(file.file_index(), node_index)),

@@ -2604,7 +2604,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         debug_assert!(type_vars.is_empty());
                     }
                     (
-                        Inferred::new_saved2(f, index),
+                        Inferred::from_saved_node_ref(NodeRef::new(f, index)),
                         inference.use_cached_annotation_or_type_comment_type_internal(index, expr),
                     )
                 }
@@ -2615,7 +2615,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     unsaved.save_redirect(self.i_s, f, index);
                     let complex_index = f.points.get(index).complex_index();
                     (
-                        Inferred::new_saved2(f, index),
+                        Inferred::from_saved_node_ref(NodeRef::new(f, index)),
                         if let ComplexPoint::TypeInstance(db_type) =
                             f.complex_points.get(complex_index)
                         {
