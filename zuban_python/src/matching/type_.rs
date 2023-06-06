@@ -112,9 +112,50 @@ impl<'a> Type<'a> {
                 DbType::Callable(c) => Some(Cow::Owned(c.as_ref().clone())),
                 DbType::Type(t) => match t.as_ref() {
                     DbType::Class(link, generics) => {
-                        todo!()
+                        let cls = Class::from_db_type(i_s.db, *link, generics);
+                        // TODO the __init__ should actually be looked up on the original class, not
+                        // the subclass
+                        let lookup = cls.lookup(i_s, None, "__init__");
+                        if let LookupResult::GotoName(_, init) = lookup {
+                            let c = init.as_type(i_s).into_db_type();
+                            if let DbType::Callable(c) = c {
+                                let mut c = (*c).clone();
+                                if let CallableParams::Simple(params) = &c.params {
+                                    if params.len() == 0 {
+                                        todo!()
+                                    }
+                                    let mut params = params.to_vec();
+                                    params.remove(0);
+                                    c.params = CallableParams::Simple(params.into());
+                                }
+                                let cls_type_vars = cls.type_vars(i_s);
+                                // Since __init__ does not have a return, We need to check the params
+                                // of the __init__ functions and the class as a return type separately.
+                                if c.type_vars.is_some() {
+                                    todo!()
+                                }
+                                // TODO if the type vars are defined, why do we set them here?
+                                c.type_vars = cls.type_vars(i_s).cloned();
+                                c.result_type = cls.as_db_type(i_s.db);
+                                return Some(Cow::Owned(c));
+                            }
+                        }
+                        None
                     }
-                    _ => None,
+                    _ => {
+                        /*
+                        if matches!(&c1.params, CallableParams::Any) {
+                            Type::new(&c1.result_type).is_super_type_of(
+                                i_s,
+                                matcher,
+                                &Type::new(t2.as_ref()),
+                            )
+                        } else {
+                            None
+                        }
+                        */
+                        None
+                    }
                 },
                 DbType::Any => Some(Cow::Owned(CallableContent::new_any())),
                 DbType::Class(link, generics) => {
@@ -759,55 +800,6 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match value_type.as_ref() {
-            DbType::Callable(c2) => Self::matches_callable(i_s, matcher, c1, c2),
-            DbType::Class(..) => {
-                if let Some(c2) = value_type.maybe_callable(i_s) {
-                    Self::matches_callable(i_s, matcher, c1, &c2)
-                } else {
-                    Match::new_false()
-                }
-            }
-            DbType::Type(t2) => match t2.as_ref() {
-                DbType::Class(link, generics) => {
-                    let cls = Class::from_db_type(i_s.db, *link, generics);
-                    // TODO the __init__ should actually be looked up on the original class, not
-                    // the subclass
-                    let lookup = cls.lookup(i_s, None, "__init__");
-                    if let LookupResult::GotoName(_, init) = lookup {
-                        let c2 = init.as_type(i_s).into_db_type();
-                        if let DbType::Callable(c2) = c2 {
-                            let type_vars2 = cls.type_vars(i_s);
-                            // Since __init__ does not have a return, We need to check the params
-                            // of the __init__ functions and the class as a return type separately.
-                            return Type::new(&c1.result_type).is_super_type_of(
-                                i_s,
-                                matcher,
-                                &Type::new(t2),
-                            ) & matches_params(
-                                i_s,
-                                matcher,
-                                &c1.params,
-                                &c2.params,
-                                type_vars2.map(|t| (t, cls.node_ref.as_link())),
-                                Variance::Contravariant,
-                                true, // Ignore the first param
-                            );
-                        }
-                    }
-                    Match::new_false()
-                }
-                _ => {
-                    if matches!(&c1.params, CallableParams::Any) {
-                        Type::new(&c1.result_type).is_super_type_of(
-                            i_s,
-                            matcher,
-                            &Type::new(t2.as_ref()),
-                        )
-                    } else {
-                        Match::new_false()
-                    }
-                }
-            },
             DbType::FunctionOverload(overload) if variance == Variance::Covariant => {
                 if matcher.is_matching_reverse() {
                     todo!()
@@ -816,7 +808,16 @@ impl<'a> Type<'a> {
                     Self::matches_callable(i_s, matcher, c1, c2)
                 })
             }
-            _ => Match::new_false(),
+            DbType::Type(t2) if c1.params == CallableParams::Any => {
+                Type::new(&c1.result_type).is_super_type_of(i_s, matcher, &Type::new(t2.as_ref()))
+            }
+            _ => {
+                if let Some(c2) = value_type.maybe_callable(i_s) {
+                    Self::matches_callable(i_s, matcher, c1, &c2)
+                } else {
+                    Match::new_false()
+                }
+            }
         }
     }
 
