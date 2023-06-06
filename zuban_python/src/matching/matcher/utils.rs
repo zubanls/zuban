@@ -86,8 +86,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
                     {
                         if !g
                             .maybe_simple_type_var_like()
-                            .map(|tv2| type_var_like == &tv2)
-                            .unwrap_or(false)
+                            .is_some_and(|tv2| type_var_like == &tv2)
                         {
                             matcher
                                 .type_var_matcher

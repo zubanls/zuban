@@ -943,10 +943,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         false
                     }
                 } else {
-                    node_ref
-                        .complex()
-                        .map(|c| check_complex_point(c))
-                        .unwrap_or(false)
+                    node_ref.complex().is_some_and(|c| check_complex_point(c))
                 }
             }
             InferredState::UnsavedComplex(c) => check_complex_point(c),

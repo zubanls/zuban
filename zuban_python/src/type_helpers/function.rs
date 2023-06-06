@@ -794,8 +794,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 && self
                     .iter_params()
                     .next()
-                    .map(|t| t.annotation(i_s).is_none())
-                    .unwrap_or(false),
+                    .is_some_and(|t| t.annotation(i_s).is_none()),
             self.name(),
             self.type_vars(i_s),
             self.iter_params(),

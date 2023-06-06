@@ -84,14 +84,10 @@ impl Workspace {
             .follow_links(true)
             .into_iter()
             .filter_entry(|entry| {
-                entry
-                    .file_name()
-                    .to_str()
-                    .map(|name| {
-                        !loaders.iter().any(|l| l.should_be_ignored(name))
-                            && loaders.iter().any(|l| l.might_be_relevant(name))
-                    })
-                    .unwrap_or(false)
+                entry.file_name().to_str().is_some_and(|name| {
+                    !loaders.iter().any(|l| l.should_be_ignored(name))
+                        && loaders.iter().any(|l| l.might_be_relevant(name))
+                })
             })
             .filter_map(|e| e.ok())
             .skip(1)

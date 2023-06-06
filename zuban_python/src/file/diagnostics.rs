@@ -600,8 +600,7 @@ fn is_valid_except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> 
             let db = i_s.db;
             Type::new(t.as_ref())
                 .maybe_class(i_s.db)
-                .map(|cls| cls.in_mro(db, &db.python_state.base_exception()))
-                .unwrap_or(false)
+                .is_some_and(|cls| cls.in_mro(db, &db.python_state.base_exception()))
         }
         DbType::Tuple(content) if allow_tuple => match &content.args {
             Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().all(|t| match t {

@@ -12,8 +12,7 @@ impl DisplayedRecursive<'_> {
         self.current == rec
             || self
                 .parent
-                .map(|d| d.has_already_seen_recursive_alias(rec))
-                .unwrap_or(false)
+                .is_some_and(|d| d.has_already_seen_recursive_alias(rec))
     }
 }
 

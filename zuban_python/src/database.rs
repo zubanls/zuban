@@ -1047,17 +1047,13 @@ impl DbType {
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
             Self::FunctionOverload(intersection) => intersection.iter().any(|t| t.has_self_type()),
             Self::Type(t) => t.has_self_type(),
-            Self::Tuple(content) => content
-                .args
-                .as_ref()
-                .map(|args| match args {
-                    TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
-                        TypeOrTypeVarTuple::Type(t) => t.has_self_type(),
-                        TypeOrTypeVarTuple::TypeVarTuple(_) => false,
-                    }),
-                    TupleTypeArguments::ArbitraryLength(t) => t.has_self_type(),
-                })
-                .unwrap_or(false),
+            Self::Tuple(content) => content.args.as_ref().is_some_and(|args| match args {
+                TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
+                    TypeOrTypeVarTuple::Type(t) => t.has_self_type(),
+                    TypeOrTypeVarTuple::TypeVarTuple(_) => false,
+                }),
+                TupleTypeArguments::ArbitraryLength(t) => t.has_self_type(),
+            }),
             Self::Callable(content) => content.has_self_type(),
             Self::Self_ => true,
             Self::NamedTuple(_) => {

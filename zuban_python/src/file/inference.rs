@@ -1616,12 +1616,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .i_s
                             .current_function()
                             .map(|f| f.node_ref.node_index == star_import.scope)
-                            .or_else(|| {
+                            .unwrap_or_else(|| {
                                 self.i_s
                                     .current_class()
-                                    .map(|c| c.node_ref.node_index == star_import.scope)
-                            })
-                            .unwrap_or(false))
+                                    .is_some_and(|c| c.node_ref.node_index == star_import.scope)
+                            }))
                 {
                     continue;
                 }
