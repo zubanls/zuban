@@ -228,7 +228,7 @@ impl<'db> Inference<'db, '_, '_> {
                     .add_typing_issue(self.i_s, IssueType::OverloadSingleNotAllowed);
             } else if o.implementing_function.is_none()
                 && !self.file.is_stub(self.i_s.db)
-                && dbg!(class.map(|c| !c.is_protocol(self.i_s.db))).unwrap_or(true)
+                && class.map(|c| !c.is_protocol(self.i_s.db)).unwrap_or(true)
             {
                 name_def_node_ref
                     .add_typing_issue(self.i_s, IssueType::OverloadImplementationNeeded);
