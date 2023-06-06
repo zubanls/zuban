@@ -799,6 +799,7 @@ impl<'a> Type<'a> {
         value_type: &Self,
         variance: Variance,
     ) -> Match {
+        debug_assert_ne!(variance, Variance::Contravariant);
         match value_type.as_ref() {
             DbType::FunctionOverload(overload) if variance == Variance::Covariant => {
                 if matcher.is_matching_reverse() {
