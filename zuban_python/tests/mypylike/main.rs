@@ -1,3 +1,4 @@
+use std::cell::OnceCell;
 use std::collections::HashMap;
 use std::env;
 use std::fs::{read_dir, read_to_string};
@@ -5,7 +6,6 @@ use std::ops::{Deref, DerefMut};
 use std::path::PathBuf;
 use std::time::Instant;
 
-use once_cell::unsync::OnceCell;
 use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};

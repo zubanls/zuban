@@ -8,10 +8,10 @@ use std::path::Path;
 use std::pin::Pin;
 use std::rc::Rc;
 
-use once_cell::unsync::OnceCell;
 use parsa_python_ast::Expression;
 use parsa_python_ast::Name;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
+use std::cell::OnceCell;
 
 use crate::debug;
 use crate::file::PythonFile;
