@@ -73,9 +73,9 @@ impl Tree {
                     if !rest.starts_with("type:") {
                         return None;
                     }
-                    let ignore = &rest[5..].trim();
+                    let ignore = &rest[5..].trim_matches(' ');
                     if ignore.starts_with("ignore") {
-                        let after = &ignore[6..];
+                        let after = ignore[6..].trim_start_matches(' ');
                         if after == "" {
                             return Some(None);
                         }

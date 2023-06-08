@@ -571,9 +571,12 @@ impl Diagnostics {
     ) -> Result<&Issue, Issue> {
         if let Some(specific) = maybe_ignored {
             if let Some(specific) = specific {
-                let e = issue.type_.mypy_error_code();
-                if e == Some(specific) || e == None {
-                    return Err(issue);
+                // It's possible to write # type: ignore   [ xyz , name-defined ]
+                for specific in specific.split(',') {
+                    let e = issue.type_.mypy_error_code();
+                    if e == Some(specific.trim_matches(' ')) || e == None {
+                        return Err(issue);
+                    }
                 }
             } else {
                 return Err(issue);

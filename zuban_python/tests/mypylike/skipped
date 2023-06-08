@@ -2412,13 +2412,13 @@ testErrorCodeIgnore1
 # Error code "attr-defined" not covered by "type: ignore" comment
 testErrorCodeIgnore2
 testErrorCodeIgnoreAfterArgComment
+testErrorCodeIgnoreWithExtraSpace
 # bad type: ignore
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
 # type: ignore not on end but in the middle
 testErrorCodeMultiLineBinaryOperatorOperand
 # type: ignore[...]
-testErrorCodeIgnoreWithExtraSpace
 testErrorCodeIgnoreMultiple1
 testErrorCodeIgnoreMultiple2
 testErrorCodeOverloadVariantIgnore
