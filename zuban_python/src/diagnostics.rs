@@ -562,8 +562,17 @@ impl DiagnosticConfig {
 pub struct Diagnostics(InsertOnlyVec<Issue>);
 
 impl Diagnostics {
-    pub fn add(&self, issue: Issue) {
-        self.0.push(Box::pin(issue))
+    pub fn add_if_not_ignored(
+        &self,
+        issue: Issue,
+        maybe_ignored: Option<Option<&str>>,
+    ) -> Result<&Issue, Issue> {
+        if let Some(specific) = maybe_ignored {
+            Err(issue)
+        } else {
+            self.0.push(Box::pin(issue));
+            Ok(self.0.last().unwrap())
+        }
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {

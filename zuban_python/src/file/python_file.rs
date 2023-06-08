@@ -303,17 +303,16 @@ impl<'db> PythonFile {
         if !i_s.should_add_typing_issue() {
             return;
         }
-        if let Some(specific) = self.tree.node_type_ignore_comment(issue.node_index) {
-            debug!(
+        let maybe_ignored = self.tree.node_type_ignore_comment(issue.node_index);
+        match self.issues.add_if_not_ignored(issue, maybe_ignored) {
+            Ok(issue) => debug!(
+                "NEW ISSUE: {}",
+                Diagnostic::new(i_s.db, self, issue).as_string(&DiagnosticConfig::default())
+            ),
+            Err(issue) => debug!(
                 "New ignored issue: {}",
                 Diagnostic::new(i_s.db, self, &issue).as_string(&DiagnosticConfig::default())
-            );
-            return;
+            ),
         }
-        debug!(
-            "NEW ISSUE: {}",
-            Diagnostic::new(i_s.db, self, &issue).as_string(&DiagnosticConfig::default())
-        );
-        self.issues.add(issue);
     }
 }

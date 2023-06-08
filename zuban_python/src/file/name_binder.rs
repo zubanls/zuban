@@ -179,13 +179,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
-        if self.tree.node_type_ignore_comment(node_index).is_some() {
-            debug!("New ignored name binder issue: {type_:?}");
-            return;
-        }
-        debug!("New name binder issue: {type_:?}");
+        let maybe_ignored = self.tree.node_type_ignore_comment(node_index);
         let issue = Issue { type_, node_index };
-        self.issues.add(issue);
+        match self.issues.add_if_not_ignored(issue, maybe_ignored) {
+            Ok(issue) => debug!("New name binder issue: {:?}", issue.type_),
+            Err(issue) => debug!("New ignored name binder issue: {:?}", issue.type_),
+        }
     }
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
