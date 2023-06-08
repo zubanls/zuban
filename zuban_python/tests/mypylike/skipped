@@ -809,7 +809,6 @@ testProtocolTypeTypeSelfTypeInstanceMethod
 # Direct access on Protocol classes
 testProtocolsAlwaysABCs
 # random protocol tests
-testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
 testDivmod
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
