@@ -553,33 +553,21 @@ impl<'db: 'a, 'a> Class<'a> {
                                 .into(),
                             );
                         }
-                        let mut add_error =
-                            |full1: &Type, full2: &Type| match (full1.as_ref(), full2.as_ref()) {
-                                (DbType::Callable(c1), DbType::Callable(c2)) => {
-                                    let s1 = format_pretty_callable(i_s, c1);
-                                    let s2 = format_pretty_callable(i_s, c2);
-                                    notes.push("    Expected:".into());
-                                    notes.push(format!("        {s1}").into());
-                                    notes.push("    Got:".into());
-                                    notes.push(format!("        {s2}").into());
-                                }
-                                _ => notes.push(
-                                    format!(
-                                        r#"    {name}: expected "{}", got "{}""#,
-                                        t1.format_short(i_s.db),
-                                        t2.format_short(i_s.db)
-                                    )
-                                    .into(),
-                                ),
-                            };
                         mismatches += 1;
                         if mismatches <= SHOW_MAX_MISMATCHES {
                             match other.maybe_class(i_s.db) {
-                                Some(cls) => add_error(
+                                Some(cls) => add_protocol_mismatch(
+                                    i_s,
+                                    &mut notes,
+                                    name,
+                                    &t1,
+                                    &t2,
                                     &c.lookup(i_s, None, name).into_inferred().as_type(i_s),
                                     &cls.lookup(i_s, None, name).into_inferred().as_type(i_s),
                                 ),
-                                None => add_error(&t1, &t2),
+                                None => {
+                                    add_protocol_mismatch(i_s, &mut notes, name, &t1, &t2, &t1, &t2)
+                                }
                             }
                         }
                     }
@@ -595,6 +583,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             continue;
                         }
                     }
+
                     missing_members.push(name);
                 }
             }
@@ -1063,5 +1052,34 @@ fn find_stmt_named_tuple_types(
             },
             _ => todo!(),
         }
+    }
+}
+
+fn add_protocol_mismatch(
+    i_s: &InferenceState,
+    notes: &mut Vec<Box<str>>,
+    name: &str,
+    t1: &Type,
+    t2: &Type,
+    full1: &Type,
+    full2: &Type,
+) {
+    match (full1.as_ref(), full2.as_ref()) {
+        (DbType::Callable(c1), DbType::Callable(c2)) => {
+            let s1 = format_pretty_callable(i_s, c1);
+            let s2 = format_pretty_callable(i_s, c2);
+            notes.push("    Expected:".into());
+            notes.push(format!("        {s1}").into());
+            notes.push("    Got:".into());
+            notes.push(format!("        {s2}").into());
+        }
+        _ => notes.push(
+            format!(
+                r#"    {name}: expected "{}", got "{}""#,
+                t1.format_short(i_s.db),
+                t2.format_short(i_s.db)
+            )
+            .into(),
+        ),
     }
 }
