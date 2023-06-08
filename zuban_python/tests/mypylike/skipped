@@ -2407,18 +2407,22 @@ testDontIgnoreWholeModule2
 testDontIgnoreWholeModule3
 # Unused "type: ignore" comment
 testIgnoreWholeModule1
-# type: ignore[...]
+# error: "str" has no attribute "foobar"
 testErrorCodeIgnore1
+# Error code "attr-defined" not covered by "type: ignore" comment
 testErrorCodeIgnore2
-testErrorCodeIgnoreMultiple1
-testErrorCodeIgnoreMultiple2
 testErrorCodeIgnoreAfterArgComment
+# bad type: ignore
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
-testErrorCodeOverloadVariantIgnore
-testErrorCodeIgnoreNamedDefinedNote
-testErrorCodeVarianceNoteIgnore
+# type: ignore not on end but in the middle
 testErrorCodeMultiLineBinaryOperatorOperand
+# type: ignore[...]
+testErrorCodeIgnoreWithExtraSpace
+testErrorCodeIgnoreMultiple1
+testErrorCodeIgnoreMultiple2
+testErrorCodeOverloadVariantIgnore
+testErrorCodeVarianceNoteIgnore
 testMethodAssignCoveredByAssignmentIgnore
 # --disable-error-code
 testUncheckedAnnotationSuppressed
@@ -2436,7 +2440,6 @@ testMethodAssignCoveredByAssignmentUnused
 testErrorCodeMissingWhenRequired
 testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
 testErrorCodeMissingWholeFileIgnores
-testErrorCodeIgnoreWithExtraSpace
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
