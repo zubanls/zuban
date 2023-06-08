@@ -124,6 +124,39 @@ pub(crate) enum IssueType {
     Note(Box<str>),
 }
 
+impl IssueType {
+    pub fn mypy_error_code(&self) -> Option<&'static str> {
+        use IssueType::*;
+        Some(match &self {
+            Note(_) => return None,
+            AttributeError { .. } | ImportAttributeError { .. } => "attr-defined",
+            NameError { .. } => "name-defined",
+            UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
+            ArgumentIssue(s) if s.contains("has incompatible type") => "arg-type",
+            ArgumentIssue { .. } | TooManyArguments { .. } => "call-arg",
+            TooFewArguments { .. } => "call-arg",
+            InvalidType(_) => "valid-type",
+            IncompatibleReturn { .. } => "return-value",
+            IncompatibleDefaultArgument { .. } | IncompatibleAssignment { .. } => "assignment",
+            InvalidGetItem { .. } | NotIndexable { .. } => "index",
+            TypeVarInReturnButNotArgument
+            | InvalidTypeVarValue { .. }
+            | TypeVarBoundViolation { .. } => "type-var",
+            UnsupportedOperand { .. }
+            | UnsupportedLeftOperand { .. }
+            | UnsupportedIn { .. }
+            | UnsupportedOperandForUnary { .. }
+            | NotCallable { .. } => "operator",
+            TypeArgumentIssue { .. } => "type-arg",
+            ModuleNotFound { .. } => "import",
+            ListItemMismatch { .. } => "list-item",
+            NewTypeMustBeSubclassable { .. } => "valid-newtype",
+            OverloadImplementationNeeded { .. } => "no-overload-impl",
+            _ => "misc",
+        })
+    }
+}
+
 #[derive(Debug)]
 pub struct Issue {
     pub(crate) type_: IssueType,
@@ -188,37 +221,6 @@ impl<'db> Diagnostic<'db> {
             .as_ref()
             .map(|f| f.file)
             .unwrap_or(self.file)
-    }
-
-    fn mypy_error_code(&self) -> Option<&'static str> {
-        use IssueType::*;
-        Some(match &self.issue.type_ {
-            Note(_) => return None,
-            AttributeError { .. } | ImportAttributeError { .. } => "attr-defined",
-            NameError { .. } => "name-defined",
-            UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
-            ArgumentIssue(s) if s.contains("has incompatible type") => "arg-type",
-            ArgumentIssue { .. } | TooManyArguments { .. } => "call-arg",
-            TooFewArguments { .. } => "call-arg",
-            InvalidType(_) => "valid-type",
-            IncompatibleReturn { .. } => "return-value",
-            IncompatibleDefaultArgument { .. } | IncompatibleAssignment { .. } => "assignment",
-            InvalidGetItem { .. } | NotIndexable { .. } => "index",
-            TypeVarInReturnButNotArgument
-            | InvalidTypeVarValue { .. }
-            | TypeVarBoundViolation { .. } => "type-var",
-            UnsupportedOperand { .. }
-            | UnsupportedLeftOperand { .. }
-            | UnsupportedIn { .. }
-            | UnsupportedOperandForUnary { .. }
-            | NotCallable { .. } => "operator",
-            TypeArgumentIssue { .. } => "type-arg",
-            ModuleNotFound { .. } => "import",
-            ListItemMismatch { .. } => "list-item",
-            NewTypeMustBeSubclassable { .. } => "valid-newtype",
-            OverloadImplementationNeeded { .. } => "no-overload-impl",
-            _ => "misc",
-        })
     }
 
     pub fn as_string(&self, config: &DiagnosticConfig) -> String {
@@ -529,7 +531,7 @@ impl<'db> Diagnostic<'db> {
         let string = String::new();
         let mut result = format!("{path}:{line}: {type_}: {error}");
         if config.show_error_codes {
-            if let Some(mypy_error_code) = self.mypy_error_code() {
+            if let Some(mypy_error_code) = self.issue.type_.mypy_error_code() {
                 result += &format!("  [{mypy_error_code}]");
             }
         }
@@ -568,11 +570,16 @@ impl Diagnostics {
         maybe_ignored: Option<Option<&str>>,
     ) -> Result<&Issue, Issue> {
         if let Some(specific) = maybe_ignored {
-            Err(issue)
-        } else {
-            self.0.push(Box::pin(issue));
-            Ok(self.0.last().unwrap())
+            if let Some(specific) = specific {
+                if Some(specific) == issue.type_.mypy_error_code() {
+                    return Err(issue);
+                }
+            } else {
+                return Err(issue);
+            }
         }
+        self.0.push(Box::pin(issue));
+        Ok(self.0.last().unwrap())
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {

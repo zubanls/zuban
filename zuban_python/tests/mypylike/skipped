@@ -1462,6 +1462,7 @@ testExtremeForwardReferencing
 
 # union creation / vs. object / vs. any from ternary
 testConditionalExpressionUnionWithAny
+testJoinWithAnyFallback
 # join callables
 testOverloadedInIter
 # join sub and super classes
@@ -2407,13 +2408,11 @@ testDontIgnoreWholeModule3
 # Unused "type: ignore" comment
 testIgnoreWholeModule1
 # type: ignore[...]
-testJoinWithAnyFallback
 testErrorCodeIgnore1
 testErrorCodeIgnore2
 testErrorCodeIgnoreMultiple1
 testErrorCodeIgnoreMultiple2
 testErrorCodeIgnoreAfterArgComment
-testErrorCodeIgnoreWithNote
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
 testErrorCodeOverloadVariantIgnore
