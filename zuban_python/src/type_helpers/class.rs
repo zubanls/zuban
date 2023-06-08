@@ -521,6 +521,18 @@ impl<'db: 'a, 'a> Class<'a> {
             protocol_member_count += c.class_storage.class_symbol_table.len();
             let symbol_table = &c.class_storage.class_symbol_table;
             for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
+                // It is possible to match a Callable against a Protocol that only implements
+                // __call__.
+                if name == "__call__" {
+                    let inf1 = Instance::new(c, None)
+                        .lookup(i_s, None, name)
+                        .into_inferred();
+                    let t1 = inf1.as_type(i_s);
+                    if t1.matches(i_s, matcher, &other, variance).bool() {
+                        continue;
+                    }
+                }
+
                 if let Some(l) = other
                     .lookup_without_error(i_s, None, name)
                     .into_maybe_inferred()
@@ -572,18 +584,6 @@ impl<'db: 'a, 'a> Class<'a> {
                         }
                     }
                 } else {
-                    // It is possible to match a Callable against a Protocol that only implements
-                    // __call__.
-                    if name == "__call__" {
-                        let inf1 = Instance::new(c, None)
-                            .lookup(i_s, None, name)
-                            .into_inferred();
-                        let t1 = inf1.as_type(i_s);
-                        if t1.matches(i_s, matcher, &other, variance).bool() {
-                            continue;
-                        }
-                    }
-
                     missing_members.push(name);
                 }
             }
