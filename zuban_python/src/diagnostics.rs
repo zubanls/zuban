@@ -571,7 +571,8 @@ impl Diagnostics {
     ) -> Result<&Issue, Issue> {
         if let Some(specific) = maybe_ignored {
             if let Some(specific) = specific {
-                if Some(specific) == issue.type_.mypy_error_code() {
+                let e = issue.type_.mypy_error_code();
+                if e == Some(specific) || e == None {
                     return Err(issue);
                 }
             } else {
