@@ -569,21 +569,34 @@ impl Diagnostics {
         issue: Issue,
         maybe_ignored: Option<Option<&str>>,
     ) -> Result<&Issue, Issue> {
+        let mut add_not_covered_note = None;
         if let Some(specific) = maybe_ignored {
             if let Some(specific) = specific {
                 // It's possible to write # type: ignore   [ xyz , name-defined ]
-                for specific in specific.split(',') {
-                    let e = issue.type_.mypy_error_code();
-                    if e == Some(specific.trim_matches(' ')) || e == None {
-                        return Err(issue);
-                    }
+                let e = issue.type_.mypy_error_code();
+                if specific
+                    .split(',')
+                    .any(|specific| e == Some(specific.trim_matches(' ')) || e == None)
+                {
+                    return Err(issue);
+                } else if e.is_some() {
+                    add_not_covered_note = e;
                 }
             } else {
                 return Err(issue);
             }
         }
         self.0.push(Box::pin(issue));
-        Ok(self.0.last().unwrap())
+        let last_issue = self.0.last().unwrap();
+        if let Some(s) = add_not_covered_note {
+            self.0.push(Box::pin(Issue {
+                type_: IssueType::Note(
+                    format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
+                ),
+                node_index: last_issue.node_index,
+            }));
+        }
+        Ok(last_issue)
     }
 
     pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {
