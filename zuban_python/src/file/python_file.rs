@@ -306,13 +306,13 @@ impl<'db> PythonFile {
         if self.tree.node_has_type_ignore_comment(issue.node_index) {
             debug!(
                 "New ignored issue: {}",
-                Diagnostic::new(i_s.db, self, &issue).as_string()
+                Diagnostic::new(i_s.db, self, &issue).as_string(&DiagnosticConfig::default())
             );
             return;
         }
         debug!(
             "NEW ISSUE: {}",
-            Diagnostic::new(i_s.db, self, &issue).as_string()
+            Diagnostic::new(i_s.db, self, &issue).as_string(&DiagnosticConfig::default())
         );
         self.issues.push(Box::pin(issue));
     }

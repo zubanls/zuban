@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 64] = [
+const USE_MYPY_TEST_FILES: [&str; 65] = [
     // Semanal tests
     "semanal-abstractclasses.test",
     "semanal-basic.test",
@@ -123,7 +123,7 @@ const USE_MYPY_TEST_FILES: [&str; 64] = [
     //"fine-grained-dataclass-transform.test",
 
     //"check-columns.test",
-    //"check-errorcodes.test",
+    "check-errorcodes.test",
     //"check-flags.test",
     //"cmdline.test",
     //"cmdline.pyproject.test",
@@ -182,6 +182,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if steps.flags.contains(&"--ignore-missing-imports") {
             diagnostics_config.ignore_missing_imports = true;
         }
+        if self.file_name == "check-errorcodes" {
+            diagnostics_config.show_error_codes = true;
+        }
         let mut config = BaseConfig::default();
         if steps.flags.contains(&"--strict-optional") || self.file_name == "check-optional" {
             config.strict_optional = true;
@@ -227,7 +230,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let diagnostics: Vec<_> = project
                 .diagnostics(&diagnostics_config)
                 .iter()
-                .map(|d| d.as_string())
+                .map(|d| d.as_string(&diagnostics_config))
                 .collect();
 
             let actual = replace_annoyances(diagnostics.join("\n"));

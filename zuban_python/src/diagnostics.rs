@@ -189,7 +189,38 @@ impl<'db> Diagnostic<'db> {
             .unwrap_or(self.file)
     }
 
-    pub fn as_string(&self) -> String {
+    fn mypy_error_code(&self) -> Option<&'static str> {
+        use IssueType::*;
+        Some(match &self.issue.type_ {
+            Note(_) => return None,
+            AttributeError { .. } | ImportAttributeError { .. } => "attr-defined",
+            NameError { .. } => "name-defined",
+            UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
+            ArgumentIssue(s) if s.contains("has incompatible type") => "arg-type",
+            ArgumentIssue { .. } | TooManyArguments { .. } => "call-arg",
+            TooFewArguments { .. } => "call-arg",
+            InvalidType(_) => "valid-type",
+            IncompatibleReturn { .. } => "return-value",
+            IncompatibleDefaultArgument { .. } | IncompatibleAssignment { .. } => "assignment",
+            InvalidGetItem { .. } | NotIndexable { .. } => "index",
+            TypeVarInReturnButNotArgument
+            | InvalidTypeVarValue { .. }
+            | TypeVarBoundViolation { .. } => "type-var",
+            UnsupportedOperand { .. }
+            | UnsupportedLeftOperand { .. }
+            | UnsupportedIn { .. }
+            | UnsupportedOperandForUnary { .. }
+            | NotCallable { .. } => "operator",
+            TypeArgumentIssue { .. } => "type-arg",
+            ModuleNotFound { .. } => "import",
+            ListItemMismatch { .. } => "list-item",
+            NewTypeMustBeSubclassable { .. } => "valid-newtype",
+            OverloadImplementationNeeded { .. } => "no-overload-impl",
+            _ => "misc",
+        })
+    }
+
+    pub fn as_string(&self, config: &DiagnosticConfig) -> String {
         let mut type_ = "error";
         // TODO REMOVE mypy removal
         let mut path = self
@@ -495,19 +526,26 @@ impl<'db> Diagnostic<'db> {
             }
         };
         let string = String::new();
-        format!("{path}:{line}: {type_}: {error}")
+        let mut result = format!("{path}:{line}: {type_}: {error}");
+        if config.show_error_codes {
+            if let Some(mypy_error_code) = self.mypy_error_code() {
+                result += &format!("  [{mypy_error_code}]");
+            }
+        }
+        result
     }
 }
 
 impl std::fmt::Debug for Diagnostic<'_> {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{}", &self.as_string())
+        write!(f, "{}", &self.as_string(&DiagnosticConfig::default()))
     }
 }
 
 #[derive(Default)]
 pub struct DiagnosticConfig {
     pub ignore_missing_imports: bool,
+    pub show_error_codes: bool,
 }
 
 impl DiagnosticConfig {

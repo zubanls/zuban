@@ -4,6 +4,15 @@ testClassMethodAndStaticMethod
 testUsingNumbersType
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testForwardBoundFunctionScopeWorks
+testErrorCodeInvalidType
+testErrorCodeOverloadVariant
+testSliceInCustomTensorType
+
+# "Invalid type argument value for "C""
+testErrorCodeInvalidTypeArg
+
+# ""int" has no attribute "__iter__" (not iterable)"
+testErrorCodeNoAttribute
 
 # iter on Self
 testNamedTupleTypeReferenceToClassDerivedFrom
@@ -204,6 +213,8 @@ testListMultiplyInContext
 # bottom up dict
 testDictionaryLiteralInContext
 testLiteralInferredInDictContext
+# "Dict entry 0 has incompatible type "int": "str"; expected "int": "int""
+testErrorCodeListOrDictItem
 
 # context inference from class statement
 testSetDescriptorOnClass
@@ -436,6 +447,7 @@ testAssignNamedTupleAsAttribute
 # "First argument to namedtuple() should be "A", not "X""
 testNamedTupleTypeNameMatchesVariableName
 testInvalidNamedTupleWithinFunction
+testNamedTupleNameMismatch
 # "Statement is unreachable"
 testNamedTupleWithBoolNarrowsToBool
 # "Self type cannot be used in NamedTuple item type"
@@ -566,6 +578,12 @@ testNewAnalyzerTypeArgBoundCheckDifferentNodes
 testDistinctTypes
 testForwardRefsInWithStatementImplicit
 testForwardRefsInWithStatement
+testErrorCodeTypedDict
+testErrorCodeTypedDictNoteIgnore
+testErrorCodeTypedDictSubCodeIgnore
+testErrorCodeSpecialArgTypeErrors
+testTypedDictNameMismatch
+testNoteAboutChangedTypedDictErrorCode
 
 # NoReturn
 testNoReturnTypeAlias
@@ -683,17 +701,6 @@ testDictFromIterableAndKeywordArg3
 testNamedTupleWithInvalidItems
 testNamedTupleWithInvalidItems2
 testNamedTupleNoBytes
-# "Cannot instantiate abstract class "C" with abstract attribute "x""
-testNonProtocolToProtocol
-testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
-testCannotInstantiateAbstractVariableExplicitProtocolSubtypes
-testCannotInstantiateProtocolWithOverloadedUnimplementedMethod
-testEmptyBodyImplicitlyAbstractProtocol
-testEmptyBodyImplicitlyAbstractProtocolProperty
-testEmptyBodyImplicitlyAbstractProtocolStub
-testEmptyBodyVariationsImplicitlyAbstractProtocol
-testEmptyBodyNoneCompatibleProtocol
-testEmptyBodyWithFinal
 # "Cannot instantiate protocol class "P""
 testInstantiationProtocolInTypeForAliases
 testInstantiationProtocolInTypeForFunctions
@@ -874,22 +881,6 @@ testMalformedTypeAliasRuntimeReassignments
 # TypeAlias normal string interpreted as a forward reference
 testTypeAliasWithNewStyleUnionChangedToVariable
 
-# "Missing return statement"
-testWarnNoReturnWorksWithStrictOptional
-testAssertCurrentFrameIsNotUnreachable
-testNoReturnInGenerator
-testWithStmtBoolExitReturnOkay
-
-# ""f" does not return a value"
-testUseOfNoneReturningFunction
-testNoneReturnTypeBasics
-testNoneReturnTypeWithStatements
-testNoneReturnTypeWithExpressions
-testNoneReturnTypeWithExpressions2
-testConditionalExpressionWithEmptyCondition
-testConditionalExpressionStatementNoReturn
-testVoidValueInTuple
-
 # stdlib imports
 testOverloadSpecialCase
 testSubclassingGenericABCWithImplicitAny
@@ -1059,6 +1050,21 @@ testAbstractClasses
 testAbstractInit
 testNewAnalyzerClassPropertiesInAllScopes
 testConstructorJoinsWithCustomMetaclass
+testDedicatedErrorCodeTypeAbstract
+
+# "Cannot instantiate abstract class "C" with abstract attribute "x""
+testNonProtocolToProtocol
+testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
+testCannotInstantiateAbstractVariableExplicitProtocolSubtypes
+testCannotInstantiateProtocolWithOverloadedUnimplementedMethod
+testEmptyBodyImplicitlyAbstractProtocol
+testEmptyBodyImplicitlyAbstractProtocolProperty
+testEmptyBodyImplicitlyAbstractProtocolStub
+testEmptyBodyVariationsImplicitlyAbstractProtocol
+testEmptyBodyNoneCompatibleProtocol
+testEmptyBodyWithFinal
+# abcs: "Cannot instantiate abstract class "C" with abstract attribute "x""
+testErrorCodeInstantiateAbstract
 
 # Signature of "???" incompatible with supertype "???"
 testKeywordOnlyArgumentOrderInsensitivity
@@ -1083,6 +1089,7 @@ testCyclicOverrideCheckedDecorator
 testCyclicOverrideCheckedDecoratorDeferred
 testParentClassWithTypeAliasAndSubclassWithMethod
 testSelfTypeOverrideCompatibilityTypeVar
+testErrorCodeBadOverride
 
 # supertype context inference
 testUseSupertypeAsInferenceContext
@@ -1110,6 +1117,7 @@ testConstructorSignatureChanged3
 testRefreshSubclassNestedInFunction2
 testCyclicDecoratorSuper
 testCyclicDecoratorSuperDeferred
+testErrorCodeUnsafeSuper_no_empty
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -1231,6 +1239,7 @@ testGenericOverrideGenericChained
 testNamedTupleFallback
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2
+testErrorCodeAssignment
 # List item 0 has incompatible type "str"; expected "int"
 testVariableTypeVarList
 testInWithInvalidArgs
@@ -1378,6 +1387,7 @@ testConstructorWithReturnValueType
 testConstructorWithAnyReturnValueType
 testDecoratedConstructorWithAnyReturnValueType
 testOverloadedConstructorWithAnyReturnValueType
+testErrorCodeUnclassifiedError
 
 # "Accessing "__init__" on an instance is unsound, since instance.__init__ could be from an incompatible subclass"
 testAccessingInit
@@ -1393,6 +1403,7 @@ testAssignToMethodViaClass
 testAssignClassMethodOnClass
 testAssignClassMethodOnInstance
 testAssignStaticMethodOnInstance
+testErrorCodeAssignToMethod
 
 # "Cannot assign to a type"
 testAssignToNestedClassViaClass
@@ -1913,6 +1924,7 @@ testMultipleClassDefinition
 testMemberRedefinition
 testMemberRedefinitionDefinedInClass
 testDecorateOverloadedFunction
+testErrorCodeAlreadyDefined
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
@@ -1956,6 +1968,13 @@ testNotPreferPackageOverFileCase
 testIgnoreImportBadModule
 testIgnoreImportStarFromBadModule
 testFastParseSyntaxError
+testErrorCodeNoteHasNoCode
+testErrorCodeUndefinedName
+testErrorCodeNoteHasNoCode
+testErrorCodeSyntaxError
+testErrorCodeSyntaxError2
+testErrorCodeSyntaxError3
+testErrorCodeSyntaxErrorIgnoreNote
 
 # Yield
 testYieldOutsideFunction
@@ -2047,6 +2066,7 @@ testWithStmtScopeComplexAssignments
 testWithStmtScopeAndClass
 testWithStmtScopeInnerScopeReference
 testWithStmtScopeAndLambda
+testErrorCode__exit__Return
 
 # match statement
 testValuePattern
@@ -2073,6 +2093,7 @@ testMultipassAndCircularDependency
 testForwardReferenceToDecoratedClassMethod
 testAccessingClassAttributeWithTypeInferenceIssue
 testClassObjectsNotUnpackableWithoutIterableMetaclass
+testErrorCodeCannotDetermineType
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 
@@ -2088,6 +2109,23 @@ testCallingVarArgsFunction
 testFunctionTypeCompatibilityWithOtherTypes
 testLvarInitializedToVoid
 testForStatementInferenceWithVoid
+testUseOfNoneReturningFunction
+testNoneReturnTypeBasics
+testNoneReturnTypeWithStatements
+testNoneReturnTypeWithExpressions
+testNoneReturnTypeWithExpressions2
+testConditionalExpressionWithEmptyCondition
+testConditionalExpressionStatementNoReturn
+testVoidValueInTuple
+testErrorCodeFunctionDoesNotReturnValue
+
+# "Missing return statement"
+testWarnNoReturnWorksWithStrictOptional
+testAssertCurrentFrameIsNotUnreachable
+testNoReturnInGenerator
+testWithStmtBoolExitReturnOkay
+testErrorCodeMissingReturn
+testDedicatedErrorCodeForEmpty_no_empty
 
 # "Cannot call function of unknown type"
 testUnknownFunctionNotCallable
@@ -2095,9 +2133,11 @@ testUnknownFunctionNotCallable
 # "Return value expected"
 testReturnWithoutAValue
 testEmptyReturnInGenerator
+testErrorCodeMissingReturnValueInReturnStatement
 
-# No return value expected
+# "No return value expected"
 testNonEmptyReturnInNoneTypedGenerator
+testErrorCodeReturnValueNotExpected
 
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
@@ -2176,6 +2216,7 @@ testAssignmentToStarMissingAnnotation
 testForLoopOverEmptyTuple
 testTupleWithoutContext
 testReusingInferredForIndex2
+testErrorCodeNeedTypeAnnotation
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -2272,6 +2313,9 @@ testImplicitTuple2
 # Suggestion: Use tuple[()] instead of () for an empty tuple, or None for a function without a return value
 testReturnEmptyTuple
 
+# Syntax error in type comment
+testErrorCodeTypeIgnoreMisspelled2
+
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
 
@@ -2293,6 +2337,7 @@ testUnionOfVariableLengthTupleUnpacking
 testUnionUnpackingChainedList2
 # "Unsupported target for indexed assignment ("tuple[A, B]")"
 testAssigningToTupleItems
+testErrorCodeIndexing
 # star unpacking for tuples
 testAssignmentToStarAnnotation
 testAssignmentToStarCount1
@@ -2343,6 +2388,7 @@ testContextForAttributeDeclaredInInit
 testDeclareAttributeTypeInInit
 testAccessAttributeDeclaredInInitBeforeDeclaration
 testNoteUncheckedAnnotation
+testUncheckedAnnotationCodeShown
 
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
@@ -2362,6 +2408,40 @@ testDontIgnoreWholeModule3
 testIgnoreWholeModule1
 # type: ignore[...]
 testJoinWithAnyFallback
+testErrorCodeIgnore1
+testErrorCodeIgnore2
+testErrorCodeIgnoreMultiple1
+testErrorCodeIgnoreMultiple2
+testErrorCodeIgnoreAfterArgComment
+testErrorCodeIgnoreWithNote
+testErrorCodeBadIgnore
+testErrorCodeBadIgnoreNoExtraComment
+testErrorCodeOverloadVariantIgnore
+testErrorCodeIgnoreNamedDefinedNote
+testErrorCodeProtocolProblemsIgnore
+testErrorCodeVarianceNoteIgnore
+testErrorCodeDefinedHereNoteIgnore
+testErrorCodeUnionNoteIgnore
+testErrorCodeOverloadedOperatorMethod
+testErrorCodeMultiLineBinaryOperatorOperand
+testMethodAssignCoveredByAssignmentIgnore
+# --disable-error-code
+testUncheckedAnnotationSuppressed
+testMethodAssignmentSuppressed
+testMethodAssignCoveredByAssignmentFlag
+# --warn-unused-ignores
+testErrorCodeWarnUnusedIgnores1
+testErrorCodeWarnUnusedIgnores2
+testErrorCodeWarnUnusedIgnores3
+testErrorCodeWarnUnusedIgnores4
+testErrorCodeWarnUnusedIgnores5
+testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode
+testMethodAssignCoveredByAssignmentUnused
+# --enable-error-code ignore-without-code
+testErrorCodeMissingWhenRequired
+testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
+testErrorCodeMissingWholeFileIgnores
+testErrorCodeIgnoreWithExtraSpace
 
 # Very weird annotation resolution order
 testNewAnalyzerAnnotationConflictsWithAttributeSinglePass
@@ -2383,6 +2463,7 @@ testRefreshOptions
 testCaseInsensitivityDir
 testPreferPackageOverFileCase
 testClassicPackageInsideNamespacePackageCase
+testShowErrorCodesInConfig
 
 # Mypy inline config https://mypy.readthedocs.io/en/stable/inline_config.html
 testOptionalIterator
@@ -2401,6 +2482,10 @@ testStrictOptionalCovarianceCrossModule
 testFlexibleAlias1
 testFlexibleAlias2
 testFlexibleAlias3
+
+# flags: --warn-redundant-casts
+# "Redundant cast to "int""
+testErrorCodeRedundantCast
 
 # enable-error-code="redundant-self"
 # "Redundant Self annotation on method first argument"
@@ -2423,9 +2508,16 @@ testStrictEqualityWithALiteral
 testStrictEqualityWithALiteralNewType
 testStrictEqualityWithFixedLengthTupleInCheck
 testStrictEqualityBytesSpecialUnion
+testErrorCodeNonOverlappingEquality
 
 # --show-column-numbers
 testForwardInstanceWithBound
+testSliceInDict39
+
+# "type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`"
+testNoteAboutChangedTypedDictErrorCode
+testRecommendErrorCode
+testRecommendErrorCode2
 
 # --show-error-context
 testNewAnalyzerTypeArgBoundCheckWithContext
@@ -2445,13 +2537,31 @@ testUnlimitedStubErrorVolume
 
 # --disallow-any-generics
 testErrorReportingNewAnalyzer
+testErrorCodeMissingTypeArg
+
+# --disallow-any-imported
+testErrorCodeAnyFromUnfollowedImport
 
 # --disallow-untyped-defs
 testIgnoreInsideFunctionDoesntAffectWhole
+testErrorCodeFunctionHasNoAnnotation
+testErrorCodeCallUntypedFunction
+
+# --warn-return-any
+testErrorCodeReturnAny
 
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
 testAncestorSuppressedWhileAlmostSilent
+
+# --enable-error-code redundant-expr
+# "If condition is always false"
+testRedundantExpressions
+
+# flags: --enable-error-code truthy-bool
+testTruthyBool
+testTruthyFunctions
+testTruthyIterable
 
 # Not all modules are checked in mypy: `# cmd: mypy -m m`
 testTypeCheckNamedModule4
@@ -2466,6 +2576,9 @@ testLimitLegacyStubErrorVolume
 testReprocessMethodShowSource
 testGenericTypeAliasesWithNestedArgs
 testPrettyMessageSorting
+
+# "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
+testErrorCodeFormatCall
 
 # syntax not yet supported
 testBreakOutsideLoop
@@ -2577,6 +2690,7 @@ testFasterParseTooManyArgumentsAnnotation
 testFasterParseTooFewArgumentsAnnotation
 testFastParserShowsMultipleErrors
 testFastParserConsistentFunctionTypes
+testErrorCodeInvalidCommentSignature
 
 # --scripts-are-modules
 testScriptsAreModules
