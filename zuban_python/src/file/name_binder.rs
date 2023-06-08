@@ -5,10 +5,10 @@ use crate::database::{
     PointLink, PointType, Points, Specific,
 };
 use crate::debug;
-use crate::diagnostics::{Issue, IssueType};
+use crate::diagnostics::{Diagnostics, Issue, IssueType};
 use crate::file::python_file::StarImport;
 use crate::file::ComplexValues;
-use crate::utils::{InsertOnlyVec, SymbolTable};
+use crate::utils::SymbolTable;
 use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, AtomContent, Block,
     BlockContent, ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, Decorators,
@@ -48,7 +48,7 @@ pub(crate) struct NameBinder<'db, 'a> {
     symbol_table: &'a SymbolTable,
     points: &'db Points,
     complex_points: &'db ComplexValues,
-    issues: &'db InsertOnlyVec<Issue>,
+    issues: &'db Diagnostics,
     star_imports: &'db RefCell<Vec<StarImport>>,
     unordered_references: Vec<Name<'db>>,
     unresolved_nodes: Vec<Unresolved<'db>>,
@@ -69,7 +69,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
-        issues: &'db InsertOnlyVec<Issue>,
+        issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
         parent: Option<&'a Self>,
@@ -100,7 +100,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         symbol_table: &'a SymbolTable,
         points: &'db Points,
         complex_points: &'db ComplexValues,
-        issues: &'db InsertOnlyVec<Issue>,
+        issues: &'db Diagnostics,
         star_imports: &'db RefCell<Vec<StarImport>>,
         file_index: FileIndex,
         func: impl FnOnce(&mut NameBinder<'db, 'db>),
@@ -185,7 +185,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
         debug!("New name binder issue: {type_:?}");
         let issue = Issue { type_, node_index };
-        self.issues.push(Box::pin(issue));
+        self.issues.add(issue);
     }
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {

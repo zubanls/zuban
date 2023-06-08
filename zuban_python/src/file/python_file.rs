@@ -13,7 +13,7 @@ use crate::database::{
     ComplexPoint, Database, FileIndex, Locality, LocalityLink, Point, PointType, Points,
 };
 use crate::debug;
-use crate::diagnostics::{Diagnostic, DiagnosticConfig, Issue};
+use crate::diagnostics::{Diagnostic, DiagnosticConfig, Diagnostics, Issue};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::lines::NewlineIndices;
@@ -153,7 +153,7 @@ impl File for PythonFile {
 
     fn invalidate_references_to(&mut self, file_index: FileIndex) {
         self.points.invalidate_references_to(file_index);
-        self.issues.as_vec_mut().clear();
+        self.issues.clear();
     }
 }
 
@@ -188,7 +188,7 @@ pub struct PythonFile {
     pub points: Points,
     pub complex_points: ComplexValues,
     file_index: Cell<Option<FileIndex>>,
-    issues: InsertOnlyVec<Issue>,
+    issues: Diagnostics,
     pub star_imports: RefCell<Vec<StarImport>>,
     pub package_dir: Option<Rc<DirContent>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
@@ -314,6 +314,6 @@ impl<'db> PythonFile {
             "NEW ISSUE: {}",
             Diagnostic::new(i_s.db, self, &issue).as_string(&DiagnosticConfig::default())
         );
-        self.issues.push(Box::pin(issue));
+        self.issues.add(issue);
     }
 }

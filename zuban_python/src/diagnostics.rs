@@ -5,6 +5,7 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::name::TreePosition;
 use crate::node_ref::NodeRef;
+use crate::utils::InsertOnlyVec;
 
 #[derive(Debug)]
 #[allow(dead_code)]  // TODO remove this
@@ -554,6 +555,23 @@ impl DiagnosticConfig {
             IssueType::ModuleNotFound { .. } => !self.ignore_missing_imports,
             _ => true,
         }
+    }
+}
+
+#[derive(Default)]
+pub struct Diagnostics(InsertOnlyVec<Issue>);
+
+impl Diagnostics {
+    pub fn add(&self, issue: Issue) {
+        self.0.push(Box::pin(issue))
+    }
+
+    pub unsafe fn iter(&self) -> impl Iterator<Item = &Issue> {
+        self.0.iter()
+    }
+
+    pub fn clear(&mut self) {
+        self.0.as_vec_mut().clear()
     }
 }
 
