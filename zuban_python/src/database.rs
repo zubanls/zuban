@@ -2746,6 +2746,7 @@ impl Database {
         let builtins = self.py_load_tmp(&dir, "../typeshed/stdlib/builtins.pyi") as *const _;
         let typing = self.py_load_tmp(&dir, "../typeshed/stdlib/typing.pyi") as *const _;
         let types = self.py_load_tmp(&dir, "../typeshed/stdlib/types.pyi") as *const _;
+        let abc = self.py_load_tmp(&dir, "../typeshed/stdlib/abc.pyi") as *const _;
         let typing_extensions =
             self.py_load_tmp(&dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
         let mypy_extensions = self.py_load_tmp(
@@ -2768,6 +2769,7 @@ impl Database {
             typing,
             collections,
             types,
+            abc,
             typing_extensions,
             mypy_extensions,
         );

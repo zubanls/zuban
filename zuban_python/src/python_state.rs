@@ -54,6 +54,7 @@ pub struct PythonState {
     typing: *const PythonFile,
     collections: *const PythonFile,
     types: *const PythonFile,
+    abc: *const PythonFile,
     mypy_extensions: *const PythonFile,
     typing_extensions: *const PythonFile,
 
@@ -80,6 +81,7 @@ pub struct PythonState {
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
+    abc_abc_meta: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
     mypy_extensions_named_arg_func: NodeIndex,
@@ -99,6 +101,7 @@ impl PythonState {
             typing: null(),
             collections: null(),
             types: null(),
+            abc: null(),
             mypy_extensions: null(),
             typing_extensions: null(),
             builtins_object_index: 0,
@@ -124,6 +127,7 @@ impl PythonState {
             typing_namedtuple_index: 0,
             typing_type_var: 0,
             collections_namedtuple_index: 0,
+            abc_abc_meta: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -144,6 +148,7 @@ impl PythonState {
         typing: *const PythonFile,
         collections: *const PythonFile,
         types: *const PythonFile,
+        abc: *const PythonFile,
         typing_extensions: *const PythonFile,
         mypy_extensions: *const PythonFile,
     ) {
@@ -152,6 +157,7 @@ impl PythonState {
         s.typing = typing;
         s.collections = collections;
         s.types = types;
+        s.abc = abc;
         s.typing_extensions = typing_extensions;
         s.mypy_extensions = mypy_extensions;
 
@@ -219,6 +225,7 @@ impl PythonState {
         }
         cache_index!(builtins_object_index, db, builtins, "object");
         cache_index!(builtins_type_index, db, builtins, "type");
+        cache_index!(abc_abc_meta, db, abc, "ABCMeta");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
         cache_index!(builtins_set_index, db, builtins, "set");
@@ -293,6 +300,12 @@ impl PythonState {
     pub fn types(&self) -> &PythonFile {
         debug_assert!(!self.types.is_null());
         unsafe { &*self.types }
+    }
+
+    #[inline]
+    fn abc(&self) -> &PythonFile {
+        debug_assert!(!self.abc.is_null());
+        unsafe { &*self.abc }
     }
 
     #[inline]
@@ -397,6 +410,11 @@ impl PythonState {
             NodeRef::new(self.collections(), self.collections_namedtuple_index),
             None,
         )
+    }
+
+    pub fn abc_meta_link(&self) -> PointLink {
+        debug_assert!(self.abc_abc_meta != 0);
+        PointLink::new(self.abc().file_index(), self.abc_abc_meta)
     }
 
     pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {

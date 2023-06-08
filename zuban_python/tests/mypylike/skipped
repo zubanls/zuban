@@ -806,8 +806,6 @@ testProtocolClassObjectGenericInstanceMethod
 testProtocolClassObjectSelfTypeInstanceMethod
 testProtocolTypeTypeInstanceMethod
 testProtocolTypeTypeSelfTypeInstanceMethod
-# Direct access on Protocol classes
-testProtocolsAlwaysABCs
 # random protocol tests
 testDivmod
 testGenericSubProtocolsExtensionInvariant
