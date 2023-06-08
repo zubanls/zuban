@@ -2415,7 +2415,6 @@ testErrorCodeBadIgnoreNoExtraComment
 # type: ignore not on end but in the middle
 testErrorCodeMultiLineBinaryOperatorOperand
 # type: ignore[...]
-testErrorCodeVarianceNoteIgnore
 testMethodAssignCoveredByAssignmentIgnore
 # --disable-error-code
 testUncheckedAnnotationSuppressed

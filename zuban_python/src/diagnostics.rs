@@ -128,7 +128,7 @@ impl IssueType {
     pub fn mypy_error_code(&self) -> Option<&'static str> {
         use IssueType::*;
         Some(match &self {
-            Note(_) => return None,
+            Note(_) | InvariantNote { .. } => return None,
             AttributeError { .. } | ImportAttributeError { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
