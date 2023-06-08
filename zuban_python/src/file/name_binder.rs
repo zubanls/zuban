@@ -179,7 +179,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     pub(crate) fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
-        if self.tree.node_has_type_ignore_comment(node_index) {
+        if self.tree.node_type_ignore_comment(node_index).is_some() {
             debug!("New ignored name binder issue: {type_:?}");
             return;
         }

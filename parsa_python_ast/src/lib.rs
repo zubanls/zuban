@@ -61,23 +61,31 @@ impl Tree {
         self.0.node_by_index(index).end()
     }
 
-    pub fn node_has_type_ignore_comment(&self, index: NodeIndex) -> bool {
+    pub fn node_type_ignore_comment(&self, index: NodeIndex) -> Option<Option<&str>> {
+        // Returns Some(None) when there is a type: ignore
+        // Returns Some("foo") when there is a type: ignore['foo']
         self.0
             .node_by_index(index)
             .parent_until(&[Nonterminal(simple_stmt)])
-            .map(|s| {
+            .and_then(|s| {
                 for comment in s.suffix().split('#').skip(1) {
                     let rest = comment.trim_start_matches(' ');
                     if !rest.starts_with("type:") {
-                        return false;
+                        return None;
                     }
-                    if rest[5..].trim() == "ignore" {
-                        return true;
+                    let ignore = &rest[5..].trim();
+                    if ignore.starts_with("ignore") {
+                        let after = &ignore[6..];
+                        if after == "" {
+                            return Some(None);
+                        }
+                        if after.starts_with("[") && after.ends_with("]") && after.len() > 2 {
+                            return Some(Some(&after[1..after.len() - 1]));
+                        }
                     }
                 }
-                false
+                None
             })
-            .unwrap_or(false)
     }
 
     pub fn debug_info(&self, index: NodeIndex) -> String {

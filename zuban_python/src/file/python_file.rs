@@ -303,7 +303,7 @@ impl<'db> PythonFile {
         if !i_s.should_add_typing_issue() {
             return;
         }
-        if self.tree.node_has_type_ignore_comment(issue.node_index) {
+        if let Some(specific) = self.tree.node_type_ignore_comment(issue.node_index) {
             debug!(
                 "New ignored issue: {}",
                 Diagnostic::new(i_s.db, self, &issue).as_string(&DiagnosticConfig::default())
