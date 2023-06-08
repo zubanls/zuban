@@ -2413,14 +2413,14 @@ testErrorCodeIgnore1
 testErrorCodeIgnore2
 testErrorCodeIgnoreAfterArgComment
 testErrorCodeIgnoreWithExtraSpace
+testErrorCodeIgnoreMultiple1
+testErrorCodeIgnoreMultiple2
 # bad type: ignore
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
 # type: ignore not on end but in the middle
 testErrorCodeMultiLineBinaryOperatorOperand
 # type: ignore[...]
-testErrorCodeIgnoreMultiple1
-testErrorCodeIgnoreMultiple2
 testErrorCodeOverloadVariantIgnore
 testErrorCodeVarianceNoteIgnore
 testMethodAssignCoveredByAssignmentIgnore

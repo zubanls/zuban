@@ -73,15 +73,10 @@ impl Tree {
                     if !rest.starts_with("type:") {
                         return None;
                     }
-                    let ignore = &rest[5..].trim_matches(' ');
-                    if ignore.starts_with("ignore") {
-                        let after = ignore[6..].trim_start_matches(' ');
-                        if after == "" {
-                            return Some(None);
-                        }
-                        if after.starts_with("[") && after.ends_with("]") && after.len() > 2 {
-                            return Some(Some(&after[1..after.len() - 1]));
-                        }
+                    let ignore = &rest[5..].trim_start_matches(' ');
+                    let r = maybe_type_ignore(ignore);
+                    if r.is_some() {
+                        return r;
                     }
                 }
                 None
@@ -100,6 +95,19 @@ impl Tree {
         let node = self.0.node_by_index(index);
         node.as_code().get(..40).unwrap_or_else(|| node.as_code())
     }
+}
+
+pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
+    if text.starts_with("ignore") {
+        let after = text[6..].trim_matches(' ');
+        if after == "" {
+            return Some(None);
+        }
+        if after.starts_with("[") && after.ends_with("]") && after.len() > 2 {
+            return Some(Some(&after[1..after.len() - 1]));
+        }
+    }
+    None
 }
 
 pub trait InterestingNodeSearcher<'db> {
