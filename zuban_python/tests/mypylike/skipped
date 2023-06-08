@@ -2396,8 +2396,8 @@ testDecoratorTypeAfterReprocessing
 
 # type ignore on statement, but not exact line
 testIgnoreImportFromErrorMultiline
-# type: ignore on type computation of too many type arguments
 testIgnoreTooManyTypeArguments
+testErrorCodeMultiLineBinaryOperatorOperand
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3
@@ -2405,15 +2405,9 @@ testIgnoreWholeModule4
 testIgnoreWholeModule5
 testDontIgnoreWholeModule2
 testDontIgnoreWholeModule3
-# Unused "type: ignore" comment
-testIgnoreWholeModule1
-# error: "str" has no attribute "foobar"
-testErrorCodeIgnore1
 # bad type: ignore
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
-# type: ignore not on end but in the middle
-testErrorCodeMultiLineBinaryOperatorOperand
 # type: ignore[...]
 testMethodAssignCoveredByAssignmentIgnore
 # --disable-error-code
@@ -2428,6 +2422,8 @@ testErrorCodeWarnUnusedIgnores4
 testErrorCodeWarnUnusedIgnores5
 testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode
 testMethodAssignCoveredByAssignmentUnused
+# --warn-unused-ignores whole module
+testIgnoreWholeModule1
 # --enable-error-code ignore-without-code
 testErrorCodeMissingWhenRequired
 testErrorCodeMissingDoesntTrampleUnusedIgnoresWarning
