@@ -152,6 +152,7 @@ impl IssueType {
             ListItemMismatch { .. } => "list-item",
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
+            OverloadMismatch { .. } => "call-overload",
             _ => "misc",
         })
     }
