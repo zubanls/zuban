@@ -105,72 +105,65 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Cow<'a, CallableContent>> {
-        match self.0 {
-            Cow::Borrowed(DbType::Callable(c)) => Some(Cow::Borrowed(c)),
-            _ => match self.as_ref() {
-                DbType::Callable(c) => Some(Cow::Owned(c.as_ref().clone())),
-                DbType::Type(t) => match t.as_ref() {
-                    DbType::Class(link, generics) => {
-                        let cls = Class::from_db_type(i_s.db, *link, generics);
-                        // TODO the __init__ should actually be looked up on the original class, not
-                        // the subclass
-                        let lookup = cls.lookup(i_s, None, "__init__");
-                        if let LookupResult::GotoName(_, init) = lookup {
-                            let c = init.as_type(i_s).into_db_type();
-                            if let DbType::Callable(c) = c {
-                                let mut c = (*c).clone();
-                                if let CallableParams::Simple(params) = &c.params {
-                                    if params.len() == 0 {
-                                        todo!()
-                                    }
-                                    let mut params = params.to_vec();
-                                    params.remove(0);
-                                    c.params = CallableParams::Simple(params.into());
-                                }
-                                let cls_type_vars = cls.type_vars(i_s);
-                                // Since __init__ does not have a return, We need to check the params
-                                // of the __init__ functions and the class as a return type separately.
-                                if c.type_vars.is_some() {
-                                    todo!()
-                                }
-                                // TODO if the type vars are defined, why do we set them here?
-                                c.type_vars = cls.type_vars(i_s).cloned();
-                                c.result_type = cls.as_db_type(i_s.db);
-                                return Some(Cow::Owned(c));
-                            }
-                        }
-                        None
-                    }
-                    _ => {
-                        /*
-                        if matches!(&c1.params, CallableParams::Any) {
-                            Type::new(&c1.result_type).is_super_type_of(
-                                i_s,
-                                matcher,
-                                &Type::new(t2.as_ref()),
-                            )
-                        } else {
-                            None
-                        }
-                        */
-                        None
-                    }
-                },
-                DbType::Any => Some(Cow::Owned(CallableContent::new_any())),
+    pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Rc<CallableContent>> {
+        match self.as_ref() {
+            DbType::Callable(c) => Some(c.clone()),
+            DbType::Type(t) => match t.as_ref() {
                 DbType::Class(link, generics) => {
                     let cls = Class::from_db_type(i_s.db, *link, generics);
-                    Instance::new(cls, None)
-                        .lookup(i_s, None, "__call__")
-                        .into_maybe_inferred()
-                        .and_then(|i| {
-                            i.as_type(i_s)
-                                .maybe_callable(i_s)
-                                .map(|c| Cow::Owned(c.into_owned()))
-                        })
+                    // TODO the __init__ should actually be looked up on the original class, not
+                    // the subclass
+                    let lookup = cls.lookup(i_s, None, "__init__");
+                    if let LookupResult::GotoName(_, init) = lookup {
+                        let c = init.as_type(i_s).into_db_type();
+                        if let DbType::Callable(c) = c {
+                            let mut c = (*c).clone();
+                            if let CallableParams::Simple(params) = &c.params {
+                                if params.len() == 0 {
+                                    todo!()
+                                }
+                                let mut params = params.to_vec();
+                                params.remove(0);
+                                c.params = CallableParams::Simple(params.into());
+                            }
+                            let cls_type_vars = cls.type_vars(i_s);
+                            // Since __init__ does not have a return, We need to check the params
+                            // of the __init__ functions and the class as a return type separately.
+                            if c.type_vars.is_some() {
+                                todo!()
+                            }
+                            // TODO if the type vars are defined, why do we set them here?
+                            c.type_vars = cls.type_vars(i_s).cloned();
+                            c.result_type = cls.as_db_type(i_s.db);
+                            return Some(Rc::new(c));
+                        }
+                    }
+                    None
                 }
-                _ => None,
+                _ => {
+                    /*
+                    if matches!(&c1.params, CallableParams::Any) {
+                        Type::new(&c1.result_type).is_super_type_of(
+                            i_s,
+                            matcher,
+                            &Type::new(t2.as_ref()),
+                        )
+                    } else {
+                        None
+                    }
+                    */
+                    None
+                }
             },
+            DbType::Any => Some(Rc::new(CallableContent::new_any())),
+            DbType::Class(link, generics) => {
+                let cls = Class::from_db_type(i_s.db, *link, generics);
+                Instance::new(cls, None)
+                    .lookup(i_s, None, "__call__")
+                    .into_maybe_inferred()
+                    .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
+            }
+            _ => None,
         }
     }
 
