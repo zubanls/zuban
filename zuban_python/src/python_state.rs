@@ -3,8 +3,8 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    ClassGenerics, ComplexPoint, Database, DbType, LiteralKind, Locality, Point, PointLink,
-    Specific, TupleContent,
+    CallableContent, ClassGenerics, ComplexPoint, Database, DbType, LiteralKind, Locality, Point,
+    PointLink, Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
@@ -91,6 +91,7 @@ pub struct PythonState {
     pub type_of_object: DbType,
     pub type_of_any: DbType,
     pub type_of_arbitrary_tuple: DbType,
+    pub any_callable: Rc<CallableContent>,
 }
 
 impl PythonState {
@@ -139,6 +140,7 @@ impl PythonState {
             type_of_arbitrary_tuple: DbType::Type(Rc::new(
                 DbType::Tuple(TupleContent::new_empty()),
             )),
+            any_callable: Rc::new(CallableContent::new_any()),
         }
     }
 

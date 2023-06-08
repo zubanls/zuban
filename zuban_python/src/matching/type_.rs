@@ -155,7 +155,7 @@ impl<'a> Type<'a> {
                     None
                 }
             },
-            DbType::Any => Some(Rc::new(CallableContent::new_any())),
+            DbType::Any => Some(i_s.db.python_state.any_callable.clone()),
             DbType::Class(link, generics) => {
                 let cls = Class::from_db_type(i_s.db, *link, generics);
                 Instance::new(cls, None)
