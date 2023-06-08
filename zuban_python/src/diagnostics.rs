@@ -89,6 +89,7 @@ pub(crate) enum IssueType {
     InvalidClassMethodFirstArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     UnexpectedComprehension,
     AmbigousClassVariableAccess,
+    CannotInstantiateProtocol { name: Box<str> },
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -422,6 +423,9 @@ impl<'db> Diagnostic<'db> {
             UnexpectedComprehension => "Unexpected comprehension".to_string(),
             AmbigousClassVariableAccess =>
                 "Access to generic instance variables via class is ambiguous".to_string(),
+            CannotInstantiateProtocol{name} => format!(
+                "Cannot instantiate protocol class \"{name}\""
+            ),
 
             BaseExceptionExpected =>
                 "Exception type must be derived from BaseException (or be a \

@@ -87,7 +87,13 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> Option<ClassGenerics> {
         let (init, class) = self.lookup_and_class(i_s, "__init__");
         let Some(inf) = init.into_maybe_inferred() else {
-            debug_assert!(self.incomplete_mro(i_s.db));
+            if self.is_protocol(i_s.db) {
+                args.as_node_ref().add_typing_issue(i_s, IssueType::CannotInstantiateProtocol {
+                    name: self.name().into()
+                })
+            } else {
+                debug_assert!(self.incomplete_mro(i_s.db));
+            }
             return Some(match self.type_vars(i_s) {
                 Some(type_vars) => ClassGenerics::List(type_vars.as_any_generic_list()),
                 None => ClassGenerics::None,

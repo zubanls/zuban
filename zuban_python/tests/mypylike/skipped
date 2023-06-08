@@ -695,7 +695,6 @@ testEmptyBodyVariationsImplicitlyAbstractProtocol
 testEmptyBodyNoneCompatibleProtocol
 testEmptyBodyWithFinal
 # "Cannot instantiate protocol class "P""
-testCannotInstantiateProtocol
 testInstantiationProtocolInTypeForAliases
 testInstantiationProtocolInTypeForFunctions
 # Protocol instantiations in classmethods
