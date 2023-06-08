@@ -590,12 +590,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 } else {
                     // It is possible to match a Callable against a Protocol that only implements
                     // __call__.
-                    if name == "__call__"
-                        && matches!(
-                            other.as_ref(),
-                            DbType::Callable(_) | DbType::FunctionOverload(_)
-                        )
-                    {
+                    if name == "__call__" {
                         let inf1 = Instance::new(c, None)
                             .lookup(i_s, None, name)
                             .into_inferred();

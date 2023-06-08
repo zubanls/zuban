@@ -773,6 +773,8 @@ testModuleAsProtocolRedefinitionTopLevel
 testModuleAsProtocolRedefinitionImportFrom
 # Flaky because of dict ordering
 testProtocolIncompatibilityWithManyConflicts
+# ""C" has constructor incompatible with "__call__" of "P""
+testProtocolClassObjectPureCallback
 # Too much? error output, but otherwise correct
 testSimpleProtocolOneMethodOverride
 testSimpleProtocolTwoMethodsMerge
@@ -809,7 +811,6 @@ testTwoProtocolsTwoFilesCrossedDeleteAttr-only_when_cache
 testDivmod
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
-testProtocolClassObjectPureCallback
 testProtocolClassObjectCallableError
 # Protocol inference
 testCallbackProtocolFunctionAttributesInference
