@@ -556,10 +556,6 @@ impl<'db: 'a, 'a> Class<'a> {
                         let mut add_error =
                             |full1: &Type, full2: &Type| match (full1.as_ref(), full2.as_ref()) {
                                 (DbType::Callable(c1), DbType::Callable(c2)) => {
-                                    let s2 = t2.format(&FormatData::with_style(
-                                        i_s.db,
-                                        FormatStyle::MypyRevealType,
-                                    ));
                                     let s1 = format_pretty_callable(i_s, c1);
                                     let s2 = format_pretty_callable(i_s, c2);
                                     notes.push("    Expected:".into());
