@@ -2517,8 +2517,6 @@ testColumnsMultipleStatementsPerLine
 testColumnInvalidIndexing
 testColumnsAssignment
 testSliceInDict39
-# columns for notes
-testColumnRevealedType
 # --show-error-end
 testCheckEndColumnPositions
 

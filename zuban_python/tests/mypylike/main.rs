@@ -497,7 +497,7 @@ impl Iterator for ErrorCommentsOnCode<'_> {
     fn next(&mut self) -> Option<Self::Item> {
         for (i, line) in &mut self.1 {
             let was_exception = line.find("# E:");
-            if let Some(pos) = was_exception.or_else(|| line.find("# N: ")) {
+            if let Some(pos) = was_exception.or_else(|| line.find("# N:")) {
                 let mut backslashes = 0;
                 for i in (0..i).rev() {
                     if !self.0[i].ends_with('\\') {

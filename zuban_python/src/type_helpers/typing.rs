@@ -196,7 +196,7 @@ impl RevealTypeFunction {
             i_s,
             &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),
         );
-        args.as_node_ref().add_typing_issue(
+        arg.as_node_ref().add_typing_issue(
             i_s,
             IssueType::Note(format!("Revealed type is \"{s}\"").into()),
         );
