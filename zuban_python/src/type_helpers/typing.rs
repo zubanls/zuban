@@ -292,9 +292,14 @@ fn maybe_type_var(
                         return None;
                     }
                 }
-                ArgumentKind::Keyword { key, node_ref, .. } => match key {
+                ArgumentKind::Keyword {
+                    key,
+                    node_ref,
+                    expression,
+                    ..
+                } => match key {
                     "covariant" => {
-                        let code = node_ref.as_expression().as_code();
+                        let code = expression.as_code();
                         match code {
                             "True" => covariant = true,
                             "False" => (),
@@ -310,7 +315,7 @@ fn maybe_type_var(
                         }
                     }
                     "contravariant" => {
-                        let code = node_ref.as_expression().as_code();
+                        let code = expression.as_code();
                         match code {
                             "True" => contravariant = true,
                             "False" => (),
@@ -333,7 +338,7 @@ fn maybe_type_var(
                         if let Some(t) = node_ref
                             .file
                             .inference(i_s)
-                            .compute_type_var_constraint(node_ref.as_expression())
+                            .compute_type_var_constraint(expression)
                         {
                             bound = Some(t)
                         } else {
@@ -479,12 +484,17 @@ fn maybe_type_var_tuple(
                     );
                     return None;
                 }
-                ArgumentKind::Keyword { key, node_ref, .. } => match key {
+                ArgumentKind::Keyword {
+                    key,
+                    node_ref,
+                    expression,
+                    ..
+                } => match key {
                     "default" => {
                         if let Some(t) = node_ref
                             .file
                             .inference(i_s)
-                            .compute_type_var_constraint(node_ref.as_expression())
+                            .compute_type_var_constraint(expression)
                         {
                             //default = Some(t);
                             todo!()
@@ -601,11 +611,16 @@ fn maybe_param_spec(
 
         for arg in iterator {
             match arg.kind {
-                ArgumentKind::Keyword { key, node_ref, .. } if key == "default" => {
+                ArgumentKind::Keyword {
+                    key,
+                    node_ref,
+                    expression,
+                    ..
+                } if key == "default" => {
                     if let Some(t) = node_ref
                         .file
                         .inference(i_s)
-                        .compute_type_var_constraint(node_ref.as_expression())
+                        .compute_type_var_constraint(expression)
                     {
                         todo!()
                     } else {

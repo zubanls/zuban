@@ -13,8 +13,8 @@ use crate::node_ref::NodeRef;
 use crate::type_helpers::TypeOrClass;
 use crate::InferenceState;
 use parsa_python_ast::{
-    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, NodeIndex,
-    Primary, PrimaryContent,
+    Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,
+    NodeIndex, Primary, PrimaryContent,
 };
 
 pub enum ArgumentsType<'a> {
@@ -230,6 +230,7 @@ pub enum ArgumentKind<'db, 'a> {
         i_s: InferenceState<'db, 'a>,
         key: &'a str,
         node_ref: NodeRef<'a>,
+        expression: Expression<'a>,
     },
     Inferred {
         inferred: Inferred,
@@ -282,11 +283,13 @@ impl<'db, 'a> ArgumentKind<'db, 'a> {
         file: &'a PythonFile,
         key: &'a str,
         node_index: NodeIndex,
+        expression: Expression<'a>,
     ) -> BaseArgumentReturn<'db, 'a> {
         BaseArgumentReturn::Argument(ArgumentKind::Keyword {
             i_s,
             key,
             node_ref: NodeRef { file, node_index },
+            expression,
         })
     }
 }
@@ -325,10 +328,15 @@ impl<'db, 'a> Argument<'db, 'a> {
                         result_context,
                     )
             }
-            ArgumentKind::Keyword { i_s, node_ref, .. } => node_ref
+            ArgumentKind::Keyword {
+                i_s,
+                node_ref,
+                expression,
+                ..
+            } => node_ref
                 .file
                 .inference(&i_s.use_mode_of(func_i_s))
-                .infer_expression_with_context(node_ref.as_expression(), result_context),
+                .infer_expression_with_context(*expression, result_context),
             ArgumentKind::SlicesTuple { i_s, slices } => {
                 let parts = slices
                     .iter()
@@ -526,7 +534,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             ))
                         }
                         ASTArgument::Keyword(kwarg) => {
-                            let (name, expr) = kwarg.unpack();
+                            let (name, expression) = kwarg.unpack();
                             if let Some(kwargs_before_star_args) = kwargs_before_star_args {
                                 kwargs_before_star_args.push(arg);
                             } else {
@@ -534,7 +542,8 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                     *i_s,
                                     file,
                                     name.as_code(),
-                                    expr.index(),
+                                    kwarg.index(),
+                                    expression,
                                 ));
                             }
                         }
@@ -629,12 +638,13 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                     if let Some(kwarg_before_star_args) = kwargs_before_star_args.pop() {
                         match kwarg_before_star_args {
                             ASTArgument::Keyword(kwarg) => {
-                                let (name, expr) = kwarg.unpack();
+                                let (name, expression) = kwarg.unpack();
                                 return Some(ArgumentKind::new_keyword_return(
                                     *i_s,
                                     file,
                                     name.as_code(),
-                                    expr.index(),
+                                    kwarg.index(),
+                                    expression,
                                 ));
                             }
                             _ => unreachable!(),
