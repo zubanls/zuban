@@ -9,7 +9,6 @@ testErrorCodeOverloadVariant
 testSliceInCustomTensorType
 
 # Serialize tests
-testSerializeOptionalType
 testSerializeArgumentKinds
 testSerializeArgumentKindsErrors
 testSerialize__init__

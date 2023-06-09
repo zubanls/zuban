@@ -650,9 +650,11 @@ impl UnionType {
                 }
             }
         };
+        let format_as_optional =
+            self.format_as_optional && format_data.style != FormatStyle::MypyRevealType;
         let mut unsorted = iterator
             .filter_map(|e| {
-                (!self.format_as_optional || !matches!(e.type_, DbType::None))
+                (!format_as_optional || !matches!(e.type_, DbType::None))
                     .then(|| (e.format_index, e.type_.format(format_data)))
             })
             .collect::<Vec<_>>();
@@ -662,7 +664,7 @@ impl UnionType {
             .map(|(_, t)| t)
             .collect::<Vec<_>>()
             .join(" | ");
-        if self.format_as_optional {
+        if format_as_optional {
             format!("Optional[{sorted}]").into()
         } else {
             sorted.into()
