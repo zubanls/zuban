@@ -216,6 +216,7 @@ testDictionaryLiteralInContext
 testLiteralInferredInDictContext
 # "Dict entry 0 has incompatible type "int": "str"; expected "int": "int""
 testErrorCodeListOrDictItem
+testColumnListOrDictItemHasIncompatibleType
 
 # context inference from class statement
 testSetDescriptorOnClass
@@ -1244,6 +1245,7 @@ testNamedTupleFallback
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType1
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2
 testErrorCodeAssignment
+testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation
 # List item 0 has incompatible type "str"; expected "int"
 testVariableTypeVarList
 testInWithInvalidArgs
@@ -1683,6 +1685,7 @@ testTupleMeetTupleAnyAfter
 testNamedTupleSubclassMulti
 testNarrowSelfType
 testRuntimeIterableProtocolCheck
+testColumnsSimpleIsinstance
 # issubclass narrowing
 testIsInstanceTypeIsSubclass
 testIsInstanceTypeTypeVar
@@ -2509,14 +2512,10 @@ testColumnNonOverlappingEqualityCheck
 
 # --show-column-numbers
 testColumnInvalidType
-testColumnMissingTypeParameters
 testColumnMissingProtocolMember
-testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation
 testColumnsMultipleStatementsPerLine
 testColumnInvalidIndexing
 testColumnsAssignment
-testColumnsSimpleIsinstance
-testColumnListOrDictItemHasIncompatibleType
 testSliceInDict39
 # columns for notes
 testColumnRevealedType
@@ -2547,6 +2546,7 @@ testUnlimitedStubErrorVolume
 # --disallow-any-generics
 testErrorReportingNewAnalyzer
 testErrorCodeMissingTypeArg
+testColumnMissingTypeParameters
 
 # --disallow-any-imported
 testErrorCodeAnyFromUnfollowedImport
