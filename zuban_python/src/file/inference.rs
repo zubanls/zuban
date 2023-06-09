@@ -482,6 +482,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             );
                             self.assign_single_target(
                                 target,
+                                NodeRef::new(self.file, right_side.index()),
                                 &right.clone(),
                                 true,
                                 |i_s, index| {
@@ -502,7 +503,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             t.error_if_not_matches(self.i_s, &right, on_type_error);
                         }
                         let inf_annot = self.use_cached_annotation(annotation);
-                        self.assign_single_target(target, &inf_annot, true, |_, index| {
+                        let n = match right_side {
+                            Some(right_side) => NodeRef::new(self.file, right_side.index()),
+                            None => NodeRef::new(self.file, annotation.index()),
+                        };
+                        self.assign_single_target(target, n, &inf_annot, true, |_, index| {
                             self.file.points.set(
                                 index,
                                 Point::new_redirect(
@@ -546,8 +551,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         )
                     }),
                 );
-                if let AssignmentContent::AugAssign(target, _, _) = assignment.unpack() {
-                    self.assign_single_target(target, &result, false, |_, index| {
+                if let AssignmentContent::AugAssign(target, _, right_side) = assignment.unpack() {
+                    let n = NodeRef::new(self.file, right_side.index());
+                    self.assign_single_target(target, n, &result, false, |_, index| {
                         // There is no need to save this, because it's never used
                     })
                 } else {
@@ -591,6 +597,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn assign_single_target(
         &mut self,
         target: Target,
+        from: NodeRef,
         value: &Inferred,
         is_definition: bool,
         save: impl FnOnce(&InferenceState, NodeIndex),
@@ -614,13 +621,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         self.i_s,
                         value,
                         |i_s, got, expected| {
-                            let node_ref =
-                                NodeRef::new(self.file, name_def.index()).to_db_lifetime(i_s.db);
-                            node_ref.add_typing_issue(
+                            from.add_typing_issue(
                                 i_s,
                                 IssueType::IncompatibleAssignment { got, expected },
                             );
-                            node_ref
+                            from.to_db_lifetime(i_s.db)
                         },
                     );
                 }
@@ -817,11 +822,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             Target::Starred(n) => {
                 todo!("Star tuple unpack");
             }
-            _ => self.assign_single_target(target, &value, is_definition, |i_s, index| {
-                value
-                    .clone()
-                    .maybe_save_redirect(i_s, self.file, index, true);
-            }),
+            _ => self.assign_single_target(
+                target,
+                value_node_ref,
+                &value,
+                is_definition,
+                |i_s, index| {
+                    value
+                        .clone()
+                        .maybe_save_redirect(i_s, self.file, index, true);
+                },
+            ),
         };
     }
 
