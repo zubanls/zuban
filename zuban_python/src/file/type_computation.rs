@@ -2686,10 +2686,10 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if let Some(start) = suffix.find(TYPE) {
             let mut start = start + TYPE.len();
             let with_spaces = &suffix[start..];
-            let s = with_spaces.trim_start_matches(' ');
+            let full_rest = with_spaces.trim_start_matches(' ');
             // Use only the part before the comment after the type definition.
-            let s = s.split('#').next().unwrap();
-            start += with_spaces.len() - s.len();
+            let s = full_rest.split('#').next().unwrap();
+            start += with_spaces.len() - full_rest.len();
             debug!("Infer type comment {s:?} on {:?}", assignment.as_code());
             if maybe_type_ignore(s).is_none() {
                 return Some(self.compute_type_comment(

@@ -11,6 +11,7 @@ use std::fmt;
 type Signatures = Vec<()>;
 pub type Names<'db> = Vec<Box<dyn Name<'db>>>;
 
+#[derive(Debug)]
 pub struct TreePosition<'db> {
     file: &'db dyn File,
     position: CodeIndex,
