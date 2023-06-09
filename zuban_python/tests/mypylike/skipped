@@ -8,6 +8,16 @@ testErrorCodeInvalidType
 testErrorCodeOverloadVariant
 testSliceInCustomTensorType
 
+# Serialize tests
+testSerializeOptionalType
+testSerializeArgumentKinds
+testSerializeArgumentKindsErrors
+testSerialize__init__
+testSerializeOverloaded__init__
+testSerializeNamedTupleInMethod4
+testSerializeNamedTuple
+testSerializeStarImport
+
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
 
@@ -351,6 +361,8 @@ testNewNamedTupleProperty
 testFastParseProperty
 testFastParseConditionalProperty
 testColumnProperty
+testSerializeForwardReferenceToAliasInProperty
+testSerializeForwardReferenceToImportedAliasInProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -395,6 +407,7 @@ testBuiltinStaticMethod
 testRefMethodWithDecorator
 testStaticMethodWithNoArgs
 testIgnoredModuleDefinesBaseClassAndClassAttribute
+testSerializeStaticMethod
 # staticmethod call error has no Argument 1 to "f" of "A"
 testSimpleStaticMethod
 testForwardReferenceToStaticallyTypedStaticMethod
@@ -586,6 +599,8 @@ testErrorCodeSpecialArgTypeErrors
 testTypedDictNameMismatch
 testNoteAboutChangedTypedDictErrorCode
 testColumnTypedDict
+testSerializeTypedDictInMethod
+testSerializeNonTotalTypedDict
 
 # NoReturn
 testNoReturnTypeAlias
@@ -753,6 +768,8 @@ testNamedTupleWithNoArgsCallableField
 testNamedTupleWithManyArgsCallableField
 testErrorsForProtocolsInDifferentPlaces
 testBasicNamedTupleStructuralSubtyping
+testSerializeReadOnlyProperty
+testSerializeReadWriteProperty
 # staticmethod/classmethod
 testStaticAndClassMethodsInProtocols
 testBuiltinClassMethod
@@ -761,7 +778,7 @@ testProtocolClassObjectStaticMethod
 testProtocolClassObjectGenericClassMethod
 testProtocolClassObjectSelfTypeClassMethod
 testProtocolTypeTypeClassMethod
-# ClassVar
+# Protocol with ClassVar
 testProtocolClassObjectAttribute
 testModuleAsProtocolImplementationClassVar
 testProtocolClassVarSelfType
@@ -1054,6 +1071,7 @@ testAbstractInit
 testNewAnalyzerClassPropertiesInAllScopes
 testConstructorJoinsWithCustomMetaclass
 testDedicatedErrorCodeTypeAbstract
+testSerializeAbstractClass
 
 # "Cannot instantiate abstract class "C" with abstract attribute "x""
 testNonProtocolToProtocol
@@ -1147,6 +1165,7 @@ testMetaclassAsAnyWithAFlag
 testClassVarsInProtocols
 testClassVarProtocolImmutable
 testProtocolClassObjectClassVarRejected
+testSerializeClassVar
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
@@ -1348,6 +1367,7 @@ testNewReturnType12
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNamedTupleNew
+testSerialize__new__
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
@@ -1648,6 +1668,7 @@ testNamedTupleHasMatchArgs
 
 # callable()
 testFineGrainedCallable
+testSerializeDummyType
 
 # isinstance
 testLiteralErrorsWithIsInstanceAndIsSubclass
@@ -1837,6 +1858,9 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+
+# TypeGuard
+testSerializeTypeGuardFunction
 
 # Function local self attribute name binding
 testOptionalDescriptorsBinder
@@ -2413,6 +2437,8 @@ testDecoratorTypeAfterReprocessing
 testIgnoreImportFromErrorMultiline
 testIgnoreTooManyTypeArguments
 testErrorCodeMultiLineBinaryOperatorOperand
+testSerializeIgnoredMissingBaseClass
+testSerializeIgnoredInvalidBaseClass
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3
@@ -2420,6 +2446,8 @@ testIgnoreWholeModule4
 testIgnoreWholeModule5
 testDontIgnoreWholeModule2
 testDontIgnoreWholeModule3
+# type ignore leads to "Revealed type is "A?""
+testSerializeIgnoredInvalidType
 # bad type: ignore
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
@@ -2646,6 +2674,14 @@ testRefreshForWithTypeComment2
 testForStatementTypeComments
 testForStatementMultipleTypeComments
 
+# Type Vars qualified names
+testQualifiedTypeVariableName
+testPartiallyQualifiedTypeVariableName
+testSerializeSimpleTypeVar
+testSerializeBoundedTypeVar
+testSerializeTypeVarWithValues
+testSerializeTypeVarInClassBody
+
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
 
@@ -2658,10 +2694,6 @@ testListWithDucktypeCompatibilityAndTransitivity
 testSimpleDucktypeDecorator
 testDucktypeTransitivityDecorator
 testOverloadingAndDucktypeCompatibility
-
-# Probably won't support Type Var formatting
-testQualifiedTypeVariableName
-testPartiallyQualifiedTypeVariableName
 
 # Probably won't support: Type comments for params
 testFastParsePerArgumentAnnotations
