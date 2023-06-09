@@ -234,7 +234,8 @@ impl<'db> Diagnostic<'db> {
         if path == "__main__" {
             path = "main";
         }
-        let line = self.start_position().line_and_column().0;
+        let line_column = self.start_position().line_and_column();
+        let line = line_column.0;
         use IssueType::*;
         let error = match &self.issue.type_ {
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
@@ -268,8 +269,9 @@ impl<'db> Diagnostic<'db> {
                      (default has type \"{got}\", argument has type \"{expected}\")"
                 );
                 if got.as_ref() == "None" {
-                    out += &format!("\n{path}:{line}: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True");
-                    out += &format!("\n{path}:{line}: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase");
+                    out += "\n";
+                    out += &fmt_line(path, line_column, "note", "PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True\n");
+                    out += &fmt_line(path, line_column, "note", "Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase");
                 }
                 out
             },
@@ -293,9 +295,9 @@ impl<'db> Diagnostic<'db> {
                         "No overload variant of {name} matches argument types \"{arg_str}\"\n",
                     ),
                 };
-                out += &format!("{path}:{line}: note: Possible overload variants:\n");
+                out += &fmt_line(path, line_column, "note", "Possible overload variants:\n");
                 for variant in variants.iter() {
-                    out += &format!("{path}:{line}: note:     {variant}\n");
+                    out += &fmt_line(path, line_column, "note", &format!("    {variant}\n"));
                 }
                 out.pop(); // Pop the last newline
                 out
@@ -376,8 +378,8 @@ impl<'db> Diagnostic<'db> {
             EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
             InvalidCallableParams => format!(
-                "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n\
-                 {path}:{line}: note: See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"
+                "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n{}",
+                fmt_line(path, line_column, "note", "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"),
             ),
             InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
@@ -395,9 +397,9 @@ impl<'db> Diagnostic<'db> {
                     let qualified = type_var.qualified_name(self.db);
                     let name = type_var.name(self.db);
                     format!(
-                        "Type variable {qualified:?} is unbound\n\
-                         {path}:{line}: note: (Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)\n\
-                         {path}:{line}: note: (Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)"
+                        "Type variable {qualified:?} is unbound\n{}\n{}",
+                        fmt_line(path, line_column, "note", &format!("(Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)")),
+                        fmt_line(path, line_column, "note", &format!("(Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)")),
                     )
                 }
                 TypeVarLike::TypeVarTuple(type_var_tuple) => {
@@ -520,8 +522,9 @@ impl<'db> Diagnostic<'db> {
                     _ => unreachable!(),
                 };
                 format!(
-                    "\"{actual}\" is invariant -- see https://mypy.readthedocs.io/en/stable/common_issues.html#variance\n\
-                    {path}:{line}: note: Consider using \"{maybe}\" instead, which is covariant{suffix}"
+                    "\"{actual}\" is invariant -- see \
+                     https://mypy.readthedocs.io/en/stable/common_issues.html#variance\n{}",
+                    fmt_line(path, line_column, "note", &format!("Consider using \"{maybe}\" instead, which is covariant{suffix}"))
                 )
             }
             Note(s) => {
@@ -530,7 +533,7 @@ impl<'db> Diagnostic<'db> {
             }
         };
         let string = String::new();
-        let mut result = format!("{path}:{line}: {type_}: {error}");
+        let mut result = fmt_line(path, line_column, type_, &error);
         if config.show_error_codes {
             if let Some(mypy_error_code) = self.issue.type_.mypy_error_code() {
                 result += &format!("  [{mypy_error_code}]");
@@ -538,6 +541,11 @@ impl<'db> Diagnostic<'db> {
         }
         result
     }
+}
+
+fn fmt_line(path: &str, line_column: (usize, usize), type_: &str, error: &str) -> String {
+    let line = line_column.0;
+    format!("{path}:{line}: {type_}: {error}")
 }
 
 impl std::fmt::Debug for Diagnostic<'_> {
