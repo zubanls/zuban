@@ -309,10 +309,8 @@ testOverloadedToGeneric
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)
 testGenericTypeAliasesTypeVarBinding
-testParamSpecApplyConcatenateTwice
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
-testSelfTypeMultipleTypeVars
 testTypingSelfNonAnnotationUses
 
 # Property
