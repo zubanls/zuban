@@ -2408,8 +2408,6 @@ testDontIgnoreWholeModule3
 # bad type: ignore
 testErrorCodeBadIgnore
 testErrorCodeBadIgnoreNoExtraComment
-# type: ignore[...]
-testMethodAssignCoveredByAssignmentIgnore
 # --disable-error-code
 testUncheckedAnnotationSuppressed
 testMethodAssignmentSuppressed

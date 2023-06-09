@@ -684,13 +684,10 @@ impl<'db: 'a, 'a> Class<'a> {
         use_descriptors: bool,
     ) -> LookupResult {
         let (lookup_result, in_class) = self.lookup_and_class(i_s, name);
-        if !use_descriptors {
-            return lookup_result;
-        }
         let result = lookup_result.and_then(|inf| {
             if let Some(in_class) = in_class {
                 let i_s = i_s.with_class_context(&in_class);
-                inf.bind_class_descriptors(&i_s, self, in_class, node_ref)
+                inf.bind_class_descriptors(&i_s, self, in_class, node_ref, use_descriptors)
             } else {
                 todo!()
             }

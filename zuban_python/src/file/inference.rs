@@ -648,7 +648,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 return;
                             }
                         }
-                        t.maybe_type_of_class(i_s.db)
+                        let inf = t
+                            .maybe_type_of_class(i_s.db)
                             .and_then(|c| {
                                 // We need to handle class descriptors separately, because
                                 // there the __get__ descriptor should not be applied.
@@ -676,8 +677,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     },
                                 )
                                 .into_inferred()
-                            })
-                            .as_type(i_s)
+                            });
+                        inf.as_type(i_s)
                             .error_if_not_matches(i_s, value, |i_s, got, expected| {
                                 let node_ref = NodeRef::new(self.file, primary_target.index())
                                     .to_db_lifetime(i_s.db);

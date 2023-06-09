@@ -781,6 +781,7 @@ impl<'db: 'slf, 'slf> Inferred {
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
         from: Option<NodeRef>,
+        apply_descriptor: bool,
     ) -> Option<Self> {
         match &self.state {
             InferredState::Saved(definition) => {
@@ -841,7 +842,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 DbType::Callable(c) => {
                                     todo!()
                                 }
-                                DbType::Class(link, generics) => {
+                                DbType::Class(link, generics) if apply_descriptor => {
                                     let inst = use_instance_with_ref(
                                         NodeRef::from_link(i_s.db, *link),
                                         Generics::from_class_generics(i_s.db, generics),
