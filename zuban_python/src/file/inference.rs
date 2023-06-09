@@ -440,6 +440,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
+            let node_ref = NodeRef::new(node_ref.file, right_side.unwrap().index());
             node_ref.add_typing_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
             node_ref
         };

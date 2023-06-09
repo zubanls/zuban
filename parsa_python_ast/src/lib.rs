@@ -1983,9 +1983,19 @@ pub enum AssignmentContentWithSimpleTargets<'db> {
     AugAssign(SingleTarget<'db>, AugAssign<'db>, AssignmentRightSide<'db>),
 }
 
+#[derive(Clone, Copy)]
 pub enum AssignmentRightSide<'db> {
     YieldExpr(YieldExpr<'db>),
     StarExpressions(StarExpressions<'db>),
+}
+
+impl AssignmentRightSide<'_> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::YieldExpr(y) => y.index(),
+            Self::StarExpressions(s) => s.index(),
+        }
+    }
 }
 
 pub struct StarTargetsIterator<'db>(StepBy<SiblingIterator<'db>>);

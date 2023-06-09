@@ -946,6 +946,7 @@ testModuleAttributeThreeSuggestions
 testImportMisspellingSingleCandidate
 testImportMisspellingMultipleCandidates
 testImportMisspellingMultipleCandidatesTruncated
+testColumnHasNoAttribute
 
 # Unexpected keyword argument "otter" for "f"; did you mean "other"?
 testKeywordMisspelling
@@ -1122,6 +1123,7 @@ testRefreshSubclassNestedInFunction2
 testCyclicDecoratorSuper
 testCyclicDecoratorSuperDeferred
 testErrorCodeUnsafeSuper_no_empty
+testColumnsInvalidArgumentType
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -1548,6 +1550,7 @@ testTypeVarValuesMethod1
 testTypeVarValuesMethod2
 testTypingSelfWithValuesExpansion
 testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
+testColumnFunctionWithTypeVarValues
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
@@ -2480,6 +2483,7 @@ testFlexibleAlias3
 # flags: --warn-redundant-casts
 # "Redundant cast to "int""
 testErrorCodeRedundantCast
+testColumnRedundantCast
 
 # enable-error-code="redundant-self"
 # "Redundant Self annotation on method first argument"
@@ -2506,31 +2510,19 @@ testErrorCodeNonOverlappingEquality
 testColumnNonOverlappingEqualityCheck
 
 # --show-column-numbers
-testForwardInstanceWithBound
-testSliceInDict39
-# new columns
-testColumnsInvalidArgumentType
-testColumnsInvalidArgumentTypeVarArgs
-testColumnsMultipleStatementsPerLine
-testColumnsAssignment
-testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation
-testColumnsSimpleIsinstance
-testColumnHasNoAttribute
-testColumnUnexpectedOrMissingKeywordArg
-testColumnDefinedHere
-testColumnInvalidType
-testColumnFunctionMissingTypeAnnotation
 testColumnNameIsNotDefined
-testColumnCallToUntypedFunction
-testColumnListOrDictItemHasIncompatibleType
-testColumnInvalidIndexing
+testColumnInvalidType
 testColumnMissingTypeParameters
 testColumnMissingProtocolMember
-testColumnRedundantCast
+testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation
+testColumnsMultipleStatementsPerLine
+testColumnInvalidIndexing
+testColumnsAssignment
+testColumnsSimpleIsinstance
+testColumnListOrDictItemHasIncompatibleType
+testSliceInDict39
+# columns for notes
 testColumnRevealedType
-testColumnValueOfTypeVariableCannotBe
-testColumnOverloaded
-testColumnFunctionWithTypeVarValues
 # --show-error-end
 testCheckEndColumnPositions
 
@@ -2566,6 +2558,11 @@ testErrorCodeAnyFromUnfollowedImport
 testIgnoreInsideFunctionDoesntAffectWhole
 testErrorCodeFunctionHasNoAnnotation
 testErrorCodeCallUntypedFunction
+# "Function is missing a return type annotation"
+testColumnFunctionMissingTypeAnnotation
+
+# --disallow-untyped-calls
+testColumnCallToUntypedFunction
 
 # --warn-return-any
 testErrorCodeReturnAny
