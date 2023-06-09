@@ -184,7 +184,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if self.file_name == "check-errorcodes" {
             diagnostics_config.show_error_codes = true;
         }
-        if self.file_name == "check-columns" {
+        if self.file_name == "check-columns" || steps.flags.contains(&"--show-column-numbers") {
             diagnostics_config.show_column_numbers = true;
         }
         let mut config = BaseConfig::default();
