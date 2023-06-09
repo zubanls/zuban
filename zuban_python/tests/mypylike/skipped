@@ -10,6 +10,19 @@ testSliceInCustomTensorType
 testNewImportCycleTypeVarBound
 testNewImportCycleTupleBase
 testTypingSelfCoarse
+testDupBaseClasses
+testDupBaseClassesGeneric
+testInvalidParamSpecDefinitions
+
+# Mypy upgrade
+testDictStarInference
+testDictStarAnyKeyJoinValue
+testRecursiveAliasTuple
+testAliasRecursiveUnpackMultiple
+testNoCrashUnsupportedNamedTuple
+testNarrowedVariableInNestedFunctionBasic
+testNarrowedVariableInNestedFunctionMore1
+testNarrowedVariableInNestedFunctionMore2
 
 # Serialize tests
 testSerializeArgumentKinds
@@ -825,6 +838,7 @@ testEnclosingScopeLambdaNoCrash
 testEnclosingScopeLambdaNoCrashExplicit
 testLambdaAndReachability
 testNoCrashOnPartialLambdaInference
+testGenericLambdaGenericMethodNoCrash
 # lambda: Name "UNDEFINED" is not defined
 testLambdaInheritsCheckedContextFromTypedFunc
 testLambdaInheritsCheckedContextFromTypedFuncForced
@@ -1010,6 +1024,22 @@ testTypeVarTuplePep646TypeVarStarArgsFixedLengthTuple
 testTypeVarTuplePep646TypeVarStarArgsVariableLengthTuple
 testTypeVarTuplePep646Callable
 testTypeVarTuplePep646CallableWithPrefixSuffix
+testTypeVarTuplePep646UnspecifiedParameters
+testTypeVarTuplePep646CallableStarArgs
+testVariadicAliasBasicTuple
+testVariadicAliasBasicCallable
+testVariadicAliasUnpackFixedTupleArgs
+testVariadicAliasUnpackFixedTupleTarget
+testVariadicAliasWrongCallable
+testVariadicAliasMultipleUnpacks
+testVariadicAliasNoArgs
+testVariadicAliasFewArgs
+testVariadicAliasRecursiveUnpack
+testVariadicAliasUpperBoundCheck
+testVariadicAliasEmptyArg
+testVariadicAliasVariadicTupleArg
+testVariadicAliasVariadicTupleArgGeneric
+testVariadicAliasVariadicTupleArgSplit
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
 testUnpackKwargsReveal
@@ -1447,6 +1477,18 @@ testMultipleInheritance_MethodsReturningSelfIncompatible
 testNestedVariableRefersToCompletelyDifferentClasses
 testGenericMultipleOverrideReplace
 testIncrementalBaseClassAttributeConflict
+testOverrideIncompatibleWithMultipleSupertypes
+# "Method "g" is marked as an override, but no base method was found with this name"
+explicitOverride
+explicitOverrideStaticmethod
+explicitOverrideClassmethod
+explicitOverrideProperty
+explicitOverrideSettableProperty
+invalidExplicitOverride
+explicitOverrideFromExtensions
+explicitOverrideOverloads
+explicitOverrideNotOnOverloadsImplementation
+explicitOverrideOnMultipleOverloads
 
 # setting class attributes on self
 self_instance_variable1
@@ -2638,6 +2680,7 @@ testUncheckedAnnotationSuppressed
 testMethodAssignmentSuppressed
 testMethodAssignCoveredByAssignmentFlag
 # --warn-unused-ignores
+# "Unused "type: ignore" comment"
 testErrorCodeWarnUnusedIgnores1
 testErrorCodeWarnUnusedIgnores2
 testErrorCodeWarnUnusedIgnores3
@@ -2645,6 +2688,8 @@ testErrorCodeWarnUnusedIgnores4
 testErrorCodeWarnUnusedIgnores5
 testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode
 testMethodAssignCoveredByAssignmentUnused
+testUnusedIgnoreTryExcept
+testUnusedIgnoreEnableCode
 # --warn-unused-ignores whole module
 testIgnoreWholeModule1
 testImportUnusedIgnore2
@@ -2815,7 +2860,10 @@ testPrettyMessageSorting
 testErrorCodeFormatCall
 
 # syntax not yet supported
+# ""break" outside loop"
 testBreakOutsideLoop
+testNoCrashOnBreakOutsideLoopFunction
+testNoCrashOnBreakOutsideLoopClass
 testContinueOutsideLoop
 testInvalidGlobalDecl
 testAssignToTypeDef

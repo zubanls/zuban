@@ -57,6 +57,7 @@ const USE_MYPY_TEST_FILES: [&str; 72] = [
     "check-protocols.test",
     "check-parameter-specification.test",
     "check-typevar-tuple.test",
+    //"check-typevar-defaults.test",
     "check-expressions.test",
     "check-statements.test",
     "check-type-checks.test",
@@ -85,6 +86,7 @@ const USE_MYPY_TEST_FILES: [&str; 72] = [
     //"check-unreachable-code.test",
     //"check-possibly-undefined.test",
     //"check-callable.test",
+    //"check-assert-type-fail.test",
 
     //"check-slots.test",
     //"check-formatting.test",
