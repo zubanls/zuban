@@ -7,6 +7,8 @@ testForwardBoundFunctionScopeWorks
 testErrorCodeInvalidType
 testErrorCodeOverloadVariant
 testSliceInCustomTensorType
+testNewImportCycleTypeVarBound
+testNewImportCycleTupleBase
 
 # Serialize tests
 testSerializeArgumentKinds
@@ -19,6 +21,20 @@ testSerializeStarImport
 
 # Fine grained tests
 testReferenceToTypeThroughCycleAndReplaceWithFunction
+testFollowImportsNormalPackage-only_when_nocache
+testFollowImportsNormalPackage2-only_when_nocache
+testFollowImportsNormalPackage2-only_when_cache
+testFollowImportsNormalPackageInitFile1
+testFollowImportsNormalPackageInitFile2
+testFollowImportsNormalPackageInitFile3
+testFollowImportsNormalSubmoduleCreatedWithImportInFunction
+testFollowImportsNormalPackageInitFileStub
+testFollowImportsNormalNamespacePackages
+testFollowImportsNormalSearchPathUpdate-only_when_nocache
+testFollowImportsNormalSearchPathUpdate2-only_when_cache
+testFollowImportsNormalSuppressedAffectsCachedFile-only_when_cache
+testFollowImportsNormalMultipleImportedModulesSpecialCase
+testFollowImportsNormalDeletePackage
 
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
@@ -603,6 +619,7 @@ testNoteAboutChangedTypedDictErrorCode
 testColumnTypedDict
 testSerializeTypedDictInMethod
 testSerializeNonTotalTypedDict
+testNewImportCycleTypedDict
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1002,6 +1019,12 @@ testNewAnalyzerImportFromTopLevelAlias
 testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testImportCycleSpecialCase
 testPackagePath
+
+# Mypy does follow imports and doesn't check all files
+testFollowImportsNormalDeleteFile4
+testFollowImportsNormalDeleteFile5
+testFollowImportsNormalDeleteFile6
+testFollowImportsNormalDeleteFile7
 
 # namespace packages
 testClassicNotPackage
