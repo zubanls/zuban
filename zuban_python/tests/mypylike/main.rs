@@ -113,13 +113,11 @@ const USE_MYPY_TEST_FILES: [&str; 68] = [
     //"check-incremental.test",
     "fine-grained.test",
     //"fine-grained-modules.test",
-    //"fine-grained-suggest.test",
     //"fine-grained-follow-imports.test",
     //"fine-grained-blockers.test",
     "fine-grained-cache-incremental.test",
     //"fine-grained-cycles.test",
     //"fine-grained-attr.test",
-    //"fine-grained-inspect.test",
     //"fine-grained-dataclass-transform.test",
     "check-columns.test",
     "check-errorcodes.test",
@@ -130,7 +128,13 @@ const USE_MYPY_TEST_FILES: [&str; 68] = [
     //"check-reports.test",
     //"check-inline-config.test",
 
-    // Won't do, because it tests mypy internals
+    // Won't do:
+    // dmypy suggest feature,
+    // see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
+    //"fine-grained-suggest.test",
+    // Inspect feature, see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
+    //"fine-grained-inspect.test",
+    // tests mypy internals
     //"check-incomplete-fixture.test",
     //"check-native-int.test",
     //"semanal-symtable.test",
