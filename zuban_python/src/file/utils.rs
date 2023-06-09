@@ -236,7 +236,7 @@ pub fn on_argument_type_error(
     };
     arg.as_node_ref().add_typing_issue(
         i_s,
-        IssueType::ArgumentIssue(
+        IssueType::ArgumentTypeIssue(
             format!(
                 "Argument {}{} has incompatible type {t1}; expected \"{t2}\"",
                 arg.human_readable_index(),

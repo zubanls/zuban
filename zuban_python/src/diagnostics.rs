@@ -17,6 +17,7 @@ pub(crate) enum IssueType {
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
+    ArgumentTypeIssue(Box<str>),
     TooFewArguments(Box<str>),
     TooManyArguments(Box<str>),
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
@@ -132,7 +133,7 @@ impl IssueType {
             AttributeError { .. } | ImportAttributeError { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
-            ArgumentIssue(s) if s.contains("has incompatible type") => "arg-type",
+            ArgumentTypeIssue(s) => "arg-type",
             ArgumentIssue { .. } | TooManyArguments { .. } => "call-arg",
             TooFewArguments { .. } => "call-arg",
             InvalidType(_) => "valid-type",
@@ -260,7 +261,7 @@ impl<'db> Diagnostic<'db> {
                 let node_ref = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} already defined line {line}", node_ref.as_code())
             }
-            ArgumentIssue(s) | InvalidType(s) => s.clone().into(),
+            ArgumentIssue(s) | ArgumentTypeIssue(s) | InvalidType(s) => s.clone().into(),
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
             TooFewArguments(rest) => format!("Too few arguments{rest}"),
             IncompatibleDefaultArgument {argument_name, got, expected} => {
