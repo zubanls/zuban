@@ -2511,8 +2511,6 @@ testStrictEqualityBytesSpecialUnion
 testErrorCodeNonOverlappingEquality
 testColumnNonOverlappingEqualityCheck
 
-# --show-column-numbers
-testColumnsMultipleStatementsPerLine
 # --show-column-numbers and tuple targets
 testColumnsAssignment
 # --show-error-end

@@ -526,6 +526,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let right =
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
                 let left = self.infer_single_target(target);
+                let had_error = Cell::new(false);
                 let result = left.lookup_and_execute_with_details(
                     self.i_s,
                     node_ref,
@@ -541,25 +542,29 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             },
                         );
                     },
-                    OnTypeError::new(&|i_s, class, function, arg, right, wanted| {
-                        arg.as_node_ref().add_typing_issue(
-                            i_s,
-                            IssueType::UnsupportedOperand {
-                                operand: Box::from(aug_assign.operand()),
-                                left: class.unwrap().format_short(i_s.db),
-                                right,
-                            },
-                        )
-                    }),
+                    OnTypeError {
+                        on_overload_mismatch: Some(&|_, _| had_error.set(true)),
+                        callback: &|_, _, _, _, _, _| had_error.set(true),
+                    },
                 );
-                if let AssignmentContent::AugAssign(target, _, right_side) = assignment.unpack() {
-                    let n = NodeRef::new(self.file, right_side.index());
-                    self.assign_single_target(target, n, &result, false, |_, index| {
-                        // There is no need to save this, because it's never used
-                    })
-                } else {
-                    unreachable!()
+
+                let n = NodeRef::new(self.file, right_side.index());
+                if had_error.get() {
+                    n.add_typing_issue(
+                        self.i_s,
+                        IssueType::UnsupportedOperand {
+                            operand: Box::from(aug_assign.operand()),
+                            left: left.format_short(self.i_s),
+                            right: right.format_short(self.i_s),
+                        },
+                    )
                 }
+                let AssignmentContent::AugAssign(target, ..) = assignment.unpack() else {
+                    unreachable!()
+                };
+                self.assign_single_target(target, n, &result, false, |_, index| {
+                    // There is no need to save this, because it's never used
+                })
             }
         }
         self.file
