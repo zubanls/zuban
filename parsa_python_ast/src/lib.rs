@@ -293,6 +293,7 @@ create_nonterminal_structs!(
     StarTarget: star_target
 
     Arguments: arguments
+    Kwarg: kwarg
 
     NameDefinition: name_definition
     Atom: atom
@@ -2681,12 +2682,7 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
                 *self = Self(node.iter_children());
                 return self.next();
             } else if node.is_type(Nonterminal(kwarg)) {
-                // kwarg: Name "=" expression
-                let mut kwarg_iterator = node.iter_children();
-                let name = kwarg_iterator.next().unwrap();
-                kwarg_iterator.next();
-                let arg = kwarg_iterator.next().unwrap();
-                return Some(Argument::Keyword(Name::new(name), Expression::new(arg)));
+                return Some(Argument::Keyword(Kwarg::new(node)));
             } else if node.is_type(Nonterminal(starred_expression)) {
                 return Some(Argument::Starred(StarredExpression::new(node)));
             } else if node.is_type(Nonterminal(double_starred_expression)) {
@@ -2700,9 +2696,20 @@ impl<'db> Iterator for ArgumentsIterator<'db> {
 #[derive(Debug, Clone, Copy)]
 pub enum Argument<'db> {
     Positional(NamedExpression<'db>),
-    Keyword(Name<'db>, Expression<'db>),
+    Keyword(Kwarg<'db>),
     Starred(StarredExpression<'db>),
     DoubleStarred(DoubleStarredExpression<'db>),
+}
+
+impl<'db> Kwarg<'db> {
+    pub fn unpack(&self) -> (Name<'db>, Expression<'db>) {
+        // kwarg: Name "=" expression
+        let mut kwarg_iterator = self.node.iter_children();
+        let name = kwarg_iterator.next().unwrap();
+        kwarg_iterator.next();
+        let arg = kwarg_iterator.next().unwrap();
+        (Name::new(name), Expression::new(arg))
+    }
 }
 
 impl<'db> StarredExpression<'db> {

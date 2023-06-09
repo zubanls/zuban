@@ -81,7 +81,7 @@ impl<'db: 'a, 'a> Arguments<'db> for SimpleArguments<'db, 'a> {
                 iterator: arguments.iter().enumerate(),
                 kwargs_before_star_args: {
                     let mut iterator = arguments.iter();
-                    if iterator.any(|arg| matches!(arg, ASTArgument::Keyword(_, _))) {
+                    if iterator.any(|arg| matches!(arg, ASTArgument::Keyword(_))) {
                         if iterator.any(|arg| matches!(arg, ASTArgument::Starred(_))) {
                             Some(vec![])
                         } else {
@@ -454,7 +454,8 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
                         ASTArgument::Positional(named_expr) => {
                             inference.infer_named_expression(named_expr)
                         }
-                        ASTArgument::Keyword(name, expr) => {
+                        ASTArgument::Keyword(kwarg) => {
+                            let (name, expr) = kwarg.unpack();
                             prefix = format!("{}=", name.as_code());
                             inference.infer_expression(expr)
                         }
@@ -524,7 +525,8 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 named_expr.index(),
                             ))
                         }
-                        ASTArgument::Keyword(name, expr) => {
+                        ASTArgument::Keyword(kwarg) => {
+                            let (name, expr) = kwarg.unpack();
                             if let Some(kwargs_before_star_args) = kwargs_before_star_args {
                                 kwargs_before_star_args.push(arg);
                             } else {
@@ -626,13 +628,14 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 if let Some(kwargs_before_star_args) = kwargs_before_star_args {
                     if let Some(kwarg_before_star_args) = kwargs_before_star_args.pop() {
                         match kwarg_before_star_args {
-                            ASTArgument::Keyword(name, expr) => {
+                            ASTArgument::Keyword(kwarg) => {
+                                let (name, expr) = kwarg.unpack();
                                 return Some(ArgumentKind::new_keyword_return(
                                     *i_s,
                                     file,
                                     name.as_code(),
                                     expr.index(),
-                                ))
+                                ));
                             }
                             _ => unreachable!(),
                         }

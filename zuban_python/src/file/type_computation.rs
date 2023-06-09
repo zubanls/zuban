@@ -2019,11 +2019,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 match arg {
                     // The first arg is always there
                     Argument::Positional(n) => db_type = type_from_expr(self, n.expression()),
-                    Argument::Keyword(key, expr) if key.as_code() == "type" => {
-                        db_type = type_from_expr(self, expr)
+                    Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
+                        db_type = type_from_expr(self, kwarg.unpack().1)
                     }
-                    Argument::Keyword(key, expr) if key.as_code() == "name" => {
-                        name = name_from_expr(self, expr)
+                    Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "name" => {
+                        name = name_from_expr(self, kwarg.unpack().1)
                     }
                     _ => (),
                 };
@@ -2032,11 +2032,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         Argument::Positional(named_expr) => {
                             name = name_from_expr(self, named_expr.expression())
                         }
-                        Argument::Keyword(key, expr) if key.as_code() == "name" => {
-                            name = name_from_expr(self, expr)
+                        Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "name" => {
+                            name = name_from_expr(self, kwarg.unpack().1)
                         }
-                        Argument::Keyword(key, expr) if key.as_code() == "type" => {
-                            db_type = type_from_expr(self, expr)
+                        Argument::Keyword(kwarg) if kwarg.unpack().0.as_code() == "type" => {
+                            db_type = type_from_expr(self, kwarg.unpack().1)
                         }
                         _ => (),
                     }

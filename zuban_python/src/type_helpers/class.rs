@@ -272,7 +272,8 @@ impl<'db: 'a, 'a> Class<'a> {
             // Check metaclass before checking all the arguments, because it has a preference over
             // the metaclasses of the subclasses.
             for argument in arguments.iter() {
-                if let Argument::Keyword(name, expr) = argument {
+                if let Argument::Keyword(kwarg) = argument {
+                    let (name, expr) = kwarg.unpack();
                     if name.as_str() == "metaclass" {
                         let node_ref = NodeRef::new(self.node_ref.file, expr.index());
                         let mut inference = self.node_ref.file.inference(i_s);
@@ -447,10 +448,10 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                         };
                     }
-                    Argument::Keyword(name, expr) => {
+                    Argument::Keyword(kwarg) => {
+                        let (name, expr) = kwarg.unpack();
                         if name.as_str() != "metaclass" {
                             // Generate diagnostics
-                            let node_ref = NodeRef::new(self.node_ref.file, expr.index());
                             self.node_ref.file.inference(i_s).infer_expression(expr);
                             debug!("TODO shouldn't we handle this? In testNewAnalyzerClassKeywordsForward it's ignored...")
                         }
