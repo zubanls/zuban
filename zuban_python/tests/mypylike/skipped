@@ -2508,7 +2508,6 @@ testErrorCodeNonOverlappingEquality
 testColumnNonOverlappingEqualityCheck
 
 # --show-column-numbers
-testColumnNameIsNotDefined
 testColumnInvalidType
 testColumnMissingTypeParameters
 testColumnMissingProtocolMember

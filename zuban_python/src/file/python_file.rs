@@ -304,14 +304,16 @@ impl<'db> PythonFile {
             return;
         }
         let maybe_ignored = self.tree.node_type_ignore_comment(issue.node_index);
+        let mut config = DiagnosticConfig::default();
+        config.show_column_numbers = true;
         match self.issues.add_if_not_ignored(issue, maybe_ignored) {
             Ok(issue) => debug!(
                 "NEW ISSUE: {}",
-                Diagnostic::new(i_s.db, self, issue).as_string(&DiagnosticConfig::default())
+                Diagnostic::new(i_s.db, self, issue).as_string(&config)
             ),
             Err(issue) => debug!(
                 "New ignored issue: {}",
-                Diagnostic::new(i_s.db, self, &issue).as_string(&DiagnosticConfig::default())
+                Diagnostic::new(i_s.db, self, &issue).as_string(&config)
             ),
         }
     }

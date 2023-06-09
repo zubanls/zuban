@@ -41,7 +41,7 @@ impl NewlineIndices {
         let lines = self.lines(code);
         let line = lines.partition_point(|&l| l <= byte as CodeIndex);
         if line == 0 {
-            (line + 1, byte as usize)
+            (line + 1, byte as usize + 1)
         } else {
             (line + 1, (byte - lines[line - 1] + 1) as usize)
         }
