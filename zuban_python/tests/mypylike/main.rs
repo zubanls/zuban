@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 65] = [
+const USE_MYPY_TEST_FILES: [&str; 66] = [
     // Semanal tests
     "semanal-abstractclasses.test",
     "semanal-basic.test",
@@ -121,8 +121,7 @@ const USE_MYPY_TEST_FILES: [&str; 65] = [
     //"fine-grained-attr.test",
     //"fine-grained-inspect.test",
     //"fine-grained-dataclass-transform.test",
-
-    //"check-columns.test",
+    "check-columns.test",
     "check-errorcodes.test",
     //"check-flags.test",
     //"cmdline.test",
@@ -184,6 +183,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
         if self.file_name == "check-errorcodes" {
             diagnostics_config.show_error_codes = true;
+        }
+        if self.file_name == "check-columns" {
+            diagnostics_config.show_column_numbers = true;
         }
         let mut config = BaseConfig::default();
         if steps.flags.contains(&"--strict-optional") || self.file_name == "check-optional" {
@@ -486,7 +488,7 @@ impl Iterator for ErrorCommentsOnCode<'_> {
     type Item = (usize, &'static str, String);
     fn next(&mut self) -> Option<Self::Item> {
         for (i, line) in &mut self.1 {
-            let was_exception = line.find("# E: ");
+            let was_exception = line.find("# E:");
             if let Some(pos) = was_exception.or_else(|| line.find("# N: ")) {
                 let mut backslashes = 0;
                 for i in (0..i).rev() {

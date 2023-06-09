@@ -1976,6 +1976,7 @@ testErrorCodeSyntaxError
 testErrorCodeSyntaxError2
 testErrorCodeSyntaxError3
 testErrorCodeSyntaxErrorIgnoreNote
+testColumnsSyntaxError
 
 # Yield
 testYieldOutsideFunction

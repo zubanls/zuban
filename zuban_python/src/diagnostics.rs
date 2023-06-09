@@ -550,6 +550,7 @@ impl std::fmt::Debug for Diagnostic<'_> {
 pub struct DiagnosticConfig {
     pub ignore_missing_imports: bool,
     pub show_error_codes: bool,
+    pub show_column_numbers: bool,
 }
 
 impl DiagnosticConfig {
