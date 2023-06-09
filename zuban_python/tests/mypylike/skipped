@@ -2516,7 +2516,6 @@ testColumnMissingProtocolMember
 testColumnsMultipleStatementsPerLine
 testColumnInvalidIndexing
 testColumnsAssignment
-testSliceInDict39
 # --show-error-end
 testCheckEndColumnPositions
 

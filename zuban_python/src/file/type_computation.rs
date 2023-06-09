@@ -84,6 +84,7 @@ pub(super) enum InvalidVariableType<'a> {
     Complex,
     Ellipsis,
     Other,
+    Slice,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -170,6 +171,12 @@ impl InvalidVariableType<'_> {
             }
             Self::Execution { .. } | Self::Other => {
                 IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
+            }
+            Self::Slice => {
+                add_typing_issue(IssueType::InvalidType(Box::from(
+                    "Invalid type comment or annotation",
+                )));
+                IssueType::Note(Box::from("did you mean to use ',' instead of ':' ?"))
             }
             Self::Float => IssueType::InvalidType(
                 "Invalid type: float literals cannot be used as a type".into(),
@@ -734,7 +741,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_slice_type(&mut self, slice: SliceOrSimple<'x>) -> TypeContent<'db, 'x> {
         match slice {
             SliceOrSimple::Simple(s) => self.compute_type(s.named_expr.expression()),
-            SliceOrSimple::Slice(n) => todo!(),
+            SliceOrSimple::Slice(n) => TypeContent::InvalidVariable(InvalidVariableType::Slice),
         }
     }
 
@@ -1254,7 +1261,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ASTSliceType::Slices(slices) => ClassGenerics::SlicesWithClassTypes(
                         PointLink::new(node_ref.file_index(), slices.index()),
                     ),
-                    ASTSliceType::Slice(_) => todo!(),
+                    ASTSliceType::Slice(_) => unreachable!(),
                 },
             })
         } else {
