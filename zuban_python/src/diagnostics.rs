@@ -270,8 +270,8 @@ impl<'db> Diagnostic<'db> {
                 );
                 if got.as_ref() == "None" {
                     out += "\n";
-                    out += &fmt_line(path, line_column, "note", "PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True\n");
-                    out += &fmt_line(path, line_column, "note", "Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase");
+                    out += &fmt_line(config, path, line_column, "note", "PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True\n");
+                    out += &fmt_line(config, path, line_column, "note", "Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase");
                 }
                 out
             },
@@ -295,9 +295,9 @@ impl<'db> Diagnostic<'db> {
                         "No overload variant of {name} matches argument types \"{arg_str}\"\n",
                     ),
                 };
-                out += &fmt_line(path, line_column, "note", "Possible overload variants:\n");
+                out += &fmt_line(config, path, line_column, "note", "Possible overload variants:\n");
                 for variant in variants.iter() {
-                    out += &fmt_line(path, line_column, "note", &format!("    {variant}\n"));
+                    out += &fmt_line(config, path, line_column, "note", &format!("    {variant}\n"));
                 }
                 out.pop(); // Pop the last newline
                 out
@@ -379,7 +379,7 @@ impl<'db> Diagnostic<'db> {
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
             InvalidCallableParams => format!(
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n{}",
-                fmt_line(path, line_column, "note", "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"),
+                fmt_line(config, path, line_column, "note", "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"),
             ),
             InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
@@ -398,8 +398,8 @@ impl<'db> Diagnostic<'db> {
                     let name = type_var.name(self.db);
                     format!(
                         "Type variable {qualified:?} is unbound\n{}\n{}",
-                        fmt_line(path, line_column, "note", &format!("(Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)")),
-                        fmt_line(path, line_column, "note", &format!("(Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)")),
+                        fmt_line(config, path, line_column, "note", &format!("(Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)")),
+                        fmt_line(config, path, line_column, "note", &format!("(Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)")),
                     )
                 }
                 TypeVarLike::TypeVarTuple(type_var_tuple) => {
@@ -524,7 +524,7 @@ impl<'db> Diagnostic<'db> {
                 format!(
                     "\"{actual}\" is invariant -- see \
                      https://mypy.readthedocs.io/en/stable/common_issues.html#variance\n{}",
-                    fmt_line(path, line_column, "note", &format!("Consider using \"{maybe}\" instead, which is covariant{suffix}"))
+                    fmt_line(config, path, line_column, "note", &format!("Consider using \"{maybe}\" instead, which is covariant{suffix}"))
                 )
             }
             Note(s) => {
@@ -533,7 +533,7 @@ impl<'db> Diagnostic<'db> {
             }
         };
         let string = String::new();
-        let mut result = fmt_line(path, line_column, type_, &error);
+        let mut result = fmt_line(config, path, line_column, type_, &error);
         if config.show_error_codes {
             if let Some(mypy_error_code) = self.issue.type_.mypy_error_code() {
                 result += &format!("  [{mypy_error_code}]");
@@ -543,9 +543,19 @@ impl<'db> Diagnostic<'db> {
     }
 }
 
-fn fmt_line(path: &str, line_column: (usize, usize), type_: &str, error: &str) -> String {
+fn fmt_line(
+    config: &DiagnosticConfig,
+    path: &str,
+    line_column: (usize, usize),
+    type_: &str,
+    error: &str,
+) -> String {
     let line = line_column.0;
-    format!("{path}:{line}: {type_}: {error}")
+    if config.show_column_numbers {
+        format!("{path}:{line}:{}: {type_}: {error}", line_column.1)
+    } else {
+        format!("{path}:{line}: {type_}: {error}")
+    }
 }
 
 impl std::fmt::Debug for Diagnostic<'_> {

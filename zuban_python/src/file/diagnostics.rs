@@ -444,7 +444,7 @@ impl<'db> Inference<'db, '_, '_> {
                     let inf = self
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
                     t.error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
-                        let node_ref = NodeRef::new(self.file, return_stmt.index());
+                        let node_ref = NodeRef::new(self.file, star_expressions.index());
                         node_ref
                             .add_typing_issue(i_s, IssueType::IncompatibleReturn { got, expected });
                         node_ref.to_db_lifetime(i_s.db)

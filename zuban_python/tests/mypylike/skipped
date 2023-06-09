@@ -159,6 +159,7 @@ testNoComplainInferredNoneStrict
 # "Cannot determine consistent method resolution order (MRO) for "B""
 testCannotDetermineMro
 testInconsistentMroLocalRef
+testColumnCannotDetermineType
 
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
@@ -350,6 +351,7 @@ testNamedTupleProperty
 testNewNamedTupleProperty
 testFastParseProperty
 testFastParseConditionalProperty
+testColumnProperty
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
@@ -584,6 +586,7 @@ testErrorCodeTypedDictSubCodeIgnore
 testErrorCodeSpecialArgTypeErrors
 testTypedDictNameMismatch
 testNoteAboutChangedTypedDictErrorCode
+testColumnTypedDict
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1090,6 +1093,7 @@ testCyclicOverrideCheckedDecoratorDeferred
 testParentClassWithTypeAliasAndSubclassWithMethod
 testSelfTypeOverrideCompatibilityTypeVar
 testErrorCodeBadOverride
+testColumnSignatureIncompatibleWithSuperType
 
 # supertype context inference
 testUseSupertypeAsInferenceContext
@@ -2136,6 +2140,7 @@ testUnknownFunctionNotCallable
 testReturnWithoutAValue
 testEmptyReturnInGenerator
 testErrorCodeMissingReturnValueInReturnStatement
+testColumnReturnValueExpected
 
 # "No return value expected"
 testNonEmptyReturnInNoneTypedGenerator
@@ -2219,6 +2224,7 @@ testForLoopOverEmptyTuple
 testTupleWithoutContext
 testReusingInferredForIndex2
 testErrorCodeNeedTypeAnnotation
+testColumnNeedTypeAnnotation
 
 # Separate formatting for ambigous names???
 testIncompatibleAssignmentAmbiguousShortnames
@@ -2309,14 +2315,17 @@ testInvalidStrLiteralStrayBrace
 testInvalidMultilineLiteralType
 testLiteralInvalidString
 
-# Syntax error in type annotation
+# "Syntax error in type annotation"
 # Suggestion: Use tuple[T1, ..., Tn] instead of (T1, ..., Tn)
 testImplicitTuple2
-# Suggestion: Use tuple[()] instead of () for an empty tuple, or None for a function without a return value
+# "Suggestion: Use tuple[()] instead of () for an empty tuple, or None for a function without a return value"
 testReturnEmptyTuple
+# "Suggestion: Is there a spurious trailing comma?"
+testColumnSyntaxErrorInTypeAnnotation
 
 # Syntax error in type comment
 testErrorCodeTypeIgnoreMisspelled2
+testColumnSyntaxErrorInTypeAnnotation2
 
 # Assignment like ac[b] += c with both __getitem__ and __setitem__ has same error twice
 testOperatorAssignmentWithIndexLvalue1
@@ -2494,10 +2503,36 @@ testStrictEqualityWithALiteralNewType
 testStrictEqualityWithFixedLengthTupleInCheck
 testStrictEqualityBytesSpecialUnion
 testErrorCodeNonOverlappingEquality
+testColumnNonOverlappingEqualityCheck
 
 # --show-column-numbers
 testForwardInstanceWithBound
 testSliceInDict39
+# new columns
+testColumnsInvalidArgumentType
+testColumnsInvalidArgumentTypeVarArgs
+testColumnsMultipleStatementsPerLine
+testColumnsAssignment
+testColumnsAttributeIncompatibleWithBaseClassUsingAnnotation
+testColumnsSimpleIsinstance
+testColumnHasNoAttribute
+testColumnUnexpectedOrMissingKeywordArg
+testColumnDefinedHere
+testColumnInvalidType
+testColumnFunctionMissingTypeAnnotation
+testColumnNameIsNotDefined
+testColumnCallToUntypedFunction
+testColumnListOrDictItemHasIncompatibleType
+testColumnInvalidIndexing
+testColumnMissingTypeParameters
+testColumnMissingProtocolMember
+testColumnRedundantCast
+testColumnRevealedType
+testColumnValueOfTypeVariableCannotBe
+testColumnOverloaded
+testColumnFunctionWithTypeVarValues
+# --show-error-end
+testCheckEndColumnPositions
 
 # "type ignore with error code is not supported for modules; use `# mypy: disable-error-code="whatever"`"
 testNoteAboutChangedTypedDictErrorCode
@@ -2677,6 +2712,8 @@ testFastParserShowsMultipleErrors
 testFastParserConsistentFunctionTypes
 testErrorCodeInvalidCommentSignature
 testErrorCodeIgnoreAfterArgComment
+testColumnsMethodDefaultArgumentsAndSignatureAsComment
+testColumnTypeSignatureHasTooFewArguments
 
 # --scripts-are-modules
 testScriptsAreModules

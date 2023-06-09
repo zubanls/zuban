@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 65] = [
+const USE_MYPY_TEST_FILES: [&str; 66] = [
     // Semanal tests
     "semanal-abstractclasses.test",
     "semanal-basic.test",
@@ -121,7 +121,7 @@ const USE_MYPY_TEST_FILES: [&str; 65] = [
     //"fine-grained-attr.test",
     //"fine-grained-inspect.test",
     //"fine-grained-dataclass-transform.test",
-    //"check-columns.test",
+    "check-columns.test",
     "check-errorcodes.test",
     //"check-flags.test",
     //"cmdline.test",
@@ -420,13 +420,21 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
             path
         };
         let lines: Box<_> = code.split('\n').collect();
-        for (line_nr, type_, comment) in ErrorCommentsOnCode(&lines, lines.iter().enumerate()) {
+        for (line_nr, column, mut type_, comment) in
+            ErrorCommentsOnCode(&lines, lines.iter().enumerate())
+        {
             for comment in comment.split(" # E: ") {
                 for (i, comment) in comment.split(" # N: ").enumerate() {
-                    if i == 0 {
-                        wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
+                    if i != 0 {
+                        type_ = "note";
+                    }
+                    if let Some(column) = column {
+                        wanted.push(format!(
+                            "{p}:{line_nr}:{column}: {type_}: {}",
+                            comment.trim_end()
+                        ))
                     } else {
-                        wanted.push(format!("{p}:{line_nr}: note: {}", comment.trim_end()))
+                        wanted.push(format!("{p}:{line_nr}: {type_}: {}", comment.trim_end()))
                     }
                 }
             }
@@ -485,7 +493,7 @@ struct ErrorCommentsOnCode<'a>(
 );
 
 impl Iterator for ErrorCommentsOnCode<'_> {
-    type Item = (usize, &'static str, String);
+    type Item = (usize, Option<usize>, &'static str, String);
     fn next(&mut self) -> Option<Self::Item> {
         for (i, line) in &mut self.1 {
             let was_exception = line.find("# E:");
@@ -497,9 +505,18 @@ impl Iterator for ErrorCommentsOnCode<'_> {
                     }
                     backslashes += 1;
                 }
-                if let Some(out) = cleanup_mypy_issues(&line[pos + 5..]) {
+                // Get rid of # E:25: Foo
+                let mut rest = &line[pos + 4..];
+                let first = rest.split(':').next().unwrap();
+                let column: Option<usize> = first.parse().ok();
+                if column.is_some() {
+                    rest = &rest[first.len() + 1..];
+                }
+
+                if let Some(out) = cleanup_mypy_issues(&rest[1..]) {
                     return Some((
                         i + 1 - backslashes,
+                        column,
                         match was_exception {
                             Some(_) => "error",
                             None => "note",
