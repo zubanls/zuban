@@ -229,11 +229,24 @@ impl<'name, 'code> TestCase<'name, 'code> {
                     project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
                 }
             }
+            let default_panic = std::panic::take_hook();
+            let cloned_name = self.name.clone();
+            let cloned_file_name = self.file_name.to_string();
+            std::panic::set_hook(Box::new(move |info| {
+                println!("Panic in {cloned_name} ({cloned_file_name})");
+                default_panic(info);
+            }));
+
             let diagnostics: Vec<_> = project
                 .diagnostics(&diagnostics_config)
                 .iter()
                 .map(|d| d.as_string(&diagnostics_config))
                 .collect();
+
+            #[allow(unused_must_use)]
+            {
+                std::panic::take_hook();
+            }
 
             let actual = replace_annoyances(diagnostics.join("\n"));
             let mut actual_lines = actual
