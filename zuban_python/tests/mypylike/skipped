@@ -2186,6 +2186,7 @@ testColumnsSyntaxError
 testIncrCacheProtocol1
 testIncrCacheProtocol2
 testIncrCacheProtocol3
+testAddModuleAfterCache1-only_when_cache
 
 # Yield
 testYieldOutsideFunction
