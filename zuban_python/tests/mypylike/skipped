@@ -2353,6 +2353,7 @@ testUnionUnpackingChainedList2
 # "Unsupported target for indexed assignment ("tuple[A, B]")"
 testAssigningToTupleItems
 testErrorCodeIndexing
+testColumnInvalidIndexing
 # star unpacking for tuples
 testAssignmentToStarAnnotation
 testAssignmentToStarCount1
@@ -2511,9 +2512,8 @@ testErrorCodeNonOverlappingEquality
 testColumnNonOverlappingEqualityCheck
 
 # --show-column-numbers
-testColumnMissingProtocolMember
 testColumnsMultipleStatementsPerLine
-testColumnInvalidIndexing
+# --show-column-numbers and tuple targets
 testColumnsAssignment
 # --show-error-end
 testCheckEndColumnPositions

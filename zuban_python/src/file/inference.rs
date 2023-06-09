@@ -463,8 +463,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     };
                     self.infer_assignment_right_side(right_side, &mut result_context)
                 };
+                let n = NodeRef::new(self.file, right_side.index());
                 for target in targets {
-                    self.assign_targets(target, right.clone(), node_ref, is_definition)
+                    self.assign_targets(target, right.clone(), n, is_definition)
                 }
             }
             AssignmentContent::WithAnnotation(target, annotation, right_side) => {
@@ -686,13 +687,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             });
                         inf.as_type(i_s)
                             .error_if_not_matches(i_s, value, |i_s, got, expected| {
-                                let node_ref = NodeRef::new(self.file, primary_target.index())
-                                    .to_db_lifetime(i_s.db);
-                                node_ref.add_typing_issue(
+                                from.add_typing_issue(
                                     i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
                                 );
-                                node_ref
+                                from.to_db_lifetime(i_s.db)
                             });
                     });
                 }
