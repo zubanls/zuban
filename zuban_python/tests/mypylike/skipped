@@ -17,6 +17,9 @@ testSerializeNamedTupleInMethod4
 testSerializeNamedTuple
 testSerializeStarImport
 
+# Fine grained tests
+testReferenceToTypeThroughCycleAndReplaceWithFunction
+
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
 

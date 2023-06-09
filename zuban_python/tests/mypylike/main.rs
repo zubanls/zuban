@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 68] = [
+const USE_MYPY_TEST_FILES: [&str; 69] = [
     // Semanal tests
     "semanal-abstractclasses.test",
     "semanal-basic.test",
@@ -116,7 +116,7 @@ const USE_MYPY_TEST_FILES: [&str; 68] = [
     //"fine-grained-follow-imports.test",
     //"fine-grained-blockers.test",
     "fine-grained-cache-incremental.test",
-    //"fine-grained-cycles.test",
+    "fine-grained-cycles.test",
     //"fine-grained-attr.test",
     //"fine-grained-dataclass-transform.test",
     "check-columns.test",
