@@ -2008,6 +2008,9 @@ testErrorCodeSyntaxError2
 testErrorCodeSyntaxError3
 testErrorCodeSyntaxErrorIgnoreNote
 testColumnsSyntaxError
+testIncrCacheProtocol1
+testIncrCacheProtocol2
+testIncrCacheProtocol3
 
 # Yield
 testYieldOutsideFunction
@@ -2803,6 +2806,9 @@ testNewAnalyzerAliasToNotReadyNestedClass
 # "Recursive types are not allowed at function scope"
 testNoRecursiveTuplesAtFunctionScope
 testRecursiveBoundFunctionScopeNoCrash
+
+# Won't support: Mypy internals
+testIncrCacheBustedProtocol
 
 # xfail
 testOpWithInheritedFromAny-xfail
