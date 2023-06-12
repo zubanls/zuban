@@ -400,7 +400,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     let self_type_var = Rc::new(TypeVar {
                         name_string: TypeVarName::Self_,
                         restrictions: Box::new([]),
-                        bound: Some(class.as_db_type(i_s.db)),
+                        bound: Some(self.class.unwrap().as_db_type(i_s.db)),
                         variance: Variance::Invariant,
                     });
                     self_type_var_usage = Some(TypeVarUsage {
