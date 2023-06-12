@@ -791,10 +791,8 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Specific => match point.specific() {
                         Specific::Function => {
                             let func = Function::new(node_ref, Some(attribute_class));
-                            let t = func.as_db_type(
-                                i_s,
-                                FirstParamProperties::MethodAccessedOnClass(class),
-                            );
+                            let t =
+                                func.as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass);
                             return Some(Inferred::from_type(t));
                         }
                         Specific::ClassMethod => {

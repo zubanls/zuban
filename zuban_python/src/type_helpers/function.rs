@@ -388,7 +388,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             vec![]
         };
         match first {
-            FirstParamProperties::MethodAccessedOnClass(class) => {
+            FirstParamProperties::MethodAccessedOnClass => {
                 let mut needs_self_type_variable =
                     self.result_type(i_s).has_explicit_self_type(i_s.db);
                 for param in self.iter_params().skip(1) {
@@ -847,9 +847,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 }
 
 #[derive(Copy, Clone)]
-pub enum FirstParamProperties<'a> {
+pub enum FirstParamProperties {
     Skip,
-    MethodAccessedOnClass(&'a Class<'a>),
+    MethodAccessedOnClass,
     None,
 }
 
