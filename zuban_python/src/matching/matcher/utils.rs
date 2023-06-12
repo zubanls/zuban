@@ -788,7 +788,7 @@ pub fn create_signature_without_self(
             return None;
         }
     }
-    let mut t = func.as_db_type(i_s, FirstParamProperties::Skip);
+    let mut t = func.as_db_type(i_s, FirstParamProperties::Skip(instance));
     if let Some(type_vars) = type_vars {
         let DbType::Callable(callable_content) = t else {
             unreachable!();

@@ -692,12 +692,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     i_s, func, instance, &t,
                                                 )
                                             } else {
-                                                Some(
-                                                    func.as_db_type(
-                                                        i_s,
-                                                        FirstParamProperties::Skip,
-                                                    ),
-                                                )
+                                                Some(func.as_db_type(
+                                                    i_s,
+                                                    FirstParamProperties::Skip(instance),
+                                                ))
                                             }
                                         })
                                         .collect();

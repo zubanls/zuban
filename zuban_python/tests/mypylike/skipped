@@ -9,7 +9,6 @@ testErrorCodeOverloadVariant
 testSliceInCustomTensorType
 testNewImportCycleTypeVarBound
 testNewImportCycleTupleBase
-testTypingSelfCoarse
 testInvalidParamSpecDefinitions
 
 # Mypy upgrade

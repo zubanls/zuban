@@ -7,7 +7,7 @@ use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
-use super::Module;
+use super::{Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
@@ -411,7 +411,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
                 }
             }
-            FirstParamProperties::Skip => {
+            FirstParamProperties::Skip(_) => {
                 params.next();
             }
             FirstParamProperties::None => (),
@@ -445,6 +445,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 &mut || {
                     if let Some(self_type_var_usage) = self_type_var_usage {
                         DbType::TypeVar(self_type_var_usage.clone())
+                    } else if let FirstParamProperties::Skip(instance) = first {
+                        instance.class.as_db_type(i_s.db)
                     } else {
                         DbType::Self_
                     }
@@ -847,8 +849,8 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
 }
 
 #[derive(Copy, Clone)]
-pub enum FirstParamProperties {
-    Skip,
+pub enum FirstParamProperties<'a> {
+    Skip(&'a Instance<'a>),
     MethodAccessedOnClass,
     None,
 }
