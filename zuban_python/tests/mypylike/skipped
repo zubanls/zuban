@@ -24,13 +24,6 @@ testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedFunctionMore1
 testNarrowedVariableInNestedFunctionMore2
 
-# Serialize tests
-testSerialize__init__
-testSerializeOverloaded__init__
-testSerializeNamedTupleInMethod4
-testSerializeNamedTuple
-testSerializeStarImport
-
 # check-incremental tests
 testIncrementalNestedBrokenCascade
 testIncrementalNestedBrokenCascadeWithType1
@@ -506,6 +499,8 @@ testDecoratedPropertySetter
 testClassCustomPropertyWorks
 # classmethod name redirect name binding issue
 testAliasToClassMethod
+# name binding of type definitions within functions
+testSerializeNamedTupleInMethod4
 
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
@@ -1109,9 +1104,6 @@ testFromSixMetaclass
 testSixMetaclassGenericBase
 testIgnoreInsideClassDoesntAffectWhole
 
-# star imports in modules that are imported
-testRelativeImport3
-
 # Binary or implementation missing
 testMiscBinaryOperators
 
@@ -1153,9 +1145,12 @@ testMissingSubmoduleImportedWithIgnoreMissingImportsNested
 testMissingSubmoduleOfInstalledStubPackage
 testGenericAliasCollectionsABCReveal
 
+# star imports in modules that are imported
+testRelativeImport3
 # Complex Star import
 testImportWithinMethod
 testNoCrashOnImportFromStarNested
+testSerializeStarImport
 # Star import override
 testAssignToFuncDefViaImport
 
@@ -1321,6 +1316,8 @@ testErrorCodeUnsafeSuper_no_empty
 testColumnsInvalidArgumentType
 testGenericMethodRestoreMetaLevel3
 testAbstractBodyTurnsEmptyCoarse
+testSerialize__init__
+testSerializeOverloaded__init__
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -2031,6 +2028,7 @@ testUnionUnpackingDoubleBinder
 testExceptionVariableReuseInDeferredNode4
 testExceptionVariableReuseInDeferredNode5
 testExceptionVariableReuseInDeferredNode6
+testSerializeNamedTuple
 
 # None late binding, because it's None (x = None; x = 3)
 *PartialType*
