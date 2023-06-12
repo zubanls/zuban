@@ -604,7 +604,10 @@ where
             }
         }
         if let Some(param) = self.current_double_starred_param {
-            if let Some(argument) = self.maybe_exact_multi_arg(true) {
+            if let Some(argument) = self
+                .maybe_exact_multi_arg(true)
+                .or_else(|| self.unused_keyword_arguments.pop())
+            {
                 return Some(InferrableParam2 {
                     param,
                     argument: ParamArgument::Argument(argument),
