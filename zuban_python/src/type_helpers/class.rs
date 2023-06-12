@@ -365,6 +365,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         i_s,
                                         IssueType::DuplicateBaseClass { name },
                                     );
+                                    incomplete_mro = true;
                                     continue;
                                 }
                                 mro.push(t);

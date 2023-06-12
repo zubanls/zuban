@@ -10,8 +10,6 @@ testSliceInCustomTensorType
 testNewImportCycleTypeVarBound
 testNewImportCycleTupleBase
 testTypingSelfCoarse
-testDupBaseClasses
-testDupBaseClassesGeneric
 testInvalidParamSpecDefinitions
 
 # Mypy upgrade
