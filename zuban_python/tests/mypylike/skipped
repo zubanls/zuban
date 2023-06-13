@@ -4,7 +4,6 @@ testClassMethodAndStaticMethod
 testUsingNumbersType
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testForwardBoundFunctionScopeWorks
-testErrorCodeInvalidType
 testErrorCodeOverloadVariant
 
 # Mypy upgrade
