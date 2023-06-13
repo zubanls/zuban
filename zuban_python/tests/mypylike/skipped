@@ -4,7 +4,6 @@ testClassMethodAndStaticMethod
 testUsingNumbersType
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testForwardBoundFunctionScopeWorks
-testErrorCodeOverloadVariant
 
 # Mypy upgrade
 testDictStarInference

@@ -238,6 +238,7 @@ impl<'db> Diagnostic<'db> {
         }
         let line_column = self.start_position().line_and_column();
         let line = line_column.0;
+        let mut additional_notes = vec![];
         use IssueType::*;
         let error = match &self.issue.type_ {
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
@@ -266,16 +267,14 @@ impl<'db> Diagnostic<'db> {
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
             TooFewArguments(rest) => format!("Too few arguments{rest}"),
             IncompatibleDefaultArgument {argument_name, got, expected} => {
-                let mut out = format!(
+                if got.as_ref() == "None" {
+                    additional_notes.push("PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True".into());
+                    additional_notes.push("Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase".into());
+                }
+                format!(
                     "Incompatible default for argument \"{argument_name}\" \
                      (default has type \"{got}\", argument has type \"{expected}\")"
-                );
-                if got.as_ref() == "None" {
-                    out += "\n";
-                    out += &fmt_line(config, path, line_column, "note", "PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True\n");
-                    out += &fmt_line(config, path, line_column, "note", "Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase");
-                }
-                out
+                )
             },
             TypeNotFound => {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
@@ -286,23 +285,21 @@ impl<'db> Diagnostic<'db> {
             UnexpectedTypeDeclaration => "Unexpected type declaration".to_string(),
             OverloadMismatch{name, args, variants} => {
                 let arg_str = args.join("\", \"");
-                let mut out = match args.len() {
+                additional_notes.push("Possible overload variants:".into());
+                for variant in variants.iter() {
+                    additional_notes.push(format!("    {variant}"));
+                }
+                match args.len() {
                     0 => format!(
-                        "All overload variants of {name} require at least one argument\n"
+                        "All overload variants of {name} require at least one argument"
                     ),
                     1 => format!(
-                        "No overload variant of {name} matches argument type \"{arg_str}\"\n",
+                        "No overload variant of {name} matches argument type \"{arg_str}\"",
                     ),
                     _ => format!(
-                        "No overload variant of {name} matches argument types \"{arg_str}\"\n",
+                        "No overload variant of {name} matches argument types \"{arg_str}\"",
                     ),
-                };
-                out += &fmt_line(config, path, line_column, "note", "Possible overload variants:\n");
-                for variant in variants.iter() {
-                    out += &fmt_line(config, path, line_column, "note", &format!("    {variant}\n"));
                 }
-                out.pop(); // Pop the last newline
-                out
             }
             TypeArgumentIssue{class, expected_count, given_count} => {
                 match expected_count {
@@ -379,10 +376,10 @@ impl<'db> Diagnostic<'db> {
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
-            InvalidCallableParams => format!(
-                "The first argument to Callable must be a list of types, parameter specification, or \"...\"\n{}",
-                fmt_line(config, path, line_column, "note", "See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas"),
-            ),
+            InvalidCallableParams => {
+                additional_notes.push("See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas".into());
+                format!("The first argument to Callable must be a list of types, parameter specification, or \"...\"")
+            }
             InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
             ),
@@ -398,11 +395,9 @@ impl<'db> Diagnostic<'db> {
                 TypeVarLike::TypeVar(type_var) => {
                     let qualified = type_var.qualified_name(self.db);
                     let name = type_var.name(self.db);
-                    format!(
-                        "Type variable {qualified:?} is unbound\n{}\n{}",
-                        fmt_line(config, path, line_column, "note", &format!("(Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)")),
-                        fmt_line(config, path, line_column, "note", &format!("(Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)")),
-                    )
+                    additional_notes.push(format!("(Hint: Use \"Generic[{name}]\" or \"Protocol[{name}]\" base class to bind \"{name}\" inside a class)"));
+                    additional_notes.push(format!("(Hint: Use \"{name}\" in function signature to bind \"{name}\" inside a function)"));
+                    format!("Type variable {qualified:?} is unbound")
                 }
                 TypeVarLike::TypeVarTuple(type_var_tuple) => {
                     let name = type_var_tuple.name(self.db);
@@ -525,10 +520,10 @@ impl<'db> Diagnostic<'db> {
                     "Dict" => " in the value type",
                     _ => unreachable!(),
                 };
+                additional_notes.push(format!("Consider using \"{maybe}\" instead, which is covariant{suffix}"));
                 format!(
                     "\"{actual}\" is invariant -- see \
-                     https://mypy.readthedocs.io/en/stable/common_issues.html#variance\n{}",
-                    fmt_line(config, path, line_column, "note", &format!("Consider using \"{maybe}\" instead, which is covariant{suffix}"))
+                     https://mypy.readthedocs.io/en/stable/common_issues.html#variance",
                 )
             }
             Note(s) => {
@@ -536,12 +531,15 @@ impl<'db> Diagnostic<'db> {
                 s.clone().into()
             }
         };
-        let string = String::new();
         let mut result = fmt_line(config, path, line_column, type_, &error);
         if config.show_error_codes {
             if let Some(mypy_error_code) = self.issue.type_.mypy_error_code() {
                 result += &format!("  [{mypy_error_code}]");
             }
+        }
+        for note in additional_notes {
+            result += "\n";
+            result += &fmt_line(config, path, line_column, "note", &note);
         }
         result
     }
