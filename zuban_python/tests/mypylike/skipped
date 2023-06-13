@@ -6,9 +6,6 @@ testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testForwardBoundFunctionScopeWorks
 testErrorCodeInvalidType
 testErrorCodeOverloadVariant
-testSliceInCustomTensorType
-testNewImportCycleTypeVarBound
-testNewImportCycleTupleBase
 
 # Mypy upgrade
 testDictStarInference
@@ -304,6 +301,8 @@ testCyclicUndefinedImportWithStar2
 testCyclicUndefinedImportWithStar3
 testNewAnalyzerTypeAnnotationCycle4
 testBoundGenericMethodFine
+testNewImportCycleTypeVarBound
+testNewImportCycleTupleBase
 # C = C Cycle
 testOverrideByIdemAliasCorrectType
 testOverrideByIdemAliasCorrectTypeReversed
