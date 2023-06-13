@@ -476,12 +476,7 @@ fn maybe_type_var_tuple(
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
-                    node_ref.add_typing_issue(
-                        i_s,
-                        IssueType::TypeVarLikeTooManyArguments {
-                            class_name: "TypeVarTuple",
-                        },
-                    );
+                    node_ref.add_typing_issue(i_s, IssueType::TypeVarTupleTooManyArguments);
                     return None;
                 }
                 ArgumentKind::Keyword {
@@ -630,13 +625,18 @@ fn maybe_param_spec(
                 ArgumentKind::Inferred { .. }
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
-                _ => {
+                ArgumentKind::Positional { .. } => {
                     arg.as_node_ref().add_typing_issue(
                         i_s,
-                        IssueType::TypeVarLikeTooManyArguments {
-                            class_name: "ParamSpec",
-                        },
+                        IssueType::ArgumentIssue(
+                            "Too many positional arguments for \"ParamSpec\"".into(),
+                        ),
                     );
+                    return None;
+                }
+                _ => {
+                    arg.as_node_ref()
+                        .add_typing_issue(i_s, IssueType::ParamSpecTooManyKeywordArguments);
                     return None;
                 }
             }

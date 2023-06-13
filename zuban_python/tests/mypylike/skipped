@@ -9,7 +9,6 @@ testErrorCodeOverloadVariant
 testSliceInCustomTensorType
 testNewImportCycleTypeVarBound
 testNewImportCycleTupleBase
-testInvalidParamSpecDefinitions
 
 # Mypy upgrade
 testDictStarInference

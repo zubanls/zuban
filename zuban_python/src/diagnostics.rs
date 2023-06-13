@@ -83,7 +83,8 @@ pub(crate) enum IssueType {
     },
     TypeVarInReturnButNotArgument,
     UnexpectedTypeForTypeVar,
-    TypeVarLikeTooManyArguments { class_name: &'static str },
+    TypeVarTupleTooManyArguments,
+    ParamSpecTooManyKeywordArguments,
     MultipleTypeVarTuplesInClassDef,
     BoundTypeVarInAlias { name: Box<str> },
     NestedConcatenate,
@@ -444,8 +445,10 @@ impl<'db> Diagnostic<'db> {
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string(),
             UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_string(),
-            TypeVarLikeTooManyArguments{class_name} => format!(
-                "Only the first argument to {class_name} has defined semantics"),
+            TypeVarTupleTooManyArguments => format!(
+                "Only the first argument to TypeVarTuple has defined semantics"),
+            ParamSpecTooManyKeywordArguments =>
+                "The variance and bound arguments to ParamSpec do not have defined semantics yet".to_string(),
             MultipleTypeVarTuplesInClassDef =>
                 "Can only use one type var tuple in a class def".to_string(),
             BoundTypeVarInAlias{name} =>
