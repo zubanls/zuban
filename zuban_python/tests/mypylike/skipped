@@ -1,9 +1,6 @@
 # Next up
 testKeywordUnpackWithDifferentTypes
-testClassMethodAndStaticMethod
 testUsingNumbersType
-testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
-testForwardBoundFunctionScopeWorks
 
 # Mypy upgrade
 testDictStarInference
@@ -60,9 +57,6 @@ testNoCrashDoubleReexportBaseEmpty
 testNoCrashDoubleReexportMetaEmpty
 testNoCrashDoubleReexportTupleEmpty
 testNoCrashDoubleReexportOverloadEmpty
-# Unsupported class scoped import
-testOverrideByBadVarClass
-testOverrideByBadVarClassAlias
 
 # Fine grained tests
 testReferenceToTypeThroughCycleAndReplaceWithFunction
@@ -492,8 +486,9 @@ testDecoratedPropertySetter
 testClassCustomPropertyWorks
 # classmethod name redirect name binding issue
 testAliasToClassMethod
-# name binding of type definitions within functions
+# name binding of type definitions within function scopes
 testSerializeNamedTupleInMethod4
+testForwardBoundFunctionScopeWorks
 
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
@@ -518,6 +513,8 @@ testRefMethodWithOverloadDecorator
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
 
+# "Cannot have both classmethod and staticmethod"
+testClassMethodAndStaticMethod
 # staticmethod
 testStaticmethodAndNonMethod
 testTypeConstructorReturnsTypeType
@@ -1466,6 +1463,7 @@ testNestedVariableRefersToCompletelyDifferentClasses
 testGenericMultipleOverrideReplace
 testIncrementalBaseClassAttributeConflict
 testOverrideIncompatibleWithMultipleSupertypes
+testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 # "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverride
 explicitOverrideStaticmethod
@@ -1638,6 +1636,8 @@ testClassScopeImportVarious
 testClassScopeImportWithError
 testClassScopeImportWithWrapperAndError
 testImportInClassBody
+testOverrideByBadVarClass
+testOverrideByBadVarClassAlias
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
