@@ -52,6 +52,7 @@ pub struct PythonState {
 
     builtins: *const PythonFile,
     typing: *const PythonFile,
+    typeshed: *const PythonFile,
     collections: *const PythonFile,
     types: *const PythonFile,
     abc: *const PythonFile,
@@ -75,7 +76,7 @@ pub struct PythonState {
     builtins_bytearray_index: NodeIndex,
     builtins_memoryview_index: NodeIndex,
     builtins_slice_index: NodeIndex,
-    typing_mapping_index: NodeIndex,
+    typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
     types_module_type_index: NodeIndex,
@@ -100,6 +101,7 @@ impl PythonState {
             project,
             builtins: null(),
             typing: null(),
+            typeshed: null(),
             collections: null(),
             types: null(),
             abc: null(),
@@ -124,7 +126,7 @@ impl PythonState {
             builtins_slice_index: 0,
             types_module_type_index: 0,
             types_none_type_index: 0,
-            typing_mapping_index: 0,
+            typeshed_supports_keys_and_get_item_index: 0,
             typing_namedtuple_index: 0,
             typing_type_var: 0,
             collections_namedtuple_index: 0,
@@ -148,6 +150,7 @@ impl PythonState {
         db: &mut Database,
         builtins: *const PythonFile,
         typing: *const PythonFile,
+        typeshed: *const PythonFile,
         collections: *const PythonFile,
         types: *const PythonFile,
         abc: *const PythonFile,
@@ -157,6 +160,7 @@ impl PythonState {
         let s = &mut db.python_state;
         s.builtins = builtins;
         s.typing = typing;
+        s.typeshed = typeshed;
         s.collections = collections;
         s.types = types;
         s.abc = abc;
@@ -243,7 +247,12 @@ impl PythonState {
         cache_index!(builtins_bytearray_index, db, builtins, "bytearray");
         cache_index!(builtins_memoryview_index, db, builtins, "memoryview");
         cache_index!(builtins_slice_index, db, builtins, "slice");
-        cache_index!(typing_mapping_index, db, typing, "Mapping");
+        cache_index!(
+            typeshed_supports_keys_and_get_item_index,
+            db,
+            typeshed,
+            "SupportsKeysAndGetItem"
+        );
         cache_index!(typing_namedtuple_index, db, typing, "NamedTuple");
         cache_index!(typing_type_var, db, typing, "TypeVar");
         cache_index!(types_module_type_index, db, types, "ModuleType");
@@ -290,6 +299,12 @@ impl PythonState {
     pub fn typing(&self) -> &PythonFile {
         debug_assert!(!self.typing.is_null());
         unsafe { &*self.typing }
+    }
+
+    #[inline]
+    pub fn typeshed(&self) -> &PythonFile {
+        debug_assert!(!self.typeshed.is_null());
+        unsafe { &*self.typeshed }
     }
 
     #[inline]
@@ -394,8 +409,25 @@ impl PythonState {
         NodeRef::new(self.types(), self.types_module_type_index)
     }
 
-    pub fn mapping_node_ref(&self) -> NodeRef {
-        NodeRef::new(self.typing(), self.typing_mapping_index)
+    fn supports_keys_and_get_item_node_ref(&self) -> NodeRef {
+        NodeRef::new(
+            self.typeshed(),
+            self.typeshed_supports_keys_and_get_item_index,
+        )
+    }
+
+    pub fn supports_keys_and_get_item_class(&self, db: &Database) -> Class {
+        let node_ref = self.supports_keys_and_get_item_node_ref();
+        let cls = Class::from_position(node_ref, Generics::NotDefinedYet, None);
+        cls.ensure_calculated_class_infos(&InferenceState::new(db));
+        Class::from_position(
+            node_ref,
+            Generics::Self_ {
+                class_definition: node_ref.as_link(),
+                type_var_likes: cls.use_cached_type_vars(db),
+            },
+            None,
+        )
     }
 
     pub fn type_var_type(&self) -> Type {

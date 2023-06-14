@@ -1,5 +1,4 @@
 # Next up
-testKeywordUnpackWithDifferentTypes
 testUsingNumbersType
 
 # Mypy upgrade
@@ -947,6 +946,8 @@ testBasicTupleStructuralSubtyping
 testCallableProtocolVsProtocol
 testProtocolClassObjectCallableError
 protocol_class_object_callable_possible
+# Protocol issues with unions
+testInvalidTypeForKeywordVarArg
 # regressions
 testUnionsOfNormalClassesWithProtocols
 testTypePromotionsDontInterfereWithProtocols
@@ -2800,7 +2801,7 @@ testErrorReportingNewAnalyzer
 testErrorCodeMissingTypeArg
 testColumnMissingTypeParameters
 
-# --disallow-any-imported
+# --disallow-any-unimported
 testErrorCodeAnyFromUnfollowedImport
 
 # --disallow-untyped-defs

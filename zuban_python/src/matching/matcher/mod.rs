@@ -56,6 +56,15 @@ impl<'a> Matcher<'a> {
         }
     }
 
+    pub fn new_class_matcher(i_s: &InferenceState, class: Class) -> Self {
+        Self {
+            type_var_matcher: class
+                .type_vars(i_s)
+                .map(|type_vars| TypeVarMatcher::new(class.node_ref.as_link(), type_vars.len())),
+            ..Self::default()
+        }
+    }
+
     pub fn new_reverse_callable_matcher(
         callable: &'a CallableContent,
         type_var_count: usize,

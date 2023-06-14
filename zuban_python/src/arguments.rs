@@ -2,15 +2,15 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::database::{
-    Database, DbType, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
+    Database, DbType, GenericItem, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
+    Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
-use crate::matching::{IteratorContent, ResultContext, Type};
+use crate::matching::{IteratorContent, Matcher, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::TypeOrClass;
 use crate::InferenceState;
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,
@@ -577,53 +577,57 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 .infer_expression(double_starred_expr.expression());
                             let type_ = inf.as_type(i_s);
                             let node_ref = NodeRef::new(file, double_starred_expr.index());
-                            let mut value_type = None;
-                            if let Some(mro) = type_.mro(i_s.db) {
-                                for (_, t) in mro {
-                                    if let TypeOrClass::Class(class) = t {
-                                        if class.node_ref == i_s.db.python_state.mapping_node_ref()
-                                        {
-                                            let type_vars = class.type_vars(i_s).unwrap();
-                                            let key = class
-                                                .generics()
-                                                .nth(i_s.db, &type_vars[0], 0)
-                                                .expect_type_argument();
-                                            let s = Type::owned(i_s.db.python_state.str_db_type());
-                                            if !key.is_simple_same_type(i_s, &s).bool() {
-                                                node_ref.add_typing_issue(
-                                                    i_s,
-                                                    IssueType::ArgumentIssue(Box::from(
-                                                        "Keywords must be strings",
-                                                    )),
-                                                );
-                                            }
-                                            value_type = Some(
-                                                class
-                                                    .generics()
-                                                    .nth(i_s.db, &type_vars[1], 1)
-                                                    .expect_type_argument()
-                                                    .into_db_type(),
-                                            );
-                                            break;
-                                        }
-                                    }
-                                }
-                            } else if type_.is_any() {
-                                value_type = Some(DbType::Any);
-                            }
-                            let value_type = value_type.unwrap_or_else(|| {
+                            let wanted_cls =
+                                i_s.db.python_state.supports_keys_and_get_item_class(i_s.db);
+                            let mut matcher = Matcher::new_class_matcher(i_s, wanted_cls);
+                            let matches = wanted_cls
+                                .check_protocol_match(
+                                    i_s,
+                                    &mut matcher,
+                                    &type_,
+                                    Variance::Covariant,
+                                )
+                                .bool();
+                            let mut iter = matcher
+                                .unwrap_calculated_type_args()
+                                .into_iter()
+                                .zip(wanted_cls.type_vars(i_s).unwrap().iter())
+                                .map(|(c, type_var_like)| {
+                                    let GenericItem::TypeArgument(t) = c.into_generic_item(
+                                        i_s.db,
+                                        type_var_like
+                                    ) else {
+                                        unreachable!();
+                                    };
+                                    t
+                                });
+                            let s = Type::owned(i_s.db.python_state.str_db_type());
+                            if matches
+                                && !Type::owned(iter.next().unwrap())
+                                    .is_simple_same_type(i_s, &s)
+                                    .bool()
+                            {
                                 node_ref.add_typing_issue(
                                     i_s,
-                                    IssueType::ArgumentIssue(
-                                        format!(
-                                            "Argument after ** must be a mapping, not \"{}\"",
-                                            type_.format_short(i_s.db),
-                                        )
-                                        .into(),
-                                    ),
+                                    IssueType::ArgumentIssue(Box::from("Keywords must be strings")),
                                 );
-                                DbType::Any
-                            });
+                            }
+                            let value_type = match matches {
+                                true => iter.next().unwrap(),
+                                false => {
+                                    node_ref.add_typing_issue(
+                                        i_s,
+                                        IssueType::ArgumentIssue(
+                                            format!(
+                                                "Argument after ** must be a mapping, not \"{}\"",
+                                                type_.format_short(i_s.db),
+                                            )
+                                            .into(),
+                                        ),
+                                    );
+                                    DbType::Any
+                                }
+                            };
                             return Some(BaseArgumentReturn::ArgsKwargs(
                                 ArgsKwargsIterator::Kwargs {
                                     inferred_value: Inferred::from_type(value_type),
