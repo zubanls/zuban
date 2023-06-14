@@ -1,5 +1,4 @@
 # Next up
-testUsingNumbersType
 
 # Mypy upgrade
 testDictStarInference

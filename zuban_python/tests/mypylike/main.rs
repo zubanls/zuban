@@ -414,6 +414,12 @@ fn temporarily_skip(s: String) -> Option<String> {
     if s.contains(".__call__\" has type") {
         return None;
     }
+    if s.contains("note: types from \"numbers\" aren't supported for static type checking")
+        || s.contains("note: consider using a protocol instead, such as typing.supportsfloat")
+        || s.contains("https://peps.python.org/pep-0484/#the-numeric-tower")
+    {
+        return None;
+    }
     Some(s)
 }
 
