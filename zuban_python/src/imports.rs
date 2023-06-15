@@ -24,18 +24,17 @@ pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<
     }
 
     for (dir_path, dir) in db.workspaces.directories() {
-        let result = python_import(db, dir_path, dir, name);
+        let result = python_import(db, from_file, dir_path, dir, name);
         if result.is_some() {
             return result;
         }
-        dir.add_missing_entry(name.to_owned() + ".py", from_file);
-        dir.add_missing_entry(name.to_owned() + ".pyi", from_file);
     }
     None
 }
 
 pub fn python_import(
     db: &Database,
+    from_file: FileIndex,
     dir_path: &str,
     dir: &Rc<DirContent>,
     name: &str,
@@ -79,7 +78,12 @@ pub fn python_import(
             DirOrFile::MissingEntry(_) => (),
         }
     }
-    stub_file_index.or(python_file_index)
+    let result = stub_file_index.or(python_file_index);
+    if result.is_none() {
+        dir.add_missing_entry(name.to_owned() + ".py", from_file);
+        dir.add_missing_entry(name.to_owned() + ".pyi", from_file);
+    }
+    result
 }
 
 fn load_init_file(
