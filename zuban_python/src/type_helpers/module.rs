@@ -67,8 +67,7 @@ impl<'a> Module<'a> {
                 })
             })
             .unwrap_or_else(|| {
-                Type::owned(i_s.db.python_state.module_db_type())
-                    .lookup_without_error(i_s, node_ref, name)
+                Type::owned(i_s.db.python_state.module_db_type()).lookup_without_error(i_s, name)
             })
     }
 }

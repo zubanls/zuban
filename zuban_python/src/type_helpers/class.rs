@@ -544,10 +544,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                if let Some(l) = other
-                    .lookup_without_error(i_s, None, name)
-                    .into_maybe_inferred()
-                {
+                if let Some(l) = other.lookup_without_error(i_s, name).into_maybe_inferred() {
                     let inf1 = Instance::new(c, None)
                         .lookup(i_s, None, name)
                         .into_inferred();

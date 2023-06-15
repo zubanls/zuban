@@ -1198,7 +1198,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 op.magic_method,
                 &mut |l_type, lookup_result| {
                     let left_op_method = l_type
-                        .lookup_without_error(self.i_s, Some(node_ref), op.magic_method)
+                        .lookup_without_error(self.i_s, op.magic_method)
                         .into_maybe_inferred();
                     right.as_type(i_s).run_on_each_union_type(&mut |r_type| {
                         let error = Cell::new(LookupError::NoError);
@@ -1579,11 +1579,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 name
             );
             if let Some(inf) = Type::owned(self.i_s.db.python_state.module_db_type())
-                .lookup_without_error(
-                    self.i_s,
-                    Some(NodeRef::new(self.file, name.index())),
-                    name.as_code(),
-                )
+                .lookup_without_error(self.i_s, name.as_code())
                 .save_name(self.i_s, self.file, name)
             {
                 return inf;

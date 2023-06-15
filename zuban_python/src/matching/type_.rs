@@ -2044,11 +2044,11 @@ impl<'a> Type<'a> {
                 i_s.db
                     .python_state
                     .none_type()
-                    .lookup_without_error(i_s, from, name),
+                    .lookup_without_error(i_s, name),
             ),
             DbType::Literal(literal) => {
                 let t = i_s.db.python_state.literal_type(literal.kind);
-                callable(self, t.lookup_without_error(i_s, from, name))
+                callable(self, t.lookup_without_error(i_s, name))
             }
             t @ DbType::TypeVar(tv) => {
                 if !tv.type_var.restrictions.is_empty() {
@@ -2150,10 +2150,9 @@ impl<'a> Type<'a> {
     pub fn lookup_without_error<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
-        from: Option<NodeRef>,
         name: &str,
     ) -> LookupResult {
-        self.lookup_helper(i_s, from, name, &|_| ())
+        self.lookup_helper(i_s, None, name, &|_| ())
     }
 
     pub fn lookup_with_error<'db>(
