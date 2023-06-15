@@ -232,7 +232,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
             for path in &step.deletions {
                 #[allow(unused_must_use)]
                 {
-                    project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
+                    project
+                        .unload_in_memory_file(&(BASE_PATH.to_owned() + path))
+                        .unwrap();
                 }
             }
             let default_panic = std::panic::take_hook();
@@ -249,10 +251,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 .map(|d| d.as_string(&diagnostics_config))
                 .collect();
 
-            #[allow(unused_must_use)]
-            {
-                std::panic::take_hook();
-            }
+            let _ = std::panic::take_hook();
 
             let actual = replace_annoyances(diagnostics.join("\n"));
             let mut actual_lines = actual
@@ -291,10 +290,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
         for step in &steps.steps {
             for path in step.files.keys() {
-                #[allow(unused_must_use)]
-                {
-                    project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
-                }
+                let _ = project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
             }
         }
     }
