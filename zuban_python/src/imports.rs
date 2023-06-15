@@ -5,21 +5,25 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::workspaces::{DirContent, DirOrFile};
 
-pub enum ImportResult {
+pub enum ImportResult<'a> {
     File(FileIndex),
-    Namespace(Rc<DirContent>), // A Python Namespace package, i.e. a directory
+    Namespace(&'a str, Rc<DirContent>), // A Python Namespace package, i.e. a directory
 }
 
-impl ImportResult {
-    pub fn path<'db>(&self, db: &'db Database) -> &'db str {
+impl<'a> ImportResult<'a> {
+    pub fn path(&self, db: &'a Database) -> &'a str {
         match self {
             Self::File(f) => db.loaded_python_file(*f).file_path(db),
-            Self::Namespace(_) => todo!(),
+            Self::Namespace(path, _) => path,
         }
     }
 }
 
-pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<ImportResult> {
+pub fn global_import<'db>(
+    db: &'db Database,
+    from_file: FileIndex,
+    name: &str,
+) -> Option<ImportResult<'db>> {
     if name == "typing" {
         return Some(ImportResult::File(db.python_state.typing().file_index()));
     }
@@ -52,13 +56,13 @@ pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<
     None
 }
 
-pub fn python_import(
+pub fn python_import<'path>(
     db: &Database,
     from_file: FileIndex,
-    dir_path: &str,
+    dir_path: &'path str,
     dir: &Rc<DirContent>,
     name: &str,
-) -> Option<ImportResult> {
+) -> Option<ImportResult<'path>> {
     let separator = "/"; // TODO different separator
     let mut python_file_index = None;
     let mut stub_file_index = None;
@@ -77,6 +81,7 @@ pub fn python_import(
                     }
                     content.add_missing_entry("__init__.py".to_string(), from_file);
                     content.add_missing_entry("__init__.pyi".to_string(), from_file);
+                    //return Some(ImportResult::Namespace(dir_path, content.clone()))
                 }
             }
             DirOrFile::File(file_index) => {
@@ -128,7 +133,11 @@ fn load_init_file(
     None
 }
 
-pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<ImportResult> {
+pub fn find_ancestor<'db>(
+    db: &'db Database,
+    file: &PythonFile,
+    level: usize,
+) -> Option<ImportResult<'db>> {
     debug_assert!(level > 0);
     let mut path = file.file_path(db);
     for _ in 0..level {
