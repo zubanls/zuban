@@ -170,8 +170,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 DottedAsNameContent::Simple(name_def, _) => {
                     self.global_import(
                         name_def.as_code(),
-                        name_def.index(),
-                        Some(name_def.name_index()),
+                        name_def.name_index(),
+                        Some(name_def.index()),
                     );
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
@@ -287,8 +287,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn global_import(
         &self,
         name: &str,
-        index: NodeIndex,
-        second_index: Option<NodeIndex>,
+        name_index: NodeIndex,
+        name_def_index: Option<NodeIndex>,
     ) -> Option<ImportResult> {
         let result = global_import(self.i_s.db, self.file.file_index(), name);
         let point = match &result {
@@ -304,7 +304,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Some(ImportResult::Namespace(_)) => todo!(),
             None => {
-                let node_ref = NodeRef::new(self.file, index);
+                let node_ref = NodeRef::new(self.file, name_index);
                 node_ref.add_typing_issue(
                     self.i_s,
                     IssueType::ModuleNotFound {
@@ -314,9 +314,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Point::new_unknown(self.file.file_index(), Locality::Todo)
             }
         };
-        self.file.points.set(index, point);
-        if let Some(second_index) = second_index {
-            self.file.points.set(second_index, point);
+        self.file.points.set(name_index, point);
+        if let Some(name_def_index) = name_def_index {
+            self.file.points.set(name_def_index, point);
         }
         result
     }
