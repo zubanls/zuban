@@ -181,7 +181,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Some(ImportResult::File(file_index)) => {
                             Point::new_file_reference(file_index, Locality::Todo)
                         }
-                        Some(ImportResult::Namespace(..)) => todo!(),
+                        Some(ImportResult::Namespace { .. }) => todo!(),
                         None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(as_name_def.index(), point);
@@ -222,7 +222,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Some(ImportResult::File(file_index)) => {
                         Point::new_file_reference(file_index, Locality::Todo)
                     }
-                    Some(ImportResult::Namespace(..)) => todo!(),
+                    Some(ImportResult::Namespace { .. }) => todo!(),
                     None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);
@@ -270,7 +270,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 Point::new_unknown(import_file.file_index(), Locality::Todo)
                             }
                         }
-                        Some(ImportResult::Namespace(..)) => todo!(),
+                        Some(ImportResult::Namespace { .. }) => todo!(),
                         None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(import_name.index(), point);
@@ -289,7 +289,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         name: &str,
         name_index: NodeIndex,
         name_def_index: Option<NodeIndex>,
-    ) -> Option<ImportResult<'db>> {
+    ) -> Option<ImportResult> {
         let result = global_import(self.i_s.db, self.file.file_index(), name);
         if let Some(result) = &result {
             debug!("Global import {name:?}: {:?}", result.path(self.i_s.db),);
@@ -301,7 +301,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .add_invalidates(*file_index, self.file.file_index());
                 Point::new_file_reference(*file_index, Locality::DirectExtern)
             }
-            Some(ImportResult::Namespace(..)) => {
+            Some(ImportResult::Namespace { .. }) => {
                 todo!()
             }
             None => {
@@ -326,7 +326,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         &mut self,
         dotted: DottedName,
         base: Option<ImportResult>,
-    ) -> Option<ImportResult<'db>> {
+    ) -> Option<ImportResult> {
         let infer_name = |i_s, import_result, name: Name| match import_result {
             ImportResult::File(file_index) => {
                 let file = self.i_s.db.loaded_python_file(file_index);
@@ -346,7 +346,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 result
             }
-            ImportResult::Namespace(..) => todo!(),
+            ImportResult::Namespace { .. } => todo!(),
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {

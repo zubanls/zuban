@@ -5,25 +5,30 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::workspaces::{DirContent, DirOrFile};
 
-pub enum ImportResult<'a> {
+const SEPARATOR: &'static str = "/"; // TODO different separator
+
+pub enum ImportResult {
     File(FileIndex),
-    Namespace(&'a str, Rc<DirContent>), // A Python Namespace package, i.e. a directory
+    Namespace {
+        path: String,
+        content: Rc<DirContent>,
+    }, // A Python Namespace package, i.e. a directory
 }
 
-impl<'a> ImportResult<'a> {
-    pub fn path(&self, db: &'a Database) -> &'a str {
+impl ImportResult {
+    pub fn path<'x>(&'x self, db: &'x Database) -> &'x str {
         match self {
             Self::File(f) => db.loaded_python_file(*f).file_path(db),
-            Self::Namespace(path, _) => path,
+            Self::Namespace { path, .. } => path,
         }
     }
 }
 
-pub fn global_import<'db>(
-    db: &'db Database,
+pub fn global_import<'a>(
+    db: &'a Database,
     from_file: FileIndex,
-    name: &str,
-) -> Option<ImportResult<'db>> {
+    name: &'a str,
+) -> Option<ImportResult> {
     if name == "typing" {
         return Some(ImportResult::File(db.python_state.typing().file_index()));
     }
@@ -56,14 +61,13 @@ pub fn global_import<'db>(
     None
 }
 
-pub fn python_import<'path>(
+pub fn python_import<'a>(
     db: &Database,
     from_file: FileIndex,
-    dir_path: &'path str,
+    dir_path: &'a str,
     dir: &Rc<DirContent>,
-    name: &str,
-) -> Option<ImportResult<'path>> {
-    let separator = "/"; // TODO different separator
+    name: &'a str,
+) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
     for directory in dir.iter() {
@@ -72,7 +76,7 @@ pub fn python_import<'path>(
                 if directory.name == name {
                     let result = load_init_file(db, content, |child| {
                         format!(
-                            "{dir_path}{separator}{dir_name}{separator}{child}",
+                            "{dir_path}{SEPARATOR}{dir_name}{SEPARATOR}{child}",
                             dir_name = directory.name
                         )
                     });
@@ -81,7 +85,7 @@ pub fn python_import<'path>(
                     }
                     content.add_missing_entry("__init__.py".to_string(), from_file);
                     content.add_missing_entry("__init__.pyi".to_string(), from_file);
-                    //return Some(ImportResult::Namespace(dir_path, content.clone()))
+                    //return Some(ImportResult::Namespace{path: format!("{dir_path}{name}"), content: content.clone()})
                 }
             }
             DirOrFile::File(file_index) => {
@@ -90,7 +94,7 @@ pub fn python_import<'path>(
                     if file_index.get().is_none() {
                         db.load_file_from_workspace(
                             dir.clone(),
-                            format!("{dir_path}{separator}{}", directory.name),
+                            format!("{dir_path}{SEPARATOR}{}", directory.name),
                             file_index,
                         );
                     }
@@ -137,7 +141,7 @@ pub fn find_ancestor<'db>(
     db: &'db Database,
     file: &PythonFile,
     level: usize,
-) -> Option<ImportResult<'db>> {
+) -> Option<ImportResult> {
     debug_assert!(level > 0);
     let mut path = file.file_path(db);
     for _ in 0..level {

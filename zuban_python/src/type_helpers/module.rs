@@ -18,7 +18,7 @@ impl<'a> Module<'a> {
         Self { file }
     }
 
-    pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult<'a>> {
+    pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult> {
         self.file.package_dir.as_ref().and_then(|dir| {
             let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
             python_import(db, self.file.file_index(), p, dir, name)
@@ -66,7 +66,7 @@ impl<'a> Module<'a> {
                         i_s.db.add_invalidates(file_index, self.file.file_index());
                         LookupResult::FileReference(file_index)
                     }
-                    ImportResult::Namespace(..) => todo!(),
+                    ImportResult::Namespace { .. } => todo!(),
                 })
             })
             .unwrap_or_else(|| {
