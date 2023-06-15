@@ -7,12 +7,14 @@ use crate::workspaces::{DirContent, DirOrFile};
 
 pub enum ImportResult {
     File(FileIndex),
+    Namespace(Rc<DirContent>), // A Python Namespace package, i.e. a directory
 }
 
 impl ImportResult {
     pub fn path<'db>(&self, db: &'db Database) -> &'db str {
         match self {
             Self::File(f) => db.loaded_python_file(*f).file_path(db),
+            Self::Namespace(_) => todo!(),
         }
     }
 }

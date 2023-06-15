@@ -66,6 +66,7 @@ impl<'a> Module<'a> {
                         i_s.db.add_invalidates(file_index, self.file.file_index());
                         LookupResult::FileReference(file_index)
                     }
+                    ImportResult::Namespace(_) => todo!(),
                 })
             })
             .unwrap_or_else(|| {

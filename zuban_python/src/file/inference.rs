@@ -181,6 +181,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Some(ImportResult::File(file_index)) => {
                             Point::new_file_reference(file_index, Locality::Todo)
                         }
+                        Some(ImportResult::Namespace(_)) => todo!(),
                         None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(as_name_def.index(), point);
@@ -221,6 +222,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Some(ImportResult::File(file_index)) => {
                         Point::new_file_reference(file_index, Locality::Todo)
                     }
+                    Some(ImportResult::Namespace(_)) => todo!(),
                     None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);
@@ -245,7 +247,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     module.sub_module(self.i_s.db, import_name.as_str())
                                 })
                             {
-                                let ImportResult::File(file_index) = import_result;
+                                let ImportResult::File(file_index) = import_result else {
+                                    todo!()
+                                };
                                 self.i_s
                                     .db
                                     .add_invalidates(file_index, self.file.file_index());
@@ -266,6 +270,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 Point::new_unknown(import_file.file_index(), Locality::Todo)
                             }
                         }
+                        Some(ImportResult::Namespace(_)) => todo!(),
                         None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(import_name.index(), point);
@@ -297,6 +302,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 );
                 Point::new_file_reference(*file_index, Locality::DirectExtern)
             }
+            Some(ImportResult::Namespace(_)) => todo!(),
             None => {
                 let node_ref = NodeRef::new(self.file, index);
                 node_ref.add_typing_issue(
@@ -339,6 +345,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 result
             }
+            ImportResult::Namespace(_) => todo!(),
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {

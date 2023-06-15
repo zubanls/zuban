@@ -837,6 +837,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                 );
                                 TypeContent::Module(db.loaded_python_file(file_index))
                             }
+                            Some(ImportResult::Namespace(_)) => todo!(),
                             None => {
                                 let node_ref = NodeRef::new(self.inference.file, primary.index());
                                 debug!("TypeComputation: Attribute on class not found");
