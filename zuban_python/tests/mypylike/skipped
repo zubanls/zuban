@@ -3,7 +3,6 @@
 # Mypy upgrade
 testRecursiveAliasTuple
 testAliasRecursiveUnpackMultiple
-testNoCrashUnsupportedNamedTuple
 
 # check-incremental tests
 testIncrementalNestedBrokenCascade
@@ -573,6 +572,7 @@ testNamedTuplesTwoAsBaseClasses
 testNamedTuplesTwoAsBaseClasses2
 # "NamedTuple type as an attribute is not supported"
 testAssignNamedTupleAsAttribute
+testNoCrashUnsupportedNamedTuple
 # "First argument to namedtuple() should be "A", not "X""
 testNamedTupleTypeNameMatchesVariableName
 testInvalidNamedTupleWithinFunction

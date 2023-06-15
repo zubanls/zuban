@@ -87,7 +87,7 @@ pub(super) enum InvalidVariableType<'a> {
     Slice,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum TypeComputationOrigin {
     AssignmentTypeCommentOrAnnotation,
     ParamTypeCommentOrAnnotation,
@@ -106,7 +106,7 @@ impl InvalidVariableType<'_> {
         origin: TypeComputationOrigin,
     ) {
         add_typing_issue(match self {
-            Self::Variable(var_ref) => {
+            Self::Variable(var_ref) | Self::ParamNameAsBaseClassAny(var_ref) => {
                 add_typing_issue(IssueType::InvalidType(
                     format!(
                         "Variable \"{}.{}\" is not valid as a type",
@@ -133,7 +133,6 @@ impl InvalidVariableType<'_> {
                     _ => "Perhaps you need \"Callable[...]\" or a callback protocol?",
                 }))
             }
-            Self::ParamNameAsBaseClassAny(_) => todo!(),
             Self::List => {
                 add_typing_issue(IssueType::InvalidType(Box::from(
                     "Bracketed expression \"[...]\" is not valid as a type",
