@@ -28,9 +28,8 @@ pub fn global_import(db: &Database, from_file: FileIndex, name: &str) -> Option<
         if result.is_some() {
             return result;
         }
-    }
-    for (_, dir_children) in db.workspaces.directories() {
-        dir_children.add_missing_entry(name.to_owned() + ".py", from_file);
+        dir.add_missing_entry(name.to_owned() + ".py", from_file);
+        dir.add_missing_entry(name.to_owned() + ".pyi", from_file);
     }
     None
 }
