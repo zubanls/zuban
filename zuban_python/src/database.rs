@@ -2712,6 +2712,24 @@ impl Database {
         self.file_state(file).add_invalidates(invalidates)
     }
 
+    pub fn unload_in_memory_directory(&mut self, dir_path: &str) {
+        let indexes: Vec<_> = self
+            .in_memory_files
+            .iter()
+            .filter_map(|(path, file_index)| {
+                let matches = path.starts_with(dir_path)
+                    && path
+                        .as_bytes()
+                        .get(dir_path.len())
+                        .is_some_and(|chr| *chr == self.vfs.separator_u8());
+                matches.then_some(*file_index)
+            })
+            .collect();
+        for index in indexes {
+            self.unload_file(index);
+        }
+    }
+
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {
         if let Some(file_index) = self.in_memory_files.get(path) {
             self.unload_file(*file_index);

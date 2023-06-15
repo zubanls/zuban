@@ -46,7 +46,6 @@ testDeleteModuleWithErrorInsidePackage
 testAddFileWhichImportsLibModuleWithErrors
 testDeleteFileWithinPackage
 testDeletePackage1
-testDeletePackage2
 testDeletePackage3
 testDeletePackage4
 testDeletePackage5

@@ -234,7 +234,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 {
                     project
                         .unload_in_memory_file(&(BASE_PATH.to_owned() + path))
-                        .unwrap();
+                        .unwrap_or_else(|_| {
+                            project.unload_in_memory_directory(&(BASE_PATH.to_owned() + path))
+                        });
                 }
             }
             let default_panic = std::panic::take_hook();

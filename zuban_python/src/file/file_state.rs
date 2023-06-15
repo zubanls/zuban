@@ -22,7 +22,11 @@ pub trait Vfs {
     fn read_file(&self, path: &str) -> Option<String>;
 
     fn separator(&self) -> char {
-        '/'
+        self.separator_u8().into()
+    }
+
+    fn separator_u8(&self) -> u8 {
+        b'/'
     }
 
     fn split_off_folder<'a>(&self, path: &'a str) -> (&'a str, Option<&'a str>) {
