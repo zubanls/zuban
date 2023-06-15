@@ -38,7 +38,6 @@ testAddPackage3
 testAddPackage4
 testAddNonPackageSubdir
 testAddPackage5
-testAddPackage7
 testDeletionOfSubmoduleTriggersImportFrom1-only_when_nocache
 testDeletionOfSubmoduleTriggersImportFrom1_2-only_when_cache-skip
 testDeletionOfSubmoduleTriggersImportFrom2
@@ -52,8 +51,6 @@ testDeletePackage3
 testDeletePackage4
 testDeletePackage5
 testDeletePackage6
-testSkipImports
-testSkipImportsWithinPackage
 testAddModuleAfterCache2-only_when_cache
 testAddModuleAfterCache3-only_when_cache
 testAddModuleAfterCache4-only_when_cache
@@ -65,12 +62,8 @@ testImportStarAddMissingDependencyInsidePackage1
 testImportStarAddMissingDependencyInsidePackage2
 testImportStarWithinFunction
 testDeleteFileWithErrors
-testSkipButDontIgnore1
-testSkipButDontIgnore2
 testFineAddedMissingStubsPackagePartial
 testFineAddedMissingStubsIgnorePackagePartial
-testFineFollowImportSkipInvalidatedOnAddedStub-skip
-testFineAddedSkippedStubsPackageFrom
 testDoNotFollowImportToNonStubFile
 testLibraryStubsNotInstalled
 
@@ -2807,6 +2800,13 @@ testIncrementalFollowImportsSkip
 testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs
 testAddedSkippedStubsPackageFrom
 testAddPackage6
+testAddPackage7
+testSkipImports
+testSkipImportsWithinPackage
+testSkipButDontIgnore1
+testSkipButDontIgnore2
+testFineFollowImportSkipInvalidatedOnAddedStub-skip
+testFineAddedSkippedStubsPackageFrom
 
 # --enable-error-code redundant-expr
 # "If condition is always false"
