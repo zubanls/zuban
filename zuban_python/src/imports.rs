@@ -55,6 +55,8 @@ pub fn python_import(
                     if result.is_some() {
                         return result;
                     }
+                    content.add_missing_entry("__init__.py".to_string(), from_file);
+                    content.add_missing_entry("__init__.pyi".to_string(), from_file);
                 }
             }
             DirOrFile::File(file_index) => {
@@ -80,8 +82,8 @@ pub fn python_import(
     }
     let result = stub_file_index.or(python_file_index);
     if result.is_none() {
-        dir.add_missing_entry(name.to_owned() + ".py", from_file);
-        dir.add_missing_entry(name.to_owned() + ".pyi", from_file);
+        dir.add_missing_entry(name.to_string() + ".py", from_file);
+        dir.add_missing_entry(name.to_string() + ".pyi", from_file);
     }
     result
 }
