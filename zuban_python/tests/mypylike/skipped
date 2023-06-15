@@ -1,26 +1,13 @@
 # Next up
-
-# check-incremental tests
-testIncrementalNestedBrokenCascade
 testIncrementalNestedBrokenCascadeWithType1
 testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
-testIncrementalSilentImportsAndImportsInClass
-testIncrementalUnsilencingModule
-testIncrementalWithSilentImportsAndIgnore
-testIncrementalStoresAliasTypeVars
-testIncrementalSilentImportsWithBlatantError
-testIncrementalImportIsNewlySilenced
-testIncrementalSilencedModuleNoLongerCausesError
+
+# Import order issues
+testIncrementalNestedBrokenCascade
+# check-incremental tests
 testIncrementalSilentImportsWithInnerImports
-testIncrementalFollowImportsSilent
-testIncrementalFollowImportsSkip
-testIncrementalFollowImportsError
-testIncrementalNewTypeInMethod
 testIncrementalInnerClassAttrInMethodReveal
-testIncrementalPerFileFlags
-testNoCrashOnDeletedWithCacheOnCmdline
-testIncrementalWithSilentImports
 testAddedMissingStubs
 testAddedMissingStubsPackage
 testAddedMissingStubsPackageFrom
@@ -30,21 +17,11 @@ testAddedMissingStubsIgnore
 testAddedMissingStubsIgnorePackage
 testAddedMissingStubsIgnorePackageFrom
 testAddedMissingStubsIgnorePackagePartial
-testOverrideByBadFunction
-testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs
-testAddedSkippedStubsPackageFrom
 testOverrideByIdemAliasReversed
 testOverrideByIdemAliasGeneric
 testOverrideByIdemAliasImported
 testConditionalExceptionAliasOverride
 testIncrementalNestedTypeAlias
-testIncrementalNamespacePackage1
-testIncrementalNamespacePackage2
-testNoCrashDoubleReexportFunctionEmpty
-testNoCrashDoubleReexportBaseEmpty
-testNoCrashDoubleReexportMetaEmpty
-testNoCrashDoubleReexportTupleEmpty
-testNoCrashDoubleReexportOverloadEmpty
 
 # Fine grained tests
 testReferenceToTypeThroughCycleAndReplaceWithFunction
@@ -112,11 +89,6 @@ testMissingStubAdded1
 testMissingStubAdded2
 testDoNotFollowImportToNonStubFile
 testLibraryStubsNotInstalled
-# --follow-imports=error
-testErrorButDontIgnore1
-testErrorButDontIgnore2
-testErrorButDontIgnore3-skip
-testErrorButDontIgnore4
 
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
@@ -477,9 +449,10 @@ testDecoratedPropertySetter
 testClassCustomPropertyWorks
 # classmethod name redirect name binding issue
 testAliasToClassMethod
-# name binding of type definitions within function scopes
+# name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4
 testForwardBoundFunctionScopeWorks
+testOverrideByBadFunction
 
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
@@ -729,6 +702,7 @@ testGenericTypedDictSerialization
 testUnpackKwargsSerialize
 testNoCrashDoubleReexportTypedDictEmpty
 testGenericTypedDictWithError
+testIncrementalNewTypeInMethod
 
 # NoReturn
 testNoReturnTypeAlias
@@ -1088,6 +1062,13 @@ testFromSixMetaclass
 testSixMetaclassGenericBase
 testIgnoreInsideClassDoesntAffectWhole
 
+# Override import cached files like typing types builtins etc.
+testNoCrashDoubleReexportFunctionEmpty
+testNoCrashDoubleReexportBaseEmpty
+testNoCrashDoubleReexportMetaEmpty
+testNoCrashDoubleReexportTupleEmpty
+testNoCrashDoubleReexportOverloadEmpty
+
 # Binary or implementation missing
 testMiscBinaryOperators
 
@@ -1161,6 +1142,8 @@ testClassicNotPackage
 testNamespacePackage*
 testClassicPackageIgnoresEarlierNamespacePackage
 testClassicPackageInsideNamespacePackage
+testIncrementalNamespacePackage1
+testIncrementalNamespacePackage2
 
 # Stub Reexport
 testNoReExportFromStubs
@@ -1632,6 +1615,7 @@ testClassScopeImportWithWrapperAndError
 testImportInClassBody
 testOverrideByBadVarClass
 testOverrideByBadVarClassAlias
+testIncrementalSilentImportsAndImportsInClass
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
@@ -2711,6 +2695,7 @@ testShowErrorCodesInConfig
 testIncrementalFollowImportsVariable
 testRegularUsesFgCache
 testFgCacheNeedsFgCache
+testIncrementalPerFileFlags
 
 # Mypy plugins
 testChangedPluginsInvalidateCache
@@ -2818,6 +2803,23 @@ testErrorCodeReturnAny
 # --follow-imports=error
 testImportSuppressedWhileAlmostSilent
 testAncestorSuppressedWhileAlmostSilent
+testErrorButDontIgnore1
+testErrorButDontIgnore2
+testErrorButDontIgnore3-skip
+testErrorButDontIgnore4
+testIncrementalFollowImportsError
+# --follow-imports=silent
+testIncrementalFollowImportsSilent
+testIncrementalWithSilentImports
+# --follow-imports=skip
+testIncrementalUnsilencingModule
+testIncrementalWithSilentImportsAndIgnore
+testIncrementalSilentImportsWithBlatantError
+testIncrementalImportIsNewlySilenced
+testIncrementalSilencedModuleNoLongerCausesError
+testIncrementalFollowImportsSkip
+testFollowImportSkipNotInvalidatedOnAddedStubOnFollowForStubs
+testAddedSkippedStubsPackageFrom
 
 # --enable-error-code redundant-expr
 # "If condition is always false"
@@ -2979,6 +2981,7 @@ testIgnoreErrorsFromTypeshed
 testNonExistentFileOnCommandLine1
 testInlineConfigFineGrained1
 testInlineConfigFineGrained2
+testNoCrashOnDeletedWithCacheOnCmdline
 
 # Won't support: __eq__ called directly with a keyword argument (which is actually legal)
 testMagicMethodPositionalOnlyArg
