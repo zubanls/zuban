@@ -1,14 +1,9 @@
 # Next up
 
 # Mypy upgrade
-testDictStarInference
-testDictStarAnyKeyJoinValue
 testRecursiveAliasTuple
 testAliasRecursiveUnpackMultiple
 testNoCrashUnsupportedNamedTuple
-testNarrowedVariableInNestedFunctionBasic
-testNarrowedVariableInNestedFunctionMore1
-testNarrowedVariableInNestedFunctionMore2
 
 # check-incremental tests
 testIncrementalNestedBrokenCascade
@@ -168,6 +163,9 @@ testDictWithStarStarExpr
 testDictIncompatibleTypeErrorMessage
 testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
+# star star in dict literal
+testDictStarInference
+testDictStarAnyKeyJoinValue
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
@@ -1965,6 +1963,9 @@ testNamedTupleUpdateNonRecursiveToRecursiveCoarse
 testTupleTypeUpdateNonRecursiveToRecursiveCoarse
 testTypeAliasUpdateNonRecursiveToRecursiveCoarse
 testTypedDictUpdateNonRecursiveToRecursiveCoarse
+testNarrowedVariableInNestedFunctionBasic
+testNarrowedVariableInNestedFunctionMore1
+testNarrowedVariableInNestedFunctionMore2
 # narrowing with or/and
 testRestrictedTypeAnd
 testRestrictedTypeOr
