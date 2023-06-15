@@ -13,7 +13,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
-use crate::imports::{find_ancestor, global_import};
+use crate::imports::{find_ancestor, global_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
 use crate::matching::{FormatData, Generics, OnTypeError, ResultContext, Type};
@@ -175,12 +175,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     );
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
-                    let file_index = self.infer_import_dotted_name(dotted_name, None);
+                    let result = self.infer_import_dotted_name(dotted_name, None);
                     debug_assert!(!self.file.points.get(as_name_def.index()).calculated());
-                    let point = if let Some(file_index) = file_index {
-                        Point::new_file_reference(file_index, Locality::Todo)
-                    } else {
-                        Point::new_unknown(self.file.file_index(), Locality::Todo)
+                    let point = match result {
+                        Some(ImportResult::File(file_index)) => {
+                            Point::new_file_reference(file_index, Locality::Todo)
+                        }
+                        None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(as_name_def.index(), point);
                     self.file.points.set(as_name_def.name().index(), point);
@@ -208,7 +209,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 })
             })
             .flatten();
-        let from_part_file_index = match dotted_name {
+        let from_first_part = match dotted_name {
             Some(dotted_name) => self.infer_import_dotted_name(dotted_name, maybe_level_file),
             None => maybe_level_file,
         };
@@ -216,50 +217,56 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match imp.unpack_targets() {
             ImportFromTargets::Star(keyword) => {
                 // Nothing to do here, was calculated earlier
-                let point = match from_part_file_index {
-                    Some(file_index) => Point::new_file_reference(file_index, Locality::Todo),
+                let point = match from_first_part {
+                    Some(ImportResult::File(file_index)) => {
+                        Point::new_file_reference(file_index, Locality::Todo)
+                    }
                     None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);
             }
             ImportFromTargets::Iterator(targets) => {
                 // as names should have been calculated earlier
-                let import_file = from_part_file_index.map(|f| self.i_s.db.loaded_python_file(f));
                 for target in targets {
                     let (import_name, name_def) = target.unpack();
 
-                    let point = if let Some(import_file) = import_file {
-                        let module = Module::new(import_file);
+                    let point = match &from_first_part {
+                        Some(ImportResult::File(file_index)) => {
+                            let import_file = self.i_s.db.loaded_python_file(*file_index);
+                            let module = Module::new(import_file);
 
-                        if let Some(link) = import_file.lookup_global(import_name.as_str()) {
-                            link.into_point_redirect()
-                        } else if let Some(file_index) = import_file
-                            .package_dir
-                            .as_ref()
-                            // TODO this dir is unused???
-                            .and_then(|dir| module.sub_module(self.i_s.db, import_name.as_str()))
-                        {
-                            self.i_s
-                                .db
-                                .add_invalidates(file_index, self.file.file_index());
-                            Point::new_file_reference(file_index, Locality::Todo)
-                        } else if let Some(link) = import_file
-                            .inference(self.i_s)
-                            .lookup_from_star_import(import_name.as_str(), false)
-                        {
-                            Point::new_redirect(link.file, link.node_index, Locality::Todo)
-                        } else {
-                            NodeRef::new(self.file, import_name.index()).add_typing_issue(
-                                self.i_s,
-                                IssueType::ImportAttributeError {
-                                    module_name: Box::from(module.name(self.i_s.db)),
-                                    name: Box::from(import_name.as_str()),
-                                },
-                            );
-                            Point::new_unknown(import_file.file_index(), Locality::Todo)
+                            if let Some(link) = import_file.lookup_global(import_name.as_str()) {
+                                link.into_point_redirect()
+                            } else if let Some(import_result) = import_file
+                                .package_dir
+                                .as_ref()
+                                // TODO this dir is unused???
+                                .and_then(|dir| {
+                                    module.sub_module(self.i_s.db, import_name.as_str())
+                                })
+                            {
+                                let ImportResult::File(file_index) = import_result;
+                                self.i_s
+                                    .db
+                                    .add_invalidates(file_index, self.file.file_index());
+                                Point::new_file_reference(file_index, Locality::Todo)
+                            } else if let Some(link) = import_file
+                                .inference(self.i_s)
+                                .lookup_from_star_import(import_name.as_str(), false)
+                            {
+                                Point::new_redirect(link.file, link.node_index, Locality::Todo)
+                            } else {
+                                NodeRef::new(self.file, import_name.index()).add_typing_issue(
+                                    self.i_s,
+                                    IssueType::ImportAttributeError {
+                                        module_name: Box::from(module.name(self.i_s.db)),
+                                        name: Box::from(import_name.as_str()),
+                                    },
+                                );
+                                Point::new_unknown(import_file.file_index(), Locality::Todo)
+                            }
                         }
-                    } else {
-                        Point::new_unknown(self.file.file_index(), Locality::Todo)
+                        None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(import_name.index(), point);
                     self.file.points.set(name_def.index(), point);
@@ -277,58 +284,61 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         name: &str,
         index: NodeIndex,
         second_index: Option<NodeIndex>,
-    ) -> Option<FileIndex> {
-        let file_index = global_import(self.i_s.db, self.file.file_index(), name);
-        let point = if let Some(file_index) = file_index {
-            self.i_s
-                .db
-                .add_invalidates(file_index, self.file.file_index());
-            debug!(
-                "Global import {name:?}: {:?}",
-                self.i_s.db.file_path(file_index)
-            );
-            Point::new_file_reference(file_index, Locality::DirectExtern)
-        } else {
-            let node_ref = NodeRef::new(self.file, index);
-            node_ref.add_typing_issue(
-                self.i_s,
-                IssueType::ModuleNotFound {
-                    module_name: Box::from(name),
-                },
-            );
-            Point::new_unknown(self.file.file_index(), Locality::Todo)
+    ) -> Option<ImportResult> {
+        let result = global_import(self.i_s.db, self.file.file_index(), name);
+        let point = match &result {
+            Some(ImportResult::File(file_index)) => {
+                self.i_s
+                    .db
+                    .add_invalidates(*file_index, self.file.file_index());
+                debug!(
+                    "Global import {name:?}: {:?}",
+                    self.i_s.db.file_path(*file_index)
+                );
+                Point::new_file_reference(*file_index, Locality::DirectExtern)
+            }
+            None => {
+                let node_ref = NodeRef::new(self.file, index);
+                node_ref.add_typing_issue(
+                    self.i_s,
+                    IssueType::ModuleNotFound {
+                        module_name: Box::from(name),
+                    },
+                );
+                Point::new_unknown(self.file.file_index(), Locality::Todo)
+            }
         };
         self.file.points.set(index, point);
         if let Some(second_index) = second_index {
             self.file.points.set(second_index, point);
         }
-        file_index
+        result
     }
 
     fn infer_import_dotted_name(
         &mut self,
         dotted: DottedName,
-        base: Option<FileIndex>,
-    ) -> Option<FileIndex> {
-        let infer_name = |i_s, file_index, name: Name| {
-            let file = self.i_s.db.loaded_python_file(file_index);
-            let module = Module::new(file);
-            let result = module.sub_module(self.i_s.db, name.as_str());
-            if let Some(imported) = result {
-                debug!(
-                    "Imported {:?} for {:?}",
-                    self.i_s
-                        .db
-                        .loaded_python_file(imported)
-                        .file_path(self.i_s.db),
-                    dotted.as_code(),
-                );
-            } else {
-                let node_ref = NodeRef::new(self.file, name.index());
-                let m = format!("{}.{}", module.name(self.i_s.db).to_owned(), name.as_str()).into();
-                node_ref.add_typing_issue(i_s, IssueType::ModuleNotFound { module_name: m });
+        base: Option<ImportResult>,
+    ) -> Option<ImportResult> {
+        let infer_name = |i_s, import_result, name: Name| match import_result {
+            ImportResult::File(file_index) => {
+                let file = self.i_s.db.loaded_python_file(file_index);
+                let module = Module::new(file);
+                let result = module.sub_module(self.i_s.db, name.as_str());
+                if let Some(imported) = &result {
+                    debug!(
+                        "Imported {:?} for {:?}",
+                        imported.path(self.i_s.db),
+                        dotted.as_code(),
+                    );
+                } else {
+                    let node_ref = NodeRef::new(self.file, name.index());
+                    let m =
+                        format!("{}.{}", module.name(self.i_s.db).to_owned(), name.as_str()).into();
+                    node_ref.add_typing_issue(i_s, IssueType::ModuleNotFound { module_name: m });
+                }
+                result
             }
-            result
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {
@@ -340,7 +350,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             DottedNameContent::DottedName(dotted_name, name) => self
                 .infer_import_dotted_name(dotted_name, base)
-                .and_then(|file_index| infer_name(self.i_s, file_index, name)),
+                .and_then(|result| infer_name(self.i_s, result, name)),
         }
     }
 

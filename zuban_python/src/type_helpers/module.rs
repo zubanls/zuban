@@ -1,8 +1,8 @@
-use crate::database::{Database, FileIndex, PointLink};
+use crate::database::{Database, PointLink};
 
 use crate::file::File;
 use crate::file::PythonFile;
-use crate::imports::python_import;
+use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
 
 use crate::matching::{LookupResult, Type};
@@ -18,7 +18,7 @@ impl<'a> Module<'a> {
         Self { file }
     }
 
-    pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<FileIndex> {
+    pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult> {
         self.file.package_dir.as_ref().and_then(|dir| {
             let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
             python_import(db, self.file.file_index(), p, dir, name)
@@ -60,10 +60,12 @@ impl<'a> Module<'a> {
                 )
             })
             .or_else(|| {
-                self.sub_module(i_s.db, name).map(|file_index| {
-                    // TODO this should probably move to the sub_module
-                    i_s.db.add_invalidates(file_index, self.file.file_index());
-                    LookupResult::FileReference(file_index)
+                self.sub_module(i_s.db, name).map(|result| match result {
+                    ImportResult::File(file_index) => {
+                        // TODO this should probably move to the sub_module
+                        i_s.db.add_invalidates(file_index, self.file.file_index());
+                        LookupResult::FileReference(file_index)
+                    }
                 })
             })
             .unwrap_or_else(|| {

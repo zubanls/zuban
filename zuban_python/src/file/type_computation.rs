@@ -19,6 +19,7 @@ use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
+use crate::imports::ImportResult;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, ResultContext, Type};
@@ -826,22 +827,30 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Point::new_redirect(f.file_index(), index, Locality::Todo),
                         );
                         self.compute_type_name(name)
-                    } else if let Some(file_index) = Module::new(f).sub_module(db, name.as_str()) {
-                        db.add_invalidates(file_index, self.inference.file.file_index());
-                        self.inference.file.points.set(
-                            name.index(),
-                            Point::new_file_reference(file_index, Locality::Todo),
-                        );
-                        TypeContent::Module(db.loaded_python_file(file_index))
                     } else {
-                        let node_ref = NodeRef::new(self.inference.file, primary.index());
-                        debug!("TypeComputation: Attribute on class not found");
-                        self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
-                        self.inference.file.points.set(
-                            name.index(),
-                            Point::new_unknown(f.file_index(), Locality::Todo),
-                        );
-                        TypeContent::Unknown
+                        match Module::new(f).sub_module(db, name.as_str()) {
+                            Some(ImportResult::File(file_index)) => {
+                                db.add_invalidates(file_index, self.inference.file.file_index());
+                                self.inference.file.points.set(
+                                    name.index(),
+                                    Point::new_file_reference(file_index, Locality::Todo),
+                                );
+                                TypeContent::Module(db.loaded_python_file(file_index))
+                            }
+                            None => {
+                                let node_ref = NodeRef::new(self.inference.file, primary.index());
+                                debug!("TypeComputation: Attribute on class not found");
+                                self.add_typing_issue_for_index(
+                                    primary.index(),
+                                    IssueType::TypeNotFound,
+                                );
+                                self.inference.file.points.set(
+                                    name.index(),
+                                    Point::new_unknown(f.file_index(), Locality::Todo),
+                                );
+                                TypeContent::Unknown
+                            }
+                        }
                     }
                 }
                 TypeContent::Class { node_ref, .. } => {
