@@ -1,9 +1,5 @@
 # Next up
 
-# Mypy upgrade
-testRecursiveAliasTuple
-testAliasRecursiveUnpackMultiple
-
 # check-incremental tests
 testIncrementalNestedBrokenCascade
 testIncrementalNestedBrokenCascadeWithType1
@@ -1925,6 +1921,7 @@ testTupleTypeUpdateNonRecursiveToRecursiveFine
 testTypeAliasUpdateNonRecursiveToRecursiveFine
 # narrowing if with literals
 testConditionalBoolLiteralUnionNarrowing
+testRecursiveAliasTuple
 # narrowing optional with if
 testOptionalTypeNarrowedByGenericCall
 testOptionalTypeNarrowedByGenericCall2
@@ -1966,6 +1963,7 @@ testTypedDictUpdateNonRecursiveToRecursiveCoarse
 testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedFunctionMore1
 testNarrowedVariableInNestedFunctionMore2
+testAliasRecursiveUnpackMultiple
 # narrowing with or/and
 testRestrictedTypeAnd
 testRestrictedTypeOr
