@@ -2712,7 +2712,7 @@ impl Database {
         self.file_state(file).add_invalidates(invalidates)
     }
 
-    pub fn unload_in_memory_directory(&mut self, dir_path: &str) {
+    pub fn delete_directory(&mut self, dir_path: &str) -> Result<(), String> {
         let indexes: Vec<_> = self
             .in_memory_files
             .iter()
@@ -2728,6 +2728,7 @@ impl Database {
         for index in indexes {
             self.unload_file(index);
         }
+        self.workspaces.delete_directory(&*self.vfs, dir_path)
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {

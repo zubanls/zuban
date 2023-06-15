@@ -73,8 +73,8 @@ impl Project {
         self.db.load_in_memory_file(path, code);
     }
 
-    pub fn unload_in_memory_directory(&mut self, path: &str) {
-        self.db.unload_in_memory_directory(path)
+    pub fn delete_directory(&mut self, path: &str) -> Result<(), String> {
+        self.db.delete_directory(path)
     }
 
     pub fn unload_in_memory_file(&mut self, path: &str) -> Result<(), &'static str> {

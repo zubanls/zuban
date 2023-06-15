@@ -1118,7 +1118,6 @@ testClassicNotPackage
 testNamespacePackage*
 testClassicPackageIgnoresEarlierNamespacePackage
 testClassicPackageInsideNamespacePackage
-testIncrementalNamespacePackage1
 testIncrementalNamespacePackage2
 
 # Stub Reexport

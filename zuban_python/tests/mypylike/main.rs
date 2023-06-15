@@ -230,14 +230,13 @@ impl<'name, 'code> TestCase<'name, 'code> {
             let mut wanted = wanted_output(project, step);
 
             for path in &step.deletions {
-                #[allow(unused_must_use)]
-                {
-                    project
-                        .unload_in_memory_file(&(BASE_PATH.to_owned() + path))
-                        .unwrap_or_else(|_| {
-                            project.unload_in_memory_directory(&(BASE_PATH.to_owned() + path))
-                        });
-                }
+                project
+                    .unload_in_memory_file(&(BASE_PATH.to_owned() + path))
+                    .unwrap_or_else(|_| {
+                        project
+                            .delete_directory(&(BASE_PATH.to_owned() + path))
+                            .unwrap()
+                    });
             }
             let default_panic = std::panic::take_hook();
             let cloned_name = self.name.clone();
@@ -292,7 +291,14 @@ impl<'name, 'code> TestCase<'name, 'code> {
         }
         for step in &steps.steps {
             for path in step.files.keys() {
-                let _ = project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
+                // We need to unload the whole directory, otherwise we might leave up namespace
+                // packages for other tests.
+                if path.contains("/") {
+                    let before_slash = path.split('/').next().unwrap();
+                    let _ = project.delete_directory(&(BASE_PATH.to_owned() + before_slash));
+                } else {
+                    let _ = project.unload_in_memory_file(&(BASE_PATH.to_owned() + path));
+                }
             }
         }
     }

@@ -52,6 +52,22 @@ impl Workspaces {
         }
     }
 
+    pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
+        for workspace in &mut self.0 {
+            if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
+                if path.starts_with(&workspace.root.name) {
+                    let (dir, name) = DirContent::ensure_dir_and_return_name(
+                        files,
+                        vfs,
+                        &path[workspace.root.name.len()..],
+                    );
+                    todo!() //return DirContent::delete_directory(&dir, vfs, name);
+                }
+            }
+        }
+        Err(format!("Path {path} cannot be found"))
+    }
+
     pub fn last(&self) -> &Workspace {
         // TODO this should probably not be needed
         self.0.last().unwrap()

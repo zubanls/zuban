@@ -13,7 +13,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
-use crate::imports::{find_ancestor, global_import, ImportResult};
+use crate::imports::{find_ancestor, global_import, python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
 use crate::matching::{FormatData, Generics, OnTypeError, ResultContext, Type};
@@ -302,7 +302,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Point::new_file_reference(*file_index, Locality::DirectExtern)
             }
             Some(ImportResult::Namespace { .. }) => {
-                todo!()
+                debug!("// TODO invalidate!");
+                if let Some(name_def_index) = name_def_index {
+                    todo!()
+                }
+                return result;
             }
             None => {
                 let node_ref = NodeRef::new(self.file, name_index);
@@ -327,6 +331,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         dotted: DottedName,
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
+        let file_index = self.file_index;
         let infer_name = |i_s, import_result, name: Name| match import_result {
             ImportResult::File(file_index) => {
                 let file = self.i_s.db.loaded_python_file(file_index);
@@ -346,7 +351,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 result
             }
-            ImportResult::Namespace { .. } => todo!(),
+            ImportResult::Namespace { path, content, .. } => {
+                python_import(self.i_s.db, file_index, &path, &content, name.as_str())
+            }
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {
