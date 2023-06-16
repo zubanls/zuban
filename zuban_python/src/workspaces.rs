@@ -61,11 +61,24 @@ impl Workspaces {
                         vfs,
                         &path[workspace.root.name.len()..],
                     );
+                    let (name, rest) = vfs.split_off_folder(path);
+                    if let Some(rest) = rest {
+                        if let Some(x) = dir.search(name) {
+                            match &x.type_ {
+                                DirOrFile::Directory(rc) => rc.0.borrow_mut().clear(),
+                                _ => todo!(),
+                            }
+                        } else {
+                            return Err(format!("Path {path} cannot be found"));
+                        }
+                    } else {
+                        files.0.borrow_mut().clear()
+                    }
                     todo!() //return DirContent::delete_directory(&dir, vfs, name);
                 }
             }
         }
-        Err(format!("Path {path} cannot be found"))
+        Err(format!("Workspace of path {path} cannot be found"))
     }
 
     pub fn last(&self) -> &Workspace {
