@@ -5,7 +5,6 @@ use walkdir::WalkDir;
 
 use crate::database::FileIndex;
 use crate::file::{FileStateLoader, Vfs};
-use crate::utils::Invalidations;
 
 #[derive(Debug, Default)]
 pub struct Workspaces(Vec<Workspace>);
@@ -80,7 +79,7 @@ impl Workspaces {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Workspace {
     root: DirEntry,
     //watcher: dyn notify::Watcher,
@@ -436,5 +435,20 @@ impl<'a> Iterator for DirContentIter<'a> {
             },
             None => None,
         }
+    }
+}
+
+#[derive(Debug, Default, Clone)]
+pub struct Invalidations(RefCell<Vec<FileIndex>>);
+
+impl Invalidations {
+    pub fn add(&self, element: FileIndex) {
+        if !self.0.borrow().contains(&element) {
+            self.0.borrow_mut().push(element);
+        }
+    }
+
+    pub fn into_iter(self) -> impl Iterator<Item = FileIndex> {
+        self.0.into_inner().into_iter()
     }
 }

@@ -8,8 +8,6 @@ use std::rc::Rc;
 
 use parsa_python_ast::{Name, NodeIndex};
 
-use crate::database::FileIndex;
-
 thread_local!(pub static DEBUG_INDENTATION: Cell<usize> = Cell::new(0));
 
 #[inline]
@@ -142,49 +140,6 @@ impl<K, V> Default for InsertOnlyHashMap<K, V> {
 impl<K: fmt::Debug, V: fmt::Debug> fmt::Debug for InsertOnlyHashMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         unsafe { &*self.map.get() }.fmt(f)
-    }
-}
-
-pub struct Invalidations {
-    vec: UnsafeCell<Vec<FileIndex>>,
-}
-
-impl Default for Invalidations {
-    fn default() -> Self {
-        Self {
-            vec: UnsafeCell::new(vec![]),
-        }
-    }
-}
-
-impl std::clone::Clone for Invalidations {
-    fn clone(&self) -> Self {
-        Self {
-            vec: UnsafeCell::new(unsafe { &*self.vec.get() }.clone()),
-        }
-    }
-}
-
-impl Invalidations {
-    pub fn add(&self, element: FileIndex) {
-        let vec = unsafe { &mut *self.vec.get() };
-        if !vec.contains(&element) {
-            vec.push(element);
-        }
-    }
-
-    pub fn into_iter(self) -> impl Iterator<Item = FileIndex> {
-        self.vec.into_inner().into_iter()
-    }
-
-    pub fn get_mut(&mut self) -> &mut Vec<FileIndex> {
-        self.vec.get_mut()
-    }
-}
-
-impl fmt::Debug for Invalidations {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        unsafe { &*self.vec.get() }.fmt(f)
     }
 }
 

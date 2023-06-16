@@ -24,8 +24,8 @@ use crate::matching::{common_base_type, FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::type_helpers::{Class, Module};
-use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, Invalidations, SymbolTable};
-use crate::workspaces::{DirContent, DirOrFile, WorkspaceFileIndex, Workspaces};
+use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
+use crate::workspaces::{DirContent, DirOrFile, Invalidations, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
 
 thread_local! {
@@ -2680,6 +2680,13 @@ impl Database {
             file_index
         };
         ensured.set_file_index(file_index);
+        /*
+        if std::cfg!(debug_assertions) {
+            for invalidation in ensured.invalidations.iter() {
+                debug!("Loading ");
+            }
+        }
+        */
         self.invalidate_file(file_index, ensured.invalidations);
         file_index
     }

@@ -10,8 +10,7 @@ use crate::diagnostics::{Diagnostic, DiagnosticConfig};
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
-use crate::utils::Invalidations;
-use crate::workspaces::DirContent;
+use crate::workspaces::{DirContent, Invalidations};
 use crate::PythonProject;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 
