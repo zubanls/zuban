@@ -54,28 +54,9 @@ impl Workspaces {
 
     pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
         for workspace in &mut self.0 {
-            if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
-                if path.starts_with(&workspace.root.name) {
-                    let (dir, name) = DirContent::ensure_dir_and_return_name(
-                        files,
-                        vfs,
-                        &path[workspace.root.name.len()..],
-                    );
-                    let (name, rest) = vfs.split_off_folder(path);
-                    if let Some(rest) = rest {
-                        if let Some(x) = dir.search(name) {
-                            match &x.type_ {
-                                DirOrFile::Directory(rc) => rc.0.borrow_mut().clear(),
-                                _ => todo!(),
-                            }
-                        } else {
-                            return Err(format!("Path {path} cannot be found"));
-                        }
-                    } else {
-                        files.0.borrow_mut().clear()
-                    }
-                    todo!() //return DirContent::delete_directory(&dir, vfs, name);
-                }
+            if path.starts_with(&workspace.root.name) {
+                let path = &path[workspace.root.name.len()..];
+                return workspace.root.delete_directory(vfs, path);
             }
         }
         Err(format!("Workspace of path {path} cannot be found"))
@@ -254,6 +235,29 @@ impl DirEntry {
                     files.remove_name(name);
                 }
             }
+        }
+    }
+
+    pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
+        if let DirOrFile::Directory(files) = &self.type_ {
+            let (name, rest) = vfs.split_off_folder(path);
+            if let Some(mut inner) = files.search(name) {
+                if let Some(rest) = rest {
+                    inner.delete_directory(vfs, rest)
+                } else {
+                    match &inner.type_ {
+                        DirOrFile::Directory(files) => {
+                            files.remove_name(name);
+                            Ok(())
+                        }
+                        _ => todo!(),
+                    }
+                }
+            } else {
+                Err(format!("Path {path} cannot be found"))
+            }
+        } else {
+            todo!()
         }
     }
 

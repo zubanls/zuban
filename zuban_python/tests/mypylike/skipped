@@ -3,6 +3,15 @@ testIncrementalNestedBrokenCascadeWithType1
 testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
 
+testAddedMissingStubsPackageFrom
+testAddedMissingStubsIgnorePackage
+testAddedMissingStubsIgnorePackageFrom
+testIncrementalNamespacePackage1
+testFineAddedMissingStubsPackage
+testFineAddedMissingStubsPackageFrom
+testFineAddedMissingStubsIgnorePackage
+testFineAddedMissingStubsIgnorePackageFrom
+
 # Import order issues
 testIncrementalNestedBrokenCascade
 # check-incremental tests
@@ -1118,6 +1127,7 @@ testClassicNotPackage
 testNamespacePackage*
 testClassicPackageIgnoresEarlierNamespacePackage
 testClassicPackageInsideNamespacePackage
+testIncrementalNamespacePackage1
 testIncrementalNamespacePackage2
 
 # Stub Reexport
