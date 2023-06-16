@@ -323,10 +323,8 @@ impl AddedFile {
 }
 
 impl DirContent {
-    pub fn iter(&self) -> DirContentIter {
-        DirContentIter {
-            inner: Some(Ref::map(self.0.borrow(), |v| &v[..])),
-        }
+    pub fn iter(&self) -> VecRefWrapper<DirEntry> {
+        VecRefWrapper(self.0.borrow())
     }
 
     fn remove_name(&self, name: &str) {
@@ -413,28 +411,6 @@ impl DirContent {
                 name,
                 type_: DirOrFile::MissingEntry(invalidations),
             })
-        }
-    }
-}
-
-pub struct DirContentIter<'a> {
-    inner: Option<Ref<'a, [DirEntry]>>,
-}
-
-impl<'a> Iterator for DirContentIter<'a> {
-    type Item = Ref<'a, DirEntry>;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        match self.inner.take() {
-            Some(borrow) => match *borrow {
-                [] => None,
-                [_, ..] => {
-                    let (head, tail) = Ref::map_split(borrow, |slice| (&slice[0], &slice[1..]));
-                    self.inner.replace(tail);
-                    Some(head)
-                }
-            },
-            None => None,
         }
     }
 }

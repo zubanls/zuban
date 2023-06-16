@@ -70,7 +70,7 @@ pub fn python_import<'a>(
 ) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
-    for directory in dir.iter() {
+    for directory in &dir.iter() {
         match &directory.type_ {
             DirOrFile::Directory(content) => {
                 if directory.name == name {
@@ -127,7 +127,7 @@ fn load_init_file(
     content: &Rc<DirContent>,
     on_new: impl Fn(&str) -> String,
 ) -> Option<FileIndex> {
-    for child in content.iter() {
+    for child in &content.iter() {
         if let DirOrFile::File(file_index) = &child.type_ {
             if child.name == "__init__.py" || child.name == "__init__.pyi" {
                 if file_index.get().is_none() {
