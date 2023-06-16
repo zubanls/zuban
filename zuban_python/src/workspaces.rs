@@ -5,6 +5,7 @@ use walkdir::WalkDir;
 
 use crate::database::FileIndex;
 use crate::file::{FileStateLoader, Vfs};
+use crate::utils::VecRefWrapper;
 
 #[derive(Debug, Default)]
 pub struct Workspaces(Vec<Workspace>);
@@ -446,6 +447,10 @@ impl Invalidations {
         if !self.0.borrow().contains(&element) {
             self.0.borrow_mut().push(element);
         }
+    }
+
+    pub fn iter(&self) -> VecRefWrapper<FileIndex> {
+        VecRefWrapper(self.0.borrow())
     }
 
     pub fn into_iter(self) -> impl Iterator<Item = FileIndex> {

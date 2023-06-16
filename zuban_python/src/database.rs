@@ -2680,13 +2680,12 @@ impl Database {
             file_index
         };
         ensured.set_file_index(file_index);
-        /*
         if std::cfg!(debug_assertions) {
-            for invalidation in ensured.invalidations.iter() {
-                debug!("Loading ");
+            for invalidation in &ensured.invalidations.iter() {
+                let p = self.file_state_mut(*invalidation).path();
+                debug!("Invalidate {p} because we're loading {path}");
             }
         }
-        */
         self.invalidate_file(file_index, ensured.invalidations);
         file_index
     }

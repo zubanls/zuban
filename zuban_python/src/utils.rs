@@ -1,5 +1,5 @@
 use std::borrow::Cow;
-use std::cell::{Cell, UnsafeCell};
+use std::cell::{Cell, Ref, UnsafeCell};
 use std::collections::HashMap;
 use std::fmt;
 use std::hash::{Hash, Hasher};
@@ -208,6 +208,17 @@ impl SymbolTable {
 
     pub fn lookup_symbol(&self, name: &str) -> Option<NodeIndex> {
         self.symbols.get(&HashableRawStr::new(name))
+    }
+}
+
+pub struct VecRefWrapper<'a, T: 'a>(pub Ref<'a, Vec<T>>);
+
+impl<'a, 'b: 'a, T: 'a> IntoIterator for &'b VecRefWrapper<'a, T> {
+    type IntoIter = std::slice::Iter<'a, T>;
+    type Item = &'a T;
+
+    fn into_iter(self) -> std::slice::Iter<'a, T> {
+        self.0.iter()
     }
 }
 
