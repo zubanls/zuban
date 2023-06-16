@@ -118,6 +118,8 @@ pub fn python_import<'a>(
     if result.is_none() {
         dir.add_missing_entry(name.to_string() + ".py", from_file);
         dir.add_missing_entry(name.to_string() + ".pyi", from_file);
+        // The folder should not exist for folder/__init__.py or a namespace.
+        dir.add_missing_entry(name.to_string(), from_file);
     }
     result
 }

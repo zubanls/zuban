@@ -1,4 +1,4 @@
-use std::cell::{Cell, Ref, RefCell, RefMut};
+use std::cell::{Cell, RefCell, RefMut};
 use std::path::PathBuf;
 use std::rc::Rc;
 use walkdir::WalkDir;
@@ -28,12 +28,14 @@ impl Workspaces {
         for workspace in &mut self.0 {
             if path.starts_with(&workspace.root.name) {
                 if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
-                    let (dir, name) = DirContent::ensure_dir_and_return_name(
+                    let (dir, name, invalidations) = DirContent::ensure_dir_and_return_name(
                         files,
                         vfs,
                         &path[workspace.root.name.len()..],
                     );
-                    return DirContent::ensure_file(&dir, vfs, name);
+                    let mut result = DirContent::ensure_file(&dir, vfs, name);
+                    result.invalidations.extend(invalidations);
+                    return result;
                 }
             }
         }
@@ -349,25 +351,33 @@ impl DirContent {
         dir: &Rc<DirContent>,
         vfs: &dyn Vfs,
         path: &'a str,
-    ) -> (Rc<DirContent>, &'a str) {
+    ) -> (Rc<DirContent>, &'a str, Invalidations) {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(rest) = rest {
-            dir.search(name)
-                .map(|x| match &x.type_ {
-                    DirOrFile::Directory(rc) => Self::ensure_dir_and_return_name(rc, vfs, rest),
+            let mut invalidations = Default::default();
+            if let Some(x) = dir.search(name) {
+                match &x.type_ {
+                    DirOrFile::Directory(rc) => {
+                        return Self::ensure_dir_and_return_name(rc, vfs, rest)
+                    }
+                    DirOrFile::MissingEntry(inv) => {
+                        invalidations = inv.take();
+                        drop(x);
+                        dir.remove_name(name);
+                    }
                     _ => todo!(),
-                })
-                .unwrap_or_else(|| {
-                    let new_rc = Default::default();
-                    let result = Self::ensure_dir_and_return_name(&new_rc, vfs, rest);
-                    dir.0.borrow_mut().push(DirEntry {
-                        name: name.to_owned(),
-                        type_: DirOrFile::Directory(new_rc),
-                    });
-                    result
-                })
+                }
+            };
+            let new_rc = Default::default();
+            let mut result = Self::ensure_dir_and_return_name(&new_rc, vfs, rest);
+            dir.0.borrow_mut().push(DirEntry {
+                name: name.to_owned(),
+                type_: DirOrFile::Directory(new_rc),
+            });
+            result.2 = invalidations;
+            result
         } else {
-            (dir.clone(), name)
+            (dir.clone(), name, Invalidations::default())
         }
     }
 
@@ -402,7 +412,7 @@ impl DirContent {
             if let DirOrFile::MissingEntry(invalidations) = &vec[pos].type_ {
                 invalidations.add(invalidates)
             } else {
-                unreachable!()
+                unreachable!("{:?}", &vec[pos].type_)
             }
         } else {
             let invalidations = Invalidations::default();
@@ -423,6 +433,14 @@ impl Invalidations {
         if !self.0.borrow().contains(&element) {
             self.0.borrow_mut().push(element);
         }
+    }
+
+    pub fn extend(&mut self, other: Self) {
+        self.0.get_mut().extend(other.0.into_inner())
+    }
+
+    pub fn take(&self) -> Self {
+        Self(RefCell::new(self.0.take()))
     }
 
     pub fn iter(&self) -> VecRefWrapper<FileIndex> {

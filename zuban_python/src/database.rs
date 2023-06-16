@@ -2667,8 +2667,8 @@ impl Database {
         }
 
         // Then load the new one
-        // TODO there could be no loader...
         let ensured = self.workspaces.ensure_file(&*self.vfs, &path);
+        // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
         let file_state = loader.load_parsed(ensured.directory.clone(), path.clone(), code);
         let file_index = if let Some(file_index) = in_mem_file {
@@ -2680,7 +2680,7 @@ impl Database {
             file_index
         };
         ensured.set_file_index(file_index);
-        if std::cfg!(debug_assertions) {
+        if cfg!(feature = "zuban_debug") {
             for invalidation in &ensured.invalidations.iter() {
                 let p = self.file_state_mut(*invalidation).path();
                 debug!("Invalidate {p} because we're loading {path}");
