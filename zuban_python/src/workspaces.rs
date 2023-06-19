@@ -248,7 +248,8 @@ impl DirEntry {
                     inner.delete_directory(vfs, rest)
                 } else {
                     match &inner.type_ {
-                        DirOrFile::Directory(files) => {
+                        DirOrFile::Directory(_) => {
+                            drop(inner);
                             files.remove_name(name);
                             Ok(())
                         }

@@ -5,11 +5,16 @@ testIncrementalWithDecorators
 
 testAddedMissingStubsIgnorePackage
 testAddedMissingStubsIgnorePackageFrom
+testAddedMissingStubsPackageFrom
 testIncrementalNamespacePackage1
 testFineAddedMissingStubsPackage
 testFineAddedMissingStubsPackageFrom
 testFineAddedMissingStubsIgnorePackage
 testFineAddedMissingStubsIgnorePackageFrom
+
+testModuleAsTypeNoCrash
+testModuleAsTypeNoCrash2
+testMissingSubmoduleOfInstalledStubPackageIgnored
 
 # Import order issues
 testIncrementalNestedBrokenCascade
@@ -1128,6 +1133,9 @@ testClassicPackageIgnoresEarlierNamespacePackage
 testClassicPackageInsideNamespacePackage
 testIncrementalNamespacePackage1
 testIncrementalNamespacePackage2
+
+# --no-namespace-packages
+testPackageWithoutInitFile
 
 # Stub Reexport
 testNoReExportFromStubs
