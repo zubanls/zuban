@@ -680,7 +680,10 @@ fn main() {
         let file_name = stem.to_str().unwrap();
         for case in mypy_style_cases(file_name, &code) {
             full_count += 1;
-            if !filters.is_empty() && !filters.contains(&case.name) {
+            if !filters.is_empty()
+                && !filters.contains(&case.name)
+                && !filters.iter().any(|s| s == file_name)
+            {
                 continue;
             }
             if skipped.iter().any(|s| s.is_skip(&case.name)) {
