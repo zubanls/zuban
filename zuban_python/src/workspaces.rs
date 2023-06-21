@@ -325,10 +325,6 @@ impl DirContent {
         self.0.borrow_mut().retain(|f| f.name.as_ref() != name)
     }
 
-    fn is_empty(&self) -> bool {
-        self.0.borrow().is_empty()
-    }
-
     pub fn search(&self, name: &str) -> Option<RefMut<DirEntry>> {
         let borrow = self.0.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
