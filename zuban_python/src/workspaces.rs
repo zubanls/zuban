@@ -221,17 +221,8 @@ impl DirEntry {
         if let DirOrFile::Directory(files) = &self.type_ {
             let (name, rest) = vfs.split_off_folder(path);
             if let Some(mut entry) = files.search(name) {
-                if matches!(&entry.type_, DirOrFile::Directory(_)) {
-                    entry.unload_if_not_available(vfs, rest.unwrap());
-                    match &mut entry.type_ {
-                        DirOrFile::Directory(f) => {
-                            if f.is_empty() {
-                                // TODO check if dir still exists
-                                f.remove_name(name);
-                            }
-                        }
-                        _ => unreachable!(),
-                    }
+                if let Some(rest) = rest {
+                    entry.unload_if_not_available(vfs, rest);
                 } else {
                     drop(entry);
                     files.remove_name(name);
@@ -253,7 +244,10 @@ impl DirEntry {
                             files.remove_name(name);
                             Ok(())
                         }
-                        _ => todo!(),
+                        DirOrFile::MissingEntry(_) => {
+                            Err(format!("Path {path} cannot be found (missing)"))
+                        }
+                        t => todo!("{t:?}"),
                     }
                 }
             } else {
