@@ -468,7 +468,8 @@ fn wanted_output(project: &mut Project, step: &Step) -> Vec<String> {
                 }
             }
         }
-        project.load_in_memory_file(BASE_PATH.to_owned() + path, code.to_owned());
+        let p = BASE_PATH.to_owned() + path;
+        project.load_in_memory_file(p.into(), code.into());
     }
     for line in &mut wanted {
         replace_unions(line)
@@ -656,7 +657,7 @@ fn main() {
                 projects.insert(
                     config,
                     LazyProject::new(ProjectOptions {
-                        path: BASE_PATH.to_owned(),
+                        path: BASE_PATH.into(),
                         implicit_optional: config.implicit_optional,
                         strict_optional: config.strict_optional,
                         mypy_compatible: config.mypy_compatible,

@@ -33,7 +33,7 @@ pub struct Project {
 
 #[derive(Clone)]
 pub struct ProjectOptions {
-    pub path: String,
+    pub path: Box<str>,
     pub strict_optional: bool,
     pub implicit_optional: bool,
     pub mypy_compatible: bool,
@@ -44,13 +44,13 @@ impl Project {
         let loaders = Box::new([Box::new(file::PythonFileLoader::default()) as Box<_>]);
         // TODO use a real sys path
         let sys_path = vec![
-            "../typeshed/stdlib".to_owned(),
-            "../typeshed/stubs".to_owned(),
-            "/usr/lib/python3/dist-packages".to_owned(),
-            "/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".to_owned(),
-            "/usr/lib/python3.8".to_owned(),
-            "/home/dave/.local/lib/python3.8/site-packages".to_owned(),
-            "/usr/local/lib/python3.8/dist-packages".to_owned(),
+            "../typeshed/stdlib".into(),
+            "../typeshed/stubs".into(),
+            "/usr/lib/python3/dist-packages".into(),
+            "/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
+            "/usr/lib/python3.8".into(),
+            "/home/dave/.local/lib/python3.8/site-packages".into(),
+            "/usr/local/lib/python3.8/dist-packages".into(),
         ];
         let db = Database::new(
             loaders,
@@ -69,7 +69,7 @@ impl Project {
 
     pub fn complete_search(&self, string: &str, all_scopes: bool) {}
 
-    pub fn load_in_memory_file(&mut self, path: String, code: String) {
+    pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) {
         self.db.load_in_memory_file(path, code);
     }
 
@@ -113,8 +113,8 @@ impl Project {
 }
 
 pub struct PythonProject {
-    path: String,
-    sys_path: Vec<String>,
+    path: Box<str>,
+    sys_path: Vec<Box<str>>,
     strict_optional: bool,
     implicit_optional: bool,
     mypy_compatible: bool,
@@ -133,7 +133,7 @@ pub struct Script<'a> {
 }
 
 impl<'a> Script<'a> {
-    pub fn new(project: &'a mut Project, path: Option<String>, code: Option<String>) -> Self {
+    pub fn new(project: &'a mut Project, path: Option<Box<str>>, code: Option<Box<str>>) -> Self {
         let db = &mut project.db;
         db.acquire();
         let file_index = match path {

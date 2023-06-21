@@ -26,7 +26,7 @@ pub trait Tokenizer<'a, T: Token>: Iterator {
 
 #[derive(Debug)]
 pub struct InternalTree {
-    pub code: String,
+    pub code: Box<str>,
     pub nodes: Vec<InternalNode>,
 }
 
@@ -69,7 +69,7 @@ mod tests {
 }
 
 impl InternalTree {
-    pub fn new(code: String, nodes: Vec<InternalNode>) -> Self {
+    pub fn new(code: Box<str>, nodes: Vec<InternalNode>) -> Self {
         Self { code, nodes }
     }
 }

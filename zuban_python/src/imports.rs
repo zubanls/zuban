@@ -73,18 +73,19 @@ pub fn python_import<'a>(
     for directory in &dir.iter() {
         match &directory.type_ {
             DirOrFile::Directory(content) => {
-                if directory.name == name {
+                if directory.name.as_ref() == name {
                     let result = load_init_file(db, content, |child| {
                         format!(
                             "{dir_path}{SEPARATOR}{dir_name}{SEPARATOR}{child}",
                             dir_name = directory.name
                         )
+                        .into()
                     });
                     if result.is_some() {
                         return result.map(ImportResult::File);
                     }
-                    content.add_missing_entry("__init__.py".to_string(), from_file);
-                    content.add_missing_entry("__init__.pyi".to_string(), from_file);
+                    content.add_missing_entry(Box::from("__init__.py"), from_file);
+                    content.add_missing_entry(Box::from("__init__.pyi"), from_file);
                     /*return Some(ImportResult::Namespace {
                         path: format!("{dir_path}{name}"),
                         content: content.clone(),
@@ -92,12 +93,12 @@ pub fn python_import<'a>(
                 }
             }
             DirOrFile::File(file_index) => {
-                let is_py_file = directory.name == format!("{name}.py");
-                if is_py_file || directory.name == format!("{name}.pyi") {
+                let is_py_file = directory.name.as_ref() == format!("{name}.py");
+                if is_py_file || directory.name.as_ref() == format!("{name}.pyi") {
                     if file_index.get().is_none() {
                         db.load_file_from_workspace(
                             dir.clone(),
-                            format!("{dir_path}{SEPARATOR}{}", directory.name),
+                            format!("{dir_path}{SEPARATOR}{}", directory.name).into(),
                             file_index,
                         );
                     }
@@ -116,10 +117,10 @@ pub fn python_import<'a>(
         .or(python_file_index)
         .map(ImportResult::File);
     if result.is_none() {
-        dir.add_missing_entry(name.to_string() + ".py", from_file);
-        dir.add_missing_entry(name.to_string() + ".pyi", from_file);
+        dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
+        dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
         // The folder should not exist for folder/__init__.py or a namespace.
-        dir.add_missing_entry(name.to_string(), from_file);
+        dir.add_missing_entry(name.into(), from_file);
     }
     result
 }
@@ -127,11 +128,11 @@ pub fn python_import<'a>(
 fn load_init_file(
     db: &Database,
     content: &Rc<DirContent>,
-    on_new: impl Fn(&str) -> String,
+    on_new: impl Fn(&str) -> Box<str>,
 ) -> Option<FileIndex> {
     for child in &content.iter() {
         if let DirOrFile::File(file_index) = &child.type_ {
-            if child.name == "__init__.py" || child.name == "__init__.pyi" {
+            if child.name.as_ref() == "__init__.py" || child.name.as_ref() == "__init__.pyi" {
                 if file_index.get().is_none() {
                     db.load_file_from_workspace(content.clone(), on_new(&child.name), file_index);
                 }

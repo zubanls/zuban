@@ -77,8 +77,8 @@ pub trait FileStateLoader {
     fn load_parsed(
         &self,
         dir: Rc<DirContent>,
-        path: String,
-        code: String,
+        path: Box<str>,
+        code: Box<str>,
     ) -> Pin<Box<dyn FileState>>;
 }
 
@@ -104,8 +104,8 @@ impl FileStateLoader for PythonFileLoader {
     fn load_parsed(
         &self,
         dir: Rc<DirContent>,
-        path: String,
-        code: String,
+        path: Box<str>,
+        code: Box<str>,
     ) -> Pin<Box<dyn FileState>> {
         // TODO this check is really stupid.
         let package_dir =
@@ -212,7 +212,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 }
 
 pub struct LanguageFileState<F: 'static> {
-    path: String,
+    path: Box<str>,
     state: InternalFileExistence<F>,
     invalidates: Invalidations,
 }
@@ -228,7 +228,7 @@ impl<F> fmt::Debug for LanguageFileState<F> {
 }
 
 impl<F: File> LanguageFileState<F> {
-    pub fn new_parsed(path: String, file: F) -> Self {
+    pub fn new_parsed(path: Box<str>, file: F) -> Self {
         Self {
             path,
             state: InternalFileExistence::Parsed(file),

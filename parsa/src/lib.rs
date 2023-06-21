@@ -402,7 +402,7 @@ macro_rules! __create_node {
                     x = code[..40].to_owned() + "...";
                     code = &x;
                 }
-                let until_code = &self.internal_tree.code.as_str()[..self.start() as usize];
+                let until_code = &self.internal_tree.code.as_ref()[..self.start() as usize];
                 // This is pretty slow, but should be fine, because this is only the Debug
                 // implementation.
                 let line = until_code.chars().filter(|&c| c == '\n').count() + 1;
@@ -699,7 +699,7 @@ macro_rules! create_grammar {
                 )}
             }
 
-            pub fn parse(&self, code: String) -> $Tree {
+            pub fn parse(&self, code: Box<str>) -> $Tree {
                 use $crate::Tokenizer;
                 // TODO shouldn't be dynamic
                 let start = $NonterminalType::map()[stringify!($first_node)];

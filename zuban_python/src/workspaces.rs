@@ -11,14 +11,14 @@ use crate::utils::VecRefWrapper;
 pub struct Workspaces(Vec<Workspace>);
 
 impl Workspaces {
-    pub fn add(&mut self, loaders: &[Box<dyn FileStateLoader>], root: String) {
+    pub fn add(&mut self, loaders: &[Box<dyn FileStateLoader>], root: Box<str>) {
         self.0.push(Workspace::new(loaders, root))
     }
 
     pub fn directories(&self) -> impl Iterator<Item = (&str, &Rc<DirContent>)> {
         self.0.iter().map(|x| {
             (
-                x.root().name.as_str(),
+                x.root().name.as_ref(),
                 x.root().directory_entries().unwrap(),
             )
         })
@@ -26,7 +26,7 @@ impl Workspaces {
 
     pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
         for workspace in &mut self.0 {
-            if path.starts_with(&workspace.root.name) {
+            if path.starts_with(workspace.root.name.as_ref()) {
                 if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
                     let (dir, name, invalidations) = DirContent::ensure_dir_and_return_name(
                         files,
@@ -46,7 +46,7 @@ impl Workspaces {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
             if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
-                if path.starts_with(&workspace.root.name) {
+                if path.starts_with(workspace.root.name.as_ref()) {
                     let path = &path[workspace.root.name.len()..];
                     workspace.root.unload_if_not_available(vfs, path);
                 }
@@ -56,7 +56,7 @@ impl Workspaces {
 
     pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
         for workspace in &mut self.0 {
-            if path.starts_with(&workspace.root.name) {
+            if path.starts_with(workspace.root.name.as_ref()) {
                 let path = &path[workspace.root.name.len()..];
                 return workspace.root.delete_directory(vfs, path);
             }
@@ -71,7 +71,7 @@ impl Workspaces {
 
     pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         for workspace in &self.0 {
-            if path.starts_with(&workspace.root.name) {
+            if path.starts_with(&workspace.root.name.as_ref()) {
                 let path = &path[workspace.root.name.len()..];
                 if let Some(content) = workspace.root.find_dir_content(vfs, path) {
                     return Some(content);
@@ -89,10 +89,10 @@ pub struct Workspace {
 }
 
 impl Workspace {
-    fn new(loaders: &[Box<dyn FileStateLoader>], root: String) -> Self {
-        let mut stack = vec![(PathBuf::from(&root), DirEntry::new_dir(root))];
+    fn new(loaders: &[Box<dyn FileStateLoader>], root: Box<str>) -> Self {
+        let mut stack = vec![(PathBuf::from(root.as_ref()), DirEntry::new_dir(root))];
         // TODO optimize if there are a lot of files
-        for entry in WalkDir::new(&stack[0].1.name)
+        for entry in WalkDir::new(stack[0].1.name.as_ref())
             .follow_links(true)
             .into_iter()
             .filter_entry(|entry| {
@@ -121,10 +121,7 @@ impl Workspace {
                 match entry.metadata() {
                     Ok(m) => {
                         if m.is_dir() {
-                            stack.push((
-                                entry.path().to_owned(),
-                                DirEntry::new_dir(name.to_owned()),
-                            ));
+                            stack.push((entry.path().to_owned(), DirEntry::new_dir(name.into())));
                         } else {
                             stack
                                 .last_mut()
@@ -134,7 +131,7 @@ impl Workspace {
                                 .unwrap()
                                 .0
                                 .borrow_mut()
-                                .push(DirEntry::new_file(name.to_owned()));
+                                .push(DirEntry::new_file(name.into()));
                         }
                     }
                     Err(e) => {
@@ -191,19 +188,19 @@ pub enum DirOrFile {
 
 #[derive(Debug, Clone)]
 pub struct DirEntry {
-    pub name: String,
+    pub name: Box<str>,
     pub type_: DirOrFile,
 }
 
 impl DirEntry {
-    pub fn new_dir(name: String) -> Self {
+    pub fn new_dir(name: Box<str>) -> Self {
         Self {
             name,
             type_: DirOrFile::Directory(Default::default()),
         }
     }
 
-    pub fn new_file(name: String) -> Self {
+    pub fn new_file(name: Box<str>) -> Self {
         Self {
             name,
             type_: DirOrFile::File(WorkspaceFileIndex::none()),
@@ -286,7 +283,7 @@ impl DirEntry {
         match &self.type_ {
             DirOrFile::Directory(files) => {
                 for n in files.0.borrow().iter() {
-                    if name == n.name {
+                    if name == n.name.as_ref() {
                         return match rest {
                             Some(rest) => n.find_dir_content(vfs, rest),
                             None => Some(n.directory_entries().unwrap().clone()),
@@ -325,7 +322,7 @@ impl DirContent {
     }
 
     fn remove_name(&self, name: &str) {
-        self.0.borrow_mut().retain(|f| f.name != name)
+        self.0.borrow_mut().retain(|f| f.name.as_ref() != name)
     }
 
     fn is_empty(&self) -> bool {
@@ -336,9 +333,11 @@ impl DirContent {
         let borrow = self.0.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
-        borrow.iter().find(|entry| entry.name == name)?;
+        borrow.iter().find(|entry| entry.name.as_ref() == name)?;
         Some(RefMut::map(borrow, |dir| {
-            dir.iter_mut().find(|entry| entry.name == name).unwrap()
+            dir.iter_mut()
+                .find(|entry| entry.name.as_ref() == name)
+                .unwrap()
         }))
     }
 
@@ -366,7 +365,7 @@ impl DirContent {
             let new_rc = Default::default();
             let mut result = Self::ensure_dir_and_return_name(&new_rc, vfs, rest);
             dir.0.borrow_mut().push(DirEntry {
-                name: name.to_owned(),
+                name: name.into(),
                 type_: DirOrFile::Directory(new_rc),
             });
             result.2 = invalidations;
@@ -391,7 +390,7 @@ impl DirContent {
             })
             .unwrap_or_else(|| {
                 let mut borrow = dir.0.borrow_mut();
-                borrow.push(DirEntry::new_file(name.to_owned()));
+                borrow.push(DirEntry::new_file(name.into()));
                 borrow.last_mut().unwrap().expect_workspace_index()
             });
         AddedFile {
@@ -401,7 +400,7 @@ impl DirContent {
         }
     }
 
-    pub fn add_missing_entry(&self, name: String, invalidates: FileIndex) {
+    pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.0.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name == name) {
             if let DirOrFile::MissingEntry(invalidations) = &vec[pos].type_ {

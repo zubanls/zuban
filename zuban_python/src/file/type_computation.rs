@@ -382,7 +382,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_forward_reference(
         &mut self,
         start: CodeIndex,
-        string: String,
+        string: Box<str>,
     ) -> TypeContent<'db, 'db> {
         let f: &'db PythonFile =
             self.inference
@@ -1908,8 +1908,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.compute_type_name(n)
             }
             AtomContent::Strings(s_o_b) => match s_o_b.as_python_string() {
-                PythonString::Ref(start, s) => self.compute_forward_reference(start, s.to_owned()),
-                PythonString::String(start, s) => self.compute_forward_reference(start, s),
+                PythonString::Ref(start, s) => self.compute_forward_reference(start, s.into()),
+                PythonString::String(start, s) => self.compute_forward_reference(start, s.into()),
                 PythonString::FString => todo!(),
             },
             AtomContent::NoneLiteral => TypeContent::DbType(DbType::None),
@@ -2591,7 +2591,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     ) -> (Inferred, Type<'db>) {
         let f: &'db PythonFile =
             self.file
-                .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').to_owned());
+                .new_annotation_file(self.i_s.db, start, s.trim_end_matches('\\').into());
         let mut inference = f.inference(self.i_s);
         if let Some(star_exprs) = f.tree.maybe_star_expressions() {
             match star_exprs.unpack() {

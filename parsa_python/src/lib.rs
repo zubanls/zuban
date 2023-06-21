@@ -316,12 +316,13 @@ create_grammar!(
     fstring_format_spec: ":" fstring_content*
 );
 
-pub fn parse(mut code: String) -> PyTree {
+pub fn parse(code: Box<str>) -> PyTree {
     // TODO is this really the best way? Especially for refactoring?!
+    let mut code = code.to_string();
     if !code.ends_with('\n') {
         code += "\n";
     }
-    PYTHON_GRAMMAR.parse(code)
+    PYTHON_GRAMMAR.parse(code.into())
 }
 
 #[cfg(test)]
@@ -329,7 +330,7 @@ mod tests {
     use super::*;
     #[test]
     fn test_grammar() {
-        let tree = parse("{foo: 1}\n".to_owned());
+        let tree = parse("{foo: 1}\n".into());
         let root_node = tree.root_node();
         assert_eq!(
             root_node.type_(),

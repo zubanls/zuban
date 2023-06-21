@@ -66,7 +66,7 @@ fn main() {
     }
 
     let mut project = Project::new(ProjectOptions {
-        path: "tests/blackbox/".to_owned(),
+        path: "tests/blackbox/".into(),
         strict_optional: true,
         implicit_optional: false,
         mypy_compatible: false,
@@ -78,7 +78,7 @@ fn main() {
     let mut ran_count = 0;
     let file_count = files.len();
     for python_file in files {
-        let code = read_to_string(&python_file).unwrap();
+        let code = read_to_string(&python_file).unwrap().into();
         let f = cases::TestFile {
             path: python_file,
             code,

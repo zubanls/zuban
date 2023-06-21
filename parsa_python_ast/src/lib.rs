@@ -18,7 +18,7 @@ pub use strings::PythonString;
 pub struct Tree(PyTree);
 
 impl Tree {
-    pub fn parse(code: String) -> Self {
+    pub fn parse(code: Box<str>) -> Self {
         Self(parse(code))
     }
 

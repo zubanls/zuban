@@ -2637,21 +2637,20 @@ impl Database {
     }
 
     pub fn load_sub_file(&self, file: PythonFile) -> &PythonFile {
-        let index =
-            self.add_file_state(Box::pin(LanguageFileState::new_parsed("".to_owned(), file)));
+        let index = self.add_file_state(Box::pin(LanguageFileState::new_parsed("".into(), file)));
         self.loaded_python_file(index)
     }
 
     pub fn load_file_from_workspace(
         &self,
         dir: Rc<DirContent>,
-        path: String,
+        path: Box<str>,
         index: &WorkspaceFileIndex,
     ) {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(dir, path, code)
+            loader.load_parsed(dir, path, code.into())
         } else {
             //loader.inexistent_file_state(path)
             todo!()
@@ -2659,7 +2658,7 @@ impl Database {
         index.set(file_index);
     }
 
-    pub fn load_in_memory_file(&mut self, path: String, code: String) -> FileIndex {
+    pub fn load_in_memory_file(&mut self, path: Box<str>, code: Box<str>) -> FileIndex {
         // First unload the old file, if there is already one
         let in_mem_file = self.in_memory_file(&path);
         if let Some(file_index) = in_mem_file {
@@ -2758,7 +2757,8 @@ impl Database {
         // TODO give this function a better name and put it into a workspace
         let loader = self.loader(p).unwrap();
         let code = self.vfs.read_file(p).unwrap();
-        let file_index = self.add_file_state(loader.load_parsed(dir.clone(), p.to_owned(), code));
+        let file_index =
+            self.add_file_state(loader.load_parsed(dir.clone(), p.into(), code.into()));
         self.loaded_python_file(file_index)
     }
 

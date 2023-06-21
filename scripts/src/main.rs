@@ -21,6 +21,7 @@ fn main() -> std::io::Result<()> {
 
     return Ok(());
 
+    /*
     let file = "/home/dave/source/stuff_jedi/quickfix_huge.py";
     let contents = fs::read_to_string(file)?;
 
@@ -36,4 +37,5 @@ fn main() -> std::io::Result<()> {
         eprintln!("elapsed {:?}", start.elapsed());
     }
     Ok(())
+    */
 }

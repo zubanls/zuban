@@ -206,7 +206,7 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn new(package_dir: Option<Rc<DirContent>>, code: String) -> Self {
+    pub fn new(package_dir: Option<Rc<DirContent>>, code: Box<str>) -> Self {
         let tree = Tree::parse(code);
         let length = tree.length();
         Self {
@@ -267,10 +267,10 @@ impl<'db> PythonFile {
         &self,
         db: &'db Database,
         start: CodeIndex,
-        code: String, // TODO this should not be a string, but probably cow
+        code: Box<str>, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
         // TODO should probably not need a newline
-        let mut file = PythonFile::new(None, code + "\n");
+        let mut file = PythonFile::new(None, Box::from(code.into_string() + "\n"));
         file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(file);
