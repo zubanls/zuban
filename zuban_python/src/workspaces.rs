@@ -199,9 +199,7 @@ impl Directory {
             let mut invalidations = Default::default();
             if let Some(x) = self.content.search(name) {
                 match &x.type_ {
-                    DirOrFile::Directory(rc, ..) => {
-                        return rc.ensure_dir_and_return_name(vfs, rest)
-                    }
+                    DirOrFile::Directory(rc) => return rc.ensure_dir_and_return_name(vfs, rest),
                     DirOrFile::MissingEntry(inv) => {
                         invalidations = inv.take();
                         drop(x);
@@ -247,7 +245,7 @@ impl DirEntry {
 
     fn directory_entries(&self) -> Option<&Rc<DirContent>> {
         match &self.type_ {
-            DirOrFile::Directory(dir, ..) => Some(&dir.content),
+            DirOrFile::Directory(dir) => Some(&dir.content),
             _ => None,
         }
     }
@@ -300,7 +298,7 @@ impl DirEntry {
                     callable(index)
                 }
             }
-            DirOrFile::Directory(files, ..) => {
+            DirOrFile::Directory(files) => {
                 for n in files.content.0.borrow_mut().iter_mut() {
                     n.for_each_file(callable)
                 }
@@ -319,7 +317,7 @@ impl DirEntry {
     fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         let (name, rest) = vfs.split_off_folder(path);
         match &self.type_ {
-            DirOrFile::Directory(files, ..) => {
+            DirOrFile::Directory(files) => {
                 for n in files.content.0.borrow().iter() {
                     if name == n.name.as_ref() {
                         return match rest {
