@@ -245,7 +245,7 @@ impl DirEntry {
         }
     }
 
-    pub fn directory_entries(&self) -> Option<&Rc<DirContent>> {
+    fn directory_entries(&self) -> Option<&Rc<DirContent>> {
         match &self.type_ {
             DirOrFile::Directory(dir, ..) => Some(&dir.content),
             _ => None,
