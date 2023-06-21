@@ -70,22 +70,24 @@ pub fn python_import<'a>(
 ) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
-    for directory in &dir.iter() {
-        match &directory.type_ {
-            DirOrFile::Directory(content) => {
-                if directory.name.as_ref() == name {
-                    let result = load_init_file(db, content, |child| {
+    for entry in &dir.iter() {
+        match &entry.type_ {
+            DirOrFile::Directory(dir2) => {
+                if entry.name.as_ref() == name {
+                    let result = load_init_file(db, &dir2.content, |child| {
                         format!(
                             "{dir_path}{SEPARATOR}{dir_name}{SEPARATOR}{child}",
-                            dir_name = directory.name
+                            dir_name = entry.name
                         )
                         .into()
                     });
                     if result.is_some() {
                         return result.map(ImportResult::File);
                     }
-                    content.add_missing_entry(Box::from("__init__.py"), from_file);
-                    content.add_missing_entry(Box::from("__init__.pyi"), from_file);
+                    dir2.content
+                        .add_missing_entry(Box::from("__init__.py"), from_file);
+                    dir2.content
+                        .add_missing_entry(Box::from("__init__.pyi"), from_file);
                     /*return Some(ImportResult::Namespace {
                         path: format!("{dir_path}{name}"),
                         content: content.clone(),
@@ -93,12 +95,12 @@ pub fn python_import<'a>(
                 }
             }
             DirOrFile::File(file_index) => {
-                let is_py_file = directory.name.as_ref() == format!("{name}.py");
-                if is_py_file || directory.name.as_ref() == format!("{name}.pyi") {
+                let is_py_file = entry.name.as_ref() == format!("{name}.py");
+                if is_py_file || entry.name.as_ref() == format!("{name}.pyi") {
                     if file_index.get().is_none() {
                         db.load_file_from_workspace(
                             dir.clone(),
-                            format!("{dir_path}{SEPARATOR}{}", directory.name).into(),
+                            format!("{dir_path}{SEPARATOR}{}", entry.name).into(),
                             file_index,
                         );
                     }

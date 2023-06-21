@@ -27,9 +27,9 @@ impl Workspaces {
     pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
         for workspace in &mut self.0 {
             if path.starts_with(workspace.root.name.as_ref()) {
-                if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
+                if let DirOrFile::Directory(d) = &mut workspace.root.type_ {
                     let (dir, name, invalidations) = DirContent::ensure_dir_and_return_name(
-                        files,
+                        &d.content,
                         vfs,
                         &path[workspace.root.name.len()..],
                     );
@@ -183,7 +183,12 @@ impl WorkspaceFileIndex {
 pub enum DirOrFile {
     File(WorkspaceFileIndex),
     MissingEntry(Invalidations),
-    Directory(Rc<DirContent>),
+    Directory(Directory),
+}
+
+#[derive(Debug, Clone, Default)]
+pub struct Directory {
+    pub content: Rc<DirContent>,
 }
 
 #[derive(Debug, Clone)]
@@ -209,36 +214,36 @@ impl DirEntry {
 
     pub fn directory_entries(&self) -> Option<&Rc<DirContent>> {
         match &self.type_ {
-            DirOrFile::Directory(entries) => Some(entries),
+            DirOrFile::Directory(dir, ..) => Some(&dir.content),
             _ => None,
         }
     }
 
     pub fn unload_if_not_available(&mut self, vfs: &dyn Vfs, path: &str) {
-        if let DirOrFile::Directory(files) = &self.type_ {
+        if let DirOrFile::Directory(dir) = &self.type_ {
             let (name, rest) = vfs.split_off_folder(path);
-            if let Some(mut entry) = files.search(name) {
+            if let Some(mut entry) = dir.content.search(name) {
                 if let Some(rest) = rest {
                     entry.unload_if_not_available(vfs, rest);
                 } else {
                     drop(entry);
-                    files.remove_name(name);
+                    dir.content.remove_name(name);
                 }
             }
         }
     }
 
     pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
-        if let DirOrFile::Directory(files) = &self.type_ {
+        if let DirOrFile::Directory(dir) = &self.type_ {
             let (name, rest) = vfs.split_off_folder(path);
-            if let Some(mut inner) = files.search(name) {
+            if let Some(mut inner) = dir.content.search(name) {
                 if let Some(rest) = rest {
                     inner.delete_directory(vfs, rest)
                 } else {
                     match &inner.type_ {
-                        DirOrFile::Directory(_) => {
+                        DirOrFile::Directory(..) => {
                             drop(inner);
-                            files.remove_name(name);
+                            dir.content.remove_name(name);
                             Ok(())
                         }
                         DirOrFile::MissingEntry(_) => {
@@ -262,8 +267,8 @@ impl DirEntry {
                     callable(index)
                 }
             }
-            DirOrFile::Directory(files) => {
-                for n in files.0.borrow_mut().iter_mut() {
+            DirOrFile::Directory(files, ..) => {
+                for n in files.content.0.borrow_mut().iter_mut() {
                     n.for_each_file(callable)
                 }
             }
@@ -281,8 +286,8 @@ impl DirEntry {
     fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         let (name, rest) = vfs.split_off_folder(path);
         match &self.type_ {
-            DirOrFile::Directory(files) => {
-                for n in files.0.borrow().iter() {
+            DirOrFile::Directory(files, ..) => {
+                for n in files.content.0.borrow().iter() {
                     if name == n.name.as_ref() {
                         return match rest {
                             Some(rest) => n.find_dir_content(vfs, rest),
@@ -347,8 +352,8 @@ impl DirContent {
             let mut invalidations = Default::default();
             if let Some(x) = dir.search(name) {
                 match &x.type_ {
-                    DirOrFile::Directory(rc) => {
-                        return Self::ensure_dir_and_return_name(rc, vfs, rest)
+                    DirOrFile::Directory(rc, ..) => {
+                        return Self::ensure_dir_and_return_name(&rc.content, vfs, rest)
                     }
                     DirOrFile::MissingEntry(inv) => {
                         invalidations = inv.take();
@@ -358,11 +363,11 @@ impl DirContent {
                     _ => todo!(),
                 }
             };
-            let new_rc = Default::default();
-            let mut result = Self::ensure_dir_and_return_name(&new_rc, vfs, rest);
+            let content = Default::default();
+            let mut result = Self::ensure_dir_and_return_name(&content, vfs, rest);
             dir.0.borrow_mut().push(DirEntry {
                 name: name.into(),
-                type_: DirOrFile::Directory(new_rc),
+                type_: DirOrFile::Directory(Directory { content }),
             });
             result.2 = invalidations;
             result
@@ -382,7 +387,7 @@ impl DirContent {
                     entry.type_ = DirOrFile::File(WorkspaceFileIndex::none());
                     entry.expect_workspace_index()
                 }
-                DirOrFile::Directory(_) => todo!(),
+                DirOrFile::Directory(..) => todo!(),
             })
             .unwrap_or_else(|| {
                 let mut borrow = dir.0.borrow_mut();

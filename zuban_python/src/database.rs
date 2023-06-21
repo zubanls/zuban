@@ -2788,7 +2788,7 @@ impl Database {
             _ => unreachable!(),
         };
         let collections = self.py_load_tmp(
-            &collections_dir,
+            &collections_dir.content,
             "../typeshed/stdlib/collections/__init__.pyi",
         ) as *const _;
 
