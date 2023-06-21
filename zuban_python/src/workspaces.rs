@@ -28,11 +28,8 @@ impl Workspaces {
         for workspace in &mut self.0 {
             if path.starts_with(workspace.root.name.as_ref()) {
                 if let DirOrFile::Directory(d) = &mut workspace.root.type_ {
-                    let (dir, name, invalidations) = DirContent::ensure_dir_and_return_name(
-                        &d.content,
-                        vfs,
-                        &path[workspace.root.name.len()..],
-                    );
+                    let (dir, name, invalidations) =
+                        d.ensure_dir_and_return_name(vfs, &path[workspace.root.name.len()..]);
                     let mut result = DirContent::ensure_file(&dir, vfs, name);
                     result.invalidations.extend(invalidations);
                     return result;
@@ -191,6 +188,42 @@ pub struct Directory {
     pub content: Rc<DirContent>,
 }
 
+impl Directory {
+    fn ensure_dir_and_return_name<'a>(
+        &self,
+        vfs: &dyn Vfs,
+        path: &'a str,
+    ) -> (Rc<DirContent>, &'a str, Invalidations) {
+        let (name, rest) = vfs.split_off_folder(path);
+        if let Some(rest) = rest {
+            let mut invalidations = Default::default();
+            if let Some(x) = self.content.search(name) {
+                match &x.type_ {
+                    DirOrFile::Directory(rc, ..) => {
+                        return rc.ensure_dir_and_return_name(vfs, rest)
+                    }
+                    DirOrFile::MissingEntry(inv) => {
+                        invalidations = inv.take();
+                        drop(x);
+                        self.content.remove_name(name);
+                    }
+                    _ => todo!(),
+                }
+            };
+            let dir2 = Directory::default();
+            let mut result = dir2.ensure_dir_and_return_name(vfs, rest);
+            self.content.0.borrow_mut().push(DirEntry {
+                name: name.into(),
+                type_: DirOrFile::Directory(dir2),
+            });
+            result.2 = invalidations;
+            result
+        } else {
+            (self.content.clone(), name, Invalidations::default())
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub struct DirEntry {
     pub name: Box<str>,
@@ -340,40 +373,6 @@ impl DirContent {
                 .find(|entry| entry.name.as_ref() == name)
                 .unwrap()
         }))
-    }
-
-    fn ensure_dir_and_return_name<'a>(
-        dir: &Rc<DirContent>,
-        vfs: &dyn Vfs,
-        path: &'a str,
-    ) -> (Rc<DirContent>, &'a str, Invalidations) {
-        let (name, rest) = vfs.split_off_folder(path);
-        if let Some(rest) = rest {
-            let mut invalidations = Default::default();
-            if let Some(x) = dir.search(name) {
-                match &x.type_ {
-                    DirOrFile::Directory(rc, ..) => {
-                        return Self::ensure_dir_and_return_name(&rc.content, vfs, rest)
-                    }
-                    DirOrFile::MissingEntry(inv) => {
-                        invalidations = inv.take();
-                        drop(x);
-                        dir.remove_name(name);
-                    }
-                    _ => todo!(),
-                }
-            };
-            let content = Default::default();
-            let mut result = Self::ensure_dir_and_return_name(&content, vfs, rest);
-            dir.0.borrow_mut().push(DirEntry {
-                name: name.into(),
-                type_: DirOrFile::Directory(Directory { content }),
-            });
-            result.2 = invalidations;
-            result
-        } else {
-            (dir.clone(), name, Invalidations::default())
-        }
     }
 
     fn ensure_file(dir: &Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
