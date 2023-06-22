@@ -1118,13 +1118,12 @@ testFollowImportsNormalDeleteFile6
 testFollowImportsNormalDeleteFile7
 
 # namespace packages
-testClassicNotPackage
 testNamespacePackage*
 testClassicPackageIgnoresEarlierNamespacePackage
 testClassicPackageInsideNamespacePackage
-testIncrementalNamespacePackage2
 
 # --no-namespace-packages
+testClassicNotPackage
 testPackageWithoutInitFile
 
 # Stub Reexport

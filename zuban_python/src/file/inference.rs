@@ -7,8 +7,9 @@ use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, GenericItem,
-    GenericsList, Literal, LiteralKind, Locality, ParamSpecific, Point, PointLink, PointType,
-    Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionEntry, UnionType,
+    GenericsList, Literal, LiteralKind, Locality, Namespace, ParamSpecific, Point, PointLink,
+    PointType, Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionEntry,
+    UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -18,7 +19,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
 use crate::matching::{FormatData, Generics, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function, Instance, Module};
+use crate::type_helpers::{lookup_in_namespace, Class, Function, Instance, Module};
 use crate::utils::debug_indent;
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
@@ -267,7 +268,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 Point::new_unknown(import_file.file_index(), Locality::Todo)
                             }
                         }
-                        Some(ImportResult::Namespace { .. }) => todo!(),
+                        Some(ImportResult::Namespace(namespace)) => {
+                            match lookup_in_namespace(
+                                self.i_s.db,
+                                self.file_index,
+                                namespace,
+                                import_name.as_str(),
+                            )
+                            .into_maybe_inferred()
+                            {
+                                Some(inf) => {
+                                    inf.save_redirect(self.i_s, self.file, name_def.index())
+                                }
+                                None => todo!(),
+                            };
+                            continue;
+                        }
                         None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(import_name.index(), point);
@@ -297,11 +313,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Some(ImportResult::Namespace(namespace)) => {
                 if let Some(name_def_index) = name_def_index {
-                    Inferred::from_type(DbType::Namespace(namespace.clone())).save_redirect(
-                        self.i_s,
-                        self.file,
-                        name_def_index,
-                    );
+                    self.save_namespace(name_def_index, namespace.clone())
                 }
                 return result;
             }
@@ -321,6 +333,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             self.file.points.set(name_def_index, point);
         }
         result
+    }
+
+    fn save_namespace(&self, index: NodeIndex, namespace: Namespace) {
+        Inferred::from_type(DbType::Namespace(namespace.clone()))
+            .save_redirect(self.i_s, self.file, index);
     }
 
     fn infer_import_dotted_name(

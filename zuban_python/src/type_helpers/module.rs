@@ -1,5 +1,6 @@
-use crate::database::{Database, PointLink};
+use crate::database::{Database, FileIndex, Namespace, PointLink};
 
+use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::imports::{python_import, ImportResult};
@@ -68,5 +69,21 @@ impl<'a> Module<'a> {
             .unwrap_or_else(|| {
                 Type::owned(i_s.db.python_state.module_db_type()).lookup_without_error(i_s, name)
             })
+    }
+}
+
+pub fn lookup_in_namespace(
+    db: &Database,
+    from_file: FileIndex,
+    namespace: &Namespace,
+    name: &str,
+) -> LookupResult {
+    match python_import(db, from_file, &namespace.path, &namespace.content, name) {
+        Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
+        Some(ImportResult::Namespace { .. }) => todo!(),
+        None => {
+            debug!("TODO namespace basic lookups");
+            LookupResult::None
+        }
     }
 }

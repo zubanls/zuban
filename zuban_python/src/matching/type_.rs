@@ -24,7 +24,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple, TypeOrClass, TypingType,
+    lookup_in_namespace, Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple,
+    TypeOrClass, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -2120,23 +2121,15 @@ impl<'a> Type<'a> {
                 let file = i_s.db.loaded_python_file(*file_index);
                 callable(self, Module::new(file).lookup(i_s, from, name))
             }
-            DbType::Namespace(namespace) => {
-                let result = match python_import(
+            DbType::Namespace(namespace) => callable(
+                self,
+                lookup_in_namespace(
                     i_s.db,
                     from.unwrap_or_else(|| todo!()).file_index(),
-                    &namespace.path,
-                    &namespace.content,
+                    namespace,
                     name,
-                ) {
-                    Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
-                    Some(ImportResult::Namespace { .. }) => todo!(),
-                    None => {
-                        debug!("TODO namespace basic lookups");
-                        LookupResult::None
-                    }
-                };
-                callable(self, result)
-            }
+                ),
+            ),
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();
                 let type_var_likes = current_class.type_vars(i_s);
