@@ -4,8 +4,6 @@ testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
 invalid_namespace_types
 
-# Import order issues
-testIncrementalNestedBrokenCascade
 # check-incremental tests
 testIncrementalSilentImportsWithInnerImports
 testIncrementalInnerClassAttrInMethodReveal
@@ -1067,10 +1065,6 @@ testKeywordMisspelling*
 # Import submodules
 testNewAnalyzerImportStarSpecialCase
 
-# Submodule was not imported
-testSubmoduleImportFromDoesNotAddParents
-testSubmoduleMixingImportFromAndImport
-
 # import a.b.c issues
 testMissingSubmoduleImportedWithIgnoreMissingImports
 testMissingSubmoduleImportedWithIgnoreMissingImportsStub
@@ -1098,12 +1092,15 @@ testNewAnalyzerImportFromTopLevelAlias
 testNewAnalyzerImportAmbiguousWithTopLevelFunction
 testImportCycleSpecialCase
 testPackagePath
+testIncrementalNestedBrokenCascade
 
-# Mypy does follow imports and doesn't check all files
+# Mypy does follow imports and doesn't check all files (Submodule was not imported)
 testFollowImportsNormalDeleteFile4
 testFollowImportsNormalDeleteFile5
 testFollowImportsNormalDeleteFile6
 testFollowImportsNormalDeleteFile7
+testSubmoduleImportFromDoesNotAddParents
+testSubmoduleMixingImportFromAndImport
 
 # Stub Reexport
 testNoReExportFromStubs
