@@ -396,6 +396,7 @@ pub enum Specific {
     AnnotationOrTypeCommentClassInstance,
     AnnotationOrTypeCommentWithTypeVars,
     SimpleGeneric, // primary: primary '[' slices ']'
+    NamespaceName, // A name that redirects to a Namespace
 
     TypingProtocol,
     TypingGeneric,

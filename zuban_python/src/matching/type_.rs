@@ -19,7 +19,6 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
-use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;

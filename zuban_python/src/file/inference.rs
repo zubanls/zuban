@@ -182,11 +182,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Some(ImportResult::File(file_index)) => {
                             Point::new_file_reference(file_index, Locality::Todo)
                         }
-                        Some(ImportResult::Namespace { .. }) => todo!(),
+                        Some(ImportResult::Namespace(namespace)) => {
+                            self.save_namespace(as_name_def.index(), namespace.clone());
+                            self.file.points.set(
+                                as_name_def.name_index(),
+                                Point::new_simple_specific(Specific::NamespaceName, Locality::Todo),
+                            );
+                            continue;
+                        }
                         None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
                     self.file.points.set(as_name_def.index(), point);
-                    self.file.points.set(as_name_def.name().index(), point);
+                    self.file.points.set(as_name_def.name_index(), point);
                 }
             }
         }

@@ -41,10 +41,19 @@ def foo() -> str:
 def foo() -> str:
     return None
 
-[case invalid_namespace_types]
+[case invalid_namespace_types_import_name]
 import foo
 import foo as bar
 x: foo
 y: foo.bar
 y: bar
 [file foo/bar.py]
+
+[case invalid_namespace_types_import_from]
+from foo import bar
+from foo import bar as b
+x: foo
+y: b
+y: b
+[file foo/bar/bla.py]
+
