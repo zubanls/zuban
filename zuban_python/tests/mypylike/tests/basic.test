@@ -40,3 +40,11 @@ def foo() -> str:
 [case no_strict_optional_none_return]
 def foo() -> str:
     return None
+
+[case invalid_namespace_types]
+import foo
+import foo as bar
+x: foo
+y: foo.bar
+y: bar
+[file foo/bar.py]

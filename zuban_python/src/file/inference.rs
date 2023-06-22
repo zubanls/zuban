@@ -278,7 +278,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             .into_maybe_inferred()
                             {
                                 Some(inf) => {
-                                    inf.save_redirect(self.i_s, self.file, name_def.index())
+                                    inf.save_redirect(self.i_s, self.file, name_def.index());
+                                    /*
+                                    let p = Point::new_specific(Specific::NamespaceName, Locality::Todo);
+                                    self.file.points.set(import_name.index(), p)
+                                    */
                                 }
                                 None => todo!(),
                             };

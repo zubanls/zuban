@@ -2,6 +2,7 @@
 testIncrementalNestedBrokenCascadeWithType1
 testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
+invalid_namespace_types
 
 # Import order issues
 testIncrementalNestedBrokenCascade
