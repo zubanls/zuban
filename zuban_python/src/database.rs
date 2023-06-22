@@ -433,7 +433,7 @@ pub enum Specific {
     MypyExtensionsKwArg,
 }
 
-#[derive(Debug, PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum Locality {
     // Intern: 0xx
@@ -461,6 +461,13 @@ impl PointLink {
     }
 }
 
+impl From<LocalityLink> for PointLink {
+    fn from(item: LocalityLink) -> Self {
+        PointLink::new(item.file, item.node_index)
+    }
+}
+
+#[derive(Clone, Copy)]
 pub struct LocalityLink {
     pub file: FileIndex,
     pub node_index: NodeIndex,

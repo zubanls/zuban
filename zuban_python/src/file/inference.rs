@@ -17,7 +17,7 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import, python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
-use crate::matching::{FormatData, Generics, OnTypeError, ResultContext, Type};
+use crate::matching::{FormatData, Generics, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{lookup_in_namespace, Class, Function, Instance, Module};
 use crate::utils::debug_indent;
@@ -234,62 +234,45 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let (import_name, name_def) = target.unpack();
 
                     let point = match &from_first_part {
-                        Some(ImportResult::File(file_index)) => {
-                            let import_file = self.i_s.db.loaded_python_file(*file_index);
-                            let module = Module::new(import_file);
-
-                            if let Some(link) = import_file.lookup_global(import_name.as_str()) {
-                                link.into_point_redirect()
-                            } else if let Some(import_result) = import_file
-                                .package_dir
-                                .as_ref()
-                                // TODO this dir is unused???
-                                .and_then(|dir| {
-                                    module.sub_module(self.i_s.db, import_name.as_str())
-                                })
-                            {
-                                let ImportResult::File(file_index) = import_result else {
-                                    todo!()
-                                };
-                                Point::new_file_reference(file_index, Locality::Todo)
-                            } else if let Some(link) = import_file
-                                .inference(self.i_s)
-                                .lookup_from_star_import(import_name.as_str(), false)
-                            {
-                                Point::new_redirect(link.file, link.node_index, Locality::Todo)
-                            } else {
-                                NodeRef::new(self.file, import_name.index()).add_typing_issue(
-                                    self.i_s,
-                                    IssueType::ImportAttributeError {
-                                        module_name: Box::from(module.name(self.i_s.db)),
-                                        name: Box::from(import_name.as_str()),
-                                    },
-                                );
-                                Point::new_unknown(import_file.file_index(), Locality::Todo)
-                            }
-                        }
-                        Some(ImportResult::Namespace(namespace)) => {
-                            match lookup_in_namespace(
-                                self.i_s.db,
-                                self.file_index,
-                                namespace,
-                                import_name.as_str(),
-                            )
-                            .into_maybe_inferred()
-                            {
-                                Some(inf) => {
+                        Some(imp) => {
+                            match self.lookup_import_from_target(&imp, import_name.as_str()) {
+                                LookupResult::GotoName(link, ..) => {
+                                    Point::new_redirect(link.file, link.node_index, Locality::Todo)
+                                    //link.into_point_redirect()
+                                }
+                                LookupResult::FileReference(file_index) => {
+                                    Point::new_file_reference(file_index, Locality::Todo)
+                                }
+                                LookupResult::UnknownName(inf) => {
                                     inf.save_redirect(self.i_s, self.file, name_def.index());
                                     /*
                                     let p = Point::new_specific(Specific::NamespaceName, Locality::Todo);
                                     self.file.points.set(import_name.index(), p)
                                     */
+                                    todo!();
+                                    continue;
                                 }
-                                None => todo!(),
-                            };
-                            continue;
+                                LookupResult::None => {
+                                    let ImportResult::File(file_index) = imp else {
+                                    todo!()
+                                };
+                                    let import_file = self.i_s.db.loaded_python_file(*file_index);
+                                    let module = Module::new(import_file);
+                                    NodeRef::new(self.file, import_name.index()).add_typing_issue(
+                                        self.i_s,
+                                        IssueType::ImportAttributeError {
+                                            module_name: Box::from(module.name(self.i_s.db)),
+                                            name: Box::from(import_name.as_str()),
+                                        },
+                                    );
+                                    Point::new_unknown(import_file.file_index(), Locality::Todo)
+                                }
+                            }
                         }
+                        // Means one of the imports before failed.
                         None => Point::new_unknown(self.file.file_index(), Locality::Todo),
                     };
+
                     self.file.points.set(import_name.index(), point);
                     self.file.points.set(name_def.index(), point);
                     self.file.points.set(name_def.name().index(), point);
@@ -299,6 +282,43 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         self.file
             .points
             .set(imp.index(), Point::new_node_analysis(Locality::Todo));
+    }
+
+    fn lookup_import_from_target(
+        &self,
+        from_first_part: &ImportResult,
+        name: &str,
+    ) -> LookupResult {
+        match from_first_part {
+            ImportResult::File(file_index) => {
+                let import_file = self.i_s.db.loaded_python_file(*file_index);
+                let module = Module::new(import_file);
+
+                if let Some(link) = import_file.lookup_global(name) {
+                    LookupResult::GotoName(link.into(), Inferred::from_saved_link(link.into()))
+                } else if let Some(import_result) = import_file
+                    .package_dir
+                    .as_ref()
+                    // TODO this dir is unused???
+                    .and_then(|dir| module.sub_module(self.i_s.db, name))
+                {
+                    let ImportResult::File(file_index) = import_result else {
+                        todo!()
+                    };
+                    LookupResult::FileReference(file_index)
+                } else if let Some(link) = import_file
+                    .inference(self.i_s)
+                    .lookup_from_star_import(name, false)
+                {
+                    LookupResult::GotoName(link.into(), Inferred::from_saved_link(link.into()))
+                } else {
+                    LookupResult::None
+                }
+            }
+            ImportResult::Namespace(namespace) => {
+                lookup_in_namespace(self.i_s.db, self.file_index, namespace, name)
+            }
+        }
     }
 
     fn global_import(

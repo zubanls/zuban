@@ -56,8 +56,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn from_saved_node_ref(node_ref: NodeRef) -> Self {
+        Self::from_saved_link(node_ref.as_link())
+    }
+
+    pub fn from_saved_link(link: PointLink) -> Self {
         Self {
-            state: InferredState::Saved(node_ref.as_link()),
+            state: InferredState::Saved(link),
         }
     }
 
