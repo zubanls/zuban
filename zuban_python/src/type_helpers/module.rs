@@ -61,10 +61,7 @@ impl<'a> Module<'a> {
             })
             .or_else(|| {
                 self.sub_module(i_s.db, name).map(|result| match result {
-                    ImportResult::File(file_index) => {
-                        // TODO this should probably move to the sub_module
-                        LookupResult::FileReference(file_index)
-                    }
+                    ImportResult::File(file_index) => LookupResult::FileReference(file_index),
                     ImportResult::Namespace { .. } => todo!(),
                 })
             })

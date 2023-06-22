@@ -19,6 +19,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::getitem::SliceType;
+use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
@@ -2120,8 +2121,21 @@ impl<'a> Type<'a> {
                 callable(self, Module::new(file).lookup(i_s, from, name))
             }
             DbType::Namespace(namespace) => {
-                debug!("TODO namespace lookups");
-                callable(self, LookupResult::None)
+                let result = match python_import(
+                    i_s.db,
+                    from.unwrap_or_else(|| todo!()).file_index(),
+                    &namespace.path,
+                    &namespace.content,
+                    name,
+                ) {
+                    Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
+                    Some(ImportResult::Namespace { .. }) => todo!(),
+                    None => {
+                        debug!("TODO namespace basic lookups");
+                        LookupResult::None
+                    }
+                };
+                callable(self, result)
             }
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();
