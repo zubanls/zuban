@@ -674,8 +674,8 @@ impl UnionType {
 
 #[derive(Debug, Clone)]
 pub struct Namespace {
-    path: String,
-    content: Rc<DirContent>,
+    pub path: String,
+    pub content: Rc<DirContent>,
 }
 
 impl std::cmp::PartialEq for Namespace {

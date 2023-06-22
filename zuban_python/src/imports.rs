@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use crate::database::{Database, FileIndex};
+use crate::database::{Database, FileIndex, Namespace};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::workspaces::{DirContent, DirOrFile};
@@ -9,17 +9,14 @@ const SEPARATOR: &'static str = "/"; // TODO different separator
 
 pub enum ImportResult {
     File(FileIndex),
-    Namespace {
-        path: String,
-        content: Rc<DirContent>,
-    }, // A Python Namespace package, i.e. a directory
+    Namespace(Namespace), // A Python Namespace package, i.e. a directory
 }
 
 impl ImportResult {
     pub fn path<'x>(&'x self, db: &'x Database) -> &'x str {
         match self {
             Self::File(f) => db.loaded_python_file(*f).file_path(db),
-            Self::Namespace { path, .. } => path,
+            Self::Namespace(namespace) => &namespace.path,
         }
     }
 }

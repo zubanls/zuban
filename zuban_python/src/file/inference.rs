@@ -301,10 +301,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .add_invalidates(*file_index, self.file.file_index());
                 Point::new_file_reference(*file_index, Locality::DirectExtern)
             }
-            Some(ImportResult::Namespace { .. }) => {
+            Some(ImportResult::Namespace(namespace)) => {
                 debug!("// TODO invalidate!");
                 if let Some(name_def_index) = name_def_index {
-                    todo!()
+                    Inferred::from_type(DbType::Namespace(namespace.clone())).save_redirect(
+                        self.i_s,
+                        self.file,
+                        name_def_index,
+                    );
                 }
                 return result;
             }
@@ -351,9 +355,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
                 result
             }
-            ImportResult::Namespace { path, content, .. } => {
-                python_import(self.i_s.db, file_index, &path, &content, name.as_str())
-            }
+            ImportResult::Namespace(namespace) => python_import(
+                self.i_s.db,
+                file_index,
+                &namespace.path,
+                &namespace.content,
+                name.as_str(),
+            ),
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {
