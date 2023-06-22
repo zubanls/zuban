@@ -3,6 +3,8 @@ testIncrementalNestedBrokenCascadeWithType1
 testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
 
+testNamespacePackagePlainImport
+
 testModuleAsTypeNoCrash
 testModuleAsTypeNoCrash2
 testMissingSubmoduleOfInstalledStubPackageIgnored
@@ -1116,15 +1118,6 @@ testFollowImportsNormalDeleteFile4
 testFollowImportsNormalDeleteFile5
 testFollowImportsNormalDeleteFile6
 testFollowImportsNormalDeleteFile7
-
-# namespace packages
-testNamespacePackage*
-testClassicPackageIgnoresEarlierNamespacePackage
-testClassicPackageInsideNamespacePackage
-
-# --no-namespace-packages
-testClassicNotPackage
-testPackageWithoutInitFile
 
 # Stub Reexport
 testNoReExportFromStubs
@@ -2666,6 +2659,8 @@ testCaseInsensitivityDirPyProjectTOML
 testPreferPackageOverFileCasePyProjectTOML
 testClassicPackageInsideNamespacePackageCasePyProjectTOML
 testIncrementalFollowImportsVariablePyProjectTOML
+testNamespacePackageWithMypyPathPyProjectTOML
+testNamespacePackagePickFirstOnMypyPathCasePyProjectTOML
 
 # mypy.ini
 testRefreshIgnoreErrors1
@@ -2679,6 +2674,12 @@ testIncrementalFollowImportsVariable
 testRegularUsesFgCache
 testFgCacheNeedsFgCache
 testIncrementalPerFileFlags
+testClassicPackageIgnoresEarlierNamespacePackage
+testClassicPackageInsideNamespacePackage
+testNamespacePackageWithMypyPath
+testNamespacePackagePickFirstOnMypyPath
+testNamespacePackageInsideClassicPackage
+testNamespacePackagePickFirstOnMypyPathCase
 
 # Mypy plugins
 testChangedPluginsInvalidateCache
@@ -2811,6 +2812,10 @@ testSkipButDontIgnore1
 testSkipButDontIgnore2
 testFineFollowImportSkipInvalidatedOnAddedStub-skip
 testFineAddedSkippedStubsPackageFrom
+
+# --no-namespace-packages
+testClassicNotPackage
+testPackageWithoutInitFile
 
 # --enable-error-code redundant-expr
 # "If condition is always false"
