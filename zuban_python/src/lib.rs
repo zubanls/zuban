@@ -45,7 +45,7 @@ impl Project {
         // TODO use a real sys path
         let sys_path = vec![
             "../typeshed/stdlib".into(),
-            "../typeshed/stubs".into(),
+            //"../typeshed/stubs".into(),
             "/usr/lib/python3/dist-packages".into(),
             "/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
             "/usr/lib/python3.8".into(),

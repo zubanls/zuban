@@ -122,7 +122,7 @@ pub fn python_import<'a>(
     if let Some(content) = namespace_content {
         debug!("// TODO invalidate!");
         return Some(ImportResult::Namespace(Namespace {
-            path: format!("{dir_path}{name}"),
+            path: format!("{dir_path}{SEPARATOR}{name}"),
             content,
         }));
     }
