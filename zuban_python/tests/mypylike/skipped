@@ -3,8 +3,6 @@ testIncrementalNestedBrokenCascadeWithType1
 testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
 
-testNamespacePackagePlainImport
-
 testModuleAsTypeNoCrash
 testModuleAsTypeNoCrash2
 testMissingSubmoduleOfInstalledStubPackageIgnored

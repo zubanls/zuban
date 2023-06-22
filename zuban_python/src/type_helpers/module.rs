@@ -1,4 +1,4 @@
-use crate::database::{Database, FileIndex, Namespace, PointLink};
+use crate::database::{Database, DbType, FileIndex, Namespace, PointLink};
 
 use crate::debug;
 use crate::file::File;
@@ -6,6 +6,7 @@ use crate::file::PythonFile;
 use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
 
+use crate::inferred::Inferred;
 use crate::matching::{LookupResult, Type};
 use crate::node_ref::NodeRef;
 
@@ -80,7 +81,9 @@ pub fn lookup_in_namespace(
 ) -> LookupResult {
     match python_import(db, from_file, &namespace.path, &namespace.content, name) {
         Some(ImportResult::File(file_index)) => LookupResult::FileReference(file_index),
-        Some(ImportResult::Namespace { .. }) => todo!(),
+        Some(ImportResult::Namespace(namespace)) => {
+            LookupResult::UnknownName(Inferred::from_type(DbType::Namespace(namespace)))
+        }
         None => {
             debug!("TODO namespace basic lookups");
             LookupResult::None
