@@ -68,6 +68,7 @@ pub fn python_import<'a>(
 ) -> Option<ImportResult> {
     let mut python_file_index = None;
     let mut stub_file_index = None;
+    let mut namespace_content = None;
     for entry in &dir.iter() {
         match &entry.type_ {
             DirOrFile::Directory(dir2) => {
@@ -87,11 +88,7 @@ pub fn python_import<'a>(
                         .add_missing_entry(Box::from("__init__.py"), from_file);
                     dir2.content
                         .add_missing_entry(Box::from("__init__.pyi"), from_file);
-                    debug!("// TODO invalidate!");
-                    return Some(ImportResult::Namespace(Namespace {
-                        path: format!("{dir_path}{name}"),
-                        content: dir2.content.clone(),
-                    }));
+                    namespace_content = Some(dir2.content.clone());
                 }
             }
             DirOrFile::File(file_index) => {
@@ -122,6 +119,13 @@ pub fn python_import<'a>(
     dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
     dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
     // The folder should not exist for folder/__init__.py or a namespace.
+    if let Some(content) = namespace_content {
+        debug!("// TODO invalidate!");
+        return Some(ImportResult::Namespace(Namespace {
+            path: format!("{dir_path}{name}"),
+            content,
+        }));
+    }
     dir.add_missing_entry(name.into(), from_file);
     None
 }

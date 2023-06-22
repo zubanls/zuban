@@ -1124,9 +1124,6 @@ testClassicPackageIgnoresEarlierNamespacePackage
 testClassicPackageInsideNamespacePackage
 testIncrementalNamespacePackage2
 
-# Namespace lookups
-testTurnPackageToModule
-
 # --no-namespace-packages
 testPackageWithoutInitFile
 
