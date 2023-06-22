@@ -63,7 +63,6 @@ impl<'a> Module<'a> {
                 self.sub_module(i_s.db, name).map(|result| match result {
                     ImportResult::File(file_index) => {
                         // TODO this should probably move to the sub_module
-                        i_s.db.add_invalidates(file_index, self.file.file_index());
                         LookupResult::FileReference(file_index)
                     }
                     ImportResult::Namespace { .. } => todo!(),

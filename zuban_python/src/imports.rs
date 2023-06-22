@@ -1,6 +1,7 @@
 use std::rc::Rc;
 
 use crate::database::{Database, FileIndex, Namespace};
+use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::workspaces::{DirContent, DirOrFile};
@@ -78,13 +79,15 @@ pub fn python_import<'a>(
                         )
                         .into()
                     });
-                    if result.is_some() {
+                    if let Some(file_index) = &result {
+                        db.add_invalidates(*file_index, from_file);
                         return result.map(ImportResult::File);
                     }
                     dir2.content
                         .add_missing_entry(Box::from("__init__.py"), from_file);
                     dir2.content
                         .add_missing_entry(Box::from("__init__.pyi"), from_file);
+                    debug!("// TODO invalidate!");
                     return Some(ImportResult::Namespace(Namespace {
                         path: format!("{dir_path}{name}"),
                         content: dir2.content.clone(),
@@ -112,16 +115,15 @@ pub fn python_import<'a>(
             DirOrFile::MissingEntry(_) => (),
         }
     }
-    let result = stub_file_index
-        .or(python_file_index)
-        .map(ImportResult::File);
-    if result.is_none() {
-        dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
-        dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
-        // The folder should not exist for folder/__init__.py or a namespace.
-        dir.add_missing_entry(name.into(), from_file);
+    if let Some(file_index) = stub_file_index.or(python_file_index) {
+        db.add_invalidates(file_index, from_file);
+        return Some(ImportResult::File(file_index));
     }
-    result
+    dir.add_missing_entry((name.to_string() + ".py").into(), from_file);
+    dir.add_missing_entry((name.to_string() + ".pyi").into(), from_file);
+    // The folder should not exist for folder/__init__.py or a namespace.
+    dir.add_missing_entry(name.into(), from_file);
+    None
 }
 
 fn load_init_file(

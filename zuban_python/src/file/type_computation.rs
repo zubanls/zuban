@@ -830,7 +830,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } else {
                         match Module::new(f).sub_module(db, name.as_str()) {
                             Some(ImportResult::File(file_index)) => {
-                                db.add_invalidates(file_index, self.inference.file.file_index());
                                 self.inference.file.points.set(
                                     name.index(),
                                     Point::new_file_reference(file_index, Locality::Todo),

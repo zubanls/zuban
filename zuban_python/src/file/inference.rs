@@ -250,9 +250,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let ImportResult::File(file_index) = import_result else {
                                     todo!()
                                 };
-                                self.i_s
-                                    .db
-                                    .add_invalidates(file_index, self.file.file_index());
                                 Point::new_file_reference(file_index, Locality::Todo)
                             } else if let Some(link) = import_file
                                 .inference(self.i_s)
@@ -296,13 +293,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
         let point = match &result {
             Some(ImportResult::File(file_index)) => {
-                self.i_s
-                    .db
-                    .add_invalidates(*file_index, self.file.file_index());
                 Point::new_file_reference(*file_index, Locality::DirectExtern)
             }
             Some(ImportResult::Namespace(namespace)) => {
-                debug!("// TODO invalidate!");
                 if let Some(name_def_index) = name_def_index {
                     Inferred::from_type(DbType::Namespace(namespace.clone())).save_redirect(
                         self.i_s,
