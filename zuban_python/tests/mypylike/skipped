@@ -5,7 +5,6 @@ testIncrementalWithDecorators
 
 testModuleAsTypeNoCrash
 testModuleAsTypeNoCrash2
-testMissingSubmoduleOfInstalledStubPackageIgnored
 
 # Import order issues
 testIncrementalNestedBrokenCascade
