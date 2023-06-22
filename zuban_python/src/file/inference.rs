@@ -237,8 +237,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Some(imp) => {
                             match self.lookup_import_from_target(&imp, import_name.as_str()) {
                                 LookupResult::GotoName(link, ..) => {
-                                    Point::new_redirect(link.file, link.node_index, Locality::Todo)
-                                    //link.into_point_redirect()
+                                    link.into_redirect_point(Locality::Todo)
                                 }
                                 LookupResult::FileReference(file_index) => {
                                     Point::new_file_reference(file_index, Locality::Todo)

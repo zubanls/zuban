@@ -459,6 +459,10 @@ impl PointLink {
     pub fn new(file: FileIndex, node_index: NodeIndex) -> Self {
         Self { file, node_index }
     }
+
+    pub fn into_redirect_point(&self, locality: Locality) -> Point {
+        Point::new_redirect(self.file, self.node_index, locality)
+    }
 }
 
 impl From<LocalityLink> for PointLink {
