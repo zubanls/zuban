@@ -2119,6 +2119,10 @@ impl<'a> Type<'a> {
                 let file = i_s.db.loaded_python_file(*file_index);
                 callable(self, Module::new(file).lookup(i_s, from, name))
             }
+            DbType::Namespace(namespace) => {
+                debug!("TODO namespace lookups");
+                callable(self, LookupResult::None)
+            }
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();
                 let type_var_likes = current_class.type_vars(i_s);

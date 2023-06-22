@@ -85,10 +85,10 @@ pub fn python_import<'a>(
                         .add_missing_entry(Box::from("__init__.py"), from_file);
                     dir2.content
                         .add_missing_entry(Box::from("__init__.pyi"), from_file);
-                    /*return Some(ImportResult::Namespace {
+                    return Some(ImportResult::Namespace(Namespace {
                         path: format!("{dir_path}{name}"),
                         content: dir2.content.clone(),
-                    });*/
+                    }));
                 }
             }
             DirOrFile::File(file_index) => {

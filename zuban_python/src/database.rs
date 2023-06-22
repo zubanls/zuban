@@ -873,7 +873,7 @@ impl DbType {
                 .python_state
                 .module_db_type()
                 .format(format_data),
-            Self::Namespace(_) => todo!(),
+            Self::Namespace(_) => format!("TODO Namespace formatting").into(),
         }
     }
 
