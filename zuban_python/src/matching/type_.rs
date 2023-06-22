@@ -250,6 +250,7 @@ impl<'a> Type<'a> {
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::Module(file_index) => todo!(),
+            DbType::Namespace(file_index) => todo!(),
             DbType::NamedTuple(_) => todo!(),
         }
     }
@@ -367,6 +368,7 @@ impl<'a> Type<'a> {
                 _ => Match::new_false(),
             },
             DbType::Module(file_index) => Match::new_false(),
+            DbType::Namespace(file_index) => todo!(),
         }
     }
 
@@ -1411,6 +1413,7 @@ impl<'a> Type<'a> {
                 rec.generics.as_ref().map(remap_generics),
             ))),
             DbType::Module(file_index) => DbType::Module(*file_index),
+            DbType::Namespace(namespace) => DbType::Namespace(namespace.clone()),
             DbType::Self_ => replace_self(),
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
@@ -1817,11 +1820,10 @@ impl<'a> Type<'a> {
                     recursive_alias.generics.as_ref().map(rewrite_generics),
                 )))
             }
-            DbType::Self_ => DbType::Self_,
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::NamedTuple(_) => todo!(),
-            DbType::Module(file_index) => DbType::Module(*file_index),
+            t @ (DbType::Module(_) | DbType::Namespace(_) | DbType::Self_) => t.clone(),
         }
     }
 

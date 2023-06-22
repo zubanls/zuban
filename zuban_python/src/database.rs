@@ -672,6 +672,18 @@ impl UnionType {
     }
 }
 
+#[derive(Debug, Clone)]
+pub struct Namespace {
+    path: String,
+    content: Rc<DirContent>,
+}
+
+impl std::cmp::PartialEq for Namespace {
+    fn eq(&self, other: &Self) -> bool {
+        self.path == other.path && Rc::ptr_eq(&self.content, &other.content)
+    }
+}
+
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
@@ -690,6 +702,7 @@ pub enum DbType {
     Literal(Literal),
     NamedTuple(Rc<NamedTuple>),
     Module(FileIndex),
+    Namespace(Namespace),
     Self_,
     None,
     Any,
@@ -860,6 +873,7 @@ impl DbType {
                 .python_state
                 .module_db_type()
                 .format(format_data),
+            Self::Namespace(_) => todo!(),
         }
     }
 
@@ -949,6 +963,7 @@ impl DbType {
             | Self::Literal { .. }
             | Self::Module(_)
             | Self::Self_
+            | Self::Namespace(_)
             | Self::NewType(_) => (),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -1034,7 +1049,10 @@ impl DbType {
                 }
             }
             Self::Self_ => todo!(),
-            Self::ParamSpecArgs(_) | Self::ParamSpecKwargs(_) | Self::Module(_) => false,
+            Self::ParamSpecArgs(_)
+            | Self::ParamSpecKwargs(_)
+            | Self::Module(_)
+            | Self::Namespace(_) => false,
             Self::NamedTuple(nt) => todo!(),
         }
     }
@@ -1072,6 +1090,7 @@ impl DbType {
             | Self::ParamSpecKwargs(_)
             | Self::RecursiveAlias(_)
             | Self::Module(_)
+            | Self::Namespace(_)
             | Self::TypeVar(_) => false,
         }
     }

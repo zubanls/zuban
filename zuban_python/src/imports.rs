@@ -90,7 +90,7 @@ pub fn python_import<'a>(
                         .add_missing_entry(Box::from("__init__.pyi"), from_file);
                     /*return Some(ImportResult::Namespace {
                         path: format!("{dir_path}{name}"),
-                        content: content.clone(),
+                        content: dir2.content.clone(),
                     });*/
                 }
             }
