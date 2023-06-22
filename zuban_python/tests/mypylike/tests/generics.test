@@ -283,7 +283,7 @@ b_writer: SupportsWrite[B]
 
 f(a_iterable, a_writer)
 f(b_iterable, b_writer)
-f(a_iterable, b_writer) # E: Cannot infer type argument 1 of "f"
+f(a_iterable, b_writer) # E: Argument 2 to "f" has incompatible type "SupportsWrite[B]"; expected "SupportsWrite[A]"
 f(b_iterable, a_writer)
 
 [case type_var_with_co_and_contra_matrix_reveal_type]

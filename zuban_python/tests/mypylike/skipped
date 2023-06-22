@@ -1000,16 +1000,7 @@ testMalformedTypeAliasRuntimeReassignments
 # TypeAlias normal string interpreted as a forward reference
 testTypeAliasWithNewStyleUnionChangedToVariable
 
-# stdlib imports
-testOverloadSpecialCase
-testSubclassingGenericABCWithImplicitAny
-testSubclassingGenericABCWithImplicitAnyAndDeepHierarchy
-testImplementingGenericABCWithImplicitAnyAndDeepHierarchy2
-testSubtypingAndABCExtension
-testAccessingGenericABCMembers
-testAccessingInheritedGenericABCMembers
-testPrecedenceOfFirstBaseAsInferenceResult
-type_var_with_co_and_contra_real_life
+# __builtins__ object
 testBuiltinsUsingModule
 # future imports (future is not part of stubs)
 testNewAnalyzerMetaclassFuture1
