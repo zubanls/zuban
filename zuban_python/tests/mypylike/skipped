@@ -1,15 +1,6 @@
 # Next up
 testIncrementalWithDecorators
 
-# check-incremental tests
-testIncrementalInnerClassAttrInMethodReveal
-testAddedMissingStubsIgnorePackagePartial
-testOverrideByIdemAliasReversed
-testOverrideByIdemAliasGeneric
-testOverrideByIdemAliasImported
-testConditionalExceptionAliasOverride
-testIncrementalNestedTypeAlias
-
 # Fine grained tests
 testReferenceToTypeThroughCycleAndReplaceWithFunction
 testFollowImportsNormalPackageInitFile1
@@ -339,6 +330,7 @@ testInfiniteLoop
 testGenericClassWithinFunction
 testGenericClassWithInvalidTypevarUseWithinFunction
 testAccessToLocalInOuterScopeWithinNestedClass
+testIncrementalInnerClassAttrInMethodReveal
 # Class in function type comment
 testClassWithinFunction
 testDeclareVariableWithNestedClassType
@@ -412,6 +404,7 @@ testAliasToClassMethod
 testSerializeNamedTupleInMethod4
 testForwardBoundFunctionScopeWorks
 testOverrideByBadFunction
+testIncrementalNestedTypeAlias
 
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
@@ -1056,6 +1049,7 @@ testMissingSubmoduleImportedWithIgnoreMissingImports
 testMissingSubmoduleImportedWithIgnoreMissingImportsStub
 testMissingSubmoduleImportedWithIgnoreMissingImportsNested
 testMissingSubmoduleOfInstalledStubPackage
+testAddedMissingStubsIgnorePackagePartial
 testGenericAliasCollectionsABCReveal
 
 # star imports in modules that are imported
@@ -2017,6 +2011,11 @@ testOptionalBackwards1
 testOptionalBackwards2
 testOptionalBackwards3
 testOptionalBackwards4
+# Multi definition name binder issues where essentially the same type is defined?
+testOverrideByIdemAliasReversed
+testOverrideByIdemAliasGeneric
+testOverrideByIdemAliasImported
+testConditionalExceptionAliasOverride
 
 # Multiple arguments missing
 testMissingPositionalArguments
