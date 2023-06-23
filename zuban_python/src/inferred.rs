@@ -1604,10 +1604,12 @@ pub fn add_attribute_error<'db>(
     t: &Type,
     name: &str,
 ) {
-    let object = if matches!(t.as_ref(), DbType::Module(_)) {
-        Box::from("Module")
-    } else {
-        format!("{:?}", t.format_short(i_s.db)).into()
+    let object = match t.as_ref() {
+        DbType::Module(f) => {
+            node_ref.add_typing_issue(i_s, IssueType::ModuleAttributeError { name: name.into() });
+            return;
+        }
+        _ => format!("{:?}", t.format_short(i_s.db)).into(),
     };
     let name = Box::from(name);
     if let DbType::TypeVar(usage) = full_type.as_ref() {

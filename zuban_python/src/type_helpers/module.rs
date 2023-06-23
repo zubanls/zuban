@@ -20,6 +20,10 @@ impl<'a> Module<'a> {
         Self { file }
     }
 
+    pub fn from_file_index(db: &'a Database, file_index: FileIndex) -> Self {
+        Self::new(db.loaded_python_file(file_index))
+    }
+
     pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult> {
         self.file.package_dir.as_ref().and_then(|dir| {
             let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
