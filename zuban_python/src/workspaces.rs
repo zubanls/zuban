@@ -39,13 +39,13 @@ impl Workspaces {
         todo!()
     }
 
-    pub fn unload_if_not_available(&mut self, vfs: &dyn Vfs, path: &str) {
+    pub fn unload_file(&mut self, vfs: &dyn Vfs, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
             if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
                 if path.starts_with(workspace.root.name.as_ref()) {
                     let path = &path[workspace.root.name.len()..];
-                    workspace.root.unload_if_not_available(vfs, path);
+                    workspace.root.unload_file(vfs, path);
                 }
             }
         }
@@ -250,12 +250,12 @@ impl DirEntry {
         }
     }
 
-    pub fn unload_if_not_available(&mut self, vfs: &dyn Vfs, path: &str) {
+    fn unload_file(&mut self, vfs: &dyn Vfs, path: &str) {
         if let DirOrFile::Directory(dir) = &self.type_ {
             let (name, rest) = vfs.split_off_folder(path);
             if let Some(mut entry) = dir.content.search(name) {
                 if let Some(rest) = rest {
-                    entry.unload_if_not_available(vfs, rest);
+                    entry.unload_file(vfs, rest);
                 } else {
                     drop(entry);
                     dir.content.remove_name(name);
