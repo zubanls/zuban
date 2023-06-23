@@ -558,7 +558,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 match other.as_ref() {
                                     DbType::Module(file_index) => format!(
                                         "Following member(s) of Module \"{}\" have conflicts:",
-                                        Module::new(i_s.db.loaded_python_file(*file_index))
+                                        Module::from_file_index(i_s.db, *file_index)
                                             .qualified_name(i_s.db)
                                     ),
                                     DbType::Type(t) => format!(

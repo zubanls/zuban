@@ -374,8 +374,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let file_index = self.file_index;
         let infer_name = |i_s, import_result, name: Name| match import_result {
             ImportResult::File(file_index) => {
-                let file = self.i_s.db.loaded_python_file(file_index);
-                let module = Module::new(file);
+                let module = Module::from_file_index(self.i_s.db, file_index);
                 let result = module.sub_module(self.i_s.db, name.as_str());
                 if let Some(imported) = &result {
                     debug!(

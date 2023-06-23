@@ -2117,8 +2117,8 @@ impl<'a> Type<'a> {
                 Instance::new(i_s.db.python_state.function_class(), None).lookup(i_s, from, name),
             ),
             DbType::Module(file_index) => {
-                let file = i_s.db.loaded_python_file(*file_index);
-                callable(self, Module::new(file).lookup(i_s, from, name))
+                let module = Module::from_file_index(i_s.db, *file_index);
+                callable(self, module.lookup(i_s, from, name))
             }
             DbType::Namespace(namespace) => callable(
                 self,

@@ -600,10 +600,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ..
             } => DbType::Class(class_link, generics),
             TypeContent::DbType(d) => d,
-            TypeContent::Module(m) => {
+            TypeContent::Module(file) => {
                 self.add_module_issue(
                     node_ref,
-                    &Module::new(m).qualified_name(self.inference.i_s.db),
+                    &Module::new(file).qualified_name(self.inference.i_s.db),
                 );
                 DbType::Any
             }

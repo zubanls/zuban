@@ -2456,8 +2456,7 @@ impl NamedTuple {
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        let file = db.loaded_python_file(self.name.file_index);
-        let module = Module::new(file).qualified_name(db);
+        let module = Module::from_file_index(db, self.name.file_index).qualified_name(db);
         format!("{module}.{}", self.name(db))
     }
 
