@@ -352,9 +352,10 @@ impl<'name, 'code> TestCase<'name, 'code> {
             } else {
                 process_step_part2(step_index, type_, in_between, rest)
             }
-            if rest == "__main__" && in_between.starts_with("# flags: ") {
-                let all_flags = &in_between[9..in_between.find('\n').unwrap()];
-                flags = all_flags.split(' ').collect();
+            if rest == "__main__" {
+                if let Some(flags_str) = find_flags(in_between) {
+                    flags = flags_str.split(' ').collect();
+                }
             }
         };
 
@@ -588,6 +589,18 @@ impl Replacer for TypeStuffReplacer {
             dst.push_str("builtins.tuple")
         }
     }
+}
+
+fn find_flags(string: &str) -> Option<&str> {
+    for line in string.split('\n') {
+        if !line.starts_with('#') {
+            break;
+        }
+        if line.starts_with("# flags: ") {
+            return Some(&line[9..]);
+        }
+    }
+    None
 }
 
 fn calculate_filters(args: Vec<String>) -> Vec<String> {

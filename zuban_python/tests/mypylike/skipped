@@ -2,7 +2,6 @@
 testIncrementalWithDecorators
 
 # check-incremental tests
-testIncrementalSilentImportsWithInnerImports
 testIncrementalInnerClassAttrInMethodReveal
 testAddedMissingStubsPackagePartial
 testAddedMissingStubsIgnorePackagePartial
