@@ -3,7 +3,6 @@ testIncrementalWithDecorators
 
 # check-incremental tests
 testIncrementalInnerClassAttrInMethodReveal
-testAddedMissingStubsPackagePartial
 testAddedMissingStubsIgnorePackagePartial
 testOverrideByIdemAliasReversed
 testOverrideByIdemAliasGeneric
@@ -47,7 +46,6 @@ testImportStarAddMissingDependencyInsidePackage1
 testImportStarAddMissingDependencyInsidePackage2
 testImportStarWithinFunction
 testDeleteFileWithErrors
-testFineAddedMissingStubsPackagePartial
 testFineAddedMissingStubsIgnorePackagePartial
 testDoNotFollowImportToNonStubFile
 

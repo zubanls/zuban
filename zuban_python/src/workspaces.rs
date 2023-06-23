@@ -257,8 +257,10 @@ impl DirEntry {
                 if let Some(rest) = rest {
                     entry.unload_file(vfs, rest);
                 } else {
-                    drop(entry);
-                    dir.content.remove_name(name);
+                    if matches!(entry.type_, DirOrFile::File(_)) {
+                        drop(entry);
+                        dir.content.remove_name(name);
+                    }
                 }
             }
         }
