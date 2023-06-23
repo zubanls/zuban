@@ -2724,7 +2724,7 @@ impl Database {
                 debug!("Invalidate {p} because we're loading {path}");
             }
         }
-        self.invalidate_file(file_index, ensured.invalidations);
+        self.invalidate_files(file_index, ensured.invalidations);
         file_index
     }
 
@@ -2737,10 +2737,10 @@ impl Database {
         self.workspaces
             .unload_if_not_available(&*self.vfs, file_state.path());
         let invalidations = file_state.unload_and_return_invalidations();
-        self.invalidate_file(file_index, invalidations)
+        self.invalidate_files(file_index, invalidations)
     }
 
-    fn invalidate_file(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
+    fn invalidate_files(&mut self, original_file_index: FileIndex, invalidations: Invalidations) {
         for invalid_index in invalidations.into_iter() {
             let file_state = self.file_state_mut(invalid_index);
             let invalidations = file_state.take_invalidations();
@@ -2748,7 +2748,7 @@ impl Database {
                 file.invalidate_references_to(original_file_index);
             }
 
-            self.invalidate_file(original_file_index, invalidations);
+            self.invalidate_files(original_file_index, invalidations);
         }
     }
 
