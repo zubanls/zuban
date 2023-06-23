@@ -1,6 +1,4 @@
 # Next up
-testIncrementalNestedBrokenCascadeWithType1
-testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
 
 # check-incremental tests
@@ -16,29 +14,21 @@ testIncrementalNestedTypeAlias
 
 # Fine grained tests
 testReferenceToTypeThroughCycleAndReplaceWithFunction
-testFollowImportsNormalPackage-only_when_nocache
-testFollowImportsNormalPackage2-only_when_nocache
-testFollowImportsNormalPackage2-only_when_cache
 testFollowImportsNormalPackageInitFile1
 testFollowImportsNormalPackageInitFile2
 testFollowImportsNormalPackageInitFile3
-testFollowImportsNormalSubmoduleCreatedWithImportInFunction
-testFollowImportsNormalPackageInitFileStub
 testFollowImportsNormalNamespacePackages
 testFollowImportsNormalSearchPathUpdate-only_when_nocache
 testFollowImportsNormalSearchPathUpdate2-only_when_cache
 testFollowImportsNormalSuppressedAffectsCachedFile-only_when_cache
-testFollowImportsNormalMultipleImportedModulesSpecialCase
 testFollowImportsNormalDeletePackage
 testAddPackage1
-testAddPackage2
 testAddPackage3
 testAddPackage4
 testAddNonPackageSubdir
 testAddPackage5
 testDeletionOfSubmoduleTriggersImportFrom1-only_when_nocache
 testDeletionOfSubmoduleTriggersImportFrom1_2-only_when_cache-skip
-testDeletionOfSubmoduleTriggersImportFrom2
 testDeletionOfSubmoduleTriggersImport
 testDeleteModuleWithErrorInsidePackage
 testAddFileWhichImportsLibModuleWithErrors
@@ -54,7 +44,6 @@ testAddModuleAfterCache4-only_when_cache
 testAddModuleAfterCache5-only_when_cache
 testAddModuleAfterCache6-only_when_cache
 testRefreshImportIfMypyElse1
-testImportStarAddMissingDependencyWithinClass
 testImportStarAddMissingDependencyInsidePackage1
 testImportStarAddMissingDependencyInsidePackage2
 testImportStarWithinFunction
@@ -62,7 +51,6 @@ testDeleteFileWithErrors
 testFineAddedMissingStubsPackagePartial
 testFineAddedMissingStubsIgnorePackagePartial
 testDoNotFollowImportToNonStubFile
-testLibraryStubsNotInstalled
 
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
@@ -1011,6 +999,8 @@ testFutureMetaclassAndBase
 testFutureMetaclassGenerics
 testFutureMetaclassErrors
 testFutureMetaclassAny
+# "Library stubs not installed for "requests""
+testLibraryStubsNotInstalled
 # six imports
 testNewAnalyzerMetaclassSix1
 testNewAnalyzerMetaclassSix2
@@ -1572,6 +1562,7 @@ testImportInClassBody
 testOverrideByBadVarClass
 testOverrideByBadVarClassAlias
 testIncrementalSilentImportsAndImportsInClass
+testImportStarAddMissingDependencyWithinClass
 
 # Unpacking a string is disallowed
 testStringDisallowedUnpacking
@@ -2157,6 +2148,7 @@ testIncrCacheProtocol1
 testIncrCacheProtocol2
 testIncrCacheProtocol3
 testAddModuleAfterCache1-only_when_cache
+testFollowImportsNormalPackageInitFileStub
 
 # Yield
 testYieldOutsideFunction
