@@ -50,3 +50,16 @@ u: bbb.bla # E: Module "bla" is not valid as a type \
 v: bbb.X  # E: Name "bbb.X" is not defined
 [file foo/bar/bla.py]
 class X: ...
+
+[case namespace_usage]
+from foo import bar
+from foo import bar as b
+import foo as f
+import foo
+
+reveal_type(bar.bla.x)  # N: Revealed type is "int"
+reveal_type(b.bla.x)  # N: Revealed type is "int"
+reveal_type(f.bar.bla.x)  # N: Revealed type is "int"
+reveal_type(foo.bar.bla.x)  # N: Revealed type is "int"
+[file foo/bar/bla.py]
+x: int
