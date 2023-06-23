@@ -2,7 +2,6 @@
 testIncrementalWithDecorators
 
 # Fine grained tests
-testReferenceToTypeThroughCycleAndReplaceWithFunction
 testFollowImportsNormalPackageInitFile1
 testFollowImportsNormalPackageInitFile2
 testFollowImportsNormalPackageInitFile3
