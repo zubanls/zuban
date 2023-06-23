@@ -2748,6 +2748,15 @@ impl Database {
                 file.invalidate_references_to(original_file_index);
             }
 
+            if cfg!(feature = "zuban_debug") {
+                for invalidation in &invalidations.iter() {
+                    let p = self.file_state(*invalidation).path();
+                    debug!(
+                        "Invalidate {p} because we have invalidated {}",
+                        self.file_state(invalid_index).path()
+                    );
+                }
+            }
             self.invalidate_files(original_file_index, invalidations);
         }
     }
