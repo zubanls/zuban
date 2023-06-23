@@ -247,12 +247,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     Point::new_file_reference(file_index, Locality::Todo)
                                 }
                                 LookupResult::UnknownName(inf) => {
+                                    let name_index = name_def.name().index();
+                                    let import_name_index = name_def.name().index();
+                                    inf.clone().save_redirect(self.i_s, self.file, name_index);
+                                    inf.clone().save_redirect(
+                                        self.i_s,
+                                        self.file,
+                                        import_name_index,
+                                    );
                                     inf.save_redirect(self.i_s, self.file, name_def.index());
-                                    /*
-                                    let p = Point::new_specific(Specific::NamespaceName, Locality::Todo);
-                                    self.file.points.set(import_name.index(), p)
-                                    */
-                                    todo!();
                                     continue;
                                 }
                                 LookupResult::None => {

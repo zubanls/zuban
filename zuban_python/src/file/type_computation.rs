@@ -863,7 +863,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             todo!()
                         }
                         None => {
-                            todo!()
+                            self.add_typing_issue_for_index(
+                                primary.index(),
+                                IssueType::TypeNotFound,
+                            );
+                            TypeContent::Unknown
                         }
                     }
                 }
