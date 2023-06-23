@@ -396,7 +396,6 @@ pub enum Specific {
     AnnotationOrTypeCommentClassInstance,
     AnnotationOrTypeCommentWithTypeVars,
     SimpleGeneric, // primary: primary '[' slices ']'
-    NamespaceName, // A name that redirects to a Namespace
 
     TypingProtocol,
     TypingGeneric,
@@ -688,6 +687,16 @@ impl UnionType {
 pub struct Namespace {
     pub path: String,
     pub content: Rc<DirContent>,
+}
+
+impl Namespace {
+    pub fn qualified_name(&self, db: &Database) -> &str {
+        db.vfs.dir_and_name(&self.path).1
+    }
+
+    pub fn name(&self, db: &Database) -> &str {
+        db.vfs.dir_and_name(&self.path).1
+    }
 }
 
 impl std::cmp::PartialEq for Namespace {

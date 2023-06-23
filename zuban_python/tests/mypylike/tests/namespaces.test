@@ -1,0 +1,26 @@
+[case invalid_namespace_types_import_name]
+import foo
+import foo as bar
+import foo.bar as baz
+a: foo.bar.X
+b: bar.bar.X
+c: baz.X
+x: foo  # E: Module "foo" is not valid as a type \
+        # N: Perhaps you meant to use a protocol matching the module structure?
+y: foo.bar  # E: Module "bar" is not valid as a type \
+            # N: Perhaps you meant to use a protocol matching the module structure?
+z: bar  # E: Module "foo" is not valid as a type \
+        # N: Perhaps you meant to use a protocol matching the module structure?
+u: baz  # E: Module "bar" is not valid as a type \
+        # N: Perhaps you meant to use a protocol matching the module structure?
+[file foo/bar.py]
+class X: ...
+
+[case invalid_namespace_types_import_from]
+from foo import bar
+from foo import bar as b
+x: foo
+y: b
+y: b
+[file foo/bar/bla.py]
+class X: ...

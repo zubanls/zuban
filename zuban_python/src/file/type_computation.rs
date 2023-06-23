@@ -8,9 +8,9 @@ use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArgument
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
     ComplexPoint, Database, DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal,
-    LiteralKind, Locality, NamedTuple, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific,
-    Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
+    LiteralKind, Locality, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage,
+    ParamSpecific, Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific,
+    StringSlice, TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
     UnionType,
 };
@@ -19,7 +19,7 @@ use crate::diagnostics::IssueType;
 use crate::file::File;
 use crate::file::{Inference, PythonFile};
 use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
-use crate::imports::ImportResult;
+use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, ResultContext, Type};
@@ -192,6 +192,7 @@ impl InvalidVariableType<'_> {
 #[derive(Debug, Clone)]
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
+    Namespace(&'db Namespace),
     Class {
         node_ref: NodeRef<'db>,
         has_type_vars: bool,
@@ -216,6 +217,7 @@ enum TypeContent<'db, 'a> {
 #[derive(Debug)]
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
+    Namespace(&'db Namespace),
     Class { node_ref: NodeRef<'db> },
     TypeVarLike(TypeVarLike),
     TypeAlias(&'db TypeAlias),
@@ -598,22 +600,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             } => DbType::Class(class_link, generics),
             TypeContent::DbType(d) => d,
             TypeContent::Module(m) => {
-                self.add_typing_issue(
+                self.add_module_issue(
                     node_ref,
-                    IssueType::InvalidType(
-                        format!(
-                            "Module {:?} is not valid as a type",
-                            Module::new(m).qualified_name(self.inference.i_s.db),
-                        )
-                        .into(),
-                    ),
+                    &Module::new(m).qualified_name(self.inference.i_s.db),
                 );
-                self.add_typing_issue(
-                    node_ref,
-                    IssueType::Note(Box::from(
-                        "Perhaps you meant to use a protocol matching the module structure?",
-                    )),
-                );
+                DbType::Any
+            }
+            TypeContent::Namespace(n) => {
+                self.add_module_issue(node_ref, &n.qualified_name(self.inference.i_s.db));
                 DbType::Any
             }
             TypeContent::TypeAlias(a) => {
@@ -853,6 +847,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                     }
                 }
+                TypeContent::Namespace(n) => {
+                    match python_import(
+                        self.inference.i_s.db,
+                        self.inference.file_index,
+                        &n.path,
+                        &n.content,
+                        name.as_str(),
+                    ) {
+                        Some(ImportResult::File(file_index)) => {
+                            let file = self.inference.i_s.db.loaded_python_file(file_index);
+                            TypeContent::Module(file)
+                        }
+                        Some(ImportResult::Namespace(namespace)) => {
+                            todo!()
+                        }
+                        None => {
+                            todo!()
+                        }
+                    }
+                }
                 TypeContent::Class { node_ref, .. } => {
                     let cls = Class::with_undefined_generics(node_ref);
                     self.check_attribute_on_class(cls, primary, name)
@@ -951,6 +965,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                     },
                     TypeContent::Module(m) => todo!("{primary:?}"),
+                    TypeContent::Namespace(namespace) => todo!("{primary:?}"),
                     TypeContent::TypeAlias(m) => self.compute_type_get_item_on_alias(m, s),
                     TypeContent::SpecialType(special) => match special {
                         SpecialType::Union => self.compute_type_get_item_on_union(s),
@@ -1929,6 +1944,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
+            TypeNameLookup::Namespace(namespace) => TypeContent::Namespace(namespace),
             TypeNameLookup::Class { node_ref } => TypeContent::Class {
                 node_ref,
                 has_type_vars: Class::with_undefined_generics(node_ref)
@@ -2180,6 +2196,21 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
     fn add_typing_issue_for_index(&self, index: NodeIndex, issue_type: IssueType) {
         self.add_typing_issue(NodeRef::new(self.inference.file, index), issue_type)
+    }
+
+    fn add_module_issue(&self, node_ref: NodeRef, qualified_name: &str) {
+        self.add_typing_issue(
+            node_ref,
+            IssueType::InvalidType(
+                format!("Module \"{qualified_name}\" is not valid as a type",).into(),
+            ),
+        );
+        self.add_typing_issue(
+            node_ref,
+            IssueType::Note(Box::from(
+                "Perhaps you meant to use a protocol matching the module structure?",
+            )),
+        );
     }
 }
 
@@ -2972,9 +3003,17 @@ fn check_type_name<'db: 'file, 'file>(
             if point.calculated() {
                 // When an import appears, this means that there's no redirect and the import leads
                 // nowhere.
+                if let Some(complex_index) = point.maybe_complex_index() {
+                    if let ComplexPoint::TypeInstance(DbType::Namespace(namespace)) =
+                        name_node_ref.file.complex_points.get(complex_index)
+                    {
+                        return TypeNameLookup::Namespace(namespace);
+                    }
+                }
                 debug_assert!(
                     point.type_() == PointType::Unknown
-                        || point.type_() == PointType::MultiDefinition
+                        || point.type_() == PointType::MultiDefinition,
+                    "{point:?}"
                 );
                 TypeNameLookup::Unknown
             } else {
