@@ -261,7 +261,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 LookupResult::None => {
                                     NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                         self.i_s,
-                                        IssueType::ImportAttributeError {
+                                        IssueType::ModuleAttributeError {
                                             module_name: Box::from(imp.qualified_name(self.i_s.db)),
                                             name: Box::from(import_name.as_str()),
                                         },

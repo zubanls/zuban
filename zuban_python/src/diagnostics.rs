@@ -14,7 +14,7 @@ pub(crate) enum IssueType {
     AttributeError { object: Box<str>, name: Box<str> },
     UnionAttributeError { object: Box<str>, union: Box<str>, name: Box<str> },
     UnionAttributeErrorOfUpperBound(Box<str>),
-    ImportAttributeError { module_name: Box<str>, name: Box<str> },
+    ModuleAttributeError { module_name: Box<str>, name: Box<str> },
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
     ArgumentTypeIssue(Box<str>),
@@ -131,7 +131,7 @@ impl IssueType {
         use IssueType::*;
         Some(match &self {
             Note(_) | InvariantNote { .. } => return None,
-            AttributeError { .. } | ImportAttributeError { .. } => "attr-defined",
+            AttributeError { .. } | ModuleAttributeError { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
             ArgumentTypeIssue(s) => "arg-type",
@@ -244,7 +244,7 @@ impl<'db> Diagnostic<'db> {
             AttributeError{object, name} => format!("{object} has no attribute {name:?}"),
             UnionAttributeError{object, union, name} => format!("Item {object} of \"{union}\" has no attribute {name:?}"),
             UnionAttributeErrorOfUpperBound(s) => s.to_string(),
-            ImportAttributeError{module_name, name} => {
+            ModuleAttributeError{module_name, name} => {
                 format!("Module {module_name:?} has no attribute {name:?}")
             }
             NameError{name} => format!("Name {name:?} is not defined"),
@@ -576,7 +576,7 @@ pub struct DiagnosticConfig {
 impl DiagnosticConfig {
     pub(crate) fn should_be_reported(&self, type_: &IssueType) -> bool {
         match type_ {
-            IssueType::ImportAttributeError { .. } | IssueType::ModuleNotFound { .. } => {
+            IssueType::ModuleAttributeError { .. } | IssueType::ModuleNotFound { .. } => {
                 !self.ignore_missing_imports
             }
             _ => true,
