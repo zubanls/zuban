@@ -576,7 +576,9 @@ pub struct DiagnosticConfig {
 impl DiagnosticConfig {
     pub(crate) fn should_be_reported(&self, type_: &IssueType) -> bool {
         match type_ {
-            IssueType::ModuleNotFound { .. } => !self.ignore_missing_imports,
+            IssueType::ImportAttributeError { .. } | IssueType::ModuleNotFound { .. } => {
+                !self.ignore_missing_imports
+            }
             _ => true,
         }
     }

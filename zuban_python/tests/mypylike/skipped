@@ -2785,6 +2785,8 @@ testSkipButDontIgnore1
 testSkipButDontIgnore2
 testFineFollowImportSkipInvalidatedOnAddedStub-skip
 testFineAddedSkippedStubsPackageFrom
+testFileAddedAndImported
+testFileAddedAndImported2
 
 # --no-namespace-packages
 testClassicNotPackage
