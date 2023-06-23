@@ -259,15 +259,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     continue;
                                 }
                                 LookupResult::None => {
-                                    let ImportResult::File(file_index) = imp else {
-                                    todo!()
-                                };
-                                    let import_file = self.i_s.db.loaded_python_file(*file_index);
-                                    let module = Module::new(import_file);
                                     NodeRef::new(self.file, import_name.index()).add_typing_issue(
                                         self.i_s,
                                         IssueType::ImportAttributeError {
-                                            module_name: Box::from(module.name(self.i_s.db)),
+                                            module_name: Box::from(imp.qualified_name(self.i_s.db)),
                                             name: Box::from(import_name.as_str()),
                                         },
                                     );

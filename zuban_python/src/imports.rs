@@ -4,6 +4,7 @@ use crate::database::{Database, FileIndex, Namespace};
 use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
+use crate::type_helpers::Module;
 use crate::workspaces::{DirContent, DirOrFile};
 
 const SEPARATOR: &'static str = "/"; // TODO different separator
@@ -14,6 +15,17 @@ pub enum ImportResult {
 }
 
 impl ImportResult {
+    pub fn qualified_name(&self, db: &Database) -> String {
+        match self {
+            Self::File(file_index) => {
+                let import_file = db.loaded_python_file(*file_index);
+                let module = Module::new(import_file);
+                module.qualified_name(db)
+            }
+            Self::Namespace(ns) => ns.qualified_name(db),
+        }
+    }
+
     pub fn path<'x>(&'x self, db: &'x Database) -> &'x str {
         match self {
             Self::File(f) => db.loaded_python_file(*f).file_path(db),

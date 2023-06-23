@@ -21,15 +21,21 @@ class X: ...
 
 [case invalid_namespace_types_import_from]
 from foo import bar
-from foo import bla
+from foo import bla  # E: Module "foo" has no attribute "bla"
 from foo import bar as b
 
 a: bar.bla.X
-b: b.X
+#b: b.bla.X
 c: bla  # No error here, because there's already an import error
 
-x: bar  # E: Module "foo" is not valid as a type \
+x: bar  # E: Module "bar" is not valid as a type \
         # N: Perhaps you meant to use a protocol matching the module structure?
-y: b
+y: b  # E: Module "bar" is not valid as a type \
+      # N: Perhaps you meant to use a protocol matching the module structure?
+z: bar.bla # E: Module "bla" is not valid as a type \
+           # N: Perhaps you meant to use a protocol matching the module structure?
+u: b.bla # E: Module "bla" is not valid as a type \
+         # N: Perhaps you meant to use a protocol matching the module structure?
+v: b.X  # E: Name "b.X" is not defined
 [file foo/bar/bla.py]
 class X: ...

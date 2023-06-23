@@ -3,8 +3,6 @@ testIncrementalNestedBrokenCascadeWithType1
 testIncrementalNestedBrokenCascadeWithType2
 testIncrementalWithDecorators
 
-invalid_namespace_types_import_from
-
 # check-incremental tests
 testIncrementalSilentImportsWithInnerImports
 testIncrementalInnerClassAttrInMethodReveal
