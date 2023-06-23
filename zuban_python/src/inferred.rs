@@ -491,7 +491,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 );
                 return Self::new_saved(file, index, file.points.get(index));
             }
-            InferredState::Unknown => Point::new_unknown(file.file_index(), Locality::Todo),
+            InferredState::Unknown => Point::new_unknown(Locality::Todo),
         };
         file.points.set(index, point);
         Self::new_saved(file, index, point)

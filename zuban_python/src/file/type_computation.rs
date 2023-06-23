@@ -838,10 +838,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     primary.index(),
                                     IssueType::TypeNotFound,
                                 );
-                                self.inference.file.points.set(
-                                    name.index(),
-                                    Point::new_unknown(f.file_index(), Locality::Todo),
-                                );
+                                self.inference
+                                    .file
+                                    .points
+                                    .set(name.index(), Point::new_unknown(Locality::Todo));
                                 TypeContent::Unknown
                             }
                         }
@@ -3069,7 +3069,7 @@ pub(super) fn cache_name_on_class(cls: Class, file: &PythonFile, name: Name) -> 
         {
             Point::new_redirect(cls.node_ref.file.file_index(), index, Locality::Todo)
         } else {
-            Point::new_unknown(cls.node_ref.file.file_index(), Locality::Todo)
+            Point::new_unknown(Locality::Todo)
         },
     );
     cache_name_on_class(cls, file, name)

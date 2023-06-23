@@ -187,7 +187,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.save_namespace(as_name_def.name_index(), namespace.clone());
                             continue;
                         }
-                        None => Point::new_unknown(self.file.file_index(), Locality::Todo),
+                        None => Point::new_unknown(Locality::Todo),
                     };
                     self.file.points.set(as_name_def.index(), point);
                     self.file.points.set(as_name_def.name_index(), point);
@@ -228,7 +228,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Point::new_file_reference(file_index, Locality::Todo)
                     }
                     Some(ImportResult::Namespace { .. }) => todo!(),
-                    None => Point::new_unknown(self.file.file_index(), Locality::Todo),
+                    None => Point::new_unknown(Locality::Todo),
                 };
                 self.file.points.set(keyword.index(), point);
             }
@@ -271,12 +271,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             name: Box::from(import_name.as_str()),
                                         },
                                     );
-                                    Point::new_unknown(import_file.file_index(), Locality::Todo)
+                                    Point::new_unknown(Locality::Todo)
                                 }
                             }
                         }
                         // Means one of the imports before failed.
-                        None => Point::new_unknown(self.file.file_index(), Locality::Todo),
+                        None => Point::new_unknown(Locality::Todo),
                     };
 
                     self.file.points.set(import_name.index(), point);
@@ -356,7 +356,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         module_name: Box::from(name),
                     },
                 );
-                Point::new_unknown(self.file.file_index(), Locality::Todo)
+                Point::new_unknown(Locality::Todo)
             }
         };
         self.file.points.set(name_index, point);
@@ -1685,7 +1685,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     ),
                 );
             }
-            Point::new_unknown(self.file_index, Locality::Todo)
+            Point::new_unknown(Locality::Todo)
         };
         self.file.points.set(name.index(), point);
         debug_assert!(self.file.points.get(name.index()).calculated());

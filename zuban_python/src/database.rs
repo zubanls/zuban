@@ -166,8 +166,8 @@ impl Point {
         }
     }
 
-    pub fn new_unknown(file: FileIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::Unknown, file.0, locality);
+    pub fn new_unknown(locality: Locality) -> Self {
+        let flags = Self::calculate_flags(PointType::Unknown, 0, locality);
         Self {
             flags,
             node_index: 0,
