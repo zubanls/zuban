@@ -19,6 +19,17 @@ v: foo.undefined  # E: Name "foo.undefined" is not defined
 [file foo/bar.py]
 class X: ...
 
+[case invalid_namespace_types_import_name_nested]
+import foo
+
+a: foo.bar.bla.X
+
+x: foo.bar # E: Module "bar" is not valid as a type \
+           # N: Perhaps you meant to use a protocol matching the module structure?
+
+[file foo/bar/bla.py]
+class X: ...
+
 [case invalid_namespace_types_import_from]
 from foo import bar
 from foo import bla  # E: Module "foo" has no attribute "bla"
