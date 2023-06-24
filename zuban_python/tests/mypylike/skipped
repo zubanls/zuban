@@ -1,43 +1,15 @@
 # Next up
 testIncrementalWithDecorators
-
-# Fine grained tests
-testFollowImportsNormalPackageInitFile1
-testFollowImportsNormalPackageInitFile2
-testFollowImportsNormalPackageInitFile3
 testFollowImportsNormalNamespacePackages
-testFollowImportsNormalSearchPathUpdate-only_when_nocache
-testFollowImportsNormalSearchPathUpdate2-only_when_cache
-testFollowImportsNormalSuppressedAffectsCachedFile-only_when_cache
 testFollowImportsNormalDeletePackage
-testAddPackage1
+
+# import foo.bar wrong errors / no errors
 testAddPackage3
-testAddPackage4
-testAddNonPackageSubdir
-testAddPackage5
-testDeletionOfSubmoduleTriggersImportFrom1-only_when_nocache
-testDeletionOfSubmoduleTriggersImportFrom1_2-only_when_cache-skip
 testDeletionOfSubmoduleTriggersImport
 testDeleteModuleWithErrorInsidePackage
-testAddFileWhichImportsLibModuleWithErrors
 testDeleteFileWithinPackage
 testDeletePackage1
 testDeletePackage3
-testDeletePackage4
-testDeletePackage5
-testDeletePackage6
-testAddModuleAfterCache2-only_when_cache
-testAddModuleAfterCache3-only_when_cache
-testAddModuleAfterCache4-only_when_cache
-testAddModuleAfterCache5-only_when_cache
-testAddModuleAfterCache6-only_when_cache
-testRefreshImportIfMypyElse1
-testImportStarAddMissingDependencyInsidePackage1
-testImportStarAddMissingDependencyInsidePackage2
-testImportStarWithinFunction
-testDeleteFileWithErrors
-testFineAddedMissingStubsIgnorePackagePartial
-testDoNotFollowImportToNonStubFile
 
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
@@ -1050,6 +1022,8 @@ testMissingSubmoduleImportedWithIgnoreMissingImportsNested
 testMissingSubmoduleOfInstalledStubPackage
 testAddedMissingStubsIgnorePackagePartial
 testGenericAliasCollectionsABCReveal
+# import a.b type: ignore
+testFineAddedMissingStubsIgnorePackagePartial
 
 # star imports in modules that are imported
 testRelativeImport3
@@ -1057,6 +1031,7 @@ testRelativeImport3
 testImportWithinMethod
 testNoCrashOnImportFromStarNested
 testSerializeStarImport
+testImportStarWithinFunction
 # Star import override
 testAssignToFuncDefViaImport
 
@@ -1983,6 +1958,8 @@ testOverloadsAndNoReturnNarrowTypeNoStrictOptional2
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional2
 testOverloadsAndNoReturnNarrowTypeNoStrictOptional3
 testOverloadsAndNoReturnNarrowTypeWithStrictOptional3
+# Maybe not even narrowing?
+testRefreshImportIfMypyElse1
 
 # TypeGuard
 testSerializeTypeGuardFunction
@@ -2447,6 +2424,7 @@ testModuleLookupWeird3
 testModuleLookupWeird5
 testModuleLookupWeird6
 testProtocolWithNestedClass
+testImportStarAddMissingDependencyInsidePackage1
 # Qualified nested class name
 testNewAnalyzerNamedTupleClassNestedMethod
 testNewAnalyzerNamedTupleCallNested
@@ -2783,10 +2761,15 @@ testFineFollowImportSkipInvalidatedOnAddedStub-skip
 testFineAddedSkippedStubsPackageFrom
 testFileAddedAndImported
 testFileAddedAndImported2
+testDeleteFileWithErrors
+testDoNotFollowImportToNonStubFile
 
 # --no-namespace-packages
 testClassicNotPackage
 testPackageWithoutInitFile
+testDeletePackage4
+testDeletePackage5
+testDeletePackage6
 
 # --enable-error-code redundant-expr
 # "If condition is always false"
@@ -2812,6 +2795,9 @@ testLimitLegacyStubErrorVolume
 testReprocessMethodShowSource
 testGenericTypeAliasesWithNestedArgs
 testPrettyMessageSorting
+
+# --no-silence-site-packages
+testAddFileWhichImportsLibModuleWithErrors
 
 # "Incompatible types in string interpolation (expression has type "str", placeholder has type "int")"
 testErrorCodeFormatCall
@@ -2949,6 +2935,10 @@ testNonExistentFileOnCommandLine1
 testInlineConfigFineGrained1
 testInlineConfigFineGrained2
 testNoCrashOnDeletedWithCacheOnCmdline
+testFollowImportsNormalSearchPathUpdate-only_when_nocache
+testFollowImportsNormalSearchPathUpdate2-only_when_cache
+testAddNonPackageSubdir
+testAddPackage5
 
 # Won't support: __eq__ called directly with a keyword argument (which is actually legal)
 testMagicMethodPositionalOnlyArg
