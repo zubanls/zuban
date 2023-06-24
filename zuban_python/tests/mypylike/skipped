@@ -1,15 +1,6 @@
 # Next up
 testIncrementalWithDecorators
-testFollowImportsNormalNamespacePackages
 testFollowImportsNormalDeletePackage
-
-# import foo.bar wrong errors / no errors
-testAddPackage3
-testDeletionOfSubmoduleTriggersImport
-testDeleteModuleWithErrorInsidePackage
-testDeleteFileWithinPackage
-testDeletePackage1
-testDeletePackage3
 
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg

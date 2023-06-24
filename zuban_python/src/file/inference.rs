@@ -168,12 +168,18 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
         for dotted_as_name in imp.iter_dotted_as_names() {
             match dotted_as_name.unpack() {
-                DottedAsNameContent::Simple(name_def, _) => {
-                    self.global_import(
+                DottedAsNameContent::Simple(name_def, rest) => {
+                    let result = self.global_import(
                         name_def.as_code(),
                         name_def.name_index(),
                         Some(name_def.index()),
                     );
+                    if let Some(rest) = rest {
+                        dbg!(name_def, &result);
+                        if result.is_some() {
+                            self.infer_import_dotted_name(rest, result);
+                        }
+                    }
                 }
                 DottedAsNameContent::WithAs(dotted_name, as_name_def) => {
                     let result = self.infer_import_dotted_name(dotted_name, None);
@@ -372,31 +378,37 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         base: Option<ImportResult>,
     ) -> Option<ImportResult> {
         let file_index = self.file_index;
-        let infer_name = |i_s, import_result, name: Name| match import_result {
-            ImportResult::File(file_index) => {
-                let module = Module::from_file_index(self.i_s.db, file_index);
-                let result = module.sub_module(self.i_s.db, name.as_str());
-                if let Some(imported) = &result {
-                    debug!(
-                        "Imported {:?} for {:?}",
-                        imported.path(self.i_s.db),
-                        dotted.as_code(),
-                    );
-                } else {
-                    let node_ref = NodeRef::new(self.file, name.index());
-                    let m =
-                        format!("{}.{}", module.name(self.i_s.db).to_owned(), name.as_str()).into();
-                    node_ref.add_typing_issue(i_s, IssueType::ModuleNotFound { module_name: m });
+        let infer_name = |i_s, import_result, name: Name| {
+            let result = match &import_result {
+                ImportResult::File(file_index) => {
+                    let module = Module::from_file_index(self.i_s.db, *file_index);
+                    module.sub_module(self.i_s.db, name.as_str())
                 }
-                result
+                ImportResult::Namespace(namespace) => python_import(
+                    self.i_s.db,
+                    file_index,
+                    &namespace.path,
+                    &namespace.content,
+                    name.as_str(),
+                ),
+            };
+            if let Some(imported) = &result {
+                debug!(
+                    "Imported {:?} for {:?}",
+                    imported.path(self.i_s.db),
+                    dotted.as_code(),
+                );
+            } else {
+                let node_ref = NodeRef::new(self.file, name.index());
+                let m = format!(
+                    "{}.{}",
+                    import_result.qualified_name(self.i_s.db),
+                    name.as_str()
+                )
+                .into();
+                node_ref.add_typing_issue(i_s, IssueType::ModuleNotFound { module_name: m });
             }
-            ImportResult::Namespace(namespace) => python_import(
-                self.i_s.db,
-                file_index,
-                &namespace.path,
-                &namespace.content,
-                name.as_str(),
-            ),
+            result
         };
         match dotted.unpack() {
             DottedNameContent::Name(name) => {

@@ -9,6 +9,7 @@ use crate::workspaces::{DirContent, DirOrFile};
 
 const SEPARATOR: &'static str = "/"; // TODO different separator
 
+#[derive(Debug)]
 pub enum ImportResult {
     File(FileIndex),
     Namespace(Namespace), // A Python Namespace package, i.e. a directory
