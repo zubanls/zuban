@@ -34,8 +34,8 @@ impl<'a> Module<'a> {
     pub fn name(&self, db: &'a Database) -> &'a str {
         // TODO this is not correct...
         let (dir, mut name) = db.vfs.dir_and_name(self.file.file_path(db));
-        if name.ends_with(".py") {
-            name = name.trim_end_matches(".py");
+        if let Some(n) = name.strip_suffix(".py") {
+            name = n
         } else {
             name = name.trim_end_matches(".pyi");
         }

@@ -103,8 +103,12 @@ pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
         if after == "" {
             return Some(None);
         }
-        if after.starts_with("[") && after.ends_with("]") && after.len() > 2 {
-            return Some(Some(&after[1..after.len() - 1]));
+        if let Some(after) = after.strip_prefix('[') {
+            if let Some(after) = after.strip_suffix(']') {
+                if !after.is_empty() {
+                    return Some(Some(after));
+                }
+            }
         }
     }
     None
