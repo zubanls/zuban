@@ -596,8 +596,8 @@ fn find_flags(string: &str) -> Option<&str> {
         if !line.starts_with('#') {
             break;
         }
-        if line.starts_with("# flags: ") {
-            return Some(&line[9..]);
+        if let Some(flags) = line.strip_prefix("# flags: ") {
+            return Some(flags);
         }
     }
     None

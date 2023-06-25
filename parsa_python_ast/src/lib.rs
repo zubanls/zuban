@@ -70,13 +70,14 @@ impl Tree {
             .and_then(|s| {
                 for comment in s.suffix().split('#').skip(1) {
                     let rest = comment.trim_start_matches(' ');
-                    if !rest.starts_with("type:") {
+                    if let Some(ignore) = rest.strip_prefix("type:") {
+                        let ignore = ignore.trim_start_matches(' ');
+                        let r = maybe_type_ignore(ignore);
+                        if r.is_some() {
+                            return r;
+                        }
+                    } else {
                         return None;
-                    }
-                    let ignore = &rest[5..].trim_start_matches(' ');
-                    let r = maybe_type_ignore(ignore);
-                    if r.is_some() {
-                        return r;
                     }
                 }
                 None
@@ -98,8 +99,8 @@ impl Tree {
 }
 
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
-    if text.starts_with("ignore") {
-        let after = text[6..].trim_matches(' ');
+    if let Some(after) = text.strip_prefix("ignore") {
+        let after = after.trim_matches(' ');
         if after == "" {
             return Some(None);
         }
