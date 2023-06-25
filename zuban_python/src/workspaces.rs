@@ -65,7 +65,7 @@ impl Workspaces {
 
     pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         for workspace in &self.0 {
-            if let Some(p) = path.strip_prefix(&workspace.root.name.as_ref()) {
+            if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
                 if let Some(content) = workspace.root.find_dir_content(vfs, p) {
                     return Some(content);
                 }

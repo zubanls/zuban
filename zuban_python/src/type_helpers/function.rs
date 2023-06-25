@@ -308,7 +308,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     CallableParams::Any => CallableParams::Any,
                     CallableParams::Simple(params) => {
                         // Performance issue: Rc -> Vec check https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
-                        pre_params.extend(params.into_iter().cloned());
+                        pre_params.extend(params.iter().cloned());
                         CallableParams::Simple(Rc::from(pre_params))
                     }
                     CallableParams::WithParamSpec(pre, p) => {

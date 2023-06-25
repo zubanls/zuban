@@ -539,7 +539,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         .lookup(i_s, None, name)
                         .into_inferred();
                     let t1 = inf1.as_type(i_s);
-                    if t1.matches(i_s, matcher, &other, variance).bool() {
+                    if t1.matches(i_s, matcher, other, variance).bool() {
                         continue;
                     }
                 }
@@ -563,11 +563,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                     ),
                                     DbType::Type(t) => format!(
                                         "Following member(s) of \"{}\" have conflicts:",
-                                        t.format_short(i_s.db).to_string()
+                                        t.format_short(i_s.db)
                                     ),
                                     _ => format!(
                                         "Following member(s) of \"{}\" have conflicts:",
-                                        other.format_short(i_s.db).to_string()
+                                        other.format_short(i_s.db)
                                     ),
                                 }
                                 .into(),
@@ -994,7 +994,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                     DbType::Class(c, generics) => {
                         let n = NodeRef::from_link(self.db, *c);
                         TypeOrClass::Class(match generics {
-                            ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(&g)),
+                            ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(g)),
                             ClassGenerics::None => Class::from_position(n, self.generics, None),
                             ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, generics), None)"),
                             ClassGenerics::SlicesWithClassTypes(link) => todo!(),

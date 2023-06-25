@@ -1,6 +1,7 @@
 #![allow(unused_variables)] // TODO remove this
 #![allow(clippy::needless_option_as_deref)] // This is simply wrong in some cases
 #![allow(clippy::too_many_arguments)] // TODO For now this is easier, but probably enable again
+#![allow(clippy::single_match)] // TODO this is probably just practical during development
 
 mod arguments;
 mod database;
@@ -41,7 +42,7 @@ pub struct ProjectOptions {
 
 impl Project {
     pub fn new(options: ProjectOptions) -> Self {
-        let loaders = Box::new([Box::new(file::PythonFileLoader::default()) as Box<_>]);
+        let loaders = Box::new([Box::<file::PythonFileLoader>::default() as Box<_>]);
         // TODO use a real sys path
         let sys_path = vec![
             "../typeshed/stdlib".into(),
