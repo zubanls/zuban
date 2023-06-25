@@ -59,7 +59,7 @@ impl<'a> ResultContext<'a, '_> {
         .unwrap_or(false)
     }
 
-    pub fn expects_union<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
+    pub fn expects_union(&self, i_s: &InferenceState) -> bool {
         match self {
             Self::Known(type_) | Self::WithMatcher { type_, .. } => {
                 matches!(type_.as_ref(), DbType::Union(_))

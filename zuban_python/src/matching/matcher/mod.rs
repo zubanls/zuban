@@ -612,7 +612,7 @@ impl<'a> Matcher<'a> {
                         let type_var_remap = func_class.type_var_remap.unwrap();
                         match &type_var_remap[type_var_like_usage.index()] {
                             GenericItem::TypeArgument(t) => GenericItem::TypeArgument(
-                                self.replace_type_var_likes_for_nested_context(db, &t),
+                                self.replace_type_var_likes_for_nested_context(db, t),
                             ),
                             GenericItem::TypeArguments(_) => todo!(),
                             GenericItem::ParamSpecArgument(_) => todo!(),

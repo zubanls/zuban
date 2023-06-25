@@ -295,8 +295,8 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
     matches
 }
 
-pub fn has_overlapping_params<'db>(
-    i_s: &InferenceState<'db, '_>,
+pub fn has_overlapping_params(
+    i_s: &InferenceState,
     params1: &CallableParams,
     params2: &CallableParams,
 ) -> bool {

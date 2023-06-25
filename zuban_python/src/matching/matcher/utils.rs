@@ -794,9 +794,7 @@ pub fn create_signature_without_self(
             unreachable!();
         };
         let mut callable_content = rc_unwrap_or_clone(callable_content);
-        let mut old_type_vars = std::mem::replace(&mut callable_content.type_vars, None)
-            .unwrap()
-            .into_vec();
+        let mut old_type_vars = callable_content.type_vars.take().unwrap().into_vec();
         let calculated = matcher.unwrap_calculated_type_args();
         for (i, c) in calculated.iter().enumerate().rev() {
             if c.calculated() {

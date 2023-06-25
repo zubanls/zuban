@@ -93,10 +93,12 @@ impl<'a> Type<'a> {
     #[inline]
     pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
         match self.0 {
-            Cow::Borrowed(t) => match t {
-                DbType::Class(link, generics) => Class::from_db_type(db, *link, generics),
-                _ => unreachable!(),
-            },
+            Cow::Borrowed(t) => {
+                let DbType::Class(link, generics) = t else {
+                    unreachable!();
+                };
+                Class::from_db_type(db, *link, generics)
+            }
             Cow::Owned(DbType::Class(link, ref generics)) => Class::from_position(
                 NodeRef::from_link(db, link),
                 Generics::from_non_list_class_generics(db, generics),
@@ -290,7 +292,7 @@ impl<'a> Type<'a> {
             DbType::None => matches!(value_type.as_ref(), DbType::None).into(),
             DbType::Any if matcher.is_matching_reverse() => {
                 debug!("TODO write a test for this.");
-                matcher.set_all_contained_type_vars_to_any(i_s, &self.as_ref());
+                matcher.set_all_contained_type_vars_to_any(i_s, self.as_ref());
                 Match::True { with_any: true }
             }
             DbType::Any => Match::new_true(),
@@ -550,7 +552,7 @@ impl<'a> Type<'a> {
         match value_type.as_ref() {
             DbType::Any if matcher.is_matching_reverse() => return Match::new_true(),
             DbType::Any => {
-                matcher.set_all_contained_type_vars_to_any(i_s, &self.as_ref());
+                matcher.set_all_contained_type_vars_to_any(i_s, self.as_ref());
                 return Match::True { with_any: true };
             }
             DbType::None if !i_s.db.python_state.project.strict_optional => {
@@ -740,7 +742,7 @@ impl<'a> Type<'a> {
             }
             return result;
         }
-        return Match::new_true();
+        Match::new_true()
     }
 
     fn matches_class_against_type(
@@ -1873,7 +1875,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn iter_on_borrowed<'slf>(
+    pub fn iter_on_borrowed(
         &self,
         i_s: &InferenceState<'a, '_>,
         from: NodeRef,
@@ -2025,9 +2027,9 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
-    pub fn run_after_lookup_on_each_union_member<'db>(
+    pub fn run_after_lookup_on_each_union_member(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         from_inferred: Option<&Inferred>,
         from: Option<NodeRef>,
         name: &str,
@@ -2153,23 +2155,19 @@ impl<'a> Type<'a> {
                 NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name),
             ),
             DbType::Never => (),
-            DbType::NewType(new_type) => Type::new(&new_type.type_(i_s))
+            DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
             _ => todo!("{self:?}"),
         }
     }
 
-    pub fn lookup_without_error<'db>(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        name: &str,
-    ) -> LookupResult {
+    pub fn lookup_without_error(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         self.lookup_helper(i_s, None, name, &|_| ())
     }
 
-    pub fn lookup_with_error<'db>(
+    pub fn lookup_with_error(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         from: NodeRef,
         name: &str,
         on_lookup_error: OnLookupError,
@@ -2178,9 +2176,9 @@ impl<'a> Type<'a> {
     }
 
     #[inline]
-    fn lookup_helper<'db>(
+    fn lookup_helper(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        i_s: &InferenceState,
         from: Option<NodeRef>,
         name: &str,
         on_lookup_error: OnLookupError,

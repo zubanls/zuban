@@ -431,10 +431,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             BaseClass::NewNamedTuple => {
-                                let named_tuple = self.named_tuple_from_class(
-                                    &mut i_s.with_class_context(self),
-                                    *self,
-                                );
+                                let named_tuple = self
+                                    .named_tuple_from_class(&i_s.with_class_context(self), *self);
                                 mro.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
