@@ -723,7 +723,7 @@ pub enum DbType {
     Literal(Literal),
     NamedTuple(Rc<NamedTuple>),
     Module(FileIndex),
-    Namespace(Namespace),
+    Namespace(Rc<Namespace>),
     Self_,
     None,
     Any,

@@ -12,7 +12,7 @@ const SEPARATOR: &'static str = "/"; // TODO different separator
 #[derive(Debug)]
 pub enum ImportResult {
     File(FileIndex),
-    Namespace(Namespace), // A Python Namespace package, i.e. a directory
+    Namespace(Rc<Namespace>), // A Python Namespace package, i.e. a directory
 }
 
 impl ImportResult {
@@ -130,10 +130,10 @@ pub fn python_import<'a>(
     // The folder should not exist for folder/__init__.py or a namespace.
     if let Some(content) = namespace_content {
         debug!("// TODO invalidate!");
-        return Some(ImportResult::Namespace(Namespace {
+        return Some(ImportResult::Namespace(Rc::new(Namespace {
             path: format!("{dir_path}{SEPARATOR}{name}"),
             content,
-        }));
+        })));
     }
     dir.add_missing_entry(name.into(), from_file);
     None

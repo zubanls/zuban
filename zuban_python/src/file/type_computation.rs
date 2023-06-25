@@ -1,4 +1,3 @@
-use std::borrow::Cow;
 use std::rc::Rc;
 
 use parsa_python_ast::SliceType as ASTSliceType;
@@ -193,7 +192,7 @@ impl InvalidVariableType<'_> {
 #[derive(Debug, Clone)]
 enum TypeContent<'db, 'a> {
     Module(&'db PythonFile),
-    Namespace(Cow<'db, Namespace>),
+    Namespace(Rc<Namespace>),
     Class {
         node_ref: NodeRef<'db>,
         has_type_vars: bool,
@@ -218,7 +217,7 @@ enum TypeContent<'db, 'a> {
 #[derive(Debug)]
 pub(super) enum TypeNameLookup<'db, 'a> {
     Module(&'db PythonFile),
-    Namespace(&'db Namespace),
+    Namespace(Rc<Namespace>),
     Class { node_ref: NodeRef<'db> },
     TypeVarLike(TypeVarLike),
     TypeAlias(&'db TypeAlias),
@@ -860,7 +859,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             let file = self.inference.i_s.db.loaded_python_file(file_index);
                             TypeContent::Module(file)
                         }
-                        Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(Cow::Owned(ns)),
+                        Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
                         None => {
                             self.add_typing_issue_for_index(
                                 primary.index(),
@@ -1947,9 +1946,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_name(&mut self, name: Name<'x>) -> TypeContent<'db, 'x> {
         match self.inference.lookup_type_name(name) {
             TypeNameLookup::Module(f) => TypeContent::Module(f),
-            TypeNameLookup::Namespace(namespace) => {
-                TypeContent::Namespace(Cow::Borrowed(namespace))
-            }
+            TypeNameLookup::Namespace(namespace) => TypeContent::Namespace(namespace),
             TypeNameLookup::Class { node_ref } => TypeContent::Class {
                 node_ref,
                 has_type_vars: Class::with_undefined_generics(node_ref)
@@ -3012,7 +3009,7 @@ fn check_type_name<'db: 'file, 'file>(
                     if let ComplexPoint::TypeInstance(DbType::Namespace(namespace)) =
                         name_node_ref.file.complex_points.get(complex_index)
                     {
-                        return TypeNameLookup::Namespace(namespace);
+                        return TypeNameLookup::Namespace(namespace.clone());
                     }
                 }
                 debug_assert!(

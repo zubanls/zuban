@@ -367,9 +367,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         result
     }
 
-    fn save_namespace(&self, index: NodeIndex, namespace: Namespace) {
-        Inferred::from_type(DbType::Namespace(namespace.clone()))
-            .save_redirect(self.i_s, self.file, index);
+    fn save_namespace(&self, index: NodeIndex, namespace: Rc<Namespace>) {
+        Inferred::from_type(DbType::Namespace(namespace)).save_redirect(self.i_s, self.file, index);
     }
 
     fn infer_import_dotted_name(
