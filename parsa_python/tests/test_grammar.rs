@@ -57,7 +57,7 @@ macro_rules! parametrize_snapshots {
     ($($name:ident : $input:expr;)*) => {$(
         #[test]
         fn $name() {
-            let tree = parse($input);
+            let tree = parse($input.into());
             insta::assert_snapshot!(stringify!($name), tree_to_string(tree));
         }
     )*}

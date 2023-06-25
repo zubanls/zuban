@@ -103,7 +103,7 @@ fn it_works() {
     use JsonNodeType::*;
     use JsonNonterminalType::*;
     use JsonTerminalType::*;
-    let tree = JSON_GRAMMAR.parse("{foo: 1}".to_owned());
+    let tree = JSON_GRAMMAR.parse("{foo: 1}".into());
     let root_node = tree.root_node();
     assert_eq!(root_node.type_(), Nonterminal(document));
 
@@ -153,11 +153,11 @@ fn complicated_alternatives() {
         bar: Label ":"
     );
 
-    GRAMMAR.parse("last[3]::".to_owned());
-    GRAMMAR.parse("foo[3],".to_owned());
-    GRAMMAR.parse("foo[3],,".to_owned());
-    GRAMMAR.parse("bar :,,".to_owned());
-    GRAMMAR.parse("bar :,".to_owned());
+    GRAMMAR.parse("last[3]::".into());
+    GRAMMAR.parse("foo[3],".into());
+    GRAMMAR.parse("foo[3],,".into());
+    GRAMMAR.parse("bar :,,".into());
+    GRAMMAR.parse("bar :,".into());
 }
 
 #[test]
@@ -176,7 +176,7 @@ fn unreachable_alternatives1() {
         foo: Label "[" Number "]"
         bar: Label ":"
     );
-    GRAMMAR.parse("".to_owned());
+    GRAMMAR.parse("".into());
 }
 
 #[test]
@@ -195,5 +195,5 @@ fn unreachable_alternatives2() {
         foo: Label "[" Number "]"
         bar: Label ":"
     );
-    GRAMMAR.parse("".to_owned());
+    GRAMMAR.parse("".into());
 }
