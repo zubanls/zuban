@@ -40,3 +40,9 @@ def foo() -> str:
 [case no_strict_optional_none_return]
 def foo() -> str:
     return None
+
+[case except_nested_tuple]
+try:
+    1
+except (AttributeError, (NotImplementedError, NameError)) as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
+    reveal_type(e)  # N: Revealed type is "Exception"
