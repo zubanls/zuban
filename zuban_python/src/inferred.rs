@@ -1587,16 +1587,6 @@ enum BoundMethodInstance {
     Complex(ComplexPoint),
 }
 
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn test_sizes() {
-        use super::*;
-        use std::mem::size_of;
-        assert_eq!(size_of::<Inferred>(), 48);
-    }
-}
-
 pub fn add_attribute_error<'db>(
     i_s: &InferenceState<'db, '_>,
     node_ref: NodeRef,

@@ -2919,9 +2919,11 @@ mod tests {
     fn test_sizes() {
         use super::*;
         use std::mem::size_of;
+        assert_eq!(size_of::<ClassGenerics>(), 24);
+        assert_eq!(size_of::<UnionType>(), 24);
         assert_eq!(size_of::<TupleContent>(), 40);
-        assert_eq!(size_of::<DbType>(), 32);
-        assert_eq!(size_of::<ComplexPoint>(), 32);
+        assert_eq!(size_of::<DbType>(), 40); // TODO Would like it to be 32, but ClassGenerics is 24
+        assert_eq!(size_of::<ComplexPoint>(), size_of::<DbType>());
         assert_eq!(size_of::<ClassStorage>(), 120);
         assert_eq!(size_of::<ClassInfos>(), 48);
         assert_eq!(size_of::<PointLink>(), 8);
