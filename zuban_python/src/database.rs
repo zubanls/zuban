@@ -2764,7 +2764,11 @@ impl Database {
         self.file_state(file).add_invalidates(invalidates)
     }
 
-    pub fn delete_directory(&mut self, dir_path: &str) -> Result<(), String> {
+    pub fn delete_directory(&mut self, mut dir_path: &str) -> Result<(), String> {
+        if let Some(p) = dir_path.strip_suffix("/") {
+            dir_path = p;
+        }
+
         let indexes: Vec<_> = self
             .in_memory_files
             .iter()

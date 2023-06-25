@@ -1,6 +1,5 @@
 # Next up
 testIncrementalWithDecorators
-testFollowImportsNormalDeletePackage
 
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
