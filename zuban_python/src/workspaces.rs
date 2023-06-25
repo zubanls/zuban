@@ -252,11 +252,9 @@ impl DirEntry {
             if let Some(mut entry) = dir.content.search(name) {
                 if let Some(rest) = rest {
                     entry.unload_file(vfs, rest);
-                } else {
-                    if matches!(entry.type_, DirOrFile::File(_)) {
-                        drop(entry);
-                        dir.content.remove_name(name);
-                    }
+                } else if matches!(entry.type_, DirOrFile::File(_)) {
+                    drop(entry);
+                    dir.content.remove_name(name);
                 }
             }
         }

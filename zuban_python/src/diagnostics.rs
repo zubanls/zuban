@@ -385,7 +385,7 @@ impl<'db> Diagnostic<'db> {
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
             InvalidCallableParams => {
                 additional_notes.push("See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas".into());
-                format!("The first argument to Callable must be a list of types, parameter specification, or \"...\"")
+                "The first argument to Callable must be a list of types, parameter specification, or \"...\"".to_string()
             }
             InvalidParamSpecGenerics{got} => format!(
                 "Can only replace ParamSpec with a parameter types list or another ParamSpec, got \"{got}\""
@@ -447,8 +447,8 @@ impl<'db> Diagnostic<'db> {
                 "A function returning TypeVar should receive at least one argument containing the same Typevar".to_string(),
             UnexpectedTypeForTypeVar =>
                 "Cannot declare the type of a TypeVar or similar construct".to_string(),
-            TypeVarTupleTooManyArguments => format!(
-                "Only the first argument to TypeVarTuple has defined semantics"),
+            TypeVarTupleTooManyArguments =>
+                "Only the first argument to TypeVarTuple has defined semantics".to_string(),
             ParamSpecTooManyKeywordArguments =>
                 "The variance and bound arguments to ParamSpec do not have defined semantics yet".to_string(),
             MultipleTypeVarTuplesInClassDef =>
@@ -607,7 +607,7 @@ impl Diagnostics {
                 let e = issue.type_.mypy_error_code();
                 if specific
                     .split(',')
-                    .any(|specific| e == Some(specific.trim_matches(' ')) || e == None)
+                    .any(|specific| e == Some(specific.trim_matches(' ')) || e.is_none())
                 {
                     return Err(issue);
                 } else if e.is_some() {

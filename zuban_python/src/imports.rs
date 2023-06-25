@@ -7,7 +7,7 @@ use crate::file::PythonFile;
 use crate::type_helpers::Module;
 use crate::workspaces::{DirContent, DirOrFile};
 
-const SEPARATOR: &'static str = "/"; // TODO different separator
+const SEPARATOR: &str = "/"; // TODO different separator
 
 #[derive(Debug)]
 pub enum ImportResult {
@@ -157,11 +157,7 @@ fn load_init_file(
     None
 }
 
-pub fn find_ancestor<'db>(
-    db: &'db Database,
-    file: &PythonFile,
-    level: usize,
-) -> Option<ImportResult> {
+pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<ImportResult> {
     debug_assert!(level > 0);
     let mut path = file.file_path(db);
     for _ in 0..level {

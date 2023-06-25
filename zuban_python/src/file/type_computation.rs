@@ -446,7 +446,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::NamedTuple(nt) => {
                         // TODO performance: this is already an Rc and should not need to be
                         // duplicated.
-                        BaseClass::NamedTuple(nt.clone())
+                        BaseClass::NamedTuple(nt)
                     }
                     DbType::Any => BaseClass::Unknown,
                     DbType::NewType(_) => {
@@ -2994,10 +2994,9 @@ fn check_type_name<'db: 'file, 'file>(
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function({
             let point = name_node_ref.point();
-            if point.calculated() {
-                if point.maybe_specific() == Some(Specific::CollectionsNamedTuple) {
-                    return TypeNameLookup::SpecialType(SpecialType::CollectionsNamedTuple);
-                }
+            if point.calculated() && point.maybe_specific() == Some(Specific::CollectionsNamedTuple)
+            {
+                return TypeNameLookup::SpecialType(SpecialType::CollectionsNamedTuple);
             }
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
         })),
@@ -3197,13 +3196,13 @@ pub fn new_typing_named_tuple(
             name: Some(name),
             class_name: None,
             defined_at: args_node_ref.as_link(),
-            type_vars: (!type_var_likes.is_empty()).then(|| type_var_likes),
+            type_vars: (!type_var_likes.is_empty()).then_some(type_var_likes),
             params: CallableParams::Simple(Rc::from(params)),
             result_type: DbType::None,
         };
         Some(Rc::new(NamedTuple::new(name, callable)))
     } else {
-        return None;
+        None
     }
 }
 

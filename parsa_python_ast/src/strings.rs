@@ -109,7 +109,7 @@ impl<'db> PythonString<'db> {
 fn parse_hex<'x, I: Iterator<Item = (usize, &'x u8)>>(count: usize, iterator: I) -> char {
     let mut number = 0;
     for (i, (_, x)) in iterator.take(count).enumerate() {
-        let digit = if (b'0'..=b'9').contains(x) {
+        let digit = if x.is_ascii_digit() {
             *x - b'0'
         } else if (b'a'..=b'f').contains(x) {
             *x - b'a' + 10

@@ -194,7 +194,7 @@ impl Point {
     }
 
     pub fn new_file_reference(file: FileIndex, locality: Locality) -> Self {
-        let flags = Self::calculate_flags(PointType::FileReference, file.0 as u32, locality);
+        let flags = Self::calculate_flags(PointType::FileReference, file.0, locality);
         Self {
             flags,
             node_index: 0,
@@ -460,7 +460,7 @@ impl PointLink {
         Self { file, node_index }
     }
 
-    pub fn into_redirect_point(&self, locality: Locality) -> Point {
+    pub fn into_redirect_point(self, locality: Locality) -> Point {
         Point::new_redirect(self.file, self.node_index, locality)
     }
 }
@@ -876,13 +876,13 @@ impl DbType {
             Self::NamedTuple(nt) => {
                 use crate::type_helpers::NamedTupleValue;
                 match format_data.style {
-                    FormatStyle::Short => NamedTupleValue::new(format_data.db, &nt)
+                    FormatStyle::Short => NamedTupleValue::new(format_data.db, nt)
                         .format_with_name(
                             format_data,
                             nt.name(format_data.db),
                             Generics::NotDefinedYet,
                         ),
-                    _ => NamedTupleValue::new(format_data.db, &nt).format_with_name(
+                    _ => NamedTupleValue::new(format_data.db, nt).format_with_name(
                         format_data,
                         &nt.qualified_name(format_data.db),
                         Generics::NotDefinedYet,
@@ -1117,10 +1117,10 @@ impl DbType {
     }
 
     pub fn is_subclassable(&self) -> bool {
-        match self {
-            Self::Class(..) | Self::Tuple(..) | Self::NewType(..) | Self::NamedTuple(_) => true,
-            _ => false,
-        }
+        matches!(
+            self,
+            Self::Class(..) | Self::Tuple(..) | Self::NewType(..) | Self::NamedTuple(_)
+        )
     }
 }
 
@@ -2604,7 +2604,7 @@ impl Database {
         workspaces.add(file_state_loaders.as_ref(), project.path.clone());
         let mut this = Self {
             in_use: false,
-            vfs: Box::<FileSystemReader>::new(Default::default()),
+            vfs: Box::<FileSystemReader>::default(),
             file_state_loaders,
             files: Default::default(),
             path_to_file: Default::default(),
@@ -2714,7 +2714,7 @@ impl Database {
             file_index
         } else {
             let file_index = self.add_file_state(file_state);
-            self.in_memory_files.insert(path.clone().into(), file_index);
+            self.in_memory_files.insert(path.clone(), file_index);
             file_index
         };
         ensured.set_file_index(file_index);
@@ -2765,7 +2765,7 @@ impl Database {
     }
 
     pub fn delete_directory(&mut self, mut dir_path: &str) -> Result<(), String> {
-        if let Some(p) = dir_path.strip_suffix("/") {
+        if let Some(p) = dir_path.strip_suffix('/') {
             dir_path = p;
         }
 

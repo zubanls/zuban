@@ -245,7 +245,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                     let point = match &from_first_part {
                         Some(imp) => {
-                            match self.lookup_import_from_target(&imp, import_name.as_str()) {
+                            match self.lookup_import_from_target(imp, import_name.as_str()) {
                                 LookupResult::GotoName(link, ..) => {
                                     link.into_redirect_point(Locality::Todo)
                                 }
@@ -317,7 +317,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     .inference(self.i_s)
                     .lookup_from_star_import(name, false)
                 {
-                    LookupResult::GotoName(link.into(), Inferred::from_saved_link(link.into()))
+                    LookupResult::GotoName(link, Inferred::from_saved_link(link))
                 } else {
                     LookupResult::None
                 }
@@ -1094,7 +1094,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 }),
                                             );
                                         } else {
-                                            let t = r_type
+                                            r_type
                                                 .lookup_with_error(
                                                     self.i_s,
                                                     from,
@@ -1750,7 +1750,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub fn check_point_cache(&mut self, node_index: NodeIndex) -> Option<Inferred> {
         let point = self.file.points.get(node_index);
-        let result = point
+        point
             .calculated()
             .then(|| match point.type_() {
                 PointType::Redirect => {
@@ -1941,8 +1941,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 } else {
                     None
                 }
-            });
-        result
+            })
     }
 
     pub fn infer_name_by_index(&mut self, node_index: NodeIndex) -> Inferred {

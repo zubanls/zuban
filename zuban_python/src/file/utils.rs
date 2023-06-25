@@ -85,7 +85,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 });
                 // `found` might still be empty, because we matched Any.
-                found.or(fallback).map(|found| Inferred::from_type(found))
+                found.or(fallback).map(Inferred::from_type)
             })
             .flatten()
     }

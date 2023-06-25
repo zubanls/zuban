@@ -594,12 +594,10 @@ impl<'a> Type<'a> {
                     let r = self.matches(i_s, matcher, &Type::new(t), variance);
                     if !r.bool() {
                         return r.bool().into();
+                    } else if let Some(old) = result {
+                        result = Some(old & r)
                     } else {
-                        if let Some(old) = result {
-                            result = Some(old & r)
-                        } else {
-                            result = Some(r)
-                        }
+                        result = Some(r)
                     }
                 }
                 return result.unwrap();

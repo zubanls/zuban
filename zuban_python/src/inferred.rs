@@ -457,7 +457,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedComplex(complex) => {
                 file.complex_points
-                    .insert(&file.points, index, complex.clone(), Locality::Todo);
+                    .insert(&file.points, index, complex, Locality::Todo);
                 return Self::new_saved(file, index, file.points.get(index));
             }
             InferredState::UnsavedSpecific(mut specific) => {
@@ -532,18 +532,14 @@ impl<'db: 'slf, 'slf> Inferred {
                             definition, overload, class,
                         )));
                     }
-                    Some(ComplexPoint::TypeInstance(t)) => {
-                        if let DbType::Callable(c) = t {
-                            return Some(FunctionOrOverload::Callable(c.clone()));
-                        }
+                    Some(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
+                        return Some(FunctionOrOverload::Callable(c.clone()));
                     }
                     _ => (),
                 }
             }
-            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(t)) => {
-                if let DbType::Callable(c) = t {
-                    return Some(FunctionOrOverload::Callable(c.clone()));
-                }
+            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
+                return Some(FunctionOrOverload::Callable(c.clone()));
             }
             _ => (),
         }
@@ -627,21 +623,19 @@ impl<'db: 'slf, 'slf> Inferred {
                                     create_signature_without_self(i_s, func, instance, &first_type)
                                 {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(t)))
+                                } else if let Some(from) = from {
+                                    let t = IssueType::InvalidSelfArgument {
+                                        argument_type: instance.class.format_short(i_s.db),
+                                        function_name: Box::from(func.name()),
+                                        callable: func.as_type(i_s).format_short(i_s.db),
+                                    };
+                                    from.add_typing_issue(i_s, t);
+                                    Some(Self::new_any())
                                 } else {
-                                    if let Some(from) = from {
-                                        let t = IssueType::InvalidSelfArgument {
-                                            argument_type: instance.class.format_short(i_s.db),
-                                            function_name: Box::from(func.name()),
-                                            callable: func.as_type(i_s).format_short(i_s.db),
-                                        };
-                                        from.add_typing_issue(i_s, t);
-                                        Some(Self::new_any())
-                                    } else {
-                                        // In case there is no node ref, we do not want to just
-                                        // ignore the type error and we basically say that the
-                                        // attribute does not even exist.
-                                        None
-                                    }
+                                    // In case there is no node ref, we do not want to just
+                                    // ignore the type error and we basically say that the
+                                    // attribute does not even exist.
+                                    None
                                 }
                             } else {
                                 Some(Self::new_bound_method(
@@ -1152,7 +1146,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => {
                         match node_ref.file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(overload) => {
-                                return OverloadedFunction::new(node_ref, &overload, None).execute(
+                                return OverloadedFunction::new(node_ref, overload, None).execute(
                                     i_s,
                                     args,
                                     result_context,
@@ -1587,8 +1581,8 @@ enum BoundMethodInstance {
     Complex(ComplexPoint),
 }
 
-pub fn add_attribute_error<'db>(
-    i_s: &InferenceState<'db, '_>,
+pub fn add_attribute_error(
+    i_s: &InferenceState,
     node_ref: NodeRef,
     full_type: &Type,
     t: &Type,

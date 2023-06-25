@@ -101,7 +101,7 @@ impl Tree {
 pub fn maybe_type_ignore(text: &str) -> Option<Option<&str>> {
     if let Some(after) = text.strip_prefix("ignore") {
         let after = after.trim_matches(' ');
-        if after == "" {
+        if after.is_empty() {
             return Some(None);
         }
         if let Some(after) = after.strip_prefix('[') {
@@ -2182,10 +2182,7 @@ impl<'db> AssertStmt<'db> {
     pub fn unpack(&self) -> (Expression<'db>, Option<Expression<'db>>) {
         let mut iterator = self.node.iter_children().skip(1);
         let first = iterator.next().unwrap();
-        (
-            Expression::new(first),
-            iterator.skip(1).next().map(Expression::new),
-        )
+        (Expression::new(first), iterator.nth(1).map(Expression::new))
     }
 }
 
@@ -2195,10 +2192,7 @@ impl<'db> RaiseStmt<'db> {
         let Some(first) = iterator.next() else {
             return None
         };
-        Some((
-            Expression::new(first),
-            iterator.skip(1).next().map(Expression::new),
-        ))
+        Some((Expression::new(first), iterator.nth(1).map(Expression::new)))
     }
 }
 

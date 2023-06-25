@@ -582,7 +582,7 @@ fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
         DbType::Class(link, generics) => check(link, &generics),
         DbType::Type(t) => match t.as_ref() {
             DbType::Class(link, generics) => check(*link, generics),
-            _ => return false,
+            _ => false,
         },
         DbType::Any => true,
         DbType::Never => todo!(),

@@ -1208,8 +1208,8 @@ fn search_lookahead_end(dfa_state: &DFAState) -> &DFAState {
     let mut already_checked = HashSet::new();
     already_checked.insert(dfa_state.list_index);
 
-    fn search<'a, 'b>(
-        already_checked: &'a mut HashSet<DFAStateId>,
+    fn search<'b>(
+        already_checked: &mut HashSet<DFAStateId>,
         dfa_state: &'b DFAState,
     ) -> &'b DFAState {
         for transition in &dfa_state.transitions {
@@ -1260,10 +1260,7 @@ fn split_tokens(
     let mut generated_dfa_ids: Vec<DFAStateId> = vec![];
     let end_dfa = automaton.nfa_to_dfa(vec![automaton.nfa_end_id], automaton.nfa_end_id, None);
 
-    let mut as_list: Vec<_> = transition_to_nfas
-        .iter()
-        .map(|(_, nfa_ids)| nfa_ids.clone())
-        .collect();
+    let mut as_list: Vec<_> = transition_to_nfas.values().cloned().collect();
     while !as_list.is_empty() {
         as_list.sort_by_key(|nfa_ids| nfa_ids[0].0);
         let mut new_dfa_nfa_ids = vec![];

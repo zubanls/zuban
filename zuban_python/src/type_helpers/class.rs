@@ -604,26 +604,27 @@ impl<'db: 'a, 'a> Class<'a> {
             );
         }
         let missing_members_empty = missing_members.is_empty();
-        if !missing_members_empty {
-            if protocol_member_count > 1 && missing_members.len() <= MAX_MISSING_MEMBERS {
-                let tmp;
-                notes.push(
-                    format!(
-                        r#""{}" is missing following "{}" protocol member:"#,
-                        match other.maybe_class(i_s.db) {
-                            Some(cls) => cls.name(),
-                            None => {
-                                tmp = other.format_short(i_s.db);
-                                tmp.as_ref()
-                            }
-                        },
-                        self.name()
-                    )
-                    .into(),
-                );
-                for name in missing_members {
-                    notes.push(format!("    {name}").into());
-                }
+        if !missing_members_empty
+            && protocol_member_count > 1
+            && missing_members.len() <= MAX_MISSING_MEMBERS
+        {
+            let tmp;
+            notes.push(
+                format!(
+                    r#""{}" is missing following "{}" protocol member:"#,
+                    match other.maybe_class(i_s.db) {
+                        Some(cls) => cls.name(),
+                        None => {
+                            tmp = other.format_short(i_s.db);
+                            tmp.as_ref()
+                        }
+                    },
+                    self.name()
+                )
+                .into(),
+            );
+            for name in missing_members {
+                notes.push(format!("    {name}").into());
             }
         }
         if notes.is_empty() && missing_members_empty {
@@ -826,10 +827,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             if matches!(
                                 dec.decoratee(),
                                 Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
-                            ) =>
-                        {
-                            ()
-                        }
+                            ) => {}
                         _ => NodeRef::new(file, stmt.index())
                             .add_typing_issue(i_s, IssueType::InvalidStmtInNamedTuple),
                     }
