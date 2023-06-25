@@ -2617,6 +2617,8 @@ testNamespacePackageWithMypyPath
 testNamespacePackagePickFirstOnMypyPath
 testNamespacePackageInsideClassicPackage
 testNamespacePackagePickFirstOnMypyPathCase
+testTypedPkgNoSitePkgsIgnoredImports
+testTypedPkg_config_nositepackages
 
 # Mypy plugins
 testChangedPluginsInvalidateCache
@@ -2760,6 +2762,23 @@ testPackageWithoutInitFile
 testDeletePackage4
 testDeletePackage5
 testDeletePackage6
+
+# namespace multiple packages
+testTypedPkgSimple
+testTypedPkg_args_nositepackages
+testTypedPkgStubs
+testStubPrecedence
+testTypedPkgSimpleEgg
+testTypedPkgSimpleEditable
+testTypedPkgSimpleEditableEgg
+testTypedPkgNamespaceImportFrom
+testTypedPkgNamespaceImportAs
+testTypedPkgNamespaceRegImport
+testTypedPkgNamespaceRegFromImportTwice
+testNamespacePkgWStubs
+testNamespacePkgWStubsWithNamespacePackagesFlag
+testTypedPkgNamespaceRegFromImportTwiceMissing
+testTypedPkgNamespaceRegFromImportTwiceMissing2
 
 # --enable-error-code redundant-expr
 # "If condition is always false"
