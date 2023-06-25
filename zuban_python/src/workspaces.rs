@@ -26,10 +26,9 @@ impl Workspaces {
 
     pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
         for workspace in &mut self.0 {
-            if path.starts_with(workspace.root.name.as_ref()) {
+            if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
                 if let DirOrFile::Directory(d) = &mut workspace.root.type_ {
-                    let (dir, name, invalidations) =
-                        d.ensure_dir_and_return_name(vfs, &path[workspace.root.name.len()..]);
+                    let (dir, name, invalidations) = d.ensure_dir_and_return_name(vfs, p);
                     let mut result = DirContent::ensure_file(&dir, vfs, name);
                     result.invalidations.extend(invalidations);
                     return result;
@@ -43,9 +42,8 @@ impl Workspaces {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
             if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
-                if path.starts_with(workspace.root.name.as_ref()) {
-                    let path = &path[workspace.root.name.len()..];
-                    workspace.root.unload_file(vfs, path);
+                if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
+                    workspace.root.unload_file(vfs, p);
                 }
             }
         }
@@ -53,9 +51,8 @@ impl Workspaces {
 
     pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
         for workspace in &mut self.0 {
-            if path.starts_with(workspace.root.name.as_ref()) {
-                let path = &path[workspace.root.name.len()..];
-                return workspace.root.delete_directory(vfs, path);
+            if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
+                return workspace.root.delete_directory(vfs, p);
             }
         }
         Err(format!("Workspace of path {path} cannot be found"))
@@ -68,9 +65,8 @@ impl Workspaces {
 
     pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         for workspace in &self.0 {
-            if path.starts_with(&workspace.root.name.as_ref()) {
-                let path = &path[workspace.root.name.len()..];
-                if let Some(content) = workspace.root.find_dir_content(vfs, path) {
+            if let Some(p) = path.strip_prefix(&workspace.root.name.as_ref()) {
+                if let Some(content) = workspace.root.find_dir_content(vfs, p) {
                     return Some(content);
                 }
             }
