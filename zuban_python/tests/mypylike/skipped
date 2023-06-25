@@ -1,5 +1,4 @@
 # Next up
-testIncrementalWithDecorators
 
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
@@ -688,6 +687,7 @@ testIterableProtocolOnMetaclass
 testListComprehensionSpecialScoping
 
 # lambda
+testIncrementalWithDecorators
 testLambdaWithArguments
 testLambdaDefaultTypeErrors
 testLambdaDefaultContext
