@@ -97,6 +97,7 @@ pub(crate) enum IssueType {
     CannotInstantiateProtocol { name: Box<str> },
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
+    MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -476,6 +477,10 @@ impl<'db> Diagnostic<'db> {
             IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(
                 "Incompatible types in assignment (expression has type \"{got}\", \
                  base class \"{base_class}\" defined the type as \"{expected}\")"
+            ),
+            MultipleInheritanceIncompatibility { name, class1, class2 } => format!(
+                "Definition of \"{name}\" in base class \"{class1}\" is incompatible \
+                 with definition in base class \"{class2}\""
             ),
 
             BaseExceptionExpected =>

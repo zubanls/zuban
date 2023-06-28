@@ -259,6 +259,17 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    pub fn bases(&self, db: &'a Database) -> impl Iterator<Item = TypeOrClass<'a>> {
+        let generics = self.generics;
+        self.use_cached_class_infos(db)
+            .mro
+            .iter()
+            .filter_map(move |b| {
+                b.is_direct_base
+                    .then(|| apply_generics_to_base_class(db, &b.type_, generics))
+            })
+    }
+
     fn calculate_class_infos(&self, i_s: &InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         // Calculate all type vars beforehand
@@ -1007,33 +1018,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),
-                match &c.type_ {
-                    DbType::Class(c, generics) => {
-                        let n = NodeRef::from_link(self.db, *c);
-                        TypeOrClass::Class(match generics {
-                            ClassGenerics::List(g) => Class::from_position(n, self.generics, Some(g)),
-                            ClassGenerics::None => Class::from_position(n, self.generics, None),
-                            ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, generics), None)"),
-                            ClassGenerics::SlicesWithClassTypes(link) => todo!(),
-                            ClassGenerics::NotDefinedYet => unreachable!(),
-                        })
-                    }
-                    // TODO this is wrong, because it does not use generics.
-                    _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {
-                        TypeOrClass::Type(Type::new(&c.type_))
-                    }
-                    _ => TypeOrClass::Type(Type::owned(
-                        Type::new(&c.type_).replace_type_var_likes_and_self(
-                            self.db,
-                            &mut |usage| {
-                                self.generics
-                                    .nth_usage(self.db, &usage)
-                                    .into_generic_item(self.db)
-                            },
-                            &mut || todo!(),
-                        ),
-                    )),
-                },
+                apply_generics_to_base_class(self.db, &c.type_, self.generics),
             ));
             self.mro_index += 1;
             r
@@ -1046,6 +1031,34 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
         } else {
             None
         }
+    }
+}
+
+fn apply_generics_to_base_class<'a>(
+    db: &'a Database,
+    t: &'a DbType,
+    generics: Generics<'a>,
+) -> TypeOrClass<'a> {
+    match &t {
+        DbType::Class(c, t_generics) => {
+            let n = NodeRef::from_link(db, *c);
+            TypeOrClass::Class(match t_generics {
+                ClassGenerics::List(g) => Class::from_position(n, generics, Some(g)),
+                ClassGenerics::None => Class::from_position(n, generics, None),
+                ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, t_generics), None)"),
+                ClassGenerics::SlicesWithClassTypes(link) => todo!(),
+                ClassGenerics::NotDefinedYet => unreachable!(),
+            })
+        }
+        // TODO this is wrong, because it does not use generics.
+        _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
+            TypeOrClass::Type(Type::new(&t))
+        }
+        _ => TypeOrClass::Type(Type::owned(Type::new(&t).replace_type_var_likes_and_self(
+            db,
+            &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
+            &mut || todo!(),
+        ))),
     }
 }
 

@@ -214,6 +214,11 @@ impl<'db> Inference<'db, '_, '_> {
             .inference(&self.i_s.with_diagnostic_class_context(&c))
             .calc_block_diagnostics(block, Some(c), None);
 
+        if c.bases(self.i_s.db).count() > 1 {
+            for base in c.bases(self.i_s.db) {
+                debug!("TODO multiple inheritance checking");
+            }
+        }
         let instance = Instance::new(c, None);
         for table in [
             &c.class_storage.class_symbol_table,
