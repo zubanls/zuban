@@ -2889,6 +2889,7 @@ pub enum ClassType {
 #[derive(Debug, Clone, PartialEq)]
 pub struct BaseClass {
     pub type_: DbType,
+    pub is_direct_base: bool,
 }
 
 #[derive(Debug, Clone, PartialEq)]

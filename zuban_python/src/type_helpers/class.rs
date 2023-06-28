@@ -372,7 +372,10 @@ impl<'db: 'a, 'a> Class<'a> {
                                     incomplete_mro = true;
                                     continue;
                                 }
-                                mro.push(BaseClass { type_: t });
+                                mro.push(BaseClass {
+                                    is_direct_base: true,
+                                    type_: t,
+                                });
                                 let class = match &mro.last().unwrap().type_ {
                                     DbType::Class(link, generics) => {
                                         Some(Class::from_db_type(i_s.db, *link, generics))
@@ -412,6 +415,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         }
                                         for base in cached_class_infos.mro.iter() {
                                             mro.push(BaseClass {
+                                                is_direct_base: false,
                                                 type_: Type::new(&base.type_)
                                                     .replace_type_var_likes(db, &mut |t| {
                                                         mro[mro_index].type_.expect_class_generics()
@@ -433,6 +437,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
                                 mro.push(BaseClass {
                                     type_: DbType::NamedTuple(named_tuple.clone()),
+                                    is_direct_base: true,
                                 });
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
@@ -441,6 +446,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
                                 mro.push(BaseClass {
                                     type_: DbType::NamedTuple(named_tuple.clone()),
+                                    is_direct_base: true,
                                 });
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
