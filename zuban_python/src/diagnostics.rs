@@ -161,6 +161,7 @@ impl IssueType {
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
+            IncompatibleAssignmentInSubclass { .. } => "override",
             _ => "misc",
         })
     }
