@@ -18,7 +18,7 @@ use crate::database::{
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
 use crate::file::{
-    BaseClass, PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
+    CalculatedBaseClass, PythonFile, TypeComputation, TypeComputationOrigin, TypeVarCallbackReturn,
     TypeVarFinder,
 };
 use crate::getitem::SliceType;
@@ -287,7 +287,10 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(expr);
                         match meta_base {
-                            BaseClass::DbType(DbType::Class(link, ClassGenerics::None)) => {
+                            CalculatedBaseClass::DbType(DbType::Class(
+                                link,
+                                ClassGenerics::None,
+                            )) => {
                                 let c = Class::from_db_type(i_s.db, link, &ClassGenerics::None);
                                 if c.incomplete_mro(i_s.db)
                                     || c.in_mro(
@@ -311,7 +314,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     );
                                 }
                             }
-                            BaseClass::Unknown => metaclass = MetaclassState::Unknown,
+                            CalculatedBaseClass::Unknown => metaclass = MetaclassState::Unknown,
                             _ => {
                                 /*
                                 node_ref.add_typing_issue(
@@ -356,7 +359,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(n.expression());
                         match base {
-                            BaseClass::DbType(t) => {
+                            CalculatedBaseClass::DbType(t) => {
                                 let mro_index = mro.len();
                                 if let Some(name) = mro.iter().find_map(|base| {
                                     Type::new(base).check_duplicate_base_class(db, &Type::new(&t))
@@ -420,27 +423,27 @@ impl<'db: 'a, 'a> Class<'a> {
                                 }
                             }
                             // TODO this might overwrite other class types
-                            BaseClass::Protocol => {
+                            CalculatedBaseClass::Protocol => {
                                 class_type = ClassType::Protocol;
                                 metaclass = MetaclassState::Some(db.python_state.abc_meta_link())
                             }
-                            BaseClass::NamedTuple(named_tuple) => {
+                            CalculatedBaseClass::NamedTuple(named_tuple) => {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
                                 mro.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
-                            BaseClass::NewNamedTuple => {
+                            CalculatedBaseClass::NewNamedTuple => {
                                 let named_tuple = self
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
                                 mro.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
-                            BaseClass::Generic => (),
-                            BaseClass::Unknown => {
+                            CalculatedBaseClass::Generic => (),
+                            CalculatedBaseClass::Unknown => {
                                 incomplete_mro = true;
                             }
-                            BaseClass::Invalid => {
+                            CalculatedBaseClass::Invalid => {
                                 NodeRef::new(self.node_ref.file, n.index())
                                     .add_typing_issue(i_s, IssueType::InvalidBaseClass);
                                 incomplete_mro = true;

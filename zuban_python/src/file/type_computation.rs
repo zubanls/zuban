@@ -230,7 +230,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
 }
 
 #[derive(Debug)]
-pub enum BaseClass {
+pub enum CalculatedBaseClass {
     DbType(DbType),
     Protocol,
     NamedTuple(Rc<NamedTuple>),
@@ -420,43 +420,53 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
     }
 
-    pub fn compute_base_class(&mut self, expr: Expression) -> BaseClass {
+    pub fn compute_base_class(&mut self, expr: Expression) -> CalculatedBaseClass {
         let calculated = self.compute_type(expr);
         match calculated {
-            TypeContent::SpecialType(SpecialType::GenericWithGenerics) => BaseClass::Generic,
-            TypeContent::SpecialType(SpecialType::Protocol) => BaseClass::Protocol,
-            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => BaseClass::Protocol,
-            TypeContent::SpecialType(SpecialType::TypingNamedTuple) => BaseClass::NewNamedTuple,
-            TypeContent::SpecialType(SpecialType::Type) => BaseClass::DbType(DbType::Class(
-                self.inference.i_s.db.python_state.type_node_ref().as_link(),
-                ClassGenerics::None,
-            )),
+            TypeContent::SpecialType(SpecialType::GenericWithGenerics) => {
+                CalculatedBaseClass::Generic
+            }
+            TypeContent::SpecialType(SpecialType::Protocol) => CalculatedBaseClass::Protocol,
+            TypeContent::SpecialType(SpecialType::ProtocolWithGenerics) => {
+                CalculatedBaseClass::Protocol
+            }
+            TypeContent::SpecialType(SpecialType::TypingNamedTuple) => {
+                CalculatedBaseClass::NewNamedTuple
+            }
+            TypeContent::SpecialType(SpecialType::Type) => {
+                CalculatedBaseClass::DbType(DbType::Class(
+                    self.inference.i_s.db.python_state.type_node_ref().as_link(),
+                    ClassGenerics::None,
+                ))
+            }
             TypeContent::InvalidVariable(InvalidVariableType::ParamNameAsBaseClassAny(_)) => {
                 // TODO what is this case?
-                BaseClass::Unknown
+                CalculatedBaseClass::Unknown
             }
-            TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => BaseClass::Invalid,
+            TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => {
+                CalculatedBaseClass::Invalid
+            }
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
                 match db_type {
                     DbType::Class(_, _) | DbType::Tuple(_) | DbType::Callable(_) => {
-                        BaseClass::DbType(db_type)
+                        CalculatedBaseClass::DbType(db_type)
                     }
                     DbType::NamedTuple(nt) => {
                         // TODO performance: this is already an Rc and should not need to be
                         // duplicated.
-                        BaseClass::NamedTuple(nt)
+                        CalculatedBaseClass::NamedTuple(nt)
                     }
-                    DbType::Any => BaseClass::Unknown,
+                    DbType::Any => CalculatedBaseClass::Unknown,
                     DbType::NewType(_) => {
                         self.add_typing_issue_for_index(
                             expr.index(),
                             IssueType::CannotSubclassNewType,
                         );
-                        BaseClass::Unknown
+                        CalculatedBaseClass::Unknown
                     }
-                    _ => BaseClass::Invalid,
+                    _ => CalculatedBaseClass::Invalid,
                 }
             }
         }
