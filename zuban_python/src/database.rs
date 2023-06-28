@@ -2887,8 +2887,13 @@ pub enum ClassType {
 }
 
 #[derive(Debug, Clone, PartialEq)]
+pub struct BaseClass {
+    pub type_: DbType,
+}
+
+#[derive(Debug, Clone, PartialEq)]
 pub struct ClassInfos {
-    pub mro: Box<[DbType]>, // Does never include `object`
+    pub mro: Box<[BaseClass]>, // Does never include `object`
     pub metaclass: MetaclassState,
     pub class_type: ClassType,
     pub incomplete_mro: bool,

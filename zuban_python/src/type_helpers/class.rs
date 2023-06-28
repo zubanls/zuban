@@ -10,10 +10,10 @@ use super::function::OverloadResult;
 use super::{Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos, ClassStorage,
-    ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality, MetaclassState,
-    MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
+    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
+    MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
+    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -264,7 +264,7 @@ impl<'db: 'a, 'a> Class<'a> {
         // Calculate all type vars beforehand
         let type_vars = self.type_vars(i_s);
 
-        let mut mro = vec![];
+        let mut mro: Vec<BaseClass> = vec![];
         let mut incomplete_mro = false;
         let mut class_type = ClassType::Normal;
         let mut metaclass = MetaclassState::None;
@@ -362,7 +362,8 @@ impl<'db: 'a, 'a> Class<'a> {
                             CalculatedBaseClass::DbType(t) => {
                                 let mro_index = mro.len();
                                 if let Some(name) = mro.iter().find_map(|base| {
-                                    Type::new(base).check_duplicate_base_class(db, &Type::new(&t))
+                                    Type::new(&base.type_)
+                                        .check_duplicate_base_class(db, &Type::new(&t))
                                 }) {
                                     NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
                                         i_s,
@@ -371,8 +372,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                     incomplete_mro = true;
                                     continue;
                                 }
-                                mro.push(t);
-                                let class = match &mro.last().unwrap() {
+                                mro.push(BaseClass { type_: t });
+                                let class = match &mro.last().unwrap().type_ {
                                     DbType::Class(link, generics) => {
                                         Some(Class::from_db_type(i_s.db, *link, generics))
                                     }
@@ -410,14 +411,14 @@ impl<'db: 'a, 'a> Class<'a> {
                                             }
                                         }
                                         for base in cached_class_infos.mro.iter() {
-                                            mro.push(Type::new(base).replace_type_var_likes(
-                                                db,
-                                                &mut |t| {
-                                                    mro[mro_index].expect_class_generics()
-                                                        [t.index()]
-                                                    .clone()
-                                                },
-                                            ));
+                                            mro.push(BaseClass {
+                                                type_: Type::new(&base.type_)
+                                                    .replace_type_var_likes(db, &mut |t| {
+                                                        mro[mro_index].type_.expect_class_generics()
+                                                            [t.index()]
+                                                        .clone()
+                                                    }),
+                                            });
                                         }
                                     }
                                 }
@@ -430,13 +431,17 @@ impl<'db: 'a, 'a> Class<'a> {
                             CalculatedBaseClass::NamedTuple(named_tuple) => {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
-                                mro.push(DbType::NamedTuple(named_tuple.clone()));
+                                mro.push(BaseClass {
+                                    type_: DbType::NamedTuple(named_tuple.clone()),
+                                });
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::NewNamedTuple => {
                                 let named_tuple = self
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
-                                mro.push(DbType::NamedTuple(named_tuple.clone()));
+                                mro.push(BaseClass {
+                                    type_: DbType::NamedTuple(named_tuple.clone()),
+                                });
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::Generic => (),
@@ -754,7 +759,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
         let class_infos = self.use_cached_class_infos(db);
         // TODO this might be an issue with generics.
-        class_infos.mro.contains(t)
+        class_infos.mro.iter().any(|b| &b.type_ == t)
     }
 
     pub fn is_object_class(&self, db: &Database) -> Match {
@@ -941,7 +946,7 @@ pub struct MroIterator<'db, 'a> {
     db: &'db Database,
     generics: Generics<'a>,
     class: Option<TypeOrClass<'a>>,
-    iterator: std::slice::Iter<'a, DbType>,
+    iterator: std::slice::Iter<'a, BaseClass>,
     mro_index: u32,
     returned_object: bool,
 }
@@ -951,7 +956,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
         db: &'db Database,
         class: TypeOrClass<'a>,
         generics: Generics<'a>,
-        iterator: std::slice::Iter<'a, DbType>,
+        iterator: std::slice::Iter<'a, BaseClass>,
         returned_object: bool,
     ) -> Self {
         Self {
@@ -996,7 +1001,7 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
         } else if let Some(c) = self.iterator.next() {
             let r = Some((
                 MroIndex(self.mro_index),
-                match c {
+                match &c.type_ {
                     DbType::Class(c, generics) => {
                         let n = NodeRef::from_link(self.db, *c);
                         TypeOrClass::Class(match generics {
@@ -1009,10 +1014,10 @@ impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {
                     }
                     // TODO this is wrong, because it does not use generics.
                     _ if matches!(self.generics, Generics::None | Generics::NotDefinedYet) => {
-                        TypeOrClass::Type(Type::new(c))
+                        TypeOrClass::Type(Type::new(&c.type_))
                     }
                     _ => TypeOrClass::Type(Type::owned(
-                        Type::new(c).replace_type_var_likes_and_self(
+                        Type::new(&c.type_).replace_type_var_likes_and_self(
                             self.db,
                             &mut |usage| {
                                 self.generics
