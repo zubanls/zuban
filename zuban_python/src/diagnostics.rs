@@ -96,6 +96,8 @@ pub(crate) enum IssueType {
     AmbigousClassVariableAccess,
     CannotInstantiateProtocol { name: Box<str> },
 
+    IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
+
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
     UnsupportedClassScopedImport,
@@ -468,6 +470,11 @@ impl<'db> Diagnostic<'db> {
                 "Access to generic instance variables via class is ambiguous".to_string(),
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
+            ),
+
+            IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(
+                "Incompatible types in assignment (expression has type \"{got}\", \
+                 base class \"{base_class}\" defined the type as \"{expected}\")"
             ),
 
             BaseExceptionExpected =>

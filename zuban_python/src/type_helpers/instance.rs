@@ -175,13 +175,14 @@ impl<'a> Instance<'a> {
         IteratorContent::Any
     }
 
-    pub fn lookup(
+    pub fn lookup_and_maybe_ignore_super_count(
         &self,
-        i_s: &InferenceState,
+        i_s: &'a InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
-    ) -> LookupResult {
-        for (mro_index, class) in self.class.mro(i_s.db) {
+        super_count: usize,
+    ) -> (TypeOrClass, LookupResult) {
+        for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
             // First check class infos
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let TypeOrClass::Class(c) = class {
@@ -203,29 +204,42 @@ impl<'a> Instance<'a> {
                 Some(LookupResult::None) => (),
                 // TODO we should add tests for this. This is currently only None if the self
                 // annotation does not match and the node_ref is empty.
-                None => return LookupResult::None,
-                Some(x) => return x,
+                None => return (class, LookupResult::None),
+                Some(x) => return (class, x),
             }
             // Then check self attributes
             if let TypeOrClass::Class(c) = class {
                 if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
                     let i_s = i_s.with_class_context(&c);
-                    return LookupResult::GotoName(
-                        PointLink::new(c.node_ref.file.file_index(), self_symbol),
-                        c.node_ref
-                            .file
-                            .inference(&i_s)
-                            .infer_name_by_index(self_symbol)
-                            .resolve_class_type_vars(&i_s, &self.class),
+                    return (
+                        class,
+                        LookupResult::GotoName(
+                            PointLink::new(c.node_ref.file.file_index(), self_symbol),
+                            c.node_ref
+                                .file
+                                .inference(&i_s)
+                                .infer_name_by_index(self_symbol)
+                                .resolve_class_type_vars(&i_s, &self.class),
+                        ),
                     );
                 }
             }
         }
         if self.class.incomplete_mro(i_s.db) {
-            LookupResult::any()
+            (TypeOrClass::Class(self.class), LookupResult::any())
         } else {
-            LookupResult::None
+            (TypeOrClass::Class(self.class), LookupResult::None)
         }
+    }
+
+    pub fn lookup(
+        &self,
+        i_s: &InferenceState,
+        node_ref: Option<NodeRef>,
+        name: &str,
+    ) -> LookupResult {
+        self.lookup_and_maybe_ignore_super_count(i_s, node_ref, name, 0)
+            .1
     }
 
     pub fn get_item(

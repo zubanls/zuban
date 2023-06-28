@@ -974,6 +974,13 @@ impl<'a> TypeOrClass<'a> {
             Self::Type(t) => t.lookup_symbol(i_s, name),
         }
     }
+
+    pub fn name(&self) -> &str {
+        match self {
+            Self::Class(class) => class.name(),
+            Self::Type(t) => todo!(),
+        }
+    }
 }
 
 impl<'db: 'a, 'a> Iterator for MroIterator<'db, 'a> {

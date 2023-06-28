@@ -286,8 +286,12 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn resolve_class_type_vars(self, i_s: &InferenceState<'db, '_>, class: &Class) -> Self {
-        if matches!(class.generics, Generics::Self_ { .. }) {
-            return self;
+        if let Some(i_s_cls) = i_s.current_class() {
+            if matches!(i_s_cls.generics, Generics::Self_ { .. })
+                && i_s_cls.type_var_remap.is_none()
+            {
+                return self;
+            }
         }
         if let InferredState::Saved(link) = self.state {
             let definition = NodeRef::from_link(i_s.db, link);

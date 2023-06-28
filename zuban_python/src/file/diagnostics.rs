@@ -15,7 +15,7 @@ use crate::matching::{
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function};
+use crate::type_helpers::{Class, Function, Instance};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -212,7 +212,40 @@ impl<'db> Inference<'db, '_, '_> {
         );
         self.file
             .inference(&self.i_s.with_diagnostic_class_context(&c))
-            .calc_block_diagnostics(block, Some(c), None)
+            .calc_block_diagnostics(block, Some(c), None);
+
+        let instance = Instance::new(c, None);
+        for table in [
+            &c.class_storage.class_symbol_table,
+            &c.class_storage.self_symbol_table,
+        ] {
+            for (name, index) in unsafe { table.iter_on_finished_table() } {
+                if name == "__init__" || name == "__new__" {
+                    debug!("TODO there is no liskov checking for __new__ and __init__");
+                    continue;
+                }
+                let (defined_in, result) =
+                    instance.lookup_and_maybe_ignore_super_count(self.i_s, None, name, 1);
+                if let Some(inf) = result.into_maybe_inferred() {
+                    let expected = inf.as_type(self.i_s);
+                    let got = instance.lookup(self.i_s, None, name).into_inferred();
+                    let got = got.as_type(self.i_s);
+                    if !expected
+                        .is_same_type(self.i_s, &mut Matcher::new_class_matcher(self.i_s, c), &got)
+                        .bool()
+                    {
+                        NodeRef::new(self.file, *index).add_typing_issue(
+                            self.i_s,
+                            IssueType::IncompatibleAssignmentInSubclass {
+                                got: got.format_short(self.i_s.db),
+                                expected: expected.format_short(self.i_s.db),
+                                base_class: defined_in.name().into(),
+                            },
+                        );
+                    }
+                }
+            }
+        }
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
