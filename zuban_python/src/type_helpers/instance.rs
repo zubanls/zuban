@@ -242,6 +242,16 @@ impl<'a> Instance<'a> {
             .1
     }
 
+    pub fn run_on_symbols(&self, mut callable: impl FnMut(&str)) {
+        for table in [
+            &self.class.class_storage.class_symbol_table,
+            &self.class.class_storage.self_symbol_table,
+        ] {
+            for (name, _) in unsafe { table.iter_on_finished_table() } {
+                callable(name)
+            }
+        }
+    }
     pub fn get_item(
         &self,
         i_s: &InferenceState,

@@ -15,7 +15,7 @@ use crate::matching::{
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function, Instance};
+use crate::type_helpers::{Class, Function, Instance, TypeOrClass};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -214,9 +214,50 @@ impl<'db> Inference<'db, '_, '_> {
             .inference(&self.i_s.with_diagnostic_class_context(&c))
             .calc_block_diagnostics(block, Some(c), None);
 
-        if c.bases(self.i_s.db).count() > 1 {
-            for base in c.bases(self.i_s.db) {
-                debug!("TODO multiple inheritance checking");
+        for (i, base1) in c.bases(self.i_s.db).enumerate() {
+            let instance1 = match base1 {
+                TypeOrClass::Class(c) => Instance::new(c, None),
+                TypeOrClass::Type(t) => {
+                    debug!("TODO check complex base types");
+                    continue;
+                }
+            };
+            for base2 in c.bases(self.i_s.db).skip(i + 1) {
+                let instance2 = match base2 {
+                    TypeOrClass::Class(c) => Instance::new(c, None),
+                    TypeOrClass::Type(t) => todo!(),
+                };
+                instance1.run_on_symbols(|name| {
+                    if name == "__init__" || name == "__new__" {
+                        debug!("TODO there is no liskov checking for __new__ and __init__");
+                        return;
+                    }
+                    if let Some(inf) = instance2.lookup(self.i_s, None, name).into_maybe_inferred()
+                    {
+                        let second = inf.as_type(self.i_s);
+                        let first = instance1.lookup(self.i_s, None, name).into_inferred();
+                        let first = first.as_type(self.i_s);
+                        if !first
+                            .is_sub_type_of(
+                                self.i_s,
+                                &mut Matcher::new_class_matcher(self.i_s, c),
+                                &second,
+                            )
+                            .bool()
+                        {
+                            let index =
+                                c.node().arguments().unwrap().iter().nth(i).unwrap().index();
+                            NodeRef::new(self.file, index).add_typing_issue(
+                                self.i_s,
+                                IssueType::MultipleInheritanceIncompatibility {
+                                    name: name.into(),
+                                    class1: base1.name().into(),
+                                    class2: base2.name().into(),
+                                },
+                            );
+                        }
+                    }
+                });
             }
         }
         let instance = Instance::new(c, None);

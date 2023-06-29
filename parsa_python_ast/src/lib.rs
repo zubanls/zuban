@@ -2710,6 +2710,17 @@ pub enum Argument<'db> {
     DoubleStarred(DoubleStarredExpression<'db>),
 }
 
+impl<'db> Argument<'db> {
+    pub fn index(&self) -> NodeIndex {
+        match self {
+            Self::Positional(n) => n.index(),
+            Self::Keyword(k) => k.index(),
+            Self::Starred(s) => s.index(),
+            Self::DoubleStarred(d) => d.index(),
+        }
+    }
+}
+
 impl<'db> Kwarg<'db> {
     pub fn unpack(&self) -> (Name<'db>, Expression<'db>) {
         // kwarg: Name "=" expression
