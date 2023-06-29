@@ -233,6 +233,11 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                     if let Some(inf) = instance2.lookup(self.i_s, None, name).into_maybe_inferred()
                     {
+                        if c.lookup_symbol(self.i_s, name).into_maybe_inferred().is_some() {
+                            // These checks happen elsewhere.
+                            debug!("TODO this check might omit the check between current class and c2?");
+                            return
+                        }
                         let second = inf.as_type(self.i_s);
                         let first = instance1.lookup(self.i_s, None, name).into_inferred();
                         let first = first.as_type(self.i_s);

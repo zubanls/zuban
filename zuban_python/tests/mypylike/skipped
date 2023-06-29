@@ -1347,11 +1347,10 @@ testVariableTypeVarList
 testInWithInvalidArgs
 
 # "Definition of "f" in base class "A" is incompatible with definition in base class "B""
+# Defintition mismatch in classes lower than first classes
 testGenericMultipleOverrideReplace
-# method checking
+# method checks (variances) seem to be wrong
 testMultipleInheritanceAndDifferentButCompatibleSignatures
-# also definition in base class
-testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2
 # with decorator
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 # other
