@@ -1266,8 +1266,6 @@ testIgnoreInvalidOverride
 testOperatorMethodOverrideWithIdenticalOverloadedType
 testChainedCompResTyp
 testCustomEqDecoratedStrictEquality
-testSlots
-testSlotsCompatibility
 # __ prefix
 testIgnorePrivateAttributesTypeCheck
 testIgnorePrivateMethodsTypeCheck
