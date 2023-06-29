@@ -270,8 +270,10 @@ impl<'db> Inference<'db, '_, '_> {
             &c.class_storage.self_symbol_table,
         ] {
             for (name, index) in unsafe { table.iter_on_finished_table() } {
-                if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name) {
-                    debug!("TODO there is no liskov checking for __new__ and __init__");
+                if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name)
+                    || name.starts_with("__") && !name.ends_with("__")
+                // filter private names
+                {
                     continue;
                 }
                 let (defined_in, result) =
