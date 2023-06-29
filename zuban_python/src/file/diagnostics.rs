@@ -228,11 +228,7 @@ impl<'db> Inference<'db, '_, '_> {
                     TypeOrClass::Type(t) => todo!(),
                 };
                 instance1.run_on_symbols(|name| {
-                    if name == "__init__"
-                        || name == "__new__"
-                        || name.starts_with("__") && !name.ends_with("__")
-                    {
-                        debug!("TODO there is no liskov checking for __new__ and __init__");
+                    if name.starts_with("__") {
                         return;
                     }
                     if let Some(inf) = instance2.lookup(self.i_s, None, name).into_maybe_inferred()

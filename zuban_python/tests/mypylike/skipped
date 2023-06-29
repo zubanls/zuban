@@ -1347,9 +1347,6 @@ testInWithInvalidArgs
 testGenericMultipleOverrideReplace
 # method checking
 testMultipleInheritanceAndDifferentButCompatibleSignatures
-# magic methods
-testMultipleInheritance_MethodDefinitionsCompatibleWithOverride
-testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
 # also definition in base class
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2
 # any base class
