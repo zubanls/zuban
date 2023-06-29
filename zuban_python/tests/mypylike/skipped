@@ -1,5 +1,8 @@
 # Next up
 
+# Any base class now matches everything for union simplification
+testUnionSimplificationSpecialCases2
+
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
 
@@ -1349,9 +1352,6 @@ testGenericMultipleOverrideReplace
 testMultipleInheritanceAndDifferentButCompatibleSignatures
 # also definition in base class
 testMultipleInheritance_NestedVariableOverriddenWithIncompatibleType2
-# any base class
-testDoNotFailIfBothNestedClassesInheritFromAny
-testDoNotFailIfOneOfNestedClassesIsOuterInheritedFromAny
 # with decorator
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 # other

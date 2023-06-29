@@ -443,6 +443,13 @@ impl<'a> Type<'a> {
             })
             .or(|| {
                 if let Some(class2) = value_type.maybe_class(i_s.db) {
+                    if class2.incomplete_mro(i_s.db) && self.maybe_class(i_s.db).is_some() {
+                        debug!(
+                            "Match of class, because base class is incomplete: {}",
+                            class2.format_short(i_s.db)
+                        );
+                        return Match::new_true();
+                    }
                     if !matcher.ignore_promotions() {
                         return self.check_promotion(i_s, matcher, class2.node_ref);
                     }
