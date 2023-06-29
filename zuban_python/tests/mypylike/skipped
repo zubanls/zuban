@@ -1353,8 +1353,6 @@ testGenericMultipleOverrideReplace
 testMultipleInheritanceAndDifferentButCompatibleSignatures
 # with decorator
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
-# other
-testMultipleInheritance_MethodsReturningSelfCompatible
 
 # "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverride
