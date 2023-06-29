@@ -1347,8 +1347,6 @@ testInWithInvalidArgs
 testGenericMultipleOverrideReplace
 # method checking
 testMultipleInheritanceAndDifferentButCompatibleSignatures
-# Private (double underscored) names
-testIgnorePrivateMethodsTypeCheck2
 # magic methods
 testMultipleInheritance_MethodDefinitionsCompatibleWithOverride
 testMultipleInheritance_MethodDefinitionsCompatibleNoOverride
