@@ -950,14 +950,17 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         let mut t = self.param.type_();
         if t == ParamKind::PositionalOrKeyword
             && db.python_state.project.mypy_compatible
-            && self.param.name_definition().as_code().starts_with("__")
-            && !self.param.name_definition().as_code().ends_with("__")
+            && is_private(self.param.name_definition().as_code())
         {
             // Mypy treats __ params as positional only
             t = ParamKind::PositionalOnly
         }
         t
     }
+}
+
+pub fn is_private(name: &str) -> bool {
+    name.starts_with("__") && !name.ends_with("__")
 }
 
 pub struct InferrableParamIterator<'db, 'a> {

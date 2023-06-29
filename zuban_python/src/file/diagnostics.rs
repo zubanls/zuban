@@ -15,7 +15,7 @@ use crate::matching::{
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function, Instance, TypeOrClass};
+use crate::type_helpers::{is_private, Class, Function, Instance, TypeOrClass};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -271,8 +271,7 @@ impl<'db> Inference<'db, '_, '_> {
         ] {
             for (name, index) in unsafe { table.iter_on_finished_table() } {
                 if ["__init__", "__new__", "__init_subclass__", "__slots__"].contains(&name)
-                    || name.starts_with("__") && !name.ends_with("__")
-                // filter private names
+                    || is_private(name)
                 {
                     continue;
                 }
