@@ -270,7 +270,7 @@ impl<'db> Inference<'db, '_, '_> {
             &c.class_storage.self_symbol_table,
         ] {
             for (name, index) in unsafe { table.iter_on_finished_table() } {
-                if name == "__init__" || name == "__new__" {
+                if name == "__init__" || name == "__new__" || name == "__init_subclass__" {
                     debug!("TODO there is no liskov checking for __new__ and __init__");
                     continue;
                 }
