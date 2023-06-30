@@ -1590,7 +1590,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     params: impl Iterator<Item = P>,
     return_type: Option<Type>,
 ) -> Box<str> {
-    let format_type = |t: Type| {
+    let format_type = |t: &Type| {
         if let Some(func_class) = class {
             let t = t.replace_type_var_likes_and_self(
                 i_s.db,
@@ -1614,16 +1614,18 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     };
 
     let mut previous_kind = None;
+    let mut had_kwargs_separator = false;
     let mut args = params
         .enumerate()
         .map(|(i, p)| {
-            let annotation_str = match p.specific(i_s.db) {
+            let specific = p.specific(i_s.db);
+            let annotation_str = match &specific {
                 WrappedParamSpecific::PositionalOnly(t)
                 | WrappedParamSpecific::PositionalOrKeyword(t)
                 | WrappedParamSpecific::KeywordOnly(t)
                 | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
                 | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                    t.map(format_type)
+                    t.as_ref().map(format_type)
                 }
                 WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
                 WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
@@ -1655,6 +1657,11 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 }
                 out
             };
+            if matches!(&specific, WrappedParamSpecific::KeywordOnly(_)) && !had_kwargs_separator {
+                had_kwargs_separator = true;
+                out = format!("*, {out}");
+            }
+            had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
             if p.has_default() {
                 out += " = ...";
             }
@@ -1696,7 +1703,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
         )
     });
     let type_var_str = type_var_string.as_deref().unwrap_or("");
-    let result_string = return_type.map(format_type);
+    let result_string = return_type.as_ref().map(format_type);
 
     if let Some(result_string) = result_string {
         format!("def {type_var_str}{name}({args}) -> {result_string}").into()

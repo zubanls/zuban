@@ -1132,7 +1132,6 @@ testEmptyBodyWithFinal
 testErrorCodeInstantiateAbstract
 
 # Signature of "???" incompatible with supertype "???"
-testKeywordOnlyArgumentOrderInsensitivity
 testOverrideGenericMethodInNonGenericClassGeneralize
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
