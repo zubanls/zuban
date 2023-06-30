@@ -97,6 +97,7 @@ pub(crate) enum IssueType {
     CannotInstantiateProtocol { name: Box<str> },
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
+    SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
 
     BaseExceptionExpected,
@@ -162,7 +163,9 @@ impl IssueType {
             NewTypeMustBeSubclassable { .. } => "valid-newtype",
             OverloadImplementationNeeded { .. } => "no-overload-impl",
             OverloadMismatch { .. } => "call-overload",
-            IncompatibleAssignmentInSubclass { .. } => "override",
+            IncompatibleAssignmentInSubclass { .. } | SignatureIncompatibleWithSupertype { .. } => {
+                "override"
+            }
             _ => "misc",
         })
     }
@@ -478,6 +481,12 @@ impl<'db> Diagnostic<'db> {
                 "Incompatible types in assignment (expression has type \"{got}\", \
                  base class \"{base_class}\" defined the type as \"{expected}\")"
             ),
+            SignatureIncompatibleWithSupertype {base_class, name, notes} => {
+                for note in notes.iter() {
+                    additional_notes.push(note.to_string());
+                }
+                format!(r#"Signature of "{name}" incompatible with supertype "{base_class}""#)
+            }
             MultipleInheritanceIncompatibility { name, class1, class2 } => format!(
                 "Definition of \"{name}\" in base class \"{class1}\" is incompatible \
                  with definition in base class \"{class2}\""

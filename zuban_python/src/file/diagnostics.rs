@@ -15,7 +15,9 @@ use crate::matching::{
     ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{is_private, Class, Function, Instance, TypeOrClass};
+use crate::type_helpers::{
+    format_pretty_callable, is_private, Class, Function, Instance, TypeOrClass,
+};
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
@@ -287,12 +289,29 @@ impl<'db> Inference<'db, '_, '_> {
                     {
                         NodeRef::new(self.file, *index).add_typing_issue(
                             self.i_s,
-                            IssueType::IncompatibleAssignmentInSubclass {
-                                got: got.format_short(self.i_s.db),
-                                expected: expected.format_short(self.i_s.db),
-                                base_class: defined_in.name().into(),
+                            match got.as_ref() {
+                                DbType::Callable(c) => {
+                                    let mut notes = vec![];
+                                    notes.push("    Superclass:".into());
+                                    notes.push("    Subclass:".into());
+                                    notes.push(
+                                        format!("        {}", format_pretty_callable(self.i_s, c))
+                                            .into(),
+                                    );
+
+                                    IssueType::SignatureIncompatibleWithSupertype {
+                                        name: name.into(),
+                                        base_class: defined_in.name().into(),
+                                        notes: notes.into(),
+                                    }
+                                }
+                                _ => IssueType::IncompatibleAssignmentInSubclass {
+                                    got: got.format_short(self.i_s.db),
+                                    expected: expected.format_short(self.i_s.db),
+                                    base_class: defined_in.name().into(),
+                                },
                             },
-                        );
+                        )
                     }
                 }
             }
