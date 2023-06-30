@@ -686,7 +686,19 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
     ) -> (LookupResult, Option<Class>) {
-        for (mro_index, c) in self.mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db)) {
+        self.lookup_and_class_and_maybe_ignore_self(i_s, name, false)
+    }
+
+    pub fn lookup_and_class_and_maybe_ignore_self(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+        ignore_self: bool,
+    ) -> (LookupResult, Option<Class>) {
+        for (mro_index, c) in self
+            .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
+            .skip(ignore_self as usize)
+        {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let TypeOrClass::Class(c) = c {

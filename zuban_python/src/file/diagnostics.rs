@@ -11,8 +11,8 @@ use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    matches_simple_params, overload_has_overlapping_params, Generics, Match, Matcher, Param,
-    ResultContext, Type,
+    matches_simple_params, overload_has_overlapping_params, Generics, LookupResult, Match, Matcher,
+    Param, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -290,13 +290,37 @@ impl<'db> Inference<'db, '_, '_> {
                         NodeRef::new(self.file, *index).add_typing_issue(
                             self.i_s,
                             match got.as_ref() {
-                                DbType::Callable(c) => {
+                                DbType::Callable(_) => {
                                     let mut notes = vec![];
                                     notes.push("    Superclass:".into());
+                                    notes.push(
+                                        format!(
+                                            "        {}",
+                                            try_pretty_format(
+                                                &self.i_s.with_class_context(&match defined_in {
+                                                    TypeOrClass::Class(c) => c,
+                                                    TypeOrClass::Type(_) => c,
+                                                }),
+                                                expected,
+                                                c.lookup_and_class_and_maybe_ignore_self(
+                                                    self.i_s, name, true
+                                                )
+                                                .0
+                                            )
+                                        )
+                                        .into(),
+                                    );
                                     notes.push("    Subclass:".into());
                                     notes.push(
-                                        format!("        {}", format_pretty_callable(self.i_s, c))
-                                            .into(),
+                                        format!(
+                                            "        {}",
+                                            try_pretty_format(
+                                                &self.i_s.with_class_context(&c),
+                                                got,
+                                                c.lookup_symbol(self.i_s, name)
+                                            )
+                                        )
+                                        .into(),
                                     );
 
                                     IssueType::SignatureIncompatibleWithSupertype {
@@ -718,4 +742,14 @@ fn is_valid_except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> 
             .all(|t| is_valid_except_type(i_s, t, allow_tuple)),
         _ => false,
     }
+}
+
+fn try_pretty_format(i_s: &InferenceState, t: Type, class_lookup_result: LookupResult) -> Box<str> {
+    if let Some(inf) = class_lookup_result.into_maybe_inferred() {
+        match inf.as_type(i_s).as_ref() {
+            DbType::Callable(c) => return format_pretty_callable(i_s, c),
+            _ => (),
+        }
+    }
+    t.format_short(i_s.db)
 }
