@@ -1219,9 +1219,6 @@ testListObject
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
 testOverloadedInitSupertype
-testIncompatibleOverrideFromCachedModuleIncremental
-testInstanceMethodOverwriteError
-testClassMethodOverwriteError
 testOverrideWithDecorator
 testOverrideDecorated
 testOverrideWithDecoratorReturningInstance
@@ -2548,6 +2545,8 @@ testIgnoreTooManyTypeArguments
 testErrorCodeMultiLineBinaryOperatorOperand
 testSerializeIgnoredMissingBaseClass
 testSerializeIgnoredInvalidBaseClass
+# type ignore on statement, end of line
+testIncompatibleOverrideFromCachedModuleIncremental
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3
