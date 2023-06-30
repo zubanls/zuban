@@ -838,7 +838,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => {
-                                    todo!()
+                                    debug!("TODO callable decorated class descriptor")
                                 }
                                 DbType::Class(link, generics) if apply_descriptor => {
                                     let inst = use_instance_with_ref(

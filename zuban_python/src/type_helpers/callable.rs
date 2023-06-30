@@ -40,6 +40,7 @@ impl<'a> Callable<'a> {
 }
 
 pub fn format_pretty_callable(i_s: &InferenceState, callable: &CallableContent) -> Box<str> {
+    let name = callable.name.map(|s| s.as_str(i_s.db)).unwrap_or("");
     match &callable.params {
         CallableParams::Simple(params) => {
             let first_param = params
@@ -51,13 +52,17 @@ pub fn format_pretty_callable(i_s: &InferenceState, callable: &CallableContent) 
                 i_s,
                 None,
                 callable.class_name.map(|c| c.as_str(i_s.db)) == first_param.as_deref(),
-                callable.name.map(|s| s.as_str(i_s.db)).unwrap_or(""),
+                name,
                 callable.type_vars.as_ref(),
                 params.iter(),
                 Some(Type::new(&callable.result_type)),
             )
         }
         CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any => todo!(),
+        CallableParams::Any => format!(
+            "def {name}(*Any, **Any) -> {}",
+            callable.result_type.format_short(i_s.db)
+        )
+        .into(),
     }
 }
