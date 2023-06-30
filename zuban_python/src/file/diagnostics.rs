@@ -289,51 +289,50 @@ impl<'db> Inference<'db, '_, '_> {
                     {
                         NodeRef::new(self.file, *index).add_typing_issue(
                             self.i_s,
-                            match got.as_ref() {
-                                DbType::Callable(_) => {
-                                    let mut notes = vec![];
-                                    notes.push("     Superclass:".into());
-                                    notes.push(
-                                        format!(
-                                            "         {}",
-                                            try_pretty_format(
-                                                &self.i_s.with_class_context(&match defined_in {
-                                                    TypeOrClass::Class(c) => c,
-                                                    TypeOrClass::Type(_) => c,
-                                                }),
-                                                expected,
-                                                c.lookup_and_class_and_maybe_ignore_self(
-                                                    self.i_s, name, true
-                                                )
-                                                .0
+                            if got.is_func_or_overload() || expected.is_func_or_overload() {
+                                let mut notes = vec![];
+                                notes.push("     Superclass:".into());
+                                notes.push(
+                                    format!(
+                                        "         {}",
+                                        try_pretty_format(
+                                            &self.i_s.with_class_context(&match defined_in {
+                                                TypeOrClass::Class(c) => c,
+                                                TypeOrClass::Type(_) => c,
+                                            }),
+                                            expected,
+                                            c.lookup_and_class_and_maybe_ignore_self(
+                                                self.i_s, name, true
                                             )
+                                            .0
                                         )
-                                        .into(),
-                                    );
-                                    notes.push("     Subclass:".into());
-                                    notes.push(
-                                        format!(
-                                            "         {}",
-                                            try_pretty_format(
-                                                &self.i_s.with_class_context(&c),
-                                                got,
-                                                c.lookup(self.i_s, None, name)
-                                            )
+                                    )
+                                    .into(),
+                                );
+                                notes.push("     Subclass:".into());
+                                notes.push(
+                                    format!(
+                                        "         {}",
+                                        try_pretty_format(
+                                            &self.i_s.with_class_context(&c),
+                                            got,
+                                            c.lookup(self.i_s, None, name)
                                         )
-                                        .into(),
-                                    );
+                                    )
+                                    .into(),
+                                );
 
-                                    IssueType::SignatureIncompatibleWithSupertype {
-                                        name: name.into(),
-                                        base_class: defined_in.name().into(),
-                                        notes: notes.into(),
-                                    }
+                                IssueType::SignatureIncompatibleWithSupertype {
+                                    name: name.into(),
+                                    base_class: defined_in.name().into(),
+                                    notes: notes.into(),
                                 }
-                                _ => IssueType::IncompatibleAssignmentInSubclass {
+                            } else {
+                                IssueType::IncompatibleAssignmentInSubclass {
                                     got: got.format_short(self.i_s.db),
                                     expected: expected.format_short(self.i_s.db),
                                     base_class: defined_in.name().into(),
-                                },
+                                }
                             },
                         )
                     }

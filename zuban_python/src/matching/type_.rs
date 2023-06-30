@@ -108,6 +108,13 @@ impl<'a> Type<'a> {
         }
     }
 
+    pub fn is_func_or_overload(&self) -> bool {
+        matches!(
+            self.as_ref(),
+            DbType::Callable(_) | DbType::FunctionOverload(_)
+        )
+    }
+
     pub fn maybe_callable(&self, i_s: &InferenceState) -> Option<Rc<CallableContent>> {
         match self.as_ref() {
             DbType::Callable(c) => Some(c.clone()),
