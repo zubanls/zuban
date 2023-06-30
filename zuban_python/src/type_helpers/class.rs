@@ -85,7 +85,8 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<ClassGenerics> {
-        let (init, class) = self.lookup_and_class(i_s, "__init__");
+        let (init, class) =
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
         let Some(inf) = init.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
                 args.as_node_ref().add_typing_issue(i_s, IssueType::CannotInstantiateProtocol {
@@ -681,15 +682,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn lookup_and_class(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        name: &str,
-    ) -> (LookupResult, Option<Class>) {
-        self.lookup_and_class_and_maybe_ignore_self(i_s, name, false)
-    }
-
-    pub fn lookup_and_class_and_maybe_ignore_self(
+    fn lookup_and_class_and_maybe_ignore_self_internal(
         &self,
         i_s: &InferenceState<'db, '_>,
         name: &str,
@@ -711,6 +704,15 @@ impl<'db: 'a, 'a> Class<'a> {
         (LookupResult::None, None)
     }
 
+    pub fn lookup_and_class_and_maybe_ignore_self(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        name: &str,
+        ignore_self: bool,
+    ) -> (LookupResult, Option<Class>) {
+        self.lookup_with_or_without_descriptors_internal(i_s, None, name, false, ignore_self)
+    }
+
     pub fn lookup_with_or_without_descriptors(
         &self,
         i_s: &InferenceState,
@@ -718,7 +720,26 @@ impl<'db: 'a, 'a> Class<'a> {
         name: &str,
         use_descriptors: bool,
     ) -> LookupResult {
-        let (lookup_result, in_class) = self.lookup_and_class(i_s, name);
+        self.lookup_with_or_without_descriptors_internal(
+            i_s,
+            node_ref,
+            name,
+            use_descriptors,
+            false,
+        )
+        .0
+    }
+
+    pub fn lookup_with_or_without_descriptors_internal(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        node_ref: Option<NodeRef>,
+        name: &str,
+        use_descriptors: bool,
+        ignore_self: bool,
+    ) -> (LookupResult, Option<Class>) {
+        let (lookup_result, in_class) =
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
         let result = lookup_result.and_then(|inf| {
             if let Some(in_class) = in_class {
                 let i_s = i_s.with_class_context(&in_class);
@@ -742,12 +763,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     MetaclassState::None => LookupResult::None,
                 };
                 if matches!(result, LookupResult::None) && self.incomplete_mro(i_s.db) {
-                    LookupResult::any()
+                    (LookupResult::any(), in_class)
                 } else {
-                    result
+                    (result, in_class)
                 }
             }
-            Some(x) => x,
+            Some(x) => (x, in_class),
         }
     }
 

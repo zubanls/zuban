@@ -292,10 +292,10 @@ impl<'db> Inference<'db, '_, '_> {
                             match got.as_ref() {
                                 DbType::Callable(_) => {
                                     let mut notes = vec![];
-                                    notes.push("    Superclass:".into());
+                                    notes.push("     Superclass:".into());
                                     notes.push(
                                         format!(
-                                            "        {}",
+                                            "         {}",
                                             try_pretty_format(
                                                 &self.i_s.with_class_context(&match defined_in {
                                                     TypeOrClass::Class(c) => c,
@@ -310,14 +310,14 @@ impl<'db> Inference<'db, '_, '_> {
                                         )
                                         .into(),
                                     );
-                                    notes.push("    Subclass:".into());
+                                    notes.push("     Subclass:".into());
                                     notes.push(
                                         format!(
-                                            "        {}",
+                                            "         {}",
                                             try_pretty_format(
                                                 &self.i_s.with_class_context(&c),
                                                 got,
-                                                c.lookup_symbol(self.i_s, name)
+                                                c.lookup(self.i_s, None, name)
                                             )
                                         )
                                         .into(),
