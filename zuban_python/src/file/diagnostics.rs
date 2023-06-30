@@ -292,7 +292,8 @@ impl<'db> Inference<'db, '_, '_> {
                             if got.is_func_or_overload() || expected.is_func_or_overload() {
                                 let mut notes = vec![];
                                 notes.push("     Superclass:".into());
-                                notes.push(try_pretty_format(
+                                try_pretty_format(
+                                    &mut notes,
                                     &self.i_s.with_class_context(&match defined_in {
                                         TypeOrClass::Class(c) => c,
                                         TypeOrClass::Type(_) => c,
@@ -300,13 +301,14 @@ impl<'db> Inference<'db, '_, '_> {
                                     expected,
                                     c.lookup_and_class_and_maybe_ignore_self(self.i_s, name, true)
                                         .0,
-                                ));
+                                );
                                 notes.push("     Subclass:".into());
-                                notes.push(try_pretty_format(
+                                try_pretty_format(
+                                    &mut notes,
                                     &self.i_s.with_class_context(&c),
                                     got,
                                     c.lookup(self.i_s, None, name),
-                                ));
+                                );
 
                                 IssueType::SignatureIncompatibleWithSupertype {
                                     name: name.into(),
@@ -729,15 +731,28 @@ fn is_valid_except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> 
     }
 }
 
-fn try_pretty_format(i_s: &InferenceState, t: Type, class_lookup_result: LookupResult) -> Box<str> {
+fn try_pretty_format(
+    notes: &mut Vec<Box<str>>,
+    i_s: &InferenceState,
+    t: Type,
+    class_lookup_result: LookupResult,
+) {
     let prefix = "         ";
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
         match inf.as_type(i_s).as_ref() {
             DbType::Callable(c) => {
-                return format!("{prefix}{}", format_pretty_callable(i_s, c)).into()
+                notes.push(format!("{prefix}{}", format_pretty_callable(i_s, c)).into());
+                return;
+            }
+            DbType::FunctionOverload(overloads) => {
+                for c in overloads.iter() {
+                    notes.push(format!("{prefix}@overload").into());
+                    notes.push(format!("{prefix}{}", format_pretty_callable(i_s, c)).into());
+                }
+                return;
             }
             _ => (),
         }
     }
-    format!("{prefix}{}", t.format_short(i_s.db)).into()
+    notes.push(format!("{prefix}{}", t.format_short(i_s.db)).into())
 }

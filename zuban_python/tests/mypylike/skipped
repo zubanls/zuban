@@ -120,6 +120,8 @@ testReverseOperatorMethodForwardIsAny3
 
 # Overload union math for __init__
 overload_union_math_on_class_init_constrained
+# Overload __init__ formatting shows a return type
+testOverloadedInitSupertype
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -1220,7 +1222,6 @@ testListObject
 # Signature of "???" incompatible with supertype "???"
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
-testOverloadedInitSupertype
 testOverloadedOperatorMethodOverrideWithSwitchedItemOrder
 testVariableMethod
 testSelfTypeOverrideCompatibilityTypeVar
