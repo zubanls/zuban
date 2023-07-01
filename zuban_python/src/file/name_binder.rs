@@ -920,7 +920,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 if let Some(decorators) = decorators {
                     // TODO this filtering is wrong and should be deleted
                     if decorators.iter().any(|d| {
-                        ["abstractmethod", "classmethod", "property"]
+                        ["abstractmethod", "property"]
                             .iter()
                             .any(|s| d.as_code().contains(s))
                     }) {
@@ -944,11 +944,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     || self.type_ != NameBinderType::Function
                     || return_annotation.is_some()
                 {
-                    match function_type {
-                        FunctionType::Function => Specific::Function,
-                        FunctionType::ClassMethod => Specific::ClassMethod,
-                        FunctionType::Property => Specific::Property,
-                    }
+                    Specific::Function
                 } else {
                     Specific::Closure
                 },

@@ -270,6 +270,13 @@ impl<'db: 'slf, 'slf> Inferred {
         None
     }
 
+    pub fn maybe_saved_link(&self) -> Option<PointLink> {
+        match self.state {
+            InferredState::Saved(definition) => Some(definition),
+            _ => None,
+        }
+    }
+
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
         if let InferredState::Saved(definition) = self.state {
             let definition = NodeRef::from_link(i_s.db, definition);
@@ -1523,7 +1530,6 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                     implicit: true,
                 })),
                 Specific::Function => Function::new(definition, None).as_type(i_s),
-                Specific::ClassMethod => todo!(),
                 Specific::Property => todo!(),
                 Specific::AnnotationOrTypeCommentClassInstance
                 | Specific::AnnotationOrTypeCommentWithTypeVars => definition

@@ -343,12 +343,17 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             unreachable!();
         };
         let mut new_inf = Inferred::from_saved_node_ref(self.node_ref);
+        let mut had_modifying_decorator = false;
         for decorator in decorated.decorators().iter_reverse() {
             let i = self
                 .node_ref
                 .file
                 .inference(i_s)
                 .infer_named_expression(decorator.named_expression());
+            if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
+                continue;
+            }
+            had_modifying_decorator = true;
             // TODO check if it's an function without a return annotation and
             // abort in that case.
             new_inf = i.execute(
@@ -358,6 +363,9 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                     NodeRef::new(self.node_ref.file, decorator.index()),
                 ),
             );
+        }
+        if !had_modifying_decorator {
+            return new_inf;
         }
         if let DbType::Callable(callable_content) = new_inf.as_type(i_s).as_ref() {
             let mut callable_content = (**callable_content).clone();
