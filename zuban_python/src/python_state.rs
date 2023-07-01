@@ -520,9 +520,6 @@ fn typing_changes(
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
-    set_typing_inference(builtins, "classmethod", Specific::BuiltinsClassmethod);
-    //set_typing_inference(builtins, "staticmethod", Specific::BuiltinsStaticmethod);
-    set_typing_inference(builtins, "property", Specific::BuiltinsProperty);
 
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
@@ -563,9 +560,6 @@ fn typing_changes(
 fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
     if ![
-        "classmethod",
-        "staticmethod",
-        "property",
         "cast",
         "type",
         "tuple",

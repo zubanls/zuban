@@ -397,9 +397,6 @@ pub enum Specific {
     AnnotationOrTypeCommentWithTypeVars,
     SimpleGeneric, // primary: primary '[' slices ']'
 
-    BuiltinsClassmethod,
-    BuiltinsStaticmethod,
-    BuiltinsProperty,
     TypingProtocol,
     TypingGeneric,
     TypingTuple,
