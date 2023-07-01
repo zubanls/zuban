@@ -2373,14 +2373,7 @@ impl<'a> Type<'a> {
                 _ => DbType::Any,
             },
             DbType::Callable(content1) => match other.into_db_type() {
-                DbType::Callable(content2) => DbType::Callable(Rc::new(CallableContent {
-                    name: content1.name.or(content2.name),
-                    class_name: content1.class_name.or(content2.class_name),
-                    defined_at: content1.defined_at,
-                    type_vars: None,
-                    params: CallableParams::Any,
-                    result_type: DbType::Any,
-                })),
+                DbType::Callable(content2) => DbType::Callable(Rc::new(CallableContent::new_any())),
                 _ => DbType::Any,
             },
             _ => DbType::Any,

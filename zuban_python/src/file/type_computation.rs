@@ -625,14 +625,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 a.as_db_type_and_set_type_vars_any(self.inference.i_s.db)
             }
             TypeContent::SpecialType(m) => match m {
-                SpecialType::Callable => DbType::Callable(Rc::new(CallableContent {
-                    name: None,
-                    class_name: None,
-                    defined_at: node_ref.as_link(),
-                    type_vars: None,
-                    params: CallableParams::Any,
-                    result_type: DbType::Any,
-                })),
+                SpecialType::Callable => DbType::Callable(Rc::new(CallableContent::new_any())),
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
@@ -1595,14 +1588,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
         } else {
             self.add_typing_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);
-            CallableContent {
-                name: None,
-                class_name: None,
-                defined_at,
-                type_vars: None,
-                params: CallableParams::Any,
-                result_type: DbType::Any,
-            }
+            CallableContent::new_any()
         };
         self.current_callable = old;
         TypeContent::DbType(DbType::Callable(Rc::new(content)))
