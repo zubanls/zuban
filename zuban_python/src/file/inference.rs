@@ -1877,7 +1877,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         }
                     }
-                    Specific::LazyInferredFunction => {
+                    Specific::DecoratedFunction => {
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);
                         let FunctionOrLambda::Function(func) =
                             name_def.function_or_lambda_ancestor().unwrap() else

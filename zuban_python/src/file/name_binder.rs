@@ -928,7 +928,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     } else {
                         self.add_point_definition(
                             name_def,
-                            Specific::LazyInferredFunction,
+                            Specific::DecoratedFunction,
                             in_base_scope,
                         )
                     }

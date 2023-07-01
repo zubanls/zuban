@@ -331,7 +331,7 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
-        if name_def_node_ref.point().maybe_specific() == Some(Specific::LazyInferredFunction) {
+        if name_def_node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
             self.check_point_cache(f.name_definition().index());
         }
         let mut is_overload_member = false;
