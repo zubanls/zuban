@@ -76,6 +76,9 @@ pub struct PythonState {
     builtins_bytearray_index: NodeIndex,
     builtins_memoryview_index: NodeIndex,
     builtins_slice_index: NodeIndex,
+    builtins_classmethod_index: NodeIndex,
+    builtins_staticmethod_index: NodeIndex,
+    builtins_property_index: NodeIndex,
     typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
@@ -124,6 +127,9 @@ impl PythonState {
             builtins_bytearray_index: 0,
             builtins_memoryview_index: 0,
             builtins_slice_index: 0,
+            builtins_classmethod_index: 0,
+            builtins_staticmethod_index: 0,
+            builtins_property_index: 0,
             types_module_type_index: 0,
             types_none_type_index: 0,
             typeshed_supports_keys_and_get_item_index: 0,
@@ -247,6 +253,9 @@ impl PythonState {
         cache_index!(builtins_bytearray_index, db, builtins, "bytearray");
         cache_index!(builtins_memoryview_index, db, builtins, "memoryview");
         cache_index!(builtins_slice_index, db, builtins, "slice");
+        cache_index!(builtins_classmethod_index, db, builtins, "classmethod");
+        cache_index!(builtins_staticmethod_index, db, builtins, "staticmethod");
+        cache_index!(builtins_property_index, db, builtins, "property");
         cache_index!(
             typeshed_supports_keys_and_get_item_index,
             db,
@@ -362,6 +371,9 @@ impl PythonState {
     builtins_attribute_node_ref!(bytearray_node_ref, builtins_bytearray_index);
     builtins_attribute_node_ref!(memoryview_node_ref, builtins_memoryview_index);
     builtins_attribute_node_ref!(slice_node_ref, builtins_slice_index);
+    builtins_attribute_node_ref!(classmethod_node_ref, builtins_classmethod_index);
+    builtins_attribute_node_ref!(staticmethod_node_ref, builtins_staticmethod_index);
+    builtins_attribute_node_ref!(property_node_ref, builtins_property_index);
     builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
