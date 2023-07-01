@@ -1491,6 +1491,7 @@ impl<'a> Type<'a> {
             name: c.name,
             class_name: c.class_name,
             defined_at: c.defined_at,
+            kind: c.kind,
             type_vars: type_vars.map(TypeVarLikes::from_vec),
             params,
             result_type,
@@ -1511,6 +1512,7 @@ impl<'a> Type<'a> {
             name: c.name,
             class_name: c.class_name,
             defined_at: c.defined_at,
+            kind: c.kind,
             type_vars: (!type_vars.is_empty()).then_some(TypeVarLikes::new(type_vars)),
             params: match &c.params {
                 CallableParams::Simple(params) => CallableParams::Simple(

@@ -11,9 +11,10 @@ use super::{Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
-    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionType,
+    GenericsList, Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope,
+    Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -866,11 +867,15 @@ impl<'db: 'a, 'a> Class<'a> {
         let name = self.name_string_slice();
         Rc::new(NamedTuple::new(
             name,
-            self.initialize_class_members(i_s, name),
+            self.initialize_named_tuple_class_members(i_s, name),
         ))
     }
 
-    fn initialize_class_members(&self, i_s: &InferenceState, name: StringSlice) -> CallableContent {
+    fn initialize_named_tuple_class_members(
+        &self,
+        i_s: &InferenceState,
+        name: StringSlice,
+    ) -> CallableContent {
         let mut vec = vec![];
         let file = self.node_ref.file;
         match self.node().block().unpack() {
@@ -897,6 +902,7 @@ impl<'db: 'a, 'a> Class<'a> {
             name: Some(name),
             class_name: None,
             defined_at: self.node_ref.as_link(),
+            kind: FunctionType::Function,
             type_vars: self.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::None,

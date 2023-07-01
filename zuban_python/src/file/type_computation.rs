@@ -7,12 +7,12 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, GenericItem, GenericsList, Literal,
-    LiteralKind, Locality, NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage,
-    ParamSpecific, Point, PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific,
-    StringSlice, TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
-    UnionType,
+    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, FunctionType, GenericItem,
+    GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace, NewType,
+    ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
+    Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1582,6 +1582,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 name: None,
                 class_name: None,
                 defined_at,
+                kind: FunctionType::Function,
                 type_vars: None,
                 params,
                 result_type,
@@ -3192,6 +3193,7 @@ pub fn new_typing_named_tuple(
             name: Some(name),
             class_name: None,
             defined_at: args_node_ref.as_link(),
+            kind: FunctionType::Function,
             type_vars: (!type_var_likes.is_empty()).then_some(type_var_likes),
             params: CallableParams::Simple(Rc::from(params)),
             result_type: DbType::None,
@@ -3267,6 +3269,7 @@ pub fn new_collections_named_tuple(
         name: Some(name),
         class_name: None,
         defined_at: args_node_ref.as_link(),
+        kind: FunctionType::Function,
         type_vars: None,
         params: CallableParams::Simple(Rc::from(params)),
         result_type: DbType::None,

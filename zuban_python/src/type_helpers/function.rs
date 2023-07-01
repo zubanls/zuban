@@ -11,10 +11,10 @@ use super::{Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, Overload, ParamSpecUsage,
-    ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, FunctionType, GenericItem, GenericsList, Locality, Overload,
+    ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -604,6 +604,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             name: Some(self.name_string_slice()),
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
+            kind: FunctionType::Function,
             params,
             type_vars: None,
             result_type,
