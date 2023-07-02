@@ -1,11 +1,12 @@
 use parsa_python_ast::{NodeIndex, PrimaryContent, PythonString, SliceType as ASTSliceType};
+use std::cell::RefCell;
 use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, ClassGenerics, ComplexPoint, Database, DbType, FileIndex, GenericItem,
-    GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink,
-    PointType, Specific, TypeVarLike,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
+    FunctionType, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex,
+    NewType, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -653,28 +654,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ))
                             };
                         }
-                        Specific::ClassMethod => {
-                            let result =
-                                infer_class_method(i_s, instance.class, func_class, *definition);
-                            if result.is_none() {
-                                if let Some(from) = from {
-                                    let func = prepare_func(i_s, *definition, func_class);
-                                    let t = IssueType::InvalidClassMethodFirstArgument {
-                                        argument_type: instance
-                                            .class
-                                            .as_type(i_s)
-                                            .format_short(i_s.db),
-                                        function_name: Box::from(func.name()),
-                                        callable: func.as_type(i_s).format_short(i_s.db),
-                                    };
-                                    from.add_typing_issue(i_s, t);
-                                    return Some(Self::new_any());
-                                } else {
-                                    todo!()
-                                }
-                            }
-                            return result;
-                        }
                         Specific::Property => todo!(),
                         _ => (),
                     },
@@ -721,12 +700,46 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => {
-                                    // TODO should use create_signature_without_self!
-                                    return Some(Self::new_bound_method(
-                                        get_inferred(i_s).as_bound_method_instance(i_s),
-                                        mro_index,
-                                        *definition,
-                                    ));
+                                    match c.kind {
+                                        FunctionType::Function => {
+                                            // TODO should use create_signature_without_self!
+                                            return Some(Self::new_bound_method(
+                                                get_inferred(i_s).as_bound_method_instance(i_s),
+                                                mro_index,
+                                                *definition,
+                                            ));
+                                        }
+                                        FunctionType::Property => {
+                                            todo!()
+                                        }
+                                        FunctionType::ClassMethod => {
+                                            let result = infer_class_method(
+                                                i_s,
+                                                instance.class,
+                                                func_class,
+                                                c,
+                                            );
+                                            if result.is_none() {
+                                                if let Some(from) = from {
+                                                    let func =
+                                                        prepare_func(i_s, *definition, func_class);
+                                                    let t = IssueType::InvalidClassMethodFirstArgument {
+                                                        argument_type: instance
+                                                            .class
+                                                            .as_type(i_s)
+                                                            .format_short(i_s.db),
+                                                        function_name: Box::from(func.name()),
+                                                        callable: func.as_type(i_s).format_short(i_s.db),
+                                                    };
+                                                    from.add_typing_issue(i_s, t);
+                                                    return Some(Self::new_any());
+                                                } else {
+                                                    todo!()
+                                                }
+                                            }
+                                            return result;
+                                        }
+                                    }
                                 }
                                 DbType::Class(link, generics) => {
                                     let inst = use_instance_with_ref(
@@ -799,25 +812,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 func.as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass);
                             return Some(Inferred::from_type(t));
                         }
-                        Specific::ClassMethod => {
-                            let result =
-                                infer_class_method(i_s, *class, attribute_class, *definition);
-                            if result.is_none() {
-                                if let Some(from) = from {
-                                    let func = prepare_func(i_s, *definition, attribute_class);
-                                    let t = IssueType::InvalidSelfArgument {
-                                        argument_type: class.as_type(i_s).format_short(i_s.db),
-                                        function_name: Box::from(func.name()),
-                                        callable: func.as_type(i_s).format_short(i_s.db),
-                                    };
-                                    from.add_typing_issue(i_s, t);
-                                    return Some(Self::new_any());
-                                } else {
-                                    todo!()
-                                }
-                            }
-                            return result;
-                        }
                         Specific::Property => todo!(),
                         Specific::AnnotationOrTypeCommentWithTypeVars => {
                             if let Some(from) = from {
@@ -841,9 +835,36 @@ impl<'db: 'slf, 'slf> Inferred {
                                 debug!("TODO function overload class descriptor");
                             }
                             ComplexPoint::TypeInstance(t) => match t {
-                                DbType::Callable(c) => {
-                                    debug!("TODO callable decorated class descriptor")
-                                }
+                                DbType::Callable(c) => match c.kind {
+                                    FunctionType::Function => {
+                                        debug!("TODO callable decorated class descriptor")
+                                    }
+                                    FunctionType::Property => todo!(),
+                                    FunctionType::ClassMethod => {
+                                        let result =
+                                            infer_class_method(i_s, *class, attribute_class, c);
+                                        if result.is_none() {
+                                            if let Some(from) = from {
+                                                let func =
+                                                    prepare_func(i_s, *definition, attribute_class);
+                                                let t = IssueType::InvalidSelfArgument {
+                                                    argument_type: class
+                                                        .as_type(i_s)
+                                                        .format_short(i_s.db),
+                                                    function_name: Box::from(func.name()),
+                                                    callable: func
+                                                        .as_type(i_s)
+                                                        .format_short(i_s.db),
+                                                };
+                                                from.add_typing_issue(i_s, t);
+                                                return Some(Self::new_any());
+                                            } else {
+                                                todo!()
+                                            }
+                                        }
+                                        return result;
+                                    }
+                                },
                                 DbType::Class(link, generics) if apply_descriptor => {
                                     let inst = use_instance_with_ref(
                                         NodeRef::from_link(i_s.db, *link),
@@ -1437,7 +1458,7 @@ fn infer_class_method(
     i_s: &InferenceState,
     mut class: Class,
     func_class: Class,
-    definition: PointLink,
+    callable: &CallableContent,
 ) -> Option<Inferred> {
     let mut func_class = func_class;
     let class_generics_not_defined_yet =
@@ -1451,7 +1472,7 @@ fn infer_class_method(
         class.generics = self_generics;
         func_class.generics = self_generics;
     }
-    let func = prepare_func(i_s, definition, func_class);
+    /*
     if let Some(first_type) = func.first_param_annotation_type(i_s) {
         let type_vars = func.type_vars(i_s);
         let mut matcher = Matcher::new_function_matcher(Some(&class), func, type_vars);
@@ -1464,8 +1485,153 @@ fn infer_class_method(
             return None;
         }
     }
-    let t = func.classmethod_as_db_type(i_s, &class, class_generics_not_defined_yet);
+    */
+    let t = classmethod_as_db_type(
+        i_s,
+        callable,
+        &class,
+        &func_class,
+        class_generics_not_defined_yet,
+    );
+    /*let mut c = callable.clone();
+    match &c.params {
+        CallableParams::Simple(params) => {
+            let mut vec = params.to_vec();
+            // The first argument in a class param is not relevant if we execute descriptors.
+            vec.remove(0);
+            c.params = CallableParams::Simple(Rc::from(vec));
+        }
+        CallableParams::WithParamSpec(_, _) => todo!(),
+        CallableParams::Any => todo!(),
+    }
+    let t = DbType::Callable(Rc::new(c));
+    */
     Some(Inferred::from_type(t))
+}
+
+pub fn classmethod_as_db_type(
+    i_s: &InferenceState,
+    callable: &CallableContent,
+    class: &Class,
+    func_class: &Class,
+    class_generics_not_defined_yet: bool,
+) -> DbType {
+    let mut class_method_type_var_usage = None;
+    // TODO performance this clone might not be necessary.
+    let mut callable = callable.clone();
+    let mut params = match &callable.params {
+        CallableParams::Simple(params) => {
+            let mut vec = params.to_vec();
+            // The first argument in a class param is not relevant if we execute descriptors.
+            vec.remove(0);
+            callable.params = CallableParams::Simple(Rc::from(vec));
+            let CallableParams::Simple(params) = &callable.params else {
+                unreachable!();
+            };
+            params.iter()
+        }
+        CallableParams::WithParamSpec(_, _) => todo!(),
+        CallableParams::Any => todo!(),
+    };
+    let mut type_vars = if let Some(type_vars) = callable.type_vars.take() {
+        type_vars.into_vec()
+    } else {
+        vec![]
+    };
+    if let Some(param) = params.next() {
+        if let Some(t) = param.param_specific.maybe_positional_db_type() {
+            match t {
+                DbType::Type(t) => {
+                    if let DbType::TypeVar(usage) = t.as_ref() {
+                        class_method_type_var_usage = Some(usage.clone());
+                        type_vars.remove(0);
+                    }
+                }
+                _ => todo!(),
+            }
+        }
+    }
+
+    let type_vars = RefCell::new(type_vars);
+
+    let ensure_classmethod_type_var_like = |tvl| {
+        let pos = type_vars.borrow().iter().position(|t| t == &tvl);
+        let position = pos.unwrap_or_else(|| {
+            type_vars.borrow_mut().push(tvl.clone());
+            type_vars.borrow().len() - 1
+        });
+        tvl.as_type_var_like_usage(position.into(), callable.defined_at)
+            .into_generic_item()
+    };
+    let get_class_method_class = || {
+        if class_generics_not_defined_yet {
+            DbType::Class(
+                class.node_ref.as_link(),
+                match class.use_cached_type_vars(i_s.db) {
+                    Some(tvls) => ClassGenerics::List(GenericsList::new_generics(
+                        tvls.iter()
+                            .map(|tvl| ensure_classmethod_type_var_like(tvl.clone()))
+                            .collect(),
+                    )),
+                    None => ClassGenerics::None,
+                },
+            )
+        } else {
+            class.as_db_type(i_s.db)
+        }
+    };
+    let mut callable = Type::replace_type_var_likes_and_self_for_callable(
+        &callable,
+        i_s.db,
+        &mut |mut usage| {
+            dbg!(&usage, class_generics_not_defined_yet);
+            let in_definition = usage.in_definition();
+            dbg!(func_class.node_ref.as_link());
+            if in_definition == func_class.node_ref.as_link() {
+                let result = func_class
+                    .generics()
+                    .nth_usage(i_s.db, &usage)
+                    .into_generic_item(i_s.db);
+                // We need to remap again, because in generics of classes will be
+                // generic in the function of the classmethod, see for example
+                // `testGenericClassMethodUnboundOnClass`.
+                if class_generics_not_defined_yet {
+                    return result.replace_type_var_likes(
+                        i_s.db,
+                        &mut |usage| {
+                            if usage.in_definition() == class.node_ref.as_link() {
+                                let tvl = usage.as_type_var_like();
+                                ensure_classmethod_type_var_like(tvl)
+                            } else {
+                                usage.into_generic_item()
+                            }
+                        },
+                        &mut || todo!(),
+                    );
+                }
+                result
+            } else if in_definition == callable.defined_at {
+                if let Some(u) = &class_method_type_var_usage {
+                    if u.index == usage.index() {
+                        return GenericItem::TypeArgument(get_class_method_class());
+                    } else {
+                        usage.add_to_index(-1);
+                        todo!()
+                    }
+                }
+                usage.into_generic_item()
+            } else {
+                // This can happen for example if the return value is a Callable with its
+                // own type vars.
+                usage.into_generic_item()
+            }
+        },
+        #[allow(clippy::redundant_closure)] // This is a clippy bug
+        &mut || get_class_method_class(),
+    );
+    let type_vars = type_vars.into_inner();
+    callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
+    DbType::Callable(Rc::new(callable))
 }
 
 fn type_of_complex<'db: 'x, 'x>(
