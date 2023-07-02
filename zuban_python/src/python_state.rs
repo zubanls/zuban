@@ -85,7 +85,8 @@ pub struct PythonState {
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
-    abc_abc_meta: NodeIndex,
+    abc_abc_meta_index: NodeIndex,
+    abc_abstractmethod_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
     mypy_extensions_named_arg_func: NodeIndex,
@@ -136,7 +137,8 @@ impl PythonState {
             typing_namedtuple_index: 0,
             typing_type_var: 0,
             collections_namedtuple_index: 0,
-            abc_abc_meta: 0,
+            abc_abc_meta_index: 0,
+            abc_abstractmethod_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -237,7 +239,7 @@ impl PythonState {
         }
         cache_index!(builtins_object_index, db, builtins, "object");
         cache_index!(builtins_type_index, db, builtins, "type");
-        cache_index!(abc_abc_meta, db, abc, "ABCMeta");
+        cache_index!(abc_abc_meta_index, db, abc, "ABCMeta");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
         cache_index!(builtins_set_index, db, builtins, "set");
@@ -266,6 +268,14 @@ impl PythonState {
         cache_index!(typing_type_var, db, typing, "TypeVar");
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
+
+        db.python_state.abc_abstractmethod_index = db
+            .python_state
+            .abc()
+            .symbol_table
+            .lookup_symbol("abstractmethod")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
 
         db.python_state.collections_namedtuple_index = db
             .python_state
@@ -375,6 +385,7 @@ impl PythonState {
     builtins_attribute_node_ref!(staticmethod_node_ref, builtins_staticmethod_index);
     builtins_attribute_node_ref!(property_node_ref, builtins_property_index);
     builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
+    builtins_attribute_node_ref!(abstractmethod_node_ref, abc_abstractmethod_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
@@ -459,8 +470,8 @@ impl PythonState {
     }
 
     pub fn abc_meta_link(&self) -> PointLink {
-        debug_assert!(self.abc_abc_meta != 0);
-        PointLink::new(self.abc().file_index(), self.abc_abc_meta)
+        debug_assert!(self.abc_abc_meta_index != 0);
+        PointLink::new(self.abc().file_index(), self.abc_abc_meta_index)
     }
 
     pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {
