@@ -1549,7 +1549,7 @@ pub fn classmethod_as_db_type(
             };
         }
         CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any => todo!(),
+        CallableParams::Any => (),
     };
 
     let type_vars = RefCell::new(type_vars);
