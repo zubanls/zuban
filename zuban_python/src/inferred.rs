@@ -15,7 +15,7 @@ use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
     create_signature_without_self, replace_class_type_vars, FormatData, Generics, IteratorContent,
-    LookupResult, Matcher, OnLookupError, OnTypeError, ResultContext, Type,
+    LookupResult, OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{

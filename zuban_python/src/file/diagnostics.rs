@@ -11,8 +11,8 @@ use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    matches_simple_params, overload_has_overlapping_params, Generics, LookupResult, Match, Matcher,
-    Param, ResultContext, Type,
+    matches_simple_params, overload_has_overlapping_params, LookupResult, Match, Matcher, Param,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{

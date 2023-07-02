@@ -3,7 +3,7 @@ use parsa_python_ast::{
     ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -11,10 +11,10 @@ use super::{Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionType, GenericItem, GenericsList, Locality, Overload,
-    ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, FunctionType, GenericItem, Locality, Overload, ParamSpecUsage,
+    ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
