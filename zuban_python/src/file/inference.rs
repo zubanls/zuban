@@ -1822,9 +1822,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 } else if let Some((function, args)) = self.i_s.current_execution()
                                 {
                                     if specific == Specific::SelfParam {
-                                        if func.node_ref.point().maybe_specific().unwrap()
-                                            == Specific::ClassMethod
-                                        {
+                                        if func.is_classmethod(self.i_s) {
                                             Inferred::from_type(DbType::Type(Rc::new(
                                                 DbType::Self_,
                                             )))

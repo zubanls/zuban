@@ -1519,8 +1519,27 @@ pub fn classmethod_as_db_type(
     let mut class_method_type_var_usage = None;
     // TODO performance this clone might not be necessary.
     let mut callable = callable.clone();
-    let mut params = match &callable.params {
+    let mut type_vars = if let Some(type_vars) = callable.type_vars.take() {
+        type_vars.into_vec()
+    } else {
+        vec![]
+    };
+    match &callable.params {
         CallableParams::Simple(params) => {
+            if let Some(param) = params.iter().next() {
+                if let Some(t) = param.param_specific.maybe_positional_db_type() {
+                    match t {
+                        DbType::Type(t) => {
+                            if let DbType::TypeVar(usage) = t.as_ref() {
+                                class_method_type_var_usage = Some(usage.clone());
+                                type_vars.remove(0);
+                            }
+                        }
+                        DbType::Class(..) => (),
+                        _ => todo!("{t:?}"),
+                    }
+                }
+            }
             let mut vec = params.to_vec();
             // The first argument in a class param is not relevant if we execute descriptors.
             vec.remove(0);
@@ -1528,29 +1547,10 @@ pub fn classmethod_as_db_type(
             let CallableParams::Simple(params) = &callable.params else {
                 unreachable!();
             };
-            params.iter()
         }
         CallableParams::WithParamSpec(_, _) => todo!(),
         CallableParams::Any => todo!(),
     };
-    let mut type_vars = if let Some(type_vars) = callable.type_vars.take() {
-        type_vars.into_vec()
-    } else {
-        vec![]
-    };
-    if let Some(param) = params.next() {
-        if let Some(t) = param.param_specific.maybe_positional_db_type() {
-            match t {
-                DbType::Type(t) => {
-                    if let DbType::TypeVar(usage) = t.as_ref() {
-                        class_method_type_var_usage = Some(usage.clone());
-                        type_vars.remove(0);
-                    }
-                }
-                _ => todo!(),
-            }
-        }
-    }
 
     let type_vars = RefCell::new(type_vars);
 

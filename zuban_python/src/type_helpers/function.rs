@@ -342,7 +342,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         let FunctionParent::Decorated(decorated) = node.parent() else {
             unreachable!();
         };
-        let mut new_inf = Inferred::from_saved_node_ref(self.node_ref);
+        let mut new_inf = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
         let mut kind = FunctionType::Function;
         for decorator in decorated.decorators().iter_reverse() {
             let i = self
@@ -379,6 +379,16 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
             new_inf.save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+        }
+    }
+
+    pub fn is_classmethod(&self, i_s: &InferenceState) -> bool {
+        let node_ref = NodeRef::new(self.node_ref.file, self.node().name_definition().index());
+        if node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
+            let inf = self.decorated(i_s);
+            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionType::ClassMethod)
+        } else {
+            false
         }
     }
 
