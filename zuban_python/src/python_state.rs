@@ -229,11 +229,7 @@ impl PythonState {
                     - NAME_TO_CLASS_DIFF;
                 $db.python_state.$attr_name = class_index;
                 let module = db.python_state.$module_name();
-                let class = Class::from_position(
-                    NodeRef::new(module, class_index),
-                    Generics::NotDefinedYet,
-                    None,
-                );
+                let class = Class::with_undefined_generics(NodeRef::new(module, class_index));
                 class.ensure_calculated_class_infos(&InferenceState::new(db));
             };
         }
@@ -441,7 +437,7 @@ impl PythonState {
 
     pub fn supports_keys_and_get_item_class(&self, db: &Database) -> Class {
         let node_ref = self.supports_keys_and_get_item_node_ref();
-        let cls = Class::from_position(node_ref, Generics::NotDefinedYet, None);
+        let cls = Class::with_undefined_generics(node_ref);
         cls.ensure_calculated_class_infos(&InferenceState::new(db));
         Class::from_position(
             node_ref,

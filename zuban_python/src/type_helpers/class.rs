@@ -199,11 +199,8 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {
-                let parent_class = Self::from_position(
-                    NodeRef::new(self.node_ref.file, node_index),
-                    Generics::NotDefinedYet, // TODO is this correct?
-                    None,
-                );
+                let parent_class =
+                    Self::with_undefined_generics(NodeRef::new(self.node_ref.file, node_index));
                 parent_class
                     .maybe_type_var_like_in_parent(i_s, type_var)
                     .or_else(|| {
@@ -941,11 +938,8 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.class_storage.parent_scope {
             ParentScope::Module => base_qualified_name!(self, db, self.name()),
             ParentScope::Class(node_index) => {
-                let parent_class = Self::from_position(
-                    NodeRef::new(self.node_ref.file, node_index),
-                    Generics::NotDefinedYet,
-                    None,
-                );
+                let parent_class =
+                    Self::with_undefined_generics(NodeRef::new(self.node_ref.file, node_index));
                 format!("{}.{}", parent_class.qualified_name(db), self.name())
             }
             ParentScope::Function(node_index) => {

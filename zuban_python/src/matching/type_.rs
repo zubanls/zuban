@@ -2076,8 +2076,7 @@ impl<'a> Type<'a> {
                     for db_type in self.type_var_usage.type_var.restrictions.iter() {
                         return match db_type {
                             DbType::Class(link) => Instance::new(
-                                Class::(NodeRef::from_link(i_s.db, *link), Generics::NotDefinedYet, None)
-                                    .unwrap(),
+                                Class::with_undefined_generics(NodeRef::from_link(i_s.db, *link)),
                                 &Inferred::from_type(DbType::Class(*link, None)),
                             )
                             .lookup(i_s, name),
