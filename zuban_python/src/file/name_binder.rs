@@ -842,7 +842,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 {
                     if let AtomContent::Name(name) = atom.unpack() {
                         match name.as_str() {
-                            "property" => function_type = FunctionType::Property,
                             "classmethod" => function_type = FunctionType::ClassMethod,
                             "overload" => is_overload = true,
                             _ => (),
@@ -919,11 +918,10 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if !is_overload {
                 if let Some(decorators) = decorators {
                     // TODO this filtering is wrong and should be deleted
-                    if decorators.iter().any(|d| {
-                        ["abstractmethod", "property"]
-                            .iter()
-                            .any(|s| d.as_code().contains(s))
-                    }) {
+                    if decorators
+                        .iter()
+                        .any(|d| ["abstractmethod"].iter().any(|s| d.as_code().contains(s)))
+                    {
                         self.add_redirect_definition(name_def, func.index(), true);
                     } else {
                         self.add_point_definition(

@@ -654,7 +654,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ))
                             };
                         }
-                        Specific::Property => todo!(),
                         _ => (),
                     },
                     PointType::Complex => {
@@ -812,7 +811,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 func.as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass);
                             return Some(Inferred::from_type(t));
                         }
-                        Specific::Property => todo!(),
                         Specific::AnnotationOrTypeCommentWithTypeVars => {
                             if let Some(from) = from {
                                 from.add_typing_issue(i_s, IssueType::AmbigousClassVariableAccess);
@@ -1696,7 +1694,6 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                     implicit: true,
                 })),
                 Specific::Function => Function::new(definition, None).as_type(i_s),
-                Specific::Property => todo!(),
                 Specific::AnnotationOrTypeCommentClassInstance
                 | Specific::AnnotationOrTypeCommentWithTypeVars => definition
                     .file
