@@ -69,10 +69,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
             //
             // Since you are however allowed to write weird arbitrary stuff like self: Any as well,
             // we also have to check for that case [2].
-            class.generics = Generics::Self_ {
-                class_definition: class.node_ref.as_link(),
-                type_var_likes: class.type_vars(i_s),
-            };
+            class = Class::with_self_generics(i_s.db, class.node_ref);
             let mut checked = false;
             if let Some(self_class) = t.maybe_class(i_s.db) {
                 if self_class.node_ref == class.node_ref {

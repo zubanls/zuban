@@ -79,6 +79,17 @@ impl<'db: 'a, 'a> Class<'a> {
         Self::from_position(node_ref, Generics::NotDefinedYet, None)
     }
 
+    pub fn with_self_generics(db: &'a Database, node_ref: NodeRef<'a>) -> Self {
+        Self::from_position(
+            node_ref,
+            Generics::Self_ {
+                class_definition: node_ref.as_link(),
+                type_var_likes: Self::with_undefined_generics(node_ref).use_cached_type_vars(db),
+            },
+            None,
+        )
+    }
+
     fn type_check_init_func(
         &self,
         i_s: &InferenceState<'db, '_>,

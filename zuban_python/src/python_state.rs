@@ -435,18 +435,11 @@ impl PythonState {
         )
     }
 
-    pub fn supports_keys_and_get_item_class(&self, db: &Database) -> Class {
+    pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         let node_ref = self.supports_keys_and_get_item_node_ref();
         let cls = Class::with_undefined_generics(node_ref);
         cls.ensure_calculated_class_infos(&InferenceState::new(db));
-        Class::from_position(
-            node_ref,
-            Generics::Self_ {
-                class_definition: node_ref.as_link(),
-                type_var_likes: cls.use_cached_type_vars(db),
-            },
-            None,
-        )
+        Class::with_self_generics(db, node_ref)
     }
 
     pub fn type_var_type(&self) -> Type {

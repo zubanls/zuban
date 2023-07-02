@@ -202,15 +202,7 @@ impl<'db> Inference<'db, '_, '_> {
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
-        let type_var_likes = Class::with_undefined_generics(class_node_ref).type_vars(self.i_s);
-        let c = Class::from_position(
-            class_node_ref,
-            Generics::Self_ {
-                class_definition: class_node_ref.as_link(),
-                type_var_likes,
-            },
-            None,
-        );
+        let c = Class::with_self_generics(self.i_s.db, class_node_ref);
         self.file
             .inference(&self.i_s.with_diagnostic_class_context(&c))
             .calc_block_diagnostics(block, Some(c), None);

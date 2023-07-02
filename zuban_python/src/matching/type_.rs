@@ -2150,13 +2150,9 @@ impl<'a> Type<'a> {
                 callable(
                     self,
                     Instance::new(
-                        Class::from_position(
+                        Class::with_self_generics(
+                            i_s.db,
                             current_class.node_ref.to_db_lifetime(i_s.db),
-                            Generics::Self_ {
-                                class_definition: current_class.node_ref.as_link(),
-                                type_var_likes,
-                            },
-                            None,
                         ),
                         from_inferred,
                     )
