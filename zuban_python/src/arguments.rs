@@ -11,7 +11,7 @@ use crate::getitem::{SliceType, SliceTypeContent, Slices};
 use crate::inferred::Inferred;
 use crate::matching::{IteratorContent, Matcher, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::InferenceState;
+use crate::{debug, InferenceState};
 use parsa_python_ast::{
     Argument as ASTArgument, ArgumentsDetails, ArgumentsIterator, Comprehension, Expression,
     NodeIndex, Primary, PrimaryContent,
@@ -602,15 +602,17 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                     t
                                 });
                             let s = Type::owned(i_s.db.python_state.str_db_type());
-                            if matches
-                                && !Type::owned(iter.next().unwrap())
-                                    .is_simple_same_type(i_s, &s)
-                                    .bool()
-                            {
-                                node_ref.add_typing_issue(
-                                    i_s,
-                                    IssueType::ArgumentIssue(Box::from("Keywords must be strings")),
-                                );
+                            if matches {
+                                let t = Type::owned(iter.next().unwrap());
+                                if !t.is_simple_same_type(i_s, &s).bool() {
+                                    debug!("Keyword is type {}", t.format_short(i_s.db));
+                                    node_ref.add_typing_issue(
+                                        i_s,
+                                        IssueType::ArgumentIssue(Box::from(
+                                            "Keywords must be strings",
+                                        )),
+                                    );
+                                }
                             }
                             let value_type = match matches {
                                 true => iter.next().unwrap(),

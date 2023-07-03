@@ -381,7 +381,6 @@ impl PythonState {
     builtins_attribute_node_ref!(staticmethod_node_ref, builtins_staticmethod_index);
     builtins_attribute_node_ref!(property_node_ref, builtins_property_index);
     builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
-    builtins_attribute_node_ref!(abstractmethod_node_ref, abc_abstractmethod_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
@@ -461,6 +460,11 @@ impl PythonState {
     pub fn abc_meta_link(&self) -> PointLink {
         debug_assert!(self.abc_abc_meta_index != 0);
         PointLink::new(self.abc().file_index(), self.abc_abc_meta_index)
+    }
+
+    pub fn abstractmethod_link(&self) -> PointLink {
+        debug_assert!(self.abc_abc_meta_index != 0);
+        PointLink::new(self.abc().file_index(), self.abc_abstractmethod_index)
     }
 
     pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {

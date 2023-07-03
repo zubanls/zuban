@@ -339,11 +339,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .unwrap();
         }
         if let Some(class) = self.class {
-            Self::new(
-                self.node_ref,
-                Some(Class::with_self_generics(i_s.db, class.node_ref)),
-            )
-            .save_decorated(i_s, decorator_ref)
+            let class = Class::with_self_generics(i_s.db, class.node_ref);
+            Self::new(self.node_ref, Some(class))
+                .save_decorated(&i_s.with_class_context(&class), decorator_ref)
         } else {
             self.save_decorated(i_s, decorator_ref)
         }
@@ -364,6 +362,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .infer_named_expression(decorator.named_expression());
             if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
                 kind = FunctionType::ClassMethod;
+                continue;
+            }
+            if i.maybe_saved_link() == Some(i_s.db.python_state.abstractmethod_link()) {
                 continue;
             }
             // TODO check if it's an function without a return annotation and
