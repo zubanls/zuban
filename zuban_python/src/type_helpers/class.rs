@@ -1103,9 +1103,9 @@ fn apply_generics_to_base_class<'a>(
         }
         // TODO this is wrong, because it does not use generics.
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
-            TypeOrClass::Type(Type::new(&t))
+            TypeOrClass::Type(Type::new(t))
         }
-        _ => TypeOrClass::Type(Type::owned(Type::new(&t).replace_type_var_likes_and_self(
+        _ => TypeOrClass::Type(Type::owned(Type::new(t).replace_type_var_likes_and_self(
             db,
             &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
             &mut || todo!(),
