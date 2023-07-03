@@ -22,7 +22,7 @@ use crate::database::{
 use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function};
+use crate::type_helpers::{Callable, Class, Function};
 use type_var_matcher::{BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher};
 use utils::match_arguments_against_params;
 
@@ -72,7 +72,7 @@ impl<'a> Matcher<'a> {
     ) -> Self {
         Self {
             type_var_matcher: Some(TypeVarMatcher::new(callable.defined_at, type_var_count)),
-            func_or_callable: Some(FunctionOrCallable::Callable(callable)),
+            func_or_callable: Some(FunctionOrCallable::Callable(Callable::new(callable, None))),
             match_reverse: true,
             ..Self::default()
         }
@@ -189,8 +189,20 @@ impl<'a> Matcher<'a> {
                 }
             }
             Some(FunctionOrCallable::Callable(c)) => {
+                if let Some(func_class) = c.defined_in {
+                    if t1.in_definition == func_class.node_ref.as_link() {
+                        // By definition, because the class did not match there will never be a
+                        // type_var_remap that is not defined.
+                        let type_var_remap = func_class.type_var_remap.unwrap();
+                        let g = Generic::new(&type_var_remap[t1.index]).expect_type_argument();
+                        // The remapping of type vars needs to be checked now. In a lot of
+                        // cases this is T -> T and S -> S, but it could also be T -> S and S
+                        // -> List[T] or something completely arbitrary.
+                        return g.matches(i_s, self, value_type, t1.type_var.variance);
+                    }
+                }
                 return Type::owned(DbType::TypeVar(t1.clone()))
-                    .simple_matches(i_s, value_type, variance)
+                    .simple_matches(i_s, value_type, variance);
             }
             _ => (),
         };
@@ -551,20 +563,21 @@ impl<'a> Matcher<'a> {
                     .format(&format_data.remove_matcher());
             }
         }
-        match self.func_or_callable {
-            Some(FunctionOrCallable::Function(f)) => {
-                let func_class = f.class.unwrap();
-                if usage.in_definition() == func_class.node_ref.as_link() {
-                    let type_var_remap = func_class.type_var_remap.unwrap();
-                    return Generic::new(&type_var_remap[usage.index()]).format(format_data);
-                }
-            }
+        let func_class = match self.func_or_callable {
+            Some(FunctionOrCallable::Function(f)) => f.class,
             Some(FunctionOrCallable::Callable(c)) => {
-                if usage.in_definition() == c.defined_at {
+                if usage.in_definition() == c.content.defined_at {
                     todo!()
                 }
+                c.defined_in
             }
-            None => (),
+            None => None,
+        };
+        if let Some(func_class) = func_class {
+            if usage.in_definition() == func_class.node_ref.as_link() {
+                let type_var_remap = func_class.type_var_remap.unwrap();
+                return Generic::new(&type_var_remap[usage.index()]).format(format_data);
+            }
         }
         usage.format_without_matcher(format_data.db, format_data.style, params_style)
     }

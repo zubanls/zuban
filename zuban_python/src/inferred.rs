@@ -1380,7 +1380,7 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
             DbType::Callable(c) => BoundMethod::new(
                 instance,
                 mro_index,
-                BoundMethodFunction::Callable(Callable::new(c)),
+                BoundMethodFunction::Callable(Callable::new(c, Some(class))),
             ),
             _ => unreachable!("{t:?}"),
         },

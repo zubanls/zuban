@@ -7,7 +7,7 @@ use parsa_python_ast::{
 };
 
 use super::function::OverloadResult;
-use super::{Instance, Module, NamedTupleValue};
+use super::{Callable, Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
@@ -129,7 +129,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let calculated_type_args = calculate_callable_type_vars_and_return(
                     i_s,
                     class.as_ref(),
-                    &callable_content,
+                    Callable::new(&callable_content, Some(*self)),
                     args.iter(),
                     &|| args.as_node_ref(),
                     result_context,

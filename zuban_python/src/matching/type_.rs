@@ -1865,7 +1865,7 @@ impl<'a> Type<'a> {
                     gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
                 }
             }),
-            DbType::Callable(content) => Callable::new(content).execute_internal(
+            DbType::Callable(content) => Callable::new(content, None).execute_internal(
                 i_s,
                 args,
                 on_type_error,
@@ -2540,7 +2540,7 @@ pub fn execute_type_of_type<'db>(
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
                 None,
-                &nt.constructor,
+                Callable::new(&nt.constructor, None),
                 args.iter(),
                 &|| args.as_node_ref(),
                 &mut ResultContext::Unknown,

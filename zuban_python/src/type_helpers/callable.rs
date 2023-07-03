@@ -9,11 +9,15 @@ use crate::matching::{calculate_callable_type_vars_and_return, OnTypeError, Resu
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
     pub content: &'a CallableContent,
+    pub defined_in: Option<Class<'a>>,
 }
 
 impl<'a> Callable<'a> {
-    pub fn new(content: &'a CallableContent) -> Self {
-        Self { content }
+    pub fn new(content: &'a CallableContent, defined_in: Option<Class<'a>>) -> Self {
+        Self {
+            content,
+            defined_in,
+        }
     }
 
     pub fn execute_internal<'db>(
@@ -27,7 +31,7 @@ impl<'a> Callable<'a> {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             class,
-            self.content,
+            *self,
             args.iter(),
             &|| args.as_node_ref(),
             result_context,

@@ -1,17 +1,16 @@
 use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
-    CallableContent, Database, DbType, GenericItem, ParamSpecArgument, PointLink,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
-    TypeVarUsage, Variance,
+    Database, DbType, GenericItem, ParamSpecArgument, PointLink, TupleTypeArguments, TypeArguments,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
-use crate::type_helpers::Function;
+use crate::type_helpers::{Callable, Function};
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'a> {
     Function(Function<'a, 'a>),
-    Callable(&'a CallableContent),
+    Callable(Callable<'a>),
 }
 
 #[derive(Debug, Clone)]

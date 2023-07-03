@@ -8,7 +8,6 @@ testKeywordUnpackWithDifferentTypes
 testInOperator
 testNotInOperator
 testAssignmentToStarFromIterable
-testAccessingInheritedGenericABCMembers
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
