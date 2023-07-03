@@ -1579,9 +1579,7 @@ pub fn classmethod_as_db_type(
         &callable,
         i_s.db,
         &mut |mut usage| {
-            dbg!(&usage, class_generics_not_defined_yet);
             let in_definition = usage.in_definition();
-            dbg!(func_class.node_ref.as_link());
             if in_definition == func_class.node_ref.as_link() {
                 let result = func_class
                     .generics()
