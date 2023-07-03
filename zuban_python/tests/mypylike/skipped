@@ -1,6 +1,23 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
+testInvariantTypeConfusingNames2
+testKwargsAfterBareArgs
+testPassingMappingForKeywordVarArg
+testPassingMappingSubclassForKeywordVarArg
+testStarArgsAndKwArgsSpecialCase
+testKeywordUnpackWithDifferentTypes
+
+testParamSpecOverUnannotatedDecorator
+testInOperator
+testNotInOperator
+testAssignmentToStarFromIterable
+
+testAccessingGenericABCMembers
+testAccessingInheritedGenericABCMembers
+
+testLiteralsAgainstProtocols
+
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 

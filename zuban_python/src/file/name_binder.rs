@@ -917,19 +917,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
             if !is_overload {
                 if let Some(decorators) = decorators {
-                    // TODO this filtering is wrong and should be deleted
-                    if decorators
-                        .iter()
-                        .any(|d| ["abstractmethod"].iter().any(|s| d.as_code().contains(s)))
-                    {
-                        self.add_redirect_definition(name_def, func.index(), true);
-                    } else {
-                        self.add_point_definition(
-                            name_def,
-                            Specific::DecoratedFunction,
-                            in_base_scope,
-                        )
-                    }
+                    self.add_point_definition(name_def, Specific::DecoratedFunction, in_base_scope)
                 } else {
                     self.add_redirect_definition(name_def, func.index(), true);
                 }
