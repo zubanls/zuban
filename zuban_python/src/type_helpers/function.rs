@@ -50,7 +50,7 @@ impl fmt::Debug for Function<'_, '_> {
     }
 }
 
-impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
+impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "function_def_parameters" to save calculated type vars
@@ -338,6 +338,18 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 .check_point_cache(decorator_ref.node_index)
                 .unwrap();
         }
+        if let Some(class) = self.class {
+            Self::new(
+                self.node_ref,
+                Some(Class::with_self_generics(i_s.db, class.node_ref)),
+            )
+            .save_decorated(i_s, decorator_ref)
+        } else {
+            self.save_decorated(i_s, decorator_ref)
+        }
+    }
+
+    fn save_decorated(&self, i_s: &InferenceState<'db, '_>, decorator_ref: NodeRef) -> Inferred {
         let node = self.node();
         let FunctionParent::Decorated(decorated) = node.parent() else {
             unreachable!();
