@@ -1,13 +1,11 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
-testInvariantTypeConfusingNames2
 testPassingMappingSubclassForKeywordVarArg
 testKeywordUnpackWithDifferentTypes
 
 testInOperator
 testNotInOperator
-testAssignmentToStarFromIterable
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
