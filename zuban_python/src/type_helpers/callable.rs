@@ -1,20 +1,19 @@
 use super::function::format_pretty_function_like;
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, CallableParams, DbType};
+use crate::database::{CallableContent, CallableParams};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
-    pub db_type: &'a DbType,
     pub content: &'a CallableContent,
 }
 
 impl<'a> Callable<'a> {
-    pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
-        Self { db_type, content }
+    pub fn new(content: &'a CallableContent) -> Self {
+        Self { content }
     }
 
     pub fn execute_internal<'db>(

@@ -1865,7 +1865,7 @@ impl<'a> Type<'a> {
                     gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
                 }
             }),
-            t @ DbType::Callable(content) => Callable::new(t, content).execute_internal(
+            DbType::Callable(content) => Callable::new(content).execute_internal(
                 i_s,
                 args,
                 on_type_error,
