@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use super::{Callable, FirstParamProperties, Function, Instance, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
-use crate::database::MroIndex;
+use crate::database::{CallableParams, DbType, MroIndex};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{OnTypeError, ResultContext, Type};
@@ -77,7 +79,21 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             BoundMethodFunction::Overload(f) => {
                 f.as_db_type(i_s, FirstParamProperties::Skip(self.instance))
             }
-            BoundMethodFunction::Callable(c) => return Type::new(c.db_type),
+            BoundMethodFunction::Callable(c) => {
+                DbType::Callable(match &c.content.params {
+                    CallableParams::Simple(params) => {
+                        let mut vec = params.to_vec();
+                        // The first argument in a class param is not relevant if we execute descriptors.
+                        vec.remove(0);
+                        let mut c = c.content.clone();
+                        c.params = CallableParams::Simple(Rc::from(vec));
+                        Rc::new(c)
+                    }
+                    CallableParams::WithParamSpec(_, _) => todo!(),
+                    // TODO probably we have to fix generics from classes here.
+                    CallableParams::Any => return Type::new(c.db_type),
+                })
+            }
         };
         // TODO performance: it may be questionable that we allocate here again.
         Type::owned(t)

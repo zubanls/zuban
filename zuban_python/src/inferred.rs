@@ -1542,9 +1542,6 @@ pub fn classmethod_as_db_type(
             // The first argument in a class param is not relevant if we execute descriptors.
             vec.remove(0);
             callable.params = CallableParams::Simple(Rc::from(vec));
-            let CallableParams::Simple(params) = &callable.params else {
-                unreachable!();
-            };
         }
         CallableParams::WithParamSpec(_, _) => todo!(),
         CallableParams::Any => (),
