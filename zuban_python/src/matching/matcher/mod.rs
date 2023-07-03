@@ -26,13 +26,14 @@ use crate::type_helpers::{Class, Function};
 use type_var_matcher::{BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher};
 use utils::match_arguments_against_params;
 
+#[derive(Debug)]
 struct CheckedTypeRecursion<'a> {
     type1: &'a DbType,
     type2: &'a DbType,
     previously_checked: Option<&'a CheckedTypeRecursion<'a>>,
 }
 
-#[derive(Default)]
+#[derive(Default, Debug)]
 pub struct Matcher<'a> {
     pub(super) type_var_matcher: Option<TypeVarMatcher>,
     checking_type_recursion: Option<CheckedTypeRecursion<'a>>,
@@ -542,16 +543,16 @@ impl<'a> Matcher<'a> {
                 };
             }
         }
+        if let Some(class) = self.class {
+            if class.node_ref.as_link() == usage.in_definition() {
+                return class
+                    .generics
+                    .nth_usage(format_data.db, usage)
+                    .format(&format_data.remove_matcher());
+            }
+        }
         match self.func_or_callable {
             Some(FunctionOrCallable::Function(f)) => {
-                if let Some(class) = self.class {
-                    if class.node_ref.as_link() == usage.in_definition() {
-                        return class
-                            .generics
-                            .nth_usage(format_data.db, usage)
-                            .format(&format_data.remove_matcher());
-                    }
-                }
                 let func_class = f.class.unwrap();
                 if usage.in_definition() == func_class.node_ref.as_link() {
                     let type_var_remap = func_class.type_var_remap.unwrap();
