@@ -4,7 +4,6 @@ testSelfTypeRestrictedClassMethod
 testPassingMappingSubclassForKeywordVarArg
 testKeywordUnpackWithDifferentTypes
 
-testInOperator
 testNotInOperator
 
 # Any base class now matches everything for union simplification
