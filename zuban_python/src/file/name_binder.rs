@@ -189,13 +189,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
         let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
-        if !in_base_scope || self.mypy_compatible {
-            if let Some(replaced) = replaced {
-                self.points.set(
-                    name_def.name_index(),
-                    Point::new_multi_definition(replaced, Locality::File),
-                );
-            }
+        if let Some(replaced) = replaced {
+            self.points.set(
+                name_def.name_index(),
+                Point::new_multi_definition(replaced, Locality::File),
+            );
         }
         self.points.set(name_def.index(), point);
     }
@@ -832,7 +830,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
 
         let mut is_overload = false;
-        let mut function_type = FunctionType::Function;
         if let Some(decorators) = decorators {
             for decorator in decorators.iter() {
                 self.index_non_block_node(&decorator, ordered, false);
@@ -842,7 +839,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 {
                     if let AtomContent::Name(name) = atom.unpack() {
                         match name.as_str() {
-                            "classmethod" => function_type = FunctionType::ClassMethod,
                             "overload" => is_overload = true,
                             _ => (),
                         }
@@ -877,7 +873,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             } else {
                 Overload {
                     functions: Box::new([current_link]),
-                    function_type,
+                    function_type: FunctionType::Function,
                     implementing_function: None,
                     implementing_function_has_decorators: false,
                     is_async,

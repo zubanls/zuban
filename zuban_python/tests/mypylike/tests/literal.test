@@ -3,7 +3,7 @@ from typing import Literal
 
 a: int
 b: str | Literal[1, 2] | float
-a = b
+a = b  # E: Incompatible types in assignment (expression has type "Literal[1, 2] | str | float", variable has type "int")
 
 [case literal_union_formatting2]
 from typing import Literal
