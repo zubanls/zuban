@@ -622,11 +622,9 @@ impl<'a> Type<'a> {
             }
             DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             DbType::Self_ if variance == Variance::Covariant => {
-                return self.simple_matches(
-                    i_s,
-                    &Type::owned(i_s.current_class().unwrap().as_db_type(i_s.db)),
-                    variance,
-                )
+                if let Some(cls) = i_s.current_class() {
+                    return self.simple_matches(i_s, &Type::owned(cls.as_db_type(i_s.db)), variance);
+                }
             }
             DbType::Module(_) => {
                 m = m.or(|| {

@@ -1101,7 +1101,10 @@ impl DbType {
                         .has_any_internal(i_s, already_checked)
                 }
             }
-            Self::Self_ => todo!(),
+            Self::Self_ => {
+                debug!("TODO Self could contain Any?");
+                false
+            }
             Self::ParamSpecArgs(_)
             | Self::ParamSpecKwargs(_)
             | Self::Module(_)
