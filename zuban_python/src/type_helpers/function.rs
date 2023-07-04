@@ -3,7 +3,7 @@ use parsa_python_ast::{
     ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -1433,9 +1433,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::FunctionOverload(Rc::new(FunctionOverload {
-            functions: self
-                .overload
+        DbType::FunctionOverload(Rc::new(FunctionOverload::new(
+            self.overload
                 .functions
                 .iter()
                 .map(|link| {
@@ -1443,9 +1442,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     function.as_callable(i_s, first)
                 })
                 .collect(),
-            implementation: RefCell::new(None),
-            kind: self.overload.function_type,
-        }))
+        )))
     }
 
     pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

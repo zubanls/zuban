@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cell::Ref;
 use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
@@ -706,19 +707,29 @@ impl std::cmp::PartialEq for Namespace {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionOverload {
-    pub functions: Rc<[CallableContent]>,
-    pub implementation: RefCell<Option<CallableContent>>,
-    pub kind: FunctionType,
+    functions: RefCell<Vec<CallableContent>>,
+    implementation: RefCell<Option<CallableContent>>,
 }
 
 impl FunctionOverload {
+    pub fn new(functions: Vec<CallableContent>) -> Self {
+        debug_assert!(!functions.is_empty());
+        Self {
+            functions: RefCell::new(functions),
+            implementation: RefCell::new(None),
+        }
+    }
+
+    pub fn functions(&self) -> Ref<Vec<CallableContent>> {
+        self.functions.borrow()
+    }
+
     pub fn map_functions(
         &self,
-        callable: impl FnOnce(&Rc<[CallableContent]>) -> Rc<[CallableContent]>,
+        callable: impl FnOnce(&[CallableContent]) -> Vec<CallableContent>,
     ) -> Rc<Self> {
         Rc::new(Self {
-            functions: callable(&self.functions),
-            kind: self.kind,
+            functions: RefCell::new(callable(&self.functions.borrow())),
             implementation: self.implementation.clone(),
         })
     }
@@ -848,7 +859,7 @@ impl DbType {
                 FormatStyle::MypyRevealType => format!(
                     "Overload({})",
                     callables
-                        .functions
+                        .functions()
                         .iter()
                         .map(|t| t.format(format_data))
                         .collect::<Vec<_>>()
@@ -972,7 +983,7 @@ impl DbType {
                 }
             }
             Self::FunctionOverload(intersection) => {
-                for callable in intersection.functions.iter() {
+                for callable in intersection.functions().iter() {
                     search_params(found_type_var, &callable.params);
                     callable.result_type.search_type_vars(found_type_var)
                 }
@@ -1052,7 +1063,7 @@ impl DbType {
             }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
-                .functions
+                .functions()
                 .iter()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
@@ -1108,7 +1119,7 @@ impl DbType {
             }),
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
             Self::FunctionOverload(intersection) => {
-                intersection.functions.iter().any(|t| t.has_self_type())
+                intersection.functions().iter().any(|t| t.has_self_type())
             }
             Self::Type(t) => t.has_self_type(),
             Self::Tuple(content) => content.args.as_ref().is_some_and(|args| match args {
