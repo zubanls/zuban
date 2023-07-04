@@ -317,7 +317,7 @@ impl<'a> Type<'a> {
             DbType::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
-            DbType::FunctionOverload(intersection) => Match::all(intersection.iter(), |c1| {
+            DbType::FunctionOverload(overload) => Match::all(overload.functions.iter(), |c1| {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }),
             DbType::Literal(literal1) => {
@@ -815,7 +815,7 @@ impl<'a> Type<'a> {
                 if matcher.is_matching_reverse() {
                     todo!()
                 }
-                Match::any(overload.iter(), |c2| {
+                Match::any(overload.functions.iter(), |c2| {
                     Self::matches_callable(i_s, matcher, c1, c2)
                 })
             }
@@ -1293,19 +1293,21 @@ impl<'a> Type<'a> {
             DbType::Class(link, generics) => {
                 DbType::Class(*link, generics.map_list(remap_generics))
             }
-            DbType::FunctionOverload(callables) => DbType::FunctionOverload(
-                callables
-                    .iter()
-                    .map(|c| {
-                        Self::replace_type_var_likes_and_self_for_callable(
-                            c,
-                            db,
-                            callable,
-                            replace_self,
-                        )
-                    })
-                    .collect(),
-            ),
+            DbType::FunctionOverload(overload) => {
+                DbType::FunctionOverload(overload.map_functions(|functions| {
+                    functions
+                        .iter()
+                        .map(|c| {
+                            Self::replace_type_var_likes_and_self_for_callable(
+                                c,
+                                db,
+                                callable,
+                                replace_self,
+                            )
+                        })
+                        .collect()
+                }))
+            }
             DbType::Union(u) => {
                 let mut entries: Vec<UnionEntry> = Vec::with_capacity(u.entries.len());
                 let mut add = |type_, format_index| {
@@ -1792,12 +1794,14 @@ impl<'a> Type<'a> {
                     .collect(),
                 format_as_optional: u.format_as_optional,
             }),
-            DbType::FunctionOverload(callables) => DbType::FunctionOverload(
-                callables
-                    .iter()
-                    .map(|e| Self::rewrite_late_bound_callables_for_callable(e, manager))
-                    .collect(),
-            ),
+            DbType::FunctionOverload(overload) => {
+                DbType::FunctionOverload(overload.map_functions(|functions| {
+                    functions
+                        .iter()
+                        .map(|e| Self::rewrite_late_bound_callables_for_callable(e, manager))
+                        .collect()
+                }))
+            }
             DbType::TypeVar(t) => DbType::TypeVar(manager.remap_type_var(t)),
             DbType::Type(db_type) => DbType::Type(Rc::new(
                 Type::new(db_type).rewrite_late_bound_callables(manager),

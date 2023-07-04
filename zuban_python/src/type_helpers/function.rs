@@ -11,10 +11,10 @@ use super::{Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionType, GenericItem, Locality, Overload, ParamSpecUsage,
-    ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, FunctionOverload, FunctionType, GenericItem, Locality, Overload,
+    ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -1433,8 +1433,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::FunctionOverload(
-            self.overload
+        DbType::FunctionOverload(Rc::new(FunctionOverload {
+            functions: self
+                .overload
                 .functions
                 .iter()
                 .map(|link| {
@@ -1442,7 +1443,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     function.as_callable(i_s, first)
                 })
                 .collect(),
-        )
+        }))
     }
 
     pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

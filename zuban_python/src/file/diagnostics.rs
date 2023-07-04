@@ -736,7 +736,7 @@ fn try_pretty_format(
                 return;
             }
             DbType::FunctionOverload(overloads) => {
-                for c in overloads.iter() {
+                for c in overloads.functions.iter() {
                     notes.push(format!("{prefix}@overload").into());
                     notes.push(format!("{prefix}{}", format_pretty_callable(i_s, c)).into());
                 }

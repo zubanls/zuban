@@ -703,13 +703,29 @@ impl std::cmp::PartialEq for Namespace {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionOverload {
+    pub functions: Rc<[CallableContent]>,
+}
+
+impl FunctionOverload {
+    pub fn map_functions(
+        &self,
+        callable: impl FnOnce(&Rc<[CallableContent]>) -> Rc<[CallableContent]>,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            functions: callable(&self.functions),
+        })
+    }
+}
+
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
     Class(PointLink, ClassGenerics),
     Union(UnionType),
-    FunctionOverload(Rc<[CallableContent]>),
+    FunctionOverload(Rc<FunctionOverload>),
     TypeVar(TypeVarUsage),
     Type(Rc<DbType>),
     Tuple(Rc<TupleContent>),
@@ -827,6 +843,7 @@ impl DbType {
                 FormatStyle::MypyRevealType => format!(
                     "Overload({})",
                     callables
+                        .functions
                         .iter()
                         .map(|t| t.format(format_data))
                         .collect::<Vec<_>>()
@@ -950,7 +967,7 @@ impl DbType {
                 }
             }
             Self::FunctionOverload(intersection) => {
-                for callable in intersection.iter() {
+                for callable in intersection.functions.iter() {
                     search_params(found_type_var, &callable.params);
                     callable.result_type.search_type_vars(found_type_var)
                 }
@@ -1030,6 +1047,7 @@ impl DbType {
             }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
+                .functions
                 .iter()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
@@ -1084,7 +1102,9 @@ impl DbType {
                 GenericItem::ParamSpecArgument(params) => todo!(),
             }),
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
-            Self::FunctionOverload(intersection) => intersection.iter().any(|t| t.has_self_type()),
+            Self::FunctionOverload(intersection) => {
+                intersection.functions.iter().any(|t| t.has_self_type())
+            }
             Self::Type(t) => t.has_self_type(),
             Self::Tuple(content) => content.args.as_ref().is_some_and(|args| match args {
                 TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
