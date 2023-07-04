@@ -371,13 +371,6 @@ impl<'db> Inference<'db, '_, '_> {
                             f1,
                             i + 1,
                         )
-                    } else {
-                        let type_ = implementation.decorated(self.i_s).format_short(self.i_s);
-                        implementation
-                            .node_ref
-                            .add_typing_issue(self.i_s, IssueType::NotCallable { type_ });
-                        // Avoid multiple reports
-                        maybe_implementation = None;
                     }
                 }
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
