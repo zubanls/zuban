@@ -709,7 +709,7 @@ fn main() {
                 case.run(&mut projects, from_mypy_test_suite);
                 ran_count += 1;
             }
-            case.run(&mut projects, from_mypy_test_suite);
+            case.run(&mut projects, true);
             ran_count += 1;
         }
     }
