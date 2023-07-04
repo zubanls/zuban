@@ -354,6 +354,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         let mut new_inf = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
         let mut kind = FunctionType::Function;
+        let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
             let i = self
                 .node_ref
@@ -362,6 +363,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .infer_named_expression(decorator.named_expression());
             if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
                 kind = FunctionType::ClassMethod;
+                continue;
+            }
+            if i.maybe_saved_link() == Some(i_s.db.python_state.overload_link()) {
+                is_overload = true;
                 continue;
             }
             if i.maybe_saved_link() == Some(i_s.db.python_state.abstractmethod_link()) {

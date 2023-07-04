@@ -82,6 +82,7 @@ pub struct PythonState {
     typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
+    typing_overload_index: NodeIndex,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
@@ -136,6 +137,7 @@ impl PythonState {
             typeshed_supports_keys_and_get_item_index: 0,
             typing_namedtuple_index: 0,
             typing_type_var: 0,
+            typing_overload_index: 0,
             collections_namedtuple_index: 0,
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
@@ -278,6 +280,14 @@ impl PythonState {
             .collections()
             .symbol_table
             .lookup_symbol("namedtuple")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+
+        db.python_state.typing_overload_index = db
+            .python_state
+            .typing()
+            .symbol_table
+            .lookup_symbol("overload")
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
 
@@ -465,6 +475,11 @@ impl PythonState {
     pub fn abstractmethod_link(&self) -> PointLink {
         debug_assert!(self.abc_abc_meta_index != 0);
         PointLink::new(self.abc().file_index(), self.abc_abstractmethod_index)
+    }
+
+    pub fn overload_link(&self) -> PointLink {
+        debug_assert!(self.typing_overload_index != 0);
+        PointLink::new(self.typing().file_index(), self.typing_overload_index)
     }
 
     pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {
