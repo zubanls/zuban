@@ -2,8 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::NoArguments;
 use crate::database::{
-    CallableParams, ComplexPoint, Database, DbType, Locality, Point, PointType, Specific,
-    TupleTypeArguments, TypeOrTypeVarTuple, Variance,
+    CallableContent, CallableParams, ComplexPoint, Database, DbType, Locality, Point, PointType,
+    Specific, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -369,23 +369,13 @@ impl<'db> Inference<'db, '_, '_> {
                 let f1_type_vars = f1.type_vars(self.i_s);
                 if let Some(ref implementation) = maybe_implementation {
                     if implementing_function_has_decorators {
-                        if let Some(callable_content) = &implementation_callable_content {
-                            match &callable_content.params {
-                                CallableParams::Simple(ps) => {
-                                    let mut matcher =
-                                        Matcher::new_reverse_callable_matcher(callable_content);
-                                    self.calc_overload_implementation_diagnostics(
-                                        name_def_node_ref,
-                                        f1,
-                                        &mut matcher,
-                                        ps.iter(),
-                                        &Type::new(&callable_content.result_type),
-                                        i + 1,
-                                    )
-                                }
-                                CallableParams::Any => (),
-                                CallableParams::WithParamSpec(_, _) => todo!(),
-                            }
+                        if let Some(callable) = &implementation_callable_content {
+                            self.calc_overload_implementation_diagnostics2(
+                                name_def_node_ref,
+                                &callable,
+                                f1,
+                                i + 1,
+                            )
                         } else {
                             let type_ = implementation.decorated(self.i_s).format_short(self.i_s);
                             implementation
@@ -395,19 +385,14 @@ impl<'db> Inference<'db, '_, '_> {
                             maybe_implementation = None;
                         }
                     } else {
-                        let impl_type_vars = implementation.type_vars(self.i_s);
-                        let mut matcher = Matcher::new_reverse_function_matcher(
-                            class.as_ref(),
-                            *implementation,
-                            impl_type_vars,
-                        );
-                        let result_type = implementation.result_type(self.i_s);
-                        self.calc_overload_implementation_diagnostics(
+                        let callable = implementation
+                            .as_type(self.i_s)
+                            .maybe_callable(self.i_s)
+                            .unwrap();
+                        self.calc_overload_implementation_diagnostics2(
                             name_def_node_ref,
+                            &callable,
                             f1,
-                            &mut matcher,
-                            implementation.iter_params(),
-                            &result_type,
                             i + 1,
                         )
                     };
@@ -501,6 +486,30 @@ impl<'db> Inference<'db, '_, '_> {
         let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);
         inference.calc_block_diagnostics(block, None, Some(&function))
+    }
+
+    fn calc_overload_implementation_diagnostics2(
+        &mut self,
+        name_def_node_ref: NodeRef,
+        callable: &CallableContent,
+        overload_item: Function,
+        signature_index: usize,
+    ) {
+        match &callable.params {
+            CallableParams::Simple(ps) => {
+                let mut matcher = Matcher::new_reverse_callable_matcher(&callable);
+                self.calc_overload_implementation_diagnostics(
+                    name_def_node_ref,
+                    overload_item,
+                    &mut matcher,
+                    ps.iter(),
+                    &Type::new(&callable.result_type),
+                    signature_index,
+                )
+            }
+            CallableParams::Any => (),
+            CallableParams::WithParamSpec(_, _) => todo!(),
+        }
     }
 
     fn calc_overload_implementation_diagnostics<'x, P1: Param<'x>>(

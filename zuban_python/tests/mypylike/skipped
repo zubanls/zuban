@@ -1,6 +1,9 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
+testUnpackIterableClassWithOverloadedIter
+testUnpackIterableClassWithOverloadedIter2
+
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
