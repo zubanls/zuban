@@ -14,14 +14,14 @@ use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, DbType, GenericItem, GenericsList, PointLink,
-    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    CallableParams, ClassGenerics, DbType, GenericItem, GenericsList, PointLink, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, FirstParamProperties, Function, Instance, TypeOrClass};
+use crate::type_helpers::{Callable, Class, FirstParamProperties, Function, Instance, TypeOrClass};
 use crate::utils::rc_unwrap_or_clone;
 
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
@@ -69,10 +69,7 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
             //
             // Since you are however allowed to write weird arbitrary stuff like self: Any as well,
             // we also have to check for that case [2].
-            class.generics = Generics::Self_ {
-                class_definition: class.node_ref.as_link(),
-                type_var_likes: class.type_vars(i_s),
-            };
+            class = Class::with_self_generics(i_s.db, class.node_ref);
             let mut checked = false;
             if let Some(self_class) = t.maybe_class(i_s.db) {
                 if self_class.node_ref == class.node_ref {
@@ -237,17 +234,22 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
 pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: Option<&Class>,
-    callable: &'a CallableContent,
+    callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
     args_node_ref: &impl Fn() -> NodeRef<'a>,
     result_context: &mut ResultContext,
     on_type_error: OnTypeError<'db, '_>,
 ) -> CalculatedTypeArguments {
     let func_or_callable = FunctionOrCallable::Callable(callable);
-    let type_vars = callable.type_vars.as_ref();
+    let type_vars = callable.content.type_vars.as_ref();
     calculate_type_vars(
         i_s,
-        get_matcher(class, func_or_callable, callable.defined_at, type_vars),
+        get_matcher(
+            class,
+            func_or_callable,
+            callable.content.defined_at,
+            type_vars,
+        ),
         None,
         func_or_callable,
         None,
@@ -255,7 +257,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
         args_node_ref,
         false,
         type_vars,
-        callable.defined_at,
+        callable.content.defined_at,
         result_context,
         Some(on_type_error),
     )
@@ -351,7 +353,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             } else {
                 let result_type = match func_or_callable {
                     FunctionOrCallable::Function(f) => f.result_type(i_s),
-                    FunctionOrCallable::Callable(c) => Type::new(&c.result_type),
+                    FunctionOrCallable::Callable(c) => Type::new(&c.content.result_type),
                 };
                 // Fill the type var arguments from context
                 result_type.is_sub_type_of(i_s, &mut matcher, type_);
@@ -399,7 +401,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 function.iter_args_with_params(i_s.db, args, skip_first_param),
             )
         }
-        FunctionOrCallable::Callable(callable) => match &callable.params {
+        FunctionOrCallable::Callable(callable) => match &callable.content.params {
             CallableParams::Simple(params) => calculate_type_vars_for_params(
                 i_s,
                 &mut matcher,
@@ -453,7 +455,8 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 match &func_or_callable {
                     FunctionOrCallable::Function(function) => function.name(),
                     FunctionOrCallable::Callable(callable) => {
-                        callable_description = callable.format(&FormatData::new_short(i_s.db));
+                        callable_description =
+                            callable.content.format(&FormatData::new_short(i_s.db));
                         &callable_description
                     }
                 },
@@ -487,9 +490,9 @@ pub fn match_arguments_against_params<
         FunctionOrCallable::Function(f) => {
             Some((prefix.to_owned() + &f.diagnostic_string(class)).into())
         }
-        FunctionOrCallable::Callable(c) => c.name.map(|n| {
+        FunctionOrCallable::Callable(c) => c.content.name.map(|n| {
             let mut string = format!("{prefix}\"{}\"", n.as_str(i_s.db));
-            if let Some(class_name) = c.class_name {
+            if let Some(class_name) = c.content.class_name {
                 string += &format!(" of \"{}\"", class_name.as_str(i_s.db));
             }
             string.into()
@@ -649,7 +652,7 @@ pub fn match_arguments_against_params<
             }
             FunctionOrCallable::Callable(callable) => {
                 debug!("TODO this keyword param could also exist");
-                if let Some(n) = callable.name {
+                if let Some(n) = callable.content.name {
                     format!(
                         "Unexpected keyword argument {name:?} for \"{}\"",
                         n.as_str(i_s.db)

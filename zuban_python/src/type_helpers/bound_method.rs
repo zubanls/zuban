@@ -1,6 +1,8 @@
+use std::rc::Rc;
+
 use super::{Callable, FirstParamProperties, Function, Instance, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
-use crate::database::MroIndex;
+use crate::database::{CallableParams, DbType, MroIndex};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{OnTypeError, ResultContext, Type};
@@ -77,7 +79,47 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             BoundMethodFunction::Overload(f) => {
                 f.as_db_type(i_s, FirstParamProperties::Skip(self.instance))
             }
-            BoundMethodFunction::Callable(c) => return Type::new(c.db_type),
+            BoundMethodFunction::Callable(c) => {
+                let callable = match &c.content.params {
+                    CallableParams::Simple(params) => {
+                        let mut vec = params.to_vec();
+                        // The first argument in a class param is not relevant if we execute descriptors.
+                        vec.remove(0);
+                        let mut c = c.content.clone();
+                        c.params = CallableParams::Simple(Rc::from(vec));
+                        c
+                    }
+                    CallableParams::WithParamSpec(_, _) => todo!(),
+                    CallableParams::Any => c.content.clone(),
+                };
+                DbType::Callable(Rc::new({
+                    let class = self.instance.class;
+                    Type::replace_type_var_likes_and_self_for_callable(
+                        &callable,
+                        i_s.db,
+                        &mut |usage| {
+                            let in_definition = usage.in_definition();
+                            if let Some(defined_in) = c.defined_in {
+                                if in_definition == class.node_ref.as_link() {
+                                    return class
+                                        .generics()
+                                        .nth_usage(i_s.db, &usage)
+                                        .into_generic_item(i_s.db);
+                                } else if in_definition == defined_in.node_ref.as_link() {
+                                    return defined_in
+                                        .generics()
+                                        .nth_usage(i_s.db, &usage)
+                                        .into_generic_item(i_s.db);
+                                }
+                            }
+                            // This can happen for example if the return value is a Callable with its
+                            // own type vars.
+                            usage.into_generic_item()
+                        },
+                        &mut || class.as_db_type(i_s.db),
+                    )
+                }))
+            }
         };
         // TODO performance: it may be questionable that we allocate here again.
         Type::owned(t)

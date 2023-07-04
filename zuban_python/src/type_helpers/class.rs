@@ -7,13 +7,14 @@ use parsa_python_ast::{
 };
 
 use super::function::OverloadResult;
-use super::{Instance, Module, NamedTupleValue};
+use super::{Callable, Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, GenericsList, Locality,
-    MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
-    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionType,
+    GenericsList, Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope,
+    Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -78,6 +79,17 @@ impl<'db: 'a, 'a> Class<'a> {
         Self::from_position(node_ref, Generics::NotDefinedYet, None)
     }
 
+    pub fn with_self_generics(db: &'a Database, node_ref: NodeRef<'a>) -> Self {
+        Self::from_position(
+            node_ref,
+            Generics::Self_ {
+                class_definition: node_ref.as_link(),
+                type_var_likes: Self::with_undefined_generics(node_ref).use_cached_type_vars(db),
+            },
+            None,
+        )
+    }
+
     fn type_check_init_func(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -117,7 +129,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 let calculated_type_args = calculate_callable_type_vars_and_return(
                     i_s,
                     class.as_ref(),
-                    &callable_content,
+                    Callable::new(&callable_content, Some(*self)),
                     args.iter(),
                     &|| args.as_node_ref(),
                     result_context,
@@ -198,11 +210,8 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.class_storage.parent_scope {
             ParentScope::Module => None,
             ParentScope::Class(node_index) => {
-                let parent_class = Self::from_position(
-                    NodeRef::new(self.node_ref.file, node_index),
-                    Generics::NotDefinedYet, // TODO is this correct?
-                    None,
-                );
+                let parent_class =
+                    Self::with_undefined_generics(NodeRef::new(self.node_ref.file, node_index));
                 parent_class
                     .maybe_type_var_like_in_parent(i_s, type_var)
                     .or_else(|| {
@@ -866,11 +875,15 @@ impl<'db: 'a, 'a> Class<'a> {
         let name = self.name_string_slice();
         Rc::new(NamedTuple::new(
             name,
-            self.initialize_class_members(i_s, name),
+            self.initialize_named_tuple_class_members(i_s, name),
         ))
     }
 
-    fn initialize_class_members(&self, i_s: &InferenceState, name: StringSlice) -> CallableContent {
+    fn initialize_named_tuple_class_members(
+        &self,
+        i_s: &InferenceState,
+        name: StringSlice,
+    ) -> CallableContent {
         let mut vec = vec![];
         let file = self.node_ref.file;
         match self.node().block().unpack() {
@@ -897,6 +910,7 @@ impl<'db: 'a, 'a> Class<'a> {
             name: Some(name),
             class_name: None,
             defined_at: self.node_ref.as_link(),
+            kind: FunctionType::Function,
             type_vars: self.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::None,
@@ -935,11 +949,8 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.class_storage.parent_scope {
             ParentScope::Module => base_qualified_name!(self, db, self.name()),
             ParentScope::Class(node_index) => {
-                let parent_class = Self::from_position(
-                    NodeRef::new(self.node_ref.file, node_index),
-                    Generics::NotDefinedYet,
-                    None,
-                );
+                let parent_class =
+                    Self::with_undefined_generics(NodeRef::new(self.node_ref.file, node_index));
                 format!("{}.{}", parent_class.qualified_name(db), self.name())
             }
             ParentScope::Function(node_index) => {
@@ -1092,9 +1103,9 @@ fn apply_generics_to_base_class<'a>(
         }
         // TODO this is wrong, because it does not use generics.
         _ if matches!(generics, Generics::None | Generics::NotDefinedYet) => {
-            TypeOrClass::Type(Type::new(&t))
+            TypeOrClass::Type(Type::new(t))
         }
-        _ => TypeOrClass::Type(Type::owned(Type::new(&t).replace_type_var_likes_and_self(
+        _ => TypeOrClass::Type(Type::owned(Type::new(t).replace_type_var_likes_and_self(
             db,
             &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
             &mut || todo!(),

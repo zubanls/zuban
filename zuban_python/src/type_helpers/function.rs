@@ -3,7 +3,7 @@ use parsa_python_ast::{
     ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
-use std::cell::{Cell, RefCell};
+use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -11,10 +11,10 @@ use super::{Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, GenericItem, GenericsList, Locality, Overload, ParamSpecUsage,
-    ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, FunctionOverload, FunctionType, GenericItem, Locality, Overload,
+    ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -50,7 +50,7 @@ impl fmt::Debug for Function<'_, '_> {
     }
 }
 
-impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
+impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     // Functions use the following points:
     // - "def" to redirect to the first return/yield
     // - "function_def_parameters" to save calculated type vars
@@ -338,17 +338,40 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
                 .check_point_cache(decorator_ref.node_index)
                 .unwrap();
         }
+        if let Some(class) = self.class {
+            let class = Class::with_self_generics(i_s.db, class.node_ref);
+            Self::new(self.node_ref, Some(class))
+                .save_decorated(&i_s.with_class_context(&class), decorator_ref)
+        } else {
+            self.save_decorated(i_s, decorator_ref)
+        }
+    }
+
+    fn save_decorated(&self, i_s: &InferenceState<'db, '_>, decorator_ref: NodeRef) -> Inferred {
         let node = self.node();
         let FunctionParent::Decorated(decorated) = node.parent() else {
             unreachable!();
         };
-        let mut new_inf = Inferred::from_saved_node_ref(self.node_ref);
+        let mut new_inf = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
+        let mut kind = FunctionType::Function;
+        let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
             let i = self
                 .node_ref
                 .file
                 .inference(i_s)
                 .infer_named_expression(decorator.named_expression());
+            if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
+                kind = FunctionType::ClassMethod;
+                continue;
+            }
+            if i.maybe_saved_link() == Some(i_s.db.python_state.overload_link()) {
+                is_overload = true;
+                continue;
+            }
+            if i.maybe_saved_link() == Some(i_s.db.python_state.abstractmethod_link()) {
+                continue;
+            }
             // TODO check if it's an function without a return annotation and
             // abort in that case.
             new_inf = i.execute(
@@ -363,13 +386,27 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             let mut callable_content = (**callable_content).clone();
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
+            callable_content.kind = kind;
             Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(
                 i_s,
                 decorator_ref.file,
                 decorator_ref.node_index,
             )
         } else {
+            if kind != FunctionType::Function {
+                todo!()
+            }
             new_inf.save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+        }
+    }
+
+    pub fn is_classmethod(&self, i_s: &InferenceState) -> bool {
+        let node_ref = NodeRef::new(self.node_ref.file, self.node().name_definition().index());
+        if node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
+            let inf = self.decorated(i_s);
+            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionType::ClassMethod)
+        } else {
+            false
         }
     }
 
@@ -467,120 +504,6 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
         Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 
-    pub fn classmethod_as_db_type(
-        &self,
-        i_s: &InferenceState,
-        class: &Class,
-        class_generics_not_defined_yet: bool,
-    ) -> DbType {
-        let mut class_method_type_var_usage = None;
-        let mut params = self.iter_params();
-        let defined_at = self.node_ref.as_link();
-        let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
-        let mut type_vars = if let Some(type_vars) = type_vars.take() {
-            type_vars.into_vec()
-        } else {
-            vec![]
-        };
-        if let Some(param) = params.next() {
-            if let Some(t) = param.annotation(i_s) {
-                match t.as_ref() {
-                    DbType::Type(t) => {
-                        if let DbType::TypeVar(usage) = t.as_ref() {
-                            class_method_type_var_usage = Some(usage.clone());
-                            type_vars.remove(0);
-                        }
-                    }
-                    _ => todo!(),
-                }
-            }
-        }
-
-        let type_vars = RefCell::new(type_vars);
-
-        let ensure_classmethod_type_var_like = |tvl| {
-            let pos = type_vars.borrow().iter().position(|t| t == &tvl);
-            let position = pos.unwrap_or_else(|| {
-                type_vars.borrow_mut().push(tvl.clone());
-                type_vars.borrow().len() - 1
-            });
-            tvl.as_type_var_like_usage(position.into(), defined_at)
-                .into_generic_item()
-        };
-        let get_class_method_class = || {
-            if class_generics_not_defined_yet {
-                DbType::Class(
-                    class.node_ref.as_link(),
-                    match class.use_cached_type_vars(i_s.db) {
-                        Some(tvls) => ClassGenerics::List(GenericsList::new_generics(
-                            tvls.iter()
-                                .map(|tvl| ensure_classmethod_type_var_like(tvl.clone()))
-                                .collect(),
-                        )),
-                        None => ClassGenerics::None,
-                    },
-                )
-            } else {
-                class.as_db_type(i_s.db)
-            }
-        };
-        let as_db_type = |i_s: &InferenceState, t: Type| {
-            let Some(func_class) = self.class else {
-                return t.as_db_type()
-            };
-            t.replace_type_var_likes_and_self(
-                i_s.db,
-                &mut |mut usage| {
-                    let in_definition = usage.in_definition();
-                    if in_definition == func_class.node_ref.as_link() {
-                        let result = func_class
-                            .generics()
-                            .nth_usage(i_s.db, &usage)
-                            .into_generic_item(i_s.db);
-                        // We need to remap again, because in generics of classes will be
-                        // generic in the function of the classmethod, see for example
-                        // `testGenericClassMethodUnboundOnClass`.
-                        if class_generics_not_defined_yet {
-                            return result.replace_type_var_likes(
-                                i_s.db,
-                                &mut |usage| {
-                                    if usage.in_definition() == class.node_ref.as_link() {
-                                        let tvl = usage.as_type_var_like();
-                                        ensure_classmethod_type_var_like(tvl)
-                                    } else {
-                                        usage.into_generic_item()
-                                    }
-                                },
-                                &mut || todo!(),
-                            );
-                        }
-                        result
-                    } else if in_definition == defined_at {
-                        if let Some(u) = &class_method_type_var_usage {
-                            if u.index == usage.index() {
-                                return GenericItem::TypeArgument(get_class_method_class());
-                            } else {
-                                usage.add_to_index(-1);
-                                todo!()
-                            }
-                        }
-                        usage.into_generic_item()
-                    } else {
-                        // This can happen for example if the return value is a Callable with its
-                        // own type vars.
-                        usage.into_generic_item()
-                    }
-                },
-                #[allow(clippy::redundant_closure)] // This is a clippy bug
-                &mut || get_class_method_class(),
-            )
-        };
-        let mut callable = self.internal_as_db_type(i_s, params, false, as_db_type);
-        let type_vars = type_vars.into_inner();
-        callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-        DbType::Callable(Rc::new(callable))
-    }
-
     fn internal_as_db_type(
         &self,
         i_s: &InferenceState,
@@ -596,6 +519,7 @@ impl<'db: 'a, 'a, 'class> Function<'a, 'class> {
             name: Some(self.name_string_slice()),
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
+            kind: FunctionType::Function,
             params,
             type_vars: None,
             result_type,
@@ -1509,8 +1433,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     }
 
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::FunctionOverload(
-            self.overload
+        DbType::FunctionOverload(Rc::new(FunctionOverload {
+            functions: self
+                .overload
                 .functions
                 .iter()
                 .map(|link| {
@@ -1518,7 +1443,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     function.as_callable(i_s, first)
                 })
                 .collect(),
-        )
+        }))
     }
 
     pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

@@ -389,8 +389,6 @@ pub enum Specific {
     LazyInferredClass, // A class that will be inferred later.
     DecoratedFunction, // A function that will be inferred later.
     Function,          // The node point so the index of the result
-    ClassMethod,
-    Property,
     Closure,
     // NoReturnFunction,  // TODO Remove or use?
     AnnotationOrTypeCommentClassInstance,
@@ -705,13 +703,29 @@ impl std::cmp::PartialEq for Namespace {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct FunctionOverload {
+    pub functions: Rc<[CallableContent]>,
+}
+
+impl FunctionOverload {
+    pub fn map_functions(
+        &self,
+        callable: impl FnOnce(&Rc<[CallableContent]>) -> Rc<[CallableContent]>,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            functions: callable(&self.functions),
+        })
+    }
+}
+
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
     Class(PointLink, ClassGenerics),
     Union(UnionType),
-    FunctionOverload(Rc<[CallableContent]>),
+    FunctionOverload(Rc<FunctionOverload>),
     TypeVar(TypeVarUsage),
     Type(Rc<DbType>),
     Tuple(Rc<TupleContent>),
@@ -829,6 +843,7 @@ impl DbType {
                 FormatStyle::MypyRevealType => format!(
                     "Overload({})",
                     callables
+                        .functions
                         .iter()
                         .map(|t| t.format(format_data))
                         .collect::<Vec<_>>()
@@ -952,7 +967,7 @@ impl DbType {
                 }
             }
             Self::FunctionOverload(intersection) => {
-                for callable in intersection.iter() {
+                for callable in intersection.functions.iter() {
                     search_params(found_type_var, &callable.params);
                     callable.result_type.search_type_vars(found_type_var)
                 }
@@ -1032,6 +1047,7 @@ impl DbType {
             }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
+                .functions
                 .iter()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
@@ -1086,7 +1102,9 @@ impl DbType {
                 GenericItem::ParamSpecArgument(params) => todo!(),
             }),
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
-            Self::FunctionOverload(intersection) => intersection.iter().any(|t| t.has_self_type()),
+            Self::FunctionOverload(intersection) => {
+                intersection.functions.iter().any(|t| t.has_self_type())
+            }
             Self::Type(t) => t.has_self_type(),
             Self::Tuple(content) => content.args.as_ref().is_some_and(|args| match args {
                 TupleTypeArguments::FixedLength(ts) => ts.iter().any(|t| match t {
@@ -1137,7 +1155,6 @@ pub struct Overload {
     pub implementing_function_has_decorators: bool,
     pub functions: Box<[PointLink]>,
     pub function_type: FunctionType,
-    pub is_async: bool,
 }
 
 impl Overload {
@@ -1150,7 +1167,6 @@ impl Overload {
             implementing_function_has_decorators: self.implementing_function_has_decorators,
             functions: functions.into_boxed_slice(),
             function_type: self.function_type,
-            is_async: self.is_async,
         }
     }
 }
@@ -1465,6 +1481,7 @@ pub struct CallableContent {
     pub name: Option<StringSlice>,
     pub class_name: Option<StringSlice>,
     pub defined_at: PointLink,
+    pub kind: FunctionType,
     pub type_vars: Option<TypeVarLikes>,
     pub params: CallableParams,
     pub result_type: DbType,
@@ -1476,6 +1493,7 @@ impl CallableContent {
             name: None,
             class_name: None,
             defined_at: PointLink::new(FileIndex(1), 1),
+            kind: FunctionType::Function,
             type_vars: None,
             params: CallableParams::Any,
             result_type: DbType::Any,

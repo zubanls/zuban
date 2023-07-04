@@ -11,8 +11,8 @@ use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    matches_simple_params, overload_has_overlapping_params, Generics, LookupResult, Match, Matcher,
-    Param, ResultContext, Type,
+    matches_simple_params, overload_has_overlapping_params, LookupResult, Match, Matcher, Param,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -202,16 +202,7 @@ impl<'db> Inference<'db, '_, '_> {
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
-        let type_var_likes =
-            Class::from_position(class_node_ref, Generics::NotDefinedYet, None).type_vars(self.i_s);
-        let c = Class::from_position(
-            class_node_ref,
-            Generics::Self_ {
-                class_definition: class_node_ref.as_link(),
-                type_var_likes,
-            },
-            None,
-        );
+        let c = Class::with_self_generics(self.i_s.db, class_node_ref);
         self.file
             .inference(&self.i_s.with_diagnostic_class_context(&c))
             .calc_block_diagnostics(block, Some(c), None);
@@ -745,7 +736,7 @@ fn try_pretty_format(
                 return;
             }
             DbType::FunctionOverload(overloads) => {
-                for c in overloads.iter() {
+                for c in overloads.functions.iter() {
                     notes.push(format!("{prefix}@overload").into());
                     notes.push(format!("{prefix}{}", format_pretty_callable(i_s, c)).into());
                 }

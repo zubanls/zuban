@@ -338,7 +338,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                     let result = class
                         .lookup_symbol(self.i_s, self.name)
                         .and_then(|inf| {
-                            inf.resolve_class_type_vars(self.i_s, &self.instance.class)
+                            inf.resolve_class_type_vars(self.i_s, &class)
                                 .bind_instance_descriptors(
                                     self.i_s,
                                     self.instance,

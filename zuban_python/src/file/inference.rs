@@ -6,10 +6,10 @@ use parsa_python_ast::*;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, GenericItem,
-    GenericsList, Literal, LiteralKind, Locality, Namespace, ParamSpecific, Point, PointLink,
-    PointType, Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, UnionEntry,
-    UnionType,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, FunctionType,
+    GenericItem, GenericsList, Literal, LiteralKind, Locality, Namespace, ParamSpecific, Point,
+    PointLink, PointType, Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
+    UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1240,6 +1240,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         name: None,
                         class_name: None,
                         defined_at: PointLink::new(self.file.file_index(), lambda.index()),
+                        kind: FunctionType::Function,
                         type_vars: None,
                         params: CallableParams::Simple(Rc::new([])),
                         result_type: result.class_as_db_type(self.i_s),
@@ -1821,9 +1822,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 } else if let Some((function, args)) = self.i_s.current_execution()
                                 {
                                     if specific == Specific::SelfParam {
-                                        if func.node_ref.point().maybe_specific().unwrap()
-                                            == Specific::ClassMethod
-                                        {
+                                        if func.is_classmethod(self.i_s) {
                                             Inferred::from_type(DbType::Type(Rc::new(
                                                 DbType::Self_,
                                             )))

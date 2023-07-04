@@ -1,20 +1,23 @@
 use super::function::format_pretty_function_like;
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, CallableParams, DbType};
+use crate::database::{CallableContent, CallableParams};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext, Type};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
-    pub db_type: &'a DbType,
     pub content: &'a CallableContent,
+    pub defined_in: Option<Class<'a>>,
 }
 
 impl<'a> Callable<'a> {
-    pub fn new(db_type: &'a DbType, content: &'a CallableContent) -> Self {
-        Self { db_type, content }
+    pub fn new(content: &'a CallableContent, defined_in: Option<Class<'a>>) -> Self {
+        Self {
+            content,
+            defined_in,
+        }
     }
 
     pub fn execute_internal<'db>(
@@ -28,14 +31,19 @@ impl<'a> Callable<'a> {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
             class,
-            self.content,
+            *self,
             args.iter(),
             &|| args.as_node_ref(),
             result_context,
             on_type_error,
         );
         let g_o = Type::new(&self.content.result_type);
-        g_o.execute_and_resolve_type_vars(i_s, None, None, &calculated_type_vars)
+        g_o.execute_and_resolve_type_vars(
+            i_s,
+            self.defined_in.as_ref(),
+            class,
+            &calculated_type_vars,
+        )
     }
 }
 

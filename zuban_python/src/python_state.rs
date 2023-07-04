@@ -82,10 +82,12 @@ pub struct PythonState {
     typeshed_supports_keys_and_get_item_index: NodeIndex,
     typing_namedtuple_index: NodeIndex, // TODO Appears to be unused currently.
     typing_type_var: NodeIndex,
+    typing_overload_index: NodeIndex,
     types_module_type_index: NodeIndex,
     types_none_type_index: NodeIndex,
     collections_namedtuple_index: NodeIndex,
-    abc_abc_meta: NodeIndex,
+    abc_abc_meta_index: NodeIndex,
+    abc_abstractmethod_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
     mypy_extensions_named_arg_func: NodeIndex,
@@ -135,8 +137,10 @@ impl PythonState {
             typeshed_supports_keys_and_get_item_index: 0,
             typing_namedtuple_index: 0,
             typing_type_var: 0,
+            typing_overload_index: 0,
             collections_namedtuple_index: 0,
-            abc_abc_meta: 0,
+            abc_abc_meta_index: 0,
+            abc_abstractmethod_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -227,17 +231,13 @@ impl PythonState {
                     - NAME_TO_CLASS_DIFF;
                 $db.python_state.$attr_name = class_index;
                 let module = db.python_state.$module_name();
-                let class = Class::from_position(
-                    NodeRef::new(module, class_index),
-                    Generics::NotDefinedYet,
-                    None,
-                );
+                let class = Class::with_undefined_generics(NodeRef::new(module, class_index));
                 class.ensure_calculated_class_infos(&InferenceState::new(db));
             };
         }
         cache_index!(builtins_object_index, db, builtins, "object");
         cache_index!(builtins_type_index, db, builtins, "type");
-        cache_index!(abc_abc_meta, db, abc, "ABCMeta");
+        cache_index!(abc_abc_meta_index, db, abc, "ABCMeta");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
         cache_index!(builtins_set_index, db, builtins, "set");
@@ -267,11 +267,27 @@ impl PythonState {
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
 
+        db.python_state.abc_abstractmethod_index = db
+            .python_state
+            .abc()
+            .symbol_table
+            .lookup_symbol("abstractmethod")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+
         db.python_state.collections_namedtuple_index = db
             .python_state
             .collections()
             .symbol_table
             .lookup_symbol("namedtuple")
+            .unwrap()
+            - NAME_TO_FUNCTION_DIFF;
+
+        db.python_state.typing_overload_index = db
+            .python_state
+            .typing()
+            .symbol_table
+            .lookup_symbol("overload")
             .unwrap()
             - NAME_TO_FUNCTION_DIFF;
 
@@ -428,18 +444,11 @@ impl PythonState {
         )
     }
 
-    pub fn supports_keys_and_get_item_class(&self, db: &Database) -> Class {
+    pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         let node_ref = self.supports_keys_and_get_item_node_ref();
-        let cls = Class::from_position(node_ref, Generics::NotDefinedYet, None);
+        let cls = Class::with_undefined_generics(node_ref);
         cls.ensure_calculated_class_infos(&InferenceState::new(db));
-        Class::from_position(
-            node_ref,
-            Generics::Self_ {
-                class_definition: node_ref.as_link(),
-                type_var_likes: cls.use_cached_type_vars(db),
-            },
-            None,
-        )
+        Class::with_self_generics(db, node_ref)
     }
 
     pub fn type_var_type(&self) -> Type {
@@ -459,8 +468,18 @@ impl PythonState {
     }
 
     pub fn abc_meta_link(&self) -> PointLink {
-        debug_assert!(self.abc_abc_meta != 0);
-        PointLink::new(self.abc().file_index(), self.abc_abc_meta)
+        debug_assert!(self.abc_abc_meta_index != 0);
+        PointLink::new(self.abc().file_index(), self.abc_abc_meta_index)
+    }
+
+    pub fn abstractmethod_link(&self) -> PointLink {
+        debug_assert!(self.abc_abc_meta_index != 0);
+        PointLink::new(self.abc().file_index(), self.abc_abstractmethod_index)
+    }
+
+    pub fn overload_link(&self) -> PointLink {
+        debug_assert!(self.typing_overload_index != 0);
+        PointLink::new(self.typing().file_index(), self.typing_overload_index)
     }
 
     pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {

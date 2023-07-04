@@ -1,4 +1,5 @@
 # Next up
+testSelfTypeRestrictedClassMethod
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
@@ -361,10 +362,6 @@ testOverloadedProperty
 testOverloadedProperty2
 testDecoratedPropertySetter
 
-# descriptors wrong decorator check name binding issue
-testClassCustomPropertyWorks
-# classmethod name redirect name binding issue
-testAliasToClassMethod
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4
 testForwardBoundFunctionScopeWorks

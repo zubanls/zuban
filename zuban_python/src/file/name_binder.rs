@@ -189,13 +189,11 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
         let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
-        if !in_base_scope || self.mypy_compatible {
-            if let Some(replaced) = replaced {
-                self.points.set(
-                    name_def.name_index(),
-                    Point::new_multi_definition(replaced, Locality::File),
-                );
-            }
+        if let Some(replaced) = replaced {
+            self.points.set(
+                name_def.name_index(),
+                Point::new_multi_definition(replaced, Locality::File),
+            );
         }
         self.points.set(name_def.index(), point);
     }
@@ -832,7 +830,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
 
         let mut is_overload = false;
-        let mut function_type = FunctionType::Function;
         if let Some(decorators) = decorators {
             for decorator in decorators.iter() {
                 self.index_non_block_node(&decorator, ordered, false);
@@ -842,8 +839,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 {
                     if let AtomContent::Name(name) = atom.unpack() {
                         match name.as_str() {
-                            "property" => function_type = FunctionType::Property,
-                            "classmethod" => function_type = FunctionType::ClassMethod,
                             "overload" => is_overload = true,
                             _ => (),
                         }
@@ -876,12 +871,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 );
                 new
             } else {
+                // TODO add is_async for function types
                 Overload {
                     functions: Box::new([current_link]),
-                    function_type,
+                    function_type: FunctionType::Function,
                     implementing_function: None,
                     implementing_function_has_decorators: false,
-                    is_async,
                 }
             };
             self.complex_points.insert(
@@ -918,20 +913,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
             if !is_overload {
                 if let Some(decorators) = decorators {
-                    // TODO this filtering is wrong and should be deleted
-                    if decorators.iter().any(|d| {
-                        ["abstractmethod", "classmethod", "property"]
-                            .iter()
-                            .any(|s| d.as_code().contains(s))
-                    }) {
-                        self.add_redirect_definition(name_def, func.index(), true);
-                    } else {
-                        self.add_point_definition(
-                            name_def,
-                            Specific::DecoratedFunction,
-                            in_base_scope,
-                        )
-                    }
+                    self.add_point_definition(name_def, Specific::DecoratedFunction, in_base_scope)
                 } else {
                     self.add_redirect_definition(name_def, func.index(), true);
                 }
@@ -940,15 +922,8 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.points.set(
             func.index(),
             Point::new_simple_specific(
-                if is_overload
-                    || self.type_ != NameBinderType::Function
-                    || return_annotation.is_some()
-                {
-                    match function_type {
-                        FunctionType::Function => Specific::Function,
-                        FunctionType::ClassMethod => Specific::ClassMethod,
-                        FunctionType::Property => Specific::Property,
-                    }
+                if self.type_ != NameBinderType::Function || return_annotation.is_some() {
+                    Specific::Function
                 } else {
                     Specific::Closure
                 },
