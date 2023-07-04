@@ -250,7 +250,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
             callable.content.defined_at,
             type_vars,
         ),
-        None,
+        class,
         func_or_callable,
         None,
         args,
@@ -405,7 +405,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             CallableParams::Simple(params) => calculate_type_vars_for_params(
                 i_s,
                 &mut matcher,
-                None,
+                class,
                 func_or_callable,
                 args_node_ref,
                 on_type_error,
