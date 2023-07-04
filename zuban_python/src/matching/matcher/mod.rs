@@ -66,12 +66,14 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_reverse_callable_matcher(
-        callable: &'a CallableContent,
-        type_var_count: usize,
-    ) -> Self {
+    pub fn new_reverse_callable_matcher(callable: &'a CallableContent) -> Self {
+        let type_var_matcher = callable
+            .type_vars
+            .as_ref()
+            .map(|type_vars| TypeVarMatcher::new(callable.defined_at, type_vars.len()));
         Self {
-            type_var_matcher: Some(TypeVarMatcher::new(callable.defined_at, type_var_count)),
+            class: None,
+            type_var_matcher,
             func_or_callable: Some(FunctionOrCallable::Callable(Callable::new(callable, None))),
             match_reverse: true,
             ..Self::default()

@@ -841,7 +841,7 @@ impl<'a> Type<'a> {
         // TODO This if is weird.
         if !matcher.has_type_var_matcher() {
             if let Some(c2_type_vars) = c2.type_vars.as_ref() {
-                let mut matcher = Matcher::new_reverse_callable_matcher(c2, c2_type_vars.len());
+                let mut matcher = Matcher::new_reverse_callable_matcher(c2);
                 return Type::matches_callable(i_s, &mut matcher, c1, c2);
             }
         }

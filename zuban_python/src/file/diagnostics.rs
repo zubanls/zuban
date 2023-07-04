@@ -372,10 +372,8 @@ impl<'db> Inference<'db, '_, '_> {
                         if let Some(callable_content) = &implementation_callable_content {
                             match &callable_content.params {
                                 CallableParams::Simple(ps) => {
-                                    let mut matcher = Matcher::new_reverse_callable_matcher(
-                                        callable_content,
-                                        0, // TODO are there really no type vars?
-                                    );
+                                    let mut matcher =
+                                        Matcher::new_reverse_callable_matcher(callable_content);
                                     self.calc_overload_implementation_diagnostics(
                                         name_def_node_ref,
                                         f1,
