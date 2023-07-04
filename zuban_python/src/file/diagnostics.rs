@@ -345,15 +345,19 @@ impl<'db> Inference<'db, '_, '_> {
             let mut maybe_implementation = None;
             let mut implementation_callable_content = None;
             let decorated;
+            let mut implementing_function_has_decorators = false;
             if let Some(i) = o.implementing_function {
                 let imp = Function::new(NodeRef::from_link(self.i_s.db, i), class);
                 imp.type_vars(self.i_s);
+                if matches!(imp.node().parent(), FunctionParent::Decorated(_)) {
+                    implementing_function_has_decorators = true;
+                };
                 if !self.i_s.db.python_state.project.mypy_compatible
                     || imp.return_annotation().is_some()
                 {
                     maybe_implementation = Some(imp);
                 }
-                if o.implementing_function_has_decorators {
+                if implementing_function_has_decorators {
                     decorated = imp.decorated(self.i_s);
                     implementation_callable_content =
                         decorated.as_type(self.i_s).maybe_callable(self.i_s);
@@ -364,7 +368,7 @@ impl<'db> Inference<'db, '_, '_> {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
                 if let Some(ref implementation) = maybe_implementation {
-                    if o.implementing_function_has_decorators {
+                    if implementing_function_has_decorators {
                         if let Some(callable_content) = &implementation_callable_content {
                             match &callable_content.params {
                                 CallableParams::Simple(ps) => {
