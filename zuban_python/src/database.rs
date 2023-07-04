@@ -1,5 +1,6 @@
 use std::borrow::Cow;
 use std::cell::Cell;
+use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
@@ -706,6 +707,8 @@ impl std::cmp::PartialEq for Namespace {
 #[derive(Debug, Clone, PartialEq)]
 pub struct FunctionOverload {
     pub functions: Rc<[CallableContent]>,
+    pub implementation: RefCell<Option<CallableContent>>,
+    pub kind: FunctionType,
 }
 
 impl FunctionOverload {
@@ -715,6 +718,8 @@ impl FunctionOverload {
     ) -> Rc<Self> {
         Rc::new(Self {
             functions: callable(&self.functions),
+            kind: self.kind,
+            implementation: self.implementation.clone(),
         })
     }
 }

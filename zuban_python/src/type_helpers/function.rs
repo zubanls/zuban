@@ -3,7 +3,7 @@ use parsa_python_ast::{
     ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::fmt;
 use std::rc::Rc;
 
@@ -1443,6 +1443,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     function.as_callable(i_s, first)
                 })
                 .collect(),
+            implementation: RefCell::new(None),
+            kind: self.overload.function_type,
         }))
     }
 
