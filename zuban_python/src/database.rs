@@ -1172,7 +1172,6 @@ pub enum FunctionType {
 pub struct Overload {
     pub implementing_function: Option<PointLink>,
     pub functions: Box<[PointLink]>,
-    pub function_type: FunctionType,
 }
 
 impl Overload {
@@ -1183,7 +1182,6 @@ impl Overload {
         Self {
             implementing_function: self.implementing_function,
             functions: functions.into_boxed_slice(),
-            function_type: self.function_type,
         }
     }
 }
