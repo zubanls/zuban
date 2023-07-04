@@ -922,10 +922,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         self.points.set(
             func.index(),
             Point::new_simple_specific(
-                if is_overload
-                    || self.type_ != NameBinderType::Function
-                    || return_annotation.is_some()
-                {
+                if self.type_ != NameBinderType::Function || return_annotation.is_some() {
                     Specific::Function
                 } else {
                     Specific::Closure
