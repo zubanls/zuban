@@ -342,20 +342,17 @@ impl<'db> Inference<'db, '_, '_> {
                 name_def_node_ref
                     .add_typing_issue(self.i_s, IssueType::OverloadStubImplementationNotAllowed);
             }
-            let mut maybe_implementation = None;
             let mut implementation_callable_content = None;
             if let Some(i) = o.implementing_function {
                 let imp = Function::new(NodeRef::from_link(self.i_s.db, i), class);
                 imp.type_vars(self.i_s);
                 if matches!(imp.node().parent(), FunctionParent::Decorated(_)) {
                     let decorated = imp.decorated(self.i_s);
-                    maybe_implementation = Some(imp);
                     implementation_callable_content =
                         decorated.as_type(self.i_s).maybe_callable(self.i_s);
                 } else if !self.i_s.db.python_state.project.mypy_compatible
                     || imp.return_annotation().is_some()
                 {
-                    maybe_implementation = Some(imp);
                     implementation_callable_content =
                         imp.as_type(self.i_s).maybe_callable(self.i_s);
                 }
@@ -363,15 +360,13 @@ impl<'db> Inference<'db, '_, '_> {
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let f1_type_vars = f1.type_vars(self.i_s);
-                if let Some(ref implementation) = maybe_implementation {
-                    if let Some(callable) = &implementation_callable_content {
-                        self.calc_overload_implementation_diagnostics2(
-                            name_def_node_ref,
-                            &callable,
-                            f1,
-                            i + 1,
-                        )
-                    }
+                if let Some(callable) = &implementation_callable_content {
+                    self.calc_overload_implementation_diagnostics2(
+                        name_def_node_ref,
+                        &callable,
+                        f1,
+                        i + 1,
+                    )
                 }
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
