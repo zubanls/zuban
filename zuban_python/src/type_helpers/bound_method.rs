@@ -99,16 +99,22 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                         i_s.db,
                         &mut |usage| {
                             let in_definition = usage.in_definition();
-                            if in_definition == class.node_ref.as_link() {
-                                class
-                                    .generics()
-                                    .nth_usage(i_s.db, &usage)
-                                    .into_generic_item(i_s.db)
-                            } else {
-                                // This can happen for example if the return value is a Callable with its
-                                // own type vars.
-                                usage.into_generic_item()
+                            if let Some(defined_in) = c.defined_in {
+                                if in_definition == class.node_ref.as_link() {
+                                    return class
+                                        .generics()
+                                        .nth_usage(i_s.db, &usage)
+                                        .into_generic_item(i_s.db);
+                                } else if in_definition == defined_in.node_ref.as_link() {
+                                    return defined_in
+                                        .generics()
+                                        .nth_usage(i_s.db, &usage)
+                                        .into_generic_item(i_s.db);
+                                }
                             }
+                            // This can happen for example if the return value is a Callable with its
+                            // own type vars.
+                            usage.into_generic_item()
                         },
                         &mut || class.as_db_type(i_s.db),
                     )

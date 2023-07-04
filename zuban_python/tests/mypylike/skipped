@@ -1,11 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
-testPassingMappingSubclassForKeywordVarArg
-testKeywordUnpackWithDifferentTypes
-
-testNotInOperator
-
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
