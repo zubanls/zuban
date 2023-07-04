@@ -871,12 +871,12 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 );
                 new
             } else {
+                // TODO add is_async for function types
                 Overload {
                     functions: Box::new([current_link]),
                     function_type: FunctionType::Function,
                     implementing_function: None,
                     implementing_function_has_decorators: false,
-                    is_async,
                 }
             };
             self.complex_points.insert(

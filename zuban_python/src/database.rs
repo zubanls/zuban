@@ -1135,7 +1135,6 @@ pub struct Overload {
     pub implementing_function_has_decorators: bool,
     pub functions: Box<[PointLink]>,
     pub function_type: FunctionType,
-    pub is_async: bool,
 }
 
 impl Overload {
@@ -1148,7 +1147,6 @@ impl Overload {
             implementing_function_has_decorators: self.implementing_function_has_decorators,
             functions: functions.into_boxed_slice(),
             function_type: self.function_type,
-            is_async: self.is_async,
         }
     }
 }
