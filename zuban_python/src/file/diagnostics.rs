@@ -724,16 +724,14 @@ fn is_overload_unmatchable(
     c2: &CallableContent,
 ) -> bool {
     let mut matcher = Matcher::new_reverse_callable_matcher(&c1);
-    use CallableParams::*;
-    let result = match (&c1.params, &c2.params) {
-        (Simple(params1), Simple(params2)) => matches_simple_params(
-            i_s,
-            &mut matcher,
-            params2.iter(),
-            params1.iter(),
-            Variance::Contravariant,
-        ),
-        _ => todo!(),
-    };
+    let result = matches_params(
+        i_s,
+        &mut matcher,
+        &c2.params,
+        &c1.params,
+        c1.type_vars.as_ref().map(|t| (t, c1.defined_at)),
+        Variance::Contravariant,
+        false,
+    );
     matches!(result, Match::True { with_any: false })
 }

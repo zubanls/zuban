@@ -31,6 +31,7 @@ pub fn matches_params(
     skip_first_of_params2: bool,
 ) -> Match {
     if matcher.is_matching_reverse() {
+        /*
         if type_vars2.is_none() {
             return matcher.match_reverse(|matcher| {
                 matches_params(
@@ -44,7 +45,8 @@ pub fn matches_params(
                 )
             });
         }
-        debug!("TODO should probably be the line above");
+        */
+        debug!("TODO should maybe be the line above");
     }
 
     use CallableParams::*;
