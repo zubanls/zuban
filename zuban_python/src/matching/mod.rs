@@ -19,7 +19,7 @@ pub use matcher::{
     calculate_function_type_vars_and_return, create_signature_without_self,
     CalculatedTypeArguments, Matcher,
 };
-pub use params::{matches_params, matches_simple_params, overload_has_overlapping_params, Param};
+pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::ResultContext;
 pub use type_::{common_base_type, execute_type_of_type, match_tuple_type_arguments, Type};
 pub use utils::replace_class_type_vars;

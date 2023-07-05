@@ -312,7 +312,7 @@ pub fn has_overlapping_params(
     }
 }
 
-pub fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
+fn overload_has_overlapping_params<'db: 'x, 'x, P1: Param<'x>, P2: Param<'x>>(
     i_s: &InferenceState<'db, '_>,
     params1: impl Iterator<Item = P1>,
     params2: impl Iterator<Item = P2>,
