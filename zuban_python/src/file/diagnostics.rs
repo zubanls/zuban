@@ -11,12 +11,13 @@ use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    matches_simple_params, overload_has_overlapping_params, LookupResult, Match, Matcher, Param,
-    ResultContext, Type,
+    matches_params, matches_simple_params, overload_has_overlapping_params, LookupResult, Match,
+    Matcher, Param, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    format_pretty_callable, is_private, Class, Function, Instance, TypeOrClass,
+    format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
+    TypeOrClass,
 };
 
 impl<'db> Inference<'db, '_, '_> {
@@ -345,7 +346,6 @@ impl<'db> Inference<'db, '_, '_> {
             let mut implementation_callable_content = None;
             if let Some(i) = o.implementing_function {
                 let imp = Function::new(NodeRef::from_link(self.i_s.db, i), class);
-                imp.type_vars(self.i_s);
                 if matches!(imp.node().parent(), FunctionParent::Decorated(_)) {
                     let decorated = imp.decorated(self.i_s);
                     implementation_callable_content =
@@ -359,7 +359,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
-                let f1_type_vars = f1.type_vars(self.i_s);
+                let c1 = f1.as_callable(self.i_s, FirstParamProperties::None);
                 if let Some(callable) = &implementation_callable_content {
                     self.calc_overload_implementation_diagnostics2(
                         name_def_node_ref,
@@ -370,20 +370,10 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
-                    let f2_type_vars = f2.type_vars(self.i_s);
-                    let mut matcher =
-                        Matcher::new_reverse_function_matcher(class.as_ref(), f1, f1_type_vars);
-                    if matches!(
-                        matches_simple_params(
-                            self.i_s,
-                            &mut matcher,
-                            f2.iter_params(),
-                            f1.iter_params(),
-                            Variance::Contravariant
-                        ),
-                        Match::True { with_any: false }
-                    ) {
-                        f2.node_ref.add_typing_issue(
+                    let c2 = f2.as_callable(self.i_s, FirstParamProperties::None);
+                    //let f1_type_vars = f1.type_vars(self.i_s);
+                    if is_overload_unmatchable(self.i_s, &c1, &c2) {
+                        NodeRef::from_link(self.i_s.db, c2.defined_at).add_typing_issue(
                             self.i_s,
                             IssueType::OverloadUnmatchable {
                                 matchable_signature_index: i + 1,
@@ -391,10 +381,8 @@ impl<'db> Inference<'db, '_, '_> {
                             },
                         );
                     } else {
-                        let f2_result_type = f2.result_type(self.i_s);
-                        if !f1
-                            .result_type(self.i_s)
-                            .is_simple_sub_type_of(self.i_s, &f2_result_type)
+                        if !Type::new(&c1.result_type)
+                            .is_simple_sub_type_of(self.i_s, &Type::new(&c2.result_type))
                             .bool()
                             && overload_has_overlapping_params(
                                 self.i_s,
@@ -402,7 +390,7 @@ impl<'db> Inference<'db, '_, '_> {
                                 f2.iter_params(),
                             )
                         {
-                            f1.node_ref.add_typing_issue(
+                            NodeRef::from_link(self.i_s.db, c1.defined_at).add_typing_issue(
                                 self.i_s,
                                 IssueType::OverloadIncompatibleReturnTypes {
                                     first_signature_index: i + 1,
@@ -728,4 +716,24 @@ fn try_pretty_format(
         }
     }
     notes.push(format!("{prefix}{}", t.format_short(i_s.db)).into())
+}
+
+fn is_overload_unmatchable(
+    i_s: &InferenceState,
+    c1: &CallableContent,
+    c2: &CallableContent,
+) -> bool {
+    let mut matcher = Matcher::new_reverse_callable_matcher(&c1);
+    use CallableParams::*;
+    let result = match (&c1.params, &c2.params) {
+        (Simple(params1), Simple(params2)) => matches_simple_params(
+            i_s,
+            &mut matcher,
+            params2.iter(),
+            params1.iter(),
+            Variance::Contravariant,
+        ),
+        _ => todo!(),
+    };
+    matches!(result, Match::True { with_any: false })
 }
