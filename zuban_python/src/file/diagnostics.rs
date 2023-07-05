@@ -2,8 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::NoArguments;
 use crate::database::{
-    CallableContent, CallableParams, ComplexPoint, Database, DbType, Locality, Point, PointType,
-    Specific, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
+    CallableContent, ComplexPoint, Database, DbType, Locality, Point, PointType, Specific,
+    TupleTypeArguments, TypeOrTypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -11,9 +11,7 @@ use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::matching::params::has_overlapping_params;
-use crate::matching::{
-    matches_params, matches_simple_params, LookupResult, Match, Matcher, Param, ResultContext, Type,
-};
+use crate::matching::{matches_params, LookupResult, Match, Matcher, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
@@ -360,11 +358,11 @@ impl<'db> Inference<'db, '_, '_> {
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let c1 = f1.as_callable(self.i_s, FirstParamProperties::None);
-                if let Some(callable) = &implementation_callable_content {
-                    self.calc_overload_implementation_diagnostics2(
+                if let Some(implementation) = &implementation_callable_content {
+                    self.calc_overload_implementation_diagnostics(
                         name_def_node_ref,
-                        &callable,
-                        f1,
+                        &c1,
+                        &implementation,
                         i + 1,
                     )
                 }
@@ -442,47 +440,21 @@ impl<'db> Inference<'db, '_, '_> {
         inference.calc_block_diagnostics(block, None, Some(&function))
     }
 
-    fn calc_overload_implementation_diagnostics2(
+    fn calc_overload_implementation_diagnostics(
         &mut self,
         name_def_node_ref: NodeRef,
-        callable: &CallableContent,
-        overload_item: Function,
+        overload_item: &CallableContent,
+        implementation: &CallableContent,
         signature_index: usize,
     ) {
-        match &callable.params {
-            CallableParams::Simple(ps) => {
-                let mut matcher = Matcher::new_reverse_callable_matcher(&callable);
-                self.calc_overload_implementation_diagnostics(
-                    name_def_node_ref,
-                    overload_item,
-                    &mut matcher,
-                    ps.iter(),
-                    &Type::new(&callable.result_type),
-                    signature_index,
-                )
-            }
-            CallableParams::Any => (),
-            CallableParams::WithParamSpec(_, _) => todo!(),
-        }
-    }
-
-    fn calc_overload_implementation_diagnostics<'x, P1: Param<'x>>(
-        &mut self,
-        name_def_node_ref: NodeRef,
-        overload_item: Function<'x, 'x>,
-        matcher: &mut Matcher,
-        implementation_params: impl Iterator<Item = P1>,
-        implementation_type: &Type,
-        signature_index: usize,
-    ) where
-        'db: 'x,
-    {
-        let item_result_type = overload_item.result_type(self.i_s);
-        if !item_result_type
-            .is_sub_type_of(self.i_s, matcher, implementation_type)
+        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation);
+        let implementation_result = &Type::new(&implementation.result_type);
+        let item_result = Type::new(&overload_item.result_type);
+        if !item_result
+            .is_sub_type_of(self.i_s, matcher, implementation_result)
             .bool()
-            && !item_result_type
-                .is_super_type_of(self.i_s, matcher, implementation_type)
+            && !item_result
+                .is_super_type_of(self.i_s, matcher, implementation_result)
                 .bool()
         {
             name_def_node_ref.add_typing_issue(
@@ -491,12 +463,14 @@ impl<'db> Inference<'db, '_, '_> {
             );
         }
 
-        let match_ = matches_simple_params(
+        let match_ = matches_params(
             self.i_s,
             matcher,
-            overload_item.iter_params(),
-            implementation_params,
+            &overload_item.params,
+            &implementation.params,
+            None,
             Variance::Contravariant,
+            false,
         );
         if !match_.bool() {
             name_def_node_ref.add_typing_issue(
