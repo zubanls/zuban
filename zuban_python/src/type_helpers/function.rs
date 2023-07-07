@@ -499,8 +499,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             } else {
                 // Check if the implementing function was already set
                 if implementing_function.is_none() {
-                    if !next_details.has_decorator && next_func.is_dynamic() {
-                        implementing_function = Some(CallableContent::new_any());
+                    if !next_details.has_decorator && next_func.is_dynamic()
+                        || next_details.inferred.as_type(i_s).is_any()
+                    {
+                        implementing_function =
+                            Some(CallableContent::new_any_with_defined_at(func_ref.as_link()));
                     } else if let Some(callable) =
                         next_details.inferred.as_type(i_s).maybe_callable(i_s)
                     {

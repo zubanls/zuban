@@ -1481,10 +1481,14 @@ pub struct CallableContent {
 
 impl CallableContent {
     pub fn new_any() -> Self {
+        Self::new_any_with_defined_at(PointLink::new(FileIndex(0), 0))
+    }
+
+    pub fn new_any_with_defined_at(defined_at: PointLink) -> Self {
         Self {
             name: None,
             class_name: None,
-            defined_at: PointLink::new(FileIndex(1), 1),
+            defined_at,
             kind: FunctionType::Function,
             type_vars: None,
             params: CallableParams::Any,
