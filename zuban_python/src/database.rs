@@ -1,7 +1,5 @@
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::cell::Ref;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
@@ -706,32 +704,23 @@ impl std::cmp::PartialEq for Namespace {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct FunctionOverload {
-    functions: RefCell<Vec<CallableContent>>,
-    implementation: RefCell<Option<CallableContent>>,
-}
+pub struct FunctionOverload(Box<[CallableContent]>);
 
 impl FunctionOverload {
-    pub fn new(functions: Vec<CallableContent>) -> Self {
+    pub fn new(functions: Box<[CallableContent]>) -> Self {
         debug_assert!(!functions.is_empty());
-        Self {
-            functions: RefCell::new(functions),
-            implementation: RefCell::new(None),
-        }
+        Self(functions)
     }
 
-    pub fn functions(&self) -> Ref<Vec<CallableContent>> {
-        self.functions.borrow()
+    pub fn functions(&self) -> &[CallableContent] {
+        &self.0
     }
 
     pub fn map_functions(
         &self,
-        callable: impl FnOnce(&[CallableContent]) -> Vec<CallableContent>,
+        callable: impl FnOnce(&[CallableContent]) -> Box<[CallableContent]>,
     ) -> Rc<Self> {
-        Rc::new(Self {
-            functions: RefCell::new(callable(&self.functions.borrow())),
-            implementation: self.implementation.clone(),
-        })
+        Rc::new(Self(callable(&self.0)))
     }
 }
 
