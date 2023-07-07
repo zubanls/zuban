@@ -377,24 +377,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index);
         }
 
-        if let DbType::Callable(callable_content) = details.inferred.as_type(i_s).as_ref() {
-            let mut callable_content = (**callable_content).clone();
-            callable_content.name = Some(self.name_string_slice());
-            callable_content.class_name = self.class.map(|c| c.name_string_slice());
-            callable_content.kind = details.kind;
-            Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(
-                i_s,
-                decorator_ref.file,
-                decorator_ref.node_index,
-            )
-        } else {
-            if details.kind != FunctionType::Function {
-                todo!()
-            }
-            details
-                .inferred
-                .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
-        }
+        details
+            .inferred
+            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
     }
 
     fn calculate_decorated_function_details(&self, i_s: &InferenceState) -> FunctionDetails {
@@ -430,6 +415,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     NodeRef::new(self.node_ref.file, decorator.index()),
                 ),
             );
+        }
+        if let DbType::Callable(callable_content) = inferred.as_type(i_s).as_ref() {
+            let mut callable_content = (**callable_content).clone();
+            callable_content.name = Some(self.name_string_slice());
+            callable_content.class_name = self.class.map(|c| c.name_string_slice());
+            callable_content.kind = kind;
+            inferred = Inferred::from_type(DbType::Callable(Rc::new(callable_content)));
+        } else {
+            if kind != FunctionType::Function {
+                todo!()
+            }
         }
         FunctionDetails {
             inferred,
