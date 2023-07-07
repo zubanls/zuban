@@ -77,6 +77,9 @@ impl<'file> NodeRef<'file> {
 
     pub fn complex(&self) -> Option<&'file ComplexPoint> {
         let point = self.point();
+        if !point.calculated() {
+            return None;
+        }
         if let PointType::Complex = point.type_() {
             Some(self.file.complex_points.get(point.complex_index()))
         } else {

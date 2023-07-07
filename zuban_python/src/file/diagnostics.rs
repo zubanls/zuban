@@ -17,9 +17,11 @@ use crate::type_helpers::{
     format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
     TypeOrClass,
 };
+use crate::utils::SymbolTable;
 
 impl<'db> Inference<'db, '_, '_> {
     pub fn calculate_diagnostics(&mut self) {
+        self.precalculate_overloads(&self.file.symbol_table);
         self.calc_stmts_diagnostics(self.file.tree.root().iter_stmts(), None, None);
         for complex_point in unsafe { self.file.complex_points.iter() } {
             if let ComplexPoint::NewTypeDefinition(n) = complex_point {
@@ -196,15 +198,37 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
+    pub fn precalculate_overloads(&mut self, symbol_table: &SymbolTable) {
+        // TODO please change this, this is so ugly............ :'(
+        for (name, index) in unsafe { symbol_table.iter_on_finished_table() } {
+            let p = self.file.points.get(*index);
+            if p.calculated() && p.type_() == PointType::MultiDefinition {
+                let p2 = self.file.points.get(index - 1);
+                if p2.calculated() && p2.type_() == PointType::Redirect {
+                    let p3 = p2.as_redirected_node_ref(self.i_s.db).point();
+                    if p3.calculated()
+                        && matches!(
+                            p3.maybe_specific(),
+                            Some(Specific::DecoratedFunction | Specific::Function)
+                        )
+                    {
+                        self.check_point_cache(index - 1);
+                    }
+                }
+            }
+        }
+    }
+
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
         let name_def = NodeRef::new(self.file, class.name_definition().index());
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
         let c = Class::with_self_generics(self.i_s.db, class_node_ref);
-        self.file
-            .inference(&self.i_s.with_diagnostic_class_context(&c))
-            .calc_block_diagnostics(block, Some(c), None);
+        let i_s = self.i_s.with_diagnostic_class_context(&c);
+        let mut inference = self.file.inference(&i_s);
+        inference.precalculate_overloads(&c.class_storage.class_symbol_table);
+        inference.calc_block_diagnostics(block, Some(c), None);
 
         for (i, base1) in c.bases(self.i_s.db).enumerate() {
             let instance1 = match base1 {
@@ -321,11 +345,11 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
-        if name_def_node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
-            self.check_point_cache(f.name_definition().index());
-        }
+        let n = self.check_point_cache(f.name().index() + 2);
+        let function = Function::new(NodeRef::new(self.file, f.index()), class);
+        let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
-        if let Some(ComplexPoint::FunctionOverload(o)) = name_def_node_ref.complex() {
+        if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
             is_overload_member = o.implementing_function.is_none();
             if o.functions.len() < 2 {
                 NodeRef::from_link(self.i_s.db, o.functions[0])
@@ -398,7 +422,6 @@ impl<'db> Inference<'db, '_, '_> {
         {
             is_overload_member = true;
         }
-        let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
@@ -434,6 +457,8 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
+        // TODO we somehow have to precalculate overloads in functions
+        // self.precalculate_overloads(&function.class_storage.class_symbol_table);
         let args = NoArguments::new(NodeRef::new(self.file, f.index()));
         let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
         let mut inference = self.file.inference(function_i_s);

@@ -652,6 +652,7 @@ fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific
         node_index,
         Point::new_simple_specific(specific, Locality::Stmt),
     );
-    debug_assert!(!old_point.calculated());
+    // TODO this is now a MultiDefinition and should probably be set on the decorated attribute
+    //debug_assert!(!old_point.calculated());
     node_index - 1
 }

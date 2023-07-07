@@ -1876,15 +1876,17 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         }
                     }
-                    Specific::DecoratedFunction => {
-                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
-                        let FunctionOrLambda::Function(func) =
-                            name_def.function_or_lambda_ancestor().unwrap() else
-                        {
-                            unreachable!();
-                        };
+                    Specific::Function => {
                         let func = Function::new(
-                            NodeRef::new(self.file, func.index()),
+                            NodeRef::new(self.file, node_index),
+                            self.i_s.current_class().copied(),
+                        );
+                        func.ensure_maybe_overload_implementation(self.i_s);
+                        Inferred::new_saved(self.file, node_index, point)
+                    }
+                    Specific::DecoratedFunction => {
+                        let func = Function::new(
+                            NodeRef::new(self.file, node_index),
                             self.i_s.current_class().copied(),
                         );
                         // Caches the decorated inference on properly
@@ -1919,6 +1921,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
                     inferred.union(self.infer_multi_definition(name_def))
                     */
+                    // TODO this is wrong, but for now we do it, because it's necessary for
+                    // overloads.
+                    let name_def_point = self.file.points.get(node_index - 1);
+                    if name_def_point.calculated() && name_def_point.type_() == PointType::Redirect
+                    {
+                        let point = name_def_point.as_redirected_node_ref(self.i_s.db).point();
+                        if point.calculated()
+                            && matches!(
+                                point.maybe_specific(),
+                                Some(Specific::Function | Specific::DecoratedFunction)
+                            )
+                        {
+                            return self.check_point_cache(node_index - 1).unwrap();
+                        }
+                    }
                     self.check_point_cache(point.node_index())
                         .unwrap_or_else(|| {
                             self.infer_name(Name::by_index(&self.file.tree, point.node_index()))
@@ -1928,7 +1945,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     Inferred::new_saved(self.file, node_index, point)
                 }
                 PointType::NodeAnalysis => {
-                    panic!("Invalid state, should not happen {node_index:?}");
+                    panic!("Invalid NodeAnalysis, should not happen on node index {node_index:?}");
                 }
             })
             .or_else(|| {
