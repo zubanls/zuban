@@ -3,15 +3,15 @@ use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
-    CallableContent, ClassGenerics, ComplexPoint, Database, DbType, LiteralKind, Locality, Point,
-    PointLink, PointType, Specific, TupleContent,
+    CallableContent, ClassGenerics, Database, DbType, LiteralKind, Locality, Point, PointLink,
+    PointType, Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function, OverloadedFunction};
+use crate::type_helpers::{Class, Function};
 use crate::{InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is

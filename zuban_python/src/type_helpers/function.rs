@@ -477,6 +477,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
             if next_details.is_overload {
+                if let Some(implementing) = implementing_function {
+                    NodeRef::from_link(i_s.db, implementing)
+                        .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
+                }
+
                 next_func
                     .decorator_ref()
                     .set_point(Point::new_simple_specific(

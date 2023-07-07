@@ -4,6 +4,20 @@ testSelfTypeRestrictedClassMethod
 testUnpackIterableClassWithOverloadedIter
 testUnpackIterableClassWithOverloadedIter2
 
+testOverloadWithObjectDecorator
+testLiteralFallbackOperatorsWorkCorrectly
+testPlusAssign
+testMinusAssign
+testMulAssign
+testMatMulAssign
+testDivAssign
+testPowAssign
+testAdditionalOperatorsInOpAssign
+testTreeShadowingViaParentPackage
+testColumnsMultipleStatementsPerLine
+invalid_namespace_types_import_name
+invalid_namespace_types_import_from
+
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
