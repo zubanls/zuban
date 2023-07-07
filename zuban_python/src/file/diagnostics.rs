@@ -320,35 +320,12 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
-        let name_def_node_ref = |link| {
-            let node_ref = NodeRef::from_link(self.i_s.db, link);
-            let name_def = node_ref.maybe_function().unwrap().name_definition();
-            NodeRef::new(node_ref.file, name_def.index())
-        };
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         let inf = function.as_inferred_from_name(self.i_s);
         let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
             is_overload_member = true;
-            if o.functions.len() < 2 {
-                NodeRef::from_link(self.i_s.db, o.functions[0])
-                    .add_typing_issue(self.i_s, IssueType::OverloadSingleNotAllowed);
-            } else if o.implementing_function.is_none()
-                && !self.file.is_stub(self.i_s.db)
-                && class.map(|c| !c.is_protocol(self.i_s.db)).unwrap_or(true)
-            {
-                name_def_node_ref(*o.functions.last().unwrap())
-                    .add_typing_issue(self.i_s, IssueType::OverloadImplementationNeeded);
-            }
-            if let Some(implementing_function) = o.implementing_function {
-                if self.file.is_stub(self.i_s.db) {
-                    name_def_node_ref(implementing_function).add_typing_issue(
-                        self.i_s,
-                        IssueType::OverloadStubImplementationNotAllowed,
-                    );
-                }
-            }
             let mut implementation_callable_content = None;
             if let Some(i) = o.implementing_function {
                 let imp = Function::new(NodeRef::from_link(self.i_s.db, i), class);

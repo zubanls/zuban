@@ -495,6 +495,27 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 }
             }
         }
+        let name_def_node_ref = |link| {
+            let node_ref = NodeRef::from_link(i_s.db, link);
+            let name_def = node_ref.maybe_function().unwrap().name_definition();
+            NodeRef::new(node_ref.file, name_def.index())
+        };
+        if functions.len() < 2 {
+            NodeRef::from_link(i_s.db, functions[0])
+                .add_typing_issue(i_s, IssueType::OverloadSingleNotAllowed);
+        } else if implementing_function.is_none()
+            && !file.is_stub(i_s.db)
+            && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
+        {
+            name_def_node_ref(*functions.last().unwrap())
+                .add_typing_issue(i_s, IssueType::OverloadImplementationNeeded);
+        }
+        if let Some(implementing_function) = implementing_function {
+            if file.is_stub(i_s.db) {
+                name_def_node_ref(implementing_function)
+                    .add_typing_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
+            }
+        }
         debug_assert!(!functions.is_empty());
         OverloadDefinition {
             functions: functions.into_boxed_slice(),
