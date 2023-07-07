@@ -326,7 +326,7 @@ impl<'db> Inference<'db, '_, '_> {
         let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
-            is_overload_member = o.implementing_function.is_none();
+            is_overload_member = true;
             if o.functions.len() < 2 {
                 NodeRef::from_link(self.i_s.db, o.functions[0])
                     .add_typing_issue(self.i_s, IssueType::OverloadSingleNotAllowed);
@@ -389,7 +389,8 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
             }
-        } else if name_def_node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
+        } else if function.node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction)
+            && decorator_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
         {
             is_overload_member = true;
         }

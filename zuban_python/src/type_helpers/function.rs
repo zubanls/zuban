@@ -473,6 +473,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
             if next_details.is_overload {
+                next_func
+                    .decorator_ref()
+                    .set_point(Point::new_simple_specific(
+                        Specific::OverloadUnreachable,
+                        Locality::File,
+                    ));
                 functions.push(func_ref.as_link())
             } else {
                 // Check if the implementing function was already set
@@ -482,12 +488,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     todo!()
                 }
             }
-            next_func
-                .decorator_ref()
-                .set_point(Point::new_simple_specific(
-                    Specific::OverloadUnreachable,
-                    Locality::File,
-                ));
         }
         debug_assert!(!functions.is_empty());
         Overload {
