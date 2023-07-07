@@ -872,7 +872,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         Specific::Function
                     }
                 } else {
-                    Specific::Closure
+                    Specific::Function
                 },
                 Locality::Stmt,
             ),

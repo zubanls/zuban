@@ -321,8 +321,8 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
-        let n = self.check_point_cache(f.name().index() + 2);
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
+        let inf = function.as_inferred_from_name(self.i_s);
         let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
@@ -359,12 +359,7 @@ impl<'db> Inference<'db, '_, '_> {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let c1 = f1.as_callable(self.i_s, FirstParamProperties::None);
                 if let Some(implementation) = &implementation_callable_content {
-                    self.calc_overload_implementation_diagnostics(
-                        name_def_node_ref,
-                        &c1,
-                        &implementation,
-                        i + 1,
-                    )
+                    self.calc_overload_implementation_diagnostics(&c1, &implementation, i + 1)
                 }
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
                     let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
@@ -441,11 +436,15 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_overload_implementation_diagnostics(
         &mut self,
-        name_def_node_ref: NodeRef,
         overload_item: &CallableContent,
         implementation: &CallableContent,
         signature_index: usize,
     ) {
+        let name_def_node_ref = || {
+            let node_ref = NodeRef::from_link(self.i_s.db, implementation.defined_at);
+            let name_def = node_ref.maybe_function().unwrap().name_definition();
+            NodeRef::new(node_ref.file, name_def.index())
+        };
         let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation);
         let implementation_result = &Type::new(&implementation.result_type);
         let item_result = Type::new(&overload_item.result_type);
@@ -456,7 +455,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .is_super_type_of(self.i_s, matcher, implementation_result)
                 .bool()
         {
-            name_def_node_ref.add_typing_issue(
+            name_def_node_ref().add_typing_issue(
                 self.i_s,
                 IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
             );
@@ -472,7 +471,7 @@ impl<'db> Inference<'db, '_, '_> {
             false,
         );
         if !match_.bool() {
-            name_def_node_ref.add_typing_issue(
+            name_def_node_ref().add_typing_issue(
                 self.i_s,
                 IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
             );

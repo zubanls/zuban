@@ -391,7 +391,7 @@ pub enum Specific {
     LazyInferredClass, // A class that will be inferred later.
     DecoratedFunction, // A function that will be inferred later.
     Function,          // The node point so the index of the result
-    Closure,
+    Closure,           // TODO remove this?
     // NoReturnFunction,  // TODO Remove or use?
     AnnotationOrTypeCommentClassInstance,
     AnnotationOrTypeCommentWithTypeVars,

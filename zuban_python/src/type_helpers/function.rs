@@ -326,6 +326,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
+    pub fn as_inferred_from_name(&self, i_s: &InferenceState) -> Inferred {
+        match self.node_ref.point().maybe_specific() {
+            Some(Specific::Function) => Inferred::from_saved_node_ref(self.node_ref),
+            Some(Specific::DecoratedFunction) => self.decorated(i_s),
+            _ => unreachable!(),
+        }
+    }
+
     pub fn decorator_ref(&self) -> NodeRef {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...) + 1 for (

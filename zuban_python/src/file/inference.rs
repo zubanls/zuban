@@ -437,6 +437,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             // Note that multi definition links loop, i.e. A -> B -> C -> A.
             let next = point.node_index();
             if next <= current {
+                if next == name_index {
+                    return None;
+                }
                 debug_assert_ne!(next, current);
                 return Some(next);
             }

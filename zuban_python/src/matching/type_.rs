@@ -298,7 +298,7 @@ impl<'a> Type<'a> {
             }
             DbType::None => matches!(value_type.as_ref(), DbType::None).into(),
             DbType::Any if matcher.is_matching_reverse() => {
-                debug!("TODO write a test for this.");
+                debug!("TODO write a test for this. (reverse matching any)");
                 matcher.set_all_contained_type_vars_to_any(i_s, self.as_ref());
                 Match::True { with_any: true }
             }
@@ -623,7 +623,11 @@ impl<'a> Type<'a> {
             DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             DbType::Self_ if variance == Variance::Covariant => {
                 if let Some(cls) = i_s.current_class() {
-                    return self.simple_matches(i_s, &Type::owned(cls.as_db_type(i_s.db)), variance);
+                    return self.simple_matches(
+                        i_s,
+                        &Type::owned(cls.as_db_type(i_s.db)),
+                        variance,
+                    );
                 }
             }
             DbType::Module(_) => {
