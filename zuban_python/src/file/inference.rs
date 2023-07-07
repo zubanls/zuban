@@ -422,6 +422,28 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
+    fn first_defined_name(&mut self, name_index: NodeIndex) -> Option<NodeIndex> {
+        let point = self.file.points.get(name_index);
+        if !point.calculated() {
+            return None;
+        }
+        debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+        let mut current = point.node_index();
+        loop {
+            let point = self.file.points.get(current);
+            debug_assert!(point.calculated());
+            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+            // Here we circle through multi definitions to find the first one.
+            // Note that multi definition links loop, i.e. A -> B -> C -> A.
+            let next = point.node_index();
+            if next <= current {
+                debug_assert_ne!(next, current);
+                return Some(next);
+            }
+            current = next;
+        }
+    }
+
     fn original_definition(&mut self, assignment: Assignment) -> Option<Inferred> {
         // TODO shouldn't this be merged/using infer_single_target
 
@@ -430,24 +452,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             for target in targets {
                 match target {
                     Target::Name(name_def) => {
-                        let point = self.file.points.get(name_def.name_index());
-                        if point.calculated() {
-                            debug_assert_eq!(
-                                point.type_(),
-                                PointType::MultiDefinition,
-                                "{target:?}"
-                            );
-                            let mut first_definition = point.node_index();
-                            loop {
-                                let point = self.file.points.get(first_definition);
-                                if point.calculated() && point.type_() == PointType::MultiDefinition
-                                {
-                                    first_definition = point.node_index();
-                                } else {
-                                    break;
-                                }
-                            }
-                            let inferred = self.infer_name_by_index(first_definition);
+                        if let Some(first_index) = self.first_defined_name(name_def.name_index()) {
+                            let inferred = self.infer_name_by_index(first_index);
                             return Some(inferred);
                         }
                     }
@@ -688,30 +694,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         match target {
             Target::Name(name_def) => {
-                let point = self.file.points.get(name_def.name_index());
-                if point.calculated() {
-                    debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{target:?}");
-                    let mut first_definition = point.node_index();
-                    loop {
-                        let point = self.file.points.get(first_definition);
-                        if point.calculated() && point.type_() == PointType::MultiDefinition {
-                            first_definition = point.node_index();
-                        } else {
-                            break;
-                        }
+                let current_index = name_def.name_index();
+                if let Some(first_index) = self.first_defined_name(current_index) {
+                    if current_index != first_index {
+                        let inferred = self.infer_name_by_index(first_index);
+                        inferred.as_type(self.i_s).error_if_not_matches(
+                            self.i_s,
+                            value,
+                            |i_s, got, expected| {
+                                from.add_typing_issue(
+                                    i_s,
+                                    IssueType::IncompatibleAssignment { got, expected },
+                                );
+                                from.to_db_lifetime(i_s.db)
+                            },
+                        );
                     }
-                    let inferred = self.infer_name_by_index(first_definition);
-                    inferred.as_type(self.i_s).error_if_not_matches(
-                        self.i_s,
-                        value,
-                        |i_s, got, expected| {
-                            from.add_typing_issue(
-                                i_s,
-                                IssueType::IncompatibleAssignment { got, expected },
-                            );
-                            from.to_db_lifetime(i_s.db)
-                        },
-                    );
                 }
                 save(self.i_s, name_def.index());
             }
@@ -1876,14 +1874,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         }
                     }
-                    Specific::Function => {
-                        let func = Function::new(
-                            NodeRef::new(self.file, node_index),
-                            self.i_s.current_class().copied(),
-                        );
-                        func.ensure_maybe_overload_implementation(self.i_s);
-                        Inferred::new_saved(self.file, node_index, point)
-                    }
                     Specific::DecoratedFunction => {
                         let func = Function::new(
                             NodeRef::new(self.file, node_index),
@@ -1913,33 +1903,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     _ => Inferred::new_saved(self.file, node_index, point),
                 },
                 PointType::MultiDefinition => {
-                    // TODO for now we use Mypy's way of resolving multiple names, which means that
-                    // it always uses the first name.
-                    /*
-                    let inferred = self.infer_name(Name::by_index(&self.file.tree, point.node_index()));
-                    // Check for the cache of name_definition
-                    let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
-                    inferred.union(self.infer_multi_definition(name_def))
-                    */
-                    // TODO this is wrong, but for now we do it, because it's necessary for
-                    // overloads.
-                    let name_def_point = self.file.points.get(node_index - 1);
-                    if name_def_point.calculated() && name_def_point.type_() == PointType::Redirect
-                    {
-                        let point = name_def_point.as_redirected_node_ref(self.i_s.db).point();
-                        if point.calculated()
-                            && matches!(
-                                point.maybe_specific(),
-                                Some(Specific::Function | Specific::DecoratedFunction)
-                            )
-                        {
-                            return self.check_point_cache(node_index - 1).unwrap();
-                        }
-                    }
-                    self.check_point_cache(point.node_index())
-                        .unwrap_or_else(|| {
-                            self.infer_name(Name::by_index(&self.file.tree, point.node_index()))
-                        })
+                    // MultiDefinition means we are on a Name that has a NameDefinition as a
+                    // parent.
+                    let name = Name::by_index(&self.file.tree, node_index);
+                    self.infer_name_definition(name.name_definition().unwrap())
                 }
                 PointType::Complex | PointType::Unknown | PointType::FileReference => {
                     Inferred::new_saved(self.file, node_index, point)
@@ -1951,6 +1918,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .or_else(|| {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
+                    debug!("Found a cycle at node index {node_index}");
                     node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
                     Some(Inferred::new_cycle())
                 } else {
@@ -1965,12 +1933,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub fn infer_name(&mut self, name: Name) -> Inferred {
         let point = self.file.points.get(name.index());
-        if point.calculated() && point.type_() == PointType::MultiDefinition {
-            // We are trying to infer the name here. We don't have to follow the multi definition,
-            // because the cache handling takes care of that.
-            println!("TODO Is this branch still needed???");
-            //self.infer_multi_definition(name.name_definition().unwrap())
-        }
         if point.calculated() {
             if let Some(inf) = self.check_point_cache(name.index()) {
                 return inf;

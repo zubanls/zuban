@@ -187,12 +187,33 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
-        let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
-        if let Some(replaced) = replaced {
-            self.points.set(
-                name_def.name_index(),
-                Point::new_multi_definition(replaced, Locality::File),
-            );
+        if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
+            let mut latest_name_index = first;
+            loop {
+                let point = self.points.get(latest_name_index);
+                if point.calculated()
+                    && point.type_() == PointType::MultiDefinition
+                    && point.node_index() > first
+                {
+                    debug_assert_ne!(latest_name_index, point.node_index());
+                    latest_name_index = point.node_index()
+                } else {
+                    let new_index = name_def.name().index();
+                    self.points.set(
+                        latest_name_index,
+                        Point::new_multi_definition(new_index, Locality::File),
+                    );
+                    // Here we create a loop, so it's easy to find the relevant definitions from
+                    // any point.
+                    self.points.set(
+                        new_index,
+                        Point::new_multi_definition(first, Locality::File),
+                    );
+                    break;
+                }
+            }
+        } else {
+            self.symbol_table.add_or_replace_symbol(name_def.name());
         }
         self.points.set(name_def.index(), point);
     }
@@ -616,6 +637,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         };
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name) {
+                // TODO shouldn't this be multi definitions as well?
                 symbol_table.add_or_replace_symbol(name);
             }
         }

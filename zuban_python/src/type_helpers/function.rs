@@ -353,10 +353,43 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     fn save_decorated(&self, i_s: &InferenceState<'db, '_>, decorator_ref: NodeRef) -> Inferred {
         let node = self.node();
-        let FunctionParent::Decorated(decorated) = node.parent() else {
+        let details = self.calculate_decorated_function_details(i_s);
+
+        let func_node = self.node();
+        let file = self.node_ref.file;
+        if details.is_overload {
+            let overload = self.calculate_next_overload_items(i_s, details);
+            return Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(
+                overload,
+            )))
+            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index);
+        }
+
+        if let DbType::Callable(callable_content) = details.inferred.as_type(i_s).as_ref() {
+            let mut callable_content = (**callable_content).clone();
+            callable_content.name = Some(self.name_string_slice());
+            callable_content.class_name = self.class.map(|c| c.name_string_slice());
+            callable_content.kind = details.kind;
+            Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(
+                i_s,
+                decorator_ref.file,
+                decorator_ref.node_index,
+            )
+        } else {
+            if details.kind != FunctionType::Function {
+                todo!()
+            }
+            details
+                .inferred
+                .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+        }
+    }
+
+    fn calculate_decorated_function_details(&self, i_s: &InferenceState) -> FunctionDetails {
+        let FunctionParent::Decorated(decorated) = self.node().parent() else {
             unreachable!();
         };
-        let mut new_inf = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
+        let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
         let mut kind = FunctionType::Function;
         let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
@@ -378,120 +411,81 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             // TODO check if it's an function without a return annotation and
             // abort in that case.
-            new_inf = i.execute(
+            inferred = i.execute(
                 i_s,
                 &KnownArguments::new(
-                    &new_inf,
+                    &inferred,
                     NodeRef::new(self.node_ref.file, decorator.index()),
                 ),
             );
         }
-
-        let func_node = self.node();
-        let file = self.node_ref.file;
-        let maybe_overload = self.maybe_overwrite_previous_overload(i_s);
-        if is_overload {
-            let current_link = PointLink::new(file.file_index(), func_node.index());
-
-            let new_overload = if let Some((old_overload_index, overload)) = maybe_overload {
-                if let Some(implementing) = overload.implementing_function {
-                    NodeRef::new(file, implementing.node_index)
-                        .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast);
-                }
-                let new = overload.add_another_overload(current_link);
-                /*
-                 * TODO this was removed
-                // Reset the old overload definition, there should only be one.
-                file.points.set(
-                    old_overload_index,
-                    Point::new_simple_specific(Specific::OverloadUnreachable, Locality::File),
-                );
-                */
-                new
-            } else {
-                // TODO add is_async for function types
-                Overload {
-                    functions: Box::new([current_link]),
-                    implementing_function: None,
-                }
-            };
-            return Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(
-                new_overload,
-            )))
-            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index);
-        } else {
-            // Check for implementing functions of overloads
-            if let Some((old_overload_index, o)) = maybe_overload {
-                if o.implementing_function.is_none() {
-                    let mut new_overload = o.clone();
-                    new_overload.implementing_function =
-                        Some(PointLink::new(file.file_index(), func_node.index()));
-
-                    return Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(
-                        new_overload,
-                    )))
-                    .save_redirect(
-                        i_s,
-                        decorator_ref.file,
-                        decorator_ref.node_index,
-                    );
-                }
-            }
-        }
-        if let DbType::Callable(callable_content) = new_inf.as_type(i_s).as_ref() {
-            let mut callable_content = (**callable_content).clone();
-            callable_content.name = Some(self.name_string_slice());
-            callable_content.class_name = self.class.map(|c| c.name_string_slice());
-            callable_content.kind = kind;
-            Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(
-                i_s,
-                decorator_ref.file,
-                decorator_ref.node_index,
-            )
-        } else {
-            if kind != FunctionType::Function {
-                todo!()
-            }
-            new_inf.save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+        FunctionDetails {
+            inferred,
+            kind,
+            is_overload,
         }
     }
 
-    pub fn ensure_maybe_overload_implementation(&self, i_s: &InferenceState) {
-        // Check for implementing functions of overloads
-        if let Some((old_overload_index, mut o)) = self.maybe_overwrite_previous_overload(i_s) {
-            if o.implementing_function.is_none() {
-                o.implementing_function = Some(self.node_ref.as_link());
-
-                let decorator_ref = self.decorator_ref();
-                Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(o)))
-                    .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index);
-            } else {
-                todo!()
-            }
-        }
-    }
-
-    fn maybe_overwrite_previous_overload(
+    fn calculate_next_overload_items(
         &self,
         i_s: &InferenceState,
-    ) -> Option<(NodeIndex, Overload)> {
-        let name_index = self.node().name().index();
+        details: FunctionDetails,
+    ) -> Overload {
+        let first_index = self.node().name().index();
+        let mut current_name_index = first_index;
         let file = self.node_ref.file;
-        let point = file.points.get(name_index);
-        if point.calculated() && point.type_() == PointType::MultiDefinition {
-            file.inference(i_s)
-                .check_point_cache(point.node_index() - 1);
-            let decorated_node_ref = NodeRef::new(file, point.node_index() + 2);
-            let point = decorated_node_ref.point(); // Lookup on NameDefinition
-            if let Some(ComplexPoint::FunctionOverload(o)) = decorated_node_ref.complex() {
-                decorated_node_ref.set_point(Point::new_simple_specific(
+        let mut functions = vec![self.node_ref.as_link()];
+        let mut implementing_function = None;
+        loop {
+            let point = file.points.get(current_name_index);
+            if !point.calculated() {
+                break;
+            }
+            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+            current_name_index = point.node_index();
+            if current_name_index <= first_index {
+                break;
+            }
+            let redirect_point = file.points.get(current_name_index - 1);
+            debug_assert_eq!(redirect_point.type_(), PointType::Redirect);
+            let func_ref = NodeRef::new(file, redirect_point.node_index());
+            let next_func = Self::new(func_ref, self.class);
+            let next_details = match func_ref.point().maybe_specific() {
+                Some(Specific::DecoratedFunction) => {
+                    next_func.calculate_decorated_function_details(i_s)
+                }
+                Some(Specific::Function) => FunctionDetails {
+                    inferred: Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None)),
+                    kind: FunctionType::Function,
+                    is_overload: false,
+                },
+                _ => unreachable!(),
+            };
+            if details.kind != next_details.kind {
+                todo!()
+            }
+            if next_details.is_overload {
+                functions.push(func_ref.as_link())
+            } else {
+                // Check if the implementing function was already set
+                if implementing_function.is_none() {
+                    implementing_function = Some(func_ref.as_link());
+                } else {
+                    todo!()
+                }
+            }
+            next_func
+                .decorator_ref()
+                .set_point(Point::new_simple_specific(
                     Specific::OverloadUnreachable,
                     Locality::File,
                 ));
-                return Some((decorated_node_ref.node_index, o.as_ref().clone()));
-            }
         }
-        None
+        debug_assert!(!functions.is_empty());
+        Overload {
+            functions: functions.into_boxed_slice(),
+            implementing_function,
+        }
     }
 
     pub fn is_classmethod(&self, i_s: &InferenceState) -> bool {
@@ -1734,4 +1728,10 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     } else {
         format!("def {type_var_str}{name}({args})").into()
     }
+}
+
+struct FunctionDetails {
+    inferred: Inferred,
+    kind: FunctionType,
+    is_overload: bool,
 }
