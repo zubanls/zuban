@@ -1163,18 +1163,6 @@ pub struct Overload {
     pub functions: Box<[PointLink]>,
 }
 
-impl Overload {
-    pub fn add_another_overload(&self, function: PointLink) -> Self {
-        let mut functions = Vec::with_capacity(self.functions.len() + 1);
-        functions.extend_from_slice(self.functions.as_ref());
-        functions.push(function);
-        Self {
-            implementing_function: self.implementing_function,
-            functions: functions.into_boxed_slice(),
-        }
-    }
-}
-
 #[derive(Debug, Clone, PartialEq)]
 pub enum TypeOrTypeVarTuple {
     Type(DbType),
