@@ -174,7 +174,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         Some(name_def.index()),
                     );
                     if let Some(rest) = rest {
-                        dbg!(name_def, &result);
                         if result.is_some() {
                             self.infer_import_dotted_name(rest, result);
                         }
@@ -279,9 +278,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         None => Point::new_unknown(Locality::Todo),
                     };
 
-                    self.file.points.set(import_name.index(), point);
                     self.file.points.set(name_def.index(), point);
-                    self.file.points.set(name_def.name().index(), point);
                 }
             }
         }
@@ -345,7 +342,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(name_def_index) = name_def_index {
                     self.save_namespace(name_def_index, namespace.clone())
                 }
-                self.save_namespace(name_index, namespace.clone());
                 return result;
             }
             None => {
@@ -359,7 +355,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Point::new_unknown(Locality::Todo)
             }
         };
-        self.file.points.set(name_index, point);
         if let Some(name_def_index) = name_def_index {
             self.file.points.set(name_def_index, point);
         }

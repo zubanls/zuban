@@ -56,8 +56,8 @@ impl<'file> NodeRef<'file> {
     }
 
     #[inline]
-    pub fn add_to_node_index(&self, add: NodeIndex) -> Self {
-        Self::new(self.file, self.node_index + add)
+    pub fn add_to_node_index(&self, add: i64) -> Self {
+        Self::new(self.file, ((self.node_index as i64) + add) as NodeIndex)
     }
 
     pub fn point(&self) -> Point {

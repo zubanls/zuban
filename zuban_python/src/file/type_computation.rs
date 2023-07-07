@@ -27,6 +27,8 @@ use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, Module};
 
 pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
+const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
+const NAME_DEF_TO_NAME_DIFFERENCE: i64 = 1;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {
@@ -44,7 +46,6 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     TypeVarLike,
     Option<PointLink>, // current_callable
 ) -> TypeVarCallbackReturn;
-const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug, Clone)]
 pub(super) enum SpecialType {
@@ -2998,21 +2999,29 @@ fn check_type_name<'db: 'file, 'file>(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
         })),
         TypeLike::Import => {
-            if point.calculated() {
+            let name_def_ref = name_node_ref.add_to_node_index(-NAME_DEF_TO_NAME_DIFFERENCE);
+            let p = name_def_ref.point();
+            if p.calculated() {
+                if p.type_() == PointType::Redirect {
+                    let new = p.as_redirected_node_ref(i_s.db);
+                    if new.maybe_name().is_some() {
+                        return check_type_name(i_s, new);
+                    }
+                } else if p.type_() == PointType::FileReference {
+                    let file = i_s.db.loaded_python_file(p.file_index());
+                    return TypeNameLookup::Module(file);
+                }
+
                 // When an import appears, this means that there's no redirect and the import leads
                 // nowhere.
-                if let Some(complex_index) = point.maybe_complex_index() {
+                if let Some(complex_index) = p.maybe_complex_index() {
                     if let ComplexPoint::TypeInstance(DbType::Namespace(namespace)) =
-                        name_node_ref.file.complex_points.get(complex_index)
+                        name_def_ref.file.complex_points.get(complex_index)
                     {
                         return TypeNameLookup::Namespace(namespace.clone());
                     }
                 }
-                debug_assert!(
-                    point.type_() == PointType::Unknown
-                        || point.type_() == PointType::MultiDefinition,
-                    "{point:?}"
-                );
+                debug_assert_eq!(p.type_(), PointType::Unknown);
                 TypeNameLookup::Unknown
             } else {
                 name_node_ref.file.inference(i_s).infer_name(new_name);
