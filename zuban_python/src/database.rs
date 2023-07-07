@@ -490,7 +490,7 @@ pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
-    FunctionOverload(Box<Overload>),
+    FunctionOverload(Box<OverloadDefinition>),
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<DbType>),
@@ -1158,7 +1158,7 @@ pub enum FunctionType {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Overload {
+pub struct OverloadDefinition {
     pub implementing_function: Option<PointLink>,
     pub functions: Box<[PointLink]>,
 }

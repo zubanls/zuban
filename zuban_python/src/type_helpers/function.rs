@@ -11,10 +11,11 @@ use super::{Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionOverload, FunctionType, GenericItem, Locality, Overload,
-    ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, Specific, StarredParamSpecific,
-    StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, FunctionOverload, FunctionType, GenericItem, Locality,
+    OverloadDefinition, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, Specific,
+    StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
+    TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName,
+    TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -438,7 +439,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState,
         details: FunctionDetails,
-    ) -> Overload {
+    ) -> OverloadDefinition {
         let first_index = self.node().name().index();
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
@@ -495,7 +496,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         }
         debug_assert!(!functions.is_empty());
-        Overload {
+        OverloadDefinition {
             functions: functions.into_boxed_slice(),
             implementing_function,
         }
@@ -1144,7 +1145,7 @@ impl<'db> InferrableParam<'db, '_> {
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {
     node_ref: NodeRef<'a>,
-    overload: &'a Overload,
+    overload: &'a OverloadDefinition,
     class: Option<Class<'a>>,
 }
 
@@ -1165,7 +1166,11 @@ pub enum UnionMathResult {
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
-    pub fn new(node_ref: NodeRef<'a>, overload: &'a Overload, class: Option<Class<'a>>) -> Self {
+    pub fn new(
+        node_ref: NodeRef<'a>,
+        overload: &'a OverloadDefinition,
+        class: Option<Class<'a>>,
+    ) -> Self {
         Self {
             node_ref,
             overload,
