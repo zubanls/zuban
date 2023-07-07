@@ -1164,8 +1164,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             | Specific::MypyExtensionsDefaultNamedArg
                             | Specific::MypyExtensionsVarArg
                             | Specific::MypyExtensionsKwArg => {
-                                let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
-                                return func.execute(i_s, args, result_context, on_type_error);
+                                return i_s
+                                    .db
+                                    .python_state
+                                    .mypy_extensions_arg_func(i_s.db, specific)
+                                    .execute_with_details(i_s, args, result_context, on_type_error)
                             }
                             _ => (),
                         }
@@ -1724,7 +1727,10 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                 | Specific::MypyExtensionsDefaultNamedArg
                 | Specific::MypyExtensionsVarArg
                 | Specific::MypyExtensionsKwArg => {
-                    let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
+                    i_s.db
+                        .python_state
+                        .mypy_extensions_arg_func(i_s.db, specific)
+                        .as_type(i_s);
                     todo!()
                 }
                 _ => resolve_specific(i_s, specific),

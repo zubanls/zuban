@@ -28,7 +28,6 @@ use crate::type_helpers::{Class, Function, Module};
 
 pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
-const NAME_DEF_TO_NAME_DIFFERENCE: i64 = 1;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {
@@ -2902,7 +2901,8 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 Specific::TypingFinal => SpecialType::Final,
                 Specific::TypingSelf => SpecialType::Self_,
                 Specific::TypingAnnotated => SpecialType::Annotated,
-                _ => unreachable!(),
+                Specific::TypingTuple => SpecialType::Tuple,
+                _ => check_special_type(point).unwrap_or_else(|| todo!("{specific:?}")),
             })
         }
     }
@@ -2991,6 +2991,11 @@ fn check_type_name<'db: 'file, 'file>(
             inference.compute_type_assignment(assignment, false)
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function({
+            let name_def_ref =
+                name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
+            if let Some(special) = check_special_type(name_def_ref.point()) {
+                return TypeNameLookup::SpecialType(special);
+            }
             let point = name_node_ref.point();
             if point.calculated() && point.maybe_specific() == Some(Specific::CollectionsNamedTuple)
             {
@@ -2999,7 +3004,13 @@ fn check_type_name<'db: 'file, 'file>(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
         })),
         TypeLike::Import => {
-            let name_def_ref = name_node_ref.add_to_node_index(-NAME_DEF_TO_NAME_DIFFERENCE);
+            if point.calculated() {
+                // TODO This is mostly for loading Callable and other builtins. Should probably be
+                //      changed/removed
+                return load_cached_type(name_node_ref);
+            }
+            let name_def_ref =
+                name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
             let p = name_def_ref.point();
             if p.calculated() {
                 if p.type_() == PointType::Redirect {

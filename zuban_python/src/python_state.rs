@@ -1,13 +1,14 @@
-use parsa_python_ast::{NodeIndex, TypeLike};
+use parsa_python_ast::{NodeIndex, TypeLike, NAME_DEF_TO_NAME_DIFFERENCE};
 use std::ptr::null;
 use std::rc::Rc;
 
 use crate::database::{
     CallableContent, ClassGenerics, ComplexPoint, Database, DbType, LiteralKind, Locality, Point,
-    PointLink, Specific, TupleContent,
+    PointLink, PointType, Specific, TupleContent,
 };
 use crate::file::File;
 use crate::file::PythonFile;
+use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, OverloadedFunction};
@@ -482,7 +483,7 @@ impl PythonState {
         PointLink::new(self.typing().file_index(), self.typing_overload_index)
     }
 
-    pub fn mypy_extensions_arg_func(&self, specific: Specific) -> OverloadedFunction {
+    pub fn mypy_extensions_arg_func(&self, db: &Database, specific: Specific) -> Inferred {
         let node_index = match specific {
             Specific::MypyExtensionsArg => self.mypy_extensions_arg_func,
             Specific::MypyExtensionsDefaultArg => self.mypy_extensions_default_arg_func,
@@ -492,12 +493,8 @@ impl PythonState {
             Specific::MypyExtensionsKwArg => self.mypy_extensions_kw_arg_func,
             _ => unreachable!(),
         };
-        let node_ref = NodeRef::new(self.mypy_extensions(), node_index);
-        let overload = match node_ref.complex().unwrap() {
-            ComplexPoint::FunctionOverload(overload) => overload,
-            _ => unreachable!(),
-        };
-        OverloadedFunction::new(node_ref, overload, None)
+        Function::new(NodeRef::new(self.mypy_extensions(), node_index), None)
+            .decorated(&InferenceState::new(db))
     }
 
     pub fn literal_type(&self, literal_kind: LiteralKind) -> Type {
@@ -646,13 +643,18 @@ fn set_assignments_cached(file: &PythonFile, name_node: NodeIndex) {
 
 fn set_mypy_extension_specific(file: &PythonFile, name: &str, specific: Specific) -> NodeIndex {
     let node_index = file.symbol_table.lookup_symbol(name).unwrap();
+    let name_def_node_index = node_index - NAME_DEF_TO_NAME_DIFFERENCE;
     // Act on the name def index and not the name.
-    let old_point = file.points.get(node_index);
+    let old_point = file.points.get(name_def_node_index);
     file.points.set(
-        node_index,
+        node_index - 1,
         Point::new_simple_specific(specific, Locality::Stmt),
     );
-    // TODO this is now a MultiDefinition and should probably be set on the decorated attribute
-    //debug_assert!(!old_point.calculated());
-    node_index - 1
+    debug_assert!(old_point.type_() == PointType::Redirect);
+    let result = old_point.node_index();
+    debug_assert!(matches!(
+        file.points.get(result).maybe_specific(),
+        Some(Specific::Function | Specific::DecoratedFunction)
+    ));
+    result
 }
