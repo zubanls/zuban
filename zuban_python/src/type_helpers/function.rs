@@ -34,6 +34,7 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
+use crate::utils::rc_unwrap_or_clone;
 use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
@@ -70,6 +71,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn return_annotation(&self) -> Option<ReturnAnnotation> {
         self.node().return_annotation()
+    }
+
+    fn is_dynamic(&self) -> bool {
+        // TODO it's probably not dynamic if at least one arg has been set.
+        self.return_annotation().is_none()
     }
 
     pub fn iter_inferrable_params<'b>(
@@ -432,6 +438,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             inferred,
             kind,
             is_overload,
+            has_decorator: true,
         }
     }
 
@@ -444,7 +451,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
         let mut functions = vec![self.node_ref.as_link()];
-        let mut implementing_function = None;
+        let mut implementing_function: Option<CallableContent> = None;
         loop {
             let point = file.points.get(current_name_index);
             if !point.calculated() {
@@ -464,9 +471,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     next_func.calculate_decorated_function_details(i_s)
                 }
                 Some(Specific::Function) => FunctionDetails {
-                    inferred: Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None)),
+                    inferred: Inferred::from_type(
+                        next_func.as_db_type(i_s, FirstParamProperties::None),
+                    ),
                     kind: FunctionType::Function,
                     is_overload: false,
+                    has_decorator: false,
                 },
                 _ => unreachable!(),
             };
@@ -474,8 +484,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
             if next_details.is_overload {
-                if let Some(implementing) = implementing_function {
-                    NodeRef::from_link(i_s.db, implementing)
+                if let Some(implementing) = &implementing_function {
+                    NodeRef::from_link(i_s.db, implementing.defined_at)
                         .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
                 }
 
@@ -489,7 +499,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             } else {
                 // Check if the implementing function was already set
                 if implementing_function.is_none() {
-                    implementing_function = Some(func_ref.as_link());
+                    if !next_details.has_decorator && next_func.is_dynamic() {
+                        implementing_function = Some(CallableContent::new_any());
+                    } else if let Some(callable) =
+                        next_details.inferred.as_type(i_s).maybe_callable(i_s)
+                    {
+                        implementing_function = Some(rc_unwrap_or_clone(callable));
+                    } else {
+                        todo!()
+                    }
                 } else {
                     todo!()
                 }
@@ -510,9 +528,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             name_def_node_ref(*functions.last().unwrap())
                 .add_typing_issue(i_s, IssueType::OverloadImplementationNeeded);
         }
-        if let Some(implementing_function) = implementing_function {
+        if let Some(implementing_function) = &implementing_function {
             if file.is_stub(i_s.db) {
-                name_def_node_ref(implementing_function)
+                name_def_node_ref(implementing_function.defined_at)
                     .add_typing_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
             }
         }
@@ -1773,4 +1791,5 @@ struct FunctionDetails {
     inferred: Inferred,
     kind: FunctionType,
     is_overload: bool,
+    has_decorator: bool,
 }

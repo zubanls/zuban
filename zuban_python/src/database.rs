@@ -1157,9 +1157,9 @@ pub enum FunctionType {
     ClassMethod,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct OverloadDefinition {
-    pub implementing_function: Option<PointLink>,
+    pub implementing_function: Option<CallableContent>,
     pub functions: Box<[PointLink]>,
 }
 

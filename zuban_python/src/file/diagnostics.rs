@@ -326,24 +326,10 @@ impl<'db> Inference<'db, '_, '_> {
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
             is_overload_member = true;
-            let mut implementation_callable_content = None;
-            if let Some(i) = o.implementing_function {
-                let imp = Function::new(NodeRef::from_link(self.i_s.db, i), class);
-                if matches!(imp.node().parent(), FunctionParent::Decorated(_)) {
-                    let decorated = imp.decorated(self.i_s);
-                    implementation_callable_content =
-                        decorated.as_type(self.i_s).maybe_callable(self.i_s);
-                } else if !self.i_s.db.python_state.project.mypy_compatible
-                    || imp.return_annotation().is_some()
-                {
-                    implementation_callable_content =
-                        imp.as_type(self.i_s).maybe_callable(self.i_s);
-                }
-            }
             for (i, link1) in o.functions.iter().enumerate() {
                 let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
                 let c1 = f1.as_callable(self.i_s, FirstParamProperties::None);
-                if let Some(implementation) = &implementation_callable_content {
+                if let Some(implementation) = &o.implementing_function {
                     self.calc_overload_implementation_diagnostics(&c1, &implementation, i + 1)
                 }
                 for (k, link2) in o.functions[i + 1..].iter().enumerate() {
