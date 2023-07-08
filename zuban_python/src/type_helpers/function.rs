@@ -1259,11 +1259,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 )
             }
         };
-        let has_already_calculated_class_generics = search_init
-            && !matches!(
-                class.unwrap().generics(),
-                Generics::None | Generics::NotDefinedYet
-            );
         let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
