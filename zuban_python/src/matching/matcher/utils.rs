@@ -868,26 +868,27 @@ pub fn create_signature_without_self(
         if !old_type_vars.is_empty() {
             callable_content.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
         }
-        t = Type::owned(DbType::Callable(Rc::new(callable_content)))
-            .replace_type_var_likes_and_self(
-                i_s.db,
-                &mut |usage| {
-                    let index = usage.index().as_usize();
-                    if usage.in_definition() == func.node_ref.as_link() {
-                        let c = &calculated[index];
-                        if c.calculated() {
-                            return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
-                        }
+        let new = Type::replace_type_var_likes_and_self_for_callable(
+            &callable_content,
+            i_s.db,
+            &mut |usage| {
+                let index = usage.index().as_usize();
+                if usage.in_definition() == func.node_ref.as_link() {
+                    let c = &calculated[index];
+                    if c.calculated() {
+                        return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
                     }
-                    let new_index = calculated
-                        .iter()
-                        .take(index)
-                        .filter(|c| !c.calculated())
-                        .count();
-                    usage.into_generic_item_with_new_index(new_index.into())
-                },
-                &mut || DbType::Self_,
-            );
+                }
+                let new_index = calculated
+                    .iter()
+                    .take(index)
+                    .filter(|c| !c.calculated())
+                    .count();
+                usage.into_generic_item_with_new_index(new_index.into())
+            },
+            &mut || DbType::Self_,
+        );
+        t = DbType::Callable(Rc::new(new));
     }
     // TODO this should not be run separately, we do two replacements here.
     Some(replace_class_type_vars(i_s, &t, &instance.class))

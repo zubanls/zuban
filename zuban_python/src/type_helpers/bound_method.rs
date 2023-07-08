@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{Callable, FirstParamProperties, Function, Instance, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
-use crate::database::{CallableParams, DbType, MroIndex};
+use crate::database::{DbType, MroIndex};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{OnTypeError, ResultContext, Type};
