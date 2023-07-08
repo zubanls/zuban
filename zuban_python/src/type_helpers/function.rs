@@ -28,9 +28,10 @@ use crate::matching::params::{
     InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
 };
 use crate::matching::{
-    calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,
-    calculate_function_type_vars_and_return, ArgumentIndexWithParam, CalculatedTypeArguments,
-    FormatData, Generic, Generics, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
+    calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
+    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
+    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, LookupResult,
+    OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -1507,10 +1508,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 let callable = Callable::new(&callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
-                        calculate_class_init_type_vars_and_return(
+                        calculate_callable_init_type_vars_and_return(
                             i_s,
                             class.unwrap(),
-                            function,
+                            callable,
                             non_union_args.clone().into_iter(),
                             &|| args_node_ref,
                             result_context,

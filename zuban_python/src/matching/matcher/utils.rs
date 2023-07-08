@@ -24,6 +24,26 @@ use crate::node_ref::NodeRef;
 use crate::type_helpers::{Callable, Class, FirstParamProperties, Function, Instance, TypeOrClass};
 use crate::utils::rc_unwrap_or_clone;
 
+pub fn calculate_callable_init_type_vars_and_return<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    class: &Class,
+    callable: Callable<'a>,
+    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    result_context: &mut ResultContext,
+    on_type_error: Option<OnTypeError<'db, '_>>,
+) -> CalculatedTypeArguments {
+    calculate_init_type_vars_and_return(
+        i_s,
+        class,
+        FunctionOrCallable::Callable(callable),
+        args,
+        args_node_ref,
+        result_context,
+        on_type_error,
+    )
+}
+
 pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     class: &Class,
@@ -38,16 +58,41 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
         class.name(),
         function.name(),
     );
+    calculate_init_type_vars_and_return(
+        i_s,
+        class,
+        FunctionOrCallable::Function(function),
+        args,
+        args_node_ref,
+        result_context,
+        on_type_error,
+    )
+}
+
+fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
+    i_s: &InferenceState<'db, '_>,
+    class: &Class,
+    func_or_callable: FunctionOrCallable<'a>,
+    args: impl Iterator<Item = Argument<'db, 'a>>,
+    args_node_ref: &impl Fn() -> NodeRef<'a>,
+    result_context: &mut ResultContext,
+    on_type_error: Option<OnTypeError<'db, '_>>,
+) -> CalculatedTypeArguments {
     let type_vars = class.type_vars(i_s);
     let has_generics =
         !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_none();
     // Function type vars need to be calculated, so annotations are used.
-    let func_type_vars = function.type_vars(i_s);
+    let func_type_vars = match func_or_callable {
+        FunctionOrCallable::Function(function) => function.type_vars(i_s),
+        FunctionOrCallable::Callable(c) => c.content.type_vars.as_ref(),
+    };
 
-    let func_or_callable = FunctionOrCallable::Function(function);
     let match_in_definition;
     let mut matcher = if has_generics {
-        match_in_definition = function.node_ref.as_link();
+        match_in_definition = match func_or_callable {
+            FunctionOrCallable::Function(function) => function.node_ref.as_link(),
+            FunctionOrCallable::Callable(callable) => callable.content.defined_at,
+        };
         get_matcher(
             Some(class),
             func_or_callable,
@@ -59,7 +104,15 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
         get_matcher(None, func_or_callable, match_in_definition, type_vars)
     };
 
-    if let Some(t) = function.first_param_annotation_type(i_s) {
+    if let Some(t) = match &func_or_callable {
+        FunctionOrCallable::Function(function) => function.first_param_annotation_type(i_s),
+        FunctionOrCallable::Callable(callable) => match &callable.content.params {
+            CallableParams::Simple(params) => params
+                .first()
+                .and_then(|p| p.param_specific.maybe_positional_db_type().map(Type::new)),
+            _ => None,
+        },
+    } {
         let mut class = *class;
         if matches!(class.generics, Generics::NotDefinedYet) {
             // Special case for self argument in __init__ is necessary, because we do not yet know
