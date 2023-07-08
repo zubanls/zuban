@@ -30,7 +30,7 @@ use crate::matching::params::{
 use crate::matching::{
     calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,
     calculate_function_type_vars_and_return, ArgumentIndexWithParam, CalculatedTypeArguments,
-    Generic, Generics, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
+    FormatData, Generic, Generics, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -1269,6 +1269,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut had_error_in_func = None;
         for (i, link) in self.overload.functions.iter().enumerate() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            let callable = match self.class {
+                // TODO why is this necessary?
+                Some(class) => function
+                    .as_callable(&i_s.with_class_context(&class), FirstParamProperties::None),
+                None => function.as_callable(i_s, FirstParamProperties::None),
+            };
             let (calculated_type_args, had_error) =
                 i_s.do_overload_check(|i_s| match_signature(i_s, result_context, function));
             if had_error && had_error_in_func.is_none() {
@@ -1291,7 +1297,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             "Decided overload for {} (called on #{}): {:?}",
                             self.name(),
                             args.as_node_ref().line(),
-                            function.node().short_debug()
+                            callable.format(&FormatData::new_short(i_s.db))
                         );
                         args.reset_cache();
                         return OverloadResult::Single(function);
