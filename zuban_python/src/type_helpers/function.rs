@@ -1585,7 +1585,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let f_t = func.result_type(i_s);
             if let Some(old_t) = t.take() {
-                t = Some(old_t.merge_matching_parts(i_s.db, func.result_type(i_s)))
+                t = Some(old_t.merge_matching_parts(i_s.db, f_t))
             } else {
                 t = Some(f_t);
             }
