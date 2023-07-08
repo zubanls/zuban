@@ -1238,10 +1238,16 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                function: Function<'a, 'a>| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
-                calculate_class_init_type_vars_and_return(
+                let callable = match self.class {
+                    // TODO why is this necessary?
+                    Some(class) => function
+                        .as_callable(&i_s.with_class_context(&class), FirstParamProperties::None),
+                    None => function.as_callable(i_s, FirstParamProperties::None),
+                };
+                calculate_callable_init_type_vars_and_return(
                     i_s,
                     class.unwrap(),
-                    function,
+                    Callable::new(&callable, self.class),
                     args.iter(),
                     &|| args.as_node_ref(),
                     result_context,

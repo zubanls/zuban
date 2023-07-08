@@ -128,22 +128,23 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
                 if self_class.node_ref == class.node_ref {
                     // [1]
                     checked = true;
-                    for (i, (type_var_like, g)) in type_vars
-                        .unwrap()
-                        .iter()
-                        .zip(self_class.generics().iter(i_s.db))
-                        .enumerate()
-                    {
-                        if !g
-                            .maybe_simple_type_var_like()
-                            .is_some_and(|tv2| type_var_like == &tv2)
+                    if let Some(type_vars) = type_vars {
+                        for (i, (type_var_like, g)) in type_vars
+                            .iter()
+                            .zip(self_class.generics().iter(i_s.db))
+                            .enumerate()
                         {
-                            matcher
-                                .type_var_matcher
-                                .as_mut()
-                                .unwrap()
-                                .calculated_type_vars[i]
-                                .update_uncalculated_with_generic_invariant(i_s.db, g)
+                            if !g
+                                .maybe_simple_type_var_like()
+                                .is_some_and(|tv2| type_var_like == &tv2)
+                            {
+                                matcher
+                                    .type_var_matcher
+                                    .as_mut()
+                                    .unwrap()
+                                    .calculated_type_vars[i]
+                                    .update_uncalculated_with_generic_invariant(i_s.db, g)
+                            }
                         }
                     }
                 }
@@ -462,7 +463,11 @@ fn calculate_type_vars<'db: 'a, 'a>(
                 func_or_callable,
                 args_node_ref,
                 on_type_error,
-                InferrableParamIterator2::new(i_s.db, params.iter(), args),
+                InferrableParamIterator2::new(
+                    i_s.db,
+                    params.iter().skip(skip_first_param as usize),
+                    args,
+                ),
             ),
             CallableParams::Any => SignatureMatch::new_true(),
             CallableParams::WithParamSpec(pre_types, param_spec) => {
@@ -561,6 +566,7 @@ pub fn match_arguments_against_params<
             if should_generate_errors {
                 missing_params.push(p.param);
             }
+            debug!("Arguments for {:?} missing", p.param.name(i_s.db));
             continue;
         }
         match p.argument {
@@ -745,6 +751,8 @@ pub fn match_arguments_against_params<
                 let s = diagnostic_string(" for ").unwrap_or_else(|| Box::from(""));
                 args_node_ref().add_typing_issue(i_s, IssueType::TooManyArguments(s));
             }
+        } else {
+            debug!("Too many arguments found");
         }
     } else if args_with_params.has_unused_keyword_arguments() && should_generate_errors {
         for unused in &args_with_params.unused_keyword_arguments {
