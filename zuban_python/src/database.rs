@@ -1503,6 +1503,25 @@ impl CallableContent {
         }
     }
 
+    pub fn remove_first_param(&self) -> Option<Self> {
+        let mut c = self.clone();
+        c.params = match &self.params {
+            CallableParams::Simple(params) => {
+                if params.len() == 0 {
+                    todo!()
+                }
+                let mut params = params.to_vec();
+                params.remove(0);
+                CallableParams::Simple(params.into())
+            }
+            CallableParams::WithParamSpec(pre, usage) => {
+                todo!()
+            }
+            CallableParams::Any => CallableParams::Any,
+        };
+        Some(c)
+    }
+
     fn has_any_internal(
         &self,
         i_s: &InferenceState,

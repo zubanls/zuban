@@ -127,15 +127,9 @@ impl<'a> Type<'a> {
                     if let LookupResult::GotoName(_, init) = lookup {
                         let c = init.as_type(i_s).into_db_type();
                         if let DbType::Callable(c) = c {
-                            let mut c = (*c).clone();
-                            if let CallableParams::Simple(params) = &c.params {
-                                if params.len() == 0 {
-                                    todo!()
-                                }
-                                let mut params = params.to_vec();
-                                params.remove(0);
-                                c.params = CallableParams::Simple(params.into());
-                            }
+                            let Some(mut c) = c.remove_first_param() else {
+                                todo!()
+                            };
                             let cls_type_vars = cls.type_vars(i_s);
                             // Since __init__ does not have a return, We need to check the params
                             // of the __init__ functions and the class as a return type separately.
