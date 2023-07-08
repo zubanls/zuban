@@ -1516,9 +1516,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
         } else {
             let mut first_similar = None;
-            for (i, link) in self.overload.old_functions.iter().enumerate() {
-                let f = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                let callable = f.as_callable(i_s, FirstParamProperties::None);
+            for (i, callable) in self.overload.functions.iter().enumerate() {
                 let callable = Callable::new(&callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
@@ -1592,9 +1590,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
         let mut t: Option<Type> = None;
-        for link in self.overload.old_functions.iter() {
-            let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let f_t = func.result_type(i_s);
+        for callable in self.overload.functions.iter() {
+            let f_t = Type::new(&callable.result_type);
             if let Some(old_t) = t.take() {
                 t = Some(old_t.merge_matching_parts(i_s.db, f_t))
             } else {
