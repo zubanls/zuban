@@ -607,6 +607,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let self_type_var_usage = self_type_var_usage.as_ref();
 
         let as_db_type = |i_s: &InferenceState, t: Type| {
+            if matches!(first, FirstParamProperties::None) {
+                return t.as_db_type();
+            }
             let Some(func_class) = self.class else {
                 return t.as_db_type()
             };
