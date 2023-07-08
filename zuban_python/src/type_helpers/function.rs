@@ -1506,8 +1506,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         } else {
             let mut first_similar = None;
             for (i, link) in self.overload.functions.iter().enumerate() {
-                let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                let callable = function.as_callable(i_s, FirstParamProperties::None);
+                let f = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+                let callable = f.as_callable(i_s, FirstParamProperties::None);
                 let callable = Callable::new(&callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
@@ -1539,20 +1539,18 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     SignatureMatch::True { .. } => {
                         if search_init {
                             todo!()
-                        } else if let Some(return_annotation) = function.return_annotation() {
+                        } else {
                             return UnionMathResult::Match {
-                                result: function
-                                    .apply_type_args_in_return_annotation(
+                                result: Type::new(&callable.content.result_type)
+                                    .execute_and_resolve_type_vars(
                                         i_s,
-                                        calculated_type_args,
+                                        self.class.as_ref(),
                                         class,
-                                        return_annotation,
+                                        &calculated_type_args,
                                     )
                                     .class_as_db_type(i_s),
                                 first_similar_index: i,
                             };
-                        } else {
-                            todo!()
                         }
                     }
                     SignatureMatch::TrueWithAny { argument_indices } => todo!(),
