@@ -238,7 +238,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     args: impl Iterator<Item = Argument<'db, 'a>>,
     args_node_ref: &impl Fn() -> NodeRef<'a>,
     result_context: &mut ResultContext,
-    on_type_error: OnTypeError<'db, '_>,
+    on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
     let func_or_callable = FunctionOrCallable::Callable(callable);
     let type_vars = callable.content.type_vars.as_ref();
@@ -259,7 +259,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
         type_vars,
         callable.content.defined_at,
         result_context,
-        Some(on_type_error),
+        on_type_error,
     )
 }
 

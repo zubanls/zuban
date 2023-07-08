@@ -35,7 +35,7 @@ impl<'a> Callable<'a> {
             args.iter(),
             &|| args.as_node_ref(),
             result_context,
-            on_type_error,
+            Some(on_type_error),
         );
         let g_o = Type::new(&self.content.result_type);
         g_o.execute_and_resolve_type_vars(

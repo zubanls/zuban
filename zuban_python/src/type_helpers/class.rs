@@ -133,7 +133,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     args.iter(),
                     &|| args.as_node_ref(),
                     result_context,
-                    on_type_error,
+                    Some(on_type_error),
                 );
                 Some(calculated_type_args.type_arguments_into_class_generics())
             }

@@ -2550,7 +2550,7 @@ pub fn execute_type_of_type<'db>(
                 args.iter(),
                 &|| args.as_node_ref(),
                 &mut ResultContext::Unknown,
-                on_type_error,
+                Some(on_type_error),
             );
             debug!("TODO use generics for namedtuple");
             Inferred::from_type(DbType::NamedTuple(nt.clone()))

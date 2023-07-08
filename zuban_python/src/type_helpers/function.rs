@@ -7,7 +7,7 @@ use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Instance, Module};
+use super::{Callable, Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
@@ -28,9 +28,9 @@ use crate::matching::params::{
     InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
 };
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, CalculatedTypeArguments, Generic, Generics, LookupResult, OnTypeError,
-    ResultContext, SignatureMatch, Type,
+    calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,
+    calculate_function_type_vars_and_return, ArgumentIndexWithParam, CalculatedTypeArguments,
+    Generic, Generics, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -1497,6 +1497,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let mut first_similar = None;
             for (i, link) in self.overload.functions.iter().enumerate() {
                 let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+                let callable = function.as_callable(i_s, FirstParamProperties::None);
+                let callable = Callable::new(&callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
                         calculate_class_init_type_vars_and_return(
@@ -1509,15 +1511,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             None,
                         )
                     } else {
-                        calculate_function_type_vars_and_return(
+                        calculate_callable_type_vars_and_return(
                             i_s,
                             class,
-                            function,
+                            callable,
                             non_union_args.clone().into_iter(),
                             &|| args_node_ref,
-                            false,
-                            function.type_vars(i_s),
-                            function.node_ref.as_link(),
                             result_context,
                             None,
                         )
