@@ -14,8 +14,7 @@ use crate::matching::params::has_overlapping_params;
 use crate::matching::{matches_params, LookupResult, Match, Matcher, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
-    TypeOrClass,
+    format_pretty_callable, is_private, Class, Function, Instance, TypeOrClass,
 };
 
 impl<'db> Inference<'db, '_, '_> {
@@ -326,11 +325,11 @@ impl<'db> Inference<'db, '_, '_> {
         let mut is_overload_member = false;
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
             is_overload_member = true;
-            for (i, c1) in o.functions.iter().enumerate() {
+            for (i, c1) in o.functions().iter().enumerate() {
                 if let Some(implementation) = &o.implementing_function {
                     self.calc_overload_implementation_diagnostics(&c1, &implementation, i + 1)
                 }
-                for (k, c2) in o.functions[i + 1..].iter().enumerate() {
+                for (k, c2) in o.functions()[i + 1..].iter().enumerate() {
                     if is_overload_unmatchable(self.i_s, &c1, &c2) {
                         NodeRef::from_link(self.i_s.db, c2.defined_at).add_typing_issue(
                             self.i_s,

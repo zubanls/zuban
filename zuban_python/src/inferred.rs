@@ -687,7 +687,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         return Some(Inferred::from_type(
                                             results.into_iter().next().unwrap(),
                                         ));
-                                    } else if results.len() != o.functions.len() {
+                                    } else if results.len() != o.functions().len() {
                                         todo!()
                                     }
                                 }

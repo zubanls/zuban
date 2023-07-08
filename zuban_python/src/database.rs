@@ -1161,7 +1161,13 @@ pub enum FunctionKind {
 pub struct OverloadDefinition {
     pub implementing_function: Option<CallableContent>,
     pub old_functions: Box<[PointLink]>,
-    pub functions: Box<[CallableContent]>,
+    pub functions: Rc<FunctionOverload>,
+}
+
+impl OverloadDefinition {
+    pub fn functions(&self) -> &[CallableContent] {
+        &self.functions.functions()
+    }
 }
 
 #[derive(Debug, Clone, PartialEq)]

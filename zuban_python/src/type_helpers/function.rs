@@ -549,7 +549,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         debug_assert!(!functions.is_empty());
         OverloadDefinition {
-            functions: functions.into_boxed_slice(),
+            functions: Rc::new(FunctionOverload::new(functions.into_boxed_slice())),
             old_functions: old_functions.into_boxed_slice(),
             implementing_function,
         }
@@ -1516,7 +1516,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
         } else {
             let mut first_similar = None;
-            for (i, callable) in self.overload.functions.iter().enumerate() {
+            for (i, callable) in self.overload.functions().iter().enumerate() {
                 let callable = Callable::new(&callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
@@ -1590,7 +1590,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
         let mut t: Option<Type> = None;
-        for callable in self.overload.functions.iter() {
+        for callable in self.overload.functions().iter() {
             let f_t = Type::new(&callable.result_type);
             if let Some(old_t) = t.take() {
                 t = Some(old_t.merge_matching_parts(i_s.db, f_t))
