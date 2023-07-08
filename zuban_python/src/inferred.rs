@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
-    FunctionType, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex,
+    FunctionKind, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex,
     NewType, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
@@ -700,7 +700,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => {
                                     match c.kind {
-                                        FunctionType::Function => {
+                                        FunctionKind::Function => {
                                             // TODO should use create_signature_without_self!
                                             return Some(Self::new_bound_method(
                                                 get_inferred(i_s).as_bound_method_instance(i_s),
@@ -708,10 +708,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 *definition,
                                             ));
                                         }
-                                        FunctionType::Property => {
+                                        FunctionKind::Property => {
                                             todo!()
                                         }
-                                        FunctionType::ClassMethod => {
+                                        FunctionKind::ClassMethod => {
                                             let result = infer_class_method(
                                                 i_s,
                                                 instance.class,
@@ -834,11 +834,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => match c.kind {
-                                    FunctionType::Function => {
+                                    FunctionKind::Function => {
                                         debug!("TODO callable decorated class descriptor")
                                     }
-                                    FunctionType::Property => todo!(),
-                                    FunctionType::ClassMethod => {
+                                    FunctionKind::Property => todo!(),
+                                    FunctionKind::ClassMethod => {
                                         let result =
                                             infer_class_method(i_s, *class, attribute_class, c);
                                         if result.is_none() {

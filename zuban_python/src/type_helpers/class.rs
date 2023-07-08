@@ -11,7 +11,7 @@ use super::{Callable, Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionType,
+    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionKind,
     GenericsList, Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope,
     Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     Variance,
@@ -910,7 +910,7 @@ impl<'db: 'a, 'a> Class<'a> {
             name: Some(name),
             class_name: None,
             defined_at: self.node_ref.as_link(),
-            kind: FunctionType::Function,
+            kind: FunctionKind::Function,
             type_vars: self.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::None,

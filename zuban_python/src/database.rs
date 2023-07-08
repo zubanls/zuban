@@ -1151,7 +1151,7 @@ impl DbType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FunctionType {
+pub enum FunctionKind {
     Function,
     Property,
     ClassMethod,
@@ -1473,7 +1473,7 @@ pub struct CallableContent {
     pub name: Option<StringSlice>,
     pub class_name: Option<StringSlice>,
     pub defined_at: PointLink,
-    pub kind: FunctionType,
+    pub kind: FunctionKind,
     pub type_vars: Option<TypeVarLikes>,
     pub params: CallableParams,
     pub result_type: DbType,
@@ -1489,7 +1489,7 @@ impl CallableContent {
             name: None,
             class_name: None,
             defined_at,
-            kind: FunctionType::Function,
+            kind: FunctionKind::Function,
             type_vars: None,
             params: CallableParams::Any,
             result_type: DbType::Any,

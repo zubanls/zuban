@@ -11,7 +11,7 @@ use super::{Callable, Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionOverload, FunctionType, GenericItem, Locality,
+    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericItem, Locality,
     OverloadDefinition, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, Specific,
     StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
     TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName,
@@ -30,7 +30,7 @@ use crate::matching::params::{
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, Generics, LookupResult,
+    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, LookupResult,
     OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
@@ -395,7 +395,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             unreachable!();
         };
         let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
-        let mut kind = FunctionType::Function;
+        let mut kind = FunctionKind::Function;
         let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
             let i = self
@@ -404,7 +404,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .inference(i_s)
                 .infer_named_expression(decorator.named_expression());
             if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
-                kind = FunctionType::ClassMethod;
+                kind = FunctionKind::ClassMethod;
                 continue;
             }
             if i.maybe_saved_link() == Some(i_s.db.python_state.overload_link()) {
@@ -431,7 +431,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable_content.kind = kind;
             inferred = Inferred::from_type(DbType::Callable(Rc::new(callable_content)));
         } else {
-            if kind != FunctionType::Function {
+            if kind != FunctionKind::Function {
                 todo!()
             }
         }
@@ -475,7 +475,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     inferred: Inferred::from_type(
                         next_func.as_db_type(i_s, FirstParamProperties::None),
                     ),
-                    kind: FunctionType::Function,
+                    kind: FunctionKind::Function,
                     is_overload: false,
                     has_decorator: false,
                 },
@@ -555,7 +555,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             {
                 return false;
             }
-            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionType::ClassMethod)
+            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionKind::ClassMethod)
         } else {
             false
         }
@@ -670,7 +670,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             name: Some(self.name_string_slice()),
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
-            kind: FunctionType::Function,
+            kind: FunctionKind::Function,
             params,
             type_vars: None,
             result_type,
@@ -1793,7 +1793,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
 
 struct FunctionDetails {
     inferred: Inferred,
-    kind: FunctionType,
+    kind: FunctionKind,
     is_overload: bool,
     has_decorator: bool,
 }
