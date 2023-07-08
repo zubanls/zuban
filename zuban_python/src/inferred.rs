@@ -1494,17 +1494,9 @@ fn infer_class_method(
         &func_class,
         class_generics_not_defined_yet,
     );
-    /*let mut c = callable.clone();
-    match &c.params {
-        CallableParams::Simple(params) => {
-            let mut vec = params.to_vec();
-            // The first argument in a class param is not relevant if we execute descriptors.
-            vec.remove(0);
-            c.params = CallableParams::Simple(Rc::from(vec));
-        }
-        CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any => todo!(),
-    }
+
+    /*
+    let mut c = callable.remove_first_param()
     let t = DbType::Callable(Rc::new(c));
     */
     Some(Inferred::from_type(t))

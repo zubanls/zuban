@@ -80,17 +80,8 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 f.as_db_type(i_s, FirstParamProperties::Skip(self.instance))
             }
             BoundMethodFunction::Callable(c) => {
-                let callable = match &c.content.params {
-                    CallableParams::Simple(params) => {
-                        let mut vec = params.to_vec();
-                        // The first argument in a class param is not relevant if we execute descriptors.
-                        vec.remove(0);
-                        let mut c = c.content.clone();
-                        c.params = CallableParams::Simple(Rc::from(vec));
-                        c
-                    }
-                    CallableParams::WithParamSpec(_, _) => todo!(),
-                    CallableParams::Any => c.content.clone(),
+                let Some(callable) = c.content.remove_first_param() else {
+                    todo!()
                 };
                 DbType::Callable(Rc::new({
                     let class = self.instance.class;
