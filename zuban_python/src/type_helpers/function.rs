@@ -29,9 +29,8 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, CalculatedTypeArguments, FormatData, Generic, LookupResult,
-    OnTypeError, ResultContext, SignatureMatch, Type,
+    calculate_function_type_vars_and_return, ArgumentIndexWithParam, CalculatedTypeArguments,
+    FormatData, Generic, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;

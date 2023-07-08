@@ -126,15 +126,27 @@ impl<'db: 'a, 'a> Class<'a> {
                 Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
-                let calculated_type_args = calculate_callable_type_vars_and_return(
-                    i_s,
-                    class.as_ref(),
-                    Callable::new(&callable_content, Some(*self)),
-                    args.iter(),
-                    &|| args.as_node_ref(),
-                    result_context,
-                    Some(on_type_error),
-                );
+                let calculated_type_args = match class {
+                    Some(class) => todo!() /*calculate_callable_init_type_vars_and_return(
+                        i_s,
+                        &class,
+                        Callable::new(&callable_content, Some(*self)),
+                        args.iter(),
+                        &|| args.as_node_ref(),
+                        result_context,
+                        Some(on_type_error),
+                    )*/,
+                    // Happens for example when NamedTuples are involved.
+                    None => calculate_callable_type_vars_and_return(
+                        i_s,
+                        None,
+                        Callable::new(&callable_content, Some(*self)),
+                        args.iter(),
+                        &|| args.as_node_ref(),
+                        result_context,
+                        Some(on_type_error),
+                    ),
+                };
                 Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
