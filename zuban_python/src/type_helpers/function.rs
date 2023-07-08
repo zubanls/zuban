@@ -450,7 +450,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let first_index = self.node().name().index();
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
-        let mut functions = vec![self.node_ref.as_link()];
+        let mut functions = vec![];
+        let mut old_functions = vec![self.node_ref.as_link()];
+        let mut add_func = |inf: Inferred| {
+            if let Some(callable) = inf.as_type(i_s).maybe_callable(i_s) {
+                functions.push(rc_unwrap_or_clone(callable))
+            } else {
+                todo!()
+            }
+        };
+        add_func(details.inferred);
         let mut implementing_function: Option<CallableContent> = None;
         loop {
             let point = file.points.get(current_name_index);
@@ -495,7 +504,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         Specific::OverloadUnreachable,
                         Locality::File,
                     ));
-                functions.push(func_ref.as_link())
+                old_functions.push(func_ref.as_link());
+                add_func(next_details.inferred)
             } else {
                 // Check if the implementing function was already set
                 if implementing_function.is_none() {
@@ -522,13 +532,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             NodeRef::new(node_ref.file, name_def.index())
         };
         if functions.len() < 2 {
-            NodeRef::from_link(i_s.db, functions[0])
+            self.node_ref
                 .add_typing_issue(i_s, IssueType::OverloadSingleNotAllowed);
         } else if implementing_function.is_none()
             && !file.is_stub(i_s.db)
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
         {
-            name_def_node_ref(*functions.last().unwrap())
+            name_def_node_ref(functions.last().unwrap().defined_at)
                 .add_typing_issue(i_s, IssueType::OverloadImplementationNeeded);
         }
         if let Some(implementing_function) = &implementing_function {
@@ -540,6 +550,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         debug_assert!(!functions.is_empty());
         OverloadDefinition {
             functions: functions.into_boxed_slice(),
+            old_functions: old_functions.into_boxed_slice(),
             implementing_function,
         }
     }
@@ -1271,7 +1282,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         let mut had_error_in_func = None;
-        for (i, link) in self.overload.functions.iter().enumerate() {
+        for (i, link) in self.overload.old_functions.iter().enumerate() {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let callable = match self.class {
                 // TODO why is this necessary?
@@ -1378,7 +1389,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 UnionMathResult::Match { result, .. } => return OverloadResult::Union(result),
                 UnionMathResult::FirstSimilarIndex(index) => {
                     first_similar = Some(Function::new(
-                        NodeRef::from_link(i_s.db, self.overload.functions[index]),
+                        NodeRef::from_link(i_s.db, self.overload.old_functions[index]),
                         self.class,
                     ))
                 }
@@ -1393,7 +1404,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             return OverloadResult::Single(function);
         } else {
             let function = Function::new(
-                NodeRef::from_link(i_s.db, self.overload.functions[0]),
+                NodeRef::from_link(i_s.db, self.overload.old_functions[0]),
                 self.class,
             );
             if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
@@ -1505,7 +1516,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
         } else {
             let mut first_similar = None;
-            for (i, link) in self.overload.functions.iter().enumerate() {
+            for (i, link) in self.overload.old_functions.iter().enumerate() {
                 let f = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
                 let callable = f.as_callable(i_s, FirstParamProperties::None);
                 let callable = Callable::new(&callable, self.class);
@@ -1570,7 +1581,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn variants(&self, i_s: &InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {
         self.overload
-            .functions
+            .old_functions
             .iter()
             .map(|link| {
                 let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
@@ -1581,7 +1592,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
         let mut t: Option<Type> = None;
-        for link in self.overload.functions.iter() {
+        for link in self.overload.old_functions.iter() {
             let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
             let f_t = func.result_type(i_s);
             if let Some(old_t) = t.take() {
@@ -1596,7 +1607,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
         DbType::FunctionOverload(Rc::new(FunctionOverload::new(
             self.overload
-                .functions
+                .old_functions
                 .iter()
                 .map(|link| {
                     let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
