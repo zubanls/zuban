@@ -1243,15 +1243,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> OverloadResult<'a> {
         let match_signature = |i_s: &InferenceState<'db, '_>,
                                result_context: &mut ResultContext,
-                               function: Function<'a, 'a>| {
+                               function: Function<'a, 'a>,
+                               callable: &CallableContent| {
             let func_type_vars = function.type_vars(i_s);
             if search_init {
-                let callable = match self.class {
-                    // TODO why is this necessary?
-                    Some(class) => function
-                        .as_callable(&i_s.with_class_context(&class), FirstParamProperties::None),
-                    None => function.as_callable(i_s, FirstParamProperties::None),
-                };
                 calculate_callable_init_type_vars_and_return(
                     i_s,
                     class.unwrap(),
@@ -1288,10 +1283,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .enumerate()
         {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let (calculated_type_args, had_error) =
-                i_s.do_overload_check(|i_s| match_signature(i_s, result_context, function));
+            let (calculated_type_args, had_error) = i_s
+                .do_overload_check(|i_s| match_signature(i_s, result_context, function, callable));
             if had_error && had_error_in_func.is_none() {
-                had_error_in_func = Some(function);
+                had_error_in_func = Some((function, callable));
             }
             match calculated_type_args.matches {
                 SignatureMatch::True {
@@ -1332,7 +1327,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 args.reset_cache();
                                 // Need to run the whole thing again to generate errors, because
                                 // the function is not going to be checked.
-                                match_signature(i_s, result_context, function);
+                                match_signature(i_s, result_context, function, callable);
                                 todo!("Add a test")
                             }
                             debug!(
@@ -1354,7 +1349,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 }
                 SignatureMatch::False { similar: true } => {
                     if first_similar.is_none() {
-                        first_similar = Some(function)
+                        first_similar = Some((function, callable))
                     }
                 }
                 SignatureMatch::False { similar: false } => (),
@@ -1386,19 +1381,22 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             ) {
                 UnionMathResult::Match { result, .. } => return OverloadResult::Union(result),
                 UnionMathResult::FirstSimilarIndex(index) => {
-                    first_similar = Some(Function::new(
-                        NodeRef::from_link(i_s.db, self.overload.old_functions[index]),
-                        self.class,
+                    first_similar = Some((
+                        Function::new(
+                            NodeRef::from_link(i_s.db, self.overload.old_functions[index]),
+                            self.class,
+                        ),
+                        self.overload.iter_functions().nth(index).unwrap(),
                     ))
                 }
                 UnionMathResult::NoMatch => (),
             }
         }
-        if let Some(function) = first_similar {
+        if let Some((function, callable)) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
-            let calculated_type_args = match_signature(i_s, result_context, function);
+            let calculated_type_args = match_signature(i_s, result_context, function, callable);
             return OverloadResult::Single(function);
         } else {
             let function = Function::new(
@@ -1416,10 +1414,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 args.as_node_ref().add_typing_issue(i_s, t);
             }
         }
-        if let Some(function) = had_error_in_func {
+        if let Some((function, callable)) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
             // going to be checked.
-            match_signature(i_s, result_context, function);
+            match_signature(i_s, result_context, function, callable);
         }
         OverloadResult::NotFound
     }
