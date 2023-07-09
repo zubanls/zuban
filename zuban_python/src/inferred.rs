@@ -279,6 +279,8 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
+        todo!();
+        /*
         if let InferredState::Saved(definition) = self.state {
             let definition = NodeRef::from_link(i_s.db, definition);
             let point = definition.point();
@@ -291,6 +293,7 @@ impl<'db: 'slf, 'slf> Inferred {
         } else {
             self
         }
+        */
     }
 
     pub fn resolve_class_type_vars(self, i_s: &InferenceState<'db, '_>, class: &Class) -> Self {
