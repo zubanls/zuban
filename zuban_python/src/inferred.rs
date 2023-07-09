@@ -14,8 +14,9 @@ use crate::file::{on_argument_type_error, use_cached_annotation_type, File, Pyth
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    create_signature_without_self, maybe_class_usage, replace_class_type_vars, FormatData,
-    Generics, IteratorContent, LookupResult, OnLookupError, OnTypeError, ResultContext, Type,
+    create_signature_without_self, maybe_class_usage, replace_class_type_vars,
+    replace_class_type_vars_in_callable, FormatData, Generics, IteratorContent, LookupResult,
+    OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -688,10 +689,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     &t,
                                                 )
                                             } else {
-                                                Some(func.as_db_type(
-                                                    i_s,
-                                                    FirstParamProperties::Skip(instance),
-                                                ))
+                                                if let Some(callable) =
+                                                    callable.remove_first_param()
+                                                {
+                                                    Some(DbType::Callable(Rc::new(
+                                                        replace_class_type_vars_in_callable(
+                                                            i_s.db,
+                                                            &callable,
+                                                            &instance.class,
+                                                            Some(&func_class),
+                                                        ),
+                                                    )))
+                                                } else {
+                                                    todo!()
+                                                }
                                             }
                                         })
                                         .collect();
