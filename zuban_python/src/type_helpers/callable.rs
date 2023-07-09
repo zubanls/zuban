@@ -20,17 +20,16 @@ impl<'a> Callable<'a> {
         }
     }
 
-    pub fn execute_internal<'db>(
+    pub fn execute<'db>(
         &self,
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
-        class: Option<&Class>,
         result_context: &mut ResultContext,
     ) -> Inferred {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
-            class,
+            self.defined_in.as_ref(),
             *self,
             args.iter(),
             &|| args.as_node_ref(),
@@ -41,7 +40,7 @@ impl<'a> Callable<'a> {
         g_o.execute_and_resolve_type_vars(
             i_s,
             self.defined_in.as_ref(),
-            class,
+            self.defined_in.as_ref(),
             &calculated_type_vars,
         )
     }

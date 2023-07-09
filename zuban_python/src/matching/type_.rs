@@ -1860,13 +1860,9 @@ impl<'a> Type<'a> {
                     gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
                 }
             }),
-            DbType::Callable(content) => Callable::new(content, None).execute_internal(
-                i_s,
-                args,
-                on_type_error,
-                None,
-                result_context,
-            ),
+            DbType::Callable(content) => {
+                Callable::new(content, None).execute(i_s, args, on_type_error, result_context)
+            }
             DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_unknown()

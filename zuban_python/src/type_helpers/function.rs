@@ -1606,13 +1606,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name(i_s.db));
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
-            OverloadResult::Single(callable) => callable.execute_internal(
-                i_s,
-                args,
-                on_type_error,
-                callable.defined_in.as_ref(),
-                result_context,
-            ),
+            OverloadResult::Single(callable) => {
+                callable.execute(i_s, args, on_type_error, result_context)
+            }
             OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }

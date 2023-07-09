@@ -61,11 +61,10 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 Some(class),
                 result_context,
             ),
-            BoundMethodFunction::Callable(f) => f.execute_internal(
+            BoundMethodFunction::Callable(f) => f.execute(
                 &i_s.with_class_context(class),
                 &args,
                 on_type_error,
-                Some(class),
                 result_context,
             ),
         }
