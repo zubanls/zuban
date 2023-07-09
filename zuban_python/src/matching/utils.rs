@@ -66,9 +66,10 @@ pub fn create_signature_without_self_for_callable(
         i_s,
         matcher,
         || {
-            callable
+            let c = callable
                 .remove_first_param()
-                .expect("Signatures without any params should have been filtered before")
+                .expect("Signatures without any params should have been filtered before");
+            replace_class_type_vars_in_callable(i_s.db, &c, &instance.class, Some(func_class))
         },
         instance,
         func_class,
@@ -95,10 +96,10 @@ pub fn create_signature_without_self(
     {
         return None;
     }
-    let callable = get_callable();
+    let mut callable = get_callable();
     if let Some(type_vars) = &callable.type_vars {
         let calculated = matcher.unwrap_calculated_type_args();
-        let mut new = Type::replace_type_var_likes_and_self_for_callable(
+        callable = Type::replace_type_var_likes_and_self_for_callable(
             &callable,
             i_s.db,
             &mut |usage| {
@@ -109,9 +110,6 @@ pub fn create_signature_without_self(
                         return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
                     }
                 }
-                if let Some(g) = maybe_class_usage(i_s.db, func_class, &usage) {
-                    return g;
-                }
                 let new_index = calculated
                     .iter()
                     .take(index)
@@ -121,23 +119,15 @@ pub fn create_signature_without_self(
             },
             &mut || unreachable!("Self should have been remapped already"),
         );
-        let mut old_type_vars = new.type_vars.take().unwrap().into_vec();
+        let mut old_type_vars = callable.type_vars.take().unwrap().into_vec();
         for (i, c) in calculated.iter().enumerate().rev() {
             if c.calculated() {
                 old_type_vars.remove(i);
             }
         }
         if !old_type_vars.is_empty() {
-            new.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
+            callable.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
         }
-        Some(DbType::Callable(Rc::new(new)))
-    } else {
-        // TODO this should not be run separately, we do two replacements here.
-        Some(replace_class_type_vars(
-            i_s.db,
-            &DbType::Callable(Rc::new(callable)),
-            &instance.class,
-            func_class,
-        ))
     }
+    Some(DbType::Callable(Rc::new(callable)))
 }
