@@ -22,7 +22,7 @@ pub use matcher::{
 pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::ResultContext;
 pub use type_::{common_base_type, execute_type_of_type, match_tuple_type_arguments, Type};
-pub use utils::replace_class_type_vars;
+pub use utils::{replace_class_type_vars, replace_class_type_vars_in_callable};
 
 use crate::{
     arguments::Argument,

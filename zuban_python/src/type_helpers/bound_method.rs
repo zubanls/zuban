@@ -5,7 +5,7 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{DbType, MroIndex};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{OnTypeError, ResultContext, Type};
+use crate::matching::{replace_class_type_vars_in_callable, OnTypeError, ResultContext, Type};
 
 #[derive(Debug)]
 pub enum BoundMethodFunction<'a> {
@@ -84,25 +84,11 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                     todo!()
                 };
                 DbType::Callable(Rc::new({
-                    let class = self.instance.class;
-                    Type::replace_type_var_likes_and_self_for_callable(
-                        &callable,
+                    replace_class_type_vars_in_callable(
                         i_s.db,
-                        &mut |usage| {
-                            let in_definition = usage.in_definition();
-                            if let Some(defined_in) = c.defined_in {
-                                if in_definition == defined_in.node_ref.as_link() {
-                                    return defined_in
-                                        .generics()
-                                        .nth_usage(i_s.db, &usage)
-                                        .into_generic_item(i_s.db);
-                                }
-                            }
-                            // This can happen for example if the return value is a Callable with its
-                            // own type vars.
-                            usage.into_generic_item()
-                        },
-                        &mut || class.as_db_type(i_s.db),
+                        &callable,
+                        &self.instance.class,
+                        c.defined_in.as_ref(),
                     )
                 }))
             }
