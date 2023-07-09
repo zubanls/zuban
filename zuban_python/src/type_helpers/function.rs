@@ -1280,14 +1280,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         let mut had_error_in_func = None;
-        for (i, link) in self.overload.old_functions.iter().enumerate() {
+        for (i, (link, callable)) in self
+            .overload
+            .old_functions
+            .iter()
+            .zip(self.overload.iter_functions())
+            .enumerate()
+        {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let callable = match self.class {
-                // TODO why is this necessary?
-                Some(class) => function
-                    .as_callable(&i_s.with_class_context(&class), FirstParamProperties::None),
-                None => function.as_callable(i_s, FirstParamProperties::None),
-            };
             let (calculated_type_args, had_error) =
                 i_s.do_overload_check(|i_s| match_signature(i_s, result_context, function));
             if had_error && had_error_in_func.is_none() {
