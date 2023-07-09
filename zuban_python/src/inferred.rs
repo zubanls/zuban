@@ -541,7 +541,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 match definition.complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
                         return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
-                            definition, overload, class,
+                            overload, class,
                         )));
                     }
                     Some(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
@@ -1182,7 +1182,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => {
                         match node_ref.file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(overload) => {
-                                return OverloadedFunction::new(node_ref, overload, None).execute(
+                                return OverloadedFunction::new(overload, None).execute(
                                     i_s,
                                     args,
                                     result_context,
@@ -1382,7 +1382,7 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     let reference = NodeRef::from_link(i_s.db, func_link);
     match reference.complex() {
         Some(ComplexPoint::FunctionOverload(overload)) => {
-            let func = OverloadedFunction::new(reference, overload, Some(class));
+            let func = OverloadedFunction::new(overload, Some(class));
             BoundMethod::new(instance, mro_index, BoundMethodFunction::Overload(func))
         }
         Some(ComplexPoint::TypeInstance(t)) => match t {
@@ -1638,11 +1638,7 @@ fn type_of_complex<'db: 'x, 'x>(
             ))))
         }
         ComplexPoint::FunctionOverload(overload) => {
-            let overload = OverloadedFunction::new(
-                definition.unwrap(),
-                overload,
-                i_s.current_class().copied(),
-            );
+            let overload = OverloadedFunction::new(overload, i_s.current_class().copied());
             overload.as_type(i_s)
         }
         ComplexPoint::TypeInstance(t) => Type::new(t),

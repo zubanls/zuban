@@ -1192,7 +1192,6 @@ impl<'db> InferrableParam<'db, '_> {
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {
-    node_ref: NodeRef<'a>,
     overload: &'a OverloadDefinition,
     class: Option<Class<'a>>,
 }
@@ -1214,16 +1213,8 @@ pub enum UnionMathResult {
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
-    pub fn new(
-        node_ref: NodeRef<'a>,
-        overload: &'a OverloadDefinition,
-        class: Option<Class<'a>>,
-    ) -> Self {
-        Self {
-            node_ref,
-            overload,
-            class,
-        }
+    pub fn new(overload: &'a OverloadDefinition, class: Option<Class<'a>>) -> Self {
+        Self { overload, class }
     }
 
     pub(super) fn find_matching_function(
@@ -1293,7 +1284,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     } else {
                         debug!(
                             "Decided overload for {} (called on #{}): {:?}",
-                            self.name(),
+                            self.name(i_s.db),
                             args.as_node_ref().line(),
                             callable.content.format(&FormatData::new_short(i_s.db))
                         );
@@ -1322,7 +1313,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             }
                             debug!(
                                 "Decided overload with any for {} (called on #{}): {:?}",
-                                self.name(),
+                                self.name(i_s.db),
                                 args.as_node_ref().line(),
                                 function.node().short_debug()
                             );
@@ -1349,7 +1340,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some((type_arguments, function, _)) = multi_any_match {
             debug!(
                 "Decided overload with any fallback for {} (called on #{}): {:?}",
-                self.name(),
+                self.name(i_s.db),
                 args.as_node_ref().line(),
                 function.node().short_debug()
             );
@@ -1626,7 +1617,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         class: Option<&Class>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        debug!("Execute overloaded function {}", self.name());
+        debug!("Execute overloaded function {}", self.name(i_s.db));
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
             OverloadResult::Single(func) => func.execute(i_s, args, result_context, on_type_error),
             OverloadResult::Union(t) => Inferred::from_type(t),
@@ -1644,8 +1635,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
-    fn name(&self) -> &str {
-        self.node_ref.as_code()
+    fn name(&self, db: &'a Database) -> &'a str {
+        self.overload
+            .iter_functions()
+            .next()
+            .unwrap()
+            .name
+            .expect("For now there are no overloads without a name")
+            .as_str(db)
     }
 }
 
