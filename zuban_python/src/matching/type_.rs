@@ -123,21 +123,16 @@ impl<'a> Type<'a> {
                     let cls = Class::from_db_type(i_s.db, *link, generics);
                     // TODO the __init__ should actually be looked up on the original class, not
                     // the subclass
-                    let lookup = cls.lookup(i_s, None, "__init__");
+                    let lookup = Instance::new(cls, None).lookup(i_s, None, "__init__");
                     if let LookupResult::GotoName(_, init) = lookup {
                         let c = init.as_type(i_s).into_db_type();
                         if let DbType::Callable(c) = c {
-                            let Some(mut c) = c.remove_first_param() else {
-                                todo!()
-                            };
-                            let cls_type_vars = cls.type_vars(i_s);
+                            let mut c = c.as_ref().clone();
                             // Since __init__ does not have a return, We need to check the params
                             // of the __init__ functions and the class as a return type separately.
                             if c.type_vars.is_some() {
                                 todo!()
                             }
-                            // TODO if the type vars are defined, why do we set them here?
-                            c.type_vars = cls.type_vars(i_s).cloned();
                             c.result_type = cls.as_db_type(i_s.db);
                             return Some(Rc::new(c));
                         }
