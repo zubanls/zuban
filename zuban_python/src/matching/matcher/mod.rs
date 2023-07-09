@@ -565,7 +565,7 @@ impl<'a> Matcher<'a> {
         if let Some(class) = self.class {
             if class.node_ref.as_link() == usage.in_definition() {
                 return class
-                    .generics
+                    .generics()
                     .nth_usage(format_data.db, usage)
                     .format(&format_data.remove_matcher());
             }
@@ -621,7 +621,7 @@ impl<'a> Matcher<'a> {
             if let Some(c) = self.class {
                 if c.node_ref.as_link() == type_var_like_usage.in_definition() {
                     return c
-                        .generics
+                        .generics()
                         .nth_usage(db, &type_var_like_usage)
                         .into_generic_item(db);
                 }
