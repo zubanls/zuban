@@ -66,7 +66,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_reverse_callable_matcher(callable: &'a CallableContent) -> Self {
+    pub fn new_callable_matcher(callable: &'a CallableContent) -> Self {
         let type_var_matcher = callable
             .type_vars
             .as_ref()
@@ -75,9 +75,14 @@ impl<'a> Matcher<'a> {
             class: None,
             type_var_matcher,
             func_or_callable: Some(FunctionOrCallable::Callable(Callable::new(callable, None))),
-            match_reverse: true,
             ..Self::default()
         }
+    }
+
+    pub fn new_reverse_callable_matcher(callable: &'a CallableContent) -> Self {
+        let mut m = Self::new_callable_matcher(callable);
+        m.match_reverse = true;
+        m
     }
 
     pub fn new_function_matcher(

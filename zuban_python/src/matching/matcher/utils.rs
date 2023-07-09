@@ -14,8 +14,8 @@ use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
-    CallableParams, ClassGenerics, DbType, GenericItem, GenericsList, PointLink, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes,
+    CallableContent, CallableParams, ClassGenerics, DbType, GenericItem, GenericsList, PointLink,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -833,12 +833,12 @@ fn calculate_type_vars_for_params<
 
 pub fn create_signature_without_self(
     i_s: &InferenceState,
-    func: Function,
+    callable: &CallableContent,
     instance: &Instance,
     expected_type: &Type,
 ) -> Option<DbType> {
-    let type_vars = func.type_vars(i_s);
-    let mut matcher = Matcher::new_function_matcher(Some(&instance.class), func, type_vars);
+    let type_vars = &callable.type_vars;
+    let mut matcher = Matcher::new_callable_matcher(callable);
     if !matches!(expected_type.as_ref(), DbType::Self_) {
         // TODO It is questionable that we do not match Self here
         if !expected_type
@@ -852,13 +852,11 @@ pub fn create_signature_without_self(
             return None;
         }
     }
-    let mut t = func.as_db_type(i_s, FirstParamProperties::Skip(instance));
+    let Some(mut callable) = callable.remove_first_param() else {
+        unreachable!()
+    };
     if let Some(type_vars) = type_vars {
-        let DbType::Callable(callable_content) = t else {
-            unreachable!();
-        };
-        let mut callable_content = rc_unwrap_or_clone(callable_content);
-        let mut old_type_vars = callable_content.type_vars.take().unwrap().into_vec();
+        let mut old_type_vars = callable.type_vars.take().unwrap().into_vec();
         let calculated = matcher.unwrap_calculated_type_args();
         for (i, c) in calculated.iter().enumerate().rev() {
             if c.calculated() {
@@ -866,17 +864,25 @@ pub fn create_signature_without_self(
             }
         }
         if !old_type_vars.is_empty() {
-            callable_content.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
+            callable.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
         }
         let new = Type::replace_type_var_likes_and_self_for_callable(
-            &callable_content,
+            &callable,
             i_s.db,
             &mut |usage| {
                 let index = usage.index().as_usize();
-                if usage.in_definition() == func.node_ref.as_link() {
+                if usage.in_definition() == callable.defined_at {
                     let c = &calculated[index];
                     if c.calculated() {
                         return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
+                    }
+                }
+                if let Some(class) = i_s.current_class() {
+                    if class.node_ref.as_link() == usage.in_definition() {
+                        return class
+                            .generics()
+                            .nth_usage(i_s.db, &usage)
+                            .into_generic_item(i_s.db);
                     }
                 }
                 let new_index = calculated
@@ -888,8 +894,13 @@ pub fn create_signature_without_self(
             },
             &mut || DbType::Self_,
         );
-        t = DbType::Callable(Rc::new(new));
+        Some(DbType::Callable(Rc::new(new)))
+    } else {
+        // TODO this should not be run separately, we do two replacements here.
+        Some(replace_class_type_vars(
+            i_s,
+            &DbType::Callable(Rc::new(callable)),
+            &instance.class,
+        ))
     }
-    // TODO this should not be run separately, we do two replacements here.
-    Some(replace_class_type_vars(i_s, &t, &instance.class))
 }

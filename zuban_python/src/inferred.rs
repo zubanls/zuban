@@ -628,8 +628,9 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, func_class);
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
+                                let mut c = func.as_callable(i_s, FirstParamProperties::None);
                                 if let Some(t) =
-                                    create_signature_without_self(i_s, func, instance, &first_type)
+                                    create_signature_without_self(i_s, &c, instance, &first_type)
                                 {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(t)))
                                 } else if let Some(from) = from {
@@ -668,12 +669,13 @@ impl<'db: 'slf, 'slf> Inferred {
                                     let results: Vec<_> = o
                                         .old_functions
                                         .iter()
-                                        .filter_map(|func_link| {
+                                        .zip(o.functions())
+                                        .filter_map(|(func_link, callable)| {
                                             let node_ref = NodeRef::from_link(i_s.db, *func_link);
                                             let func = Function::new(node_ref, Some(func_class));
                                             if let Some(t) = func.first_param_annotation_type(i_s) {
                                                 create_signature_without_self(
-                                                    i_s, func, instance, &t,
+                                                    i_s, callable, instance, &t,
                                                 )
                                             } else {
                                                 Some(func.as_db_type(
