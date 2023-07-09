@@ -700,7 +700,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         if has_self_type_var_usage {
                             DbType::Self_
                         } else {
-                            i_s.current_class().unwrap().as_db_type(i_s.db)
+                            self.class.unwrap().as_db_type(i_s.db)
                         }
                     } else {
                         DbType::Any
@@ -1612,7 +1612,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         )))
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'static> {
         Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
     }
 

@@ -1644,7 +1644,11 @@ fn type_of_complex<'db: 'x, 'x>(
             ))))
         }
         ComplexPoint::FunctionOverload(overload) => {
-            let overload = OverloadedFunction::new(definition.unwrap(), overload, None);
+            let overload = OverloadedFunction::new(
+                definition.unwrap(),
+                overload,
+                i_s.current_class().copied(),
+            );
             overload.as_type(i_s)
         }
         ComplexPoint::TypeInstance(t) => Type::new(t),
