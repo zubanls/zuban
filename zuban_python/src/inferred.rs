@@ -317,7 +317,12 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = file
                             .inference(i_s)
                             .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                        let d = replace_class_type_vars(i_s, t, class);
+                        let d = replace_class_type_vars(
+                            i_s.db,
+                            t,
+                            class,
+                            i_s.current_class().unwrap_or(class),
+                        );
                         return Inferred::from_type(d);
                     }
                     _ => (),
@@ -823,7 +828,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = file
                                 .inference(i_s)
                                 .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                            let t = replace_class_type_vars(i_s, t, class);
+                            let t = replace_class_type_vars(i_s.db, t, class, &attribute_class);
                             return Some(Inferred::from_type(t));
                         }
                         _ => (),

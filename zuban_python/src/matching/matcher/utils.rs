@@ -897,9 +897,10 @@ pub fn create_signature_without_self(
     } else {
         // TODO this should not be run separately, we do two replacements here.
         Some(replace_class_type_vars(
-            i_s,
+            i_s.db,
             &DbType::Callable(Rc::new(callable)),
             &instance.class,
+            i_s.current_class().unwrap(),
         ))
     }
 }
