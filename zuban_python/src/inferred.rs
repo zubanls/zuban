@@ -289,14 +289,19 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         if let Some(class) = i_s.current_class() {
-            self.resolve_class_type_vars(i_s, class)
+            self.resolve_class_type_vars(i_s, class, attribute_class)
         } else {
             self
         }
         */
     }
 
-    pub fn resolve_class_type_vars(self, i_s: &InferenceState<'db, '_>, class: &Class) -> Self {
+    pub fn resolve_class_type_vars(
+        self,
+        i_s: &InferenceState<'db, '_>,
+        class: &Class,
+        attribute_class: &Class,
+    ) -> Self {
         if let Some(i_s_cls) = i_s.current_class() {
             if matches!(i_s_cls.generics, Generics::Self_ { .. })
                 && i_s_cls.type_var_remap.is_none()
@@ -320,12 +325,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = file
                             .inference(i_s)
                             .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                        let d = replace_class_type_vars(
-                            i_s.db,
-                            t,
-                            class,
-                            i_s.current_class().unwrap_or(class),
-                        );
+                        let d = replace_class_type_vars(i_s.db, t, class, attribute_class);
                         return Inferred::from_type(d);
                     }
                     _ => (),

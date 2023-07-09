@@ -47,7 +47,7 @@ impl<'a> Instance<'a> {
                     .lookup_symbol(i_s, name.as_str())
                     .into_maybe_inferred()
                 {
-                    inf.resolve_class_type_vars(i_s, &self.class)
+                    inf.resolve_class_type_vars(i_s, &self.class, &class)
                         .as_type(i_s)
                         .run_on_each_union_type(&mut |t| {
                             if had_no_set {
@@ -187,7 +187,7 @@ impl<'a> Instance<'a> {
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let TypeOrClass::Class(c) = class {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.resolve_class_type_vars(&i_s.with_class_context(&c), &self.class)
+                    inf.resolve_class_type_vars(&i_s.with_class_context(&c), &self.class, &c)
                         .bind_instance_descriptors(
                             &i_s,
                             self,
@@ -219,7 +219,7 @@ impl<'a> Instance<'a> {
                                 .file
                                 .inference(&i_s)
                                 .infer_name_by_index(self_symbol)
-                                .resolve_class_type_vars(&i_s, &self.class),
+                                .resolve_class_type_vars(&i_s, &self.class, &c),
                         ),
                     );
                 }
@@ -338,7 +338,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                     let result = class
                         .lookup_symbol(self.i_s, self.name)
                         .and_then(|inf| {
-                            inf.resolve_class_type_vars(self.i_s, &class)
+                            inf.resolve_class_type_vars(self.i_s, &self.instance.class, &class)
                                 .bind_instance_descriptors(
                                     self.i_s,
                                     self.instance,
