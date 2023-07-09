@@ -288,11 +288,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 todo!()
             }
         }
-        if let Some(class) = i_s.current_class() {
-            self.resolve_class_type_vars(i_s, class, attribute_class)
-        } else {
-            self
-        }
+        self.resolve_class_type_vars(i_s, class, attribute_class)
         */
     }
 
@@ -302,12 +298,10 @@ impl<'db: 'slf, 'slf> Inferred {
         class: &Class,
         attribute_class: &Class,
     ) -> Self {
-        if let Some(i_s_cls) = i_s.current_class() {
-            if matches!(i_s_cls.generics, Generics::Self_ { .. })
-                && i_s_cls.type_var_remap.is_none()
-            {
-                return self;
-            }
+        if matches!(attribute_class.generics, Generics::Self_ { .. })
+            && attribute_class.type_var_remap.is_none()
+        {
+            return self;
         }
         if let InferredState::Saved(link) = self.state {
             let definition = NodeRef::from_link(i_s.db, link);
