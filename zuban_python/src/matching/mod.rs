@@ -23,8 +23,8 @@ pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::ResultContext;
 pub use type_::{common_base_type, execute_type_of_type, match_tuple_type_arguments, Type};
 pub use utils::{
-    create_signature_without_self, maybe_class_usage, replace_class_type_vars,
-    replace_class_type_vars_in_callable,
+    create_signature_without_self, create_signature_without_self_for_callable, maybe_class_usage,
+    replace_class_type_vars, replace_class_type_vars_in_callable,
 };
 
 use crate::{

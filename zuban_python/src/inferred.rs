@@ -14,9 +14,9 @@ use crate::file::{on_argument_type_error, use_cached_annotation_type, File, Pyth
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    create_signature_without_self, maybe_class_usage, replace_class_type_vars,
-    replace_class_type_vars_in_callable, FormatData, Generics, IteratorContent, LookupResult,
-    OnLookupError, OnTypeError, ResultContext, Type,
+    create_signature_without_self, create_signature_without_self_for_callable, maybe_class_usage,
+    replace_class_type_vars, replace_class_type_vars_in_callable, FormatData, Generics,
+    IteratorContent, LookupResult, OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -632,12 +632,12 @@ impl<'db: 'slf, 'slf> Inferred {
                             let func = prepare_func(i_s, *definition, func_class);
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 let c = func.as_callable(i_s, FirstParamProperties::None);
-                                if let Some(t) = create_signature_without_self(
+                                if let Some(t) = create_signature_without_self_for_callable(
                                     i_s,
                                     &c,
                                     instance,
                                     &func_class,
-                                    &first_type,
+                                    first_type.as_ref(),
                                 ) {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(t)))
                                 } else if let Some(from) = from {
@@ -677,12 +677,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                         .iter_functions()
                                         .filter_map(|callable| {
                                             if let Some(t) = callable.first_positional_type() {
-                                                create_signature_without_self(
+                                                create_signature_without_self_for_callable(
                                                     i_s,
                                                     callable,
                                                     instance,
                                                     &func_class,
-                                                    &Type::new(t),
+                                                    t,
                                                 )
                                             } else {
                                                 if let Some(callable) =
@@ -720,7 +720,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 DbType::Callable(c) => {
                                     match c.kind {
                                         FunctionKind::Function => {
-                                            // TODO should use create_signature_without_self!
+                                            // TODO should use create_signature_without_self_for_callable!
                                             return Some(Self::new_bound_method(
                                                 get_inferred(i_s).as_bound_method_instance(i_s),
                                                 mro_index,
