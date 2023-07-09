@@ -16,6 +16,8 @@ testSolveParamSpecWithSelfType
 testSelfTypeTrickyExample
 testSelfTypeReallyTrickyExample
 
+testSelfTypeRestrictedMethodOverloadFallback
+
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 

@@ -1520,6 +1520,23 @@ impl CallableContent {
         Some(c)
     }
 
+    pub fn first_positional_type(&self) -> Option<&DbType> {
+        match &self.params {
+            CallableParams::Simple(params) => {
+                params.first().and_then(|p| match &p.param_specific {
+                    ParamSpecific::PositionalOnly(t) | ParamSpecific::PositionalOrKeyword(t) => {
+                        Some(t)
+                    }
+                    _ => todo!(),
+                })
+            }
+            CallableParams::WithParamSpec(pre, usage) => {
+                todo!()
+            }
+            CallableParams::Any => Some(&DbType::Any),
+        }
+    }
+
     fn has_any_internal(
         &self,
         i_s: &InferenceState,

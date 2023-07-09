@@ -676,16 +676,13 @@ impl<'db: 'slf, 'slf> Inferred {
                                     let results: Vec<_> = o
                                         .iter_functions()
                                         .filter_map(|callable| {
-                                            let node_ref =
-                                                NodeRef::from_link(i_s.db, callable.defined_at);
-                                            let func = Function::new(node_ref, Some(func_class));
-                                            if let Some(t) = func.first_param_annotation_type(i_s) {
+                                            if let Some(t) = callable.first_positional_type() {
                                                 create_signature_without_self(
                                                     i_s,
                                                     callable,
                                                     instance,
                                                     &func_class,
-                                                    &t,
+                                                    &Type::new(t),
                                                 )
                                             } else {
                                                 if let Some(callable) =
