@@ -15,7 +15,6 @@ testForwardTypeAliasInBase1
 testSolveParamSpecWithSelfType
 testSelfTypeTrickyExample
 testSelfTypeReallyTrickyExample
-testSelfTypeGenericClassNoClashInstanceMethod
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2

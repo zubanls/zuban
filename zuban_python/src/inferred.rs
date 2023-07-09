@@ -637,9 +637,13 @@ impl<'db: 'slf, 'slf> Inferred {
                             let func = prepare_func(i_s, *definition, func_class);
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 let c = func.as_callable(i_s, FirstParamProperties::None);
-                                if let Some(t) =
-                                    create_signature_without_self(i_s, &c, instance, &first_type)
-                                {
+                                if let Some(t) = create_signature_without_self(
+                                    i_s,
+                                    &c,
+                                    instance,
+                                    &func_class,
+                                    &first_type,
+                                ) {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(t)))
                                 } else if let Some(from) = from {
                                     let t = IssueType::InvalidSelfArgument {
@@ -683,7 +687,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                             let func = Function::new(node_ref, Some(func_class));
                                             if let Some(t) = func.first_param_annotation_type(i_s) {
                                                 create_signature_without_self(
-                                                    i_s, callable, instance, &t,
+                                                    i_s,
+                                                    callable,
+                                                    instance,
+                                                    &func_class,
+                                                    &t,
                                                 )
                                             } else {
                                                 Some(func.as_db_type(

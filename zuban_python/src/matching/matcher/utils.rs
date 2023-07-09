@@ -835,6 +835,7 @@ pub fn create_signature_without_self(
     i_s: &InferenceState,
     callable: &CallableContent,
     instance: &Instance,
+    func_class: &Class,
     expected_type: &Type,
 ) -> Option<DbType> {
     let type_vars = &callable.type_vars;
@@ -877,10 +878,8 @@ pub fn create_signature_without_self(
                         return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
                     }
                 }
-                if let Some(class) = i_s.current_class() {
-                    if let Some(g) = maybe_class_usage(i_s.db, class, &usage) {
-                        return g;
-                    }
+                if let Some(g) = maybe_class_usage(i_s.db, func_class, &usage) {
+                    return g;
                 }
                 let new_index = calculated
                     .iter()
@@ -898,7 +897,7 @@ pub fn create_signature_without_self(
             i_s.db,
             &DbType::Callable(Rc::new(callable)),
             &instance.class,
-            i_s.current_class().unwrap(),
+            func_class,
         ))
     }
 }
