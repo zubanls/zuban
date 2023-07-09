@@ -5,7 +5,7 @@ mod utils;
 pub use utils::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    create_signature_without_self, CalculatedTypeArguments,
+    CalculatedTypeArguments,
 };
 
 use std::borrow::Cow;
