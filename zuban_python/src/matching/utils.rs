@@ -1,4 +1,4 @@
-use crate::database::{CallableContent, Database, DbType};
+use crate::database::{CallableContent, Database, DbType, GenericItem, TypeVarLikeUsage};
 use crate::type_helpers::Class;
 
 use super::Type;
@@ -12,13 +12,8 @@ pub fn replace_class_type_vars(
     Type::new(t).replace_type_var_likes_and_self(
         db,
         &mut |usage| {
-            if attribute_class.node_ref.as_link() == usage.in_definition() {
-                return attribute_class
-                    .generics()
-                    .nth_usage(db, &usage)
-                    .into_generic_item(db);
-            }
-            usage.into_generic_item()
+            maybe_class_usage(db, attribute_class, &usage)
+                .unwrap_or_else(|| usage.into_generic_item())
         },
         &mut || instance_class.as_db_type(db),
     )
@@ -34,19 +29,23 @@ pub fn replace_class_type_vars_in_callable(
         &callable,
         db,
         &mut |usage| {
-            let in_definition = usage.in_definition();
-            if let Some(defined_in) = func_class {
-                if in_definition == defined_in.node_ref.as_link() {
-                    return defined_in
-                        .generics()
-                        .nth_usage(db, &usage)
-                        .into_generic_item(db);
-                }
-            }
-            // This can happen for example if the return value is a Callable with its
-            // own type vars.
-            usage.into_generic_item()
+            func_class
+                .and_then(|c| maybe_class_usage(db, c, &usage))
+                .unwrap_or_else(|| usage.into_generic_item())
         },
         &mut || instance_class.as_db_type(db),
     )
+}
+
+fn maybe_class_usage(
+    db: &Database,
+    attribute_class: &Class,
+    usage: &TypeVarLikeUsage,
+) -> Option<GenericItem> {
+    (attribute_class.node_ref.as_link() == usage.in_definition()).then(|| {
+        attribute_class
+            .generics()
+            .nth_usage(db, &usage)
+            .into_generic_item(db)
+    })
 }
