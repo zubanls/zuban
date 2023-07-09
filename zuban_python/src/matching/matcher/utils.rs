@@ -654,13 +654,10 @@ pub fn match_arguments_against_params<
                     }),
                 );
                 if matches!(m, Match::True { with_any: true }) {
-                    if let Some(param_annotation_link) = p.param.func_annotation_link() {
-                        // This is never reached when matching callables
-                        argument_indices_with_any.push(ArgumentIndexWithParam {
-                            argument_index: argument.index,
-                            param_annotation_link,
-                        })
-                    }
+                    argument_indices_with_any.push(ArgumentIndexWithParam {
+                        argument_index: argument.index,
+                        type_: annotation_type.as_db_type(),
+                    })
                 }
                 matches &= m
             }

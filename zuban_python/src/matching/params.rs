@@ -15,10 +15,6 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn name(&self, db: &'x Database) -> Option<&str>;
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamSpecific<'x>;
     fn kind(&self, db: &Database) -> ParamKind;
-    fn func_annotation_link(&self) -> Option<PointLink> {
-        // Can be None for Callable
-        None
-    }
 }
 
 pub fn matches_params(

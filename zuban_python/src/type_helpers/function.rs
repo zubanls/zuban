@@ -1026,12 +1026,6 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         }
     }
 
-    fn func_annotation_link(&self) -> Option<PointLink> {
-        self.param
-            .annotation()
-            .map(|a| PointLink::new(self.file.file_index(), a.index()))
-    }
-
     fn kind(&self, db: &Database) -> ParamKind {
         let mut t = self.param.type_();
         if t == ParamKind::PositionalOrKeyword
@@ -1257,15 +1251,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     None,
                 )
             } else {
-                calculate_function_type_vars_and_return(
+                calculate_callable_type_vars_and_return(
                     i_s,
                     class,
-                    function,
+                    Callable::new(callable, self.class),
                     args.iter(),
                     &|| args.as_node_ref(),
-                    false,
-                    func_type_vars,
-                    function.node_ref.as_link(),
                     result_context,
                     None,
                 )
@@ -1667,12 +1658,7 @@ fn are_any_arguments_ambiguous_in_overload(
     for p1 in a {
         for p2 in b {
             if p1.argument_index == p2.argument_index {
-                let n1 = NodeRef::from_link(db, p1.param_annotation_link);
-                let n2 = NodeRef::from_link(db, p2.param_annotation_link);
-
-                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type();
-                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type();
-                if t1 != t2 {
+                if p1.type_ != p2.type_ {
                     return true;
                 }
             }
