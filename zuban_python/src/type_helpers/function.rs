@@ -1237,12 +1237,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> OverloadResult<'a> {
         let match_signature = |i_s: &InferenceState<'db, '_>,
                                result_context: &mut ResultContext,
-                               callable: &CallableContent| {
+                               callable: Callable| {
             if search_init {
                 calculate_callable_init_type_vars_and_return(
                     i_s,
                     class.unwrap(),
-                    Callable::new(&callable, self.class),
+                    callable,
                     args.iter(),
                     &|| args.as_node_ref(),
                     result_context,
@@ -1252,7 +1252,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 calculate_callable_type_vars_and_return(
                     i_s,
                     class,
-                    Callable::new(callable, self.class),
+                    callable,
                     args.iter(),
                     &|| args.as_node_ref(),
                     result_context,
@@ -1272,6 +1272,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .enumerate()
         {
             let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
                 i_s.do_overload_check(|i_s| match_signature(i_s, result_context, callable));
             if had_error && had_error_in_func.is_none() {
@@ -1294,7 +1295,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             "Decided overload for {} (called on #{}): {:?}",
                             self.name(),
                             args.as_node_ref().line(),
-                            callable.format(&FormatData::new_short(i_s.db))
+                            callable.content.format(&FormatData::new_short(i_s.db))
                         );
                         args.reset_cache();
                         return OverloadResult::Single(function);
@@ -1375,7 +1376,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             NodeRef::from_link(i_s.db, self.overload.old_functions[index]),
                             self.class,
                         ),
-                        self.overload.iter_functions().nth(index).unwrap(),
+                        Callable::new(
+                            self.overload.iter_functions().nth(index).unwrap(),
+                            self.class,
+                        ),
                     ))
                 }
                 UnionMathResult::NoMatch => (),
