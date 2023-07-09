@@ -78,9 +78,10 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             }
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(self.instance)),
             BoundMethodFunction::Callable(c) => {
-                let Some(callable) = c.content.remove_first_param() else {
-                    todo!()
-                };
+                let callable = c
+                    .content
+                    .remove_first_param()
+                    .expect("Bound methods should always contain first params");
                 DbType::Callable(Rc::new({
                     replace_class_type_vars_in_callable(
                         i_s.db,
