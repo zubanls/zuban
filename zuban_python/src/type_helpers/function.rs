@@ -12,14 +12,14 @@ use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, Know
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericItem, Locality,
-    OverloadDefinition, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, Specific,
+    OverloadDefinition, ParamSpecUsage, ParamSpecific, Point, PointType, Specific,
     StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
     TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName,
     TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
-    use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
+    use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
 use crate::inference_state::InferenceState;
@@ -1197,7 +1197,7 @@ pub struct OverloadedFunction<'a> {
 }
 
 pub enum OverloadResult<'a> {
-    Single(Function<'a, 'a>),
+    Single(Callable<'a>),
     Union(DbType),
     NotFound,
 }
@@ -1255,14 +1255,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         let mut had_error_in_func = None;
-        for (i, (link, callable)) in self
-            .overload
-            .old_functions
-            .iter()
-            .zip(self.overload.iter_functions())
-            .enumerate()
-        {
-            let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+        for (i, callable) in self.overload.iter_functions().enumerate() {
             let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
                 i_s.do_overload_check(|i_s| match_signature(i_s, result_context, callable));
@@ -1279,7 +1272,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     } else if !arbitrary_length_handled {
                         if first_arbitrary_length_not_handled.is_none() {
                             first_arbitrary_length_not_handled =
-                                Some((calculated_type_args.type_arguments, function));
+                                Some((calculated_type_args.type_arguments, callable));
                         }
                     } else {
                         debug!(
@@ -1289,7 +1282,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable.content.format(&FormatData::new_short(i_s.db))
                         );
                         args.reset_cache();
-                        return OverloadResult::Single(function);
+                        return OverloadResult::Single(callable);
                     }
                 }
                 SignatureMatch::TrueWithAny { argument_indices } => {
@@ -1315,7 +1308,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 "Decided overload with any for {} (called on #{}): {:?}",
                                 self.name(i_s.db),
                                 args.as_node_ref().line(),
-                                function.node().short_debug()
+                                callable.content.format(&FormatData::new_short(i_s.db)),
                             );
                             args.reset_cache();
                             return OverloadResult::NotFound;
@@ -1323,31 +1316,31 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     } else {
                         multi_any_match = Some((
                             calculated_type_args.type_arguments,
-                            function,
+                            callable,
                             argument_indices,
                         ))
                     }
                 }
                 SignatureMatch::False { similar: true } => {
                     if first_similar.is_none() {
-                        first_similar = Some((function, callable))
+                        first_similar = Some(callable)
                     }
                 }
                 SignatureMatch::False { similar: false } => (),
             }
             args.reset_cache();
         }
-        if let Some((type_arguments, function, _)) = multi_any_match {
+        if let Some((type_arguments, callable, _)) = multi_any_match {
             debug!(
                 "Decided overload with any fallback for {} (called on #{}): {:?}",
                 self.name(i_s.db),
                 args.as_node_ref().line(),
-                function.node().short_debug()
+                callable.content.format(&FormatData::new_short(i_s.db))
             );
-            return OverloadResult::Single(function);
+            return OverloadResult::Single(callable);
         }
-        if let Some((type_arguments, function)) = first_arbitrary_length_not_handled {
-            return OverloadResult::Single(function);
+        if let Some((type_arguments, callable)) = first_arbitrary_length_not_handled {
+            return OverloadResult::Single(callable);
         }
         if first_similar.is_none() && args.has_a_union_argument(i_s) {
             let mut non_union_args = vec![];
@@ -1362,26 +1355,20 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             ) {
                 UnionMathResult::Match { result, .. } => return OverloadResult::Union(result),
                 UnionMathResult::FirstSimilarIndex(index) => {
-                    first_similar = Some((
-                        Function::new(
-                            NodeRef::from_link(i_s.db, self.overload.old_functions[index]),
-                            self.class,
-                        ),
-                        Callable::new(
-                            self.overload.iter_functions().nth(index).unwrap(),
-                            self.class,
-                        ),
+                    first_similar = Some(Callable::new(
+                        self.overload.iter_functions().nth(index).unwrap(),
+                        self.class,
                     ))
                 }
                 UnionMathResult::NoMatch => (),
             }
         }
-        if let Some((function, callable)) = first_similar {
+        if let Some(callable) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
             let calculated_type_args = match_signature(i_s, result_context, callable);
-            return OverloadResult::Single(function);
+            return OverloadResult::Single(callable);
         } else {
             let function = Function::new(
                 NodeRef::from_link(i_s.db, self.overload.old_functions[0]),
@@ -1619,7 +1606,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> Inferred {
         debug!("Execute overloaded function {}", self.name(i_s.db));
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
-            OverloadResult::Single(func) => func.execute(i_s, args, result_context, on_type_error),
+            OverloadResult::Single(callable) => callable.execute_internal(
+                i_s,
+                args,
+                on_type_error,
+                callable.defined_in.as_ref(),
+                result_context,
+            ),
             OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }

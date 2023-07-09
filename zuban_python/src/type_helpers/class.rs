@@ -26,8 +26,9 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
-    Generics, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
+    calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
+    calculate_class_init_type_vars_and_return, FormatData, Generics, LookupResult, Match, Matcher,
+    MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::format_pretty_callable;
@@ -152,12 +153,12 @@ impl<'db: 'a, 'a> Class<'a> {
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
             {
-                OverloadResult::Single(func) => {
+                OverloadResult::Single(callable) => {
                     // Execute the found function to create the diagnostics.
-                    let result = calculate_class_init_type_vars_and_return(
+                    let result = calculate_callable_init_type_vars_and_return(
                         i_s,
                         self,
-                        func,
+                        callable,
                         args.iter(),
                         &|| args.as_node_ref(),
                         result_context,

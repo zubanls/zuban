@@ -163,7 +163,7 @@ impl<'a> Matcher<'a> {
         if let Some(class) = self.class {
             if class.node_ref.as_link() == t1.in_definition {
                 let g = class
-                    .generics
+                    .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
                     .expect_type_argument();
                 return g.simple_matches(i_s, value_type, t1.type_var.variance);
