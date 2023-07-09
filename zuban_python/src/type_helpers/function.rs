@@ -29,9 +29,9 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_function_type_vars_and_return, maybe_class_usage, ArgumentIndexWithParam,
-    CalculatedTypeArguments, FormatData, Generic, LookupResult, OnTypeError, ResultContext,
-    SignatureMatch, Type,
+    calculate_function_type_vars_and_return, maybe_class_usage,
+    replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArguments,
+    FormatData, Generic, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -1607,11 +1607,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         if let Some(instance) = remove_first_param {
             DbType::FunctionOverload(Rc::new(FunctionOverload::new(
                 self.overload
-                    .old_functions
-                    .iter()
-                    .map(|link| {
-                        let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                        function.as_callable(i_s, FirstParamProperties::Skip(instance))
+                    .iter_functions()
+                    .map(|callable| {
+                        replace_class_type_vars_in_callable(
+                            i_s.db,
+                            &callable.remove_first_param().unwrap(),
+                            &instance.class,
+                            self.class.as_ref(),
+                        )
                     })
                     .collect(),
             )))
