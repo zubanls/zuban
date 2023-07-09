@@ -14,8 +14,8 @@ use crate::file::{on_argument_type_error, use_cached_annotation_type, File, Pyth
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    create_signature_without_self, replace_class_type_vars, FormatData, Generics, IteratorContent,
-    LookupResult, OnLookupError, OnTypeError, ResultContext, Type,
+    create_signature_without_self, maybe_class_usage, replace_class_type_vars, FormatData,
+    Generics, IteratorContent, LookupResult, OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -1585,11 +1585,7 @@ pub fn classmethod_as_db_type(
         i_s.db,
         &mut |mut usage| {
             let in_definition = usage.in_definition();
-            if in_definition == func_class.node_ref.as_link() {
-                let result = func_class
-                    .generics()
-                    .nth_usage(i_s.db, &usage)
-                    .into_generic_item(i_s.db);
+            if let Some(result) = maybe_class_usage(i_s.db, func_class, &usage) {
                 // We need to remap again, because in generics of classes will be
                 // generic in the function of the classmethod, see for example
                 // `testGenericClassMethodUnboundOnClass`.

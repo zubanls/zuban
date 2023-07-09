@@ -29,8 +29,9 @@ use crate::matching::params::{
 };
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_function_type_vars_and_return, ArgumentIndexWithParam, CalculatedTypeArguments,
-    FormatData, Generic, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
+    calculate_function_type_vars_and_return, maybe_class_usage, ArgumentIndexWithParam,
+    CalculatedTypeArguments, FormatData, Generic, LookupResult, OnTypeError, ResultContext,
+    SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -627,11 +628,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 i_s.db,
                 &mut |mut usage| {
                     let in_definition = usage.in_definition();
-                    if in_definition == func_class.node_ref.as_link() {
-                        func_class
-                            .generics()
-                            .nth_usage(i_s.db, &usage)
-                            .into_generic_item(i_s.db)
+                    if let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage) {
+                        result
                     } else if in_definition == defined_at {
                         if self_type_var_usage.is_some() {
                             usage.add_to_index(1);
@@ -1688,15 +1686,8 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
             let t = t.replace_type_var_likes_and_self(
                 i_s.db,
                 &mut |usage| {
-                    let in_definition = usage.in_definition();
-                    if in_definition == func_class.node_ref.as_link() {
-                        func_class
-                            .generics()
-                            .nth_usage(i_s.db, &usage)
-                            .into_generic_item(i_s.db)
-                    } else {
-                        usage.into_generic_item()
-                    }
+                    maybe_class_usage(i_s.db, &func_class, &usage)
+                        .unwrap_or_else(|| usage.into_generic_item())
                 },
                 &mut || todo!(),
             );

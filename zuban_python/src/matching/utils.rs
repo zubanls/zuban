@@ -37,7 +37,7 @@ pub fn replace_class_type_vars_in_callable(
     )
 }
 
-fn maybe_class_usage(
+pub fn maybe_class_usage(
     db: &Database,
     attribute_class: &Class,
     usage: &TypeVarLikeUsage,

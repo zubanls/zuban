@@ -20,6 +20,7 @@ use crate::database::{
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::inference_state::InferenceState;
+use crate::matching::maybe_class_usage;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Callable, Class, Function, Instance, TypeOrClass};
 
@@ -877,11 +878,8 @@ pub fn create_signature_without_self(
                     }
                 }
                 if let Some(class) = i_s.current_class() {
-                    if class.node_ref.as_link() == usage.in_definition() {
-                        return class
-                            .generics()
-                            .nth_usage(i_s.db, &usage)
-                            .into_generic_item(i_s.db);
+                    if let Some(g) = maybe_class_usage(i_s.db, class, &usage) {
+                        return g;
                     }
                 }
                 let new_index = calculated
