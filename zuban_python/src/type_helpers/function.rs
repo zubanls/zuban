@@ -762,7 +762,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Type> {
-        self.iter_params().next().unwrap().annotation(i_s)
+        self.iter_params().next().and_then(|p| p.annotation(i_s))
     }
 
     pub(super) fn execute_internal(

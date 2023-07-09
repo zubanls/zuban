@@ -16,7 +16,7 @@ use crate::inference_state::InferenceState;
 use crate::matching::{
     create_signature_without_self, create_signature_without_self_for_callable, maybe_class_usage,
     replace_class_type_vars, replace_class_type_vars_in_callable, FormatData, Generics,
-    IteratorContent, LookupResult, OnLookupError, OnTypeError, ResultContext, Type,
+    IteratorContent, LookupResult, Matcher, OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -631,10 +631,10 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, func_class);
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                let c = func.as_callable(i_s, FirstParamProperties::None);
-                                if let Some(t) = create_signature_without_self_for_callable(
+                                if let Some(t) = create_signature_without_self(
                                     i_s,
-                                    &c,
+                                    Matcher::new_function_matcher(None, func, func.type_vars(i_s)),
+                                    || func.as_callable(i_s, FirstParamProperties::Skip(instance)),
                                     instance,
                                     &func_class,
                                     first_type.as_ref(),

@@ -62,13 +62,24 @@ pub fn create_signature_without_self_for_callable(
     self_type: &DbType,
 ) -> Option<DbType> {
     let matcher = Matcher::new_callable_matcher(callable);
-    create_signature_without_self(i_s, matcher, callable, instance, func_class, self_type)
+    create_signature_without_self(
+        i_s,
+        matcher,
+        || {
+            callable
+                .remove_first_param()
+                .expect("Signatures without any params should have been filtered before")
+        },
+        instance,
+        func_class,
+        self_type,
+    )
 }
 
 pub fn create_signature_without_self(
     i_s: &InferenceState,
     mut matcher: Matcher,
-    callable: &CallableContent,
+    get_callable: impl FnOnce() -> CallableContent,
     instance: &Instance,
     func_class: &Class,
     self_type: &DbType,
@@ -84,9 +95,7 @@ pub fn create_signature_without_self(
     {
         return None;
     }
-    let Some(callable) = callable.remove_first_param() else {
-        unreachable!()
-    };
+    let callable = get_callable();
     if let Some(type_vars) = &callable.type_vars {
         let calculated = matcher.unwrap_calculated_type_args();
         let mut new = Type::replace_type_var_likes_and_self_for_callable(
