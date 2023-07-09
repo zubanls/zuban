@@ -839,16 +839,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn diagnostic_string(&self, class: Option<&Class>) -> Box<str> {
-        match class {
-            Some(class) => {
-                if self.name() == "__init__" {
-                    format!("{:?}", class.name()).into()
-                } else {
-                    format!("{:?} of {:?}", self.name(), self.class.unwrap().name()).into()
-                }
-            }
-            None => format!("{:?}", self.name()).into(),
-        }
+        diagnostic_function_string(class, self.class.as_ref(), self.name())
     }
 
     pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
@@ -1370,15 +1361,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             let calculated_type_args = match_signature(i_s, result_context, callable);
             return OverloadResult::Single(callable);
         } else {
-            let function = Function::new(
-                NodeRef::from_link(i_s.db, self.overload.old_functions[0]),
-                self.class,
-            );
             if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
                 on_overload_mismatch(i_s, class)
             } else {
                 let t = IssueType::OverloadMismatch {
-                    name: function.diagnostic_string(self.class.as_ref()),
+                    name: self.diagnostic_string(i_s.db),
                     args: args.iter().into_argument_types(i_s),
                     variants: self.variants(i_s, search_init),
                 };
@@ -1633,6 +1620,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .expect("For now there are no overloads without a name")
             .as_str(db)
     }
+
+    pub fn diagnostic_string(&self, db: &Database) -> Box<str> {
+        diagnostic_function_string(self.class.as_ref(), self.class.as_ref(), self.name(db))
+    }
 }
 
 fn are_any_arguments_ambiguous_in_overload(
@@ -1784,4 +1775,21 @@ struct FunctionDetails {
     kind: FunctionKind,
     is_overload: bool,
     has_decorator: bool,
+}
+
+fn diagnostic_function_string(
+    instance_class: Option<&Class>,
+    func_class: Option<&Class>,
+    name: &str,
+) -> Box<str> {
+    match instance_class {
+        Some(instance_class) => {
+            if name == "__init__" {
+                format!("{:?}", instance_class.name()).into()
+            } else {
+                format!("{:?} of {:?}", name, func_class.unwrap().name()).into()
+            }
+        }
+        None => format!("{:?}", name).into(),
+    }
 }
