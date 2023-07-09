@@ -674,11 +674,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                 });
                                 if has_self_arguments {
                                     let results: Vec<_> = o
-                                        .old_functions
-                                        .iter()
-                                        .zip(o.iter_functions())
-                                        .filter_map(|(func_link, callable)| {
-                                            let node_ref = NodeRef::from_link(i_s.db, *func_link);
+                                        .iter_functions()
+                                        .filter_map(|callable| {
+                                            let node_ref =
+                                                NodeRef::from_link(i_s.db, callable.defined_at);
                                             let func = Function::new(node_ref, Some(func_class));
                                             if let Some(t) = func.first_param_annotation_type(i_s) {
                                                 create_signature_without_self(
