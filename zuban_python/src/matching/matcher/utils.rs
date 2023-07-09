@@ -892,7 +892,7 @@ pub fn create_signature_without_self(
                     .count();
                 usage.into_generic_item_with_new_index(new_index.into())
             },
-            &mut || DbType::Self_,
+            &mut || todo!(), //instance.class.as_db_type(i_s.db),
         );
         Some(DbType::Callable(Rc::new(new)))
     } else {
