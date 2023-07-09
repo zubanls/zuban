@@ -306,7 +306,7 @@ impl<'a> Type<'a> {
             DbType::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
-            DbType::FunctionOverload(overload) => Match::all(overload.functions().iter(), |c1| {
+            DbType::FunctionOverload(overload) => Match::all(overload.iter_functions(), |c1| {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }),
             DbType::Literal(literal1) => {
@@ -806,7 +806,7 @@ impl<'a> Type<'a> {
                 if matcher.is_matching_reverse() {
                     todo!()
                 }
-                Match::any(overload.functions().iter(), |c2| {
+                Match::any(overload.iter_functions(), |c2| {
                     Self::matches_callable(i_s, matcher, c1, c2)
                 })
             }

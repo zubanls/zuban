@@ -676,7 +676,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     let results: Vec<_> = o
                                         .old_functions
                                         .iter()
-                                        .zip(o.functions())
+                                        .zip(o.iter_functions())
                                         .filter_map(|(func_link, callable)| {
                                             let node_ref = NodeRef::from_link(i_s.db, *func_link);
                                             let func = Function::new(node_ref, Some(func_class));
@@ -710,7 +710,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         return Some(Inferred::from_type(
                                             results.into_iter().next().unwrap(),
                                         ));
-                                    } else if results.len() != o.functions().len() {
+                                    } else if results.len() != o.iter_functions().count() {
                                         todo!()
                                     }
                                 }

@@ -712,8 +712,8 @@ impl FunctionOverload {
         Self(functions)
     }
 
-    pub fn functions(&self) -> &[CallableContent] {
-        &self.0
+    pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
+        self.0.iter()
     }
 
     pub fn map_functions(
@@ -848,8 +848,7 @@ impl DbType {
                 FormatStyle::MypyRevealType => format!(
                     "Overload({})",
                     callables
-                        .functions()
-                        .iter()
+                        .iter_functions()
                         .map(|t| t.format(format_data))
                         .collect::<Vec<_>>()
                         .join(", ")
@@ -972,7 +971,7 @@ impl DbType {
                 }
             }
             Self::FunctionOverload(intersection) => {
-                for callable in intersection.functions().iter() {
+                for callable in intersection.iter_functions() {
                     search_params(found_type_var, &callable.params);
                     callable.result_type.search_type_vars(found_type_var)
                 }
@@ -1052,8 +1051,7 @@ impl DbType {
             }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
-                .functions()
-                .iter()
+                .iter_functions()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
             Self::Type(db_type) => db_type.has_any_internal(i_s, already_checked),
@@ -1111,7 +1109,7 @@ impl DbType {
             }),
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
             Self::FunctionOverload(intersection) => {
-                intersection.functions().iter().any(|t| t.has_self_type())
+                intersection.iter_functions().any(|t| t.has_self_type())
             }
             Self::Type(t) => t.has_self_type(),
             Self::Tuple(content) => content.args.as_ref().is_some_and(|args| match args {
@@ -1165,8 +1163,8 @@ pub struct OverloadDefinition {
 }
 
 impl OverloadDefinition {
-    pub fn functions(&self) -> &[CallableContent] {
-        &self.functions.functions()
+    pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
+        self.functions.iter_functions()
     }
 }
 
