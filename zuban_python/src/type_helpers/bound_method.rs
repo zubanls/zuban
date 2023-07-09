@@ -76,9 +76,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             BoundMethodFunction::Function(f) => {
                 f.as_db_type(i_s, FirstParamProperties::Skip(self.instance))
             }
-            BoundMethodFunction::Overload(f) => {
-                f.as_db_type(i_s, FirstParamProperties::Skip(self.instance))
-            }
+            BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(self.instance)),
             BoundMethodFunction::Callable(c) => {
                 let Some(callable) = c.content.remove_first_param() else {
                     todo!()

@@ -1600,21 +1600,29 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         Inferred::from_type(t.unwrap().into_db_type())
     }
 
-    pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::FunctionOverload(Rc::new(FunctionOverload::new(
-            self.overload
-                .old_functions
-                .iter()
-                .map(|link| {
-                    let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                    function.as_callable(i_s, first)
-                })
-                .collect(),
-        )))
+    pub fn as_db_type(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        remove_first_param: Option<&Instance>,
+    ) -> DbType {
+        if let Some(instance) = remove_first_param {
+            DbType::FunctionOverload(Rc::new(FunctionOverload::new(
+                self.overload
+                    .old_functions
+                    .iter()
+                    .map(|link| {
+                        let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+                        function.as_callable(i_s, FirstParamProperties::Skip(instance))
+                    })
+                    .collect(),
+            )))
+        } else {
+            DbType::FunctionOverload(self.overload.functions.clone())
+        }
     }
 
     pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'static> {
-        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
+        Type::owned(self.as_db_type(i_s, None))
     }
 
     pub(super) fn execute_internal(
