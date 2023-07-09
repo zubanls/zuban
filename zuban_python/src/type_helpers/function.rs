@@ -1577,10 +1577,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn variants(&self, i_s: &InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {
         self.overload
-            .old_functions
+            .functions()
             .iter()
-            .map(|link| {
-                let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            .map(|callable| {
+                let func =
+                    Function::new(NodeRef::from_link(i_s.db, callable.defined_at), self.class);
                 func.format_overload_variant(i_s, is_init)
             })
             .collect()
