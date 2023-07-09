@@ -12,12 +12,6 @@ invalid_namespace_types_import_from
 testNoRecursiveExpandInstanceUnionCrash
 testForwardTypeAliasInBase1
 
-testSolveParamSpecWithSelfType
-testSelfTypeTrickyExample
-testSelfTypeReallyTrickyExample
-
-testSelfTypeRestrictedMethodOverloadFallback
-
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 

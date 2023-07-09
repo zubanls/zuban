@@ -840,20 +840,16 @@ pub fn create_signature_without_self(
 ) -> Option<DbType> {
     let type_vars = &callable.type_vars;
     let mut matcher = Matcher::new_callable_matcher(callable);
-    // The type Self does not need to be matched, because it matches by definition.
-    // If we try to match it, it fails, because Self only matches Self when using contravariant
-    // matching.
-    if !matches!(expected_type.as_ref(), DbType::Self_) {
-        if !expected_type
-            .is_super_type_of(
-                i_s,
-                &mut matcher,
-                &Type::owned(instance.class.as_db_type(i_s.db)),
-            )
-            .bool()
-        {
-            return None;
-        }
+    let expected = replace_class_type_vars(i_s.db, expected_type.as_ref(), func_class, func_class);
+    if !Type::owned(expected)
+        .is_super_type_of(
+            i_s,
+            &mut matcher,
+            &Type::owned(instance.class.as_db_type(i_s.db)),
+        )
+        .bool()
+    {
+        return None;
     }
     let Some(mut callable) = callable.remove_first_param() else {
         unreachable!()
