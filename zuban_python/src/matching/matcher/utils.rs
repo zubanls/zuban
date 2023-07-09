@@ -840,8 +840,10 @@ pub fn create_signature_without_self(
 ) -> Option<DbType> {
     let type_vars = &callable.type_vars;
     let mut matcher = Matcher::new_callable_matcher(callable);
+    // The type Self does not need to be matched, because it matches by definition.
+    // If we try to match it, it fails, because Self only matches Self when using contravariant
+    // matching.
     if !matches!(expected_type.as_ref(), DbType::Self_) {
-        // TODO It is questionable that we do not match Self here
         if !expected_type
             .is_super_type_of(
                 i_s,
