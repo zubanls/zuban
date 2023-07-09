@@ -685,20 +685,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     t,
                                                 )
                                             } else {
-                                                if let Some(callable) =
-                                                    callable.remove_first_param()
-                                                {
-                                                    Some(DbType::Callable(Rc::new(
-                                                        replace_class_type_vars_in_callable(
-                                                            i_s.db,
-                                                            &callable,
-                                                            &instance.class,
-                                                            Some(&func_class),
-                                                        ),
-                                                    )))
-                                                } else {
-                                                    todo!()
-                                                }
+                                                todo!()
                                             }
                                         })
                                         .collect();
