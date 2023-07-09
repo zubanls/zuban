@@ -292,7 +292,7 @@ impl<'a> Type<'a> {
                 Match::True { with_any: true }
             }
             DbType::Any => Match::new_true(),
-            DbType::Never => Match::new_false(),
+            DbType::Never => matches!(value_type.as_ref(), DbType::Never).into(),
             DbType::Tuple(t1) => match value_type.as_ref() {
                 DbType::Tuple(t2) => {
                     Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
