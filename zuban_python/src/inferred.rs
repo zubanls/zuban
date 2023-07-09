@@ -628,7 +628,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, func_class);
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                let mut c = func.as_callable(i_s, FirstParamProperties::None);
+                                let c = func.as_callable(i_s, FirstParamProperties::None);
                                 if let Some(t) =
                                     create_signature_without_self(i_s, &c, instance, &first_type)
                                 {
