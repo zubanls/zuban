@@ -466,6 +466,11 @@ pub fn match_arguments_against_params<
             .diagnostic_string(i_s.db, class)
             .map(|s| (prefix.to_owned() + &s).into())
     };
+    macro_rules! simple_diagnostic_string {
+        () => {
+            diagnostic_string("").as_deref().unwrap_or("function")
+        };
+    }
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
@@ -547,8 +552,7 @@ pub fn match_arguments_against_params<
                                         i_s,
                                         IssueType::InvalidTypeVarValue {
                                             type_var_name: Box::from(type_var.name(i_s.db)),
-                                            of: diagnostic_string("")
-                                                .unwrap_or_else(|| Box::from("function")),
+                                            of: simple_diagnostic_string!().into(),
                                             actual: expected.format(&FormatData::new_short(i_s.db)),
                                         },
                                     );
@@ -607,12 +611,12 @@ pub fn match_arguments_against_params<
                 }) {
                     format!(
                         "{} gets multiple values for keyword argument {name:?}",
-                        function.diagnostic_string(class),
+                        simple_diagnostic_string!(),
                     )
                 } else {
                     format!(
                         "Unexpected keyword argument {name:?} for {}",
-                        function.diagnostic_string(class),
+                        simple_diagnostic_string!(),
                     )
                 }
             }
