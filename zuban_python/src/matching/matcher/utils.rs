@@ -79,17 +79,11 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     let has_generics =
         !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_none();
     // Function type vars need to be calculated, so annotations are used.
-    let func_type_vars = match func_or_callable {
-        FunctionOrCallable::Function(function) => function.type_vars(i_s),
-        FunctionOrCallable::Callable(c) => c.content.type_vars.as_ref(),
-    };
+    let func_type_vars = func_or_callable.type_vars(i_s);
 
     let match_in_definition;
     let matcher = if has_generics {
-        match_in_definition = match func_or_callable {
-            FunctionOrCallable::Function(function) => function.node_ref.as_link(),
-            FunctionOrCallable::Callable(callable) => callable.content.defined_at,
-        };
+        match_in_definition = func_or_callable.defined_at();
         get_matcher(
             Some(class),
             func_or_callable,
@@ -436,15 +430,11 @@ fn calculate_type_vars<'db: 'a, 'a>(
         if let Some(type_arguments) = &type_arguments {
             let callable_description: String;
             debug!(
-                "Calculated type vars: {}[{}]",
-                match &func_or_callable {
-                    FunctionOrCallable::Function(function) => function.name(),
-                    FunctionOrCallable::Callable(callable) => {
-                        callable_description =
-                            callable.content.format(&FormatData::new_short(i_s.db));
-                        &callable_description
-                    }
-                },
+                "Calculated type vars for {}: [{}]",
+                func_or_callable
+                    .diagnostic_string(i_s.db, class)
+                    .as_deref()
+                    .unwrap_or("function"),
                 type_arguments.format(&FormatData::new_short(i_s.db)),
             );
         }

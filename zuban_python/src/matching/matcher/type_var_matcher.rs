@@ -2,7 +2,8 @@ use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
     Database, DbType, GenericItem, ParamSpecArgument, PointLink, TupleTypeArguments, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarUsage, Variance,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
+    Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::type_helpers::{Callable, Class, Function};
@@ -13,8 +14,8 @@ pub enum FunctionOrCallable<'a> {
     Callable(Callable<'a>),
 }
 
-impl<'a> FunctionOrCallable<'a> {
-    pub fn result_type<'db: 'a>(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+impl<'db: 'a, 'a> FunctionOrCallable<'a> {
+    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         match self {
             Self::Function(f) => f.result_type(i_s),
             Self::Callable(c) => Type::new(&c.content.result_type),
@@ -25,6 +26,20 @@ impl<'a> FunctionOrCallable<'a> {
         match self {
             Self::Function(f) => Some(f.diagnostic_string(class)),
             Self::Callable(c) => c.diagnostic_string(db, class),
+        }
+    }
+
+    pub fn defined_at(&self) -> PointLink {
+        match self {
+            Self::Function(function) => function.node_ref.as_link(),
+            Self::Callable(callable) => callable.content.defined_at,
+        }
+    }
+
+    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
+        match self {
+            Self::Function(function) => function.type_vars(i_s),
+            Self::Callable(c) => c.content.type_vars.as_ref(),
         }
     }
 }
