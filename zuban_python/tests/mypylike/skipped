@@ -1,9 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
-testUnpackIterableClassWithOverloadedIter
-testUnpackIterableClassWithOverloadedIter2
-
 testOverloadWithObjectDecorator
 testTreeShadowingViaParentPackage
 invalid_namespace_types_import_name
@@ -135,6 +132,9 @@ testUnsafeOverlappingNamedTuple
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
+# Overload class self variable matching
+testUnpackIterableClassWithOverloadedIter
+testUnpackIterableClassWithOverloadedIter2
 # Overload union math for __init__
 overload_union_math_on_class_init_constrained
 # Overload __init__ formatting shows a return type
