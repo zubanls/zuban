@@ -132,7 +132,7 @@ testUnsafeOverlappingNamedTuple
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
-# Overload class self variable matching
+# Overload class self variable matching (__init__ against __init__)
 testUnpackIterableClassWithOverloadedIter
 testUnpackIterableClassWithOverloadedIter2
 # Overload union math for __init__

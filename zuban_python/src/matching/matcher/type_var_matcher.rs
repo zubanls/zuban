@@ -13,6 +13,15 @@ pub enum FunctionOrCallable<'a> {
     Callable(Callable<'a>),
 }
 
+impl<'a> FunctionOrCallable<'a> {
+    pub fn result_type<'db: 'a>(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        match self {
+            Self::Function(f) => f.result_type(i_s),
+            Self::Callable(c) => Type::new(&c.content.result_type),
+        }
+    }
+}
+
 #[derive(Debug, Clone)]
 pub enum BoundKind {
     TypeVar(TypeVarBound),
