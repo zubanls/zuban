@@ -452,7 +452,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
         let mut functions = vec![];
-        let mut old_functions = vec![self.node_ref.as_link()];
         let mut add_func = |inf: Inferred| {
             if let Some(callable) = inf.as_type(i_s).maybe_callable(i_s) {
                 functions.push(rc_unwrap_or_clone(callable))
@@ -505,7 +504,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         Specific::OverloadUnreachable,
                         Locality::File,
                     ));
-                old_functions.push(func_ref.as_link());
                 add_func(next_details.inferred)
             } else {
                 // Check if the implementing function was already set
@@ -551,7 +549,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         debug_assert!(!functions.is_empty());
         OverloadDefinition {
             functions: Rc::new(FunctionOverload::new(functions.into_boxed_slice())),
-            old_functions: old_functions.into_boxed_slice(),
             implementing_function,
         }
     }

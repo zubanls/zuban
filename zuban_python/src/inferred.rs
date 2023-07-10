@@ -668,9 +668,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         let file = i_s.db.loaded_python_file(definition.file);
                         match file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(o) => {
-                                let has_self_arguments = o.old_functions.iter().any(|func_link| {
-                                    let func = prepare_func(i_s, *func_link, func_class);
-                                    func.first_param_annotation_type(i_s).is_some()
+                                let has_self_arguments = o.iter_functions().any(|c| {
+                                    Function::new(
+                                        NodeRef::from_link(i_s.db, c.defined_at),
+                                        Some(func_class),
+                                    )
+                                    .first_param_annotation_type(i_s)
+                                    .is_some()
                                 });
                                 if has_self_arguments {
                                     let results: Vec<_> = o
