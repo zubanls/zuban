@@ -50,11 +50,6 @@ pub fn calculate_class_init_type_vars_and_return<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
-    debug!(
-        "Calculate type vars for class {} ({})",
-        class.name(),
-        function.name(),
-    );
     calculate_init_type_vars_and_return(
         i_s,
         class,
@@ -75,6 +70,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
+    debug!("Calculate __init__ type vars for class {}", class.name());
     let type_vars = class.type_vars(i_s);
     let has_generics =
         !matches!(class.generics, Generics::None | Generics::NotDefinedYet) || type_vars.is_none();
