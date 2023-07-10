@@ -3,9 +3,9 @@ use parsa_python_ast::ParamKind;
 use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
-    Database, DbType, GenericItem, ParamSpecArgument, PointLink, TupleTypeArguments, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarUsage,
-    Variance,
+    CallableParams, Database, DbType, GenericItem, ParamSpecArgument, ParamSpecific, PointLink,
+    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::matching::Param;
@@ -55,7 +55,19 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
                         ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
                     )
             }),
-            Self::Callable(c) => false, // TODO this is wrong
+            Self::Callable(c) => match &c.content.params {
+                CallableParams::Simple(params) => params.iter().any(|p| {
+                    p.name.is_some_and(|n| {
+                        n.as_str(db) == name
+                            && matches!(
+                                p.param_specific,
+                                ParamSpecific::PositionalOrKeyword(_)
+                                    | ParamSpecific::KeywordOnly(_)
+                            )
+                    })
+                }),
+                _ => false,
+            },
         }
     }
 }
