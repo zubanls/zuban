@@ -1687,8 +1687,6 @@ testOverloadIf*
 # Overloads are detected in name binder (imports can not be there)
 testVeryBrokenOverload
 testVeryBrokenOverload2
-# overload rename in import (because of name binder issue)
-testOverloadByAnyOtherName
 # - The implementation for an overloaded function must come last
 testInconsistentOverload
 testInconsistentOverload2
