@@ -3,8 +3,6 @@ testSelfTypeRestrictedClassMethod
 
 testOverloadWithObjectDecorator
 testTreeShadowingViaParentPackage
-invalid_namespace_types_import_name
-invalid_namespace_types_import_from
 
 # Weird Decorator Cases
 testOverloadWithErrorDecorator
