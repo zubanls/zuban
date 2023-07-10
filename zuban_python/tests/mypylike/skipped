@@ -14,6 +14,12 @@ testForwardTypeAliasInBase1
 
 union_context_class_matching_with_overload
 
+# Weird Decorator Cases
+testOverloadWithErrorDecorator
+testBoundOnDecorator
+testGenericClassPropertyBound
+testOverloadDeferredNode
+
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
@@ -2283,11 +2289,6 @@ testErrorCodeReturnValueNotExpected
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
-# Weird Decorator Cases
-testOverloadWithErrorDecorator
-testBoundOnDecorator
-testGenericClassPropertyBound
-testOverloadDeferredNode
 # Class decorator
 testDecoratingClassesThatUseParamSpec
 testClassDecoratorIsTypeChecked
