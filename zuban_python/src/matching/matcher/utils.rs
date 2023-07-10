@@ -373,20 +373,15 @@ fn calculate_type_vars<'db: 'a, 'a>(
         });
     }
     let matches = match func_or_callable {
-        FunctionOrCallable::Function(function) => {
-            // Make sure the type vars are properly pre-calculated, because we are using type
-            // vars from in use_cached_annotation_type.
-            function.type_vars(i_s);
-            calculate_type_vars_for_params(
-                i_s,
-                &mut matcher,
-                class,
-                func_or_callable,
-                args_node_ref,
-                on_type_error,
-                function.iter_args_with_params(i_s.db, args, skip_first_param),
-            )
-        }
+        FunctionOrCallable::Function(function) => calculate_type_vars_for_params(
+            i_s,
+            &mut matcher,
+            class,
+            func_or_callable,
+            args_node_ref,
+            on_type_error,
+            function.iter_args_with_params(i_s.db, args, skip_first_param),
+        ),
         FunctionOrCallable::Callable(callable) => match &callable.content.params {
             CallableParams::Simple(params) => calculate_type_vars_for_params(
                 i_s,
