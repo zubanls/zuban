@@ -85,7 +85,7 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
     };
 
     let match_in_definition;
-    let mut matcher = if has_generics {
+    let matcher = if has_generics {
         match_in_definition = match func_or_callable {
             FunctionOrCallable::Function(function) => function.node_ref.as_link(),
             FunctionOrCallable::Callable(callable) => callable.content.defined_at,
@@ -101,68 +101,6 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         get_matcher(None, func_or_callable, match_in_definition, type_vars)
     };
 
-    if let Some(t) = match &func_or_callable {
-        FunctionOrCallable::Function(function) => function.first_param_annotation_type(i_s),
-        FunctionOrCallable::Callable(callable) => match &callable.content.params {
-            CallableParams::Simple(params) => params
-                .first()
-                .and_then(|p| p.param_specific.maybe_positional_db_type().map(Type::new)),
-            _ => None,
-        },
-    } {
-        let mut class = *class;
-        if matches!(class.generics, Generics::NotDefinedYet) {
-            // Special case for self argument in __init__ is necessary, because we do not yet know
-            // the generics and they need to be calculated. Something like `self: dict[int, U]`
-            // where T and U ar class type variables, means that T is defined as int, and U is not
-            // defined yet. So we have to filter that [1].
-            //
-            // Since you are however allowed to write weird arbitrary stuff like self: Any as well,
-            // we also have to check for that case [2].
-            class = Class::with_self_generics(i_s.db, class.node_ref);
-            let mut checked = false;
-            if let Some(self_class) = t.maybe_class(i_s.db) {
-                if self_class.node_ref == class.node_ref {
-                    // [1]
-                    checked = true;
-                    if let Some(type_vars) = type_vars {
-                        for (i, (type_var_like, g)) in type_vars
-                            .iter()
-                            .zip(self_class.generics().iter(i_s.db))
-                            .enumerate()
-                        {
-                            if !g
-                                .maybe_simple_type_var_like()
-                                .is_some_and(|tv2| type_var_like == &tv2)
-                            {
-                                matcher
-                                    .type_var_matcher
-                                    .as_mut()
-                                    .unwrap()
-                                    .calculated_type_vars[i]
-                                    .update_uncalculated_with_generic_invariant(i_s.db, g)
-                            }
-                        }
-                    }
-                }
-            }
-            if !checked {
-                // [2]
-                let matches = t.is_super_type_of(
-                    &i_s.with_class_context(&class),
-                    &mut matcher,
-                    &Type::owned(class.as_db_type(i_s.db)),
-                );
-                if let Match::False { similar, .. } = matches {
-                    return CalculatedTypeArguments {
-                        in_definition: match_in_definition,
-                        matches: SignatureMatch::False { similar },
-                        type_arguments: None,
-                    };
-                }
-            }
-        }
-    }
     if has_generics {
         let mut type_arguments = calculate_type_vars(
             i_s,
