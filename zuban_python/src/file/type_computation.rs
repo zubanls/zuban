@@ -2881,7 +2881,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 }
             }
             ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
-            _ => unreachable!(),
+            _ => unreachable!("{complex:?}"),
         }
     } else {
         let point = node_ref.point();

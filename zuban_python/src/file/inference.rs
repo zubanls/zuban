@@ -168,11 +168,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         for dotted_as_name in imp.iter_dotted_as_names() {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, rest) => {
-                    let result = self.global_import(
-                        name_def.as_code(),
-                        name_def.name_index(),
-                        Some(name_def.index()),
-                    );
+                    let result = self.global_import(name_def.name(), Some(name_def));
                     if let Some(rest) = rest {
                         if result.is_some() {
                             self.infer_import_dotted_name(rest, result);
@@ -324,13 +320,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn global_import(
-        &self,
-        name: &str,
-        name_index: NodeIndex,
-        name_def_index: Option<NodeIndex>,
-    ) -> Option<ImportResult> {
-        let result = global_import(self.i_s.db, self.file.file_index(), name);
+    fn global_import(&self, name: Name, name_def: Option<NameDefinition>) -> Option<ImportResult> {
+        let result = global_import(self.i_s.db, self.file.file_index(), name.as_str());
         if let Some(result) = &result {
             debug!("Global import {name:?}: {:?}", result.path(self.i_s.db),);
         }
@@ -339,24 +330,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Point::new_file_reference(*file_index, Locality::DirectExtern)
             }
             Some(ImportResult::Namespace(namespace)) => {
-                if let Some(name_def_index) = name_def_index {
-                    self.save_namespace(name_def_index, namespace.clone())
+                if let Some(name_def) = name_def {
+                    self.save_namespace(name_def.index(), namespace.clone())
                 }
                 return result;
             }
             None => {
-                let node_ref = NodeRef::new(self.file, name_index);
+                let node_ref = NodeRef::new(self.file, name.index());
                 node_ref.add_typing_issue(
                     self.i_s,
                     IssueType::ModuleNotFound {
-                        module_name: Box::from(name),
+                        module_name: Box::from(name.as_str()),
                     },
                 );
                 Point::new_unknown(Locality::Todo)
             }
         };
-        if let Some(name_def_index) = name_def_index {
-            self.file.points.set(name_def_index, point);
+        if let Some(name_def) = name_def {
+            self.file.points.set(name_def.index(), point);
         }
         result
     }
@@ -408,7 +399,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(base) = base {
                     infer_name(self.i_s, base, name)
                 } else {
-                    self.global_import(name.as_str(), name.index(), None)
+                    self.global_import(name, None)
                 }
             }
             DottedNameContent::DottedName(dotted_name, name) => self
