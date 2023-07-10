@@ -600,37 +600,15 @@ pub fn match_arguments_against_params<
         }
     }
     let add_keyword_argument_issue = |reference: NodeRef, name| {
-        let s = match func_or_callable {
-            FunctionOrCallable::Function(function) => {
-                if function.iter_params().any(|p| {
-                    p.name(i_s.db) == Some(name)
-                        && matches!(
-                            p.kind(i_s.db),
-                            ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
-                        )
-                }) {
-                    format!(
-                        "{} gets multiple values for keyword argument {name:?}",
-                        simple_diagnostic_string!(),
-                    )
-                } else {
-                    format!(
-                        "Unexpected keyword argument {name:?} for {}",
-                        simple_diagnostic_string!(),
-                    )
-                }
-            }
-            FunctionOrCallable::Callable(callable) => {
-                debug!("TODO this keyword param could also exist");
-                if let Some(n) = callable.content.name {
-                    format!(
-                        "Unexpected keyword argument {name:?} for \"{}\"",
-                        n.as_str(i_s.db)
-                    )
-                } else {
-                    format!("Unexpected keyword argument {name:?}")
-                }
-            }
+        let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
+            true => format!(
+                "{} gets multiple values for keyword argument {name:?}",
+                simple_diagnostic_string!(),
+            ),
+            false => format!(
+                "Unexpected keyword argument {name:?}{}",
+                diagnostic_string(" for ").as_deref().unwrap_or(""),
+            ),
         };
         reference.add_typing_issue(i_s, IssueType::ArgumentIssue(s.into()));
     };

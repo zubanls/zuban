@@ -1,3 +1,5 @@
+use parsa_python_ast::ParamKind;
+
 use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
@@ -6,6 +8,7 @@ use crate::database::{
     Variance,
 };
 use crate::inference_state::InferenceState;
+use crate::matching::Param;
 use crate::type_helpers::{Callable, Class, Function};
 
 #[derive(Debug, Clone, Copy)]
@@ -40,6 +43,19 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
         match self {
             Self::Function(function) => function.type_vars(i_s),
             Self::Callable(c) => c.content.type_vars.as_ref(),
+        }
+    }
+
+    pub fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
+        match self {
+            Self::Function(function) => function.iter_params().any(|p| {
+                p.name(db) == Some(name)
+                    && matches!(
+                        p.kind(db),
+                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                    )
+            }),
+            Self::Callable(c) => false, // TODO this is wrong
         }
     }
 }
