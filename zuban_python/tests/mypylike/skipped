@@ -9,9 +9,6 @@ testTreeShadowingViaParentPackage
 invalid_namespace_types_import_name
 invalid_namespace_types_import_from
 
-testNoRecursiveExpandInstanceUnionCrash
-testForwardTypeAliasInBase1
-
 union_context_class_matching_with_overload
 
 # Weird Decorator Cases

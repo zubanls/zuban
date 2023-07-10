@@ -148,10 +148,10 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
             }
             if !checked {
                 // [2]
-                let matches = Type::owned(class.as_db_type(i_s.db)).is_super_type_of(
+                let matches = t.is_super_type_of(
                     &i_s.with_class_context(&class),
                     &mut matcher,
-                    &t,
+                    &Type::owned(class.as_db_type(i_s.db)),
                 );
                 if let Match::False { similar, .. } = matches {
                     return CalculatedTypeArguments {
