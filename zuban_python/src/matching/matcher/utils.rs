@@ -6,7 +6,7 @@ use super::super::params::{
 };
 use super::super::{
     ArgumentIndexWithParam, FormatData, Generic, Generics, Match, Matcher, MismatchReason,
-    OnTypeError, ResultContext, SignatureMatch, Type,
+    OnTypeError, ResultContext, SignatureMatch,
 };
 use super::bound::TypeVarBound;
 use super::type_var_matcher::{BoundKind, FunctionOrCallable, TypeVarMatcher};
@@ -466,11 +466,6 @@ pub fn match_arguments_against_params<
             .diagnostic_string(i_s.db, class)
             .map(|s| (prefix.to_owned() + &s).into())
     };
-    macro_rules! simple_diagnostic_string {
-        () => {
-            diagnostic_string("").as_deref().unwrap_or("function")
-        };
-    }
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
     let mut argument_indices_with_any = vec![];
@@ -552,7 +547,8 @@ pub fn match_arguments_against_params<
                                         i_s,
                                         IssueType::InvalidTypeVarValue {
                                             type_var_name: Box::from(type_var.name(i_s.db)),
-                                            of: simple_diagnostic_string!().into(),
+                                            of: diagnostic_string("")
+                                                .unwrap_or(Box::from("function")),
                                             actual: expected.format(&FormatData::new_short(i_s.db)),
                                         },
                                     );
@@ -603,7 +599,7 @@ pub fn match_arguments_against_params<
         let s = match func_or_callable.has_keyword_param_with_name(i_s.db, name) {
             true => format!(
                 "{} gets multiple values for keyword argument {name:?}",
-                simple_diagnostic_string!(),
+                diagnostic_string("").as_deref().unwrap_or("function"),
             ),
             false => format!(
                 "Unexpected keyword argument {name:?}{}",
