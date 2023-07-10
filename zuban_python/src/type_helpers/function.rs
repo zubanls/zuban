@@ -835,7 +835,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn diagnostic_string(&self, class: Option<&Class>) -> Box<str> {
+    pub fn diagnostic_string(&self, class: Option<&Class>) -> String {
         diagnostic_function_string(class, self.class.as_ref(), self.name())
     }
 
@@ -1362,7 +1362,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 on_overload_mismatch(i_s, class)
             } else {
                 let t = IssueType::OverloadMismatch {
-                    name: self.diagnostic_string(i_s.db),
+                    name: self.diagnostic_string(i_s.db).into(),
                     args: args.iter().into_argument_types(i_s),
                     variants: self.variants(i_s, search_init),
                 };
@@ -1618,7 +1618,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .as_str(db)
     }
 
-    pub fn diagnostic_string(&self, db: &Database) -> Box<str> {
+    pub fn diagnostic_string(&self, db: &Database) -> String {
         diagnostic_function_string(self.class.as_ref(), self.class.as_ref(), self.name(db))
     }
 }
@@ -1778,15 +1778,15 @@ fn diagnostic_function_string(
     instance_class: Option<&Class>,
     func_class: Option<&Class>,
     name: &str,
-) -> Box<str> {
+) -> String {
     match instance_class {
         Some(instance_class) => {
             if name == "__init__" {
-                format!("{:?}", instance_class.name()).into()
+                format!("{:?}", instance_class.name())
             } else {
-                format!("{:?} of {:?}", name, func_class.unwrap().name()).into()
+                format!("{:?} of {:?}", name, func_class.unwrap().name())
             }
         }
-        None => format!("{:?}", name).into(),
+        None => format!("{:?}", name),
     }
 }

@@ -1,7 +1,7 @@
 use super::function::format_pretty_function_like;
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, CallableParams};
+use crate::database::{CallableContent, CallableParams, Database};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext, Type};
@@ -18,6 +18,17 @@ impl<'a> Callable<'a> {
             content,
             defined_in,
         }
+    }
+
+    pub fn diagnostic_string(&self, db: &Database, class: Option<&Class>) -> Option<String> {
+        self.content.name.map(|n| {
+            let name = n.as_str(db);
+            match self.content.class_name {
+                Some(c) if name == "__init__" => format!("\"{}\"", c.as_str(db)),
+                Some(c) => format!("\"{}\" of \"{}\"", name, c.as_str(db)),
+                None => format!("\"{name}\""),
+            }
+        })
     }
 
     pub fn execute<'db>(

@@ -6,8 +6,6 @@ testTreeShadowingViaParentPackage
 invalid_namespace_types_import_name
 invalid_namespace_types_import_from
 
-union_context_class_matching_with_overload
-
 # Weird Decorator Cases
 testOverloadWithErrorDecorator
 testBoundOnDecorator
@@ -2439,6 +2437,9 @@ testModuleAliasRepeatedWithAnnotation
 testNewTypeInMultipleFiles
 # NewType formatting instead of internal type
 testNewTypeDependencies3
+
+# Formatting C.__init__() call as "C" instead of "__init__" of "C"
+testInitMethodUnbound
 
 # tuple type expected for multiple variables
 testVariableDeclWithInvalidType

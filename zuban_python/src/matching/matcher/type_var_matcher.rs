@@ -5,7 +5,7 @@ use crate::database::{
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
-use crate::type_helpers::{Callable, Function};
+use crate::type_helpers::{Callable, Class, Function};
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'a> {
@@ -18,6 +18,13 @@ impl<'a> FunctionOrCallable<'a> {
         match self {
             Self::Function(f) => f.result_type(i_s),
             Self::Callable(c) => Type::new(&c.content.result_type),
+        }
+    }
+
+    pub fn diagnostic_string(&self, db: &Database, class: Option<&Class>) -> Option<String> {
+        match self {
+            Self::Function(f) => Some(f.diagnostic_string(class)),
+            Self::Callable(c) => c.diagnostic_string(db, class),
         }
     }
 }

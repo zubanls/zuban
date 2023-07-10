@@ -471,17 +471,10 @@ pub fn match_arguments_against_params<
     on_type_error: Option<OnTypeError<'db, '_>>,
     mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
-    let diagnostic_string = |prefix: &str| match func_or_callable {
-        FunctionOrCallable::Function(f) => {
-            Some((prefix.to_owned() + &f.diagnostic_string(class)).into())
-        }
-        FunctionOrCallable::Callable(c) => c.content.name.map(|n| {
-            let mut string = format!("{prefix}\"{}\"", n.as_str(i_s.db));
-            if let Some(class_name) = c.content.class_name {
-                string += &format!(" of \"{}\"", class_name.as_str(i_s.db));
-            }
-            string.into()
-        }),
+    let diagnostic_string = |prefix: &str| {
+        func_or_callable
+            .diagnostic_string(i_s.db, class)
+            .map(|s| (prefix.to_owned() + &s).into())
     };
     let should_generate_errors = on_type_error.is_some();
     let mut missing_params = vec![];
