@@ -1157,6 +1157,7 @@ pub enum FunctionKind {
     Function,
     Property,
     Classmethod,
+    Staticmethod,
 }
 
 #[derive(Debug, Clone, PartialEq)]

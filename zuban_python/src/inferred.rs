@@ -749,6 +749,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                             }
                                             return result.map(callable_into_inferred);
                                         }
+                                        // Static methods can be passed out without any remapping.
+                                        FunctionKind::Staticmethod => (),
                                     }
                                 }
                                 DbType::Class(link, generics) => {
@@ -862,6 +864,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         )),
                                     )))
                                 }
+                                FunctionKind::Staticmethod => todo!(),
                             },
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => match c.kind {
@@ -893,6 +896,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         }
                                         return result.map(callable_into_inferred);
                                     }
+                                    FunctionKind::Staticmethod => todo!(),
                                 },
                                 DbType::Class(link, generics) if apply_descriptor => {
                                     let inst = use_instance_with_ref(

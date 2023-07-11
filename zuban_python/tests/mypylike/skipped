@@ -397,8 +397,11 @@ SelfTypeOverloadedClassMethod
 
 # "Cannot have both classmethod and staticmethod"
 testClassMethodAndStaticMethod
-# staticmethod
+# "staticmethod" used with a non-method"
 testStaticmethodAndNonMethod
+# Error for staticmethod: "Method must have at least one argument. Did you forget the "self" argument?"
+testSerializeStaticMethod
+# staticmethod
 testTypeConstructorReturnsTypeType
 testTypingSelfClassMethod
 testForwardReferenceToDynamicallyTypedStaticMethod
@@ -408,7 +411,6 @@ testBuiltinStaticMethod
 testRefMethodWithDecorator
 testStaticMethodWithNoArgs
 testIgnoredModuleDefinesBaseClassAndClassAttribute
-testSerializeStaticMethod
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
 # staticmethod call error has no Argument 1 to "f" of "A"
@@ -661,6 +663,7 @@ testTooManyArgsInDynamic
 testTooFewArgsInDynamic
 testJustRightInDynamic
 testIncrementalInvalidNamedTupleInUnannotatedFunction
+testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 # "'reveal_type' always outputs 'Any' in unchecked functions"

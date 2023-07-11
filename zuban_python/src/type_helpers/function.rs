@@ -412,6 +412,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 kind = FunctionKind::Classmethod;
                 continue;
             }
+            if i.maybe_saved_link() == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
+                kind = FunctionKind::Staticmethod;
+                continue;
+            }
             if i.maybe_saved_link() == Some(i_s.db.python_state.overload_link()) {
                 is_overload = true;
                 continue;
