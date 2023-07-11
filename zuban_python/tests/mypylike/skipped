@@ -413,9 +413,6 @@ testStaticMethodWithNoArgs
 testIgnoredModuleDefinesBaseClassAndClassAttribute
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
-# staticmethod call error has no Argument 1 to "f" of "A"
-testSimpleStaticMethod
-testForwardReferenceToStaticallyTypedStaticMethod
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical

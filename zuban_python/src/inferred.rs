@@ -896,7 +896,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         }
                                         return result.map(callable_into_inferred);
                                     }
-                                    FunctionKind::Staticmethod => todo!(),
+                                    FunctionKind::Staticmethod => (),
                                 },
                                 DbType::Class(link, generics) if apply_descriptor => {
                                     let inst = use_instance_with_ref(
