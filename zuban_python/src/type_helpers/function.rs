@@ -12,10 +12,10 @@ use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, Know
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericItem, Locality,
-    OverloadDefinition, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, Specific,
-    StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
-    TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName,
-    TypeVarUsage, Variance,
+    OverloadDefinition, OverloadImplementation, ParamSpecUsage, ParamSpecific, Point, PointType,
+    Specific, StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarName, TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -460,7 +460,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         };
         add_func(details.inferred);
-        let mut implementing_function: Option<(PointLink, CallableContent)> = None;
+        let mut implementation: Option<OverloadImplementation> = None;
         loop {
             let point = file.points.get(current_name_index);
             if !point.calculated() {
@@ -493,8 +493,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
             if next_details.is_overload {
-                if let Some((link, _)) = &implementing_function {
-                    NodeRef::from_link(i_s.db, *link)
+                if let Some(implementation) = &implementation {
+                    NodeRef::from_link(i_s.db, implementation.function_link)
                         .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
                 }
 
@@ -507,19 +507,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 add_func(next_details.inferred)
             } else {
                 // Check if the implementing function was already set
-                if implementing_function.is_none() {
+                if implementation.is_none() {
                     if !next_details.has_decorator && next_func.is_dynamic()
                         || next_details.inferred.as_type(i_s).is_any()
                     {
-                        implementing_function = Some((
-                            func_ref.as_link(),
-                            CallableContent::new_any_with_defined_at(func_ref.as_link()),
-                        ));
+                        implementation = Some(OverloadImplementation {
+                            function_link: func_ref.as_link(),
+                            callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
+                        });
                     } else if let Some(callable) =
                         next_details.inferred.as_type(i_s).maybe_callable(i_s)
                     {
-                        implementing_function =
-                            Some((func_ref.as_link(), rc_unwrap_or_clone(callable)));
+                        implementation = Some(OverloadImplementation {
+                            function_link: func_ref.as_link(),
+                            callable: rc_unwrap_or_clone(callable),
+                        });
                     } else {
                         todo!()
                     }
@@ -536,23 +538,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if functions.len() < 2 {
             self.node_ref
                 .add_typing_issue(i_s, IssueType::OverloadSingleNotAllowed);
-        } else if implementing_function.is_none()
+        } else if implementation.is_none()
             && !file.is_stub(i_s.db)
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
         {
             name_def_node_ref(functions.last().unwrap().defined_at)
                 .add_typing_issue(i_s, IssueType::OverloadImplementationNeeded);
         }
-        if let Some((link, _)) = &implementing_function {
+        if let Some(implementation) = &implementation {
             if file.is_stub(i_s.db) {
-                name_def_node_ref(*link)
+                name_def_node_ref(implementation.function_link)
                     .add_typing_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
             }
         }
         debug_assert!(!functions.is_empty());
         OverloadDefinition {
             functions: Rc::new(FunctionOverload::new(functions.into_boxed_slice())),
-            implementing_function,
+            implementation,
         }
     }
 

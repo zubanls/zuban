@@ -2,8 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::NoArguments;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, Locality, Point, PointLink, PointType,
-    Specific, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
+    CallableContent, ComplexPoint, Database, DbType, Locality, OverloadImplementation, Point,
+    PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -326,13 +326,8 @@ impl<'db> Inference<'db, '_, '_> {
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {
-                if let Some((link, implementation)) = &o.implementing_function {
-                    self.calc_overload_implementation_diagnostics(
-                        &c1,
-                        *link,
-                        &implementation,
-                        i + 1,
-                    )
+                if let Some(implementation) = &o.implementation {
+                    self.calc_overload_implementation_diagnostics(&c1, implementation, i + 1)
                 }
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
                     if is_overload_unmatchable(self.i_s, &c1, &c2) {
@@ -409,13 +404,12 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_overload_implementation_diagnostics(
         &mut self,
         overload_item: &CallableContent,
-        implementation_link: PointLink,
-        implementation: &CallableContent,
+        implementation: &OverloadImplementation,
         signature_index: usize,
     ) {
-        let issue_node_ref = NodeRef::from_link(self.i_s.db, implementation_link);
-        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation);
-        let implementation_result = &Type::new(&implementation.result_type);
+        let issue_node_ref = NodeRef::from_link(self.i_s.db, implementation.function_link);
+        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
+        let implementation_result = &Type::new(&implementation.callable.result_type);
         let item_result = Type::new(&overload_item.result_type);
         if !item_result
             .is_sub_type_of(self.i_s, matcher, implementation_result)
@@ -434,7 +428,7 @@ impl<'db> Inference<'db, '_, '_> {
             self.i_s,
             matcher,
             &overload_item.params,
-            &implementation.params,
+            &implementation.callable.params,
             None,
             Variance::Contravariant,
             false,
