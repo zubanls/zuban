@@ -360,6 +360,12 @@ impl<'db> Inference<'db, '_, '_> {
         {
             is_overload_member = true;
         }
+        if class.is_some() && function.node().params().iter().next().is_none() {
+            function
+                .node_ref
+                .add_typing_issue(self.i_s, IssueType::MethodWithoutArguments)
+        }
+
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();

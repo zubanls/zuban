@@ -833,7 +833,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         });
 
         let (name_def, params, return_annotation, _) = func.unpack();
-        let mut param_count = 0;
         for param in params.iter() {
             // expressions are resolved immediately while annotations are inferred at the
             // end of a module.
@@ -843,7 +842,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             if let Some(expression) = param.default() {
                 self.index_non_block_node(&expression, ordered, false);
             }
-            param_count += 1;
         }
         if let Some(return_annotation) = return_annotation {
             // This is the -> annotation
@@ -854,10 +852,6 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             for decorator in decorators.iter() {
                 self.index_non_block_node(&decorator, ordered, false);
             }
-        }
-
-        if self.type_ == NameBinderType::Class && param_count == 0 {
-            self.add_issue(func.index(), IssueType::MethodWithoutArguments)
         }
 
         self.add_redirect_definition(name_def, func.index(), true);
