@@ -497,18 +497,21 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if details.kind != next_details.kind {
                 todo!()
             }
-            if next_details.is_overload {
-                if let Some(implementation) = &implementation {
-                    NodeRef::from_link(i_s.db, implementation.function_link)
-                        .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
-                }
-
+            if next_details.has_decorator {
+                // To make sure overloads aren't executed another time and to separate these
+                // functions from the other ones, mark them unreachable here.
                 next_func
                     .decorator_ref()
                     .set_point(Point::new_simple_specific(
                         Specific::OverloadUnreachable,
                         Locality::File,
                     ));
+            }
+            if next_details.is_overload {
+                if let Some(implementation) = &implementation {
+                    NodeRef::from_link(i_s.db, implementation.function_link)
+                        .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
+                }
                 add_func(next_details.inferred)
             } else {
                 // Check if the implementing function was already set

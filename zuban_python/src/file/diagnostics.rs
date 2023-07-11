@@ -114,16 +114,16 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
-                StmtContent::Decorated(decorated) => {
-                    for decorator in decorated.decorators().iter() {
-                        self.infer_named_expression(decorator.named_expression());
+                StmtContent::Decorated(decorated) => match decorated.decoratee() {
+                    Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
+                    Decoratee::ClassDef(class) => {
+                        for decorator in decorated.decorators().iter() {
+                            self.infer_named_expression(decorator.named_expression());
+                        }
+                        self.calc_class_diagnostics(class)
                     }
-                    match decorated.decoratee() {
-                        Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
-                        Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
-                        Decoratee::AsyncFunctionDef(f) => todo!(),
-                    }
-                }
+                    Decoratee::AsyncFunctionDef(f) => todo!(),
+                },
                 StmtContent::IfStmt(if_stmt) => {
                     for block in if_stmt.iter_blocks() {
                         match block {
@@ -320,9 +320,9 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
-        let inf = function.as_inferred_from_name(self.i_s);
         let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
+        let inf = function.as_inferred_from_name(self.i_s);
         if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {

@@ -2,7 +2,6 @@
 testSelfTypeRestrictedClassMethod
 
 # Weird Decorator Cases
-testOverloadWithErrorDecorator
 testBoundOnDecorator
 testGenericClassPropertyBound
 testOverloadDeferredNode
