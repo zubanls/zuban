@@ -311,7 +311,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     Specific::Closure => {
                         todo!()
                     }
-                    Specific::Param | Specific::SelfParam => {
+                    Specific::Param | Specific::MaybeSelfParam => {
                         todo!("might not even happen - remove")
                         //return i_s.infer_param(&definition);
                     }
@@ -864,7 +864,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         )),
                                     )))
                                 }
-                                FunctionKind::Staticmethod => todo!(),
+                                FunctionKind::Staticmethod => (),
                             },
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => match c.kind {
@@ -1728,7 +1728,7 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                         definition.node_index,
                         definition.add_to_node_index(2).as_expression(),
                     ),
-                Specific::SelfParam => Type::new(&DbType::Self_),
+                Specific::MaybeSelfParam => Type::new(&DbType::Self_),
                 Specific::TypingTypeVarClass => todo!(),
                 Specific::TypingTypeVarTupleClass => todo!(),
                 Specific::TypingParamSpecClass => todo!(),

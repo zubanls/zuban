@@ -653,7 +653,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let param_point = self.points.get(param_index - 1);
             if param_point.calculated()
                 && param_point.type_() == PointType::Specific
-                && param_point.specific() == Specific::SelfParam
+                && param_point.specific() == Specific::MaybeSelfParam
             {
                 return true;
             }
@@ -906,7 +906,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     ) {
         if is_method {
             if let Some(name_def) = names.next() {
-                self.add_point_definition(name_def, Specific::SelfParam, true);
+                self.add_point_definition(name_def, Specific::MaybeSelfParam, true);
             }
         }
         for name_def in names {

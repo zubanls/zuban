@@ -727,7 +727,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 t.map(|t| as_db_type(i_s, t)).unwrap_or({
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
-                    if name_ref.point().maybe_specific() == Some(Specific::SelfParam) {
+                    if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
                         if has_self_type_var_usage {
                             DbType::Self_
                         } else {

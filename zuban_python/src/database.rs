@@ -384,7 +384,7 @@ pub enum Specific {
     Ellipsis,
     GeneratorComprehension,
 
-    SelfParam,
+    MaybeSelfParam,
     Param,
     LazyInferredClass, // A class that will be inferred later.
     DecoratedFunction, // A function that will be inferred later.
