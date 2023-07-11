@@ -1,9 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
-# Weird Decorator Cases
-testGenericClassPropertyBound
-
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
@@ -323,6 +320,7 @@ testGenericTypeAliasesTypeVarBinding
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 testTypingSelfNonAnnotationUses
+testGenericClassPropertyBound
 
 # Property
 testBoundMethodUsage
