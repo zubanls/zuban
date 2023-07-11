@@ -126,6 +126,8 @@ testUnpackIterableClassWithOverloadedIter2
 overload_union_math_on_class_init_constrained
 # Overload __init__ formatting shows a return type
 testOverloadedInitSupertype
+# overload classmethod variants formatting cls type should be Class not any
+testOverloadClassmethodDisappears
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -380,8 +382,6 @@ testNewAnalyzerTypeVarBoundInCycle
 testSelfTypeVarIndexExpr
 
 # classmethod overloads
-testOverloadClassmethodDisappears
-testOverloadWithInconsistentClassMethods
 testOverloadAndClassTypes
 testGenericClassInGenericFunctionOverloadedConstructor-skip
 testGenericClassAlternativeConstructorPreciseOverloaded

@@ -464,6 +464,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
         };
+        let mut inconsistent_function_kind = None;
         add_func(details.inferred);
         let mut implementation: Option<OverloadImplementation> = None;
         loop {
@@ -495,7 +496,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 _ => unreachable!(),
             };
             if details.kind != next_details.kind {
-                todo!()
+                if details.kind != FunctionKind::Function {
+                    inconsistent_function_kind = Some(details.kind);
+                }
+                if next_details.kind != FunctionKind::Function {
+                    inconsistent_function_kind = Some(next_details.kind);
+                }
             }
             if next_details.has_decorator {
                 // To make sure overloads aren't executed another time and to separate these
@@ -550,6 +556,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let name_def = node_ref.maybe_function().unwrap().name_definition();
             NodeRef::new(node_ref.file, name_def.index())
         };
+        if let Some(kind) = inconsistent_function_kind {
+            NodeRef::new(self.node_ref.file, self.expect_decorated_node().index())
+                .add_typing_issue(i_s, IssueType::OverloadInconsistentKind { kind })
+        }
         if functions.len() < 2 {
             self.node_ref
                 .add_typing_issue(i_s, IssueType::OverloadSingleNotAllowed);

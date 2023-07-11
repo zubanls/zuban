@@ -1,6 +1,6 @@
 use parsa_python_ast::{CodeIndex, NodeIndex};
 
-use crate::database::{Database, TypeVarLike};
+use crate::database::{Database, FunctionKind, TypeVarLike};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::name::TreePosition;
@@ -125,6 +125,7 @@ pub(crate) enum IssueType {
     OverloadIncompatibleReturnTypes { first_signature_index: usize, second_signature_index: usize },
     OverloadImplementationReturnTypeIncomplete { signature_index: usize },
     OverloadImplementationArgumentsNotBroadEnough { signature_index: usize },
+    OverloadInconsistentKind { kind: FunctionKind },
 
     MethodWithoutArguments,
 
@@ -540,6 +541,14 @@ impl<'db> Diagnostic<'db> {
             ),
             OverloadImplementationArgumentsNotBroadEnough{signature_index} => format!(
                 "Overloaded function implementation does not accept all possible arguments of signature {signature_index}"
+            ),
+            OverloadInconsistentKind { kind } => format!(
+                "Overload does not consistently use the \"@{}\" decorator on all function signatures.",
+                match kind {
+                    FunctionKind::ClassMethod => "classmethod",
+                    FunctionKind::Property => "property",
+                    FunctionKind::Function => unreachable!()
+                }
             ),
 
             InvariantNote{actual, maybe} => {
