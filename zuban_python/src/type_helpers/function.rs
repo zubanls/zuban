@@ -409,10 +409,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .inference(i_s)
                 .infer_named_expression(decorator.named_expression());
             if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
+                if kind == FunctionKind::Staticmethod {
+                    NodeRef::new(self.node_ref.file, decorated.index())
+                        .add_typing_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
+                }
                 kind = FunctionKind::Classmethod;
                 continue;
             }
             if i.maybe_saved_link() == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
+                if kind == FunctionKind::Classmethod {
+                    NodeRef::new(self.node_ref.file, decorated.index())
+                        .add_typing_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
+                }
                 kind = FunctionKind::Staticmethod;
                 continue;
             }

@@ -92,6 +92,7 @@ pub(crate) enum IssueType {
     NestedConcatenate,
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     InvalidClassMethodFirstArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
+    InvalidClassmethodAndStaticmethod,
     UnexpectedComprehension,
     AmbigousClassVariableAccess,
     CannotInstantiateProtocol { name: Box<str> },
@@ -471,6 +472,8 @@ impl<'db> Diagnostic<'db> {
             InvalidClassMethodFirstArgument{argument_type, function_name, callable} => format!(
                 "Invalid self argument \"{argument_type}\" to class attribute function \"{function_name}\" with type \"{callable}\""
             ),
+            InvalidClassmethodAndStaticmethod =>
+                "Cannot have both classmethod and staticmethod".to_string(),
             UnexpectedComprehension => "Unexpected comprehension".to_string(),
             AmbigousClassVariableAccess =>
                 "Access to generic instance variables via class is ambiguous".to_string(),

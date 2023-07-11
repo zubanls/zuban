@@ -73,3 +73,15 @@ from typing import Type
 foo: dict[str, Type[Any]]
 
 class Bar(**foo): ...  # E: Invalid base class "**foo"
+
+[case staticmethod_and_classmethod]
+# This is tested in testClassMethodAndStaticMethod, but only one side, so test
+# both here.
+class C:
+  @classmethod  # E: Cannot have both classmethod and staticmethod
+  @staticmethod
+  def foo(cls) -> None: pass
+
+  @staticmethod  # E: Cannot have both classmethod and staticmethod
+  @classmethod
+  def bar(cls) -> None: pass

@@ -395,8 +395,6 @@ testGenericClassInGenericFunctionOverloadedConstructor-skip
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
 
-# "Cannot have both classmethod and staticmethod"
-testClassMethodAndStaticMethod
 # "staticmethod" used with a non-method"
 testStaticmethodAndNonMethod
 # Error for staticmethod: "Method must have at least one argument. Did you forget the "self" argument?"
