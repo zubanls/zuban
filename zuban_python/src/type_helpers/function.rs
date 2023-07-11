@@ -1,6 +1,6 @@
 use parsa_python_ast::{
-    FunctionDef, FunctionParent, NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator,
-    ParamKind, ReturnAnnotation, ReturnOrYield,
+    Decorated, FunctionDef, FunctionParent, NodeIndex, Param as ASTParam,
+    ParamIterator as ASTParamIterator, ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -390,10 +390,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
     }
 
-    fn calculate_decorated_function_details(&self, i_s: &InferenceState) -> FunctionDetails {
+    fn expect_decorated_node(&self) -> Decorated {
         let FunctionParent::Decorated(decorated) = self.node().parent() else {
             unreachable!();
         };
+        decorated
+    }
+
+    fn calculate_decorated_function_details(&self, i_s: &InferenceState) -> FunctionDetails {
+        let decorated = self.expect_decorated_node();
         let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
         let mut kind = FunctionKind::Function;
         let mut is_overload = false;
@@ -508,22 +513,29 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             } else {
                 // Check if the implementing function was already set
                 if implementation.is_none() {
-                    if !next_details.has_decorator && next_func.is_dynamic()
-                        || next_details.inferred.as_type(i_s).is_any()
-                    {
+                    let t = next_details.inferred.as_type(i_s);
+                    if !next_details.has_decorator && next_func.is_dynamic() || t.is_any() {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
                             callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
                         });
-                    } else if let Some(callable) =
-                        next_details.inferred.as_type(i_s).maybe_callable(i_s)
-                    {
+                    } else if let Some(callable) = t.maybe_callable(i_s) {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
                             callable: rc_unwrap_or_clone(callable),
                         });
                     } else {
-                        todo!()
+                        implementation = Some(OverloadImplementation {
+                            function_link: func_ref.as_link(),
+                            callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
+                        });
+                        NodeRef::new(func_ref.file, next_func.expect_decorated_node().index())
+                            .add_typing_issue(
+                                i_s,
+                                IssueType::NotCallable {
+                                    type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
+                                },
+                            )
                     }
                 } else {
                     todo!()
