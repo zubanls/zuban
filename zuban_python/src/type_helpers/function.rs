@@ -1382,7 +1382,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                 on_overload_mismatch(i_s, class)
             } else {
                 let t = IssueType::OverloadMismatch {
-                    name: self.diagnostic_string(i_s.db).into(),
+                    name: self
+                        .diagnostic_string(i_s.db)
+                        .unwrap_or_else(|| todo!())
+                        .into(),
                     args: args.iter().into_argument_types(i_s),
                     variants: self.variants(i_s, search_init),
                 };
@@ -1634,12 +1637,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .next()
             .unwrap()
             .name
-            .expect("For now there are no overloads without a name")
+            .unwrap_or_else(|| todo!())
             .as_str(db)
     }
 
-    pub fn diagnostic_string(&self, db: &Database) -> String {
-        diagnostic_function_string(self.class.as_ref(), self.class.as_ref(), self.name(db))
+    pub fn diagnostic_string(&self, db: &Database) -> Option<String> {
+        Callable::new(self.overload.iter_functions().next().unwrap(), self.class)
+            .diagnostic_string(db)
     }
 }
 
