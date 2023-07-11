@@ -1863,6 +1863,12 @@ impl<'a> Type<'a> {
             DbType::Callable(content) => {
                 Callable::new(content, None).execute(i_s, args, on_type_error, result_context)
             }
+            DbType::TypeVar(tv) => match &tv.type_var.bound {
+                Some(bound) => {
+                    Type::new(bound).execute(i_s, None, args, result_context, on_type_error)
+                }
+                None => todo!(),
+            },
             DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_unknown()
