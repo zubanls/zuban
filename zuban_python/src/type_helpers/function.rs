@@ -1200,7 +1200,7 @@ impl<'db> InferrableParam<'db, '_> {
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {
-    overload: &'a OverloadDefinition,
+    overload: &'a Rc<FunctionOverload>,
     class: Option<Class<'a>>,
 }
 
@@ -1221,7 +1221,7 @@ pub enum UnionMathResult {
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
-    pub fn new(overload: &'a OverloadDefinition, class: Option<Class<'a>>) -> Self {
+    pub fn new(overload: &'a Rc<FunctionOverload>, class: Option<Class<'a>>) -> Self {
         Self { overload, class }
     }
 
@@ -1592,7 +1592,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     .collect(),
             )))
         } else {
-            DbType::FunctionOverload(self.overload.functions.clone())
+            DbType::FunctionOverload(self.overload.clone())
         }
     }
 
