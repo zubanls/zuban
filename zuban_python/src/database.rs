@@ -1,7 +1,5 @@
 use std::borrow::Cow;
 use std::cell::Cell;
-use std::cell::Ref;
-use std::cell::RefCell;
 use std::collections::HashMap;
 use std::fmt;
 use std::mem;
@@ -391,7 +389,7 @@ pub enum Specific {
     LazyInferredClass, // A class that will be inferred later.
     DecoratedFunction, // A function that will be inferred later.
     Function,          // The node point so the index of the result
-    Closure,
+    Closure,           // TODO remove this?
     // NoReturnFunction,  // TODO Remove or use?
     AnnotationOrTypeCommentClassInstance,
     AnnotationOrTypeCommentWithTypeVars,
@@ -492,7 +490,7 @@ pub enum ComplexPoint {
     Class(Box<ClassStorage>),
     ClassInfos(Box<ClassInfos>),
     TypeVarLikes(TypeVarLikes),
-    FunctionOverload(Box<Overload>),
+    FunctionOverload(Box<OverloadDefinition>),
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<DbType>),
@@ -706,32 +704,23 @@ impl std::cmp::PartialEq for Namespace {
 }
 
 #[derive(Debug, Clone, PartialEq)]
-pub struct FunctionOverload {
-    functions: RefCell<Vec<CallableContent>>,
-    implementation: RefCell<Option<CallableContent>>,
-}
+pub struct FunctionOverload(Box<[CallableContent]>);
 
 impl FunctionOverload {
-    pub fn new(functions: Vec<CallableContent>) -> Self {
+    pub fn new(functions: Box<[CallableContent]>) -> Self {
         debug_assert!(!functions.is_empty());
-        Self {
-            functions: RefCell::new(functions),
-            implementation: RefCell::new(None),
-        }
+        Self(functions)
     }
 
-    pub fn functions(&self) -> Ref<Vec<CallableContent>> {
-        self.functions.borrow()
+    pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
+        self.0.iter()
     }
 
     pub fn map_functions(
         &self,
-        callable: impl FnOnce(&[CallableContent]) -> Vec<CallableContent>,
+        callable: impl FnOnce(&[CallableContent]) -> Box<[CallableContent]>,
     ) -> Rc<Self> {
-        Rc::new(Self {
-            functions: RefCell::new(callable(&self.functions.borrow())),
-            implementation: self.implementation.clone(),
-        })
+        Rc::new(Self(callable(&self.0)))
     }
 }
 
@@ -859,8 +848,7 @@ impl DbType {
                 FormatStyle::MypyRevealType => format!(
                     "Overload({})",
                     callables
-                        .functions()
-                        .iter()
+                        .iter_functions()
                         .map(|t| t.format(format_data))
                         .collect::<Vec<_>>()
                         .join(", ")
@@ -983,7 +971,7 @@ impl DbType {
                 }
             }
             Self::FunctionOverload(intersection) => {
-                for callable in intersection.functions().iter() {
+                for callable in intersection.iter_functions() {
                     search_params(found_type_var, &callable.params);
                     callable.result_type.search_type_vars(found_type_var)
                 }
@@ -1063,8 +1051,7 @@ impl DbType {
             }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
             Self::FunctionOverload(intersection) => intersection
-                .functions()
-                .iter()
+                .iter_functions()
                 .any(|callable| callable.has_any_internal(i_s, already_checked)),
             Self::TypeVar(t) => false,
             Self::Type(db_type) => db_type.has_any_internal(i_s, already_checked),
@@ -1122,7 +1109,7 @@ impl DbType {
             }),
             Self::Union(u) => u.iter().any(|t| t.has_self_type()),
             Self::FunctionOverload(intersection) => {
-                intersection.functions().iter().any(|t| t.has_self_type())
+                intersection.iter_functions().any(|t| t.has_self_type())
             }
             Self::Type(t) => t.has_self_type(),
             Self::Tuple(content) => content.args.as_ref().is_some_and(|args| match args {
@@ -1162,27 +1149,27 @@ impl DbType {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum FunctionType {
+pub enum FunctionKind {
     Function,
     Property,
     ClassMethod,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct Overload {
-    pub implementing_function: Option<PointLink>,
-    pub functions: Box<[PointLink]>,
+#[derive(Debug, Clone, PartialEq)]
+pub struct OverloadImplementation {
+    pub function_link: PointLink,
+    pub callable: CallableContent,
 }
 
-impl Overload {
-    pub fn add_another_overload(&self, function: PointLink) -> Self {
-        let mut functions = Vec::with_capacity(self.functions.len() + 1);
-        functions.extend_from_slice(self.functions.as_ref());
-        functions.push(function);
-        Self {
-            implementing_function: self.implementing_function,
-            functions: functions.into_boxed_slice(),
-        }
+#[derive(Debug, Clone, PartialEq)]
+pub struct OverloadDefinition {
+    pub implementation: Option<OverloadImplementation>,
+    pub functions: Rc<FunctionOverload>,
+}
+
+impl OverloadDefinition {
+    pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
+        self.functions.iter_functions()
     }
 }
 
@@ -1496,7 +1483,7 @@ pub struct CallableContent {
     pub name: Option<StringSlice>,
     pub class_name: Option<StringSlice>,
     pub defined_at: PointLink,
-    pub kind: FunctionType,
+    pub kind: FunctionKind,
     pub type_vars: Option<TypeVarLikes>,
     pub params: CallableParams,
     pub result_type: DbType,
@@ -1504,14 +1491,54 @@ pub struct CallableContent {
 
 impl CallableContent {
     pub fn new_any() -> Self {
+        Self::new_any_with_defined_at(PointLink::new(FileIndex(0), 0))
+    }
+
+    pub fn new_any_with_defined_at(defined_at: PointLink) -> Self {
         Self {
             name: None,
             class_name: None,
-            defined_at: PointLink::new(FileIndex(1), 1),
-            kind: FunctionType::Function,
+            defined_at,
+            kind: FunctionKind::Function,
             type_vars: None,
             params: CallableParams::Any,
             result_type: DbType::Any,
+        }
+    }
+
+    pub fn remove_first_param(&self) -> Option<Self> {
+        let mut c = self.clone();
+        c.params = match &self.params {
+            CallableParams::Simple(params) => {
+                if params.len() == 0 {
+                    todo!()
+                }
+                let mut params = params.to_vec();
+                params.remove(0);
+                CallableParams::Simple(params.into())
+            }
+            CallableParams::WithParamSpec(pre, usage) => {
+                todo!()
+            }
+            CallableParams::Any => CallableParams::Any,
+        };
+        Some(c)
+    }
+
+    pub fn first_positional_type(&self) -> Option<&DbType> {
+        match &self.params {
+            CallableParams::Simple(params) => {
+                params.first().and_then(|p| match &p.param_specific {
+                    ParamSpecific::PositionalOnly(t) | ParamSpecific::PositionalOrKeyword(t) => {
+                        Some(t)
+                    }
+                    _ => todo!(),
+                })
+            }
+            CallableParams::WithParamSpec(pre, usage) => {
+                todo!()
+            }
+            CallableParams::Any => Some(&DbType::Any),
         }
     }
 

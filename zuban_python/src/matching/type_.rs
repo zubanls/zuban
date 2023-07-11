@@ -123,27 +123,16 @@ impl<'a> Type<'a> {
                     let cls = Class::from_db_type(i_s.db, *link, generics);
                     // TODO the __init__ should actually be looked up on the original class, not
                     // the subclass
-                    let lookup = cls.lookup(i_s, None, "__init__");
+                    let lookup = Instance::new(cls, None).lookup(i_s, None, "__init__");
                     if let LookupResult::GotoName(_, init) = lookup {
                         let c = init.as_type(i_s).into_db_type();
                         if let DbType::Callable(c) = c {
-                            let mut c = (*c).clone();
-                            if let CallableParams::Simple(params) = &c.params {
-                                if params.len() == 0 {
-                                    todo!()
-                                }
-                                let mut params = params.to_vec();
-                                params.remove(0);
-                                c.params = CallableParams::Simple(params.into());
-                            }
-                            let cls_type_vars = cls.type_vars(i_s);
+                            let mut c = c.as_ref().clone();
                             // Since __init__ does not have a return, We need to check the params
                             // of the __init__ functions and the class as a return type separately.
                             if c.type_vars.is_some() {
                                 todo!()
                             }
-                            // TODO if the type vars are defined, why do we set them here?
-                            c.type_vars = cls.type_vars(i_s).cloned();
                             c.result_type = cls.as_db_type(i_s.db);
                             return Some(Rc::new(c));
                         }
@@ -298,12 +287,12 @@ impl<'a> Type<'a> {
             }
             DbType::None => matches!(value_type.as_ref(), DbType::None).into(),
             DbType::Any if matcher.is_matching_reverse() => {
-                debug!("TODO write a test for this.");
+                debug!("TODO write a test for this. (reverse matching any)");
                 matcher.set_all_contained_type_vars_to_any(i_s, self.as_ref());
                 Match::True { with_any: true }
             }
             DbType::Any => Match::new_true(),
-            DbType::Never => Match::new_false(),
+            DbType::Never => matches!(value_type.as_ref(), DbType::Never).into(),
             DbType::Tuple(t1) => match value_type.as_ref() {
                 DbType::Tuple(t2) => {
                     Self::matches_tuple(i_s, matcher, t1, t2, variance).similar_if_false()
@@ -317,7 +306,7 @@ impl<'a> Type<'a> {
             DbType::Union(union_type1) => {
                 self.matches_union(i_s, matcher, union_type1, value_type, variance)
             }
-            DbType::FunctionOverload(overload) => Match::all(overload.functions().iter(), |c1| {
+            DbType::FunctionOverload(overload) => Match::all(overload.iter_functions(), |c1| {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }),
             DbType::Literal(literal1) => {
@@ -623,7 +612,11 @@ impl<'a> Type<'a> {
             DbType::Never if variance == Variance::Covariant => return Match::new_true(), // Never is assignable to anything
             DbType::Self_ if variance == Variance::Covariant => {
                 if let Some(cls) = i_s.current_class() {
-                    return self.simple_matches(i_s, &Type::owned(cls.as_db_type(i_s.db)), variance);
+                    return self.simple_matches(
+                        i_s,
+                        &Type::owned(cls.as_db_type(i_s.db)),
+                        variance,
+                    );
                 }
             }
             DbType::Module(_) => {
@@ -813,7 +806,7 @@ impl<'a> Type<'a> {
                 if matcher.is_matching_reverse() {
                     todo!()
                 }
-                Match::any(overload.functions().iter(), |c2| {
+                Match::any(overload.iter_functions(), |c2| {
                     Self::matches_callable(i_s, matcher, c1, c2)
                 })
             }
@@ -1867,13 +1860,15 @@ impl<'a> Type<'a> {
                     gather(Type::new(entry).execute(i_s, None, args, result_context, on_type_error))
                 }
             }),
-            DbType::Callable(content) => Callable::new(content, None).execute_internal(
-                i_s,
-                args,
-                on_type_error,
-                None,
-                result_context,
-            ),
+            DbType::Callable(content) => {
+                Callable::new(content, None).execute(i_s, args, on_type_error, result_context)
+            }
+            DbType::TypeVar(tv) => match &tv.type_var.bound {
+                Some(bound) => {
+                    Type::new(bound).execute(i_s, None, args, result_context, on_type_error)
+                }
+                None => todo!(),
+            },
             DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
                 Inferred::new_unknown()
@@ -2546,7 +2541,7 @@ pub fn execute_type_of_type<'db>(
                 args.iter(),
                 &|| args.as_node_ref(),
                 &mut ResultContext::Unknown,
-                on_type_error,
+                Some(on_type_error),
             );
             debug!("TODO use generics for namedtuple");
             Inferred::from_type(DbType::NamedTuple(nt.clone()))

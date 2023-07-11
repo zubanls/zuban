@@ -289,3 +289,16 @@ def test(s: str) -> int:
     x = len_and_inc(s)
     reveal_type(x)
     return x
+
+[case callable_with_keyword_errors]
+from mypy_extensions import Arg
+
+def foo(x: int) -> None: ...
+
+bar: Callable[[Arg(int, "x")], None]
+
+foo(1, x=1)  # E: "foo" gets multiple values for keyword argument "x"
+foo(1, y=1)  # E: Unexpected keyword argument "y" for "foo"
+
+bar(1, x=1)  # E: function gets multiple values for keyword argument "x"
+bar(1, y=1)  # E: Unexpected keyword argument "y"

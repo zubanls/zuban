@@ -1,9 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
-testUnpackIterableClassWithOverloadedIter
-testUnpackIterableClassWithOverloadedIter2
-
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
@@ -122,6 +119,9 @@ testUnsafeOverlappingNamedTuple
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
+# Overload class self variable matching (__init__ against __init__)
+testUnpackIterableClassWithOverloadedIter
+testUnpackIterableClassWithOverloadedIter2
 # Overload union math for __init__
 overload_union_math_on_class_init_constrained
 # Overload __init__ formatting shows a return type
@@ -320,6 +320,7 @@ testGenericTypeAliasesTypeVarBinding
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 testTypingSelfNonAnnotationUses
+testGenericClassPropertyBound
 
 # Property
 testBoundMethodUsage
@@ -1165,6 +1166,7 @@ testInvalidMethodAsDataAttributeInGenericClass
 # "Attribute function "f" with type "Callable[[], None]" does not accept self argument"
 testMethodWithInvalidMethodAsDataAttribute
 testClassValuedAttributesBasics
+no_self
 
 # ClassVar
 testMethodAsDataAttribute
@@ -1670,8 +1672,6 @@ testOverloadIf*
 # Overloads are detected in name binder (imports can not be there)
 testVeryBrokenOverload
 testVeryBrokenOverload2
-# overload rename in import (because of name binder issue)
-testOverloadByAnyOtherName
 # - The implementation for an overloaded function must come last
 testInconsistentOverload
 testInconsistentOverload2
@@ -2272,11 +2272,6 @@ testErrorCodeReturnValueNotExpected
 # Implicit any param
 testKwargsArgumentInFunctionBodyWithImplicitAny
 
-# Weird Decorator Cases
-testOverloadWithErrorDecorator
-testBoundOnDecorator
-testGenericClassPropertyBound
-testOverloadDeferredNode
 # Class decorator
 testDecoratingClassesThatUseParamSpec
 testClassDecoratorIsTypeChecked
@@ -2432,6 +2427,9 @@ testModuleAliasRepeatedWithAnnotation
 testNewTypeInMultipleFiles
 # NewType formatting instead of internal type
 testNewTypeDependencies3
+
+# Formatting C.__init__() call as "C" instead of "__init__" of "C"
+testInitMethodUnbound
 
 # tuple type expected for multiple variables
 testVariableDeclWithInvalidType

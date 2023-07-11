@@ -1,24 +1,25 @@
 use parsa_python_ast::{
-    FunctionDef, FunctionParent, NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator,
-    ParamKind, ReturnAnnotation, ReturnOrYield,
+    Decorated, FunctionDef, FunctionParent, NodeIndex, Param as ASTParam,
+    ParamIterator as ASTParamIterator, ParamKind, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
 use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Instance, Module};
+use super::{Callable, Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionOverload, FunctionType, GenericItem, Locality, Overload,
-    ParamSpecUsage, ParamSpecific, Point, PointLink, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance,
+    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericItem, Locality,
+    OverloadDefinition, OverloadImplementation, ParamSpecUsage, ParamSpecific, Point, PointType,
+    Specific, StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments,
+    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarName, TypeVarUsage, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
-    use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
+    use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
 use crate::inference_state::InferenceState;
@@ -27,12 +28,14 @@ use crate::matching::params::{
     InferrableParamIterator2, Param, WrappedDoubleStarred, WrappedParamSpecific, WrappedStarred,
 };
 use crate::matching::{
-    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    ArgumentIndexWithParam, CalculatedTypeArguments, Generic, Generics, LookupResult, OnTypeError,
-    ResultContext, SignatureMatch, Type,
+    calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
+    calculate_function_type_vars_and_return, maybe_class_usage,
+    replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArguments,
+    FormatData, Generic, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
+use crate::utils::rc_unwrap_or_clone;
 use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
@@ -56,6 +59,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     // - "function_def_parameters" to save calculated type vars
     // - "(" for decorator caching
     pub fn new(node_ref: NodeRef<'a>, class: Option<Class<'class>>) -> Self {
+        debug_assert!(matches!(
+            node_ref.point().maybe_specific(),
+            Some(Specific::Function | Specific::DecoratedFunction)
+        ));
         Self { node_ref, class }
     }
 
@@ -65,6 +72,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     pub fn return_annotation(&self) -> Option<ReturnAnnotation> {
         self.node().return_annotation()
+    }
+
+    fn is_dynamic(&self) -> bool {
+        // TODO it's probably not dynamic if at least one arg has been set.
+        self.return_annotation().is_none()
     }
 
     pub fn iter_inferrable_params<'b>(
@@ -326,10 +338,22 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn decorated(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
+    pub fn as_inferred_from_name(&self, i_s: &InferenceState) -> Inferred {
+        match self.node_ref.point().maybe_specific() {
+            Some(Specific::Function) => Inferred::from_saved_node_ref(self.node_ref),
+            Some(Specific::DecoratedFunction) => self.decorated(i_s),
+            _ => unreachable!(),
+        }
+    }
+
+    pub fn decorator_ref(&self) -> NodeRef {
         // To save the generics just use the ( operator's storage.
         // + 1 for def; + 2 for name + 1 for (...) + 1 for (
-        let decorator_ref = self.node_ref.add_to_node_index(5);
+        self.node_ref.add_to_node_index(5)
+    }
+
+    pub fn decorated(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
+        let decorator_ref = self.decorator_ref();
         if decorator_ref.point().calculated() {
             return self
                 .node_ref
@@ -349,11 +373,34 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
     fn save_decorated(&self, i_s: &InferenceState<'db, '_>, decorator_ref: NodeRef) -> Inferred {
         let node = self.node();
-        let FunctionParent::Decorated(decorated) = node.parent() else {
+        let details = self.calculate_decorated_function_details(i_s);
+
+        let func_node = self.node();
+        let file = self.node_ref.file;
+        if details.is_overload {
+            let overload = self.calculate_next_overload_items(i_s, details);
+            return Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(
+                overload,
+            )))
+            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index);
+        }
+
+        details
+            .inferred
+            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+    }
+
+    fn expect_decorated_node(&self) -> Decorated {
+        let FunctionParent::Decorated(decorated) = self.node().parent() else {
             unreachable!();
         };
-        let mut new_inf = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
-        let mut kind = FunctionType::Function;
+        decorated
+    }
+
+    fn calculate_decorated_function_details(&self, i_s: &InferenceState) -> FunctionDetails {
+        let decorated = self.expect_decorated_node();
+        let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
+        let mut kind = FunctionKind::Function;
         let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
             let i = self
@@ -362,7 +409,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .inference(i_s)
                 .infer_named_expression(decorator.named_expression());
             if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
-                kind = FunctionType::ClassMethod;
+                kind = FunctionKind::ClassMethod;
                 continue;
             }
             if i.maybe_saved_link() == Some(i_s.db.python_state.overload_link()) {
@@ -374,37 +421,169 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
             // TODO check if it's an function without a return annotation and
             // abort in that case.
-            new_inf = i.execute(
+            inferred = i.execute(
                 i_s,
                 &KnownArguments::new(
-                    &new_inf,
+                    &inferred,
                     NodeRef::new(self.node_ref.file, decorator.index()),
                 ),
             );
         }
-        if let DbType::Callable(callable_content) = new_inf.as_type(i_s).as_ref() {
+        if let DbType::Callable(callable_content) = inferred.as_type(i_s).as_ref() {
             let mut callable_content = (**callable_content).clone();
             callable_content.name = Some(self.name_string_slice());
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
             callable_content.kind = kind;
-            Inferred::from_type(DbType::Callable(Rc::new(callable_content))).save_redirect(
-                i_s,
-                decorator_ref.file,
-                decorator_ref.node_index,
-            )
+            inferred = Inferred::from_type(DbType::Callable(Rc::new(callable_content)));
         } else {
-            if kind != FunctionType::Function {
+            if kind != FunctionKind::Function {
                 todo!()
             }
-            new_inf.save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+        }
+        FunctionDetails {
+            inferred,
+            kind,
+            is_overload,
+            has_decorator: true,
+        }
+    }
+
+    fn calculate_next_overload_items(
+        &self,
+        i_s: &InferenceState,
+        details: FunctionDetails,
+    ) -> OverloadDefinition {
+        let first_index = self.node().name().index();
+        let mut current_name_index = first_index;
+        let file = self.node_ref.file;
+        let mut functions = vec![];
+        let mut add_func = |inf: Inferred| {
+            if let Some(callable) = inf.as_type(i_s).maybe_callable(i_s) {
+                functions.push(rc_unwrap_or_clone(callable))
+            } else {
+                todo!()
+            }
+        };
+        add_func(details.inferred);
+        let mut implementation: Option<OverloadImplementation> = None;
+        loop {
+            let point = file.points.get(current_name_index);
+            if !point.calculated() {
+                break;
+            }
+            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+            current_name_index = point.node_index();
+            if current_name_index <= first_index {
+                break;
+            }
+            let redirect_point = file.points.get(current_name_index - 1);
+            debug_assert_eq!(redirect_point.type_(), PointType::Redirect);
+            let func_ref = NodeRef::new(file, redirect_point.node_index());
+            let next_func = Self::new(func_ref, self.class);
+            let next_details = match func_ref.point().maybe_specific() {
+                Some(Specific::DecoratedFunction) => {
+                    next_func.calculate_decorated_function_details(i_s)
+                }
+                Some(Specific::Function) => FunctionDetails {
+                    inferred: Inferred::from_type(
+                        next_func.as_db_type(i_s, FirstParamProperties::None),
+                    ),
+                    kind: FunctionKind::Function,
+                    is_overload: false,
+                    has_decorator: false,
+                },
+                _ => unreachable!(),
+            };
+            if details.kind != next_details.kind {
+                todo!()
+            }
+            if next_details.has_decorator {
+                // To make sure overloads aren't executed another time and to separate these
+                // functions from the other ones, mark them unreachable here.
+                next_func
+                    .decorator_ref()
+                    .set_point(Point::new_simple_specific(
+                        Specific::OverloadUnreachable,
+                        Locality::File,
+                    ));
+            }
+            if next_details.is_overload {
+                if let Some(implementation) = &implementation {
+                    NodeRef::from_link(i_s.db, implementation.function_link)
+                        .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
+                }
+                add_func(next_details.inferred)
+            } else {
+                // Check if the implementing function was already set
+                if implementation.is_none() {
+                    let t = next_details.inferred.as_type(i_s);
+                    if !next_details.has_decorator && next_func.is_dynamic() || t.is_any() {
+                        implementation = Some(OverloadImplementation {
+                            function_link: func_ref.as_link(),
+                            callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
+                        });
+                    } else if let Some(callable) = t.maybe_callable(i_s) {
+                        implementation = Some(OverloadImplementation {
+                            function_link: func_ref.as_link(),
+                            callable: rc_unwrap_or_clone(callable),
+                        });
+                    } else {
+                        implementation = Some(OverloadImplementation {
+                            function_link: func_ref.as_link(),
+                            callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
+                        });
+                        NodeRef::new(func_ref.file, next_func.expect_decorated_node().index())
+                            .add_typing_issue(
+                                i_s,
+                                IssueType::NotCallable {
+                                    type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
+                                },
+                            )
+                    }
+                } else {
+                    todo!()
+                }
+            }
+        }
+        let name_def_node_ref = |link| {
+            let node_ref = NodeRef::from_link(i_s.db, link);
+            let name_def = node_ref.maybe_function().unwrap().name_definition();
+            NodeRef::new(node_ref.file, name_def.index())
+        };
+        if functions.len() < 2 {
+            self.node_ref
+                .add_typing_issue(i_s, IssueType::OverloadSingleNotAllowed);
+        } else if implementation.is_none()
+            && !file.is_stub(i_s.db)
+            && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
+        {
+            name_def_node_ref(functions.last().unwrap().defined_at)
+                .add_typing_issue(i_s, IssueType::OverloadImplementationNeeded);
+        }
+        if let Some(implementation) = &implementation {
+            if file.is_stub(i_s.db) {
+                name_def_node_ref(implementation.function_link)
+                    .add_typing_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
+            }
+        }
+        debug_assert!(!functions.is_empty());
+        OverloadDefinition {
+            functions: Rc::new(FunctionOverload::new(functions.into_boxed_slice())),
+            implementation,
         }
     }
 
     pub fn is_classmethod(&self, i_s: &InferenceState) -> bool {
-        let node_ref = NodeRef::new(self.node_ref.file, self.node().name_definition().index());
-        if node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
+        if self.node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
             let inf = self.decorated(i_s);
-            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionType::ClassMethod)
+            if NodeRef::from_link(i_s.db, inf.maybe_saved_link().unwrap())
+                .point()
+                .maybe_specific()
+                == Some(Specific::OverloadUnreachable)
+            {
+                return false;
+            }
+            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionKind::ClassMethod)
         } else {
             false
         }
@@ -456,6 +635,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let self_type_var_usage = self_type_var_usage.as_ref();
 
         let as_db_type = |i_s: &InferenceState, t: Type| {
+            if matches!(first, FirstParamProperties::None) {
+                return t.as_db_type();
+            }
             let Some(func_class) = self.class else {
                 return t.as_db_type()
             };
@@ -463,11 +645,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 i_s.db,
                 &mut |mut usage| {
                     let in_definition = usage.in_definition();
-                    if in_definition == func_class.node_ref.as_link() {
-                        func_class
-                            .generics()
-                            .nth_usage(i_s.db, &usage)
-                            .into_generic_item(i_s.db)
+                    if let Some(result) = maybe_class_usage(i_s.db, &func_class, &usage) {
+                        result
                     } else if in_definition == defined_at {
                         if self_type_var_usage.is_some() {
                             usage.add_to_index(1);
@@ -519,7 +698,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             name: Some(self.name_string_slice()),
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
-            kind: FunctionType::Function,
+            kind: FunctionKind::Function,
             params,
             type_vars: None,
             result_type,
@@ -538,7 +717,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         if has_self_type_var_usage {
                             DbType::Self_
                         } else {
-                            i_s.current_class().unwrap().as_db_type(i_s.db)
+                            self.class.unwrap().as_db_type(i_s.db)
                         }
                     } else {
                         DbType::Any
@@ -600,7 +779,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn first_param_annotation_type(&self, i_s: &InferenceState<'db, '_>) -> Option<Type> {
-        self.iter_params().next().unwrap().annotation(i_s)
+        self.iter_params().next().and_then(|p| p.annotation(i_s))
     }
 
     pub(super) fn execute_internal(
@@ -676,17 +855,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn diagnostic_string(&self, class: Option<&Class>) -> Box<str> {
-        match class {
-            Some(class) => {
-                if self.name() == "__init__" {
-                    format!("{:?}", class.name()).into()
-                } else {
-                    format!("{:?} of {:?}", self.name(), self.class.unwrap().name()).into()
-                }
-            }
-            None => format!("{:?}", self.name()).into(),
-        }
+    pub fn diagnostic_string(&self, class: Option<&Class>) -> String {
+        diagnostic_function_string(class, self.class.as_ref(), self.name())
     }
 
     pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
@@ -864,12 +1034,6 @@ impl<'x> Param<'x> for FunctionParam<'x> {
         }
     }
 
-    fn func_annotation_link(&self) -> Option<PointLink> {
-        self.param
-            .annotation()
-            .map(|a| PointLink::new(self.file.file_index(), a.index()))
-    }
-
     fn kind(&self, db: &Database) -> ParamKind {
         let mut t = self.param.type_();
         if t == ParamKind::PositionalOrKeyword
@@ -1036,13 +1200,12 @@ impl<'db> InferrableParam<'db, '_> {
 
 #[derive(Debug)]
 pub struct OverloadedFunction<'a> {
-    node_ref: NodeRef<'a>,
-    overload: &'a Overload,
+    overload: &'a OverloadDefinition,
     class: Option<Class<'a>>,
 }
 
 pub enum OverloadResult<'a> {
-    Single(Function<'a, 'a>),
+    Single(Callable<'a>),
     Union(DbType),
     NotFound,
 }
@@ -1058,12 +1221,8 @@ pub enum UnionMathResult {
 }
 
 impl<'db: 'a, 'a> OverloadedFunction<'a> {
-    pub fn new(node_ref: NodeRef<'a>, overload: &'a Overload, class: Option<Class<'a>>) -> Self {
-        Self {
-            node_ref,
-            overload,
-            class,
-        }
+    pub fn new(overload: &'a OverloadDefinition, class: Option<Class<'a>>) -> Self {
+        Self { overload, class }
     }
 
     pub(super) fn find_matching_function(
@@ -1077,48 +1236,39 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> OverloadResult<'a> {
         let match_signature = |i_s: &InferenceState<'db, '_>,
                                result_context: &mut ResultContext,
-                               function: Function<'a, 'a>| {
-            let func_type_vars = function.type_vars(i_s);
+                               callable: Callable| {
             if search_init {
-                calculate_class_init_type_vars_and_return(
+                calculate_callable_init_type_vars_and_return(
                     i_s,
                     class.unwrap(),
-                    function,
+                    callable,
                     args.iter(),
                     &|| args.as_node_ref(),
                     result_context,
                     None,
                 )
             } else {
-                calculate_function_type_vars_and_return(
+                calculate_callable_type_vars_and_return(
                     i_s,
                     class,
-                    function,
+                    callable,
                     args.iter(),
                     &|| args.as_node_ref(),
-                    false,
-                    func_type_vars,
-                    function.node_ref.as_link(),
                     result_context,
                     None,
                 )
             }
         };
-        let has_already_calculated_class_generics = search_init
-            && !matches!(
-                class.unwrap().generics(),
-                Generics::None | Generics::NotDefinedYet
-            );
         let mut first_arbitrary_length_not_handled = None;
         let mut first_similar = None;
         let mut multi_any_match: Option<(_, _, Box<_>)> = None;
         let mut had_error_in_func = None;
-        for (i, link) in self.overload.functions.iter().enumerate() {
-            let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+        for (i, callable) in self.overload.iter_functions().enumerate() {
+            let callable = Callable::new(callable, self.class);
             let (calculated_type_args, had_error) =
-                i_s.do_overload_check(|i_s| match_signature(i_s, result_context, function));
+                i_s.do_overload_check(|i_s| match_signature(i_s, result_context, callable));
             if had_error && had_error_in_func.is_none() {
-                had_error_in_func = Some(function);
+                had_error_in_func = Some(callable);
             }
             match calculated_type_args.matches {
                 SignatureMatch::True {
@@ -1130,17 +1280,17 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     } else if !arbitrary_length_handled {
                         if first_arbitrary_length_not_handled.is_none() {
                             first_arbitrary_length_not_handled =
-                                Some((calculated_type_args.type_arguments, function));
+                                Some((calculated_type_args.type_arguments, callable));
                         }
                     } else {
                         debug!(
                             "Decided overload for {} (called on #{}): {:?}",
-                            self.name(),
+                            self.name(i_s.db),
                             args.as_node_ref().line(),
-                            function.node().short_debug()
+                            callable.content.format(&FormatData::new_short(i_s.db))
                         );
                         args.reset_cache();
-                        return OverloadResult::Single(function);
+                        return OverloadResult::Single(callable);
                     }
                 }
                 SignatureMatch::TrueWithAny { argument_indices } => {
@@ -1159,14 +1309,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 args.reset_cache();
                                 // Need to run the whole thing again to generate errors, because
                                 // the function is not going to be checked.
-                                match_signature(i_s, result_context, function);
+                                match_signature(i_s, result_context, callable);
                                 todo!("Add a test")
                             }
                             debug!(
                                 "Decided overload with any for {} (called on #{}): {:?}",
-                                self.name(),
+                                self.name(i_s.db),
                                 args.as_node_ref().line(),
-                                function.node().short_debug()
+                                callable.content.format(&FormatData::new_short(i_s.db)),
                             );
                             args.reset_cache();
                             return OverloadResult::NotFound;
@@ -1174,31 +1324,31 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     } else {
                         multi_any_match = Some((
                             calculated_type_args.type_arguments,
-                            function,
+                            callable,
                             argument_indices,
                         ))
                     }
                 }
                 SignatureMatch::False { similar: true } => {
                     if first_similar.is_none() {
-                        first_similar = Some(function)
+                        first_similar = Some(callable)
                     }
                 }
                 SignatureMatch::False { similar: false } => (),
             }
             args.reset_cache();
         }
-        if let Some((type_arguments, function, _)) = multi_any_match {
+        if let Some((type_arguments, callable, _)) = multi_any_match {
             debug!(
                 "Decided overload with any fallback for {} (called on #{}): {:?}",
-                self.name(),
+                self.name(i_s.db),
                 args.as_node_ref().line(),
-                function.node().short_debug()
+                callable.content.format(&FormatData::new_short(i_s.db))
             );
-            return OverloadResult::Single(function);
+            return OverloadResult::Single(callable);
         }
-        if let Some((type_arguments, function)) = first_arbitrary_length_not_handled {
-            return OverloadResult::Single(function);
+        if let Some((type_arguments, callable)) = first_arbitrary_length_not_handled {
+            return OverloadResult::Single(callable);
         }
         if first_similar.is_none() && args.has_a_union_argument(i_s) {
             let mut non_union_args = vec![];
@@ -1213,40 +1363,36 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             ) {
                 UnionMathResult::Match { result, .. } => return OverloadResult::Union(result),
                 UnionMathResult::FirstSimilarIndex(index) => {
-                    first_similar = Some(Function::new(
-                        NodeRef::from_link(i_s.db, self.overload.functions[index]),
+                    first_similar = Some(Callable::new(
+                        self.overload.iter_functions().nth(index).unwrap(),
                         self.class,
                     ))
                 }
                 UnionMathResult::NoMatch => (),
             }
         }
-        if let Some(function) = first_similar {
+        if let Some(callable) = first_similar {
             // In case of similar params, we simply use the first similar overload and calculate
             // its diagnostics and return its types.
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
-            let calculated_type_args = match_signature(i_s, result_context, function);
-            return OverloadResult::Single(function);
+            let calculated_type_args = match_signature(i_s, result_context, callable);
+            return OverloadResult::Single(callable);
         } else {
-            let function = Function::new(
-                NodeRef::from_link(i_s.db, self.overload.functions[0]),
-                self.class,
-            );
             if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
                 on_overload_mismatch(i_s, class)
             } else {
                 let t = IssueType::OverloadMismatch {
-                    name: function.diagnostic_string(self.class.as_ref()),
+                    name: self.diagnostic_string(i_s.db).into(),
                     args: args.iter().into_argument_types(i_s),
                     variants: self.variants(i_s, search_init),
                 };
                 args.as_node_ref().add_typing_issue(i_s, t);
             }
         }
-        if let Some(function) = had_error_in_func {
+        if let Some(callable) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
             // going to be checked.
-            match_signature(i_s, result_context, function);
+            match_signature(i_s, result_context, callable);
         }
         OverloadResult::NotFound
     }
@@ -1341,29 +1487,26 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             }
         } else {
             let mut first_similar = None;
-            for (i, link) in self.overload.functions.iter().enumerate() {
-                let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            for (i, callable) in self.overload.iter_functions().enumerate() {
+                let callable = Callable::new(&callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
-                        calculate_class_init_type_vars_and_return(
+                        calculate_callable_init_type_vars_and_return(
                             i_s,
                             class.unwrap(),
-                            function,
+                            callable,
                             non_union_args.clone().into_iter(),
                             &|| args_node_ref,
                             result_context,
                             None,
                         )
                     } else {
-                        calculate_function_type_vars_and_return(
+                        calculate_callable_type_vars_and_return(
                             i_s,
                             class,
-                            function,
+                            callable,
                             non_union_args.clone().into_iter(),
                             &|| args_node_ref,
-                            false,
-                            function.type_vars(i_s),
-                            function.node_ref.as_link(),
                             result_context,
                             None,
                         )
@@ -1376,20 +1519,18 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     SignatureMatch::True { .. } => {
                         if search_init {
                             todo!()
-                        } else if let Some(return_annotation) = function.return_annotation() {
+                        } else {
                             return UnionMathResult::Match {
-                                result: function
-                                    .apply_type_args_in_return_annotation(
+                                result: Type::new(&callable.content.result_type)
+                                    .execute_and_resolve_type_vars(
                                         i_s,
-                                        calculated_type_args,
+                                        self.class.as_ref(),
                                         class,
-                                        return_annotation,
+                                        &calculated_type_args,
                                     )
                                     .class_as_db_type(i_s),
                                 first_similar_index: i,
                             };
-                        } else {
-                            todo!()
                         }
                     }
                     SignatureMatch::TrueWithAny { argument_indices } => todo!(),
@@ -1409,10 +1550,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn variants(&self, i_s: &InferenceState<'db, '_>, is_init: bool) -> Box<[Box<str>]> {
         self.overload
-            .functions
-            .iter()
-            .map(|link| {
-                let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
+            .iter_functions()
+            .map(|callable| {
+                let func =
+                    Function::new(NodeRef::from_link(i_s.db, callable.defined_at), self.class);
                 func.format_overload_variant(i_s, is_init)
             })
             .collect()
@@ -1420,11 +1561,10 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
 
     fn fallback_type(&self, i_s: &InferenceState<'db, '_>) -> Inferred {
         let mut t: Option<Type> = None;
-        for link in self.overload.functions.iter() {
-            let func = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-            let f_t = func.result_type(i_s);
+        for callable in self.overload.iter_functions() {
+            let f_t = Type::new(&callable.result_type);
             if let Some(old_t) = t.take() {
-                t = Some(old_t.merge_matching_parts(i_s.db, func.result_type(i_s)))
+                t = Some(old_t.merge_matching_parts(i_s.db, f_t))
             } else {
                 t = Some(f_t);
             }
@@ -1432,21 +1572,32 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         Inferred::from_type(t.unwrap().into_db_type())
     }
 
-    pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>, first: FirstParamProperties) -> DbType {
-        DbType::FunctionOverload(Rc::new(FunctionOverload::new(
-            self.overload
-                .functions
-                .iter()
-                .map(|link| {
-                    let function = Function::new(NodeRef::from_link(i_s.db, *link), self.class);
-                    function.as_callable(i_s, first)
-                })
-                .collect(),
-        )))
+    pub fn as_db_type(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        remove_first_param: Option<&Instance>,
+    ) -> DbType {
+        if let Some(instance) = remove_first_param {
+            DbType::FunctionOverload(Rc::new(FunctionOverload::new(
+                self.overload
+                    .iter_functions()
+                    .map(|callable| {
+                        replace_class_type_vars_in_callable(
+                            i_s.db,
+                            &callable.remove_first_param().unwrap(),
+                            &instance.class,
+                            self.class.as_ref(),
+                        )
+                    })
+                    .collect(),
+            )))
+        } else {
+            DbType::FunctionOverload(self.overload.functions.clone())
+        }
     }
 
-    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
-        Type::owned(self.as_db_type(i_s, FirstParamProperties::None))
+    pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'static> {
+        Type::owned(self.as_db_type(i_s, None))
     }
 
     pub(super) fn execute_internal(
@@ -1457,9 +1608,11 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         class: Option<&Class>,
         result_context: &mut ResultContext,
     ) -> Inferred {
-        debug!("Execute overloaded function {}", self.name());
+        debug!("Execute overloaded function {}", self.name(i_s.db));
         match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
-            OverloadResult::Single(func) => func.execute(i_s, args, result_context, on_type_error),
+            OverloadResult::Single(callable) => {
+                callable.execute(i_s, args, on_type_error, result_context)
+            }
             OverloadResult::Union(t) => Inferred::from_type(t),
             OverloadResult::NotFound => self.fallback_type(i_s),
         }
@@ -1475,8 +1628,18 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
-    fn name(&self) -> &str {
-        self.node_ref.as_code()
+    fn name(&self, db: &'a Database) -> &'a str {
+        self.overload
+            .iter_functions()
+            .next()
+            .unwrap()
+            .name
+            .expect("For now there are no overloads without a name")
+            .as_str(db)
+    }
+
+    pub fn diagnostic_string(&self, db: &Database) -> String {
+        diagnostic_function_string(self.class.as_ref(), self.class.as_ref(), self.name(db))
     }
 }
 
@@ -1491,12 +1654,7 @@ fn are_any_arguments_ambiguous_in_overload(
     for p1 in a {
         for p2 in b {
             if p1.argument_index == p2.argument_index {
-                let n1 = NodeRef::from_link(db, p1.param_annotation_link);
-                let n2 = NodeRef::from_link(db, p2.param_annotation_link);
-
-                let t1 = use_cached_annotation_type(db, n1.file, n1.as_annotation()).as_db_type();
-                let t2 = use_cached_annotation_type(db, n2.file, n2.as_annotation()).as_db_type();
-                if t1 != t2 {
+                if p1.type_ != p2.type_ {
                     return true;
                 }
             }
@@ -1519,15 +1677,8 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
             let t = t.replace_type_var_likes_and_self(
                 i_s.db,
                 &mut |usage| {
-                    let in_definition = usage.in_definition();
-                    if in_definition == func_class.node_ref.as_link() {
-                        func_class
-                            .generics()
-                            .nth_usage(i_s.db, &usage)
-                            .into_generic_item(i_s.db)
-                    } else {
-                        usage.into_generic_item()
-                    }
+                    maybe_class_usage(i_s.db, &func_class, &usage)
+                        .unwrap_or_else(|| usage.into_generic_item())
                 },
                 &mut || todo!(),
             );
@@ -1633,5 +1784,29 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
         format!("def {type_var_str}{name}({args}) -> {result_string}").into()
     } else {
         format!("def {type_var_str}{name}({args})").into()
+    }
+}
+
+struct FunctionDetails {
+    inferred: Inferred,
+    kind: FunctionKind,
+    is_overload: bool,
+    has_decorator: bool,
+}
+
+fn diagnostic_function_string(
+    instance_class: Option<&Class>,
+    func_class: Option<&Class>,
+    name: &str,
+) -> String {
+    match instance_class {
+        Some(instance_class) => {
+            if name == "__init__" {
+                format!("{:?}", instance_class.name())
+            } else {
+                format!("{:?} of {:?}", name, func_class.unwrap().name())
+            }
+        }
+        None => format!("{:?}", name),
     }
 }

@@ -15,6 +15,8 @@ use parsa_python::{
 pub use parsa_python::{CodeIndex, NodeIndex};
 pub use strings::PythonString;
 
+pub const NAME_DEF_TO_NAME_DIFFERENCE: u32 = 1;
+
 pub struct Tree(PyTree);
 
 impl Tree {
@@ -374,12 +376,11 @@ impl<'db> Name<'db> {
     }
 
     pub fn name_def_index(&self) -> NodeIndex {
-        debug_assert_eq!(self.name_definition().unwrap().index(), self.index() - 1);
-        self.index() - 1
-    }
-
-    pub fn expect_function_def(&self) -> FunctionDef<'db> {
-        FunctionDef::new(self.node.parent().unwrap().parent().unwrap())
+        debug_assert_eq!(
+            self.name_definition().unwrap().index(),
+            self.index() - NAME_DEF_TO_NAME_DIFFERENCE
+        );
+        self.index() - NAME_DEF_TO_NAME_DIFFERENCE
     }
 
     pub fn expect_type(&self) -> TypeLike<'db> {

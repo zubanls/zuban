@@ -56,8 +56,8 @@ impl<'file> NodeRef<'file> {
     }
 
     #[inline]
-    pub fn add_to_node_index(&self, add: NodeIndex) -> Self {
-        Self::new(self.file, self.node_index + add)
+    pub fn add_to_node_index(&self, add: i64) -> Self {
+        Self::new(self.file, ((self.node_index as i64) + add) as NodeIndex)
     }
 
     pub fn point(&self) -> Point {
@@ -77,6 +77,9 @@ impl<'file> NodeRef<'file> {
 
     pub fn complex(&self) -> Option<&'file ComplexPoint> {
         let point = self.point();
+        if !point.calculated() {
+            return None;
+        }
         if let PointType::Complex = point.type_() {
             Some(self.file.complex_points.get(point.complex_index()))
         } else {

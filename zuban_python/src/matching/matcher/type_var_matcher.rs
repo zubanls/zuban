@@ -1,16 +1,75 @@
+use parsa_python_ast::ParamKind;
+
 use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
-    Database, DbType, GenericItem, ParamSpecArgument, PointLink, TupleTypeArguments, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarUsage, Variance,
+    CallableParams, Database, DbType, GenericItem, ParamSpecArgument, ParamSpecific, PointLink,
+    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
-use crate::type_helpers::{Callable, Function};
+use crate::matching::Param;
+use crate::type_helpers::{Callable, Class, Function};
 
 #[derive(Debug, Clone, Copy)]
 pub enum FunctionOrCallable<'a> {
     Function(Function<'a, 'a>),
     Callable(Callable<'a>),
+}
+
+impl<'db: 'a, 'a> FunctionOrCallable<'a> {
+    pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
+        match self {
+            Self::Function(f) => f.result_type(i_s),
+            Self::Callable(c) => Type::new(&c.content.result_type),
+        }
+    }
+
+    pub fn diagnostic_string(&self, db: &Database, class: Option<&Class>) -> Option<String> {
+        match self {
+            Self::Function(f) => Some(f.diagnostic_string(class)),
+            Self::Callable(c) => c.diagnostic_string(db, class),
+        }
+    }
+
+    pub fn defined_at(&self) -> PointLink {
+        match self {
+            Self::Function(function) => function.node_ref.as_link(),
+            Self::Callable(callable) => callable.content.defined_at,
+        }
+    }
+
+    pub fn type_vars(&self, i_s: &InferenceState<'db, '_>) -> Option<&'a TypeVarLikes> {
+        match self {
+            Self::Function(function) => function.type_vars(i_s),
+            Self::Callable(c) => c.content.type_vars.as_ref(),
+        }
+    }
+
+    pub fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
+        match self {
+            Self::Function(function) => function.iter_params().any(|p| {
+                p.name(db) == Some(name)
+                    && matches!(
+                        p.kind(db),
+                        ParamKind::PositionalOrKeyword | ParamKind::KeywordOnly
+                    )
+            }),
+            Self::Callable(c) => match &c.content.params {
+                CallableParams::Simple(params) => params.iter().any(|p| {
+                    p.name.is_some_and(|n| {
+                        n.as_str(db) == name
+                            && matches!(
+                                p.param_specific,
+                                ParamSpecific::PositionalOrKeyword(_)
+                                    | ParamSpecific::KeywordOnly(_)
+                            )
+                    })
+                }),
+                _ => false,
+            },
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

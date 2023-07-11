@@ -6,7 +6,7 @@ use parsa_python_ast::*;
 use super::{on_argument_type_error, File, PythonFile};
 use crate::arguments::{CombinedArguments, KnownArguments, NoArguments, SimpleArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, FunctionType,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, DbType, FileIndex, FunctionKind,
     GenericItem, GenericsList, Literal, LiteralKind, Locality, Namespace, ParamSpecific, Point,
     PointLink, PointType, Specific, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
     UnionEntry, UnionType,
@@ -168,13 +168,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         for dotted_as_name in imp.iter_dotted_as_names() {
             match dotted_as_name.unpack() {
                 DottedAsNameContent::Simple(name_def, rest) => {
-                    let result = self.global_import(
-                        name_def.as_code(),
-                        name_def.name_index(),
-                        Some(name_def.index()),
-                    );
+                    let result = self.global_import(name_def.name(), Some(name_def));
                     if let Some(rest) = rest {
-                        dbg!(name_def, &result);
                         if result.is_some() {
                             self.infer_import_dotted_name(rest, result);
                         }
@@ -189,13 +184,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                         Some(ImportResult::Namespace(namespace)) => {
                             self.save_namespace(as_name_def.index(), namespace.clone());
-                            self.save_namespace(as_name_def.name_index(), namespace.clone());
                             continue;
                         }
                         None => Point::new_unknown(Locality::Todo),
                     };
                     self.file.points.set(as_name_def.index(), point);
-                    self.file.points.set(as_name_def.name_index(), point);
                 }
             }
         }
@@ -252,14 +245,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     Point::new_file_reference(file_index, Locality::Todo)
                                 }
                                 LookupResult::UnknownName(inf) => {
-                                    let name_index = name_def.name().index();
-                                    let import_name_index = name_def.name().index();
-                                    inf.clone().save_redirect(self.i_s, self.file, name_index);
-                                    inf.clone().save_redirect(
-                                        self.i_s,
-                                        self.file,
-                                        import_name_index,
-                                    );
                                     inf.save_redirect(self.i_s, self.file, name_def.index());
                                     continue;
                                 }
@@ -279,9 +264,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         None => Point::new_unknown(Locality::Todo),
                     };
 
-                    self.file.points.set(import_name.index(), point);
                     self.file.points.set(name_def.index(), point);
-                    self.file.points.set(name_def.name().index(), point);
                 }
             }
         }
@@ -327,13 +310,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn global_import(
-        &self,
-        name: &str,
-        name_index: NodeIndex,
-        name_def_index: Option<NodeIndex>,
-    ) -> Option<ImportResult> {
-        let result = global_import(self.i_s.db, self.file.file_index(), name);
+    fn global_import(&self, name: Name, name_def: Option<NameDefinition>) -> Option<ImportResult> {
+        let result = global_import(self.i_s.db, self.file.file_index(), name.as_str());
         if let Some(result) = &result {
             debug!("Global import {name:?}: {:?}", result.path(self.i_s.db),);
         }
@@ -342,26 +320,24 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Point::new_file_reference(*file_index, Locality::DirectExtern)
             }
             Some(ImportResult::Namespace(namespace)) => {
-                if let Some(name_def_index) = name_def_index {
-                    self.save_namespace(name_def_index, namespace.clone())
+                if let Some(name_def) = name_def {
+                    self.save_namespace(name_def.index(), namespace.clone())
                 }
-                self.save_namespace(name_index, namespace.clone());
                 return result;
             }
             None => {
-                let node_ref = NodeRef::new(self.file, name_index);
+                let node_ref = NodeRef::new(self.file, name.index());
                 node_ref.add_typing_issue(
                     self.i_s,
                     IssueType::ModuleNotFound {
-                        module_name: Box::from(name),
+                        module_name: Box::from(name.as_str()),
                     },
                 );
                 Point::new_unknown(Locality::Todo)
             }
         };
-        self.file.points.set(name_index, point);
-        if let Some(name_def_index) = name_def_index {
-            self.file.points.set(name_def_index, point);
+        if let Some(name_def) = name_def {
+            self.file.points.set(name_def.index(), point);
         }
         result
     }
@@ -413,12 +389,37 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 if let Some(base) = base {
                     infer_name(self.i_s, base, name)
                 } else {
-                    self.global_import(name.as_str(), name.index(), None)
+                    self.global_import(name, None)
                 }
             }
             DottedNameContent::DottedName(dotted_name, name) => self
                 .infer_import_dotted_name(dotted_name, base)
                 .and_then(|result| infer_name(self.i_s, result, name)),
+        }
+    }
+
+    fn first_defined_name(&mut self, name_index: NodeIndex) -> Option<NodeIndex> {
+        let point = self.file.points.get(name_index);
+        if !point.calculated() {
+            return None;
+        }
+        debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+        let mut current = point.node_index();
+        loop {
+            let point = self.file.points.get(current);
+            debug_assert!(point.calculated());
+            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+            // Here we circle through multi definitions to find the first one.
+            // Note that multi definition links loop, i.e. A -> B -> C -> A.
+            let next = point.node_index();
+            if next <= current {
+                if next == name_index {
+                    return None;
+                }
+                debug_assert_ne!(next, current);
+                return Some(next);
+            }
+            current = next;
         }
     }
 
@@ -430,24 +431,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             for target in targets {
                 match target {
                     Target::Name(name_def) => {
-                        let point = self.file.points.get(name_def.name_index());
-                        if point.calculated() {
-                            debug_assert_eq!(
-                                point.type_(),
-                                PointType::MultiDefinition,
-                                "{target:?}"
-                            );
-                            let mut first_definition = point.node_index();
-                            loop {
-                                let point = self.file.points.get(first_definition);
-                                if point.calculated() && point.type_() == PointType::MultiDefinition
-                                {
-                                    first_definition = point.node_index();
-                                } else {
-                                    break;
-                                }
-                            }
-                            let inferred = self.infer_name_by_index(first_definition);
+                        if let Some(first_index) = self.first_defined_name(name_def.name_index()) {
+                            let inferred = self.infer_name_by_index(first_index);
                             return Some(inferred);
                         }
                     }
@@ -669,7 +654,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     fn infer_single_target(&mut self, target: Target) -> Inferred {
         match target {
             // TODO it's a bit weird that we cannot just call self.infer_name_definition here
-            Target::Name(name_def) => self.infer_name_reference(name_def.name()),
+            Target::Name(name_def) => {
+                if let Some(first_index) = self.first_defined_name(name_def.name().index()) {
+                    self.infer_name_by_index(first_index)
+                } else {
+                    todo!()
+                }
+            }
             Target::NameExpression(primary_target, name_def_node) => {
                 todo!()
             }
@@ -688,30 +679,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         match target {
             Target::Name(name_def) => {
-                let point = self.file.points.get(name_def.name_index());
-                if point.calculated() {
-                    debug_assert_eq!(point.type_(), PointType::MultiDefinition, "{target:?}");
-                    let mut first_definition = point.node_index();
-                    loop {
-                        let point = self.file.points.get(first_definition);
-                        if point.calculated() && point.type_() == PointType::MultiDefinition {
-                            first_definition = point.node_index();
-                        } else {
-                            break;
-                        }
+                let current_index = name_def.name_index();
+                if let Some(first_index) = self.first_defined_name(current_index) {
+                    if current_index != first_index {
+                        let inferred = self.infer_name_by_index(first_index);
+                        inferred.as_type(self.i_s).error_if_not_matches(
+                            self.i_s,
+                            value,
+                            |i_s, got, expected| {
+                                from.add_typing_issue(
+                                    i_s,
+                                    IssueType::IncompatibleAssignment { got, expected },
+                                );
+                                from.to_db_lifetime(i_s.db)
+                            },
+                        );
                     }
-                    let inferred = self.infer_name_by_index(first_definition);
-                    inferred.as_type(self.i_s).error_if_not_matches(
-                        self.i_s,
-                        value,
-                        |i_s, got, expected| {
-                            from.add_typing_issue(
-                                i_s,
-                                IssueType::IncompatibleAssignment { got, expected },
-                            );
-                            from.to_db_lifetime(i_s.db)
-                        },
-                    );
                 }
                 save(self.i_s, name_def.index());
             }
@@ -1240,7 +1223,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         name: None,
                         class_name: None,
                         defined_at: PointLink::new(self.file.file_index(), lambda.index()),
-                        kind: FunctionType::Function,
+                        kind: FunctionKind::Function,
                         type_vars: None,
                         params: CallableParams::Simple(Rc::new([])),
                         result_type: result.class_as_db_type(self.i_s),
@@ -1877,14 +1860,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         }
                     }
                     Specific::DecoratedFunction => {
-                        let name_def = NameDefinition::by_index(&self.file.tree, node_index);
-                        let FunctionOrLambda::Function(func) =
-                            name_def.function_or_lambda_ancestor().unwrap() else
-                        {
-                            unreachable!();
-                        };
                         let func = Function::new(
-                            NodeRef::new(self.file, func.index()),
+                            NodeRef::new(self.file, node_index),
                             self.i_s.current_class().copied(),
                         );
                         // Caches the decorated inference on properly
@@ -1911,29 +1888,22 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     _ => Inferred::new_saved(self.file, node_index, point),
                 },
                 PointType::MultiDefinition => {
-                    // TODO for now we use Mypy's way of resolving multiple names, which means that
-                    // it always uses the first name.
-                    /*
-                    let inferred = self.infer_name(Name::by_index(&self.file.tree, point.node_index()));
-                    // Check for the cache of name_definition
-                    let name_def = NameDefinition::by_index(&self.file.tree, node_index - 1);
-                    inferred.union(self.infer_multi_definition(name_def))
-                    */
-                    self.check_point_cache(point.node_index())
-                        .unwrap_or_else(|| {
-                            self.infer_name(Name::by_index(&self.file.tree, point.node_index()))
-                        })
+                    // MultiDefinition means we are on a Name that has a NameDefinition as a
+                    // parent.
+                    let name = Name::by_index(&self.file.tree, node_index);
+                    self.infer_name_definition(name.name_definition().unwrap())
                 }
                 PointType::Complex | PointType::Unknown | PointType::FileReference => {
                     Inferred::new_saved(self.file, node_index, point)
                 }
                 PointType::NodeAnalysis => {
-                    panic!("Invalid state, should not happen {node_index:?}");
+                    panic!("Invalid NodeAnalysis, should not happen on node index {node_index:?}");
                 }
             })
             .or_else(|| {
                 if point.calculating() {
                     let node_ref = NodeRef::new(self.file, node_index);
+                    debug!("Found a cycle at node index {node_index}");
                     node_ref.set_point(Point::new_simple_specific(Specific::Cycle, Locality::Todo));
                     Some(Inferred::new_cycle())
                 } else {
@@ -1948,12 +1918,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
     pub fn infer_name(&mut self, name: Name) -> Inferred {
         let point = self.file.points.get(name.index());
-        if point.calculated() && point.type_() == PointType::MultiDefinition {
-            // We are trying to infer the name here. We don't have to follow the multi definition,
-            // because the cache handling takes care of that.
-            println!("TODO Is this branch still needed???");
-            //self.infer_multi_definition(name.name_definition().unwrap())
-        }
         if point.calculated() {
             if let Some(inf) = self.check_point_cache(name.index()) {
                 return inf;

@@ -1,8 +1,8 @@
 use std::cell::RefCell;
 
 use crate::database::{
-    ClassStorage, ComplexPoint, FileIndex, Locality, Overload, ParentScope, Point, PointLink,
-    PointType, Points, Specific,
+    ClassStorage, ComplexPoint, FileIndex, Locality, ParentScope, Point, PointType, Points,
+    Specific,
 };
 use crate::debug;
 use crate::diagnostics::{Diagnostics, Issue, IssueType};
@@ -10,13 +10,12 @@ use crate::file::python_file::StarImport;
 use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python_ast::{
-    AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, AtomContent, Block,
-    BlockContent, ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, Decorators,
-    DictComprehension, Expression, ExpressionContent, ExpressionPart, File, ForIfClause,
-    ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt, ImportFromTargets,
-    InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name, NameDefinition, NameParent,
-    NodeIndex, SimpleStmts, StmtContent, StmtIterator, Tree, TryBlockType, TryStmt, WhileStmt,
-    WithStmt,
+    AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, Block, BlockContent,
+    ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, Decorators,
+    DictComprehension, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
+    IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda,
+    MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator,
+    Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 #[derive(PartialEq, Debug)]
@@ -188,12 +187,33 @@ impl<'db, 'a> NameBinder<'db, 'a> {
     }
 
     fn add_new_definition(&self, name_def: NameDefinition<'db>, point: Point, in_base_scope: bool) {
-        let replaced = self.symbol_table.add_or_replace_symbol(name_def.name());
-        if let Some(replaced) = replaced {
-            self.points.set(
-                name_def.name_index(),
-                Point::new_multi_definition(replaced, Locality::File),
-            );
+        if let Some(first) = self.symbol_table.lookup_symbol(name_def.as_code()) {
+            let mut latest_name_index = first;
+            loop {
+                let point = self.points.get(latest_name_index);
+                if point.calculated()
+                    && point.type_() == PointType::MultiDefinition
+                    && point.node_index() > first
+                {
+                    debug_assert_ne!(latest_name_index, point.node_index());
+                    latest_name_index = point.node_index()
+                } else {
+                    let new_index = name_def.name().index();
+                    self.points.set(
+                        latest_name_index,
+                        Point::new_multi_definition(new_index, Locality::File),
+                    );
+                    // Here we create a loop, so it's easy to find the relevant definitions from
+                    // any point.
+                    self.points.set(
+                        new_index,
+                        Point::new_multi_definition(first, Locality::File),
+                    );
+                    break;
+                }
+            }
+        } else {
+            self.symbol_table.add_or_replace_symbol(name_def.name());
         }
         self.points.set(name_def.index(), point);
     }
@@ -617,6 +637,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         };
         for (self_name, name) in class.search_potential_self_assignments() {
             if self.is_self_param(self_name) {
+                // TODO shouldn't this be multi definitions as well?
                 symbol_table.add_or_replace_symbol(name);
             }
         }
@@ -829,21 +850,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.index_annotation_expression(&return_annotation.expression());
         }
 
-        let mut is_overload = false;
         if let Some(decorators) = decorators {
             for decorator in decorators.iter() {
                 self.index_non_block_node(&decorator, ordered, false);
-                let expression = decorator.named_expression().expression();
-                if let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) =
-                    expression.unpack()
-                {
-                    if let AtomContent::Name(name) = atom.unpack() {
-                        match name.as_str() {
-                            "overload" => is_overload = true,
-                            _ => (),
-                        }
-                    }
-                }
             }
         }
 
@@ -851,95 +860,23 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.add_issue(func.index(), IssueType::MethodWithoutArguments)
         }
 
-        let file_index = self.file_index;
-        let maybe_overload = self.maybe_overload(name_def.as_code());
-        if is_overload {
-            let current_link = PointLink::new(file_index, func.index());
+        self.add_redirect_definition(name_def, func.index(), true);
 
-            let new_overload = if let Some((old_overload_index, overload)) = maybe_overload {
-                if let Some(implementing) = overload.implementing_function {
-                    self.add_issue(
-                        implementing.node_index,
-                        IssueType::OverloadImplementationNotLast,
-                    )
-                }
-                let new = overload.add_another_overload(current_link);
-                // Reset the old overload definition, there should only be one.
-                self.points.set(
-                    old_overload_index,
-                    Point::new_simple_specific(Specific::OverloadUnreachable, Locality::File),
-                );
-                new
-            } else {
-                // TODO add is_async for function types
-                Overload {
-                    functions: Box::new([current_link]),
-                    implementing_function: None,
-                }
-            };
-            self.complex_points.insert(
-                self.points,
-                name_def.index(),
-                ComplexPoint::FunctionOverload(Box::new(new_overload)),
-                Locality::File,
-            );
-            self.symbol_table.add_or_replace_symbol(name_def.name());
-        } else {
-            // Check for implementing functions of overloads
-            if let Some((old_overload_index, o)) = maybe_overload {
-                if o.implementing_function.is_none() {
-                    is_overload = true;
-                    let mut new_overload = o.clone();
-                    new_overload.implementing_function =
-                        Some(PointLink::new(self.file_index, func.index()));
-
-                    self.complex_points.insert(
-                        self.points,
-                        name_def.index(),
-                        ComplexPoint::FunctionOverload(Box::new(new_overload)),
-                        Locality::File,
-                    );
-                    // Reset the old overload definition, there should only be one.
-                    self.points.set(
-                        old_overload_index,
-                        Point::new_simple_specific(Specific::OverloadUnreachable, Locality::File),
-                    );
-                    self.symbol_table.add_or_replace_symbol(name_def.name());
-                }
-            }
-
-            if !is_overload {
-                if let Some(decorators) = decorators {
-                    self.add_point_definition(name_def, Specific::DecoratedFunction, in_base_scope)
-                } else {
-                    self.add_redirect_definition(name_def, func.index(), true);
-                }
-            }
-        }
         self.points.set(
             func.index(),
             Point::new_simple_specific(
                 if self.type_ != NameBinderType::Function || return_annotation.is_some() {
-                    Specific::Function
+                    if let Some(decorators) = decorators {
+                        Specific::DecoratedFunction
+                    } else {
+                        Specific::Function
+                    }
                 } else {
-                    Specific::Closure
+                    Specific::Function
                 },
                 Locality::Stmt,
             ),
         );
-    }
-
-    fn maybe_overload(&self, name: &str) -> Option<(NodeIndex, &Overload)> {
-        if let Some(index) = self.symbol_table.lookup_symbol(name) {
-            let name_def_index = index - 1;
-            let point = self.points.get(name_def_index); // Lookup on NameDefinition
-            if let Some(complex_index) = point.maybe_complex_index() {
-                if let ComplexPoint::FunctionOverload(o) = self.complex_points.get(complex_index) {
-                    return Some((name_def_index, o));
-                }
-            }
-        }
-        None
     }
 
     pub(crate) fn index_function_body(&mut self, func: FunctionDef<'db>, is_method: bool) {

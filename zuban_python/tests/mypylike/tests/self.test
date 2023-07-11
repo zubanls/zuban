@@ -104,3 +104,26 @@ class Foo(Generic[T]):
     def foo(self: Self):
         reveal_type(self.value) # N: Revealed type is "T"
         reveal_type(self.value + 1) # N: Revealed type is "int"
+
+[case no_self]
+from typing import Any, overload
+class C:
+    def foo() -> None: ... # E: Method must have at least one argument. Did you forget the "self" argument?
+    def foo2(*, bar: C) -> None: ... # E: Self argument missing for a non-static method (or an invalid type for self)
+    def foo3(*bar: C) -> None: ...
+    def foo4(**bar: C) -> None: ... # E: Self argument missing for a non-static method (or an invalid type for self)
+
+    @overload
+    def bar() -> None: ... # E: Method must have at least one argument. Did you forget the "self" argument? 
+    @overload
+    def bar(*, a: int) -> None: ... # E: Self argument missing for a non-static method (or an invalid type for self)
+    @overload
+    def bar(self) -> None: ...
+    def bar(*args: Any, **kwargs: Any) -> None: ...
+
+reveal_type(C().foo()) # E: Attribute function "foo" with type "Callable[[], None]" does not accept self argument \
+                       # N: Revealed type is "None"
+reveal_type(C().bar()) # E: Attribute function "foo" with type "Callable[[], None]" does not accept self argument \
+                       # N: Revealed type is "None"
+
+reveal_type(C().foo3()) # N: Revealed type is "None"

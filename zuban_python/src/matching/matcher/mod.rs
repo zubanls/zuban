@@ -3,8 +3,8 @@ mod type_var_matcher;
 mod utils;
 
 pub use utils::{
-    calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return,
-    calculate_function_type_vars_and_return, create_signature_without_self,
+    calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
+    calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
     CalculatedTypeArguments,
 };
 
@@ -66,7 +66,7 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_reverse_callable_matcher(callable: &'a CallableContent) -> Self {
+    pub fn new_callable_matcher(callable: &'a CallableContent) -> Self {
         let type_var_matcher = callable
             .type_vars
             .as_ref()
@@ -75,9 +75,14 @@ impl<'a> Matcher<'a> {
             class: None,
             type_var_matcher,
             func_or_callable: Some(FunctionOrCallable::Callable(Callable::new(callable, None))),
-            match_reverse: true,
             ..Self::default()
         }
+    }
+
+    pub fn new_reverse_callable_matcher(callable: &'a CallableContent) -> Self {
+        let mut m = Self::new_callable_matcher(callable);
+        m.match_reverse = true;
+        m
     }
 
     pub fn new_function_matcher(
@@ -158,7 +163,7 @@ impl<'a> Matcher<'a> {
         if let Some(class) = self.class {
             if class.node_ref.as_link() == t1.in_definition {
                 let g = class
-                    .generics
+                    .generics()
                     .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
                     .expect_type_argument();
                 return g.simple_matches(i_s, value_type, t1.type_var.variance);
@@ -560,7 +565,7 @@ impl<'a> Matcher<'a> {
         if let Some(class) = self.class {
             if class.node_ref.as_link() == usage.in_definition() {
                 return class
-                    .generics
+                    .generics()
                     .nth_usage(format_data.db, usage)
                     .format(&format_data.remove_matcher());
             }
@@ -616,7 +621,7 @@ impl<'a> Matcher<'a> {
             if let Some(c) = self.class {
                 if c.node_ref.as_link() == type_var_like_usage.in_definition() {
                     return c
-                        .generics
+                        .generics()
                         .nth_usage(db, &type_var_like_usage)
                         .into_generic_item(db);
                 }

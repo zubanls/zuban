@@ -5,7 +5,7 @@ use std::rc::Rc;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
-    FunctionType, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex,
+    FunctionKind, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex,
     NewType, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
@@ -14,8 +14,9 @@ use crate::file::{on_argument_type_error, use_cached_annotation_type, File, Pyth
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
-    create_signature_without_self, replace_class_type_vars, FormatData, Generics, IteratorContent,
-    LookupResult, OnLookupError, OnTypeError, ResultContext, Type,
+    create_signature_without_self, create_signature_without_self_for_callable, maybe_class_usage,
+    replace_class_type_vars, FormatData, Generics, IteratorContent, LookupResult, Matcher,
+    OnLookupError, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -279,6 +280,8 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
+        todo!();
+        /*
         if let InferredState::Saved(definition) = self.state {
             let definition = NodeRef::from_link(i_s.db, definition);
             let point = definition.point();
@@ -286,20 +289,20 @@ impl<'db: 'slf, 'slf> Inferred {
                 todo!()
             }
         }
-        if let Some(class) = i_s.current_class() {
-            self.resolve_class_type_vars(i_s, class)
-        } else {
-            self
-        }
+        self.resolve_class_type_vars(i_s, class, attribute_class)
+        */
     }
 
-    pub fn resolve_class_type_vars(self, i_s: &InferenceState<'db, '_>, class: &Class) -> Self {
-        if let Some(i_s_cls) = i_s.current_class() {
-            if matches!(i_s_cls.generics, Generics::Self_ { .. })
-                && i_s_cls.type_var_remap.is_none()
-            {
-                return self;
-            }
+    pub fn resolve_class_type_vars(
+        self,
+        i_s: &InferenceState<'db, '_>,
+        class: &Class,
+        attribute_class: &Class,
+    ) -> Self {
+        if matches!(attribute_class.generics, Generics::Self_ { .. })
+            && attribute_class.type_var_remap.is_none()
+        {
+            return self;
         }
         if let InferredState::Saved(link) = self.state {
             let definition = NodeRef::from_link(i_s.db, link);
@@ -317,7 +320,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let t = file
                             .inference(i_s)
                             .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                        let d = replace_class_type_vars(i_s, t, class);
+                        let d = replace_class_type_vars(i_s.db, t, class, attribute_class);
                         return Inferred::from_type(d);
                     }
                     _ => (),
@@ -538,7 +541,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 match definition.complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
                         return Some(FunctionOrOverload::Overload(OverloadedFunction::new(
-                            definition, overload, class,
+                            overload, class,
                         )));
                     }
                     Some(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
@@ -628,9 +631,14 @@ impl<'db: 'slf, 'slf> Inferred {
                         Specific::Function => {
                             let func = prepare_func(i_s, *definition, func_class);
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
-                                if let Some(t) =
-                                    create_signature_without_self(i_s, func, instance, &first_type)
-                                {
+                                if let Some(t) = create_signature_without_self(
+                                    i_s,
+                                    Matcher::new_function_matcher(None, func, func.type_vars(i_s)),
+                                    || func.as_callable(i_s, FirstParamProperties::Skip(instance)),
+                                    instance,
+                                    &func_class,
+                                    first_type.as_ref(),
+                                ) {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(t)))
                                 } else if let Some(from) = from {
                                     let t = IssueType::InvalidSelfArgument {
@@ -660,26 +668,28 @@ impl<'db: 'slf, 'slf> Inferred {
                         let file = i_s.db.loaded_python_file(definition.file);
                         match file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(o) => {
-                                let has_self_arguments = o.functions.iter().any(|func_link| {
-                                    let func = prepare_func(i_s, *func_link, func_class);
-                                    func.first_param_annotation_type(i_s).is_some()
+                                let has_self_arguments = o.iter_functions().any(|c| {
+                                    Function::new(
+                                        NodeRef::from_link(i_s.db, c.defined_at),
+                                        Some(func_class),
+                                    )
+                                    .first_param_annotation_type(i_s)
+                                    .is_some()
                                 });
                                 if has_self_arguments {
                                     let results: Vec<_> = o
-                                        .functions
-                                        .iter()
-                                        .filter_map(|func_link| {
-                                            let node_ref = NodeRef::from_link(i_s.db, *func_link);
-                                            let func = Function::new(node_ref, Some(func_class));
-                                            if let Some(t) = func.first_param_annotation_type(i_s) {
-                                                create_signature_without_self(
-                                                    i_s, func, instance, &t,
+                                        .iter_functions()
+                                        .filter_map(|callable| {
+                                            if let Some(t) = callable.first_positional_type() {
+                                                create_signature_without_self_for_callable(
+                                                    i_s,
+                                                    callable,
+                                                    instance,
+                                                    &func_class,
+                                                    t,
                                                 )
                                             } else {
-                                                Some(func.as_db_type(
-                                                    i_s,
-                                                    FirstParamProperties::Skip(instance),
-                                                ))
+                                                todo!()
                                             }
                                         })
                                         .collect();
@@ -687,7 +697,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         return Some(Inferred::from_type(
                                             results.into_iter().next().unwrap(),
                                         ));
-                                    } else if results.len() != o.functions.len() {
+                                    } else if results.len() != o.iter_functions().count() {
                                         todo!()
                                     }
                                 }
@@ -700,18 +710,18 @@ impl<'db: 'slf, 'slf> Inferred {
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => {
                                     match c.kind {
-                                        FunctionType::Function => {
-                                            // TODO should use create_signature_without_self!
+                                        FunctionKind::Function => {
+                                            // TODO should use create_signature_without_self_for_callable!
                                             return Some(Self::new_bound_method(
                                                 get_inferred(i_s).as_bound_method_instance(i_s),
                                                 mro_index,
                                                 *definition,
                                             ));
                                         }
-                                        FunctionType::Property => {
+                                        FunctionKind::Property => {
                                             todo!()
                                         }
-                                        FunctionType::ClassMethod => {
+                                        FunctionKind::ClassMethod => {
                                             let result = infer_class_method(
                                                 i_s,
                                                 instance.class,
@@ -821,7 +831,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = file
                                 .inference(i_s)
                                 .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                            let t = replace_class_type_vars(i_s, t, class);
+                            let t = replace_class_type_vars(i_s.db, t, class, &attribute_class);
                             return Some(Inferred::from_type(t));
                         }
                         _ => (),
@@ -834,11 +844,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => match c.kind {
-                                    FunctionType::Function => {
+                                    FunctionKind::Function => {
                                         debug!("TODO callable decorated class descriptor")
                                     }
-                                    FunctionType::Property => todo!(),
-                                    FunctionType::ClassMethod => {
+                                    FunctionKind::Property => todo!(),
+                                    FunctionKind::ClassMethod => {
                                         let result =
                                             infer_class_method(i_s, *class, attribute_class, c);
                                         if result.is_none() {
@@ -1164,8 +1174,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             | Specific::MypyExtensionsDefaultNamedArg
                             | Specific::MypyExtensionsVarArg
                             | Specific::MypyExtensionsKwArg => {
-                                let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
-                                return func.execute(i_s, args, result_context, on_type_error);
+                                return i_s
+                                    .db
+                                    .python_state
+                                    .mypy_extensions_arg_func(i_s.db, specific)
+                                    .execute_with_details(i_s, args, result_context, on_type_error)
                             }
                             _ => (),
                         }
@@ -1173,7 +1186,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => {
                         match node_ref.file.complex_points.get(point.complex_index()) {
                             ComplexPoint::FunctionOverload(overload) => {
-                                return OverloadedFunction::new(node_ref, overload, None).execute(
+                                return OverloadedFunction::new(overload, None).execute(
                                     i_s,
                                     args,
                                     result_context,
@@ -1373,7 +1386,7 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     let reference = NodeRef::from_link(i_s.db, func_link);
     match reference.complex() {
         Some(ComplexPoint::FunctionOverload(overload)) => {
-            let func = OverloadedFunction::new(reference, overload, Some(class));
+            let func = OverloadedFunction::new(overload, Some(class));
             BoundMethod::new(instance, mro_index, BoundMethodFunction::Overload(func))
         }
         Some(ComplexPoint::TypeInstance(t)) => match t {
@@ -1491,17 +1504,9 @@ fn infer_class_method(
         &func_class,
         class_generics_not_defined_yet,
     );
-    /*let mut c = callable.clone();
-    match &c.params {
-        CallableParams::Simple(params) => {
-            let mut vec = params.to_vec();
-            // The first argument in a class param is not relevant if we execute descriptors.
-            vec.remove(0);
-            c.params = CallableParams::Simple(Rc::from(vec));
-        }
-        CallableParams::WithParamSpec(_, _) => todo!(),
-        CallableParams::Any => todo!(),
-    }
+
+    /*
+    let mut c = callable.remove_first_param()
     let t = DbType::Callable(Rc::new(c));
     */
     Some(Inferred::from_type(t))
@@ -1580,11 +1585,7 @@ pub fn classmethod_as_db_type(
         i_s.db,
         &mut |mut usage| {
             let in_definition = usage.in_definition();
-            if in_definition == func_class.node_ref.as_link() {
-                let result = func_class
-                    .generics()
-                    .nth_usage(i_s.db, &usage)
-                    .into_generic_item(i_s.db);
+            if let Some(result) = maybe_class_usage(i_s.db, func_class, &usage) {
                 // We need to remap again, because in generics of classes will be
                 // generic in the function of the classmethod, see for example
                 // `testGenericClassMethodUnboundOnClass`.
@@ -1641,7 +1642,7 @@ fn type_of_complex<'db: 'x, 'x>(
             ))))
         }
         ComplexPoint::FunctionOverload(overload) => {
-            let overload = OverloadedFunction::new(definition.unwrap(), overload, None);
+            let overload = OverloadedFunction::new(overload, i_s.current_class().copied());
             overload.as_type(i_s)
         }
         ComplexPoint::TypeInstance(t) => Type::new(t),
@@ -1724,7 +1725,10 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                 | Specific::MypyExtensionsDefaultNamedArg
                 | Specific::MypyExtensionsVarArg
                 | Specific::MypyExtensionsKwArg => {
-                    let func = i_s.db.python_state.mypy_extensions_arg_func(specific);
+                    i_s.db
+                        .python_state
+                        .mypy_extensions_arg_func(i_s.db, specific)
+                        .as_type(i_s);
                     todo!()
                 }
                 _ => resolve_specific(i_s, specific),

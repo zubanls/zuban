@@ -7,7 +7,7 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, FunctionType, GenericItem,
+    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, FunctionKind, GenericItem,
     GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace, NewType,
     ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
     Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
@@ -27,6 +27,7 @@ use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, Module};
 
 pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
+const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug)]
 pub enum TypeVarCallbackReturn {
@@ -44,7 +45,6 @@ type TypeVarCallback<'db, 'x> = &'x mut dyn FnMut(
     TypeVarLike,
     Option<PointLink>, // current_callable
 ) -> TypeVarCallbackReturn;
-const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
 
 #[derive(Debug, Clone)]
 pub(super) enum SpecialType {
@@ -1582,7 +1582,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 name: None,
                 class_name: None,
                 defined_at,
-                kind: FunctionType::Function,
+                kind: FunctionKind::Function,
                 type_vars: None,
                 params,
                 result_type,
@@ -2839,6 +2839,17 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingAny => SpecialType::Any,
             Specific::TypingGeneric => SpecialType::Generic,
             Specific::TypingProtocol => SpecialType::Protocol,
+            Specific::TypingType => SpecialType::Type,
+            Specific::TypingCallable => SpecialType::Callable,
+            Specific::TypingLiteralString => SpecialType::LiteralString,
+            Specific::TypingUnpack => SpecialType::Unpack,
+            Specific::TypingConcatenateClass => SpecialType::Concatenate,
+            Specific::TypingTypeAlias => SpecialType::TypeAlias,
+            Specific::TypingLiteral => SpecialType::Literal,
+            Specific::TypingFinal => SpecialType::Final,
+            Specific::TypingSelf => SpecialType::Self_,
+            Specific::TypingAnnotated => SpecialType::Annotated,
+            Specific::TypingTuple => SpecialType::Tuple,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg
             | Specific::MypyExtensionsNamedArg
@@ -2881,7 +2892,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
                 }
             }
             ComplexPoint::TypeVarLike(t) => TypeNameLookup::TypeVarLike(t.clone()),
-            _ => unreachable!(),
+            _ => unreachable!("{complex:?}"),
         }
     } else {
         let point = node_ref.point();
@@ -2889,20 +2900,9 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
             debug!("TODO check if this is the right place for this kind of stuff.");
             TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
         } else {
-            let specific = point.maybe_specific().unwrap();
-            TypeNameLookup::SpecialType(match specific {
-                Specific::TypingType => SpecialType::Type,
-                Specific::TypingCallable => SpecialType::Callable,
-                Specific::TypingLiteralString => SpecialType::LiteralString,
-                Specific::TypingUnpack => SpecialType::Unpack,
-                Specific::TypingConcatenateClass => SpecialType::Concatenate,
-                Specific::TypingTypeAlias => SpecialType::TypeAlias,
-                Specific::TypingLiteral => SpecialType::Literal,
-                Specific::TypingFinal => SpecialType::Final,
-                Specific::TypingSelf => SpecialType::Self_,
-                Specific::TypingAnnotated => SpecialType::Annotated,
-                _ => unreachable!(),
-            })
+            TypeNameLookup::SpecialType(
+                check_special_type(point).unwrap_or_else(|| todo!("{point:?}")),
+            )
         }
     }
 }
@@ -2974,9 +2974,13 @@ fn check_type_name<'db: 'file, 'file>(
             }
         }
         TypeLike::Assignment(assignment) => {
-            if name_node_ref.point().calculated() {
+            if point.calculated() {
                 // TODO This is mostly for loading Callable and other builtins. Should probably be
                 //      changed/removed
+                debug_assert!(matches!(
+                    point.type_(),
+                    PointType::Complex | PointType::MultiDefinition
+                ));
                 return load_cached_type(name_node_ref);
             }
             let def_point = name_node_ref
@@ -2990,6 +2994,11 @@ fn check_type_name<'db: 'file, 'file>(
             inference.compute_type_assignment(assignment, false)
         }
         TypeLike::Function(f) => TypeNameLookup::InvalidVariable(InvalidVariableType::Function({
+            let name_def_ref =
+                name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
+            if let Some(special) = check_special_type(name_def_ref.point()) {
+                return TypeNameLookup::SpecialType(special);
+            }
             let point = name_node_ref.point();
             if point.calculated() && point.maybe_specific() == Some(Specific::CollectionsNamedTuple)
             {
@@ -2998,21 +3007,30 @@ fn check_type_name<'db: 'file, 'file>(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
         })),
         TypeLike::Import => {
-            if point.calculated() {
+            let name_def_ref =
+                name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
+            let p = name_def_ref.point();
+            if p.calculated() {
+                if p.type_() == PointType::Redirect {
+                    let new = p.as_redirected_node_ref(i_s.db);
+                    if new.maybe_name().is_some() {
+                        return check_type_name(i_s, new);
+                    }
+                } else if p.type_() == PointType::FileReference {
+                    let file = i_s.db.loaded_python_file(p.file_index());
+                    return TypeNameLookup::Module(file);
+                }
+
                 // When an import appears, this means that there's no redirect and the import leads
                 // nowhere.
-                if let Some(complex_index) = point.maybe_complex_index() {
+                if let Some(complex_index) = p.maybe_complex_index() {
                     if let ComplexPoint::TypeInstance(DbType::Namespace(namespace)) =
-                        name_node_ref.file.complex_points.get(complex_index)
+                        name_def_ref.file.complex_points.get(complex_index)
                     {
                         return TypeNameLookup::Namespace(namespace.clone());
                     }
                 }
-                debug_assert!(
-                    point.type_() == PointType::Unknown
-                        || point.type_() == PointType::MultiDefinition,
-                    "{point:?}"
-                );
+                debug_assert_eq!(p.type_(), PointType::Unknown);
                 TypeNameLookup::Unknown
             } else {
                 name_node_ref.file.inference(i_s).infer_name(new_name);
@@ -3193,7 +3211,7 @@ pub fn new_typing_named_tuple(
             name: Some(name),
             class_name: None,
             defined_at: args_node_ref.as_link(),
-            kind: FunctionType::Function,
+            kind: FunctionKind::Function,
             type_vars: (!type_var_likes.is_empty()).then_some(type_var_likes),
             params: CallableParams::Simple(Rc::from(params)),
             result_type: DbType::None,
@@ -3269,7 +3287,7 @@ pub fn new_collections_named_tuple(
         name: Some(name),
         class_name: None,
         defined_at: args_node_ref.as_link(),
-        kind: FunctionType::Function,
+        kind: FunctionKind::Function,
         type_vars: None,
         params: CallableParams::Simple(Rc::from(params)),
         result_type: DbType::None,

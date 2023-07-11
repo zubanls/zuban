@@ -11,7 +11,7 @@ use super::{Callable, Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionType,
+    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionKind,
     GenericsList, Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope,
     Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     Variance,
@@ -26,8 +26,9 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
-    calculate_callable_type_vars_and_return, calculate_class_init_type_vars_and_return, FormatData,
-    Generics, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
+    calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
+    calculate_class_init_type_vars_and_return, FormatData, Generics, LookupResult, Match, Matcher,
+    MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::format_pretty_callable;
@@ -126,26 +127,38 @@ impl<'db: 'a, 'a> Class<'a> {
                 Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
-                let calculated_type_args = calculate_callable_type_vars_and_return(
-                    i_s,
-                    class.as_ref(),
-                    Callable::new(&callable_content, Some(*self)),
-                    args.iter(),
-                    &|| args.as_node_ref(),
-                    result_context,
-                    on_type_error,
-                );
+                let calculated_type_args = match class {
+                    Some(class) => todo!() /*calculate_callable_init_type_vars_and_return(
+                        i_s,
+                        &class,
+                        Callable::new(&callable_content, Some(*self)),
+                        args.iter(),
+                        &|| args.as_node_ref(),
+                        result_context,
+                        Some(on_type_error),
+                    )*/,
+                    // Happens for example when NamedTuples are involved.
+                    None => calculate_callable_type_vars_and_return(
+                        i_s,
+                        None,
+                        Callable::new(&callable_content, Some(*self)),
+                        args.iter(),
+                        &|| args.as_node_ref(),
+                        result_context,
+                        Some(on_type_error),
+                    ),
+                };
                 Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Overload(overloaded_function)) => match overloaded_function
                 .find_matching_function(i_s, args, Some(self), true, result_context, on_type_error)
             {
-                OverloadResult::Single(func) => {
+                OverloadResult::Single(callable) => {
                     // Execute the found function to create the diagnostics.
-                    let result = calculate_class_init_type_vars_and_return(
+                    let result = calculate_callable_init_type_vars_and_return(
                         i_s,
                         self,
-                        func,
+                        callable,
                         args.iter(),
                         &|| args.as_node_ref(),
                         result_context,
@@ -910,7 +923,7 @@ impl<'db: 'a, 'a> Class<'a> {
             name: Some(name),
             class_name: None,
             defined_at: self.node_ref.as_link(),
-            kind: FunctionType::Function,
+            kind: FunctionKind::Function,
             type_vars: self.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(Rc::from(vec)),
             result_type: DbType::None,

@@ -2,8 +2,8 @@ use parsa_python_ast::*;
 
 use crate::arguments::NoArguments;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, Locality, Point, PointType, Specific,
-    TupleTypeArguments, TypeOrTypeVarTuple, Variance,
+    CallableContent, ComplexPoint, Database, DbType, Locality, OverloadImplementation, Point,
+    PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -14,8 +14,7 @@ use crate::matching::params::has_overlapping_params;
 use crate::matching::{matches_params, LookupResult, Match, Matcher, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
-    TypeOrClass,
+    format_pretty_callable, is_private, Class, Function, Instance, TypeOrClass,
 };
 
 impl<'db> Inference<'db, '_, '_> {
@@ -115,16 +114,16 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 StmtContent::FunctionDef(f) => self.calc_function_diagnostics(f, class),
                 StmtContent::ClassDef(class) => self.calc_class_diagnostics(class),
-                StmtContent::Decorated(decorated) => {
-                    for decorator in decorated.decorators().iter() {
-                        self.infer_named_expression(decorator.named_expression());
+                StmtContent::Decorated(decorated) => match decorated.decoratee() {
+                    Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
+                    Decoratee::ClassDef(class) => {
+                        for decorator in decorated.decorators().iter() {
+                            self.infer_named_expression(decorator.named_expression());
+                        }
+                        self.calc_class_diagnostics(class)
                     }
-                    match decorated.decoratee() {
-                        Decoratee::FunctionDef(f) => self.calc_function_diagnostics(f, class),
-                        Decoratee::ClassDef(class) => self.calc_class_diagnostics(class),
-                        Decoratee::AsyncFunctionDef(f) => todo!(),
-                    }
-                }
+                    Decoratee::AsyncFunctionDef(f) => todo!(),
+                },
                 StmtContent::IfStmt(if_stmt) => {
                     for block in if_stmt.iter_blocks() {
                         match block {
@@ -202,9 +201,9 @@ impl<'db> Inference<'db, '_, '_> {
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
         let c = Class::with_self_generics(self.i_s.db, class_node_ref);
-        self.file
-            .inference(&self.i_s.with_diagnostic_class_context(&c))
-            .calc_block_diagnostics(block, Some(c), None);
+        let i_s = self.i_s.with_diagnostic_class_context(&c);
+        let mut inference = self.file.inference(&i_s);
+        inference.calc_block_diagnostics(block, Some(c), None);
 
         for (i, base1) in c.bases(self.i_s.db).enumerate() {
             let instance1 = match base1 {
@@ -320,55 +319,17 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
-        let name_def_node_ref = NodeRef::new(self.file, f.name_definition().index());
-        if name_def_node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
-            self.check_point_cache(f.name_definition().index());
-        }
+        let function = Function::new(NodeRef::new(self.file, f.index()), class);
+        let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
-        if let Some(ComplexPoint::FunctionOverload(o)) = name_def_node_ref.complex() {
-            is_overload_member = o.implementing_function.is_none();
-            if o.functions.len() < 2 {
-                NodeRef::from_link(self.i_s.db, o.functions[0])
-                    .add_typing_issue(self.i_s, IssueType::OverloadSingleNotAllowed);
-            } else if o.implementing_function.is_none()
-                && !self.file.is_stub(self.i_s.db)
-                && class.map(|c| !c.is_protocol(self.i_s.db)).unwrap_or(true)
-            {
-                name_def_node_ref
-                    .add_typing_issue(self.i_s, IssueType::OverloadImplementationNeeded);
-            }
-            if o.implementing_function.is_some() && self.file.is_stub(self.i_s.db) {
-                name_def_node_ref
-                    .add_typing_issue(self.i_s, IssueType::OverloadStubImplementationNotAllowed);
-            }
-            let mut implementation_callable_content = None;
-            if let Some(i) = o.implementing_function {
-                let imp = Function::new(NodeRef::from_link(self.i_s.db, i), class);
-                if matches!(imp.node().parent(), FunctionParent::Decorated(_)) {
-                    let decorated = imp.decorated(self.i_s);
-                    implementation_callable_content =
-                        decorated.as_type(self.i_s).maybe_callable(self.i_s);
-                } else if !self.i_s.db.python_state.project.mypy_compatible
-                    || imp.return_annotation().is_some()
-                {
-                    implementation_callable_content =
-                        imp.as_type(self.i_s).maybe_callable(self.i_s);
+        let inf = function.as_inferred_from_name(self.i_s);
+        if let Some(ComplexPoint::FunctionOverload(o)) = decorator_ref.complex() {
+            is_overload_member = true;
+            for (i, c1) in o.iter_functions().enumerate() {
+                if let Some(implementation) = &o.implementation {
+                    self.calc_overload_implementation_diagnostics(&c1, implementation, i + 1)
                 }
-            }
-            for (i, link1) in o.functions.iter().enumerate() {
-                let f1 = Function::new(NodeRef::from_link(self.i_s.db, *link1), class);
-                let c1 = f1.as_callable(self.i_s, FirstParamProperties::None);
-                if let Some(implementation) = &implementation_callable_content {
-                    self.calc_overload_implementation_diagnostics(
-                        name_def_node_ref,
-                        &c1,
-                        &implementation,
-                        i + 1,
-                    )
-                }
-                for (k, link2) in o.functions[i + 1..].iter().enumerate() {
-                    let f2 = Function::new(NodeRef::from_link(self.i_s.db, *link2), class);
-                    let c2 = f2.as_callable(self.i_s, FirstParamProperties::None);
+                for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
                     if is_overload_unmatchable(self.i_s, &c1, &c2) {
                         NodeRef::from_link(self.i_s.db, c2.defined_at).add_typing_issue(
                             self.i_s,
@@ -394,11 +355,11 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                 }
             }
-        } else if name_def_node_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
+        } else if function.node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction)
+            && decorator_ref.point().maybe_specific() == Some(Specific::OverloadUnreachable)
         {
             is_overload_member = true;
         }
-        let function = Function::new(NodeRef::new(self.file, f.index()), class);
         // Make sure the type vars are properly pre-calculated
         function.type_vars(self.i_s);
         let (_, params, return_annotation, block) = f.unpack();
@@ -442,13 +403,13 @@ impl<'db> Inference<'db, '_, '_> {
 
     fn calc_overload_implementation_diagnostics(
         &mut self,
-        name_def_node_ref: NodeRef,
         overload_item: &CallableContent,
-        implementation: &CallableContent,
+        implementation: &OverloadImplementation,
         signature_index: usize,
     ) {
-        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation);
-        let implementation_result = &Type::new(&implementation.result_type);
+        let issue_node_ref = NodeRef::from_link(self.i_s.db, implementation.function_link);
+        let matcher = &mut Matcher::new_reverse_callable_matcher(&implementation.callable);
+        let implementation_result = &Type::new(&implementation.callable.result_type);
         let item_result = Type::new(&overload_item.result_type);
         if !item_result
             .is_sub_type_of(self.i_s, matcher, implementation_result)
@@ -457,7 +418,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .is_super_type_of(self.i_s, matcher, implementation_result)
                 .bool()
         {
-            name_def_node_ref.add_typing_issue(
+            issue_node_ref.add_typing_issue(
                 self.i_s,
                 IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
             );
@@ -467,13 +428,13 @@ impl<'db> Inference<'db, '_, '_> {
             self.i_s,
             matcher,
             &overload_item.params,
-            &implementation.params,
+            &implementation.callable.params,
             None,
             Variance::Contravariant,
             false,
         );
         if !match_.bool() {
-            name_def_node_ref.add_typing_issue(
+            issue_node_ref.add_typing_issue(
                 self.i_s,
                 IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
             );
@@ -675,7 +636,7 @@ fn try_pretty_format(
                 return;
             }
             DbType::FunctionOverload(overloads) => {
-                for c in overloads.functions().iter() {
+                for c in overloads.iter_functions() {
                     notes.push(format!("{prefix}@overload").into());
                     notes.push(format!("{prefix}{}", format_pretty_callable(i_s, c)).into());
                 }

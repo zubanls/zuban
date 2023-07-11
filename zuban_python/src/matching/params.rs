@@ -15,10 +15,6 @@ pub trait Param<'x>: Copy + std::fmt::Debug {
     fn name(&self, db: &'x Database) -> Option<&str>;
     fn specific<'db: 'x>(&self, db: &'db Database) -> WrappedParamSpecific<'x>;
     fn kind(&self, db: &Database) -> ParamKind;
-    fn func_annotation_link(&self) -> Option<PointLink> {
-        // Can be None for Callable
-        None
-    }
 }
 
 pub fn matches_params(
@@ -128,9 +124,10 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     | WrappedParamSpecific::PositionalOrKeyword(t2) => {
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    WrappedParamSpecific::Starred(s) => match s {
+                    WrappedParamSpecific::Starred(s2) => match s2 {
                         WrappedStarred::ArbitraryLength(t2) => {
-                            matches &= match_(i_s, matcher, t1, t2)
+                            matches &= match_(i_s, matcher, t1, t2);
+                            continue;
                         }
                         WrappedStarred::ParamSpecArgs(u) => todo!(),
                     },
@@ -278,6 +275,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             };
             params2.next();
         } else {
+            debug!("Params mismatch, because one side had less params: {param1:?}");
             return Match::new_false();
         }
     }
