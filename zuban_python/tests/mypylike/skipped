@@ -380,9 +380,7 @@ testNewAnalyzerTypeVarBoundInCycle
 testSelfTypeVarIndexExpr
 
 # classmethod overloads
-testGenericClassMethodOverloaded
 testOverloadClassmethodDisappears
-testOverloadWithClassMethods
 testOverloadWithInconsistentClassMethods
 testOverloadAndClassTypes
 testGenericClassInGenericFunctionOverloadedConstructor-skip

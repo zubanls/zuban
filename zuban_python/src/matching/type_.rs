@@ -23,8 +23,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    lookup_in_namespace, Callable, Class, Instance, Module, MroIterator, NamedTupleValue, Tuple,
-    TypeOrClass, TypingType,
+    lookup_in_namespace, Callable, Class, Instance, Module, MroIterator, NamedTupleValue,
+    OverloadedFunction, Tuple, TypeOrClass, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -1863,6 +1863,12 @@ impl<'a> Type<'a> {
             DbType::Callable(content) => {
                 Callable::new(content, None).execute(i_s, args, on_type_error, result_context)
             }
+            DbType::FunctionOverload(overload) => OverloadedFunction::new(overload, None).execute(
+                i_s,
+                args,
+                result_context,
+                on_type_error,
+            ),
             DbType::TypeVar(tv) => match &tv.type_var.bound {
                 Some(bound) => {
                     Type::new(bound).execute(i_s, None, args, result_context, on_type_error)

@@ -5,8 +5,8 @@ use std::rc::Rc;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
-    FunctionKind, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind, Locality, MroIndex,
-    NewType, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
+    FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
+    Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -747,7 +747,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     todo!()
                                                 }
                                             }
-                                            return result;
+                                            return result.map(callable_into_inferred);
                                         }
                                     }
                                 }
@@ -840,9 +840,29 @@ impl<'db: 'slf, 'slf> Inferred {
                     PointType::Complex => {
                         let file = i_s.db.loaded_python_file(definition.file);
                         match file.complex_points.get(point.complex_index()) {
-                            ComplexPoint::FunctionOverload(o) => {
-                                debug!("TODO function overload class descriptor");
-                            }
+                            ComplexPoint::FunctionOverload(o) => match o.kind() {
+                                FunctionKind::Function => {
+                                    debug!("TODO callable decorated class descriptor")
+                                }
+                                FunctionKind::Property => todo!(),
+                                FunctionKind::ClassMethod => {
+                                    return Some(Inferred::from_type(DbType::FunctionOverload(
+                                        Rc::new(FunctionOverload::new(
+                                            o.iter_functions()
+                                                .map(|callable| {
+                                                    infer_class_method(
+                                                        i_s,
+                                                        *class,
+                                                        attribute_class,
+                                                        callable,
+                                                    )
+                                                    .unwrap_or_else(|| todo!())
+                                                })
+                                                .collect(),
+                                        )),
+                                    )))
+                                }
+                            },
                             ComplexPoint::TypeInstance(t) => match t {
                                 DbType::Callable(c) => match c.kind {
                                     FunctionKind::Function => {
@@ -871,7 +891,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 todo!()
                                             }
                                         }
-                                        return result;
+                                        return result.map(callable_into_inferred);
                                     }
                                 },
                                 DbType::Class(link, generics) if apply_descriptor => {
@@ -1471,7 +1491,7 @@ fn infer_class_method(
     mut class: Class,
     func_class: Class,
     callable: &CallableContent,
-) -> Option<Inferred> {
+) -> Option<CallableContent> {
     let mut func_class = func_class;
     let class_generics_not_defined_yet =
         matches!(class.generics, Generics::NotDefinedYet) && class.type_vars(i_s).is_some();
@@ -1498,7 +1518,7 @@ fn infer_class_method(
         }
     }
     */
-    let t = classmethod_as_db_type(
+    let t = proper_classmethod_callable(
         i_s,
         callable,
         &class,
@@ -1510,16 +1530,16 @@ fn infer_class_method(
     let mut c = callable.remove_first_param()
     let t = DbType::Callable(Rc::new(c));
     */
-    Some(Inferred::from_type(t))
+    Some(t)
 }
 
-pub fn classmethod_as_db_type(
+fn proper_classmethod_callable(
     i_s: &InferenceState,
     callable: &CallableContent,
     class: &Class,
     func_class: &Class,
     class_generics_not_defined_yet: bool,
-) -> DbType {
+) -> CallableContent {
     let mut class_method_type_var_usage = None;
     // TODO performance this clone might not be necessary.
     let mut callable = callable.clone();
@@ -1626,7 +1646,11 @@ pub fn classmethod_as_db_type(
     );
     let type_vars = type_vars.into_inner();
     callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-    DbType::Callable(Rc::new(callable))
+    callable
+}
+
+fn callable_into_inferred(callable: CallableContent) -> Inferred {
+    Inferred::from_type(DbType::Callable(Rc::new(callable)))
 }
 
 fn type_of_complex<'db: 'x, 'x>(

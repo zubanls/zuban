@@ -712,6 +712,10 @@ impl FunctionOverload {
         Self(functions)
     }
 
+    pub fn kind(&self) -> FunctionKind {
+        self.0[0].kind
+    }
+
     pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
         self.0.iter()
     }
@@ -1170,6 +1174,10 @@ pub struct OverloadDefinition {
 impl OverloadDefinition {
     pub fn iter_functions(&self) -> impl Iterator<Item = &CallableContent> {
         self.functions.iter_functions()
+    }
+
+    pub fn kind(&self) -> FunctionKind {
+        self.functions.kind()
     }
 }
 
