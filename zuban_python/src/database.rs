@@ -1157,7 +1157,7 @@ pub enum FunctionKind {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct OverloadDefinition {
-    pub implementing_function: Option<CallableContent>,
+    pub implementing_function: Option<(PointLink, CallableContent)>,
     pub functions: Rc<FunctionOverload>,
 }
 

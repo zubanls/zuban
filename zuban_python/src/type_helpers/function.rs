@@ -12,7 +12,7 @@ use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, Know
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericItem, Locality,
-    OverloadDefinition, ParamSpecUsage, ParamSpecific, Point, PointType, Specific,
+    OverloadDefinition, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, Specific,
     StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments, TypeOrTypeVarTuple,
     TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarName,
     TypeVarUsage, Variance,
@@ -460,7 +460,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         };
         add_func(details.inferred);
-        let mut implementing_function: Option<CallableContent> = None;
+        let mut implementing_function: Option<(PointLink, CallableContent)> = None;
         loop {
             let point = file.points.get(current_name_index);
             if !point.calculated() {
@@ -493,8 +493,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
             if next_details.is_overload {
-                if let Some(implementing) = &implementing_function {
-                    NodeRef::from_link(i_s.db, implementing.defined_at)
+                if let Some((link, _)) = &implementing_function {
+                    NodeRef::from_link(i_s.db, *link)
                         .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
                 }
 
@@ -511,12 +511,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     if !next_details.has_decorator && next_func.is_dynamic()
                         || next_details.inferred.as_type(i_s).is_any()
                     {
-                        implementing_function =
-                            Some(CallableContent::new_any_with_defined_at(func_ref.as_link()));
+                        implementing_function = Some((
+                            func_ref.as_link(),
+                            CallableContent::new_any_with_defined_at(func_ref.as_link()),
+                        ));
                     } else if let Some(callable) =
                         next_details.inferred.as_type(i_s).maybe_callable(i_s)
                     {
-                        implementing_function = Some(rc_unwrap_or_clone(callable));
+                        implementing_function =
+                            Some((func_ref.as_link(), rc_unwrap_or_clone(callable)));
                     } else {
                         todo!()
                     }
@@ -540,9 +543,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             name_def_node_ref(functions.last().unwrap().defined_at)
                 .add_typing_issue(i_s, IssueType::OverloadImplementationNeeded);
         }
-        if let Some(implementing_function) = &implementing_function {
+        if let Some((link, _)) = &implementing_function {
             if file.is_stub(i_s.db) {
-                name_def_node_ref(implementing_function.defined_at)
+                name_def_node_ref(*link)
                     .add_typing_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
             }
         }

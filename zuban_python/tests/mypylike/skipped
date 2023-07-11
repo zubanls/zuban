@@ -1,8 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
 
-testOverloadWithObjectDecorator
-
 # Weird Decorator Cases
 testOverloadWithErrorDecorator
 testBoundOnDecorator
