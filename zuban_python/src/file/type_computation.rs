@@ -2889,7 +2889,7 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
             debug!("TODO check if this is the right place for this kind of stuff.");
             TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
         } else {
-            let specific = point.maybe_specific().unwrap();
+            let specific = point.specific();
             TypeNameLookup::SpecialType(match specific {
                 Specific::TypingType => SpecialType::Type,
                 Specific::TypingCallable => SpecialType::Callable,
@@ -2975,7 +2975,7 @@ fn check_type_name<'db: 'file, 'file>(
             }
         }
         TypeLike::Assignment(assignment) => {
-            if name_node_ref.point().calculated() {
+            if point.calculated() {
                 // TODO This is mostly for loading Callable and other builtins. Should probably be
                 //      changed/removed
                 return load_cached_type(name_node_ref);
