@@ -2,7 +2,6 @@
 testSelfTypeRestrictedClassMethod
 
 testOverloadWithObjectDecorator
-testTreeShadowingViaParentPackage
 
 # Weird Decorator Cases
 testOverloadWithErrorDecorator
