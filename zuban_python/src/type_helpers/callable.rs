@@ -20,7 +20,7 @@ impl<'a> Callable<'a> {
         }
     }
 
-    pub fn diagnostic_string(&self, db: &Database, class: Option<&Class>) -> Option<String> {
+    pub fn diagnostic_string(&self, db: &Database) -> Option<String> {
         self.content.name.map(|n| {
             let name = n.as_str(db);
             match self.content.class_name {

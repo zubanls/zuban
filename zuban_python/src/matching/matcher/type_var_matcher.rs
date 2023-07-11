@@ -28,7 +28,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
     pub fn diagnostic_string(&self, db: &Database, class: Option<&Class>) -> Option<String> {
         match self {
             Self::Function(f) => Some(f.diagnostic_string(class)),
-            Self::Callable(c) => c.diagnostic_string(db, class),
+            Self::Callable(c) => c.diagnostic_string(db),
         }
     }
 
