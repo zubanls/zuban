@@ -4,7 +4,6 @@ testSelfTypeRestrictedClassMethod
 # Weird Decorator Cases
 testBoundOnDecorator
 testGenericClassPropertyBound
-testOverloadDeferredNode
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2

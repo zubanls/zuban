@@ -124,9 +124,10 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
                     | WrappedParamSpecific::PositionalOrKeyword(t2) => {
                         matches &= match_(i_s, matcher, t1, t2)
                     }
-                    WrappedParamSpecific::Starred(s) => match s {
+                    WrappedParamSpecific::Starred(s2) => match s2 {
                         WrappedStarred::ArbitraryLength(t2) => {
-                            matches &= match_(i_s, matcher, t1, t2)
+                            matches &= match_(i_s, matcher, t1, t2);
+                            continue;
                         }
                         WrappedStarred::ParamSpecArgs(u) => todo!(),
                     },
@@ -274,6 +275,7 @@ pub fn matches_simple_params<'db: 'x + 'y, 'x, 'y, P1: Param<'x>, P2: Param<'y>>
             };
             params2.next();
         } else {
+            debug!("Params mismatch, because one side had less params: {param1:?}");
             return Match::new_false();
         }
     }
