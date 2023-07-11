@@ -2839,6 +2839,17 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingAny => SpecialType::Any,
             Specific::TypingGeneric => SpecialType::Generic,
             Specific::TypingProtocol => SpecialType::Protocol,
+            Specific::TypingType => SpecialType::Type,
+            Specific::TypingCallable => SpecialType::Callable,
+            Specific::TypingLiteralString => SpecialType::LiteralString,
+            Specific::TypingUnpack => SpecialType::Unpack,
+            Specific::TypingConcatenateClass => SpecialType::Concatenate,
+            Specific::TypingTypeAlias => SpecialType::TypeAlias,
+            Specific::TypingLiteral => SpecialType::Literal,
+            Specific::TypingFinal => SpecialType::Final,
+            Specific::TypingSelf => SpecialType::Self_,
+            Specific::TypingAnnotated => SpecialType::Annotated,
+            Specific::TypingTuple => SpecialType::Tuple,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg
             | Specific::MypyExtensionsNamedArg
@@ -2889,21 +2900,9 @@ fn load_cached_type(node_ref: NodeRef) -> TypeNameLookup {
             debug!("TODO check if this is the right place for this kind of stuff.");
             TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(node_ref))
         } else {
-            let specific = point.specific();
-            TypeNameLookup::SpecialType(match specific {
-                Specific::TypingType => SpecialType::Type,
-                Specific::TypingCallable => SpecialType::Callable,
-                Specific::TypingLiteralString => SpecialType::LiteralString,
-                Specific::TypingUnpack => SpecialType::Unpack,
-                Specific::TypingConcatenateClass => SpecialType::Concatenate,
-                Specific::TypingTypeAlias => SpecialType::TypeAlias,
-                Specific::TypingLiteral => SpecialType::Literal,
-                Specific::TypingFinal => SpecialType::Final,
-                Specific::TypingSelf => SpecialType::Self_,
-                Specific::TypingAnnotated => SpecialType::Annotated,
-                Specific::TypingTuple => SpecialType::Tuple,
-                _ => check_special_type(point).unwrap_or_else(|| todo!("{specific:?}")),
-            })
+            TypeNameLookup::SpecialType(
+                check_special_type(point).unwrap_or_else(|| todo!("{point:?}")),
+            )
         }
     }
 }
@@ -3004,11 +3003,6 @@ fn check_type_name<'db: 'file, 'file>(
             Function::new(NodeRef::new(name_node_ref.file, f.index()), None)
         })),
         TypeLike::Import => {
-            if point.calculated() {
-                // TODO This is mostly for loading Callable and other builtins. Should probably be
-                //      changed/removed
-                return load_cached_type(name_node_ref);
-            }
             let name_def_ref =
                 name_node_ref.add_to_node_index(-(NAME_DEF_TO_NAME_DIFFERENCE as i64));
             let p = name_def_ref.point();
