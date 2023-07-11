@@ -119,6 +119,8 @@ testUnsafeOverlappingNamedTuple
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
 
+# Overloaded function implementation does not accept all possible arguments with type vars
+testOverloadAndClassTypes
 # Overload class self variable matching (__init__ against __init__)
 testUnpackIterableClassWithOverloadedIter
 testUnpackIterableClassWithOverloadedIter2
@@ -128,6 +130,7 @@ overload_union_math_on_class_init_constrained
 testOverloadedInitSupertype
 # overload classmethod variants formatting cls type should be Class not any
 testOverloadClassmethodDisappears
+testGenericClassAlternativeConstructorPreciseOverloaded
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -381,14 +384,13 @@ testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
 testSelfTypeVarIndexExpr
 
-# classmethod overloads
-testOverloadAndClassTypes
-testGenericClassInGenericFunctionOverloadedConstructor-skip
-testGenericClassAlternativeConstructorPreciseOverloaded
+# classmethod self param in overload is not a self param
 testOverloadClassMethodImplementation
-testOverloadWithSwappedDecorators
 testClassMethodBeforeInit3
+# Recursion error wtf?
 testRefMethodWithOverloadDecorator
+# classmethod overloads
+testGenericClassInGenericFunctionOverloadedConstructor-skip
 # classmethod self type with overload
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod

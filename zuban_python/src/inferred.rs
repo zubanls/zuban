@@ -699,7 +699,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                             results.into_iter().next().unwrap(),
                                         ));
                                     } else if results.len() != o.iter_functions().count() {
-                                        todo!()
+                                        todo!("{}:{}", results.len(), o.iter_functions().count())
                                     }
                                 }
                                 return Some(Self::new_bound_method(
