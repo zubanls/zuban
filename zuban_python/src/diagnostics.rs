@@ -545,7 +545,7 @@ impl<'db> Diagnostic<'db> {
             OverloadInconsistentKind { kind } => format!(
                 "Overload does not consistently use the \"@{}\" decorator on all function signatures.",
                 match kind {
-                    FunctionKind::ClassMethod => "classmethod",
+                    FunctionKind::Classmethod => "classmethod",
                     FunctionKind::Property => "property",
                     FunctionKind::Function => unreachable!()
                 }

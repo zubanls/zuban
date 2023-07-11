@@ -1156,7 +1156,7 @@ impl DbType {
 pub enum FunctionKind {
     Function,
     Property,
-    ClassMethod,
+    Classmethod,
 }
 
 #[derive(Debug, Clone, PartialEq)]

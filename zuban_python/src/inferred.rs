@@ -722,7 +722,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         FunctionKind::Property => {
                                             todo!()
                                         }
-                                        FunctionKind::ClassMethod => {
+                                        FunctionKind::Classmethod => {
                                             let result = infer_class_method(
                                                 i_s,
                                                 instance.class,
@@ -845,7 +845,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     debug!("TODO callable decorated class descriptor")
                                 }
                                 FunctionKind::Property => todo!(),
-                                FunctionKind::ClassMethod => {
+                                FunctionKind::Classmethod => {
                                     return Some(Inferred::from_type(DbType::FunctionOverload(
                                         Rc::new(FunctionOverload::new(
                                             o.iter_functions()
@@ -869,7 +869,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         debug!("TODO callable decorated class descriptor")
                                     }
                                     FunctionKind::Property => todo!(),
-                                    FunctionKind::ClassMethod => {
+                                    FunctionKind::Classmethod => {
                                         let result =
                                             infer_class_method(i_s, *class, attribute_class, c);
                                         if result.is_none() {

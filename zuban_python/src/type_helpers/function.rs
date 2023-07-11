@@ -409,7 +409,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .inference(i_s)
                 .infer_named_expression(decorator.named_expression());
             if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
-                kind = FunctionKind::ClassMethod;
+                kind = FunctionKind::Classmethod;
                 continue;
             }
             if i.maybe_saved_link() == Some(i_s.db.python_state.overload_link()) {
@@ -593,7 +593,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             {
                 return false;
             }
-            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionKind::ClassMethod)
+            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionKind::Classmethod)
         } else {
             false
         }
