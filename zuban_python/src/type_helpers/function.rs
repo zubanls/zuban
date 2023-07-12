@@ -616,10 +616,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn is_classmethod(&self, i_s: &InferenceState) -> bool {
-        self.kind(i_s) == FunctionKind::Classmethod
-    }
-
     pub fn as_callable(
         &self,
         i_s: &InferenceState,

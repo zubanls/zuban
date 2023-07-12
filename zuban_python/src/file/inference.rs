@@ -1805,12 +1805,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 } else if let Some((function, args)) = self.i_s.current_execution()
                                 {
                                     if specific == Specific::MaybeSelfParam {
-                                        if func.is_classmethod(self.i_s) {
-                                            Inferred::from_type(DbType::Type(Rc::new(
-                                                DbType::Self_,
-                                            )))
-                                        } else {
-                                            Inferred::new_saved(self.file, node_index, point)
+                                        match func.kind(self.i_s) {
+                                            FunctionKind::Function | FunctionKind::Property => {
+                                                Inferred::new_saved(self.file, node_index, point)
+                                            }
+                                            FunctionKind::Classmethod => Inferred::from_type(
+                                                DbType::Type(Rc::new(DbType::Self_)),
+                                            ),
+                                            FunctionKind::Staticmethod => todo!(), //Inferred::new_any(),
                                         }
                                     } else {
                                         function.infer_param(self.i_s, node_index, args)
