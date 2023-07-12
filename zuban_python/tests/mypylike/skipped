@@ -1097,17 +1097,10 @@ testNoneAliasStrict
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 
-# abstractmethod / ABCMeta
-testMakeClassNoLongerAbstract1
-testMakeClassNoLongerAbstract2
-testAddAbstractMethod
-testMakeClassAbstract
-testMakeMethodNoLongerAbstract1
-testMakeMethodNoLongerAbstract2
-testAbstractBodyTurnsEmpty
-testAbstractBodyTurnsEmptyProtocol
-testAbstractGlobalFunction
+# ""abstractmethod" used with a non-method"
 testAbstractNestedFunction
+testAbstractGlobalFunction
+# abstractmethod / ABCMeta
 testInferenceWithAbstractClassContext3
 testAbstractClasses
 testAbstractInit
@@ -1115,8 +1108,6 @@ testNewAnalyzerClassPropertiesInAllScopes
 testConstructorJoinsWithCustomMetaclass
 testDedicatedErrorCodeTypeAbstract
 testSerializeAbstractClass
-testSerializeAbstractPropertyIncremental
-testSerializeAbstractPropertyDisallowUntypedIncremental
 
 # super()
 testSuperExpressionsWhenInheritingFromGenericType
@@ -1139,8 +1130,13 @@ testGenericMethodRestoreMetaLevel3
 testAbstractBodyTurnsEmptyCoarse
 testSerialize__init__
 testSerializeOverloaded__init__
+testAbstractBodyTurnsEmpty
+testAbstractBodyTurnsEmptyProtocol
 
-# "Cannot instantiate abstract class "C" with abstract attribute "x""
+# class: "Cannot instantiate abstract class "C" with abstract attribute "f""
+testAddAbstractMethod
+testMakeClassAbstract
+# protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
 testNonProtocolToProtocol
 testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
 testCannotInstantiateAbstractVariableExplicitProtocolSubtypes
