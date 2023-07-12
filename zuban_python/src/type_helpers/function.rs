@@ -365,10 +365,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if let Some(class) = self.class {
             let class = Class::with_self_generics(i_s.db, class.node_ref);
             Self::new(self.node_ref, Some(class))
-                .save_decorated(&i_s.with_class_context(&class), decorator_ref)
+                .decorated_to_be_saved(&i_s.with_class_context(&class), decorator_ref)
         } else {
-            self.save_decorated(i_s, decorator_ref)
+            self.decorated_to_be_saved(i_s, decorator_ref)
         }
+        .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
     }
 
     pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
@@ -392,23 +393,28 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    fn save_decorated(&self, i_s: &InferenceState<'db, '_>, decorator_ref: NodeRef) -> Inferred {
+    fn decorated_to_be_saved(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        decorator_ref: NodeRef,
+    ) -> Inferred {
         let node = self.node();
-        let details = self.calculate_decorated_function_details(i_s);
+        let Some(details) = self.calculate_decorated_function_details(i_s) else {
+            return Inferred::new_any()
+        };
 
         let func_node = self.node();
         let file = self.node_ref.file;
         if details.is_overload {
-            let overload = self.calculate_next_overload_items(i_s, details);
-            return Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(
-                overload,
-            )))
-            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index);
+            if let Some(overload) = self.calculate_next_overload_items(i_s, details) {
+                return Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(
+                    overload,
+                )));
+            } else {
+                return Inferred::new_any();
+            }
         }
-
-        details
-            .inferred
-            .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
+        details.inferred
     }
 
     fn expect_decorated_node(&self) -> Decorated {
@@ -418,26 +424,36 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         decorated
     }
 
-    fn calculate_decorated_function_details(&self, i_s: &InferenceState) -> FunctionDetails {
+    fn calculate_decorated_function_details(
+        &self,
+        i_s: &InferenceState,
+    ) -> Option<FunctionDetails> {
         let decorated = self.expect_decorated_node();
         let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
         let mut kind = FunctionKind::Function;
         let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
+            if kind == FunctionKind::Property {
+                NodeRef::new(self.node_ref.file, decorator.index())
+                    .add_typing_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
+                return None;
+            }
             let i = self
                 .node_ref
                 .file
                 .inference(i_s)
                 .infer_named_expression(decorator.named_expression());
-            if i.maybe_saved_link() == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
+            let saved_link = i.maybe_saved_link();
+            if saved_link == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
                 if kind == FunctionKind::Staticmethod {
                     NodeRef::new(self.node_ref.file, decorated.index())
-                        .add_typing_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
+                        .add_typing_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
+                    return None;
                 }
                 kind = FunctionKind::Classmethod;
                 continue;
             }
-            if i.maybe_saved_link() == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
+            if saved_link == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
                 if kind == FunctionKind::Classmethod {
                     NodeRef::new(self.node_ref.file, decorated.index())
                         .add_typing_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
@@ -445,11 +461,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 kind = FunctionKind::Staticmethod;
                 continue;
             }
-            if i.maybe_saved_link() == Some(i_s.db.python_state.overload_link()) {
+            if saved_link == Some(i_s.db.python_state.overload_link()) {
                 is_overload = true;
                 continue;
             }
-            if i.maybe_saved_link() == Some(i_s.db.python_state.abstractmethod_link()) {
+            if saved_link == Some(i_s.db.python_state.abstractmethod_link()) {
+                continue;
+            }
+            if saved_link == Some(i_s.db.python_state.property_node_ref().as_link()) {
+                if is_overload {
+                    NodeRef::new(self.node_ref.file, decorator.index())
+                        .add_typing_issue(i_s, IssueType::OverloadedPropertyNotSupported);
+                    return None;
+                }
+                kind = FunctionKind::Property;
                 continue;
             }
             // TODO check if it's an function without a return annotation and
@@ -473,19 +498,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 todo!()
             }
         }
-        FunctionDetails {
+        Some(FunctionDetails {
             inferred,
             kind,
             is_overload,
             has_decorator: true,
-        }
+        })
     }
 
     fn calculate_next_overload_items(
         &self,
         i_s: &InferenceState,
         details: FunctionDetails,
-    ) -> OverloadDefinition {
+    ) -> Option<OverloadDefinition> {
         let first_index = self.node().name().index();
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
@@ -500,6 +525,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut inconsistent_function_kind = None;
         add_func(details.inferred);
         let mut implementation: Option<OverloadImplementation> = None;
+        let mut should_error_out = false;
         loop {
             let point = file.points.get(current_name_index);
             if !point.calculated() {
@@ -516,7 +542,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let next_func = Self::new(func_ref, self.class);
             let next_details = match func_ref.point().maybe_specific() {
                 Some(Specific::DecoratedFunction) => {
-                    next_func.calculate_decorated_function_details(i_s)
+                    if let Some(d) = next_func.calculate_decorated_function_details(i_s) {
+                        d
+                    } else {
+                        should_error_out = true;
+                        next_func
+                            .decorator_ref()
+                            .set_point(Point::new_simple_specific(
+                                Specific::OverloadUnreachable,
+                                Locality::File,
+                            ));
+                        continue;
+                    }
                 }
                 Some(Specific::Function) => FunctionDetails {
                     inferred: Inferred::from_type(
@@ -593,7 +630,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             NodeRef::new(self.node_ref.file, self.expect_decorated_node().index())
                 .add_typing_issue(i_s, IssueType::OverloadInconsistentKind { kind })
         }
-        if functions.len() < 2 {
+        if functions.len() < 2 && !should_error_out {
             self.node_ref
                 .add_typing_issue(i_s, IssueType::OverloadSingleNotAllowed);
         } else if implementation.is_none()
@@ -610,10 +647,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             }
         }
         debug_assert!(!functions.is_empty());
-        OverloadDefinition {
+        (!should_error_out).then(|| OverloadDefinition {
             functions: Rc::new(FunctionOverload::new(functions.into_boxed_slice())),
             implementation,
-        }
+        })
     }
 
     pub fn as_callable(

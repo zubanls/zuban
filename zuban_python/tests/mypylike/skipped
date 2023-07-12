@@ -329,6 +329,14 @@ testTypeAliasesResultingInPlainInstance
 testTypingSelfNonAnnotationUses
 testGenericClassPropertyBound
 
+# Property setter
+testEmptyBodyAllowedPropertyNonAbstractStub
+testEmptyBodyAllowedPropertyAbstract
+testSerializeAbstractPropertyIncremental
+testSerializeAbstractPropertyDisallowUntypedIncremental
+testDecoratedPropertySetter
+# "Only supported top decorator is @f.setter"
+testOverloadedProperty
 # Property
 testBoundMethodUsage
 testNonMethodProperty
@@ -370,10 +378,6 @@ testSerializeForwardReferenceToAliasInProperty
 testSerializeForwardReferenceToImportedAliasInProperty
 testMixinSubtypedProperty
 testMixinTypedPropertyReversed
-# Decorated property not supported
-testOverloadedProperty
-testOverloadedProperty2
-testDecoratedPropertySetter
 # abstractproperty
 testReadOnlyAbstractProperty
 testReadOnlyAbstractPropertyForwardRef

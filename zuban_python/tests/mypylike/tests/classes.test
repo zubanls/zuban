@@ -85,3 +85,27 @@ class C:
   @staticmethod  # E: Cannot have both classmethod and staticmethod
   @classmethod
   def bar(cls) -> None: pass
+
+[case overloaded_property_not_possible]
+# There's also testOverloadedProperty, but it's not complete
+from typing import overload
+class A:
+    @property  # E: An overload can not be a property
+    @overload
+    def f(self) -> int: pass
+    @property  # E: An overload can not be a property
+    @overload
+    def f(self) -> int: pass
+
+class B:
+    @property  # E: An overload can not be a property
+    @overload
+    def f(self) -> int: pass
+    @property  # E: An overload can not be a property
+    @overload
+    def f(self) -> int: pass
+    @property
+    def f(self) -> int: pass
+
+reveal_type(A().f)  # N: Revealed type is "Any"
+reveal_type(B().f)  # N: Revealed type is "Any"
