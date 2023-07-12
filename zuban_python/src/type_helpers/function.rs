@@ -374,7 +374,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
         if self.node_ref.point().specific() == Specific::DecoratedFunction {
             // Ensure it's cached
-            self.decorated(i_s);
+            let inf = self.decorated(i_s);
+            if NodeRef::from_link(i_s.db, inf.maybe_saved_link().unwrap())
+                .point()
+                .maybe_specific()
+                == Some(Specific::OverloadUnreachable)
+            {
+                return FunctionKind::Function;
+            }
             match self.decorator_ref().complex() {
                 Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
                 Some(ComplexPoint::TypeInstance(DbType::Callable(c))) => c.kind,
@@ -610,19 +617,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn is_classmethod(&self, i_s: &InferenceState) -> bool {
-        if self.node_ref.point().maybe_specific() == Some(Specific::DecoratedFunction) {
-            let inf = self.decorated(i_s);
-            if NodeRef::from_link(i_s.db, inf.maybe_saved_link().unwrap())
-                .point()
-                .maybe_specific()
-                == Some(Specific::OverloadUnreachable)
-            {
-                return false;
-            }
-            matches!(inf.as_type(i_s).as_ref(), DbType::Callable(c) if c.kind == FunctionKind::Classmethod)
-        } else {
-            false
-        }
+        self.kind(i_s) == FunctionKind::Classmethod
     }
 
     pub fn as_callable(
