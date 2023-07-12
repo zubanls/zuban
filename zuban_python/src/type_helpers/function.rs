@@ -745,6 +745,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             DbType::Self_
                         } else {
                             self.class.unwrap().as_db_type(i_s.db)
+                            /*
+                            match kind {
+                                FunctionKind::Function | FunctionKind::Property => self.class.unwrap().as_db_type(i_s.db),
+                                FunctionKind::Classmethod => todo!(),
+                                FunctionKind::Staticmethod => self.class.unwrap().as_db_type(i_s.db),
+                            }
+                            */
                         }
                     } else {
                         DbType::Any
