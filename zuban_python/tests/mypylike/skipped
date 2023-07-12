@@ -206,6 +206,8 @@ testWideOuterContextEmptyError
 # Value of type variable "P" of "new_pro" cannot be "U"
 testTypeUsingTypeCTwoTypeVars
 testOverloadedCallWithVariableTypes
+# Bound formatting on errors
+testBoundMethodUsage
 
 # Tuple type var context
 testTupleContextFromIterable
@@ -335,48 +337,39 @@ testEmptyBodyAllowedPropertyAbstract
 testSerializeAbstractPropertyIncremental
 testSerializeAbstractPropertyDisallowUntypedIncremental
 testDecoratedPropertySetter
+testNewAnalyzerProperty
+testOverloadNotConfusedForProperty
+testAllowPropertyAndInit1
+testPropertyWithDeleterButNoSetter
+testAllowPropertyAndInit2
+testOverrideAttrWithSettableProperty
+testOverrideAttrWithSettablePropertyAnnotation
+testPropertyWithSetter
+testFastParseProperty
+testFastParseConditionalProperty
+testSerializeForwardReferenceToAliasInProperty
+# "Read-only property cannot override read-write property"
+testColumnProperty
 # "Only supported top decorator is @f.setter"
 testOverloadedProperty
+testPropertyWithExtraMethod
+# "Property "f" defined in "A" is read-only"
+testDynamicallyTypedProperty
 # Property
-testBoundMethodUsage
-testNonMethodProperty
 testInvalidArgCountForProperty
-testNewAnalyzerProperty
 testNewAnalyzerNoCrashOnCustomProperty
-testOverloadNotConfusedForProperty
-testForwardReferenceToDynamicallyTypedProperty
-testForwardReferenceToStaticallyTypedProperty
 testTypingSelfProperty
-testSelfTypePropertyUnion
 testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
-testUnionPropertyField
-testAccessingReadOnlyProperty
 testAssigningToReadOnlyProperty
 testAssigningToInheritedReadOnlyProperty
 testPropertyGetterBody
-testDynamicallyTypedProperty
-testPropertyWithSetter
-testPropertyWithDeleterButNoSetter
-testAllowPropertyAndInit1
-testAllowPropertyAndInit2
-testPropertyWithExtraMethod
-testOverrideAttrWithSettableProperty
-testOverrideAttrWithSettablePropertyAnnotation
 testOverrideMethodProperty
 testOverridePropertyMethod
-testEllipsis
-testCrashOnComplexNamedTupleUnionProperty
-testNamedTupleProperty
 testNewNamedTupleProperty
-testFastParseProperty
-testFastParseConditionalProperty
-testColumnProperty
-testSerializeForwardReferenceToAliasInProperty
 testSerializeForwardReferenceToImportedAliasInProperty
-testMixinSubtypedProperty
 testMixinTypedPropertyReversed
 # abstractproperty
 testReadOnlyAbstractProperty
@@ -418,6 +411,8 @@ testGenericClassInGenericFunctionOverloadedConstructor-skip
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
 
+# ""property" used with a non-method"
+testNonMethodProperty
 # "staticmethod" used with a non-method"
 testStaticmethodAndNonMethod
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
