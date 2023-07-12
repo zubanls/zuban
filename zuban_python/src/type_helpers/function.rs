@@ -371,6 +371,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
+    pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
+        if self.node_ref.point().specific() == Specific::DecoratedFunction {
+            // Ensure it's cached
+            self.decorated(i_s);
+            match self.decorator_ref().complex() {
+                Some(ComplexPoint::FunctionOverload(o)) => o.kind(),
+                Some(ComplexPoint::TypeInstance(DbType::Callable(c))) => c.kind,
+                _ => FunctionKind::Function,
+            }
+        } else {
+            FunctionKind::Function
+        }
+    }
+
     fn save_decorated(&self, i_s: &InferenceState<'db, '_>, decorator_ref: NodeRef) -> Inferred {
         let node = self.node();
         let details = self.calculate_decorated_function_details(i_s);

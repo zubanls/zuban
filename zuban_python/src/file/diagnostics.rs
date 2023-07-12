@@ -2,8 +2,9 @@ use parsa_python_ast::*;
 
 use crate::arguments::NoArguments;
 use crate::database::{
-    CallableContent, ComplexPoint, Database, DbType, Locality, OverloadImplementation, Point,
-    PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple, Variance,
+    CallableContent, ComplexPoint, Database, DbType, FunctionKind, Locality,
+    OverloadImplementation, Point, PointType, Specific, TupleTypeArguments, TypeOrTypeVarTuple,
+    Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -360,7 +361,10 @@ impl<'db> Inference<'db, '_, '_> {
         {
             is_overload_member = true;
         }
-        if class.is_some() && function.node().params().iter().next().is_none() {
+        if class.is_some()
+            && function.node().params().iter().next().is_none()
+            && function.kind(self.i_s) != FunctionKind::Staticmethod
+        {
             function
                 .node_ref
                 .add_typing_issue(self.i_s, IssueType::MethodWithoutArguments)

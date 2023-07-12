@@ -397,18 +397,16 @@ SelfTypeOverloadedClassMethod
 
 # "staticmethod" used with a non-method"
 testStaticmethodAndNonMethod
-# Error for staticmethod: "Method must have at least one argument. Did you forget the "self" argument?"
-testSerializeStaticMethod
-# staticmethod
-testTypeConstructorReturnsTypeType
-testTypingSelfClassMethod
-testForwardReferenceToDynamicallyTypedStaticMethod
-testOverloadWithSwappedDecorators2
+# Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testOverloadWithStaticMethods
+testOverloadWithSwappedDecorators2
+# "Static methods cannot use Self type"
+testTypingSelfClassMethod
+# staticmethod
+testForwardReferenceToDynamicallyTypedStaticMethod
 testBuiltinStaticMethod
 testRefMethodWithDecorator
-testStaticMethodWithNoArgs
-testIgnoredModuleDefinesBaseClassAndClassAttribute
+# Incompatible with superclass
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
 
