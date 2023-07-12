@@ -406,13 +406,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let func_node = self.node();
         let file = self.node_ref.file;
         if details.is_overload {
-            if let Some(overload) = self.calculate_next_overload_items(i_s, details) {
-                return Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(
-                    overload,
-                )));
+            return if let Some(overload) = self.calculate_next_overload_items(i_s, details) {
+                Inferred::new_unsaved_complex(ComplexPoint::FunctionOverload(Box::new(overload)))
             } else {
-                return Inferred::new_any();
-            }
+                Inferred::new_any()
+            };
+        }
+        if details.kind == FunctionKind::Property {
+            //return self.calculate_property_setter_and_deleter(i_s, details)
         }
         details.inferred
     }
@@ -504,6 +505,31 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             is_overload,
             has_decorator: true,
         })
+    }
+
+    fn calculate_property_setter_and_deleter(
+        &self,
+        i_s: &InferenceState,
+        callable: &mut CallableContent,
+    ) {
+        let first_index = self.node().name().index();
+        let mut current_name_index = first_index;
+        let file = self.node_ref.file;
+        loop {
+            let point = file.points.get(current_name_index);
+            if !point.calculated() {
+                break;
+            }
+            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+            current_name_index = point.node_index();
+            if current_name_index <= first_index {
+                break;
+            }
+            let redirect_point = file.points.get(current_name_index - 1);
+            debug_assert_eq!(redirect_point.type_(), PointType::Redirect);
+            let func_ref = NodeRef::new(file, redirect_point.node_index());
+            let next_func = Self::new(func_ref, self.class);
+        }
     }
 
     fn calculate_next_overload_items(
