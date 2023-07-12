@@ -1100,10 +1100,10 @@ testSimplifyingUnionWithTypeTypes2
 # ""abstractmethod" used with a non-method"
 testAbstractNestedFunction
 testAbstractGlobalFunction
-# abstractmethod / ABCMeta
-testInferenceWithAbstractClassContext3
+# "Class a.B has abstract attributes "f""
+# "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass"
 testAbstractClasses
-testAbstractInit
+# abstractmethod / ABCMeta
 testNewAnalyzerClassPropertiesInAllScopes
 testConstructorJoinsWithCustomMetaclass
 testDedicatedErrorCodeTypeAbstract
@@ -1136,6 +1136,8 @@ testAbstractBodyTurnsEmptyProtocol
 # class: "Cannot instantiate abstract class "C" with abstract attribute "f""
 testAddAbstractMethod
 testMakeClassAbstract
+testAbstractInit
+testErrorCodeInstantiateAbstract
 # protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
 testNonProtocolToProtocol
 testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
@@ -1147,8 +1149,6 @@ testEmptyBodyImplicitlyAbstractProtocolStub
 testEmptyBodyVariationsImplicitlyAbstractProtocol
 testEmptyBodyNoneCompatibleProtocol
 testEmptyBodyWithFinal
-# abcs: "Cannot instantiate abstract class "C" with abstract attribute "x""
-testErrorCodeInstantiateAbstract
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
