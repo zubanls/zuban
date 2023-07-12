@@ -1,4 +1,5 @@
 # Next up
+testAbstractClassesWorkWithGenericDecorators
 testSelfTypeRestrictedClassMethod
 
 # Any base class now matches everything for union simplification
@@ -169,6 +170,7 @@ testNoComplainInferredNoneStrict
 testCannotDetermineMro
 testInconsistentMroLocalRef
 testColumnCannotDetermineType
+testInconsistentMro
 
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
@@ -366,10 +368,27 @@ testFastParseConditionalProperty
 testColumnProperty
 testSerializeForwardReferenceToAliasInProperty
 testSerializeForwardReferenceToImportedAliasInProperty
+testMixinSubtypedProperty
+testMixinTypedPropertyReversed
 # Decorated property not supported
 testOverloadedProperty
 testOverloadedProperty2
 testDecoratedPropertySetter
+# abstractproperty
+testReadOnlyAbstractProperty
+testReadOnlyAbstractPropertyForwardRef
+testReadWriteAbstractProperty
+testReadWriteDeleteAbstractProperty
+testImplementAbstractPropertyViaProperty
+testImplementReadWriteAbstractPropertyViaProperty
+testImplementAbstractPropertyViaPropertyInvalidType
+testCantImplementAbstractPropertyViaInstanceVariable
+testSuperWithAbstractProperty
+testSuperWithReadWriteAbstractProperty
+testOnlyImplementGetterOfReadWriteAbstractProperty
+testMixinTypedAbstractProperty
+testMixinTypedProperty
+testEmptyBodyUnsafeAbstractSuperProperty
 
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4
@@ -1105,7 +1124,30 @@ testAbstractGlobalFunction
 testAbstractClasses
 # "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
+# "Can only assign concrete classes to a variable of type "Type[A]""
+testInstantiationAbstractsInTypeForVariables
+# "Property "x" defined in "A" is read-only"
+testDynamicallyTypedReadOnlyAbstractProperty
+testDynamicallyTypedReadOnlyAbstractPropertyForwardRef
+# "Overloaded method has both abstract and non-abstract variants"
+testOverloadedAbstractMethodVariantMissingDecorator0
+testOverloadedAbstractMethodVariantMissingDecorator1
 # class: "Cannot instantiate abstract class "C" with abstract attribute "f""
+testInstantiatingAbstractClass
+testInstantiatingClassWithInheritedAbstractMethod
+testInstantiationAbstractsInTypeForFunctions
+testInstantiationAbstractsInTypeForAliases
+testOverloadedAbstractMethod
+testOverloadedAbstractMethodWithAlternativeDecoratorOrder
+testInstantiateClassWithReadOnlyAbstractProperty
+testInstantiateClassWithReadWriteAbstractProperty
+testNestedAbstractClass
+testAbstractNewTypeAllowed
+testSubclassOfABCFromDictionary
+testAbstractPropertiesAllowed
+# Cannot instantiate abstract class "A" with abstract attributes "a", "b", ... and "j" (7 methods suppressed)
+testInstantiatingClassWithInheritedAbstractMethodAndSuppression
+# Same but not from check-abstract.test
 testAddAbstractMethod
 testMakeClassAbstract
 testAbstractInit
@@ -1148,6 +1190,11 @@ testSerialize__init__
 testSerializeOverloaded__init__
 testAbstractBodyTurnsEmpty
 testAbstractBodyTurnsEmptyProtocol
+testEmptyBodyNoSuperWarningWithoutStrict
+testEmptyBodyNoSuperWarningOptionalReturn
+# "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
+testEmptyBodyUnsafeAbstractSuper
+testEmptyBodyUnsafeAbstractSuperOverloads
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -1250,6 +1297,15 @@ testMultipleInheritance_NestedVariableOverriddenWithCompatibleType
 testSelfTypeOverrideCompatibilitySelfTypeVar
 testDecoratorMethodCompat
 testNamedTupleUpdate5
+# Liskov abstract
+testImplementingAbstractMethod
+testImplementingAbstractMethodWithMultipleBaseClasses
+testImplementingAbstractMethodWithExtension
+testInvalidOverridingAbstractMethod
+testAbstractClassCoAndContraVariance
+testAbstractClassWithAllDynamicTypes2
+testAbstractClassWithImplementationUsingDynamicTypes
+testInstantiatingAbstractClassWithMultipleBaseClasses
 # Dynamic liskov overrides not checked
 testInvalidOverrideArgumentCountWithImplicitSignature1
 testInvalidOverrideWithImplicitSignatureAndClassMethod1
@@ -2246,6 +2302,10 @@ testNoReturnInGenerator
 testWithStmtBoolExitReturnOkay
 testErrorCodeMissingReturn
 testDedicatedErrorCodeForEmpty_no_empty
+testEmptyBodyProhibitedFunction
+testEmptyBodyProhibitedMethodNonAbstract
+testEmptyBodyProhibitedPropertyNonAbstract
+testEmptyBodyNoteABCMeta
 
 # "Cannot call function of unknown type"
 testUnknownFunctionNotCallable
