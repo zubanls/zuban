@@ -1,6 +1,7 @@
 use parsa_python_ast::{
-    Decorated, FunctionDef, FunctionParent, NodeIndex, Param as ASTParam,
-    ParamIterator as ASTParamIterator, ParamKind, ReturnAnnotation, ReturnOrYield,
+    Decorated, Decorator, ExpressionContent, ExpressionPart, FunctionDef, FunctionParent,
+    NodeIndex, Param as ASTParam, ParamIterator as ASTParamIterator, ParamKind, PrimaryContent,
+    PrimaryOrAtom, ReturnAnnotation, ReturnOrYield,
 };
 use std::borrow::Cow;
 use std::cell::Cell;
@@ -413,7 +414,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             };
         }
         if details.kind == FunctionKind::Property {
-            //return self.calculate_property_setter_and_deleter(i_s, details)
+            let DbType::Callable(mut callable) = details.inferred.as_type(i_s).into_db_type() else {
+                unreachable!()
+            };
+            // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
+            drop(details);
+            self.calculate_property_setter_and_deleter(i_s, Rc::make_mut(&mut callable));
+            return Inferred::from_type(DbType::Callable(callable));
         }
         details.inferred
     }
@@ -512,6 +519,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState,
         callable: &mut CallableContent,
     ) {
+        let is_property_modifier = |decorator: Decorator| {
+            let ExpressionContent::ExpressionPart(ExpressionPart::Primary(primary)) = decorator.named_expression().expression().unpack() else {
+                return PropertyModifier::JustADecorator;
+            };
+            let PrimaryOrAtom::Atom(first) = primary.first() else {
+                return PropertyModifier::JustADecorator;
+            };
+            if first.as_code() != self.name() {
+                return PropertyModifier::JustADecorator;
+            }
+            let PrimaryContent::Attribute(second) = primary.second() else {
+                return PropertyModifier::JustADecorator;
+            };
+            match second.as_code() {
+                "setter" => PropertyModifier::Setter,
+                "deleter" => PropertyModifier::Deleter,
+                _ => PropertyModifier::JustADecorator,
+            }
+        };
         let first_index = self.node().name().index();
         let mut current_name_index = first_index;
         let file = self.node_ref.file;
@@ -529,6 +555,23 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             debug_assert_eq!(redirect_point.type_(), PointType::Redirect);
             let func_ref = NodeRef::new(file, redirect_point.node_index());
             let next_func = Self::new(func_ref, self.class);
+
+            // Make sure this is not calculated again.
+            next_func
+                .decorator_ref()
+                .set_point(Point::new_simple_specific(
+                    Specific::OverloadUnreachable,
+                    Locality::File,
+                ));
+
+            let decorated = next_func.expect_decorated_node();
+            for (i, decorator) in decorated.decorators().iter().enumerate() {
+                match is_property_modifier(decorator) {
+                    PropertyModifier::JustADecorator => todo!(),
+                    PropertyModifier::Setter => continue,
+                    PropertyModifier::Deleter => todo!(),
+                };
+            }
         }
     }
 
@@ -1893,6 +1936,12 @@ struct FunctionDetails {
     kind: FunctionKind,
     is_overload: bool,
     has_decorator: bool,
+}
+
+enum PropertyModifier {
+    JustADecorator,
+    Setter,
+    Deleter,
 }
 
 fn diagnostic_function_string(
