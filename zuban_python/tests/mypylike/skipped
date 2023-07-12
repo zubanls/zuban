@@ -1103,11 +1103,27 @@ testAbstractGlobalFunction
 # "Class a.B has abstract attributes "f""
 # "If it is meant to be abstract, add 'abc.ABCMeta' as an explicit metaclass"
 testAbstractClasses
-# abstractmethod / ABCMeta
-testNewAnalyzerClassPropertiesInAllScopes
-testConstructorJoinsWithCustomMetaclass
+# "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
+# class: "Cannot instantiate abstract class "C" with abstract attribute "f""
+testAddAbstractMethod
+testMakeClassAbstract
+testAbstractInit
+testErrorCodeInstantiateAbstract
+testNewAnalyzerClassPropertiesInAllScopes
 testSerializeAbstractClass
+# protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
+testNonProtocolToProtocol
+testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
+testCannotInstantiateAbstractVariableExplicitProtocolSubtypes
+testCannotInstantiateProtocolWithOverloadedUnimplementedMethod
+testEmptyBodyImplicitlyAbstractProtocol
+testEmptyBodyImplicitlyAbstractProtocolProperty
+testEmptyBodyImplicitlyAbstractProtocolStub
+testEmptyBodyVariationsImplicitlyAbstractProtocol
+testEmptyBodyNoneCompatibleProtocol
+testEmptyBodyWithFinal
+
 
 # super()
 testSuperExpressionsWhenInheritingFromGenericType
@@ -1132,23 +1148,6 @@ testSerialize__init__
 testSerializeOverloaded__init__
 testAbstractBodyTurnsEmpty
 testAbstractBodyTurnsEmptyProtocol
-
-# class: "Cannot instantiate abstract class "C" with abstract attribute "f""
-testAddAbstractMethod
-testMakeClassAbstract
-testAbstractInit
-testErrorCodeInstantiateAbstract
-# protocol: "Cannot instantiate abstract class "C" with abstract attribute "x""
-testNonProtocolToProtocol
-testCannotInstantiateAbstractMethodExplicitProtocolSubtypes
-testCannotInstantiateAbstractVariableExplicitProtocolSubtypes
-testCannotInstantiateProtocolWithOverloadedUnimplementedMethod
-testEmptyBodyImplicitlyAbstractProtocol
-testEmptyBodyImplicitlyAbstractProtocolProperty
-testEmptyBodyImplicitlyAbstractProtocolStub
-testEmptyBodyVariationsImplicitlyAbstractProtocol
-testEmptyBodyNoneCompatibleProtocol
-testEmptyBodyWithFinal
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
@@ -2849,6 +2848,9 @@ testTooManyUnionsException
 
 # Note ""<Foo>.__call__" has type "Callable[[Arg(str, 'x'), VarArg(int)], None]"
 # Curently ignored
+
+# Mypy is probably wrong here, but we might need to revisit
+testConstructorJoinsWithCustomMetaclass
 
 # `for ... in` type comment
 testRefreshForWithTypeComment1
