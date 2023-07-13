@@ -106,7 +106,7 @@ impl<'a> NamedTupleValue<'a> {
                 } else {
                     slice_type
                         .as_node_ref()
-                        .add_typing_issue(i_s, IssueType::TupleIndexOutOfRange);
+                        .add_issue(i_s, IssueType::TupleIndexOutOfRange);
                     None
                 }
             }),

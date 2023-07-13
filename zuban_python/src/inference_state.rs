@@ -154,7 +154,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         )
     }
 
-    pub fn should_add_typing_issue(&self) -> bool {
+    pub fn should_add_issue(&self) -> bool {
         match self.mode {
             Mode::OverloadCheck { had_error } => {
                 had_error.set(true);

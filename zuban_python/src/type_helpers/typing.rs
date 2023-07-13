@@ -155,13 +155,13 @@ impl<'db> TypingCast {
             count += 1;
         }
         if count != 2 {
-            args.as_node_ref().add_typing_issue(
+            args.as_node_ref().add_issue(
                 i_s,
                 IssueType::ArgumentIssue(Box::from("\"cast\" expects 2 arguments")),
             );
             return Inferred::new_any();
         } else if had_non_positional {
-            args.as_node_ref().add_typing_issue(
+            args.as_node_ref().add_issue(
                 i_s,
                 IssueType::ArgumentIssue(Box::from(
                     "\"cast\" must be called with 2 positional arguments",
@@ -196,7 +196,7 @@ impl RevealTypeFunction {
             i_s,
             &FormatData::with_style(i_s.db, FormatStyle::MypyRevealType),
         );
-        arg.as_node_ref().add_typing_issue(
+        arg.as_node_ref().add_issue(
             i_s,
             IssueType::Note(format!("Revealed type is \"{s}\"").into()),
         );
@@ -233,7 +233,7 @@ fn maybe_type_var(
 ) -> Option<TypeVarLike> {
     if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
         args.as_node_ref()
-            .add_typing_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
+            .add_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
         return None;
     }
     let mut iterator = args.iter();
@@ -250,7 +250,7 @@ fn maybe_type_var(
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg.as_node_ref().add_typing_issue(
+                first_arg.as_node_ref().add_issue(
                     i_s,
                     IssueType::TypeVarLikeFirstArgMustBeString {
                         class_name: "TypeVar",
@@ -261,7 +261,7 @@ fn maybe_type_var(
         };
         if let Some(name) = py_string.in_simple_assignment() {
             if name.as_code() != py_string.content() {
-                name_node.add_typing_issue(
+                name_node.add_issue(
                     i_s,
                     IssueType::TypeVarNameMismatch {
                         class_name: "TypeVar",
@@ -304,7 +304,7 @@ fn maybe_type_var(
                             "True" => covariant = true,
                             "False" => (),
                             _ => {
-                                node_ref.add_typing_issue(
+                                node_ref.add_issue(
                                     i_s,
                                     IssueType::TypeVarVarianceMustBeBool {
                                         argument: "covariant",
@@ -320,7 +320,7 @@ fn maybe_type_var(
                             "True" => contravariant = true,
                             "False" => (),
                             _ => {
-                                node_ref.add_typing_issue(
+                                node_ref.add_issue(
                                     i_s,
                                     IssueType::TypeVarVarianceMustBeBool {
                                         argument: "contravariant",
@@ -332,7 +332,7 @@ fn maybe_type_var(
                     }
                     "bound" => {
                         if !restrictions.is_empty() {
-                            node_ref.add_typing_issue(i_s, IssueType::TypeVarValuesAndUpperBound);
+                            node_ref.add_issue(i_s, IssueType::TypeVarValuesAndUpperBound);
                             return None;
                         }
                         if let Some(t) = node_ref
@@ -347,7 +347,7 @@ fn maybe_type_var(
                         }
                     }
                     _ => {
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             i_s,
                             IssueType::UnexpectedArgument {
                                 class_name: "TypeVar",
@@ -359,7 +359,7 @@ fn maybe_type_var(
                 },
                 ArgumentKind::Comprehension { .. } => {
                     arg.as_node_ref()
-                        .add_typing_issue(i_s, IssueType::UnexpectedComprehension);
+                        .add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
                 ArgumentKind::Inferred { .. }
@@ -367,13 +367,13 @@ fn maybe_type_var(
                 | ArgumentKind::Overridden { .. }
                 | ArgumentKind::ParamSpec { .. } => {
                     arg.as_node_ref()
-                        .add_typing_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" });
+                        .add_issue(i_s, IssueType::UnexpectedArgumentTo { name: "TypeVar" });
                 }
             }
         }
         if restrictions.len() == 1 {
             args.as_node_ref()
-                .add_typing_issue(i_s, IssueType::TypeVarOnlySingleRestriction);
+                .add_issue(i_s, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
         Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
@@ -389,13 +389,13 @@ fn maybe_type_var(
                 (false, true) => Variance::Contravariant,
                 (true, true) => {
                     args.as_node_ref()
-                        .add_typing_issue(i_s, IssueType::TypeVarCoAndContravariant);
+                        .add_issue(i_s, IssueType::TypeVarCoAndContravariant);
                     return None;
                 }
             },
         })))
     } else {
-        args.as_node_ref().add_typing_issue(
+        args.as_node_ref().add_issue(
             i_s,
             IssueType::TypeVarLikeTooFewArguments {
                 class_name: "TypeVar",
@@ -431,7 +431,7 @@ fn maybe_type_var_tuple(
 ) -> Option<TypeVarLike> {
     if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
         args.as_node_ref()
-            .add_typing_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
+            .add_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
         return None;
     }
     let mut iterator = args.iter();
@@ -448,7 +448,7 @@ fn maybe_type_var_tuple(
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg.as_node_ref().add_typing_issue(
+                first_arg.as_node_ref().add_issue(
                     i_s,
                     IssueType::TypeVarLikeFirstArgMustBeString {
                         class_name: "TypeVarTuple",
@@ -459,7 +459,7 @@ fn maybe_type_var_tuple(
         };
         if let Some(name) = py_string.in_simple_assignment() {
             if name.as_code() != py_string.content() {
-                name_node.add_typing_issue(
+                name_node.add_issue(
                     i_s,
                     IssueType::TypeVarNameMismatch {
                         class_name: "TypeVarTuple",
@@ -476,7 +476,7 @@ fn maybe_type_var_tuple(
         for arg in iterator {
             match arg.kind {
                 ArgumentKind::Positional { node_ref, .. } => {
-                    node_ref.add_typing_issue(i_s, IssueType::TypeVarTupleTooManyArguments);
+                    node_ref.add_issue(i_s, IssueType::TypeVarTupleTooManyArguments);
                     return None;
                 }
                 ArgumentKind::Keyword {
@@ -498,7 +498,7 @@ fn maybe_type_var_tuple(
                         }
                     }
                     _ => {
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             i_s,
                             IssueType::UnexpectedArgument {
                                 class_name: "TypeVarTuple",
@@ -510,7 +510,7 @@ fn maybe_type_var_tuple(
                 },
                 ArgumentKind::Comprehension { .. } => {
                     arg.as_node_ref()
-                        .add_typing_issue(i_s, IssueType::UnexpectedComprehension);
+                        .add_issue(i_s, IssueType::UnexpectedComprehension);
                     return None;
                 }
                 ArgumentKind::Inferred { .. }
@@ -527,7 +527,7 @@ fn maybe_type_var_tuple(
             default,
         })))
     } else {
-        args.as_node_ref().add_typing_issue(
+        args.as_node_ref().add_issue(
             i_s,
             IssueType::TypeVarLikeTooFewArguments {
                 class_name: "TypeVarTuple",
@@ -563,7 +563,7 @@ fn maybe_param_spec(
 ) -> Option<TypeVarLike> {
     if !matches!(result_context, ResultContext::AssignmentNewDefinition) {
         args.as_node_ref()
-            .add_typing_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
+            .add_issue(i_s, IssueType::UnexpectedTypeForTypeVar);
         return None;
     }
     let mut iterator = args.iter();
@@ -580,7 +580,7 @@ fn maybe_param_spec(
         let (name_node, py_string) = match result {
             Some(result) => result,
             None => {
-                first_arg.as_node_ref().add_typing_issue(
+                first_arg.as_node_ref().add_issue(
                     i_s,
                     IssueType::TypeVarLikeFirstArgMustBeString {
                         class_name: "ParamSpec",
@@ -591,7 +591,7 @@ fn maybe_param_spec(
         };
         if let Some(name) = py_string.in_simple_assignment() {
             if name.as_code() != py_string.content() {
-                name_node.add_typing_issue(
+                name_node.add_issue(
                     i_s,
                     IssueType::TypeVarNameMismatch {
                         class_name: "ParamSpec",
@@ -626,7 +626,7 @@ fn maybe_param_spec(
                 | ArgumentKind::SlicesTuple { .. }
                 | ArgumentKind::ParamSpec { .. } => unreachable!(),
                 ArgumentKind::Positional { .. } => {
-                    arg.as_node_ref().add_typing_issue(
+                    arg.as_node_ref().add_issue(
                         i_s,
                         IssueType::ArgumentIssue(
                             "Too many positional arguments for \"ParamSpec\"".into(),
@@ -636,7 +636,7 @@ fn maybe_param_spec(
                 }
                 _ => {
                     arg.as_node_ref()
-                        .add_typing_issue(i_s, IssueType::ParamSpecTooManyKeywordArguments);
+                        .add_issue(i_s, IssueType::ParamSpecTooManyKeywordArguments);
                     return None;
                 }
             }
@@ -648,7 +648,7 @@ fn maybe_param_spec(
             },
         })))
     } else {
-        args.as_node_ref().add_typing_issue(
+        args.as_node_ref().add_issue(
             i_s,
             IssueType::TypeVarLikeTooFewArguments {
                 class_name: "ParamSpec",
@@ -682,7 +682,7 @@ fn maybe_new_type<'db>(
     args: &dyn Arguments<'db>,
 ) -> Option<NewType> {
     let Some((first, second)) = args.maybe_two_positional_args(i_s.db) else {
-        args.as_node_ref().add_typing_issue(
+        args.as_node_ref().add_issue(
             i_s,
             IssueType::ArgumentIssue(Box::from(
                     "NewType(...) expects exactly two positional arguments")),
@@ -696,7 +696,7 @@ fn maybe_new_type<'db>(
     let (name_node, py_string) = match result {
         Some(result) => result,
         None => {
-            first.add_typing_issue(
+            first.add_issue(
                 i_s,
                 IssueType::ArgumentIssue(Box::from(
                     "Argument 1 to NewType(...) must be a string literal",
@@ -707,7 +707,7 @@ fn maybe_new_type<'db>(
     };
     if let Some(name) = py_string.in_simple_assignment() {
         if name.as_code() != py_string.content() {
-            name_node.add_typing_issue(
+            name_node.add_issue(
                 i_s,
                 IssueType::TypeVarNameMismatch {
                     class_name: "NewType",

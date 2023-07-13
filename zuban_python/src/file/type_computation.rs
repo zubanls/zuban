@@ -103,12 +103,12 @@ impl InvalidVariableType<'_> {
     fn add_issue(
         &self,
         db: &Database,
-        add_typing_issue: impl Fn(IssueType),
+        add_issue: impl Fn(IssueType),
         origin: TypeComputationOrigin,
     ) {
-        add_typing_issue(match self {
+        add_issue(match self {
             Self::Variable(var_ref) | Self::ParamNameAsBaseClassAny(var_ref) => {
-                add_typing_issue(IssueType::InvalidType(
+                add_issue(IssueType::InvalidType(
                     format!(
                         "Variable \"{}.{}\" is not valid as a type",
                         var_ref.in_module().qualified_name(db),
@@ -121,7 +121,7 @@ impl InvalidVariableType<'_> {
                 )
             }
             Self::Function(func) => {
-                add_typing_issue(IssueType::InvalidType(
+                add_issue(IssueType::InvalidType(
                     format!(
                         "Function {:?} is not valid as a type",
                         func.qualified_name(db),
@@ -135,13 +135,13 @@ impl InvalidVariableType<'_> {
                 }))
             }
             Self::List => {
-                add_typing_issue(IssueType::InvalidType(Box::from(
+                add_issue(IssueType::InvalidType(Box::from(
                     "Bracketed expression \"[...]\" is not valid as a type",
                 )));
                 IssueType::Note(Box::from("Did you mean \"List[...]\"?"))
             }
             Self::Tuple { tuple_length } => {
-                add_typing_issue(IssueType::InvalidType(Box::from(
+                add_issue(IssueType::InvalidType(Box::from(
                     "Syntax error in type annotation",
                 )));
                 if *tuple_length == 1 {
@@ -164,7 +164,7 @@ impl InvalidVariableType<'_> {
                 ))
             }
             Self::Execution { was_class: true } => {
-                add_typing_issue(IssueType::InvalidType(Box::from(
+                add_issue(IssueType::InvalidType(Box::from(
                     "Invalid type comment or annotation",
                 )));
                 IssueType::Note(Box::from("Suggestion: use Foo[...] instead of Foo(...)"))
@@ -173,7 +173,7 @@ impl InvalidVariableType<'_> {
                 IssueType::InvalidType(Box::from("Invalid type comment or annotation"))
             }
             Self::Slice => {
-                add_typing_issue(IssueType::InvalidType(Box::from(
+                add_issue(IssueType::InvalidType(Box::from(
                     "Invalid type comment or annotation",
                 )));
                 IssueType::Note(Box::from("did you mean to use ',' instead of ':' ?"))
@@ -249,7 +249,7 @@ macro_rules! compute_type_application {
                     .and_then(|t| t.find(type_var_like.clone(), class.node_ref.as_link()))
                 {
                     if $from_alias_definition {
-                        $slice_type.as_node_ref().add_typing_issue(
+                        $slice_type.as_node_ref().add_issue(
                             i_s,
                             IssueType::BoundTypeVarInAlias{
                                 name: Box::from(type_var_like.name(i_s.db))
@@ -266,7 +266,7 @@ macro_rules! compute_type_application {
                     .and_then(|t| t.find(type_var_like.clone(), function.node_ref.as_link()))
                 {
                     if $from_alias_definition {
-                        $slice_type.as_node_ref().add_typing_issue(
+                        $slice_type.as_node_ref().add_issue(
                             i_s,
                             IssueType::BoundTypeVarInAlias{
                                 name: Box::from(type_var_like.name(i_s.db))
@@ -460,10 +460,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     DbType::Any => CalculatedBaseClass::Unknown,
                     DbType::NewType(_) => {
-                        self.add_typing_issue_for_index(
-                            expr.index(),
-                            IssueType::CannotSubclassNewType,
-                        );
+                        self.add_issue_for_index(expr.index(), IssueType::CannotSubclassNewType);
                         CalculatedBaseClass::Unknown
                     }
                     _ => CalculatedBaseClass::Invalid,
@@ -634,7 +631,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     ClassGenerics::None,
                 ),
                 SpecialType::Literal => {
-                    self.add_typing_issue(
+                    self.add_issue(
                         node_ref,
                         IssueType::InvalidType(Box::from(
                             "Literal[...] must have at least one parameter",
@@ -652,7 +649,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::Self_
                 }
                 SpecialType::Self_ => {
-                    self.add_typing_issue(
+                    self.add_issue(
                         node_ref,
                         IssueType::InvalidType(Box::from(
                             "Self type is only allowed in annotations within class definition",
@@ -661,7 +658,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::Any
                 }
                 SpecialType::Annotated => {
-                    self.add_typing_issue(
+                    self.add_issue(
                         node_ref,
                         IssueType::InvalidType(Box::from(
                             "Annotated[...] must have exactly one type argument and at least one annotation",
@@ -670,20 +667,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::Any
                 }
                 SpecialType::Optional => {
-                    self.add_typing_issue(node_ref, IssueType::OptionalMustHaveOneArgument);
+                    self.add_issue(node_ref, IssueType::OptionalMustHaveOneArgument);
                     DbType::Any
                 }
                 _ => {
-                    self.add_typing_issue(
-                        node_ref,
-                        IssueType::InvalidType(Box::from("Invalid type")),
-                    );
+                    self.add_issue(node_ref, IssueType::InvalidType(Box::from("Invalid type")));
                     DbType::Any
                 }
             },
             TypeContent::TypeVarTuple(t) => todo!(),
             TypeContent::ParamSpec(p) => {
-                self.add_typing_issue(
+                self.add_issue(
                     node_ref,
                     IssueType::InvalidType(
                         format!(
@@ -693,7 +687,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         .into(),
                     ),
                 );
-                self.add_typing_issue(
+                self.add_issue(
                     node_ref,
                     IssueType::Note(Box::from("You can use ParamSpec as the first argument to Callable, e.g., 'Callable[P, int]'"))
                 );
@@ -701,11 +695,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unpacked(t) => DbType::Any, // TODO Should probably raise an error?
             TypeContent::Concatenate(_) => {
-                self.add_typing_issue(
+                self.add_issue(
                     node_ref,
                     IssueType::InvalidType(Box::from("Invalid location for Concatenate")),
                 );
-                self.add_typing_issue(
+                self.add_issue(
                     node_ref,
                     IssueType::Note(Box::from(
                         "You can use Concatenate as the first argument to Callable",
@@ -722,7 +716,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
                     self.inference.i_s.db,
-                    |t| self.add_typing_issue(node_ref, t),
+                    |t| self.add_issue(node_ref, t),
                     self.origin,
                 );
                 DbType::Any
@@ -837,10 +831,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             None => {
                                 let node_ref = NodeRef::new(self.inference.file, primary.index());
                                 debug!("TypeComputation: Attribute on class not found");
-                                self.add_typing_issue_for_index(
-                                    primary.index(),
-                                    IssueType::TypeNotFound,
-                                );
+                                self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
                                 self.inference
                                     .file
                                     .points
@@ -864,10 +855,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         }
                         Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
                         None => {
-                            self.add_typing_issue_for_index(
-                                primary.index(),
-                                IssueType::TypeNotFound,
-                            );
+                            self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
                             TypeContent::Unknown
                         }
                     }
@@ -998,7 +986,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::LiteralString => todo!(),
                         SpecialType::TypeAlias => todo!(),
                         SpecialType::Self_ => {
-                            self.add_typing_issue(
+                            self.add_issue(
                                 s.as_node_ref(),
                                 IssueType::InvalidType(Box::from(
                                     "Self type cannot have type arguments",
@@ -1026,7 +1014,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::InvalidVariable(t) => {
                         t.add_issue(
                             self.inference.i_s.db,
-                            |t| self.add_typing_issue(s.as_node_ref(), t),
+                            |t| self.add_issue(s.as_node_ref(), t),
                             self.origin,
                         );
                         TypeContent::Unknown
@@ -1053,7 +1041,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         } else {
             debug!("TypeComputation: Attribute on class not found");
             debug_assert_eq!(point_type, PointType::Unknown);
-            self.add_typing_issue_for_index(primary.index(), IssueType::TypeNotFound);
+            self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
             TypeContent::Unknown
         }
     }
@@ -1073,7 +1061,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             &|| Box::from("TODO alias name"),
             |slf: &mut Self, given_count, expected_count| {
                 mismatch = true;
-                slf.add_typing_issue(
+                slf.add_issue(
                     slice_type.as_node_ref(),
                     IssueType::TypeAliasArgumentIssue {
                         expected_count,
@@ -1111,7 +1099,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let actual = Type::new(&t);
             let expected = Type::new(bound);
             if !expected.is_simple_super_type_of(i_s, &actual).bool() {
-                s.as_node_ref().add_typing_issue(
+                s.as_node_ref().add_issue(
                     i_s,
                     IssueType::TypeVarBoundViolation {
                         actual: actual.format_short(i_s.db),
@@ -1144,7 +1132,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 .iter()
                 .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
             {
-                s.as_node_ref().add_typing_issue(
+                s.as_node_ref().add_issue(
                     i_s,
                     IssueType::InvalidTypeVarValue {
                         type_var_name: Box::from(type_var.name(i_s.db)),
@@ -1198,7 +1186,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             type_var_likes,
             &|| Box::from(class.name()),
             |slf: &mut Self, given_count, expected_count| {
-                slf.add_typing_issue(
+                slf.add_issue(
                     slice_type.as_node_ref(),
                     IssueType::TypeArgumentIssue {
                         class: Box::from(class.name()),
@@ -1475,7 +1463,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 _ => None,
             };
             if let Some(msg) = msg {
-                self.add_typing_issue_for_index(index, IssueType::InvalidType(Box::from(msg)));
+                self.add_issue_for_index(index, IssueType::InvalidType(Box::from(msg)));
                 return;
             }
 
@@ -1485,7 +1473,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if let Some(other_name) = other.name {
                         let other_name = other_name.as_str(self.inference.i_s.db);
                         if param_name == other_name {
-                            self.add_typing_issue_for_index(
+                            self.add_issue_for_index(
                                 index,
                                 IssueType::InvalidType(
                                     format!("Duplicate argument \"{param_name}\" in Callable",)
@@ -1523,14 +1511,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 ])),
                 _ => {
                     if from_class_generics {
-                        slf.add_typing_issue(
+                        slf.add_issue(
                             n.as_node_ref(),
                             IssueType::InvalidParamSpecGenerics {
                                 got: Box::from(n.named_expr.as_code()),
                             },
                         );
                     } else {
-                        slf.add_typing_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
+                        slf.add_issue(n.as_node_ref(), IssueType::InvalidCallableParams);
                     }
                     CallableParams::Any
                 }
@@ -1588,7 +1576,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 result_type,
             }
         } else {
-            self.add_typing_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);
+            self.add_issue(slice_type.as_node_ref(), IssueType::InvalidCallableArgCount);
             CallableContent::new_any()
         };
         self.current_callable = old;
@@ -1629,7 +1617,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if let Some(next) = iterator.next() {
-            self.add_typing_issue(next.as_node_ref(), IssueType::OptionalMustHaveOneArgument);
+            self.add_issue(next.as_node_ref(), IssueType::OptionalMustHaveOneArgument);
         }
         let t = self.compute_slice_db_type(first);
         let format_as_optional = !Type::new(&t).is_union();
@@ -1703,7 +1691,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Concatenate(CallableParams::WithParamSpec(types, p))
             }
             TypeContent::Concatenate(_) => {
-                self.add_typing_issue(slice_type.as_node_ref(), IssueType::NestedConcatenate);
+                self.add_issue(slice_type.as_node_ref(), IssueType::NestedConcatenate);
                 TypeContent::Unknown
             }
             TypeContent::Unknown => TypeContent::Unknown,
@@ -1740,7 +1728,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     ) -> TypeContent<'db, 'db> {
         if let SliceOrSimple::Simple(s) = slice {
             let expr_not_allowed = |slf: &Self| {
-                slf.add_typing_issue(
+                slf.add_issue(
                     slice.as_node_ref(),
                     IssueType::InvalidType(
                         "Invalid type: Literal[...] cannot contain arbitrary expressions".into(),
@@ -1766,7 +1754,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             Some(LiteralKind::Bool(keyword.as_code() == "True"))
                         }
                         AtomContent::Float(_) => {
-                            self.add_typing_issue(
+                            self.add_issue(
                                 slice.as_node_ref(),
                                 IssueType::InvalidType(
                                     format!(
@@ -1779,7 +1767,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             return TypeContent::Unknown;
                         }
                         AtomContent::Complex(_) => {
-                            self.add_typing_issue(
+                            self.add_issue(
                                 slice.as_node_ref(),
                                 IssueType::InvalidType(
                                     format!(
@@ -1830,7 +1818,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         }
         match self.compute_slice_type(slice) {
             TypeContent::SpecialType(SpecialType::Any) => {
-                self.add_typing_issue(
+                self.add_issue(
                     slice.as_node_ref(),
                     IssueType::InvalidType(
                         format!("Parameter {index} of Literal[...] cannot be of type \"Any\"")
@@ -1840,7 +1828,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Unknown
             }
             TypeContent::InvalidVariable(_) => {
-                self.add_typing_issue(
+                self.add_issue(
                     slice.as_node_ref(),
                     IssueType::InvalidType(
                         format!("Parameter {index} of Literal[...] is invalid").into(),
@@ -1858,7 +1846,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::DbType(DbType::Union(u))
                 }
                 _ => {
-                    self.add_typing_issue(
+                    self.add_issue(
                         slice.as_node_ref(),
                         IssueType::InvalidType(
                             format!("Parameter {} of Literal[...] is invalid", index).into(),
@@ -1874,7 +1862,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_none() {
-            self.add_typing_issue(
+            self.add_issue(
                 slice_type.as_node_ref(),
                 IssueType::InvalidType(Box::from(
                     "Annotated[...] must have exactly one type argument and at least one annotation",
@@ -1902,7 +1890,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 )
                 && !unpacked_type_var_tuple
             {
-                self.add_typing_issue(s.as_node_ref(), IssueType::TypeVarExpected { class })
+                self.add_issue(s.as_node_ref(), IssueType::TypeVarExpected { class })
             }
         }
     }
@@ -1969,7 +1957,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                     TypeVarCallbackReturn::UnboundTypeVar => {
                         let node_ref = NodeRef::new(self.inference.file, name.index());
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             self.inference.i_s,
                             IssueType::UnboundTypeVarLike {
                                 type_var_like: type_var_like.clone(),
@@ -2138,7 +2126,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             let mut parts = match atom.unpack() {
                 AtomContent::Tuple(tup) => tup.iter(),
                 _ => {
-                    NodeRef::new(self.inference.file, atom.index()).add_typing_issue(
+                    NodeRef::new(self.inference.file, atom.index()).add_issue(
                         self.inference.i_s,
                         IssueType::TupleExpectedAsNamedTupleField,
                     );
@@ -2158,7 +2146,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 todo!()
             };
             let Some(name) = StringSlice::from_string_in_expression(file_index, name_expr.expression()) else {
-                NodeRef::new(self.inference.file, name_expr.index()).add_typing_issue(
+                NodeRef::new(self.inference.file, name_expr.index()).add_issue(
                     self.inference.i_s,
                     IssueType::NamedTupleInvalidFieldName,
                 );
@@ -2187,24 +2175,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         self.type_var_manager.into_type_vars()
     }
 
-    fn add_typing_issue(&self, node_ref: NodeRef, issue_type: IssueType) {
+    fn add_issue(&self, node_ref: NodeRef, issue_type: IssueType) {
         if !self.errors_already_calculated {
-            node_ref.add_typing_issue(self.inference.i_s, issue_type)
+            node_ref.add_issue(self.inference.i_s, issue_type)
         }
     }
 
-    fn add_typing_issue_for_index(&self, index: NodeIndex, issue_type: IssueType) {
-        self.add_typing_issue(NodeRef::new(self.inference.file, index), issue_type)
+    fn add_issue_for_index(&self, index: NodeIndex, issue_type: IssueType) {
+        self.add_issue(NodeRef::new(self.inference.file, index), issue_type)
     }
 
     fn add_module_issue(&self, node_ref: NodeRef, qualified_name: &str) {
-        self.add_typing_issue(
+        self.add_issue(
             node_ref,
             IssueType::InvalidType(
                 format!("Module \"{qualified_name}\" is not valid as a type",).into(),
             ),
         );
-        self.add_typing_issue(
+        self.add_issue(
             node_ref,
             IssueType::Note(Box::from(
                 "Perhaps you meant to use a protocol matching the module structure?",
@@ -2253,7 +2241,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if !alias.is_class() {
             slice_type
                 .as_node_ref()
-                .add_typing_issue(self.i_s, IssueType::OnlyClassTypeApplication);
+                .add_issue(self.i_s, IssueType::OnlyClassTypeApplication);
             return Inferred::new_any();
         }
         compute_type_application!(
@@ -2786,14 +2774,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             TypeContent::InvalidVariable(invalid @ InvalidVariableType::Literal(_)) => {
                 invalid.add_issue(
                     comp.inference.i_s.db,
-                    |t| node_ref.add_typing_issue(comp.inference.i_s, t),
+                    |t| node_ref.add_issue(comp.inference.i_s, t),
                     comp.origin,
                 );
                 None
             }
             TypeContent::InvalidVariable(_) => {
                 // TODO this is a bit weird and should probably generate other errors
-                node_ref.add_typing_issue(comp.inference.i_s, IssueType::TypeVarTypeExpected);
+                node_ref.add_issue(comp.inference.i_s, IssueType::TypeVarTypeExpected);
                 None
             }
             _ => Some(comp.as_db_type(t, node_ref)),
@@ -2811,13 +2799,13 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         );
         match comp.compute_type(expr) {
             TypeContent::InvalidVariable(_) => {
-                node_ref.add_typing_issue(self.i_s, IssueType::NewTypeInvalidType);
+                node_ref.add_issue(self.i_s, IssueType::NewTypeInvalidType);
                 DbType::Any
             }
             t => {
                 let t = comp.as_db_type(t, node_ref);
                 if !t.is_subclassable() {
-                    node_ref.add_typing_issue(
+                    node_ref.add_issue(
                         self.i_s,
                         IssueType::NewTypeMustBeSubclassable {
                             got: t.format_short(self.i_s.db),
@@ -3145,7 +3133,7 @@ fn check_named_tuple_name<'x, 'y>(
         todo!()
     };
     let ArgumentKind::Positional { node_ref, .. } = first_arg.kind else {
-        first_arg.as_node_ref().add_typing_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
+        first_arg.as_node_ref().add_issue(i_s, IssueType::UnexpectedArgumentsTo { name: "namedtuple" });
         return None
     };
     let expr = node_ref.as_named_expression().expression();
@@ -3153,7 +3141,7 @@ fn check_named_tuple_name<'x, 'y>(
         .maybe_single_string_literal()
         .map(|py_string| (node_ref, py_string));
     let Some(string_slice) = StringSlice::from_string_in_expression(node_ref.file_index(), expr) else {
-        node_ref.add_typing_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
+        node_ref.add_issue(i_s, IssueType::NamedTupleExpectsStringLiteralAsFirstArg { name: executable_name });
         return None
     };
     let Some(second_arg) = iterator.next() else {
@@ -3178,7 +3166,7 @@ pub fn new_typing_named_tuple(
         return None
     };
     if iterator.next().is_some() {
-        args.as_node_ref().add_typing_issue(
+        args.as_node_ref().add_issue(
             i_s,
             IssueType::TooManyArguments(" for \"NamedTuple()\"".into()),
         );
@@ -3188,7 +3176,7 @@ pub fn new_typing_named_tuple(
         AtomContent::List(list) => list.unpack(),
         AtomContent::Tuple(tup) => tup.iter(),
         _ => {
-            second_node_ref.add_typing_issue(
+            second_node_ref.add_issue(
                 i_s,
                 IssueType::InvalidSecondArgumentToNamedTuple { name: "NamedTuple" },
             );
@@ -3250,7 +3238,7 @@ pub fn new_collections_named_tuple(
         };
             let Some(string_slice) = StringSlice::from_string_in_expression(args_node_ref.file.file_index(), ne.expression()) else {
                 NodeRef::new(second_node_ref.file, ne.index())
-                    .add_typing_issue(i_s, IssueType::StringLiteralExpectedAsNamedTupleItem);
+                    .add_issue(i_s, IssueType::StringLiteralExpectedAsNamedTupleItem);
                 continue
             };
             add_param(string_slice)
@@ -3275,7 +3263,7 @@ pub fn new_collections_named_tuple(
             _ => todo!(),
         },
         _ => {
-            second_node_ref.add_typing_issue(
+            second_node_ref.add_issue(
                 i_s,
                 IssueType::InvalidSecondArgumentToNamedTuple { name: "namedtuple" },
             );
@@ -3309,7 +3297,7 @@ fn check_named_tuple_has_no_fields_with_underscore(
         })
         .collect();
     if !field_names_with_underscore.is_empty() {
-        args.as_node_ref().add_typing_issue(
+        args.as_node_ref().add_issue(
             i_s,
             IssueType::NamedTupleNamesCannotStartWithUnderscore {
                 name,

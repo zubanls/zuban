@@ -1005,7 +1005,7 @@ impl<'a> Type<'a> {
                 let node_ref = callback(i_s, input, wanted, reason);
                 match reason {
                     MismatchReason::SequenceInsteadOfListNeeded => {
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             i_s,
                             IssueType::InvariantNote {
                                 actual: "List",
@@ -1014,7 +1014,7 @@ impl<'a> Type<'a> {
                         );
                     }
                     MismatchReason::MappingInsteadOfDictNeeded => {
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             i_s,
                             IssueType::InvariantNote {
                                 actual: "Dict",
@@ -1024,7 +1024,7 @@ impl<'a> Type<'a> {
                     }
                     MismatchReason::ProtocolMismatches { notes } => {
                         for note in notes.iter() {
-                            node_ref.add_typing_issue(i_s, IssueType::Note(note.clone()));
+                            node_ref.add_issue(i_s, IssueType::Note(note.clone()));
                         }
                     }
                     _ => (),
@@ -1881,7 +1881,7 @@ impl<'a> Type<'a> {
             }
             _ => {
                 let t = self.format_short(i_s.db);
-                args.as_node_ref().add_typing_issue(
+                args.as_node_ref().add_issue(
                     i_s,
                     IssueType::NotCallable {
                         type_: format!("\"{}\"", t).into(),
@@ -1925,7 +1925,7 @@ impl<'a> Type<'a> {
                     .iter(i_s, from);
                 }
                 let t = self.format_short(i_s.db);
-                from.add_typing_issue(
+                from.add_issue(
                     i_s,
                     IssueType::NotIterable {
                         type_: format!("\"{}\"", t).into(),
@@ -2262,7 +2262,7 @@ impl<'a> Type<'a> {
                 _ => {
                     slice_type
                         .as_node_ref()
-                        .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                        .add_issue(i_s, IssueType::OnlyClassTypeApplication);
                     Inferred::new_any()
                 }
             },
@@ -2278,13 +2278,13 @@ impl<'a> Type<'a> {
             DbType::Callable(_) => {
                 slice_type
                     .as_node_ref()
-                    .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                    .add_issue(i_s, IssueType::OnlyClassTypeApplication);
                 Inferred::new_unknown()
             }
             DbType::FunctionOverload(_) => {
                 slice_type
                     .as_node_ref()
-                    .add_typing_issue(i_s, IssueType::OnlyClassTypeApplication);
+                    .add_issue(i_s, IssueType::OnlyClassTypeApplication);
                 todo!("Please write a test that checks this");
             }
             DbType::None => {

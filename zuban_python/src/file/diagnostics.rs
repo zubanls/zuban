@@ -58,7 +58,7 @@ impl<'db> Inference<'db, '_, '_> {
                 SimpleStmtContent::ImportFrom(import_from) => {
                     if class.is_some() && func.is_none() {
                         NodeRef::new(self.file, simple_stmt.index())
-                            .add_typing_issue(self.i_s, IssueType::UnsupportedClassScopedImport);
+                            .add_issue(self.i_s, IssueType::UnsupportedClassScopedImport);
                     }
                     self.cache_import_from(import_from);
                 }
@@ -91,7 +91,7 @@ impl<'db> Inference<'db, '_, '_> {
             allow_none,
         ) {
             NodeRef::new(self.file, expr.index())
-                .add_typing_issue(self.i_s, IssueType::BaseExceptionExpectedForRaise);
+                .add_issue(self.i_s, IssueType::BaseExceptionExpectedForRaise);
         }
     }
 
@@ -243,7 +243,7 @@ impl<'db> Inference<'db, '_, '_> {
                         {
                             let index =
                                 c.node().arguments().unwrap().iter().nth(i).unwrap().index();
-                            NodeRef::new(self.file, index).add_typing_issue(
+                            NodeRef::new(self.file, index).add_issue(
                                 self.i_s,
                                 IssueType::MultipleInheritanceIncompatibility {
                                     name: name.into(),
@@ -277,7 +277,7 @@ impl<'db> Inference<'db, '_, '_> {
                         .is_same_type(self.i_s, &mut Matcher::new_class_matcher(self.i_s, c), &got)
                         .bool()
                     {
-                        NodeRef::new(self.file, *index).add_typing_issue(
+                        NodeRef::new(self.file, *index).add_issue(
                             self.i_s,
                             if got.is_func_or_overload() || expected.is_func_or_overload() {
                                 let mut notes = vec![];
@@ -332,7 +332,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
                     if is_overload_unmatchable(self.i_s, &c1, &c2) {
-                        NodeRef::from_link(self.i_s.db, c2.defined_at).add_typing_issue(
+                        NodeRef::from_link(self.i_s.db, c2.defined_at).add_issue(
                             self.i_s,
                             IssueType::OverloadUnmatchable {
                                 matchable_signature_index: i + 1,
@@ -345,7 +345,7 @@ impl<'db> Inference<'db, '_, '_> {
                             .bool()
                             && has_overlapping_params(self.i_s, &c1.params, &c2.params)
                         {
-                            NodeRef::from_link(self.i_s.db, c1.defined_at).add_typing_issue(
+                            NodeRef::from_link(self.i_s.db, c1.defined_at).add_issue(
                                 self.i_s,
                                 IssueType::OverloadIncompatibleReturnTypes {
                                     first_signature_index: i + 1,
@@ -367,7 +367,7 @@ impl<'db> Inference<'db, '_, '_> {
         {
             function
                 .node_ref
-                .add_typing_issue(self.i_s, IssueType::MethodWithoutArguments)
+                .add_issue(self.i_s, IssueType::MethodWithoutArguments)
         }
 
         // Make sure the type vars are properly pre-calculated
@@ -390,7 +390,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     // def foo(x: int = ...) -> int: ...
                                     return node_ref;
                                 }
-                                node_ref.add_typing_issue(
+                                node_ref.add_issue(
                                     i_s,
                                     IssueType::IncompatibleDefaultArgument {
                                         argument_name: Box::from(param.name_definition().as_code()),
@@ -428,7 +428,7 @@ impl<'db> Inference<'db, '_, '_> {
                 .is_super_type_of(self.i_s, matcher, implementation_result)
                 .bool()
         {
-            issue_node_ref.add_typing_issue(
+            issue_node_ref.add_issue(
                 self.i_s,
                 IssueType::OverloadImplementationReturnTypeIncomplete { signature_index },
             );
@@ -444,7 +444,7 @@ impl<'db> Inference<'db, '_, '_> {
             false,
         );
         if !match_.bool() {
-            issue_node_ref.add_typing_issue(
+            issue_node_ref.add_issue(
                 self.i_s,
                 IssueType::OverloadImplementationArgumentsNotBroadEnough { signature_index },
             );
@@ -460,8 +460,7 @@ impl<'db> Inference<'db, '_, '_> {
                         .infer_star_expressions(star_expressions, &mut ResultContext::Known(&t));
                     t.error_if_not_matches(self.i_s, &inf, |i_s, got, expected| {
                         let node_ref = NodeRef::new(self.file, star_expressions.index());
-                        node_ref
-                            .add_typing_issue(i_s, IssueType::IncompatibleReturn { got, expected });
+                        node_ref.add_issue(i_s, IssueType::IncompatibleReturn { got, expected });
                         node_ref.to_db_lifetime(i_s.db)
                     });
                 } else {
@@ -523,7 +522,7 @@ impl<'db> Inference<'db, '_, '_> {
                         let inf = self.infer_expression(exception);
                         if !is_valid_except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true) {
                             NodeRef::new(self.file, exception.index())
-                                .add_typing_issue(self.i_s, IssueType::BaseExceptionExpected);
+                                .add_issue(self.i_s, IssueType::BaseExceptionExpected);
                         }
                     }
                     self.calc_block_diagnostics(block, class, func)

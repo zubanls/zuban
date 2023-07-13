@@ -208,7 +208,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             .then(|| {
                 find_ancestor(self.i_s.db, self.file, level).or_else(|| {
                     NodeRef::new(self.file, imp.index())
-                        .add_typing_issue(self.i_s, IssueType::NoParentModule);
+                        .add_issue(self.i_s, IssueType::NoParentModule);
                     None
                 })
             })
@@ -249,7 +249,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     continue;
                                 }
                                 LookupResult::None => {
-                                    NodeRef::new(self.file, import_name.index()).add_typing_issue(
+                                    NodeRef::new(self.file, import_name.index()).add_issue(
                                         self.i_s,
                                         IssueType::ImportAttributeError {
                                             module_name: Box::from(imp.qualified_name(self.i_s.db)),
@@ -327,7 +327,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             None => {
                 let node_ref = NodeRef::new(self.file, name.index());
-                node_ref.add_typing_issue(
+                node_ref.add_issue(
                     self.i_s,
                     IssueType::ModuleNotFound {
                         module_name: Box::from(name.as_str()),
@@ -380,7 +380,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     name.as_str()
                 )
                 .into();
-                node_ref.add_typing_issue(i_s, IssueType::ModuleNotFound { module_name: m });
+                node_ref.add_issue(i_s, IssueType::ModuleNotFound { module_name: m });
             }
             result
         };
@@ -504,7 +504,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
             let node_ref = NodeRef::new(node_ref.file, right_side.unwrap().index());
-            node_ref.add_typing_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+            node_ref.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
             node_ref
         };
         match assignment.unpack() {
@@ -597,7 +597,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &KnownArguments::new(&right, node_ref),
                     &|type_| {
                         let left = type_.format_short(self.i_s.db);
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             self.i_s,
                             IssueType::UnsupportedLeftOperand {
                                 operand: Box::from(aug_assign.operand()),
@@ -613,7 +613,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                 let n = NodeRef::new(self.file, right_side.index());
                 if had_error.get() {
-                    n.add_typing_issue(
+                    n.add_issue(
                         self.i_s,
                         IssueType::UnsupportedOperand {
                             operand: Box::from(aug_assign.operand()),
@@ -687,7 +687,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             self.i_s,
                             value,
                             |i_s, got, expected| {
-                                from.add_typing_issue(
+                                from.add_issue(
                                     i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
                                 );
@@ -705,7 +705,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     let i_s = self.i_s;
                     if is_definition {
                         NodeRef::new(self.file, primary_target.index())
-                            .add_typing_issue(i_s, IssueType::InvalidTypeDeclaration);
+                            .add_issue(i_s, IssueType::InvalidTypeDeclaration);
                     }
                     let base = self.infer_primary_target_or_atom(primary_target.first());
                     let base = base.as_type(i_s);
@@ -753,7 +753,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             });
                         inf.as_type(i_s)
                             .error_if_not_matches(i_s, value, |i_s, got, expected| {
-                                from.add_typing_issue(
+                                from.add_issue(
                                     i_s,
                                     IssueType::IncompatibleAssignment { got, expected },
                                 );
@@ -768,7 +768,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
                 if is_definition {
                     NodeRef::new(self.file, primary_target.index())
-                        .add_typing_issue(self.i_s, IssueType::UnexpectedTypeDeclaration);
+                        .add_issue(self.i_s, IssueType::UnexpectedTypeDeclaration);
                 }
                 let PrimaryContent::GetItem(slice_type) = primary_target.second() else {
                     unreachable!();
@@ -786,7 +786,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         debug!("TODO __setitem__ not found");
                     },
                     OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
-                        arg.as_node_ref().add_typing_issue(
+                        arg.as_node_ref().add_issue(
                             i_s,
                             IssueType::InvalidGetItem {
                                 actual,
@@ -873,7 +873,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 is_definition,
                             );
                         }
-                        value_node_ref.add_typing_issue(
+                        value_node_ref.add_issue(
                             self.i_s,
                             IssueType::TooFewValuesToUnpack {
                                 actual: original_counter - 1,
@@ -924,7 +924,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             StarExpressionContent::StarExpression(expr) => {
                 NodeRef::new(self.file, expr.index())
-                    .add_typing_issue(self.i_s, IssueType::StarredExpressionOnlyNoTarget);
+                    .add_issue(self.i_s, IssueType::StarredExpressionOnlyNoTarget);
                 Inferred::new_any()
             }
             StarExpressionContent::Tuple(tuple) => self
@@ -1065,7 +1065,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 &mut ResultContext::Unknown,
                                                 OnTypeError::new(&|i_s, _, _, _, got, _| {
                                                     let right = r_type.format_short(i_s.db);
-                                                    from.add_typing_issue(
+                                                    from.add_issue(
                                                         i_s,
                                                         IssueType::UnsupportedOperand {
                                                             operand: Box::from("in"),
@@ -1083,7 +1083,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     "__iter__",
                                                     &|_| {
                                                         let right = second.format_short(self.i_s);
-                                                        from.add_typing_issue(
+                                                        from.add_issue(
                                                             self.i_s,
                                                             IssueType::UnsupportedIn { right },
                                                         )
@@ -1108,7 +1108,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                             left: got,
                                                             right: r_type.format_short(i_s.db),
                                                         };
-                                                        from.add_typing_issue(i_s, t);
+                                                        from.add_issue(i_s, t);
                                                         from.to_db_lifetime(i_s.db)
                                                     },
                                                 );
@@ -1182,7 +1182,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             _ => unreachable!(),
                         };
                         let got = type_.format_short(self.i_s.db);
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             self.i_s,
                             IssueType::UnsupportedOperandForUnary { operand, got },
                         )
@@ -1325,13 +1325,13 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     left: l_type.format_short(i_s.db),
                                     right: r_type.format_short(i_s.db),
                                 };
-                                node_ref.add_typing_issue(i_s, t);
+                                node_ref.add_issue(i_s, t);
                                 Inferred::new_unknown()
                             }
                             LookupError::LeftError | LookupError::ShortCircuit => {
                                 had_error = true;
                                 let left = l_type.format_short(i_s.db);
-                                node_ref.add_typing_issue(
+                                node_ref.add_issue(
                                     i_s,
                                     IssueType::UnsupportedLeftOperand {
                                         operand: Box::from(op.operand),
@@ -1358,7 +1358,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .into(),
                 (true, true) => Box::from("Both left and right operands are unions"),
             };
-            node_ref.add_typing_issue(self.i_s, IssueType::Note(note));
+            node_ref.add_issue(self.i_s, IssueType::Note(note));
         }
         debug!(
             "Operation between {} and {} results in {}",
@@ -1647,7 +1647,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 return inf;
             }
             // TODO check star imports
-            NodeRef::new(self.file, name.index()).add_typing_issue(
+            NodeRef::new(self.file, name.index()).add_issue(
                 self.i_s,
                 IssueType::NameError {
                     name: Box::from(name.as_str()),
@@ -1662,7 +1662,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .is_some()
             {
                 // TODO what about underscore or other vars?
-                NodeRef::new(self.file, name.index()).add_typing_issue(
+                NodeRef::new(self.file, name.index()).add_issue(
                     self.i_s,
                     IssueType::Note(
                         format!(

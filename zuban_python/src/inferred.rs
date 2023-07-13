@@ -475,7 +475,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedSpecific(mut specific) => {
                 if specific == Specific::Cycle {
                     let r = NodeRef::new(file, index);
-                    r.add_typing_issue(
+                    r.add_issue(
                         i_s,
                         IssueType::CyclicDefinition {
                             name: Box::from(r.as_code()),
@@ -647,7 +647,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         function_name: Box::from(func.name()),
                                         callable: func.as_type(i_s).format_short(i_s.db),
                                     };
-                                    from.add_typing_issue(i_s, t);
+                                    from.add_issue(i_s, t);
                                     Some(Self::new_any())
                                 } else {
                                     // In case there is no node ref, we do not want to just
@@ -741,7 +741,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                         function_name: Box::from(func.name()),
                                                         callable: func.as_type(i_s).format_short(i_s.db),
                                                     };
-                                                    from.add_typing_issue(i_s, t);
+                                                    from.add_issue(i_s, t);
                                                     return Some(Self::new_any());
                                                 } else {
                                                     todo!()
@@ -826,7 +826,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars => {
                             if let Some(from) = from {
-                                from.add_typing_issue(i_s, IssueType::AmbigousClassVariableAccess);
+                                from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
                             } else {
                                 return None;
                             }
@@ -888,7 +888,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                         .as_type(i_s)
                                                         .format_short(i_s.db),
                                                 };
-                                                from.add_typing_issue(i_s, t);
+                                                from.add_issue(i_s, t);
                                                 return Some(Self::new_any());
                                             } else {
                                                 todo!()
@@ -1188,8 +1188,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 )
                             }
                             Specific::TypingAny => {
-                                args.as_node_ref()
-                                    .add_typing_issue(i_s, IssueType::AnyNotCallable);
+                                args.as_node_ref().add_issue(i_s, IssueType::AnyNotCallable);
                                 args.iter().calculate_diagnostics(i_s);
                                 return Inferred::new_any();
                             }
@@ -1228,7 +1227,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         alias.as_db_type_and_set_type_vars_any(i_s.db),
                                     );
                                 }
-                                args.as_node_ref().add_typing_issue(
+                                args.as_node_ref().add_issue(
                                     i_s,
                                     IssueType::NotCallable {
                                         type_: Box::from("\"<typing special form>\""),
@@ -1265,7 +1264,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         },
                                     );
                                 } else {
-                                    args.as_node_ref().add_typing_issue(
+                                    args.as_node_ref().add_issue(
                                         i_s,
                                         IssueType::TooFewArguments(
                                             format!(" for \"{}\"", new_type.name(i_s.db)).into(),
@@ -1273,7 +1272,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     );
                                 }
                                 if iterator.next().is_some() {
-                                    args.as_node_ref().add_typing_issue(
+                                    args.as_node_ref().add_issue(
                                         i_s,
                                         IssueType::TooManyArguments(
                                             format!(" for \"{}\"", new_type.name(i_s.db)).into(),
@@ -1286,7 +1285,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                     }
                     PointType::FileReference => {
-                        args.as_node_ref().add_typing_issue(
+                        args.as_node_ref().add_issue(
                             i_s,
                             IssueType::NotCallable {
                                 type_: Box::from("Module"),
@@ -1789,7 +1788,7 @@ pub fn add_attribute_error(
 ) {
     let object = match t.as_ref() {
         DbType::Module(f) => {
-            node_ref.add_typing_issue(i_s, IssueType::ModuleAttributeError { name: name.into() });
+            node_ref.add_issue(i_s, IssueType::ModuleAttributeError { name: name.into() });
             return;
         }
         _ => format!("{:?}", t.format_short(i_s.db)).into(),
@@ -1800,7 +1799,7 @@ pub fn add_attribute_error(
             if Type::new(bound).is_union() {
                 let bound = bound.format_short(i_s.db);
                 let type_var_name = usage.type_var.name(i_s.db);
-                node_ref.add_typing_issue(
+                node_ref.add_issue(
                     i_s,
                     IssueType::UnionAttributeErrorOfUpperBound(format!(
                         r#"Item {object} of the upper bound "{bound}" of type variable "{type_var_name}" has no attribute "{name}""#
@@ -1810,7 +1809,7 @@ pub fn add_attribute_error(
             }
         }
     }
-    node_ref.add_typing_issue(
+    node_ref.add_issue(
         i_s,
         match full_type.is_union() {
             false => IssueType::AttributeError { object, name },

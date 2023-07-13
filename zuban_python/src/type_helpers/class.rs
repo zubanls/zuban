@@ -102,7 +102,7 @@ impl<'db: 'a, 'a> Class<'a> {
             self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
         let Some(inf) = init.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
-                args.as_node_ref().add_typing_issue(i_s, IssueType::CannotInstantiateProtocol {
+                args.as_node_ref().add_issue(i_s, IssueType::CannotInstantiateProtocol {
                     name: self.name().into()
                 })
             } else {
@@ -342,23 +342,21 @@ impl<'db: 'a, 'a> Class<'a> {
                                         MetaclassState::Some(link),
                                     )
                                 } else {
-                                    node_ref.add_typing_issue(
-                                        i_s,
-                                        IssueType::MetaclassMustInheritFromType,
-                                    );
+                                    node_ref
+                                        .add_issue(i_s, IssueType::MetaclassMustInheritFromType);
                                 }
                             }
                             CalculatedBaseClass::Unknown => metaclass = MetaclassState::Unknown,
                             _ => {
                                 /*
-                                node_ref.add_typing_issue(
+                                node_ref.add_issue(
                                     i_s,
                                     IssueType::DynamicMetaclassNotSupported {
                                         class_name: Box::from(self.name()),
                                     },
                                 );
                                 */
-                                node_ref.add_typing_issue(i_s, IssueType::InvalidMetaclass);
+                                node_ref.add_issue(i_s, IssueType::InvalidMetaclass);
                             }
                         }
                     }
@@ -399,10 +397,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                     Type::new(&base.type_)
                                         .check_duplicate_base_class(db, &Type::new(&t))
                                 }) {
-                                    NodeRef::new(self.node_ref.file, n.index()).add_typing_issue(
-                                        i_s,
-                                        IssueType::DuplicateBaseClass { name },
-                                    );
+                                    NodeRef::new(self.node_ref.file, n.index())
+                                        .add_issue(i_s, IssueType::DuplicateBaseClass { name });
                                     incomplete_mro = true;
                                     continue;
                                 }
@@ -424,10 +420,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                         mro.pop();
                                         incomplete_mro = true;
                                         NodeRef::new(self.node_ref.file, n.index())
-                                            .add_typing_issue(
-                                                i_s,
-                                                IssueType::CyclicDefinition { name },
-                                            );
+                                            .add_issue(i_s, IssueType::CyclicDefinition { name });
                                     } else {
                                         let cached_class_infos = class.use_cached_class_infos(db);
                                         incomplete_mro |= cached_class_infos.incomplete_mro;
@@ -490,7 +483,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::Invalid => {
                                 NodeRef::new(self.node_ref.file, n.index())
-                                    .add_typing_issue(i_s, IssueType::InvalidBaseClass);
+                                    .add_issue(i_s, IssueType::InvalidBaseClass);
                                 incomplete_mro = true;
                             }
                         };
@@ -505,11 +498,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                     Argument::Starred(starred) => {
                         NodeRef::new(self.node_ref.file, starred.index())
-                            .add_typing_issue(i_s, IssueType::InvalidBaseClass);
+                            .add_issue(i_s, IssueType::InvalidBaseClass);
                     }
                     Argument::DoubleStarred(double_starred) => {
                         NodeRef::new(self.node_ref.file, double_starred.index())
-                            .add_typing_issue(i_s, IssueType::InvalidBaseClass);
+                            .add_issue(i_s, IssueType::InvalidBaseClass);
                     }
                 }
             }
@@ -543,7 +536,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
                         } else {
-                            node_ref.add_typing_issue(i_s, IssueType::MetaclassConflict);
+                            node_ref.add_issue(i_s, IssueType::MetaclassConflict);
                         }
                     }
                 }
@@ -913,7 +906,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
                             ) => {}
                         _ => NodeRef::new(file, stmt.index())
-                            .add_typing_issue(i_s, IssueType::InvalidStmtInNamedTuple),
+                            .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
                     }
                 }
             }

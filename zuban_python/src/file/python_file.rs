@@ -299,8 +299,8 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn add_typing_issue(&self, i_s: &InferenceState, issue: Issue) {
-        if !i_s.should_add_typing_issue() {
+    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
+        if !i_s.should_add_issue() {
             return;
         }
         let maybe_ignored = self.tree.node_type_ignore_comment(issue.node_index);

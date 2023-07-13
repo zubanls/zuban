@@ -273,9 +273,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         self.node_ref.file,
                         func_node.return_annotation().unwrap().expression().index(),
                     );
-                    node_ref.add_typing_issue(i_s, IssueType::TypeVarInReturnButNotArgument);
+                    node_ref.add_issue(i_s, IssueType::TypeVarInReturnButNotArgument);
                     if let Some(bound) = t.type_var.bound.as_ref() {
-                        node_ref.add_typing_issue(
+                        node_ref.add_issue(
                             i_s,
                             IssueType::Note(
                                 format!(
@@ -443,7 +443,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         for decorator in decorated.decorators().iter_reverse() {
             if kind == FunctionKind::Property {
                 NodeRef::new(self.node_ref.file, decorator.index())
-                    .add_typing_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
+                    .add_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
                 return None;
             }
             let i = self
@@ -455,7 +455,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if saved_link == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
                 if kind == FunctionKind::Staticmethod {
                     NodeRef::new(self.node_ref.file, decorated.index())
-                        .add_typing_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
+                        .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
                     return None;
                 }
                 kind = FunctionKind::Classmethod;
@@ -464,7 +464,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if saved_link == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
                 if kind == FunctionKind::Classmethod {
                     NodeRef::new(self.node_ref.file, decorated.index())
-                        .add_typing_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
+                        .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
                 }
                 kind = FunctionKind::Staticmethod;
                 continue;
@@ -479,7 +479,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if saved_link == Some(i_s.db.python_state.property_node_ref().as_link()) {
                 if is_overload {
                     NodeRef::new(self.node_ref.file, decorator.index())
-                        .add_typing_issue(i_s, IssueType::OverloadedPropertyNotSupported);
+                        .add_issue(i_s, IssueType::OverloadedPropertyNotSupported);
                     return None;
                 }
                 kind = FunctionKind::Property;
@@ -558,7 +558,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
             if func_ref.point().specific() != Specific::DecoratedFunction {
                 debug_assert_eq!(func_ref.point().specific(), Specific::Function);
-                func_ref.add_typing_issue(
+                func_ref.add_issue(
                     i_s,
                     IssueType::UnexpectedDefinitionForProperty {
                         name: self.name().into(),
@@ -579,7 +579,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let decorator = iterator.next().unwrap();
             match is_property_modifier(decorator) {
                 PropertyModifier::JustADecorator => {
-                    NodeRef::new(file, decorator.index()).add_typing_issue(
+                    NodeRef::new(file, decorator.index()).add_issue(
                         i_s,
                         IssueType::OnlySupportedTopDecoratorSetter {
                             name: self.name().into(),
@@ -672,7 +672,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if next_details.is_overload {
                 if let Some(implementation) = &implementation {
                     NodeRef::from_link(i_s.db, implementation.function_link)
-                        .add_typing_issue(i_s, IssueType::OverloadImplementationNotLast)
+                        .add_issue(i_s, IssueType::OverloadImplementationNotLast)
                 }
                 add_func(next_details.inferred)
             } else {
@@ -695,7 +695,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
                         });
                         NodeRef::new(func_ref.file, next_func.expect_decorated_node().index())
-                            .add_typing_issue(
+                            .add_issue(
                                 i_s,
                                 IssueType::NotCallable {
                                     type_: format!("\"{}\"", t.format_short(i_s.db)).into(),
@@ -714,22 +714,22 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         };
         if let Some(kind) = inconsistent_function_kind {
             NodeRef::new(self.node_ref.file, self.expect_decorated_node().index())
-                .add_typing_issue(i_s, IssueType::OverloadInconsistentKind { kind })
+                .add_issue(i_s, IssueType::OverloadInconsistentKind { kind })
         }
         if functions.len() < 2 && !should_error_out {
             self.node_ref
-                .add_typing_issue(i_s, IssueType::OverloadSingleNotAllowed);
+                .add_issue(i_s, IssueType::OverloadSingleNotAllowed);
         } else if implementation.is_none()
             && !file.is_stub(i_s.db)
             && self.class.map(|c| !c.is_protocol(i_s.db)).unwrap_or(true)
         {
             name_def_node_ref(functions.last().unwrap().defined_at)
-                .add_typing_issue(i_s, IssueType::OverloadImplementationNeeded);
+                .add_issue(i_s, IssueType::OverloadImplementationNeeded);
         }
         if let Some(implementation) = &implementation {
             if file.is_stub(i_s.db) {
                 name_def_node_ref(implementation.function_link)
-                    .add_typing_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
+                    .add_issue(i_s, IssueType::OverloadStubImplementationNotAllowed);
             }
         }
         debug_assert!(!functions.is_empty());
@@ -1546,7 +1546,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     args: args.iter().into_argument_types(i_s),
                     variants: self.variants(i_s, search_init),
                 };
-                args.as_node_ref().add_typing_issue(i_s, t);
+                args.as_node_ref().add_issue(i_s, t);
             }
         }
         if let Some(callable) = had_error_in_func {

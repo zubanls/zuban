@@ -606,7 +606,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 let t = Type::owned(iter.next().unwrap());
                                 if !t.is_simple_same_type(i_s, &s).bool() {
                                     debug!("Keyword is type {}", t.format_short(i_s.db));
-                                    node_ref.add_typing_issue(
+                                    node_ref.add_issue(
                                         i_s,
                                         IssueType::ArgumentIssue(Box::from(
                                             "Keywords must be strings",
@@ -617,7 +617,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                             let value_type = match matches {
                                 true => iter.next().unwrap(),
                                 false => {
-                                    node_ref.add_typing_issue(
+                                    node_ref.add_issue(
                                         i_s,
                                         IssueType::ArgumentIssue(
                                             format!(
