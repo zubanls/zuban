@@ -3,7 +3,7 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, DbType, PointLink};
+use crate::database::{ClassType, DbType, FunctionKind, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
@@ -64,6 +64,10 @@ impl<'a> Instance<'a> {
                                         let inst = self.as_inferred(i_s);
                                         calculate_descriptor(i_s, from, set, inst, value)
                                     }
+                                }
+                                DbType::Callable(c) if c.kind == FunctionKind::Property => {
+                                    //had_set = true;
+                                    had_no_set = true;
                                 }
                                 _ => {
                                     if had_set {
