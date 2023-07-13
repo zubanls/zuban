@@ -109,3 +109,14 @@ class B:
 
 reveal_type(A().f)  # N: Revealed type is "Any"
 reveal_type(B().f)  # N: Revealed type is "Any"
+
+[case invalid_args_for_property]
+# Similar to testInvalidArgCountForProperty, but a few more cases
+from typing import Callable
+
+def any(f: Callable[[Any], int]) -> Callable[..., int]: ...
+
+class A:
+    @property
+    @any
+    def f(self) -> int: pass
