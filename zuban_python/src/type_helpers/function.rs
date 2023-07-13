@@ -556,6 +556,16 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let func_ref = NodeRef::new(file, redirect_point.node_index());
             let next_func = Self::new(func_ref, self.class);
 
+            if func_ref.point().specific() != Specific::DecoratedFunction {
+                debug_assert_eq!(func_ref.point().specific(), Specific::Function);
+                func_ref.add_typing_issue(
+                    i_s,
+                    IssueType::UnexpectedDefinitionForProperty {
+                        name: self.name().into(),
+                    },
+                );
+                continue;
+            }
             // Make sure this is not calculated again.
             next_func
                 .decorator_ref()
@@ -565,13 +575,20 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 ));
 
             let decorated = next_func.expect_decorated_node();
-            for (i, decorator) in decorated.decorators().iter().enumerate() {
-                match is_property_modifier(decorator) {
-                    PropertyModifier::JustADecorator => todo!(),
-                    PropertyModifier::Setter => continue,
-                    PropertyModifier::Deleter => continue,
-                };
-            }
+            let mut iterator = decorated.decorators().iter();
+            let decorator = iterator.next().unwrap();
+            match is_property_modifier(decorator) {
+                PropertyModifier::JustADecorator => {
+                    NodeRef::new(file, decorator.index()).add_typing_issue(
+                        i_s,
+                        IssueType::OnlySupportedTopDecoratorSetter {
+                            name: self.name().into(),
+                        },
+                    );
+                }
+                PropertyModifier::Setter => continue,
+                PropertyModifier::Deleter => continue,
+            };
         }
     }
 

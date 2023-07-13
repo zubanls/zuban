@@ -116,7 +116,6 @@ pub(crate) enum IssueType {
     TupleExpectedAsNamedTupleField,
     NamedTupleNamesCannotStartWithUnderscore { name: &'static str, field_names: Box<str> },
     NamedTupleInvalidFieldName,
-    DecoratorOnTopOfPropertyNotSupported,
 
     OverloadMismatch { name: Box<str>, args: Box<[Box<str>]>, variants: Box<[Box<str>]> },
     OverloadImplementationNotLast,
@@ -129,6 +128,10 @@ pub(crate) enum IssueType {
     OverloadImplementationArgumentsNotBroadEnough { signature_index: usize },
     OverloadInconsistentKind { kind: FunctionKind },
     OverloadedPropertyNotSupported,
+
+    DecoratorOnTopOfPropertyNotSupported,
+    OnlySupportedTopDecoratorSetter { name: Box<str> },
+    UnexpectedDefinitionForProperty { name: Box<str> },
 
     MethodWithoutArguments,
 
@@ -523,8 +526,6 @@ impl<'db> Diagnostic<'db> {
             NamedTupleNamesCannotStartWithUnderscore{name, field_names} => format!(
                 "\"{name}()\" field names cannot start with an underscore: {field_names}"),
             NamedTupleInvalidFieldName => "Invalid \"NamedTuple()\" field name".to_string(),
-            DecoratorOnTopOfPropertyNotSupported =>
-                "Decorators on top of @property are not supported".to_string(),
 
             OverloadImplementationNotLast =>
                 "The implementation for an overloaded function must come last".to_string(),
@@ -560,6 +561,13 @@ impl<'db> Diagnostic<'db> {
             ),
             OverloadedPropertyNotSupported =>
                 "An overload can not be a property".to_string(),
+
+            DecoratorOnTopOfPropertyNotSupported =>
+                "Decorators on top of @property are not supported".to_string(),
+            OnlySupportedTopDecoratorSetter{name} =>
+                format!("Only supported top decorator is @{name}.setter"),
+            UnexpectedDefinitionForProperty{name} =>
+                format!("Unexpected definition for property \"{name}\""),
 
             InvariantNote{actual, maybe} => {
                 type_ = "note";

@@ -340,7 +340,6 @@ testDecoratedPropertySetter
 testColumnProperty
 # "Only supported top decorator is @f.setter"
 testOverloadedProperty
-testPropertyWithExtraMethod
 # "Property "f" defined in "A" is read-only"
 testDynamicallyTypedProperty
 testPropertyWithDeleterButNoSetter
