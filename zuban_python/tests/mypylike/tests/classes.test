@@ -120,3 +120,22 @@ class A:
     @property
     @any
     def f(self) -> int: pass
+
+[case property_generic_access]
+# Make sure this is tested
+from typing import Callable, TypeVar, Generic
+
+T = TypeVar("T")
+
+class A(Generic[T]):
+    def __init__(self, x: T):
+        self.x = x
+
+    @property
+    def f(self) -> T: self.x
+
+x: A[int]
+
+reveal_type(x.f)  # N: Revealed type is "int"
+
+reveal_type(A("").f)  # N: Revealed type is "str"

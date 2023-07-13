@@ -337,7 +337,6 @@ testColumnProperty
 testOverrideMethodProperty
 testOverridePropertyMethod
 # Property self resolving
-testTypingSelfProperty
 testNewNamedTupleProperty
 # abstractproperty
 testReadOnlyAbstractProperty

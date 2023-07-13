@@ -720,7 +720,14 @@ impl<'db: 'slf, 'slf> Inferred {
                                             ));
                                         }
                                         FunctionKind::Property { .. } => {
-                                            return Some(Inferred::from_type(c.result_type.clone()))
+                                            return Some(Inferred::from_type(
+                                                replace_class_type_vars(
+                                                    i_s.db,
+                                                    &c.result_type,
+                                                    &instance.class,
+                                                    &func_class,
+                                                ),
+                                            ))
                                         }
                                         FunctionKind::Classmethod => {
                                             let result = infer_class_method(
