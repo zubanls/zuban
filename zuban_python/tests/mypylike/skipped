@@ -336,8 +336,6 @@ testColumnProperty
 # Property access from class
 testOverrideMethodProperty
 testOverridePropertyMethod
-# Property self resolving
-testNewNamedTupleProperty
 # abstractproperty
 testReadOnlyAbstractProperty
 testReadOnlyAbstractPropertyForwardRef
