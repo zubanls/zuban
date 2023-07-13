@@ -1098,6 +1098,7 @@ testEmptyBodyWithFinal
 
 
 # super()
+testSelfTypeGeneric
 testSuperExpressionsWhenInheritingFromGenericType
 testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy
 testSuperOutsideClass

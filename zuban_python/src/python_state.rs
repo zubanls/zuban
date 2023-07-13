@@ -556,6 +556,7 @@ fn typing_changes(
 
     set_typing_inference(builtins, "tuple", Specific::TypingTuple);
     set_typing_inference(builtins, "type", Specific::TypingType);
+    set_typing_inference(builtins, "super", Specific::BuiltinsSuper);
 
     set_typing_inference(typing, "cast", Specific::TypingCast);
 
@@ -611,6 +612,7 @@ fn set_typing_inference(file: &PythonFile, name: &str, specific: Specific) {
         "TypeAlias",
         "Self",
         "reveal_type",
+        "super",
     ]
     .contains(&name)
     {
