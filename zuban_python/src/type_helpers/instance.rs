@@ -60,32 +60,7 @@ impl<'a> Instance<'a> {
                                 {
                                     had_set = true;
                                     let inst = self.as_inferred(i_s);
-                                    set.execute_with_details(
-                                        i_s,
-                                        &CombinedArguments::new(
-                                            &KnownArguments::new(&inst, from),
-                                            &KnownArguments::new(value, from),
-                                        ),
-                                        &mut ResultContext::Unknown,
-                                        OnTypeError::new(
-                                            &|i_s, class, error_text, argument, got, expected| {
-                                                if argument.index == 2 {
-                                                    from.add_issue(
-                                                        i_s,
-                                                        IssueType::IncompatibleAssignment {
-                                                            got,
-                                                            expected,
-                                                        },
-                                                    );
-                                                } else {
-                                                    on_argument_type_error(
-                                                        i_s, class, error_text, argument, got,
-                                                        expected,
-                                                    )
-                                                }
-                                            },
-                                        ),
-                                    );
+                                    calculate_descriptor(i_s, from, set, inst, value)
                                 }
                             } else {
                                 if had_set {
@@ -313,6 +288,30 @@ impl<'a> Instance<'a> {
         );
         Inferred::new_any()
     }
+}
+
+fn calculate_descriptor(
+    i_s: &InferenceState,
+    from: NodeRef,
+    set_method: Inferred,
+    instance: Inferred,
+    value: &Inferred,
+) {
+    set_method.execute_with_details(
+        i_s,
+        &CombinedArguments::new(
+            &KnownArguments::new(&instance, from),
+            &KnownArguments::new(value, from),
+        ),
+        &mut ResultContext::Unknown,
+        OnTypeError::new(&|i_s, class, error_text, argument, got, expected| {
+            if argument.index == 2 {
+                from.add_issue(i_s, IssueType::IncompatibleAssignment { got, expected });
+            } else {
+                on_argument_type_error(i_s, class, error_text, argument, got, expected)
+            }
+        }),
+    );
 }
 
 enum FoundOnClass<'a> {
