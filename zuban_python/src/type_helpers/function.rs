@@ -444,7 +444,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if kind == FunctionKind::Property {
                 NodeRef::new(self.node_ref.file, decorator.index())
                     .add_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
-                return None;
+                break;
             }
             let i = self
                 .node_ref
