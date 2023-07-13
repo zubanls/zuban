@@ -331,16 +331,12 @@ testTypeAliasesResultingInPlainInstance
 testTypingSelfNonAnnotationUses
 testGenericClassPropertyBound
 
-# Property setter
-testEmptyBodyAllowedPropertyAbstract
-testSerializeAbstractPropertyIncremental
-testSerializeAbstractPropertyDisallowUntypedIncremental
-testDecoratedPropertySetter
 # "Read-only property cannot override read-write property"
 testColumnProperty
 # "Property "f" defined in "A" is read-only"
 testDynamicallyTypedProperty
 testPropertyWithDeleterButNoSetter
+testAssigningToReadOnlyProperty
 # Property
 testInvalidArgCountForProperty
 testNewAnalyzerNoCrashOnCustomProperty
@@ -349,13 +345,11 @@ testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
-testAssigningToReadOnlyProperty
 testAssigningToInheritedReadOnlyProperty
 testPropertyGetterBody
 testOverrideMethodProperty
 testOverridePropertyMethod
 testNewNamedTupleProperty
-testSerializeForwardReferenceToImportedAliasInProperty
 testMixinTypedPropertyReversed
 # abstractproperty
 testReadOnlyAbstractProperty
