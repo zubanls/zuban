@@ -20,7 +20,7 @@ use crate::database::{
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
-    use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
+    use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
 use crate::inference_state::InferenceState;
@@ -487,7 +487,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             if saved_link == Some(i_s.db.python_state.abstractmethod_link()) {
                 continue;
             }
-            if saved_link == Some(i_s.db.python_state.property_node_ref().as_link()) {
+            if saved_link == Some(i_s.db.python_state.property_node_ref().as_link())
+                || saved_link == Some(i_s.db.python_state.abstractproperty_link())
+            {
                 if is_overload {
                     NodeRef::new(self.node_ref.file, decorator.index())
                         .add_issue(i_s, IssueType::OverloadedPropertyNotSupported);

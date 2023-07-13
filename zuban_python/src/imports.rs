@@ -58,6 +58,9 @@ pub fn global_import<'a>(
             db.python_state.mypy_extensions().file_index(),
         ));
     }
+    if name == "abc" {
+        return Some(ImportResult::File(db.python_state.abc().file_index()));
+    }
 
     for (dir_path, dir) in db.workspaces.directories() {
         let result = python_import(db, from_file, dir_path, dir, name);

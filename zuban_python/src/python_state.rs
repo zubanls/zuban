@@ -89,6 +89,7 @@ pub struct PythonState {
     collections_namedtuple_index: NodeIndex,
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
+    abc_abstractproperty_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
     mypy_extensions_named_arg_func: NodeIndex,
@@ -142,6 +143,7 @@ impl PythonState {
             collections_namedtuple_index: 0,
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
+            abc_abstractproperty_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -267,6 +269,7 @@ impl PythonState {
         cache_index!(typing_type_var, db, typing, "TypeVar");
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
+        cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
 
         db.python_state.abc_abstractmethod_index = db
             .python_state
@@ -346,7 +349,7 @@ impl PythonState {
     }
 
     #[inline]
-    fn abc(&self) -> &PythonFile {
+    pub fn abc(&self) -> &PythonFile {
         debug_assert!(!self.abc.is_null());
         unsafe { &*self.abc }
     }
@@ -474,8 +477,13 @@ impl PythonState {
     }
 
     pub fn abstractmethod_link(&self) -> PointLink {
-        debug_assert!(self.abc_abc_meta_index != 0);
+        debug_assert!(self.abc_abstractmethod_index != 0);
         PointLink::new(self.abc().file_index(), self.abc_abstractmethod_index)
+    }
+
+    pub fn abstractproperty_link(&self) -> PointLink {
+        debug_assert!(self.abc_abstractproperty_index != 0);
+        PointLink::new(self.abc().file_index(), self.abc_abstractproperty_index)
     }
 
     pub fn overload_link(&self) -> PointLink {

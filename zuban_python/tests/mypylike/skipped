@@ -331,22 +331,6 @@ testTypeAliasesResultingInPlainInstance
 testTypingSelfNonAnnotationUses
 testGenericClassPropertyBound
 
-# abstractproperty
-testReadOnlyAbstractProperty
-testReadOnlyAbstractPropertyForwardRef
-testReadWriteAbstractProperty
-testReadWriteDeleteAbstractProperty
-testImplementAbstractPropertyViaProperty
-testImplementReadWriteAbstractPropertyViaProperty
-testImplementAbstractPropertyViaPropertyInvalidType
-testCantImplementAbstractPropertyViaInstanceVariable
-testSuperWithAbstractProperty
-testSuperWithReadWriteAbstractProperty
-testOnlyImplementGetterOfReadWriteAbstractProperty
-testMixinTypedAbstractProperty
-testMixinTypedProperty
-testEmptyBodyUnsafeAbstractSuperProperty
-
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4
 testForwardBoundFunctionScopeWorks
@@ -1088,6 +1072,7 @@ testInstantiationAbstractsInTypeForVariables
 # "Property "x" defined in "A" is read-only"
 testDynamicallyTypedReadOnlyAbstractProperty
 testDynamicallyTypedReadOnlyAbstractPropertyForwardRef
+testCantImplementAbstractPropertyViaInstanceVariable
 # "Overloaded method has both abstract and non-abstract variants"
 testOverloadedAbstractMethodVariantMissingDecorator0
 testOverloadedAbstractMethodVariantMissingDecorator1
@@ -1151,6 +1136,9 @@ testAbstractBodyTurnsEmpty
 testAbstractBodyTurnsEmptyProtocol
 testEmptyBodyNoSuperWarningWithoutStrict
 testEmptyBodyNoSuperWarningOptionalReturn
+testSuperWithAbstractProperty
+testSuperWithReadWriteAbstractProperty
+testEmptyBodyUnsafeAbstractSuperProperty
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper
 testEmptyBodyUnsafeAbstractSuperOverloads
@@ -1228,6 +1216,7 @@ testOverloadedMethodSupertype2-only_when_nocache
 testOverloadedOperatorMethodOverrideWithSwitchedItemOrder
 testVariableMethod
 testSelfTypeOverrideCompatibilityTypeVar
+testImplementAbstractPropertyViaPropertyInvalidType
 # With overload
 testSelfTypeOverrideCompatibility
 testSubtypeOverloadWithOverlappingArgumentsButWrongReturnType
@@ -1250,6 +1239,8 @@ testOverloadedStaticMethodOnInstance
 testUnsafeDunderOverlapInSubclass
 # "Read-only property cannot override read-write property"
 testColumnProperty
+testOnlyImplementGetterOfReadWriteAbstractProperty
+testReadWriteDeleteAbstractProperty
 # Property access from class
 testOverrideMethodProperty
 testOverridePropertyMethod
