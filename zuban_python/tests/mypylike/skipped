@@ -1070,8 +1070,6 @@ testDedicatedErrorCodeTypeAbstract
 # "Can only assign concrete classes to a variable of type "Type[A]""
 testInstantiationAbstractsInTypeForVariables
 # "Property "x" defined in "A" is read-only"
-testDynamicallyTypedReadOnlyAbstractProperty
-testDynamicallyTypedReadOnlyAbstractPropertyForwardRef
 testCantImplementAbstractPropertyViaInstanceVariable
 # "Overloaded method has both abstract and non-abstract variants"
 testOverloadedAbstractMethodVariantMissingDecorator0
