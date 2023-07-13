@@ -569,7 +569,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 match is_property_modifier(decorator) {
                     PropertyModifier::JustADecorator => todo!(),
                     PropertyModifier::Setter => continue,
-                    PropertyModifier::Deleter => todo!(),
+                    PropertyModifier::Deleter => continue,
                 };
             }
         }

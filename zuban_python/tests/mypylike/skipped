@@ -336,9 +336,6 @@ testEmptyBodyAllowedPropertyAbstract
 testSerializeAbstractPropertyIncremental
 testSerializeAbstractPropertyDisallowUntypedIncremental
 testDecoratedPropertySetter
-testOverloadNotConfusedForProperty
-testPropertyWithDeleterButNoSetter
-testSerializeForwardReferenceToAliasInProperty
 # "Read-only property cannot override read-write property"
 testColumnProperty
 # "Only supported top decorator is @f.setter"
@@ -346,6 +343,7 @@ testOverloadedProperty
 testPropertyWithExtraMethod
 # "Property "f" defined in "A" is read-only"
 testDynamicallyTypedProperty
+testPropertyWithDeleterButNoSetter
 # Property
 testInvalidArgCountForProperty
 testNewAnalyzerNoCrashOnCustomProperty
