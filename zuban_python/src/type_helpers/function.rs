@@ -20,7 +20,7 @@ use crate::database::{
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
-    use_cached_annotation_type, File, PythonFile, TypeComputation, TypeComputationOrigin,
+    use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
 };
 use crate::inference_state::InferenceState;

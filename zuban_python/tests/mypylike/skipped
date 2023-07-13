@@ -734,34 +734,24 @@ testTypeAliasInProtocolBody
 # ... has no attribute "__iter__" (not iterable)
 testWeAreCarefulWithBuiltinProtocols
 testWeAreCarefullWithBuiltinProtocolsBase
-# Protocol properties
+# "Protocol member PPS.attr expected settable variable, got read-only attribute"
 testPropertyInProtocols
 testSettablePropertyInProtocols
+testNotManyFlagConflitsShownInProtocols
+# Protocol properties
 testProtocolMethodVsAttributeErrors2
-testRecursiveProtocols1
-testMutuallyRecursiveProtocols
 testMutuallyRecursiveProtocolsTypesWithSubteMismatch
 testMutuallyRecursiveProtocolsTypesWithSubteMismatchWriteable
 testProtocolClassObjectPropertyRejected
 testModuleAsProtocolImplementationClassObject
 testModuleAsProtocolImplementationTypeAlias
-testNotManyFlagConflitsShownInProtocols
-testProtocolSelfTypeNewSyntax
-testProtocolSelfTypeNewSyntaxSubProtocol
 testNamedTupleWithNoArgsCallableField
 testNamedTupleWithManyArgsCallableField
 testErrorsForProtocolsInDifferentPlaces
 testBasicNamedTupleStructuralSubtyping
-testSerializeReadOnlyProperty
-testSerializeReadWriteProperty
 # staticmethod/classmethod
 testStaticAndClassMethodsInProtocols
 testBuiltinClassMethod
-testProtocolClassObjectClassMethod
-testProtocolClassObjectStaticMethod
-testProtocolClassObjectGenericClassMethod
-testProtocolClassObjectSelfTypeClassMethod
-testProtocolTypeTypeClassMethod
 # Protocol with ClassVar
 testProtocolClassObjectAttribute
 testModuleAsProtocolImplementationClassVar
@@ -1069,8 +1059,6 @@ testAbstractClasses
 testDedicatedErrorCodeTypeAbstract
 # "Can only assign concrete classes to a variable of type "Type[A]""
 testInstantiationAbstractsInTypeForVariables
-# "Property "x" defined in "A" is read-only"
-testCantImplementAbstractPropertyViaInstanceVariable
 # "Overloaded method has both abstract and non-abstract variants"
 testOverloadedAbstractMethodVariantMissingDecorator0
 testOverloadedAbstractMethodVariantMissingDecorator1
@@ -1242,6 +1230,8 @@ testReadWriteDeleteAbstractProperty
 # Property access from class
 testOverrideMethodProperty
 testOverridePropertyMethod
+# Self definitions different from parent
+testCantImplementAbstractPropertyViaInstanceVariable
 
 # Liskov basics
 testAbstractGenericMethodInference
