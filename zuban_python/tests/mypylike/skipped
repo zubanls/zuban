@@ -334,13 +334,7 @@ testGenericClassPropertyBound
 # "Read-only property cannot override read-write property"
 testColumnProperty
 # Property
-testNewAnalyzerNoCrashOnCustomProperty
 testTypingSelfProperty
-testSelfTypeProperSupertypeAttribute
-testSelfTypeProperSupertypeAttributeTuple
-testSelfTypeProperSupertypeAttributeMeta
-testSelfTypeProperSupertypeAttributeGeneric
-testAssigningToInheritedReadOnlyProperty
 testPropertyGetterBody
 testOverrideMethodProperty
 testOverridePropertyMethod
@@ -1198,6 +1192,10 @@ testSerializeClassVar
 testIncrementalClassVar
 testIncrementalClassVarGone
 testCachingClassVar
+testSelfTypeProperSupertypeAttribute
+testSelfTypeProperSupertypeAttributeTuple
+testSelfTypeProperSupertypeAttributeMeta
+testSelfTypeProperSupertypeAttributeGeneric
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
@@ -1533,6 +1531,7 @@ testAssignClassMethodOnClass
 testAssignClassMethodOnInstance
 testAssignStaticMethodOnInstance
 testErrorCodeAssignToMethod
+testNewAnalyzerNoCrashOnCustomProperty
 
 # "Cannot assign to a type"
 testAssignToNestedClassViaClass

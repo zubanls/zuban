@@ -76,7 +76,7 @@ impl<'a> Instance<'a> {
                                             .add_issue(
                                                 i_s,
                                                 IssueType::PropertyIsReadOnly {
-                                                    class_name: self.class.name().into(),
+                                                    class_name: class.name().into(),
                                                     property_name: name.as_str().into(),
                                                 },
                                             ),
@@ -93,6 +93,7 @@ impl<'a> Instance<'a> {
                                 }
                             }
                         });
+                    break;
                 }
             }
         }
