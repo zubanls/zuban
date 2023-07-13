@@ -87,7 +87,7 @@ const USE_MYPY_TEST_FILES: [&str; 74] = [
     //"check-possibly-undefined.test",
     //"check-callable.test",
     //"check-assert-type-fail.test",
-
+    // Python special features
     //"check-slots.test",
     //"check-formatting.test",
     //"check-warnings.test",
@@ -102,14 +102,15 @@ const USE_MYPY_TEST_FILES: [&str; 74] = [
     //"check-functools.test",
     //"check-singledispatch.test",
     //"check-ctypes.test",
-
+    //"check-custom-plugin.test",
+    // Python syntax
     //"check-async-await.test",
     //"check-newsyntax.test",
     //"check-python38.test",
     //"check-python39.test",
     //"check-python310.test",
     //"check-python311.test",
-    //"check-custom-plugin.test",
+    // Incremental type checking (multi pass per test)
     "check-fastparse.test",
     "check-serialize.test",
     "check-incremental.test",
@@ -121,6 +122,7 @@ const USE_MYPY_TEST_FILES: [&str; 74] = [
     "fine-grained-cycles.test",
     //"fine-grained-attr.test",
     //"fine-grained-dataclass-transform.test",
+    // Mypy flag checking
     "check-columns.test",
     "check-errorcodes.test",
     //"check-flags.test",
