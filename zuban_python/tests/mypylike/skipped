@@ -333,13 +333,12 @@ testGenericClassPropertyBound
 
 # "Read-only property cannot override read-write property"
 testColumnProperty
-# Property
-testTypingSelfProperty
-testPropertyGetterBody
+# Property access from class
 testOverrideMethodProperty
 testOverridePropertyMethod
+# Property self resolving
+testTypingSelfProperty
 testNewNamedTupleProperty
-testMixinTypedPropertyReversed
 # abstractproperty
 testReadOnlyAbstractProperty
 testReadOnlyAbstractPropertyForwardRef
@@ -1377,6 +1376,7 @@ testGenericMultipleOverrideReplace
 testMultipleInheritanceAndDifferentButCompatibleSignatures
 # with decorator
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
+testMixinTypedPropertyReversed
 
 # "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverride
@@ -1970,6 +1970,7 @@ testSerializeTypeGuardFunction
 testOptionalDescriptorsBinder
 testUnionDescriptorsBinder
 testSubclassDescriptorsBinder
+testPropertyGetterBody
 # Use x instead of self as first argument (probably name binding issue)
 testNonStandardNameForSelfAndInit
 
