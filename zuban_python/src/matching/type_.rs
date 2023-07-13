@@ -2171,7 +2171,7 @@ impl<'a> Type<'a> {
                 callable(
                     self,
                     instance
-                        .lookup_and_maybe_ignore_super_count(i_s, from, name, *mro_index)
+                        .lookup_and_maybe_ignore_super_count(i_s, from, name, mro_index + 1)
                         .1,
                 )
             }

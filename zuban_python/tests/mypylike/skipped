@@ -1098,19 +1098,13 @@ testEmptyBodyWithFinal
 
 
 # super()
-testSelfTypeGeneric
 testSuperOutsideClass
-testSuperBasics
-testRefreshGenericSubclass
-testConstrainedGenericSuper
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
 testMixinProtocolSuper
 testConstructorSignatureChanged3
 testRefreshSubclassNestedInFunction2
-testErrorCodeUnsafeSuper_no_empty
 testColumnsInvalidArgumentType
-testAbstractBodyTurnsEmptyCoarse
 testSerialize__init__
 testSerializeOverloaded__init__
 testAbstractBodyTurnsEmpty
@@ -1120,6 +1114,8 @@ testSuperWithReadWriteAbstractProperty
 testEmptyBodyUnsafeAbstractSuper
 testEmptyBodyUnsafeAbstractSuperOverloads
 testEmptyBodyUnsafeAbstractSuperProperty
+testErrorCodeUnsafeSuper_no_empty
+testAbstractBodyTurnsEmptyCoarse
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic

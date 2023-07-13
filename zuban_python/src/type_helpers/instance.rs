@@ -5,7 +5,8 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, DbType, FunctionKind, PointLink};
+use crate::database::{ClassType, DbType, FunctionKind, GenericClass, PointLink};
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
@@ -389,17 +390,35 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
     }
 }
 
-pub fn execute_super(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
+pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
     if args.iter().next().is_none() {
         if let Some(cls) = i_s.current_class() {
-            return Inferred::from_type(DbType::Super {
+            Inferred::from_type(DbType::Super {
                 class: Rc::new(cls.as_generic_class(i_s.db)),
                 mro_index: 0,
-            });
+            })
         } else {
             todo!()
         }
     } else {
-        todo!()
+        debug!("TODO this super(X, y) is not correct at the moment");
+        let mut iterator = args.iter();
+        iterator.next();
+        let instance = iterator
+            .next()
+            .unwrap()
+            .infer(i_s, &mut ResultContext::Unknown);
+        let cls = match instance.as_type(i_s).as_ref() {
+            DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
+            DbType::Class(link, generics) => GenericClass {
+                link: *link,
+                generics: generics.clone(),
+            },
+            _ => todo!("{}", instance.format_short(i_s)),
+        };
+        Inferred::from_type(DbType::Super {
+            class: Rc::new(cls),
+            mro_index: 0,
+        })
     }
 }
