@@ -398,7 +398,9 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
                 mro_index: 0,
             })
         } else {
-            todo!()
+            args.as_node_ref()
+                .add_issue(i_s, IssueType::SuperUsedOutsideClass);
+            return Inferred::new_any();
         }
     } else {
         debug!("TODO this super(X, y) is not correct at the moment");

@@ -97,6 +97,8 @@ pub(crate) enum IssueType {
     AmbigousClassVariableAccess,
     CannotInstantiateProtocol { name: Box<str> },
 
+    SuperUsedOutsideClass,
+
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
@@ -486,6 +488,7 @@ impl<'db> Diagnostic<'db> {
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
             ),
+            SuperUsedOutsideClass => "\"super\" used outside class".to_string(),
 
             IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(
                 "Incompatible types in assignment (expression has type \"{got}\", \
