@@ -719,7 +719,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 *definition,
                                             ));
                                         }
-                                        FunctionKind::Property => {
+                                        FunctionKind::Property { .. } => {
                                             return Some(Inferred::from_type(c.result_type.clone()))
                                         }
                                         FunctionKind::Classmethod => {
@@ -846,7 +846,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 FunctionKind::Function => {
                                     debug!("TODO callable decorated class descriptor")
                                 }
-                                FunctionKind::Property => todo!(),
+                                FunctionKind::Property { .. } => unreachable!(),
                                 FunctionKind::Classmethod => {
                                     return Some(Inferred::from_type(DbType::FunctionOverload(
                                         Rc::new(FunctionOverload::new(
@@ -871,7 +871,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     FunctionKind::Function => {
                                         debug!("TODO callable decorated class descriptor")
                                     }
-                                    FunctionKind::Property => todo!(),
+                                    FunctionKind::Property { .. } => todo!(),
                                     FunctionKind::Classmethod => {
                                         let result =
                                             infer_class_method(i_s, *class, attribute_class, c);

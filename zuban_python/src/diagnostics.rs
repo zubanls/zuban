@@ -132,6 +132,7 @@ pub(crate) enum IssueType {
     DecoratorOnTopOfPropertyNotSupported,
     OnlySupportedTopDecoratorSetter { name: Box<str> },
     UnexpectedDefinitionForProperty { name: Box<str> },
+    PropertyIsReadOnly { class_name: Box<str>, property_name: Box<str> },
 
     MethodWithoutArguments,
 
@@ -555,7 +556,7 @@ impl<'db> Diagnostic<'db> {
                 match kind {
                     FunctionKind::Classmethod => "classmethod",
                     FunctionKind::Staticmethod => "staticmethod",
-                    FunctionKind::Property => "property",
+                    FunctionKind::Property { .. } => "property",
                     FunctionKind::Function => unreachable!()
                 }
             ),
@@ -568,6 +569,9 @@ impl<'db> Diagnostic<'db> {
                 format!("Only supported top decorator is @{name}.setter"),
             UnexpectedDefinitionForProperty{name} =>
                 format!("Unexpected definition for property \"{name}\""),
+            PropertyIsReadOnly{class_name, property_name} => format!(
+                "Property \"{property_name}\" defined in \"{class_name}\" is read-only"
+            ),
 
             InvariantNote{actual, maybe} => {
                 type_ = "note";

@@ -413,7 +413,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 Inferred::new_any()
             };
         }
-        if details.kind == FunctionKind::Property {
+        if matches!(details.kind, FunctionKind::Property { .. }) {
             let DbType::Callable(mut callable) = details.inferred.as_type(i_s).into_db_type() else {
                 unreachable!()
             };
@@ -441,7 +441,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let mut kind = FunctionKind::Function;
         let mut is_overload = false;
         for decorator in decorated.decorators().iter_reverse() {
-            if kind == FunctionKind::Property {
+            if matches!(kind, FunctionKind::Property { .. }) {
                 NodeRef::new(self.node_ref.file, decorator.index())
                     .add_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
                 break;
@@ -482,7 +482,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         .add_issue(i_s, IssueType::OverloadedPropertyNotSupported);
                     return None;
                 }
-                kind = FunctionKind::Property;
+                kind = FunctionKind::Property { writable: false };
                 continue;
             }
             // TODO check if it's an function without a return annotation and

@@ -1806,7 +1806,8 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 {
                                     if specific == Specific::MaybeSelfParam {
                                         match func.kind(self.i_s) {
-                                            FunctionKind::Function | FunctionKind::Property => {
+                                            FunctionKind::Function
+                                            | FunctionKind::Property { .. } => {
                                                 Inferred::new_saved(self.file, node_index, point)
                                             }
                                             FunctionKind::Classmethod => Inferred::from_type(

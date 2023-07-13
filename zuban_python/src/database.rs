@@ -1155,7 +1155,7 @@ impl DbType {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum FunctionKind {
     Function,
-    Property,
+    Property { writable: bool },
     Classmethod,
     Staticmethod,
 }
