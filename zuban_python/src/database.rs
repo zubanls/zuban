@@ -42,6 +42,12 @@ pub struct TypeVarIndex(u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct MroIndex(pub u32);
 
+impl From<usize> for MroIndex {
+    fn from(item: usize) -> Self {
+        Self(item as u32)
+    }
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StringSlice {
     pub file_index: FileIndex,
@@ -729,6 +735,12 @@ impl FunctionOverload {
     }
 }
 
+#[derive(Debug, Clone, PartialEq)]
+pub struct GenericClass {
+    pub link: PointLink,
+    pub generics: ClassGenerics,
+}
+
 // PartialEq is only here for optimizations, it is not a reliable way to check if a type matches
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
@@ -748,6 +760,10 @@ pub enum DbType {
     NamedTuple(Rc<NamedTuple>),
     Module(FileIndex),
     Namespace(Rc<Namespace>),
+    Super {
+        class: Rc<GenericClass>,
+        mro_index: usize,
+    },
     Self_,
     None,
     Any,
@@ -919,6 +935,7 @@ impl DbType {
                 .module_db_type()
                 .format(format_data),
             Self::Namespace(_) => "object".into(),
+            Self::Super { .. } => "TODO super".into(),
         }
     }
 
@@ -1009,6 +1026,7 @@ impl DbType {
             | Self::Module(_)
             | Self::Self_
             | Self::Namespace(_)
+            | Self::Super { .. }
             | Self::NewType(_) => (),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -1102,6 +1120,7 @@ impl DbType {
             | Self::Module(_)
             | Self::Namespace(_) => false,
             Self::NamedTuple(nt) => todo!(),
+            Self::Super { .. } => todo!(),
         }
     }
 
@@ -1142,6 +1161,7 @@ impl DbType {
             | Self::Module(_)
             | Self::Namespace(_)
             | Self::TypeVar(_) => false,
+            Self::Super { .. } => todo!(),
         }
     }
 

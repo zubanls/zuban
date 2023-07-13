@@ -1128,6 +1128,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                     on_type_error,
                                 )
                             }
+                            Specific::BuiltinsSuper => {
+                                if args.iter().next().is_none() {
+                                    if let Some(cls) = i_s.current_class() {
+                                        return Self::from_type(DbType::Super {
+                                            class: Rc::new(cls.as_generic_class(i_s.db)),
+                                            mro_index: 0,
+                                        });
+                                    } else {
+                                        todo!()
+                                    }
+                                } else {
+                                    todo!()
+                                }
+                            }
                             Specific::TypingTypeVarClass => {
                                 return TypeVarClass().execute(
                                     i_s,

@@ -1099,10 +1099,7 @@ testEmptyBodyWithFinal
 
 # super()
 testSelfTypeGeneric
-testSuperExpressionsWhenInheritingFromGenericType
-testSuperExpressionsWhenInheritingFromGenericTypeAndDeepHierarchy
 testSuperOutsideClass
-testSuperField
 testSuperBasics
 testRefreshGenericSubclass
 testConstrainedGenericSuper
@@ -1111,24 +1108,18 @@ testSelfTypeSuper
 testMixinProtocolSuper
 testConstructorSignatureChanged3
 testRefreshSubclassNestedInFunction2
-testCyclicDecoratorSuper
-testCyclicDecoratorSuperDeferred
 testErrorCodeUnsafeSuper_no_empty
 testColumnsInvalidArgumentType
-testGenericMethodRestoreMetaLevel3
 testAbstractBodyTurnsEmptyCoarse
 testSerialize__init__
 testSerializeOverloaded__init__
 testAbstractBodyTurnsEmpty
 testAbstractBodyTurnsEmptyProtocol
-testEmptyBodyNoSuperWarningWithoutStrict
-testEmptyBodyNoSuperWarningOptionalReturn
-testSuperWithAbstractProperty
 testSuperWithReadWriteAbstractProperty
-testEmptyBodyUnsafeAbstractSuperProperty
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper
 testEmptyBodyUnsafeAbstractSuperOverloads
+testEmptyBodyUnsafeAbstractSuperProperty
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic

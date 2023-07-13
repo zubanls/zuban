@@ -12,9 +12,9 @@ use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionKind,
-    GenericsList, Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope,
-    Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    Variance,
+    GenericClass, GenericsList, Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific,
+    ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -55,6 +55,11 @@ impl<'db: 'a, 'a> Class<'a> {
             generics,
             type_var_remap,
         }
+    }
+
+    pub fn from_generic_class(db: &'db Database, c: &'a GenericClass) -> Self {
+        let generics = Generics::from_class_generics(db, &c.generics);
+        Self::from_position(NodeRef::from_link(db, c.link), generics, None)
     }
 
     pub fn from_db_type(db: &'db Database, link: PointLink, list: &'a ClassGenerics) -> Self {
@@ -867,10 +872,16 @@ impl<'db: 'a, 'a> Class<'a> {
         self.generics().as_generics_list(db, type_vars)
     }
 
+    pub fn as_generic_class(&self, db: &Database) -> GenericClass {
+        GenericClass {
+            link: self.node_ref.as_link(),
+            generics: self.generics_as_list(db),
+        }
+    }
+
     pub fn as_db_type(&self, db: &Database) -> DbType {
-        let lst = self.generics_as_list(db);
-        let link = self.node_ref.as_link();
-        DbType::Class(link, lst)
+        let g = self.as_generic_class(db);
+        DbType::Class(g.link, g.generics)
     }
 
     pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {

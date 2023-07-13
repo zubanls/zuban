@@ -251,6 +251,7 @@ impl<'a> Type<'a> {
             DbType::Module(file_index) => todo!(),
             DbType::Namespace(file_index) => todo!(),
             DbType::NamedTuple(_) => todo!(),
+            DbType::Super { .. } => todo!(),
         }
     }
 
@@ -368,6 +369,7 @@ impl<'a> Type<'a> {
             },
             DbType::Module(file_index) => Match::new_false(),
             DbType::Namespace(file_index) => todo!(),
+            DbType::Super { .. } => todo!(),
         }
     }
 
@@ -1453,6 +1455,7 @@ impl<'a> Type<'a> {
                 );
                 DbType::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
             }
+            DbType::Super { .. } => todo!(),
         }
     }
 
@@ -1835,6 +1838,7 @@ impl<'a> Type<'a> {
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::NamedTuple(_) => todo!(),
+            DbType::Super { .. } => todo!(),
             t @ (DbType::Module(_) | DbType::Namespace(_) | DbType::Self_) => t.clone(),
         }
     }
@@ -2160,6 +2164,15 @@ impl<'a> Type<'a> {
                         from_inferred,
                     )
                     .lookup(i_s, from, name),
+                )
+            }
+            DbType::Super { class, mro_index } => {
+                let instance = Instance::new(Class::from_generic_class(i_s.db, class), None);
+                callable(
+                    self,
+                    instance
+                        .lookup_and_maybe_ignore_super_count(i_s, from, name, *mro_index)
+                        .1,
                 )
             }
             DbType::NamedTuple(nt) => callable(
