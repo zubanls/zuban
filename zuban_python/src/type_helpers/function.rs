@@ -16,7 +16,7 @@ use crate::database::{
     OverloadDefinition, OverloadImplementation, ParamSpecUsage, ParamSpecific, Point, PointType,
     Specific, StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments,
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarName, TypeVarUsage, Variance,
+    TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{
@@ -417,6 +417,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             let DbType::Callable(mut callable) = details.inferred.as_type(i_s).into_db_type() else {
                 unreachable!()
             };
+            if let Some(wrong) = callable.has_exactly_one_positional_parameter() {
+                match wrong {
+                    WrongPositionalCount::TooMany => {
+                        NodeRef::new(file, self.expect_decorated_node().index())
+                            .add_issue(i_s, IssueType::TooManyArguments(" for property".into()))
+                    }
+                    // IssueType::MethodWithoutArguments will be checked and added later.
+                    WrongPositionalCount::TooFew => (),
+                }
+                return Inferred::new_any();
+            }
             // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
             drop(details);
             self.calculate_property_setter_and_deleter(i_s, Rc::make_mut(&mut callable));

@@ -1551,6 +1551,30 @@ impl CallableContent {
         }
     }
 
+    pub fn has_exactly_one_positional_parameter(&self) -> Option<WrongPositionalCount> {
+        match &self.params {
+            CallableParams::Simple(params) => match params.len() {
+                0 => Some(WrongPositionalCount::TooFew),
+                1 => None,
+                _ => {
+                    for param in params.iter().skip(1) {
+                        if !param.has_default
+                            && !matches!(
+                                &param.param_specific,
+                                ParamSpecific::Starred(_) | ParamSpecific::DoubleStarred(_)
+                            )
+                        {
+                            return Some(WrongPositionalCount::TooMany);
+                        }
+                    }
+                    None
+                }
+            },
+            CallableParams::WithParamSpec(_, _) => return Some(WrongPositionalCount::TooMany),
+            CallableParams::Any => todo!(), //true,
+        }
+    }
+
     fn has_any_internal(
         &self,
         i_s: &InferenceState,
@@ -1625,6 +1649,11 @@ impl CallableContent {
             _ => format!("Callable[{params}, {result}]"),
         }
     }
+}
+
+pub enum WrongPositionalCount {
+    TooMany,
+    TooFew,
 }
 
 #[derive(Debug, Clone, PartialEq)]

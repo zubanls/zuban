@@ -334,7 +334,6 @@ testGenericClassPropertyBound
 # "Read-only property cannot override read-write property"
 testColumnProperty
 # Property
-testInvalidArgCountForProperty
 testNewAnalyzerNoCrashOnCustomProperty
 testTypingSelfProperty
 testSelfTypeProperSupertypeAttribute
