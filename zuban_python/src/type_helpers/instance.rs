@@ -72,14 +72,14 @@ impl<'a> Instance<'a> {
                                         unreachable!()
                                     }
                                     match c.kind {
-                                        FunctionKind::Property { writable: false } => {
-                                            /*
-                                            from.add_issue(i_s, IssueType::PropertyIsReadOnly {
-                                                class_name: self.class.name().into(),
-                                                property_name: name.as_str().into(),
-                                            })
-                                            */
-                                        }
+                                        FunctionKind::Property { writable: false } => from
+                                            .add_issue(
+                                                i_s,
+                                                IssueType::PropertyIsReadOnly {
+                                                    class_name: self.class.name().into(),
+                                                    property_name: name.as_str().into(),
+                                                },
+                                            ),
                                         FunctionKind::Property { writable: true } => {}
                                         _ => unreachable!(),
                                     }

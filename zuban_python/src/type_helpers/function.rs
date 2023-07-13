@@ -586,7 +586,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         },
                     );
                 }
-                PropertyModifier::Setter => continue,
+                PropertyModifier::Setter => {
+                    callable.kind = FunctionKind::Property { writable: true };
+                    continue;
+                }
                 PropertyModifier::Deleter => continue,
             };
         }
