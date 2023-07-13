@@ -53,20 +53,24 @@ impl<'a> Instance<'a> {
                             if had_no_set {
                                 todo!()
                             }
-                            if let Some(descriptor) = t.maybe_class(i_s.db) {
-                                if let Some(set) = Instance::new(descriptor, None)
-                                    .lookup(i_s, Some(from), "__set__")
-                                    .into_maybe_inferred()
-                                {
-                                    had_set = true;
-                                    let inst = self.as_inferred(i_s);
-                                    calculate_descriptor(i_s, from, set, inst, value)
+                            match t.as_ref() {
+                                DbType::Class(l, g) => {
+                                    let descriptor = Class::from_db_type(i_s.db, *l, g);
+                                    if let Some(set) = Instance::new(descriptor, None)
+                                        .lookup(i_s, Some(from), "__set__")
+                                        .into_maybe_inferred()
+                                    {
+                                        had_set = true;
+                                        let inst = self.as_inferred(i_s);
+                                        calculate_descriptor(i_s, from, set, inst, value)
+                                    }
                                 }
-                            } else {
-                                if had_set {
-                                    todo!()
+                                _ => {
+                                    if had_set {
+                                        todo!()
+                                    }
+                                    had_no_set = true;
                                 }
-                                had_no_set = true;
                             }
                         });
                 }
