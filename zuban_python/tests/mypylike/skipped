@@ -331,11 +331,6 @@ testTypeAliasesResultingInPlainInstance
 testTypingSelfNonAnnotationUses
 testGenericClassPropertyBound
 
-# "Read-only property cannot override read-write property"
-testColumnProperty
-# Property access from class
-testOverrideMethodProperty
-testOverridePropertyMethod
 # abstractproperty
 testReadOnlyAbstractProperty
 testReadOnlyAbstractPropertyForwardRef
@@ -1253,6 +1248,11 @@ testOverloadStaticMethodMixingInheritance
 testOverloadStaticMethodImplementation
 testOverloadedStaticMethodOnInstance
 testUnsafeDunderOverlapInSubclass
+# "Read-only property cannot override read-write property"
+testColumnProperty
+# Property access from class
+testOverrideMethodProperty
+testOverridePropertyMethod
 
 # Liskov basics
 testAbstractGenericMethodInference
