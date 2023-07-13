@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
@@ -384,5 +386,20 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
             }
         }
         None
+    }
+}
+
+pub fn execute_super(i_s: &InferenceState, args: &dyn Arguments) -> Inferred {
+    if args.iter().next().is_none() {
+        if let Some(cls) = i_s.current_class() {
+            return Inferred::from_type(DbType::Super {
+                class: Rc::new(cls.as_generic_class(i_s.db)),
+                mro_index: 0,
+            });
+        } else {
+            todo!()
+        }
+    } else {
+        todo!()
     }
 }

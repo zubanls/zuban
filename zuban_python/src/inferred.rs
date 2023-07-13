@@ -20,9 +20,9 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties, Function, Instance,
-    NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction, TypeOrClass,
-    TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
+    execute_super, BoundMethod, BoundMethodFunction, Callable, Class, FirstParamProperties,
+    Function, Instance, NewTypeClass, OverloadedFunction, ParamSpecClass, RevealTypeFunction,
+    TypeOrClass, TypeVarClass, TypeVarTupleClass, TypingCast, TypingClass,
 };
 
 #[derive(Debug)]
@@ -1128,20 +1128,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     on_type_error,
                                 )
                             }
-                            Specific::BuiltinsSuper => {
-                                if args.iter().next().is_none() {
-                                    if let Some(cls) = i_s.current_class() {
-                                        return Self::from_type(DbType::Super {
-                                            class: Rc::new(cls.as_generic_class(i_s.db)),
-                                            mro_index: 0,
-                                        });
-                                    } else {
-                                        todo!()
-                                    }
-                                } else {
-                                    todo!()
-                                }
-                            }
+                            Specific::BuiltinsSuper => return execute_super(i_s, args),
                             Specific::TypingTypeVarClass => {
                                 return TypeVarClass().execute(
                                     i_s,

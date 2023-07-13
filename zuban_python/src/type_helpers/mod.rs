@@ -14,7 +14,7 @@ pub use class::{Class, MroIterator, TypeOrClass};
 pub use function::{
     is_private, FirstParamProperties, Function, InferrableParam, OverloadedFunction,
 };
-pub use instance::Instance;
+pub use instance::{execute_super, Instance};
 pub use module::{lookup_in_namespace, Module};
 pub use named_tuple::NamedTupleValue;
 pub use tuple::Tuple;
