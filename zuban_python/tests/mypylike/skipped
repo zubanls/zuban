@@ -22,7 +22,6 @@ testSuperClassGetItem
 testSuperOutsideMethodNoCrash
 testSuperWithTypeVarAsFirstArgument
 testSuperWithSingleArgument
-testSuperWithThreeArguments
 testSuperWithNonPositionalArguments
 testSuperWithVarArgs
 testInvalidSuperArg

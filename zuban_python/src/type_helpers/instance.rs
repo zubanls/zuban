@@ -418,6 +418,11 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
             },
             _ => todo!("{}", instance.format_short(i_s)),
         };
+        if iterator.next().is_some() {
+            args.as_node_ref()
+                .add_issue(i_s, IssueType::TooManyArguments(" for \"super\"".into()));
+            return Inferred::new_any();
+        }
         Inferred::from_type(DbType::Super {
             class: Rc::new(cls),
             mro_index: 0,
