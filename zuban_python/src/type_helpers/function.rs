@@ -1029,7 +1029,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn diagnostic_string(&self, class: Option<&Class>) -> String {
-        diagnostic_function_string(class, self.class.as_ref(), self.name())
+        let name = self.name();
+        match class {
+            Some(instance_class) => {
+                if name == "__init__" {
+                    format!("{:?}", instance_class.name())
+                } else {
+                    format!("{:?} of {:?}", name, self.class.unwrap().name())
+                }
+            }
+            None => format!("{:?}", name),
+        }
     }
 
     pub fn result_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
@@ -1975,21 +1985,4 @@ enum PropertyModifier {
     JustADecorator,
     Setter,
     Deleter,
-}
-
-fn diagnostic_function_string(
-    instance_class: Option<&Class>,
-    func_class: Option<&Class>,
-    name: &str,
-) -> String {
-    match instance_class {
-        Some(instance_class) => {
-            if name == "__init__" {
-                format!("{:?}", instance_class.name())
-            } else {
-                format!("{:?} of {:?}", name, func_class.unwrap().name())
-            }
-        }
-        None => format!("{:?}", name),
-    }
 }
