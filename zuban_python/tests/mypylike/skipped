@@ -21,7 +21,6 @@ testSuperOutsideClass
 testSuperClassGetItem
 testSuperOutsideMethodNoCrash
 testSuperWithTypeVarAsFirstArgument
-testSuperWithSingleArgument
 testSuperWithNonPositionalArguments
 testSuperWithVarArgs
 testInvalidSuperArg

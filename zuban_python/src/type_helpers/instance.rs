@@ -406,10 +406,11 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
         debug!("TODO this super(X, y) is not correct at the moment");
         let mut iterator = args.iter();
         iterator.next();
-        let instance = iterator
-            .next()
-            .unwrap()
-            .infer(i_s, &mut ResultContext::Unknown);
+        let Some(next_arg) = iterator.next() else {
+            args.as_node_ref().add_issue(i_s, IssueType::SuperWithSingleArgumentNotSupported);
+            return Inferred::new_any();
+        };
+        let instance = next_arg.infer(i_s, &mut ResultContext::Unknown);
         let cls = match instance.as_type(i_s).as_ref() {
             DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
             DbType::Class(link, generics) => GenericClass {

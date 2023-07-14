@@ -98,6 +98,7 @@ pub(crate) enum IssueType {
     CannotInstantiateProtocol { name: Box<str> },
 
     SuperUsedOutsideClass,
+    SuperWithSingleArgumentNotSupported,
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
@@ -489,6 +490,7 @@ impl<'db> Diagnostic<'db> {
                 "Cannot instantiate protocol class \"{name}\""
             ),
             SuperUsedOutsideClass => "\"super\" used outside class".to_string(),
+            SuperWithSingleArgumentNotSupported => "\"super\" with a single argument not supported".to_string(),
 
             IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(
                 "Incompatible types in assignment (expression has type \"{got}\", \
