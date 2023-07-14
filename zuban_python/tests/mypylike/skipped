@@ -1,5 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
+testMixinProtocolSuper
 
 # Issues with i_s.current_class (wrong class)
 testTypingSelfOnSuperTypeVarValues
@@ -1053,6 +1054,16 @@ testNoneAliasStrict
 # Type[Any] is object
 testSimplifyingUnionWithTypeTypes2
 
+# "Invalid assignment target"
+testSuperWithReadWriteAbstractProperty
+# "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
+testEmptyBodyUnsafeAbstractSuper
+testEmptyBodyUnsafeAbstractSuperOverloads
+testEmptyBodyUnsafeAbstractSuperProperty
+testErrorCodeUnsafeSuper_no_empty
+testAbstractBodyTurnsEmpty
+testAbstractBodyTurnsEmptyProtocol
+testAbstractBodyTurnsEmptyCoarse
 # ""abstractmethod" used with a non-method"
 testAbstractNestedFunction
 testAbstractGlobalFunction
@@ -1099,19 +1110,6 @@ testEmptyBodyImplicitlyAbstractProtocolStub
 testEmptyBodyVariationsImplicitlyAbstractProtocol
 testEmptyBodyNoneCompatibleProtocol
 testEmptyBodyWithFinal
-
-
-# super()
-testMixinProtocolSuper
-testSuperWithReadWriteAbstractProperty
-# "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
-testEmptyBodyUnsafeAbstractSuper
-testEmptyBodyUnsafeAbstractSuperOverloads
-testEmptyBodyUnsafeAbstractSuperProperty
-testErrorCodeUnsafeSuper_no_empty
-testAbstractBodyTurnsEmpty
-testAbstractBodyTurnsEmptyProtocol
-testAbstractBodyTurnsEmptyCoarse
 
 # class types defined in super class
 testInheritanceFromGenericWithImplicitDynamic
