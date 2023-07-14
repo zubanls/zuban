@@ -27,8 +27,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
-    LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
+    calculate_class_init_type_vars_and_return, FormatData, Generics, LookupResult, Match, Matcher,
+    MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::format_pretty_callable;

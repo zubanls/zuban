@@ -32,7 +32,8 @@ use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_function_type_vars_and_return, maybe_class_usage,
     replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArguments,
-    FormatData, Generic, LookupResult, OnTypeError, ResultContext, SignatureMatch, Type,
+    FormatData, FunctionOrCallable, Generic, LookupResult, OnTypeError, ResultContext,
+    SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
@@ -1560,9 +1561,12 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
                 on_overload_mismatch(i_s, class)
             } else {
+                let f_or_c = FunctionOrCallable::Callable(Callable::new(
+                    self.overload.iter_functions().next().unwrap(),
+                    self.class,
+                ));
                 let t = IssueType::OverloadMismatch {
-                    name: self
-                        .diagnostic_string(i_s.db)
+                    name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db, None)
                         .unwrap_or_else(|| todo!())
                         .into(),
                     args: args.iter().into_argument_types(i_s),
@@ -1818,11 +1822,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             .name
             .unwrap_or_else(|| todo!())
             .as_str(db)
-    }
-
-    pub fn diagnostic_string(&self, db: &Database) -> Option<String> {
-        Callable::new(self.overload.iter_functions().next().unwrap(), self.class)
-            .diagnostic_string(db)
     }
 }
 

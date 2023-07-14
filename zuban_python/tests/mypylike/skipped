@@ -129,6 +129,7 @@ testUnpackIterableClassWithOverloadedIter2
 overload_union_math_on_class_init_constrained
 # Overload __init__ formatting shows a return type
 testOverloadedInitSupertype
+testSerializeOverloaded__init__
 # overload classmethod variants formatting cls type should be Class not any
 testOverloadClassmethodDisappears
 testGenericClassAlternativeConstructorPreciseOverloaded
@@ -1102,7 +1103,6 @@ testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
 testMixinProtocolSuper
 testColumnsInvalidArgumentType
-testSerializeOverloaded__init__
 testSuperWithReadWriteAbstractProperty
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper

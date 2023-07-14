@@ -24,7 +24,6 @@ impl<'a> Callable<'a> {
         self.content.name.map(|n| {
             let name = n.as_str(db);
             match self.content.class_name {
-                Some(c) if name == "__init__" => format!("\"{}\"", c.as_str(db)),
                 Some(c) => format!("\"{}\" of \"{}\"", name, c.as_str(db)),
                 None => format!("\"{name}\""),
             }
