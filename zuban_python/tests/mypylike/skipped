@@ -2,6 +2,10 @@
 testAbstractClassesWorkWithGenericDecorators
 testSelfTypeRestrictedClassMethod
 
+# Issues with i_s.current_class (wrong class)
+testTypingSelfOnSuperTypeVarValues
+testSelfTypeSuper
+
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
 
@@ -1099,8 +1103,6 @@ testEmptyBodyWithFinal
 
 
 # super()
-testTypingSelfOnSuperTypeVarValues
-testSelfTypeSuper
 testMixinProtocolSuper
 testColumnsInvalidArgumentType
 testSuperWithReadWriteAbstractProperty
