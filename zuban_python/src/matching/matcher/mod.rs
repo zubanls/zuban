@@ -2,6 +2,7 @@ mod bound;
 mod type_var_matcher;
 mod utils;
 
+pub use type_var_matcher::FunctionOrCallable;
 pub use utils::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
@@ -23,7 +24,7 @@ use crate::debug;
 use crate::inference_state::InferenceState;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Callable, Class, Function};
-use type_var_matcher::{BoundKind, CalculatedTypeVarLike, FunctionOrCallable, TypeVarMatcher};
+use type_var_matcher::{BoundKind, CalculatedTypeVarLike, TypeVarMatcher};
 use utils::match_arguments_against_params;
 
 #[derive(Debug)]

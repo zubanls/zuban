@@ -458,8 +458,7 @@ pub fn match_arguments_against_params<
     mut args_with_params: InferrableParamIterator2<'db, 'x, impl Iterator<Item = P>, P, AI>,
 ) -> SignatureMatch {
     let diagnostic_string = |prefix: &str| {
-        func_or_callable
-            .diagnostic_string(i_s.db, class)
+        (on_type_error.unwrap().generate_diagnostic_string)(&func_or_callable, i_s.db, class)
             .map(|s| (prefix.to_owned() + &s).into())
     };
     let should_generate_errors = on_type_error.is_some();

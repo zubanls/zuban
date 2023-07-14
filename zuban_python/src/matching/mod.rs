@@ -29,11 +29,13 @@ pub use utils::{
 
 use crate::{
     arguments::Argument,
-    database::{DbType, TypeOrTypeVarTuple},
+    database::{Database, DbType, TypeOrTypeVarTuple},
     inference_state::InferenceState,
     inferred::Inferred,
     type_helpers::Class,
 };
+
+use self::matcher::FunctionOrCallable;
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;
 
@@ -41,6 +43,8 @@ type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, O
 pub struct OnTypeError<'db, 'a> {
     pub callback: OnTypeErrorCallback<'db, 'a>,
     pub on_overload_mismatch: OnOverloadMismatch<'db, 'a>,
+    pub generate_diagnostic_string:
+        &'a dyn Fn(&FunctionOrCallable, &Database, Option<&Class>) -> Option<String>,
 }
 
 impl<'db, 'a> OnTypeError<'db, 'a> {
@@ -48,8 +52,30 @@ impl<'db, 'a> OnTypeError<'db, 'a> {
         Self {
             callback,
             on_overload_mismatch: None,
+            generate_diagnostic_string: &func_or_callable_diagnostic_string,
         }
     }
+
+    pub fn with_overload_mismatch(
+        callback: OnTypeErrorCallback<'db, 'a>,
+        on_overload_mismatch: OnOverloadMismatch<'db, 'a>,
+    ) -> Self {
+        Self {
+            callback,
+            on_overload_mismatch,
+            generate_diagnostic_string: &func_or_callable_diagnostic_string,
+        }
+    }
+}
+
+// For whatever reason we cannot just pass FunctionOrCallable::diagnostic_string, even though it
+// results in the exactly same behavior. Probably a Rust bug.
+fn func_or_callable_diagnostic_string(
+    f: &FunctionOrCallable,
+    db: &Database,
+    c: Option<&Class>,
+) -> Option<String> {
+    f.diagnostic_string(db, c)
 }
 
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(

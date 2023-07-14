@@ -605,10 +605,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             },
                         );
                     },
-                    OnTypeError {
-                        on_overload_mismatch: Some(&|_, _| had_error.set(true)),
-                        callback: &|_, _, _, _, _, _| had_error.set(true),
-                    },
+                    OnTypeError::with_overload_mismatch(
+                        &|_, _, _, _, _, _| had_error.set(true),
+                        Some(&|_, _| had_error.set(true)),
+                    ),
                 );
 
                 let n = NodeRef::new(self.file, right_side.index());
@@ -1271,10 +1271,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 i_s,
                                 &KnownArguments::new(&right_inf, node_ref),
                                 &mut ResultContext::Unknown,
-                                OnTypeError {
-                                    on_overload_mismatch: Some(&|_, _| had_left_error.set(true)),
-                                    callback: &|_, _, _, _, _, _| had_left_error.set(true),
-                                },
+                                OnTypeError::with_overload_mismatch(
+                                    &|_, _, _, _, _, _| had_left_error.set(true),
+                                    Some(&|_, _| had_left_error.set(true)),
+                                ),
                             );
                             if !had_left_error.get() {
                                 return add_to_union(result);
@@ -1304,14 +1304,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     &KnownArguments::new(&left_inf, node_ref),
                                     &mut ResultContext::Unknown,
-                                    OnTypeError {
-                                        on_overload_mismatch: Some(&|_, _| {
-                                            error.set(LookupError::BothSidesError)
-                                        }),
-                                        callback: &|_, _, _, _, _, _| {
-                                            error.set(LookupError::BothSidesError)
-                                        },
-                                    },
+                                    OnTypeError::with_overload_mismatch(
+                                        &|_, _, _, _, _, _| error.set(LookupError::BothSidesError),
+                                        Some(&|_, _| error.set(LookupError::BothSidesError)),
+                                    ),
                                 )
                         } else {
                             Inferred::new_unknown()
