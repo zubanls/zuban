@@ -2,6 +2,41 @@
 testSelfTypeRestrictedClassMethod
 testMixinProtocolSuper
 
+# "undefined in superclass"
+testAccessingSupertypeMethod
+testAccessingSuperMemberWithDeepHierarchy
+testSuperWithMultipleInheritance
+testSuperSilentInDynamicFunction
+# super() detail tests
+testSuperWithUnknownBase
+testSuperWithAny
+testSuperInUnannotatedMethod
+testSuperWithTypeObjects
+testSuperWithGenericSelf
+testSuperWithTypeVarValues1
+testSuperWithTypeVarValues2
+testSuperInClassMethod
+testSuperWithUnrelatedTypes
+testSuperOutsideClass
+testSuperClassGetItem
+testSuperOutsideMethodNoCrash
+testSuperWithTypeVarAsFirstArgument
+testSuperWithSingleArgument
+testSuperWithThreeArguments
+testSuperWithNonPositionalArguments
+testSuperWithVarArgs
+testInvalidSuperArg
+testTypeErrorInSuperArg
+testFlippedSuperArgs
+testInvalidFirstSuperArg
+testInvalidSecondArgumentToSuper
+testSuperInMethodWithNoArguments
+testSuperWithUnsupportedTypeObject
+testSuperSelfTypeInstanceMethod
+testSuperSelfTypeClassMethod
+testWrongSuperOutsideMethodNoCrash
+# "Target class has no base class"
+testSuperWithObjectClassAsFirstArgument
 # Issues with i_s.current_class (wrong class)
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
@@ -1056,6 +1091,7 @@ testSimplifyingUnionWithTypeTypes2
 
 # "Invalid assignment target"
 testSuperWithReadWriteAbstractProperty
+testAssignToBaseClassMethod
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper
 testEmptyBodyUnsafeAbstractSuperOverloads
@@ -1424,6 +1460,7 @@ testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNamedTupleNew
 testSerialize__new__
+testSuperWithNew
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
