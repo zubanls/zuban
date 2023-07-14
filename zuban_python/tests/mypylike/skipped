@@ -1103,7 +1103,6 @@ testEmptyBodyWithFinal
 
 # super()
 testMixinProtocolSuper
-testColumnsInvalidArgumentType
 testSuperWithReadWriteAbstractProperty
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper
