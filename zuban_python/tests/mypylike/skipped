@@ -1,5 +1,4 @@
 # Next up
-testAbstractClassesWorkWithGenericDecorators
 testSelfTypeRestrictedClassMethod
 
 # Issues with i_s.current_class (wrong class)

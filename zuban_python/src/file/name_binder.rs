@@ -279,7 +279,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                         func,
                         ordered,
                         in_base_scope,
-                        None,  // decorators
+                        false, // decorators
                         false, // is_async
                     );
                     0
@@ -289,13 +289,16 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     0
                 }
                 StmtContent::Decorated(decorated) => {
+                    for decorator in decorated.decorators().iter() {
+                        self.index_non_block_node(&decorator, ordered, false);
+                    }
                     match decorated.decoratee() {
                         Decoratee::FunctionDef(func) => {
                             self.index_function_name_and_param_defaults(
                                 func,
                                 ordered,
                                 in_base_scope,
-                                Some(decorated.decorators()),
+                                true,
                                 false, // is_async
                             );
                         }
@@ -304,7 +307,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                                 func,
                                 ordered,
                                 in_base_scope,
-                                Some(decorated.decorators()),
+                                true,
                                 true, // is_async
                             );
                         }
@@ -326,7 +329,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                             function_def,
                             ordered,
                             in_base_scope,
-                            None, // decorators
+                            false, // decorators
                             true,
                         );
                         0
@@ -822,7 +825,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         func: FunctionDef<'db>,
         ordered: bool,
         in_base_scope: bool,
-        decorators: Option<Decorators<'db>>,
+        is_decorated: bool,
         is_async: bool,
     ) {
         // If there is no parent, this does not have to be resolved immediately in theory, but for
@@ -848,19 +851,13 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.index_annotation_expression(&return_annotation.expression());
         }
 
-        if let Some(decorators) = decorators {
-            for decorator in decorators.iter() {
-                self.index_non_block_node(&decorator, ordered, false);
-            }
-        }
-
         self.add_redirect_definition(name_def, func.index(), true);
 
         self.points.set(
             func.index(),
             Point::new_simple_specific(
                 if self.type_ != NameBinderType::Function || return_annotation.is_some() {
-                    if let Some(decorators) = decorators {
+                    if is_decorated {
                         Specific::DecoratedFunction
                     } else {
                         Specific::Function
