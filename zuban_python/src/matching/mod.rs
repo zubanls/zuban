@@ -17,7 +17,7 @@ pub use match_::{ArgumentIndexWithParam, Match, MismatchReason, SignatureMatch};
 pub use matcher::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, calculate_function_type_vars_and_return,
-    CalculatedTypeArguments, Matcher,
+    CalculatedTypeArguments, FunctionOrCallable, Matcher,
 };
 pub use params::{matches_params, matches_simple_params, Param};
 pub use result_context::ResultContext;
@@ -35,16 +35,15 @@ use crate::{
     type_helpers::Class,
 };
 
-use self::matcher::FunctionOrCallable;
-
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;
+type GenerateDiagnosticString<'a> =
+    &'a dyn Fn(&FunctionOrCallable, &Database, Option<&Class>) -> Option<String>;
 
 #[derive(Clone, Copy)]
 pub struct OnTypeError<'db, 'a> {
     pub callback: OnTypeErrorCallback<'db, 'a>,
     pub on_overload_mismatch: OnOverloadMismatch<'db, 'a>,
-    pub generate_diagnostic_string:
-        &'a dyn Fn(&FunctionOrCallable, &Database, Option<&Class>) -> Option<String>,
+    pub generate_diagnostic_string: GenerateDiagnosticString<'a>,
 }
 
 impl<'db, 'a> OnTypeError<'db, 'a> {
@@ -64,6 +63,20 @@ impl<'db, 'a> OnTypeError<'db, 'a> {
             callback,
             on_overload_mismatch,
             generate_diagnostic_string: &func_or_callable_diagnostic_string,
+        }
+    }
+
+    pub fn with_custom_generate_diagnostic_string<'c>(
+        &self,
+        generate_diagnostic_string: GenerateDiagnosticString<'c>,
+    ) -> OnTypeError<'db, 'c>
+    where
+        'a: 'c,
+    {
+        OnTypeError {
+            generate_diagnostic_string,
+            callback: self.callback,
+            on_overload_mismatch: self.on_overload_mismatch,
         }
     }
 }

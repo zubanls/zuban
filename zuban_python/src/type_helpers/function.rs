@@ -1032,11 +1032,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let name = self.name();
         match class {
             Some(instance_class) => {
-                if name == "__init__" {
-                    format!("{:?}", instance_class.name())
-                } else {
-                    format!("{:?} of {:?}", name, self.class.unwrap().name())
-                }
+                format!("{:?} of {:?}", name, self.class.unwrap().name())
             }
             None => format!("{:?}", name),
         }

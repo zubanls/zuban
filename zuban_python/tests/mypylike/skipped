@@ -1101,19 +1101,16 @@ testEmptyBodyWithFinal
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
 testMixinProtocolSuper
-testConstructorSignatureChanged3
-testRefreshSubclassNestedInFunction2
 testColumnsInvalidArgumentType
-testSerialize__init__
 testSerializeOverloaded__init__
-testAbstractBodyTurnsEmpty
-testAbstractBodyTurnsEmptyProtocol
 testSuperWithReadWriteAbstractProperty
 # "Call to abstract method "meth" of "Proto" with trivial body via super() is unsafe"
 testEmptyBodyUnsafeAbstractSuper
 testEmptyBodyUnsafeAbstractSuperOverloads
 testEmptyBodyUnsafeAbstractSuperProperty
 testErrorCodeUnsafeSuper_no_empty
+testAbstractBodyTurnsEmpty
+testAbstractBodyTurnsEmptyProtocol
 testAbstractBodyTurnsEmptyCoarse
 
 # class types defined in super class

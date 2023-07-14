@@ -27,8 +27,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, FormatData, Generics, LookupResult, Match, Matcher,
-    MismatchReason, OnTypeError, ResultContext, Type,
+    calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
+    LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::format_pretty_callable;
@@ -941,10 +941,14 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        // TODO locality!!!
-        if let Some(generics_list) =
-            self.type_check_init_func(i_s, args, result_context, on_type_error)
-        {
+        if let Some(generics_list) = self.type_check_init_func(
+            i_s,
+            args,
+            result_context,
+            on_type_error.with_custom_generate_diagnostic_string(&|_, _, _| {
+                Some(format!("\"{}\"", self.name()))
+            }),
+        ) {
             let result = Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list));
             debug!("Class execute: {}", result.format_short(i_s));
             result
