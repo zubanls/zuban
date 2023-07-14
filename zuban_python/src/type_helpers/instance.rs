@@ -4,7 +4,7 @@ use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
+use crate::arguments::{ArgumentKind, Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, DbType, FunctionKind, GenericClass, PointLink};
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -405,12 +405,35 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
     } else {
         debug!("TODO this super(X, y) is not correct at the moment");
         let mut iterator = args.iter();
-        iterator.next();
-        let Some(next_arg) = iterator.next() else {
-            args.as_node_ref().add_issue(i_s, IssueType::SuperWithSingleArgumentNotSupported);
-            return Inferred::new_any();
+        let mut next_arg = || {
+            iterator.next().map(|arg| match arg.is_keyword_argument() {
+                false => match arg.in_args_or_kwargs_and_arbitrary_len() {
+                    false => Ok(arg.infer(i_s, &mut ResultContext::Unknown)),
+                    true => Err(IssueType::SuperVarargsNotSupported),
+                },
+                true => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
+            })
         };
-        let instance = next_arg.infer(i_s, &mut ResultContext::Unknown);
+        match next_arg() {
+            Some(Ok(_)) => (),
+            Some(Err(issue)) => {
+                args.as_node_ref().add_issue(i_s, issue);
+                return Inferred::new_any();
+            }
+            None => todo!("Merge branch from above"),
+        };
+        let instance = match next_arg() {
+            Some(Ok(instance)) => instance,
+            Some(Err(issue)) => {
+                args.as_node_ref().add_issue(i_s, issue);
+                return Inferred::new_any();
+            }
+            None => {
+                args.as_node_ref()
+                    .add_issue(i_s, IssueType::SuperWithSingleArgumentNotSupported);
+                return Inferred::new_any();
+            }
+        };
         let cls = match instance.as_type(i_s).as_ref() {
             DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
             DbType::Class(link, generics) => GenericClass {
