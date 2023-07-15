@@ -404,59 +404,59 @@ fn execute_super_internal<'db>(
     i_s: &InferenceState<'db, '_>,
     args: &dyn Arguments<'db>,
 ) -> Result<Inferred, IssueType> {
-    if args.iter().next().is_none() {
-        if let Some(cls) = i_s.current_class() {
-            Ok(Inferred::from_type(DbType::Super {
-                class: Rc::new(cls.as_generic_class(i_s.db)),
-                mro_index: 0,
-            }))
-        } else {
-            return Err(IssueType::SuperUsedOutsideClass);
-        }
-    } else {
-        let mut iterator = args.iter();
-        let mut next_arg = || {
-            iterator.next().map(|arg| match arg.is_keyword_argument() {
-                false => match arg.in_args_or_kwargs_and_arbitrary_len() {
-                    false => Ok(arg.infer(i_s, &mut ResultContext::Unknown)),
-                    true => Err(IssueType::SuperVarargsNotSupported),
-                },
-                true => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
-            })
-        };
-        let first_type = match next_arg() {
-            Some(result) => match result?.as_type(i_s).as_ref() {
-                DbType::Type(t) => t.as_ref().clone(),
-                DbType::Any => DbType::Any,
-                _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
+    let mut iterator = args.iter();
+    let mut next_arg = || {
+        iterator.next().map(|arg| match arg.is_keyword_argument() {
+            false => match arg.in_args_or_kwargs_and_arbitrary_len() {
+                false => Ok(arg.infer(i_s, &mut ResultContext::Unknown)),
+                true => Err(IssueType::SuperVarargsNotSupported),
             },
-            None => todo!("Merge branch from above"),
-        };
-        let instance = match next_arg() {
-            Some(result) => result?,
-            None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
-        };
-        if !Type::owned(first_type)
-            .is_simple_super_type_of(i_s, &instance.as_type(i_s))
-            .bool()
-        {
-            return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);
+            true => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
+        })
+    };
+    let first_type = match next_arg() {
+        Some(result) => match result?.as_type(i_s).as_ref() {
+            DbType::Type(t) => t.as_ref().clone(),
+            DbType::Any => DbType::Any,
+            _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
+        },
+        None => {
+            // This is the branch where we use super(), which is very much supported while in a
+            // method.
+            if let Some(cls) = i_s.current_class() {
+                return Ok(Inferred::from_type(DbType::Super {
+                    class: Rc::new(cls.as_generic_class(i_s.db)),
+                    mro_index: 0,
+                }));
+            } else {
+                return Err(IssueType::SuperUsedOutsideClass);
+            }
         }
-        let cls = match instance.as_type(i_s).as_ref() {
-            DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
-            DbType::Class(link, generics) => GenericClass {
-                link: *link,
-                generics: generics.clone(),
-            },
-            DbType::Any => return Ok(Inferred::new_any()),
-            _ => return Err(IssueType::SuperUnsupportedArgument2),
-        };
-        if iterator.next().is_some() {
-            return Err(IssueType::TooManyArguments(" for \"super\"".into()));
-        }
-        Ok(Inferred::from_type(DbType::Super {
-            class: Rc::new(cls),
-            mro_index: 0,
-        }))
+    };
+    let instance = match next_arg() {
+        Some(result) => result?,
+        None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
+    };
+    if !Type::owned(first_type)
+        .is_simple_super_type_of(i_s, &instance.as_type(i_s))
+        .bool()
+    {
+        return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);
     }
+    let cls = match instance.as_type(i_s).as_ref() {
+        DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
+        DbType::Class(link, generics) => GenericClass {
+            link: *link,
+            generics: generics.clone(),
+        },
+        DbType::Any => return Ok(Inferred::new_any()),
+        _ => return Err(IssueType::SuperUnsupportedArgument2),
+    };
+    if iterator.next().is_some() {
+        return Err(IssueType::TooManyArguments(" for \"super\"".into()));
+    }
+    Ok(Inferred::from_type(DbType::Super {
+        class: Rc::new(cls),
+        mro_index: 0,
+    }))
 }
