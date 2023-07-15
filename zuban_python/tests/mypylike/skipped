@@ -2,11 +2,6 @@
 testSelfTypeRestrictedClassMethod
 testMixinProtocolSuper
 
-# "undefined in superclass"
-testAccessingSupertypeMethod
-testAccessingSuperMemberWithDeepHierarchy
-testSuperWithMultipleInheritance
-testSuperSilentInDynamicFunction
 # super with Type[...]
 testSuperWithAny
 testSuperInClassMethod
@@ -645,6 +640,7 @@ testJustRightInDynamic
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 testSuperInUnannotatedMethod
+testSuperSilentInDynamicFunction
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 # "'reveal_type' always outputs 'Any' in unchecked functions"

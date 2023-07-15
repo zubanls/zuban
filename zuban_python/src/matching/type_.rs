@@ -2173,7 +2173,9 @@ impl<'a> Type<'a> {
                     .1;
                 if matches!(&result, LookupResult::None) {
                     if let Some(from) = from {
-                        //from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() })
+                        from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });
+                        callable(self, LookupResult::UnknownName(Inferred::new_any()));
+                        return;
                     }
                 }
                 callable(self, result)
