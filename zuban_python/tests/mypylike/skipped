@@ -16,13 +16,13 @@ testWrongSuperOutsideMethodNoCrash
 # super() detail tests
 testSuperWithUnknownBase
 testSuperWithTypeObjects
-testSuperSelfTypeInstanceMethod
-testSuperSelfTypeClassMethod
 # "super() outside of a method is not supported"
 testSuperOutsideMethodNoCrash
 # "super() requires one or more positional arguments in enclosing function"
 testSuperInMethodWithNoArguments
-# Issues with i_s.current_class (wrong class)
+# How do we deal with super() and Self or self type vars?
+testSuperSelfTypeInstanceMethod
+testSuperSelfTypeClassMethod
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
 
