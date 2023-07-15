@@ -7,28 +7,28 @@ testAccessingSupertypeMethod
 testAccessingSuperMemberWithDeepHierarchy
 testSuperWithMultipleInheritance
 testSuperSilentInDynamicFunction
+# super with Type[...]
+testSuperWithAny
+testSuperInClassMethod
+testSuperClassGetItem
+testFlippedSuperArgs
+testInvalidFirstSuperArg
+testWrongSuperOutsideMethodNoCrash
 # super() detail tests
 testSuperWithUnknownBase
-testSuperWithAny
-testSuperInUnannotatedMethod
 testSuperWithTypeObjects
 testSuperWithGenericSelf
 testSuperWithTypeVarValues1
 testSuperWithTypeVarValues2
-testSuperInClassMethod
-testSuperWithUnrelatedTypes
-testSuperOutsideClass
-testSuperClassGetItem
-testSuperOutsideMethodNoCrash
 testSuperWithTypeVarAsFirstArgument
-testFlippedSuperArgs
-testInvalidFirstSuperArg
 testInvalidSecondArgumentToSuper
-testSuperInMethodWithNoArguments
 testSuperWithUnsupportedTypeObject
 testSuperSelfTypeInstanceMethod
 testSuperSelfTypeClassMethod
-testWrongSuperOutsideMethodNoCrash
+# "super() outside of a method is not supported"
+testSuperOutsideMethodNoCrash
+# "super() requires one or more positional arguments in enclosing function"
+testSuperInMethodWithNoArguments
 # "Target class has no base class"
 testSuperWithObjectClassAsFirstArgument
 # Issues with i_s.current_class (wrong class)
@@ -653,6 +653,7 @@ testTooFewArgsInDynamic
 testJustRightInDynamic
 testIncrementalInvalidNamedTupleInUnannotatedFunction
 testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
+testSuperInUnannotatedMethod
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 # "'reveal_type' always outputs 'Any' in unchecked functions"
@@ -1208,6 +1209,9 @@ testLiteralSubtypeContextGeneric
 # Liskov context inference for list
 testListObject
 
+# keyword params do not matter, only order
+testSuperOutsideClass
+testSuperWithUnrelatedTypes
 # Signature of "???" incompatible with supertype "???"
 testOverloadedMethodSupertype-only_when_cache
 testOverloadedMethodSupertype2-only_when_nocache
