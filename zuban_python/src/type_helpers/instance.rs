@@ -391,16 +391,27 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
 }
 
 pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'db>) -> Inferred {
+    match execute_super_internal(i_s, args) {
+        Ok(inf) => inf,
+        Err(issue) => {
+            args.as_node_ref().add_issue(i_s, issue);
+            Inferred::new_any()
+        }
+    }
+}
+
+fn execute_super_internal<'db>(
+    i_s: &InferenceState<'db, '_>,
+    args: &dyn Arguments<'db>,
+) -> Result<Inferred, IssueType> {
     if args.iter().next().is_none() {
         if let Some(cls) = i_s.current_class() {
-            Inferred::from_type(DbType::Super {
+            Ok(Inferred::from_type(DbType::Super {
                 class: Rc::new(cls.as_generic_class(i_s.db)),
                 mro_index: 0,
-            })
+            }))
         } else {
-            args.as_node_ref()
-                .add_issue(i_s, IssueType::SuperUsedOutsideClass);
-            return Inferred::new_any();
+            return Err(IssueType::SuperUsedOutsideClass);
         }
     } else {
         debug!("TODO this super(X, y) is not correct at the moment");
@@ -417,28 +428,16 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
         match next_arg() {
             Some(Ok(inf)) => {
                 if !matches!(inf.as_type(i_s).as_ref(), DbType::Type(_) | DbType::Any) {
-                    args.as_node_ref()
-                        .add_issue(i_s, IssueType::SuperArgument1MustBeTypeObject);
-                    return Inferred::new_any();
+                    return Err(IssueType::SuperArgument1MustBeTypeObject);
                 }
             }
-            Some(Err(issue)) => {
-                args.as_node_ref().add_issue(i_s, issue);
-                return Inferred::new_any();
-            }
+            Some(Err(issue)) => return Err(issue),
             None => todo!("Merge branch from above"),
         };
         let instance = match next_arg() {
             Some(Ok(instance)) => instance,
-            Some(Err(issue)) => {
-                args.as_node_ref().add_issue(i_s, issue);
-                return Inferred::new_any();
-            }
-            None => {
-                args.as_node_ref()
-                    .add_issue(i_s, IssueType::SuperWithSingleArgumentNotSupported);
-                return Inferred::new_any();
-            }
+            Some(Err(issue)) => return Err(issue),
+            None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
         };
         let cls = match instance.as_type(i_s).as_ref() {
             DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
@@ -446,17 +445,15 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
                 link: *link,
                 generics: generics.clone(),
             },
-            DbType::Any => return Inferred::new_any(),
+            DbType::Any => return Ok(Inferred::new_any()),
             _ => todo!("{}", instance.format_short(i_s)),
         };
         if iterator.next().is_some() {
-            args.as_node_ref()
-                .add_issue(i_s, IssueType::TooManyArguments(" for \"super\"".into()));
-            return Inferred::new_any();
+            return Err(IssueType::TooManyArguments(" for \"super\"".into()));
         }
-        Inferred::from_type(DbType::Super {
+        Ok(Inferred::from_type(DbType::Super {
             class: Rc::new(cls),
             mro_index: 0,
-        })
+        }))
     }
 }
