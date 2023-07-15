@@ -2168,12 +2168,15 @@ impl<'a> Type<'a> {
             }
             DbType::Super { class, mro_index } => {
                 let instance = Instance::new(Class::from_generic_class(i_s.db, class), None);
-                callable(
-                    self,
-                    instance
-                        .lookup_and_maybe_ignore_super_count(i_s, from, name, mro_index + 1)
-                        .1,
-                )
+                let result = instance
+                    .lookup_and_maybe_ignore_super_count(i_s, None, name, mro_index + 1)
+                    .1;
+                if matches!(&result, LookupResult::None) {
+                    if let Some(from) = from {
+                        //from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() })
+                    }
+                }
+                callable(self, result)
             }
             DbType::NamedTuple(nt) => callable(
                 self,
