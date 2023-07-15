@@ -414,7 +414,6 @@ fn execute_super_internal<'db>(
             return Err(IssueType::SuperUsedOutsideClass);
         }
     } else {
-        debug!("TODO this super(X, y) is not correct at the moment");
         let mut iterator = args.iter();
         let mut next_arg = || {
             iterator.next().map(|arg| match arg.is_keyword_argument() {
@@ -425,18 +424,24 @@ fn execute_super_internal<'db>(
                 true => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
             })
         };
-        match next_arg() {
-            Some(result) => {
-                if !matches!(result?.as_type(i_s).as_ref(), DbType::Type(_) | DbType::Any) {
-                    return Err(IssueType::SuperArgument1MustBeTypeObject);
-                }
-            }
+        let first_type = match next_arg() {
+            Some(result) => match result?.as_type(i_s).as_ref() {
+                DbType::Type(t) => t.as_ref().clone(),
+                DbType::Any => DbType::Any,
+                _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
+            },
             None => todo!("Merge branch from above"),
         };
         let instance = match next_arg() {
             Some(result) => result?,
             None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
         };
+        if !Type::owned(first_type)
+            .is_simple_super_type_of(i_s, &instance.as_type(i_s))
+            .bool()
+        {
+            return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);
+        }
         let cls = match instance.as_type(i_s).as_ref() {
             DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
             DbType::Class(link, generics) => GenericClass {
@@ -444,7 +449,7 @@ fn execute_super_internal<'db>(
                 generics: generics.clone(),
             },
             DbType::Any => return Ok(Inferred::new_any()),
-            _ => todo!("{}", instance.format_short(i_s)),
+            _ => return Err(IssueType::SuperUnsupportedArgument2),
         };
         if iterator.next().is_some() {
             return Err(IssueType::TooManyArguments(" for \"super\"".into()));

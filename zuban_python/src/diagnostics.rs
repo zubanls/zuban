@@ -102,6 +102,8 @@ pub(crate) enum IssueType {
     SuperVarargsNotSupported,
     SuperOnlyAcceptsPositionalArguments,
     SuperArgument1MustBeTypeObject,
+    SuperArgument2MustBeAnInstanceOfArgument1,
+    SuperUnsupportedArgument2,
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
@@ -500,6 +502,9 @@ impl<'db> Diagnostic<'db> {
                 "\"super\" only accepts positional arguments".to_string(),
             SuperArgument1MustBeTypeObject =>
                 "Argument 1 for \"super\" must be a type object; got a non-type instance".to_string(),
+            SuperArgument2MustBeAnInstanceOfArgument1 =>
+                "Argument 2 for \"super\" not an instance of argument 1".to_string(),
+            SuperUnsupportedArgument2 => "Unsupported argument 2 for \"super\"".to_string(),
 
             IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(
                 "Incompatible types in assignment (expression has type \"{got}\", \
