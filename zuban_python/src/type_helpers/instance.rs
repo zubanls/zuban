@@ -440,6 +440,7 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
                 link: *link,
                 generics: generics.clone(),
             },
+            DbType::Any => return Inferred::new_any(),
             _ => todo!("{}", instance.format_short(i_s)),
         };
         if iterator.next().is_some() {

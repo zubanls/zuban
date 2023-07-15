@@ -21,8 +21,6 @@ testSuperOutsideClass
 testSuperClassGetItem
 testSuperOutsideMethodNoCrash
 testSuperWithTypeVarAsFirstArgument
-testInvalidSuperArg
-testTypeErrorInSuperArg
 testFlippedSuperArgs
 testInvalidFirstSuperArg
 testInvalidSecondArgumentToSuper
