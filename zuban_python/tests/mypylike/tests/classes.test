@@ -139,3 +139,18 @@ x: A[int]
 reveal_type(x.f)  # N: Revealed type is "int"
 
 reveal_type(A("").f)  # N: Revealed type is "str"
+
+[case super_with_explicit_self]
+# There's testSuperWithGenericSelf, but nothing with explict Self arguments
+# AFAIK
+from typing import Self
+
+class B:
+    def f(self) -> float: pass
+
+class C(B):
+    def f(self) -> int: pass
+
+    def g(self: Self) -> Self:
+        reveal_type(super(C, self).f) # N: Revealed type is "def () -> builtins.float"
+        return self
