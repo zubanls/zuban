@@ -416,6 +416,9 @@ fn execute_super_internal<'db>(
     let first_type = match next_arg() {
         Some(result) => match result?.as_type(i_s).as_ref() {
             DbType::Type(t) => {
+                if !matches!(t.as_ref(), DbType::Class(..)) {
+                    return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
+                }
                 if matches!(t.as_ref(), DbType::Class(link, _)
                             if *link == i_s.db.python_state.object_node_ref().as_link())
                 {

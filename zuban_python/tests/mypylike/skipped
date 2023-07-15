@@ -19,7 +19,6 @@ testSuperWithTypeObjects
 testSuperWithGenericSelf
 testSuperWithTypeVarValues1
 testSuperWithTypeVarValues2
-testSuperWithUnsupportedTypeObject
 testSuperSelfTypeInstanceMethod
 testSuperSelfTypeClassMethod
 # "super() outside of a method is not supported"
