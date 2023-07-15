@@ -414,7 +414,7 @@ fn execute_super_internal<'db>(
         })
     };
     let first_type = match next_arg() {
-        Some(result) => match result?.as_type(i_s).as_ref() {
+        Some(result) => match get_relevant_type_for_super(result?.as_type(i_s).as_ref()) {
             DbType::Type(t) => {
                 if !matches!(t.as_ref(), DbType::Class(..)) {
                     return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
@@ -452,10 +452,10 @@ fn execute_super_internal<'db>(
     {
         return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);
     }
-    let cls = match instance.as_type(i_s).as_ref() {
+    let cls = match get_relevant_type_for_super(instance.as_type(i_s).as_ref()) {
         DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
         DbType::Class(link, generics) => GenericClass {
-            link: *link,
+            link,
             generics: generics.clone(),
         },
         DbType::Any => return Ok(Inferred::new_any()),
@@ -468,4 +468,14 @@ fn execute_super_internal<'db>(
         class: Rc::new(cls),
         mro_index: 0,
     }))
+}
+
+fn get_relevant_type_for_super(t: &DbType) -> DbType {
+    let DbType::TypeVar(usage) = t else {
+        return t.clone()
+    };
+    if let Some(bound) = &usage.type_var.bound {
+        return bound.clone();
+    }
+    t.clone()
 }

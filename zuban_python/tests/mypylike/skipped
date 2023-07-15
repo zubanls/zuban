@@ -16,9 +16,6 @@ testWrongSuperOutsideMethodNoCrash
 # super() detail tests
 testSuperWithUnknownBase
 testSuperWithTypeObjects
-testSuperWithGenericSelf
-testSuperWithTypeVarValues1
-testSuperWithTypeVarValues2
 testSuperSelfTypeInstanceMethod
 testSuperSelfTypeClassMethod
 # "super() outside of a method is not supported"
@@ -1664,6 +1661,8 @@ testTypeVarValuesMethod2
 testTypingSelfWithValuesExpansion
 testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
 testColumnFunctionWithTypeVarValues
+testSuperWithTypeVarValues1
+testSuperWithTypeVarValues2
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
