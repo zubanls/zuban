@@ -11,7 +11,7 @@ class Foo:
 [case self_invalid_annotation]
 from typing import Self
 x: Self  # E: Self type is only allowed in annotations within class definition
-def foo(self):
+def foo(self) -> None:
     x: Self  # E: Self type is only allowed in annotations within class definition
 
 [case self_valid_annotation]

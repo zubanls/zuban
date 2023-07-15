@@ -1,5 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
+testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 testMixinProtocolSuper
 
 # super with Type[...]
@@ -624,29 +625,21 @@ testNestedProtocolGenericUnionsDeep
 # Tuple iter fixes
 testTupleBaseClass
 
-# Dynamic functions are not type checked?!
-testNoInvalidTypeInDynamicFunctions
-testCallGenericFunctionWithTypeVarValueRestrictionInDynamicFunc
-testDynamicallyTypedNestedFunction
-testInferringImplicitDynamicTypeForLvar
-testInferringMultipleLvarDefinitionWithImplicitDynamicRvalue
-testLambdaUnypedContext
-testSkipTypeCheckingWithImplicitSignature
-testSkipTypeCheckingWithImplicitSignatureAndDefaultArgs
-testSkipTypeCheckingImplicitMethod
-testTooManyArgsInDynamic
-testTooFewArgsInDynamic
-testJustRightInDynamic
-testIncrementalInvalidNamedTupleInUnannotatedFunction
-testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
-testSuperInUnannotatedMethod
-testSuperSilentInDynamicFunction
+# Imports in untyped functions are still type checked??
+testUnknownModuleImportedWithinFunction
+testUnknownModuleImportedWithinFunction2
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
 # "'reveal_type' always outputs 'Any' in unchecked functions"
 testRevealUncheckedFunction
 # Function duplicate param names
 testFastParserDuplicateNames
+# --check-untyped-defs
+testCheckUntypedDefsSelf2
+testCheckUntypedDefsSelf3
+testLambdaInheritsCheckedContextFromFuncForced
+testRevealCheckUntypedDefs
+testLambdaCheckUnypedContext
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -2286,13 +2279,6 @@ testClassDecoratorIncorrect
 
 # "Decorators on top of @property are not supported"
 testDecoratedProperty
-
-# Function Not checked, missing return annotations (--check-untyped-defs)
-testPositionalAndKeywordForSameArg
-testTypeCheckOverloadWithImplementationError
-testCheckUntypedDefsSelf2
-testCheckUntypedDefsSelf3
-testLambdaInheritsCheckedContextFromFuncForced
 
 # function type mismatch when untyped
 testSubtypingFunctionsImplicitNames

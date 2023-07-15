@@ -76,9 +76,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         self.node().return_annotation()
     }
 
-    fn is_dynamic(&self) -> bool {
-        // TODO it's probably not dynamic if at least one arg has been set.
+    pub fn is_dynamic(&self) -> bool {
         self.return_annotation().is_none()
+            && !self
+                .node()
+                .params()
+                .iter()
+                .any(|p| p.annotation().is_some())
     }
 
     pub fn iter_inferrable_params<'b>(

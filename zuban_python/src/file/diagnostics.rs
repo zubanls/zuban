@@ -405,10 +405,12 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
-        let args = NoArguments::new(NodeRef::new(self.file, f.index()));
-        let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
-        let mut inference = self.file.inference(function_i_s);
-        inference.calc_block_diagnostics(block, None, Some(&function))
+        if !function.is_dynamic() {
+            let args = NoArguments::new(NodeRef::new(self.file, f.index()));
+            let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
+            let mut inference = self.file.inference(function_i_s);
+            inference.calc_block_diagnostics(block, None, Some(&function))
+        }
     }
 
     fn calc_overload_implementation_diagnostics(
