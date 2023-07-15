@@ -415,7 +415,13 @@ pub fn execute_super<'db>(i_s: &InferenceState<'db, '_>, args: &dyn Arguments<'d
             })
         };
         match next_arg() {
-            Some(Ok(_)) => (),
+            Some(Ok(inf)) => {
+                if !matches!(inf.as_type(i_s).as_ref(), DbType::Type(_) | DbType::Any) {
+                    args.as_node_ref()
+                        .add_issue(i_s, IssueType::SuperArgument1MustBeTypeObject);
+                    return Inferred::new_any();
+                }
+            }
             Some(Err(issue)) => {
                 args.as_node_ref().add_issue(i_s, issue);
                 return Inferred::new_any();

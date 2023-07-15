@@ -101,6 +101,7 @@ pub(crate) enum IssueType {
     SuperWithSingleArgumentNotSupported,
     SuperVarargsNotSupported,
     SuperOnlyAcceptsPositionalArguments,
+    SuperArgument1MustBeTypeObject,
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
@@ -491,11 +492,14 @@ impl<'db> Diagnostic<'db> {
             CannotInstantiateProtocol{name} => format!(
                 "Cannot instantiate protocol class \"{name}\""
             ),
+
             SuperUsedOutsideClass => "\"super\" used outside class".to_string(),
             SuperWithSingleArgumentNotSupported => "\"super\" with a single argument not supported".to_string(),
             SuperVarargsNotSupported => "Varargs not supported with \"super\"".to_string(),
             SuperOnlyAcceptsPositionalArguments =>
                 "\"super\" only accepts positional arguments".to_string(),
+            SuperArgument1MustBeTypeObject =>
+                "Argument 1 for \"super\" must be a type object; got a non-type instance".to_string(),
 
             IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(
                 "Incompatible types in assignment (expression has type \"{got}\", \
