@@ -103,7 +103,7 @@ pub(crate) enum IssueType {
     SuperOnlyAcceptsPositionalArguments,
     SuperArgument1MustBeTypeObject,
     SuperArgument2MustBeAnInstanceOfArgument1,
-    SuperUnsupportedArgument2,
+    SuperUnsupportedArgument{argument_index: usize},
     SuperTargetClassHasNoBaseClass,
 
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
@@ -505,7 +505,8 @@ impl<'db> Diagnostic<'db> {
                 "Argument 1 for \"super\" must be a type object; got a non-type instance".to_string(),
             SuperArgument2MustBeAnInstanceOfArgument1 =>
                 "Argument 2 for \"super\" not an instance of argument 1".to_string(),
-            SuperUnsupportedArgument2 => "Unsupported argument 2 for \"super\"".to_string(),
+            SuperUnsupportedArgument{argument_index} =>
+                format!("Unsupported argument {argument_index} for \"super\""),
             SuperTargetClassHasNoBaseClass => "Target class has no base class".to_string(),
 
             IncompatibleAssignmentInSubclass {base_class, got, expected} => format!(

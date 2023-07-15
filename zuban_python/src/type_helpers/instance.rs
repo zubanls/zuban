@@ -4,9 +4,8 @@ use parsa_python_ast::Name;
 
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
-use crate::arguments::{ArgumentKind, Arguments, CombinedArguments, KnownArguments, NoArguments};
+use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
 use crate::database::{ClassType, DbType, FunctionKind, GenericClass, PointLink};
-use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
@@ -457,7 +456,7 @@ fn execute_super_internal<'db>(
             generics: generics.clone(),
         },
         DbType::Any => return Ok(Inferred::new_any()),
-        _ => return Err(IssueType::SuperUnsupportedArgument2),
+        _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };
     if iterator.next().is_some() {
         return Err(IssueType::TooManyArguments(" for \"super\"".into()));

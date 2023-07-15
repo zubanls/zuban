@@ -11,11 +11,11 @@ use crate::file::ComplexValues;
 use crate::utils::SymbolTable;
 use parsa_python_ast::{
     AssignmentContentWithSimpleTargets, AssignmentRightSide, AsyncStmtContent, Block, BlockContent,
-    ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, Decorators,
-    DictComprehension, Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef,
-    IfBlockType, IfStmt, ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda,
-    MatchStmt, Name, NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator,
-    Tree, TryBlockType, TryStmt, WhileStmt, WithStmt,
+    ClassDef, CommonComprehensionExpression, Comprehension, Decoratee, DictComprehension,
+    Expression, File, ForIfClause, ForIfClauseIterator, ForStmt, FunctionDef, IfBlockType, IfStmt,
+    ImportFromTargets, InterestingNode, InterestingNodeSearcher, Lambda, MatchStmt, Name,
+    NameDefinition, NameParent, NodeIndex, SimpleStmts, StmtContent, StmtIterator, Tree,
+    TryBlockType, TryStmt, WhileStmt, WithStmt,
 };
 
 #[derive(PartialEq, Debug)]
