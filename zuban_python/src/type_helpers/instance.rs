@@ -426,17 +426,15 @@ fn execute_super_internal<'db>(
             })
         };
         match next_arg() {
-            Some(Ok(inf)) => {
-                if !matches!(inf.as_type(i_s).as_ref(), DbType::Type(_) | DbType::Any) {
+            Some(result) => {
+                if !matches!(result?.as_type(i_s).as_ref(), DbType::Type(_) | DbType::Any) {
                     return Err(IssueType::SuperArgument1MustBeTypeObject);
                 }
             }
-            Some(Err(issue)) => return Err(issue),
             None => todo!("Merge branch from above"),
         };
         let instance = match next_arg() {
-            Some(Ok(instance)) => instance,
-            Some(Err(issue)) => return Err(issue),
+            Some(result) => result?,
             None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
         };
         let cls = match instance.as_type(i_s).as_ref() {
