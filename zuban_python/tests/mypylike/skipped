@@ -640,6 +640,20 @@ testCheckUntypedDefsSelf3
 testLambdaInheritsCheckedContextFromFuncForced
 testRevealCheckUntypedDefs
 testLambdaCheckUnypedContext
+# "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
+testContextForAttributeDeclaredInInit
+testDeclareAttributeTypeInInit
+testAccessAttributeDeclaredInInitBeforeDeclaration
+testNoteUncheckedAnnotation
+testUncheckedAnnotationCodeShown
+# --disallow-untyped-defs
+testIgnoreInsideFunctionDoesntAffectWhole
+testErrorCodeFunctionHasNoAnnotation
+testErrorCodeCallUntypedFunction
+# "Function is missing a return type annotation"
+testColumnFunctionMissingTypeAnnotation
+# --disallow-untyped-calls
+testColumnCallToUntypedFunction
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -2515,13 +2529,6 @@ testTypeApplicationCrash
 # "bool" is not a valid base class
 testTestExtendPrimitives
 
-# "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
-testContextForAttributeDeclaredInInit
-testDeclareAttributeTypeInInit
-testAccessAttributeDeclaredInInitBeforeDeclaration
-testNoteUncheckedAnnotation
-testUncheckedAnnotationCodeShown
-
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
 
@@ -2694,16 +2701,6 @@ testColumnMissingTypeParameters
 
 # --disallow-any-unimported
 testErrorCodeAnyFromUnfollowedImport
-
-# --disallow-untyped-defs
-testIgnoreInsideFunctionDoesntAffectWhole
-testErrorCodeFunctionHasNoAnnotation
-testErrorCodeCallUntypedFunction
-# "Function is missing a return type annotation"
-testColumnFunctionMissingTypeAnnotation
-
-# --disallow-untyped-calls
-testColumnCallToUntypedFunction
 
 # --warn-return-any
 testErrorCodeReturnAny
