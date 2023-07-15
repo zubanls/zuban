@@ -19,7 +19,6 @@ testSuperWithTypeObjects
 testSuperWithGenericSelf
 testSuperWithTypeVarValues1
 testSuperWithTypeVarValues2
-testSuperWithTypeVarAsFirstArgument
 testSuperWithUnsupportedTypeObject
 testSuperSelfTypeInstanceMethod
 testSuperSelfTypeClassMethod
@@ -27,8 +26,6 @@ testSuperSelfTypeClassMethod
 testSuperOutsideMethodNoCrash
 # "super() requires one or more positional arguments in enclosing function"
 testSuperInMethodWithNoArguments
-# "Target class has no base class"
-testSuperWithObjectClassAsFirstArgument
 # Issues with i_s.current_class (wrong class)
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper

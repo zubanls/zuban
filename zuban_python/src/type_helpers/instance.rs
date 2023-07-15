@@ -416,7 +416,14 @@ fn execute_super_internal<'db>(
     };
     let first_type = match next_arg() {
         Some(result) => match result?.as_type(i_s).as_ref() {
-            DbType::Type(t) => t.as_ref().clone(),
+            DbType::Type(t) => {
+                if matches!(t.as_ref(), DbType::Class(link, _)
+                            if *link == i_s.db.python_state.object_node_ref().as_link())
+                {
+                    return Err(IssueType::SuperTargetClassHasNoBaseClass);
+                }
+                t.as_ref().clone()
+            }
             DbType::Any => DbType::Any,
             _ => return Err(IssueType::SuperArgument1MustBeTypeObject),
         },
