@@ -1139,6 +1139,36 @@ testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
+# "ClassVar can only be used for assignments in class body"
+testClassVarDefInModuleScope
+testClassVarDefInFuncScope
+testClassVarDefInMethod
+testClassVarInFunctionArgs
+testClassVarInMethodArgs
+testClassVarFunctionRetType
+testClassVarMethodRetType
+testMultipleClassVarInFunctionSig
+testDefineOnSelf
+testForIndex
+testForIndexInClassBody
+testWithStmt
+testWithStmtInClassBody
+# "Invalid type: ClassVar nested inside other type"
+testClassVarInCallableArgs
+testClassVarInCallableRet
+testClassVarInUnion
+testClassVarInUnionAsAttribute
+testListWithClassVars
+testTupleClassVar
+testMultipleLvaluesWithList
+testDeeplyNested
+testClassVarInClassVar
+testInsideGeneric
+# "ClassVar cannot contain type variables"
+testClassVarWithTypeVariable
+# semanal
+testClassVarTooManyArguments
+testClassVarWithoutArguments
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
