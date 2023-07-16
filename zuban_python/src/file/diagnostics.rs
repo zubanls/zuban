@@ -171,9 +171,13 @@ impl<'db> Inference<'db, '_, '_> {
                 StmtContent::MatchStmt(match_stmt) => {
                     todo!()
                 }
-                StmtContent::AsyncStmt(async_stmt) => {
-                    todo!()
-                }
+                StmtContent::AsyncStmt(async_stmt) => match async_stmt.unpack() {
+                    AsyncStmtContent::FunctionDef(func) => {
+                        self.calc_function_diagnostics(func, class)
+                    }
+                    AsyncStmtContent::ForStmt(_) => todo!(),
+                    AsyncStmtContent::WithStmt(_) => todo!(),
+                },
                 StmtContent::Newline => {}
             };
             self.file
