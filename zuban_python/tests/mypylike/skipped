@@ -646,8 +646,6 @@ testNoteUncheckedAnnotation
 testUncheckedAnnotationCodeShown
 # --disallow-untyped-defs weird
 testSerializeAbstractPropertyDisallowUntypedIncremental
-# "Function is missing a return type annotation"
-testColumnFunctionMissingTypeAnnotation
 
 # Comprehensions
 testNewAnalyzerListComprehension
