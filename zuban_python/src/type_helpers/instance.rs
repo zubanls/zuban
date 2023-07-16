@@ -5,7 +5,8 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, DbType, FunctionKind, PointLink};
+use crate::database::{ClassType, DbType, FunctionKind, GenericClass, PointLink};
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
@@ -413,6 +414,16 @@ fn execute_super_internal<'db>(
             true => Err(IssueType::SuperOnlyAcceptsPositionalArguments),
         })
     };
+    let success = |c: GenericClass, mro_index| {
+        if Class::from_generic_class(i_s.db, &c).incomplete_mro(i_s.db) {
+            debug!("super() with incomplete base class leads to any");
+            return Ok(Inferred::new_any());
+        }
+        return Ok(Inferred::from_type(DbType::Super {
+            class: Rc::new(c),
+            mro_index,
+        }));
+    };
     let first_type = match next_arg() {
         Some(result) => match get_relevant_type_for_super(result?.as_type(i_s).as_ref()) {
             DbType::Type(t) => {
@@ -433,10 +444,7 @@ fn execute_super_internal<'db>(
             // This is the branch where we use super(), which is very much supported while in a
             // method.
             if let Some(cls) = i_s.current_class() {
-                return Ok(Inferred::from_type(DbType::Super {
-                    class: Rc::new(cls.as_generic_class(i_s.db)),
-                    mro_index: 0,
-                }));
+                return success(cls.as_generic_class(i_s.db), 0);
             } else {
                 return Err(IssueType::SuperUsedOutsideClass);
             }
@@ -461,10 +469,7 @@ fn execute_super_internal<'db>(
     if iterator.next().is_some() {
         return Err(IssueType::TooManyArguments(" for \"super\"".into()));
     }
-    Ok(Inferred::from_type(DbType::Super {
-        class: Rc::new(cls),
-        mro_index: 0,
-    }))
+    success(cls, 0)
 }
 
 fn get_relevant_type_for_super(t: &DbType) -> DbType {

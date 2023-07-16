@@ -14,7 +14,6 @@ testSuperClassGetItem
 testInvalidFirstSuperArg
 testWrongSuperOutsideMethodNoCrash
 # super() detail tests
-testSuperWithUnknownBase
 testSuperWithTypeObjects
 # "super() outside of a method is not supported"
 testSuperOutsideMethodNoCrash
