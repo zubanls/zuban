@@ -13,7 +13,6 @@ testSuperInClassMethod
 testSuperClassGetItem
 testInvalidFirstSuperArg
 testWrongSuperOutsideMethodNoCrash
-# super() detail tests
 testSuperWithTypeObjects
 # "super() outside of a method is not supported"
 testSuperOutsideMethodNoCrash
@@ -1124,14 +1123,9 @@ testClassValuedAttributesBasics
 no_self
 
 # ClassVar
-testMethodAsDataAttribute
-testMethodWithDynamicallyTypedMethodAsDataAttribute
-testPartiallyTypedSelfInMethodDataAttribute
-testCallableDataAttribute
 testTypingSelfClassVar
 testTypingSelfCallableClassVar
 testSelfTypeCallableClassVarOldStyle
-testMetaclassAsAny
 testMetaclassStrictSupertypeOfTypeWithClassmethods
 testMetaclassAsAnyWithAFlag
 testClassVarsInProtocols

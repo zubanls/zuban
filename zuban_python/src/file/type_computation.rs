@@ -68,6 +68,7 @@ pub(super) enum SpecialType {
     Self_,
     Final,
     Annotated,
+    ClassVar,
     MypyExtensionsParamType(Specific),
     CallableParam(CallableParam),
 }
@@ -211,6 +212,7 @@ enum TypeContent<'db, 'a> {
     ParamSpec(ParamSpecUsage),
     Unpacked(TypeOrTypeVarTuple),
     Concatenate(CallableParams),
+    ClassVar(DbType),
     Unknown,
 }
 
@@ -713,6 +715,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(link, None)))
             }
             TypeContent::Unknown => DbType::Any,
+            TypeContent::ClassVar(t) => t,
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
                     self.inference.i_s.db,
@@ -892,6 +895,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::Unpacked(_) => todo!(),
                 TypeContent::Concatenate(_) => todo!(),
                 TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
+                TypeContent::ClassVar(_) => todo!(),
                 TypeContent::Unknown => TypeContent::Unknown,
             },
             PrimaryContent::Execution(details) => match base {
@@ -1002,6 +1006,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         SpecialType::Unpack => self.compute_type_get_item_on_unpack(s),
                         SpecialType::Concatenate => self.compute_type_get_item_on_concatenate(s),
                         SpecialType::Annotated => self.compute_get_item_on_annotated(s),
+                        SpecialType::ClassVar => self.compute_get_item_on_class_var(s),
                     },
                     TypeContent::RecursiveAlias(link) => {
                         self.is_recursive_alias = true;
@@ -1027,6 +1032,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::ParamSpec(_) => todo!(),
                     TypeContent::Unpacked(_) => todo!(),
                     TypeContent::Concatenate(_) => todo!(),
+                    TypeContent::ClassVar(_) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
@@ -1875,6 +1881,17 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Unknown
         } else {
             TypeContent::DbType(self.compute_slice_db_type(first))
+        }
+    }
+
+    fn compute_get_item_on_class_var(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
+        let mut iterator = slice_type.iter();
+        let first = iterator.next().unwrap();
+        if iterator.next().is_some() {
+            self.add_issue(slice_type.as_node_ref(), todo!());
+            TypeContent::Unknown
+        } else {
+            TypeContent::ClassVar(self.compute_slice_db_type(first))
         }
     }
 
@@ -2842,6 +2859,7 @@ fn check_special_type(point: Point) -> Option<SpecialType> {
             Specific::TypingSelf => SpecialType::Self_,
             Specific::TypingAnnotated => SpecialType::Annotated,
             Specific::TypingTuple => SpecialType::Tuple,
+            Specific::TypingClassVar => SpecialType::ClassVar,
             Specific::MypyExtensionsArg
             | Specific::MypyExtensionsDefaultArg
             | Specific::MypyExtensionsNamedArg
@@ -2969,10 +2987,14 @@ fn check_type_name<'db: 'file, 'file>(
             if point.calculated() {
                 // TODO This is mostly for loading Callable and other builtins. Should probably be
                 //      changed/removed
-                debug_assert!(matches!(
-                    point.type_(),
-                    PointType::Complex | PointType::MultiDefinition
-                ));
+                debug_assert!(
+                    matches!(
+                        point.type_(),
+                        PointType::Complex | PointType::MultiDefinition
+                    ),
+                    "{:?}",
+                    point.type_()
+                );
                 return load_cached_type(name_node_ref);
             }
             let def_point = name_node_ref
