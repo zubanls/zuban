@@ -7,8 +7,8 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, FunctionKind, GenericItem,
-    GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace, NewType,
+    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, FunctionKind, GenericClass,
+    GenericItem, GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace, NewType,
     ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
     Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
@@ -291,7 +291,7 @@ macro_rules! compute_type_application {
                 todo!()
             }
             TypeContent::SimpleGeneric{class_link, generics, ..} => {
-                Inferred::from_type(DbType::Type(Rc::new(DbType::Class(class_link, generics))))
+                Inferred::from_type(DbType::Type(Rc::new(DbType::new_class(class_link, generics))))
             }
             TypeContent::DbType(mut db_type) => {
                 let type_vars = tcomp.into_type_vars(|inf, recalculate_type_vars| {
@@ -434,7 +434,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 CalculatedBaseClass::NewNamedTuple
             }
             TypeContent::SpecialType(SpecialType::Type) => {
-                CalculatedBaseClass::DbType(DbType::Class(
+                CalculatedBaseClass::DbType(DbType::new_class(
                     self.inference.i_s.db.python_state.type_node_ref().as_link(),
                     ClassGenerics::None,
                 ))
@@ -450,7 +450,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));
                 match db_type {
-                    DbType::Class(_, _) | DbType::Tuple(_) | DbType::Callable(_) => {
+                    DbType::Class(..) | DbType::Tuple(_) | DbType::Callable(_) => {
                         CalculatedBaseClass::DbType(db_type)
                     }
                     DbType::NamedTuple(nt) => {
@@ -604,7 +604,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 class_link,
                 generics,
                 ..
-            } => DbType::Class(class_link, generics),
+            } => DbType::new_class(class_link, generics),
             TypeContent::DbType(d) => d,
             TypeContent::Module(file) => {
                 self.add_module_issue(
@@ -626,7 +626,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
-                SpecialType::LiteralString => DbType::Class(
+                SpecialType::LiteralString => DbType::new_class(
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
                     ClassGenerics::None,
                 ),
@@ -869,11 +869,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     generics,
                     ..
                 } => {
-                    let cls = Class::from_db_type(self.inference.i_s.db, class_link, &generics);
+                    let cls = Class::from_generic_class_components(
+                        self.inference.i_s.db,
+                        class_link,
+                        &generics,
+                    );
                     self.check_attribute_on_class(cls, primary, name)
                 }
                 TypeContent::DbType(t) => match t {
-                    DbType::Class(c, g) => todo!(),
+                    DbType::Class(..) => todo!(),
                     DbType::Any => TypeContent::DbType(DbType::Any),
                     _ => todo!("{primary:?} {t:?}"),
                 },
@@ -1197,7 +1201,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             },
         );
         TypeContent::DbType(match type_var_likes {
-            None => DbType::Class(class.node_ref.as_link(), ClassGenerics::None),
+            None => DbType::new_class(class.node_ref.as_link(), ClassGenerics::None),
             Some(type_vars) => {
                 // Need to fill the generics, because we might have been in a
                 // SimpleGeneric case where the generic count is wrong.
@@ -1208,7 +1212,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     let expected_count = type_var_likes.map(|t| t.len()).unwrap_or(0);
                     generics.truncate(expected_count);
                 }
-                DbType::Class(
+                DbType::new_class(
                     class.node_ref.as_link(),
                     ClassGenerics::List(GenericsList::generics_from_vec(generics)),
                 )
@@ -3032,9 +3036,10 @@ fn check_type_name<'db: 'file, 'file>(
                         DbType::Any => true,
                         DbType::Type(t) => match t.as_ref() {
                             DbType::Any => true,
-                            DbType::Class(c, ClassGenerics::None) => {
-                                *c == i_s.db.python_state.object_node_ref().as_link()
-                            }
+                            DbType::Class(GenericClass {
+                                link,
+                                generics: ClassGenerics::None,
+                            }) => *link == i_s.db.python_state.object_node_ref().as_link(),
                             _ => false,
                         },
                         _ => false,
@@ -3085,7 +3090,7 @@ fn wrap_starred(t: DbType) -> DbType {
 fn wrap_double_starred(db: &Database, t: DbType) -> DbType {
     match &t {
         DbType::ParamSpecKwargs(_) => t,
-        _ => DbType::Class(
+        _ => DbType::new_class(
             db.python_state.dict_node_ref().as_link(),
             ClassGenerics::List(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(db.python_state.str_db_type()),

@@ -1496,14 +1496,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                     StarLikeExpressionIterator::Empty => GenericItem::TypeArgument(DbType::Any), // TODO shouldn't this be Never?
                 };
-                return Inferred::from_type(DbType::Class(
+                return Inferred::from_type(DbType::new_class(
                     self.i_s.db.python_state.list_node_ref().as_link(),
                     ClassGenerics::List(GenericsList::new_generics(Rc::new([result]))),
                 ));
             }
             ListComprehension(_) => {
                 debug!("TODO ANY INSTEAD OF ACTUAL VALUE IN COMPREHENSION");
-                return Inferred::from_type(DbType::Class(
+                return Inferred::from_type(DbType::new_class(
                     self.i_s.db.python_state.list_node_ref().as_link(),
                     ClassGenerics::List(GenericsList::new_generics(Rc::new([
                         GenericItem::TypeArgument(DbType::Any),
@@ -1512,7 +1512,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             }
             Dict(dict) => {
                 let generics = self.create_dict_generics(dict, result_context);
-                return Inferred::from_type(DbType::Class(
+                return Inferred::from_type(DbType::new_class(
                     self.i_s.db.python_state.dict_node_ref().as_link(),
                     ClassGenerics::List(generics),
                 ));
@@ -1984,7 +1984,7 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
     match t {
         // No need to check these here, this is done when calculating diagnostics
         DbType::Type(t) => match t.as_ref() {
-            DbType::Class(link, generics) => DbType::Class(*link, generics.clone()),
+            inner @ DbType::Class(..) => inner.clone(),
             _ => todo!(),
         },
         DbType::Any => DbType::Any,

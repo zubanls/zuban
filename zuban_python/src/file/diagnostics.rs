@@ -659,14 +659,14 @@ impl<'db> Inference<'db, '_, '_> {
 }
 
 fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
-    let check = |link, generics| {
-        let cls = Class::from_db_type(db, link, generics);
+    let check = |generic_class| {
+        let cls = Class::from_generic_class(db, generic_class);
         cls.incomplete_mro(db) || cls.in_mro(db, &db.python_state.base_exception())
     };
     match t.into_db_type() {
-        DbType::Class(link, generics) => check(link, &generics),
+        DbType::Class(c) => check(&c),
         DbType::Type(t) => match t.as_ref() {
-            DbType::Class(link, generics) => check(*link, generics),
+            DbType::Class(c) => check(c),
             _ => false,
         },
         DbType::Any => true,

@@ -10,10 +10,10 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, GenericItem, GenericsList, MetaclassState, NamedTuple,
-    ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
-    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    DoubleStarredParamSpecific, GenericClass, GenericItem, GenericsList, MetaclassState,
+    NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
+    RecursiveAlias, StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias,
+    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
     TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
@@ -75,7 +75,7 @@ impl<'a> Type<'a> {
     #[inline]
     pub fn maybe_class(&self, db: &'a Database) -> Option<Class<'_>> {
         match self.as_ref() {
-            DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics)),
+            DbType::Class(c) => Some(Class::from_generic_class(db, c)),
             _ => None,
         }
     }
@@ -83,8 +83,8 @@ impl<'a> Type<'a> {
     #[inline]
     pub fn maybe_type_of_class(&self, db: &'a Database) -> Option<Class<'_>> {
         if let DbType::Type(t) = self.as_ref() {
-            if let DbType::Class(link, generics) = t.as_ref() {
-                return Some(Class::from_db_type(db, *link, generics));
+            if let DbType::Class(c) = t.as_ref() {
+                return Some(Class::from_generic_class(db, c));
             }
         }
         None
@@ -94,14 +94,14 @@ impl<'a> Type<'a> {
     pub fn expect_borrowed_class(&self, db: &'a Database) -> Class<'a> {
         match self.0 {
             Cow::Borrowed(t) => {
-                let DbType::Class(link, generics) = t else {
+                let DbType::Class(c) = t else {
                     unreachable!();
                 };
-                Class::from_db_type(db, *link, generics)
+                Class::from_generic_class(db, c)
             }
-            Cow::Owned(DbType::Class(link, ref generics)) => Class::from_position(
-                NodeRef::from_link(db, link),
-                Generics::from_non_list_class_generics(db, generics),
+            Cow::Owned(DbType::Class(ref c)) => Class::from_position(
+                NodeRef::from_link(db, c.link),
+                Generics::from_non_list_class_generics(db, &c.generics),
                 None,
             ),
             _ => unreachable!(),
@@ -119,8 +119,8 @@ impl<'a> Type<'a> {
         match self.as_ref() {
             DbType::Callable(c) => Some(c.clone()),
             DbType::Type(t) => match t.as_ref() {
-                DbType::Class(link, generics) => {
-                    let cls = Class::from_db_type(i_s.db, *link, generics);
+                DbType::Class(c) => {
+                    let cls = Class::from_generic_class(i_s.db, c);
                     // TODO the __init__ should actually be looked up on the original class, not
                     // the subclass
                     let lookup = Instance::new(cls, None).lookup(i_s, None, "__init__");
@@ -155,8 +155,8 @@ impl<'a> Type<'a> {
                 }
             },
             DbType::Any => Some(i_s.db.python_state.any_callable.clone()),
-            DbType::Class(link, generics) => {
-                let cls = Class::from_db_type(i_s.db, *link, generics);
+            DbType::Class(c) => {
+                let cls = Class::from_generic_class(i_s.db, c);
                 Instance::new(cls, None)
                     .lookup(i_s, None, "__call__")
                     .into_maybe_inferred()
@@ -196,11 +196,11 @@ impl<'a> Type<'a> {
         }
 
         match self.as_ref() {
-            DbType::Class(link, generics) => {
-                let class1 = Class::from_db_type(i_s.db, *link, generics);
+            DbType::Class(c) => {
+                let class1 = Class::from_generic_class(i_s.db, c);
                 match other.as_ref() {
-                    DbType::Class(l, g) => {
-                        Self::overlaps_class(i_s, class1, Class::from_db_type(i_s.db, *l, g))
+                    DbType::Class(c) => {
+                        Self::overlaps_class(i_s, class1, Class::from_generic_class(i_s.db, c))
                     }
                     _ => false,
                 }
@@ -263,10 +263,10 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match self.as_ref() {
-            DbType::Class(link, generics) => Self::matches_class_against_type(
+            DbType::Class(c) => Self::matches_class_against_type(
                 i_s,
                 matcher,
-                &Class::from_db_type(i_s.db, *link, generics),
+                &Class::from_generic_class(i_s.db, c),
                 value_type,
                 variance,
             ),
@@ -325,7 +325,7 @@ impl<'a> Type<'a> {
             },
             t1 @ DbType::RecursiveAlias(rec1) => {
                 match value_type.as_ref() {
-                    t2 @ DbType::Class(link, generics) => {
+                    t2 @ DbType::Class(_) => {
                         // Classes like aliases can also be recursive in mypy, like `class B(List[B])`.
                         matcher.avoid_recursion(t1, t2, |matcher| {
                             let g = rec1.calculated_db_type(i_s.db);
@@ -478,7 +478,10 @@ impl<'a> Type<'a> {
             self.is_same_type(
                 i_s,
                 matcher,
-                &Type::owned(DbType::Class(cls_node_ref.as_link(), ClassGenerics::None)),
+                &Type::owned(DbType::new_class(
+                    cls_node_ref.as_link(),
+                    ClassGenerics::None,
+                )),
             )
             .or(|| self.check_promotion(i_s, matcher, cls_node_ref))
         } else {
@@ -638,7 +641,7 @@ impl<'a> Type<'a> {
 
     pub fn mro<'db: 'x, 'x>(&'x self, db: &'db Database) -> Option<MroIterator<'db, '_>> {
         match self.as_ref() {
-            DbType::Class(link, generics) => Some(Class::from_db_type(db, *link, generics).mro(db)),
+            DbType::Class(c) => Some(Class::from_generic_class(db, c).mro(db)),
             DbType::Tuple(tup) => Some({
                 let tuple_class = db.python_state.tuple_class(db, tup);
                 MroIterator::new(
@@ -758,19 +761,19 @@ impl<'a> Type<'a> {
         variance: Variance,
     ) -> Match {
         match value_type.as_ref() {
-            DbType::Class(link, generics) => {
-                let class2 = Class::from_db_type(i_s.db, *link, generics);
+            DbType::Class(c) => {
+                let class2 = Class::from_generic_class(i_s.db, c);
                 Self::matches_class(i_s, matcher, class1, &class2, variance)
             }
             DbType::Type(t2) => {
-                if let DbType::Class(c2, generics2) = t2.as_ref() {
-                    let class2 = Class::from_db_type(i_s.db, *c2, generics2);
+                if let DbType::Class(c) = t2.as_ref() {
+                    let class2 = Class::from_generic_class(i_s.db, c);
                     match class2.use_cached_class_infos(i_s.db).metaclass {
                         MetaclassState::Some(link) => {
                             return Type::owned(class1.as_db_type(i_s.db)).matches(
                                 i_s,
                                 matcher,
-                                &Type::owned(DbType::Class(link, ClassGenerics::None)),
+                                &Type::owned(DbType::new_class(link, ClassGenerics::None)),
                                 variance,
                             );
                         }
@@ -1044,8 +1047,8 @@ impl<'a> Type<'a> {
     ) -> DbType {
         use TupleTypeArguments::*;
         match t.as_ref() {
-            DbType::Class(c1, generics) => {
-                let class = Class::from_db_type(i_s.db, *c1, generics);
+            DbType::Class(c) => {
+                let class = Class::from_generic_class(i_s.db, c);
                 if let Some(mro) = self.mro(i_s.db) {
                     for (_, type_or_class) in mro {
                         match type_or_class {
@@ -1283,9 +1286,7 @@ impl<'a> Type<'a> {
             DbType::Any => DbType::Any,
             DbType::None => DbType::None,
             DbType::Never => DbType::Never,
-            DbType::Class(link, generics) => {
-                DbType::Class(*link, generics.map_list(remap_generics))
-            }
+            DbType::Class(c) => DbType::new_class(c.link, c.generics.map_list(remap_generics)),
             DbType::FunctionOverload(overload) => {
                 DbType::FunctionOverload(overload.map_functions(|functions| {
                     functions
@@ -1774,9 +1775,10 @@ impl<'a> Type<'a> {
             DbType::Any => DbType::Any,
             DbType::None => DbType::None,
             DbType::Never => DbType::Never,
-            DbType::Class(link, generics) => {
-                DbType::Class(*link, generics.map_list(rewrite_generics))
-            }
+            DbType::Class(c) => DbType::Class(GenericClass {
+                link: c.link,
+                generics: c.generics.map_list(rewrite_generics),
+            }),
             DbType::Union(u) => DbType::Union(UnionType {
                 entries: u
                     .entries
@@ -1852,8 +1854,8 @@ impl<'a> Type<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         match self.as_ref() {
-            DbType::Class(link, generics) => {
-                let cls = Class::from_db_type(i_s.db, *link, generics);
+            DbType::Class(c) => {
+                let cls = Class::from_generic_class(i_s.db, c);
                 Instance::new(cls, inferred_from).execute(i_s, args, result_context, on_type_error)
             }
             DbType::Type(cls) => {
@@ -1902,8 +1904,8 @@ impl<'a> Type<'a> {
         from: NodeRef,
     ) -> IteratorContent<'a> {
         match self.maybe_borrowed_db_type() {
-            Some(DbType::Class(l, g)) => {
-                Instance::new(Class::from_db_type(i_s.db, *l, g), None).iter(i_s, from)
+            Some(DbType::Class(c)) => {
+                Instance::new(Class::from_generic_class(i_s.db, c), None).iter(i_s, from)
             }
             Some(DbType::Tuple(content)) => Tuple::new(content).iter(i_s, from),
             Some(DbType::NamedTuple(nt)) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
@@ -1921,9 +1923,15 @@ impl<'a> Type<'a> {
             Some(DbType::NewType(n)) => Type::new(n.type_(i_s)).iter_on_borrowed(i_s, from),
             Some(DbType::Self_) => todo!(), //Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => {
-                if let DbType::Class(l, ClassGenerics::None) = self.as_ref() {
+                if let DbType::Class(
+                    c @ GenericClass {
+                        generics: ClassGenerics::None,
+                        ..
+                    },
+                ) = self.as_ref()
+                {
                     return Instance::new(
-                        Class::from_db_type(i_s.db, *l, &ClassGenerics::None),
+                        Class::from_generic_class_components(i_s.db, c.link, &ClassGenerics::None),
                         None,
                     )
                     .iter(i_s, from);
@@ -1947,8 +1955,8 @@ impl<'a> Type<'a> {
         callable: &mut impl FnMut(&InferenceState, &mut Matcher, &Class) -> bool,
     ) -> bool {
         match self.as_ref() {
-            DbType::Class(link, generics) => {
-                let class = Class::from_db_type(i_s.db, *link, generics);
+            DbType::Class(c) => {
+                let class = Class::from_generic_class(i_s.db, c);
                 callable(i_s, matcher, &class)
             }
             DbType::Union(union_type) => union_type
@@ -2009,8 +2017,9 @@ impl<'a> Type<'a> {
 
     pub fn check_duplicate_base_class(&self, db: &Database, other: &Self) -> Option<Box<str>> {
         match (self.as_ref(), other.as_ref()) {
-            (DbType::Class(link1, generics), DbType::Class(link2, _)) => (link1 == link2)
-                .then(|| Box::from(Class::from_db_type(db, *link1, generics).name())),
+            (DbType::Class(c1), DbType::Class(c2)) => {
+                (c1.link == c2.link).then(|| Box::from(Class::from_generic_class(db, c1).name()))
+            }
             (DbType::Type(_), DbType::Type(_)) => Some(Box::from("type")),
             (DbType::Tuple(_), DbType::Tuple(_)) => Some(Box::from("tuple")),
             (DbType::Callable(_), DbType::Callable(_)) => Some(Box::from("callable")),
@@ -2057,8 +2066,8 @@ impl<'a> Type<'a> {
         callable: &mut impl FnMut(&Type, LookupResult),
     ) {
         match self.as_ref() {
-            DbType::Class(link, generics) => {
-                let cls = Class::from_db_type(i_s.db, *link, generics);
+            DbType::Class(c) => {
+                let cls = Class::from_generic_class(i_s.db, c);
                 callable(
                     self,
                     Instance::new(cls, from_inferred).lookup(i_s, from, name),
@@ -2237,7 +2246,7 @@ impl<'a> Type<'a> {
 
     pub fn lookup_symbol(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         match self.as_ref() {
-            DbType::Class(c, generics) => todo!(),
+            DbType::Class(c) => todo!(),
             DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
             DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, None, name),
             DbType::Callable(t) => todo!(),
@@ -2253,8 +2262,8 @@ impl<'a> Type<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match self.as_ref() {
-            DbType::Class(link, generics) => {
-                let cls = Class::from_db_type(i_s.db, *link, generics);
+            DbType::Class(c) => {
+                let cls = Class::from_generic_class(i_s.db, c);
                 Instance::new(cls, from_inferred).get_item(i_s, slice_type, result_context)
             }
             DbType::Any => Inferred::new_any(),
@@ -2275,8 +2284,9 @@ impl<'a> Type<'a> {
                 }
             }
             DbType::Type(t) => match t.as_ref() {
-                DbType::Class(link, generics) => Class::from_db_type(i_s.db, *link, generics)
-                    .get_item(i_s, slice_type, result_context),
+                DbType::Class(c) => {
+                    Class::from_generic_class(i_s.db, c).get_item(i_s, slice_type, result_context)
+                }
                 _ => {
                     slice_type
                         .as_node_ref()
@@ -2337,9 +2347,9 @@ impl<'a> Type<'a> {
         };
         use TupleTypeArguments::*;
         Type::owned(match self.into_db_type() {
-            DbType::Class(link1, g1) => match other.into_db_type() {
-                DbType::Class(link2, g2) if link1 == link2 => {
-                    DbType::Class(link1, merge_generics(g1, g2))
+            DbType::Class(c1) => match other.into_db_type() {
+                DbType::Class(c2) if c1.link == c2.link => {
+                    DbType::new_class(c1.link, merge_generics(c1.generics, c2.generics))
                 }
                 _ => DbType::Any,
             },
@@ -2528,8 +2538,9 @@ pub fn execute_type_of_type<'db>(
             );
             Inferred::from_type(tuple.clone())
         }
-        DbType::Class(link, generics_list) => Class::from_db_type(i_s.db, *link, generics_list)
-            .execute(i_s, args, result_context, on_type_error),
+        DbType::Class(c) => {
+            Class::from_generic_class(i_s.db, c).execute(i_s, args, result_context, on_type_error)
+        }
         DbType::TypeVar(t) => {
             if let Some(bound) = &t.type_var.bound {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);

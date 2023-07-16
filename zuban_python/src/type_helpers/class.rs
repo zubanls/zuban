@@ -58,11 +58,14 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn from_generic_class(db: &'db Database, c: &'a GenericClass) -> Self {
-        let generics = Generics::from_class_generics(db, &c.generics);
-        Self::from_position(NodeRef::from_link(db, c.link), generics, None)
+        Self::from_generic_class_components(db, c.link, &c.generics)
     }
 
-    pub fn from_db_type(db: &'db Database, link: PointLink, list: &'a ClassGenerics) -> Self {
+    pub fn from_generic_class_components(
+        db: &'db Database,
+        link: PointLink,
+        list: &'a ClassGenerics,
+    ) -> Self {
         let generics = Generics::from_class_generics(db, list);
         Self::from_position(NodeRef::from_link(db, link), generics, None)
     }
@@ -326,18 +329,22 @@ impl<'db: 'a, 'a> Class<'a> {
                         )
                         .compute_base_class(expr);
                         match meta_base {
-                            CalculatedBaseClass::DbType(DbType::Class(
+                            CalculatedBaseClass::DbType(DbType::Class(GenericClass {
                                 link,
-                                ClassGenerics::None,
-                            )) => {
-                                let c = Class::from_db_type(i_s.db, link, &ClassGenerics::None);
+                                generics: ClassGenerics::None,
+                            })) => {
+                                let c = Class::from_generic_class_components(
+                                    i_s.db,
+                                    link,
+                                    &ClassGenerics::None,
+                                );
                                 if c.incomplete_mro(i_s.db)
                                     || c.in_mro(
                                         i_s.db,
-                                        &DbType::Class(
-                                            i_s.db.python_state.type_node_ref().as_link(),
-                                            ClassGenerics::None,
-                                        ),
+                                        &DbType::Class(GenericClass {
+                                            link: i_s.db.python_state.type_node_ref().as_link(),
+                                            generics: ClassGenerics::None,
+                                        }),
                                     )
                                 {
                                     Self::update_metaclass(
@@ -412,9 +419,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                     type_: t,
                                 });
                                 let class = match &mro.last().unwrap().type_ {
-                                    DbType::Class(link, generics) => {
-                                        Some(Class::from_db_type(i_s.db, *link, generics))
-                                    }
+                                    DbType::Class(c) => Some(Class::from_generic_class(i_s.db, c)),
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => None,
                                     _ => unreachable!(),
@@ -535,8 +540,14 @@ impl<'db: 'a, 'a> Class<'a> {
             }
             MetaclassState::Some(link2) => match current {
                 MetaclassState::Some(link1) => {
-                    let t1 = Type::owned(DbType::Class(*link1, ClassGenerics::None));
-                    let t2 = Type::owned(DbType::Class(link2, ClassGenerics::None));
+                    let t1 = Type::owned(DbType::Class(GenericClass {
+                        link: *link1,
+                        generics: ClassGenerics::None,
+                    }));
+                    let t2 = Type::owned(DbType::Class(GenericClass {
+                        link: link2,
+                        generics: ClassGenerics::None,
+                    }));
                     if !t1.is_simple_sub_type_of(i_s, &t2).bool() {
                         if t2.is_simple_sub_type_of(i_s, &t1).bool() {
                             *current = new
@@ -774,7 +785,11 @@ impl<'db: 'a, 'a> Class<'a> {
                 let result = match class_infos.metaclass {
                     MetaclassState::Some(link) => {
                         let instance = Instance::new(
-                            Class::from_db_type(i_s.db, link, &ClassGenerics::None),
+                            Class::from_generic_class_components(
+                                i_s.db,
+                                link,
+                                &ClassGenerics::None,
+                            ),
                             None,
                         );
                         instance.lookup(i_s, node_ref, name)
@@ -822,8 +837,8 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn in_mro(&self, db: &'db Database, t: &DbType) -> bool {
-        if let DbType::Class(link, _) = t {
-            if self.node_ref.as_link() == *link {
+        if let DbType::Class(c) = t {
+            if self.node_ref.as_link() == c.link {
                 return true;
             }
         }
@@ -880,8 +895,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_db_type(&self, db: &Database) -> DbType {
-        let g = self.as_generic_class(db);
-        DbType::Class(g.link, g.generics)
+        DbType::Class(self.as_generic_class(db))
     }
 
     pub fn as_type(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
@@ -941,7 +955,7 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        if let Some(generics_list) = self.type_check_init_func(
+        if let Some(generics) = self.type_check_init_func(
             i_s,
             args,
             result_context,
@@ -949,7 +963,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 Some(format!("\"{}\"", self.name()))
             }),
         ) {
-            let result = Inferred::from_type(DbType::Class(self.node_ref.as_link(), generics_list));
+            let result = Inferred::from_type(DbType::Class(GenericClass {
+                link: self.node_ref.as_link(),
+                generics,
+            }));
             debug!("Class execute: {}", result.format_short(i_s));
             result
         } else {
@@ -1112,9 +1129,9 @@ fn apply_generics_to_base_class<'a>(
     generics: Generics<'a>,
 ) -> TypeOrClass<'a> {
     match &t {
-        DbType::Class(c, t_generics) => {
-            let n = NodeRef::from_link(db, *c);
-            TypeOrClass::Class(match t_generics {
+        DbType::Class(g) => {
+            let n = NodeRef::from_link(db, g.link);
+            TypeOrClass::Class(match &g.generics {
                 ClassGenerics::List(g) => Class::from_position(n, generics, Some(g)),
                 ClassGenerics::None => Class::from_position(n, generics, None),
                 ClassGenerics::ExpressionWithClassType(link) => todo!("Class::from_position(n, Generics::from_class_generics(self.db, t_generics), None)"),

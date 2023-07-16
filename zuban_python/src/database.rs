@@ -745,7 +745,7 @@ pub struct GenericClass {
 // with another type.
 #[derive(Debug, Clone, PartialEq)]
 pub enum DbType {
-    Class(PointLink, ClassGenerics),
+    Class(GenericClass),
     Union(UnionType),
     FunctionOverload(Rc<FunctionOverload>),
     TypeVar(TypeVarUsage),
@@ -771,6 +771,10 @@ pub enum DbType {
 }
 
 impl DbType {
+    pub fn new_class(link: PointLink, generics: ClassGenerics) -> Self {
+        Self::Class(GenericClass { link, generics })
+    }
+
     pub fn union(self, db: &Database, other: DbType) -> Self {
         self.union_with_details(db, other, false)
     }
@@ -861,9 +865,7 @@ impl DbType {
     }
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
-            Self::Class(link, generics) => {
-                Class::from_db_type(format_data.db, *link, generics).format(format_data)
-            }
+            Self::Class(c) => Class::from_generic_class(format_data.db, c).format(format_data),
             Self::Union(union) => union.format(format_data),
             Self::FunctionOverload(callables) => match format_data.style {
                 FormatStyle::MypyRevealType => format!(
@@ -941,7 +943,10 @@ impl DbType {
 
     pub fn expect_class_generics(&self) -> &GenericsList {
         match self {
-            Self::Class(link, ClassGenerics::List(generics)) => generics,
+            Self::Class(GenericClass {
+                generics: ClassGenerics::List(generics),
+                ..
+            }) => generics,
             _ => unreachable!(),
         }
     }
@@ -984,9 +989,10 @@ impl DbType {
             }
         };
         match self {
-            Self::Class(_, ClassGenerics::List(generics)) => {
-                search_in_generics(found_type_var, generics)
-            }
+            Self::Class(GenericClass {
+                generics: ClassGenerics::List(generics),
+                ..
+            }) => search_in_generics(found_type_var, generics),
             Self::Union(u) => {
                 for t in u.iter() {
                     t.search_type_vars(found_type_var);
@@ -1066,10 +1072,14 @@ impl DbType {
             })
         };
         match self {
-            Self::Class(_, ClassGenerics::List(generics)) => {
-                search_in_generics(generics, already_checked)
-            }
-            Self::Class(_, ClassGenerics::NotDefinedYet) => {
+            Self::Class(GenericClass {
+                generics: ClassGenerics::List(generics),
+                ..
+            }) => search_in_generics(generics, already_checked),
+            Self::Class(GenericClass {
+                generics: ClassGenerics::NotDefinedYet,
+                ..
+            }) => {
                 todo!()
             }
             Self::Union(u) => u.iter().any(|t| t.has_any_internal(i_s, already_checked)),
@@ -1084,12 +1094,13 @@ impl DbType {
                 .map(|args| args.has_any_internal(i_s, already_checked))
                 .unwrap_or(true),
             Self::Callable(content) => content.has_any_internal(i_s, already_checked),
-            Self::Class(
-                _,
-                ClassGenerics::None
-                | ClassGenerics::ExpressionWithClassType(_)
-                | ClassGenerics::SlicesWithClassTypes(_),
-            )
+            Self::Class(GenericClass {
+                generics:
+                    ClassGenerics::None
+                    | ClassGenerics::ExpressionWithClassType(_)
+                    | ClassGenerics::SlicesWithClassTypes(_),
+                ..
+            })
             | Self::None
             | Self::Never
             | Self::Literal { .. } => false,
@@ -1126,7 +1137,10 @@ impl DbType {
 
     pub fn has_self_type(&self) -> bool {
         match self {
-            Self::Class(_, ClassGenerics::List(generics)) => generics.iter().any(|g| match g {
+            Self::Class(GenericClass {
+                generics: ClassGenerics::List(generics),
+                ..
+            }) => generics.iter().any(|g| match g {
                 GenericItem::TypeArgument(t) => t.has_self_type(),
                 GenericItem::TypeArguments(_) => todo!(),
                 GenericItem::ParamSpecArgument(params) => todo!(),
@@ -2690,7 +2704,7 @@ impl TypeAlias {
     }
 
     pub fn is_class(&self) -> bool {
-        !self.is_invalid() && matches!(self.db_type_if_valid(), DbType::Class(_, _))
+        !self.is_invalid() && matches!(self.db_type_if_valid(), DbType::Class(..))
     }
 }
 

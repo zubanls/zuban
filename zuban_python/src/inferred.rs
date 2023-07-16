@@ -5,8 +5,9 @@ use std::rc::Rc;
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
-    FunctionKind, FunctionOverload, GenericItem, GenericsList, Literal as DbLiteral, LiteralKind,
-    Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
+    FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral,
+    LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
+    TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -138,11 +139,19 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn execute_db_type(i_s: &InferenceState<'db, '_>, generic: DbType) -> Self {
         let state = match generic {
-            DbType::Type(ref c) if matches!(c.as_ref(), DbType::Class(_, ClassGenerics::None)) => {
+            DbType::Type(ref c)
+                if matches!(
+                    c.as_ref(),
+                    DbType::Class(GenericClass {
+                        generics: ClassGenerics::None,
+                        ..
+                    })
+                ) =>
+            {
                 match c.as_ref() {
-                    DbType::Class(link, ClassGenerics::None) => {
-                        let node_ref = NodeRef::from_link(i_s.db, *link);
-                        InferredState::Saved(*link)
+                    DbType::Class(c) => {
+                        let node_ref = NodeRef::from_link(i_s.db, c.link);
+                        InferredState::Saved(c.link)
                     }
                     _ => unreachable!(),
                 }
@@ -155,7 +164,7 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn create_instance(class: PointLink, generics: Option<Rc<[GenericItem]>>) -> Self {
-        Self::new_unsaved_complex(ComplexPoint::TypeInstance(DbType::Class(
+        Self::new_unsaved_complex(ComplexPoint::TypeInstance(DbType::new_class(
             class,
             match generics {
                 Some(generics) => ClassGenerics::List(GenericsList::new_generics(generics)),
@@ -221,10 +230,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     .saved_as_type(i_s)
                     .unwrap()
                     .expect_borrowed_class(i_s.db),
-                BoundMethodInstance::Complex(ComplexPoint::TypeInstance(DbType::Class(
-                    link,
-                    generics,
-                ))) => Class::from_db_type(i_s.db, *link, generics),
+                BoundMethodInstance::Complex(ComplexPoint::TypeInstance(DbType::Class(c))) => {
+                    Class::from_generic_class(i_s.db, c)
+                }
                 _ => unreachable!(),
             },
             None,
@@ -340,7 +348,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         let link = self.get_class_link(i_s);
-        Type::owned(DbType::Class(link, generics))
+        Type::owned(DbType::new_class(link, generics))
     }
 
     fn get_class_link(&self, i_s: &InferenceState) -> PointLink {
@@ -760,10 +768,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                         FunctionKind::Staticmethod => (),
                                     }
                                 }
-                                DbType::Class(link, generics) => {
+                                DbType::Class(c) => {
                                     let inst = use_instance_with_ref(
-                                        NodeRef::from_link(i_s.db, *link),
-                                        Generics::from_class_generics(i_s.db, generics),
+                                        NodeRef::from_link(i_s.db, c.link),
+                                        Generics::from_class_generics(i_s.db, &c.generics),
                                         Some(&self),
                                     );
                                     if let Some(inf) =
@@ -905,10 +913,10 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                     FunctionKind::Staticmethod => (),
                                 },
-                                DbType::Class(link, generics) if apply_descriptor => {
+                                DbType::Class(c) if apply_descriptor => {
                                     let inst = use_instance_with_ref(
-                                        NodeRef::from_link(i_s.db, *link),
-                                        Generics::from_class_generics(i_s.db, generics),
+                                        NodeRef::from_link(i_s.db, c.link),
+                                        Generics::from_class_generics(i_s.db, &c.generics),
                                         Some(&self),
                                     );
                                     if let Some(inf) =
@@ -1465,7 +1473,7 @@ fn load_builtin_type_from_str(i_s: &InferenceState, name: &'static str) -> Type<
     let v = builtins.points.get(node_index);
     debug_assert_eq!(v.type_(), PointType::Redirect);
     debug_assert_eq!(v.file_index(), builtins.file_index());
-    Type::owned(DbType::Class(
+    Type::owned(DbType::new_class(
         PointLink::new(builtins.file_index(), v.node_index()),
         ClassGenerics::None,
     ))
@@ -1597,7 +1605,7 @@ fn proper_classmethod_callable(
     };
     let get_class_method_class = || {
         if class_generics_not_defined_yet {
-            DbType::Class(
+            DbType::new_class(
                 class.node_ref.as_link(),
                 match class.use_cached_type_vars(i_s.db) {
                     Some(tvls) => ClassGenerics::List(GenericsList::new_generics(
@@ -1672,7 +1680,7 @@ fn type_of_complex<'db: 'x, 'x>(
     match complex {
         ComplexPoint::Class(cls_storage) => {
             // This can only ever happen for saved definitions, therefore we can unwrap.
-            Type::owned(DbType::Type(Rc::new(DbType::Class(
+            Type::owned(DbType::Type(Rc::new(DbType::new_class(
                 definition.unwrap().as_link(),
                 ClassGenerics::NotDefinedYet,
             ))))

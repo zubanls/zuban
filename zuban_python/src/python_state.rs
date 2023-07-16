@@ -43,7 +43,7 @@ macro_rules! node_ref_to_db_type_class_without_generic {
     ($vis:vis $name:ident, $from_node_ref:ident) => {
         #[inline]
         $vis fn $name(&self) -> DbType {
-            DbType::Class(self.$from_node_ref().as_link(), ClassGenerics::None)
+            DbType::new_class(self.$from_node_ref().as_link(), ClassGenerics::None)
         }
     };
 }
@@ -413,7 +413,7 @@ impl PythonState {
     #[inline]
     pub fn base_exception(&self) -> DbType {
         debug_assert!(self.builtins_base_exception_index != 0);
-        DbType::Class(
+        DbType::new_class(
             PointLink::new(
                 self.builtins().file_index(),
                 self.builtins_base_exception_index,
@@ -429,7 +429,7 @@ impl PythonState {
     }
 
     pub fn none_type(&self) -> Type {
-        Type::owned(DbType::Class(
+        Type::owned(DbType::new_class(
             self.none_type_node_ref().as_link(),
             ClassGenerics::None,
         ))
@@ -457,7 +457,7 @@ impl PythonState {
 
     pub fn type_var_type(&self) -> Type {
         debug_assert!(self.typing_type_var != 0);
-        DbType::Class(
+        DbType::new_class(
             PointLink::new(self.typing().file_index(), self.typing_type_var),
             ClassGenerics::None,
         )
@@ -510,7 +510,7 @@ impl PythonState {
     }
 
     pub fn literal_db_type(&self, literal_kind: LiteralKind) -> DbType {
-        DbType::Class(
+        DbType::new_class(
             match literal_kind {
                 LiteralKind::Int(_) => self.int_node_ref(),
                 LiteralKind::String(_) => self.str_node_ref(),

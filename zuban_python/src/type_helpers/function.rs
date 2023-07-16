@@ -12,9 +12,9 @@ use super::{Callable, Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericItem, Locality,
-    OverloadDefinition, OverloadImplementation, ParamSpecUsage, ParamSpecific, Point, PointType,
-    Specific, StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments,
+    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
+    Locality, OverloadDefinition, OverloadImplementation, ParamSpecUsage, ParamSpecific, Point,
+    PointType, Specific, StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments,
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
     TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
@@ -1224,7 +1224,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     WrappedDoubleStarred::ParamSpecKwargs(param_spec_usage)
                 }
                 _ => WrappedDoubleStarred::ValueType(t.map(|t| {
-                    let DbType::Class(_, ClassGenerics::List(generics)) = t.maybe_borrowed_db_type().unwrap() else {
+                    let DbType::Class(GenericClass {generics: ClassGenerics::List(generics), ..}) = t.maybe_borrowed_db_type().unwrap() else {
                         unreachable!()
                     };
                     let GenericItem::TypeArgument(t) = &generics[1.into()] else {

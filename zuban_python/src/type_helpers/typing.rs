@@ -92,9 +92,7 @@ impl<'a> TypingType<'a> {
                     todo!("{t:?}")
                 }
             }
-            DbType::Class(link, generics_list) => {
-                Class::from_db_type(i_s.db, *link, generics_list).lookup(i_s, node_ref, name)
-            }
+            DbType::Class(g) => Class::from_generic_class(i_s.db, g).lookup(i_s, node_ref, name),
             DbType::Callable(_) => LookupResult::None,
             DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, node_ref, name),
             DbType::Any => LookupResult::any(),

@@ -5,7 +5,7 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, DbType, FunctionKind, GenericClass, PointLink};
+use crate::database::{ClassType, DbType, FunctionKind, PointLink};
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
@@ -56,8 +56,8 @@ impl<'a> Instance<'a> {
                                 todo!()
                             }
                             match t.as_ref() {
-                                DbType::Class(l, g) => {
-                                    let descriptor = Class::from_db_type(i_s.db, *l, g);
+                                DbType::Class(c) => {
+                                    let descriptor = Class::from_generic_class(i_s.db, c);
                                     if let Some(set) = Instance::new(descriptor, None)
                                         .lookup(i_s, Some(from), "__set__")
                                         .into_maybe_inferred()
@@ -419,8 +419,8 @@ fn execute_super_internal<'db>(
                 if !matches!(t.as_ref(), DbType::Class(..)) {
                     return Err(IssueType::SuperUnsupportedArgument { argument_index: 1 });
                 }
-                if matches!(t.as_ref(), DbType::Class(link, _)
-                            if *link == i_s.db.python_state.object_node_ref().as_link())
+                if matches!(t.as_ref(), DbType::Class(c)
+                            if c.link == i_s.db.python_state.object_node_ref().as_link())
                 {
                     return Err(IssueType::SuperTargetClassHasNoBaseClass);
                 }
@@ -454,10 +454,7 @@ fn execute_super_internal<'db>(
     }
     let cls = match get_relevant_type_for_super(instance.as_type(i_s).as_ref()) {
         DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
-        DbType::Class(link, generics) => GenericClass {
-            link,
-            generics: generics.clone(),
-        },
+        DbType::Class(g) => g.clone(),
         DbType::Any => return Ok(Inferred::new_any()),
         _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };

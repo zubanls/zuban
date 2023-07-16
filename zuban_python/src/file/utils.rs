@@ -213,7 +213,7 @@ fn check_list_with_context<'db>(
         };
     }
     found.map(|inner| {
-        DbType::Class(
+        DbType::new_class(
             i_s.db.python_state.list_node_ref().as_link(),
             ClassGenerics::List(GenericsList::new_generics(Rc::new([
                 GenericItem::TypeArgument(inner),
