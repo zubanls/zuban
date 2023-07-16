@@ -635,12 +635,14 @@ testInferringTypesFromIterable
 testFastParserDuplicateNames
 # "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
 testContextForAttributeDeclaredInInit
-testDeclareAttributeTypeInInit
-testAccessAttributeDeclaredInInitBeforeDeclaration
-testNoteUncheckedAnnotation
 testUncheckedAnnotationCodeShown
 # --disallow-untyped-defs weird
 testSerializeAbstractPropertyDisallowUntypedIncremental
+# semanal issues
+testNoInvalidTypeInDynamicFunctions
+testLocalVarWithType
+testMemberVarWithType
+testAssignmentAfterDef
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -2544,6 +2546,7 @@ testErrorCodeBadIgnoreNoExtraComment
 testUncheckedAnnotationSuppressed
 testMethodAssignmentSuppressed
 testMethodAssignCoveredByAssignmentFlag
+testIncrementalInvalidNamedTupleInUnannotatedFunction
 # --warn-unused-ignores
 # "Unused "type: ignore" comment"
 testErrorCodeWarnUnusedIgnores1

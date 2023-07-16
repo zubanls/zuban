@@ -708,7 +708,7 @@ T = TypeVar("T")
 U = TypeVar("U")
 
 class A(Generic[T, U]):
-    def foo(self):
+    def foo(self) -> None:
         self.x: tuple[U, T]
 class B(A[list[U], tuple[T]]): ...
 class C(B[str, float]): ...

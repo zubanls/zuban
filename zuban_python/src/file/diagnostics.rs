@@ -189,8 +189,6 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_untyped_block_diagnostics(&mut self, block: Block) {
         for interesting in block.search_relevant_untyped_nodes() {
             match interesting {
-                RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
-                RelevantUntypedNode::ImportName(i) => self.cache_import_name(i),
                 RelevantUntypedNode::Primary(p) => {
                     let PrimaryOrAtom::Atom(atom) = p.first() else {
                         continue
@@ -213,6 +211,21 @@ impl<'db> Inference<'db, '_, '_> {
                         );
                     }
                 }
+                RelevantUntypedNode::Assignment(a) => {
+                    let is_type_definition = match a.unpack() {
+                        AssignmentContent::Normal(_, right) => {
+                            self.check_for_type_comment(a).is_some()
+                        }
+                        AssignmentContent::WithAnnotation(_, annotation, _) => true,
+                        AssignmentContent::AugAssign(..) => false,
+                    };
+                    if is_type_definition {
+                        NodeRef::new(self.file, a.index())
+                            .add_issue(self.i_s, IssueType::AnnotationInUntypedFunction);
+                    }
+                }
+                RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
+                RelevantUntypedNode::ImportName(i) => self.cache_import_name(i),
             }
         }
     }

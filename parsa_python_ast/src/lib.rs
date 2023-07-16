@@ -995,6 +995,7 @@ impl<'db> Block<'db> {
             Nonterminal(primary),
             Nonterminal(import_name),
             Nonterminal(import_from),
+            Nonterminal(assignment),
         ];
         RelevantUntypedNodes(self.node.search(SEARCH))
     }
@@ -1010,6 +1011,7 @@ pub enum RelevantUntypedNode<'db> {
     ImportFrom(ImportFrom<'db>),
     ImportName(ImportName<'db>),
     Primary(Primary<'db>),
+    Assignment(Assignment<'db>),
 }
 pub struct RelevantUntypedNodes<'db>(SearchIterator<'db>);
 
@@ -1018,13 +1020,15 @@ impl<'db> Iterator for RelevantUntypedNodes<'db> {
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         self.0.next().map(|n| {
-            if n.is_type(Nonterminal(import_from)) {
-                RelevantUntypedNode::ImportFrom(ImportFrom::new(n))
-            } else if n.is_type(Nonterminal(import_name)) {
-                RelevantUntypedNode::ImportName(ImportName::new(n))
-            } else {
-                debug_assert_eq!(n.type_(), Nonterminal(primary));
+            if n.is_type(Nonterminal(primary)) {
                 RelevantUntypedNode::Primary(Primary::new(n))
+            } else if n.is_type(Nonterminal(assignment)) {
+                RelevantUntypedNode::Assignment(Assignment::new(n))
+            } else if n.is_type(Nonterminal(import_from)) {
+                RelevantUntypedNode::ImportFrom(ImportFrom::new(n))
+            } else {
+                debug_assert_eq!(n.type_(), Nonterminal(import_name));
+                RelevantUntypedNode::ImportName(ImportName::new(n))
             }
         })
     }

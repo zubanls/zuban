@@ -18,7 +18,7 @@ def foo(self) -> None:
 from typing import Self
 class Foo:
     x: Self
-    def foo(self):
+    def foo(self) -> None:
         x: Self
 
 [case self_invalid_function]

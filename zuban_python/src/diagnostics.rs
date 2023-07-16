@@ -154,6 +154,7 @@ pub(crate) enum IssueType {
     CallToUntypedFunction { name: Box<str> },
 
     InvariantNote { actual: &'static str, maybe: &'static str },
+    AnnotationInUntypedFunction,
     Note(Box<str>),
 }
 
@@ -161,7 +162,7 @@ impl IssueType {
     pub fn mypy_error_code(&self) -> Option<&'static str> {
         use IssueType::*;
         Some(match &self {
-            Note(_) | InvariantNote { .. } => return None,
+            Note(_) | InvariantNote { .. } | AnnotationInUntypedFunction => return None,
             AttributeError { .. } | ImportAttributeError { .. } | ModuleAttributeError { .. } => {
                 "attr-defined"
             }
@@ -631,6 +632,11 @@ impl<'db> Diagnostic<'db> {
                     "\"{actual}\" is invariant -- see \
                      https://mypy.readthedocs.io/en/stable/common_issues.html#variance",
                 )
+            }
+            AnnotationInUntypedFunction => {
+                type_ = "note";
+                "By default the bodies of untyped functions are not checked, \
+                 consider using --check-untyped-defs".to_string()
             }
             Note(s) => {
                 type_ = "note";
