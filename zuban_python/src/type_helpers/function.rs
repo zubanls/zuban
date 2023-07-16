@@ -51,6 +51,7 @@ impl fmt::Debug for Function<'_, '_> {
         f.debug_struct("Function")
             .field("file", self.node_ref.file)
             .field("node", &self.node())
+            .field("class", &self.class)
             .finish()
     }
 }
@@ -86,16 +87,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
-        if self.class.is_some()
-            && self.node().params().iter().count() == 1
-            && self.kind(i_s) != FunctionKind::Staticmethod
-        {
-            return false;
+        let mut iterator = self.node().params().iter();
+        if self.class.is_some() && self.kind(i_s) != FunctionKind::Staticmethod {
+            // The param annotation is defined implicitly as Self or Type[Self]
+            iterator.next();
         }
-        self.node()
-            .params()
-            .iter()
-            .any(|p| p.annotation().is_none())
+        iterator.any(|p| p.annotation().is_none())
     }
 
     pub fn iter_inferrable_params<'b>(

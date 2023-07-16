@@ -633,8 +633,6 @@ testTupleBaseClass
 testInferringTypesFromIterable
 # Function duplicate param names
 testFastParserDuplicateNames
-# --disallow-untyped-defs weird
-testSerializeAbstractPropertyDisallowUntypedIncremental
 
 # Comprehensions
 testNewAnalyzerListComprehension

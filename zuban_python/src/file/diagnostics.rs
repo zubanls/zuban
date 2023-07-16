@@ -463,6 +463,7 @@ impl<'db> Inference<'db, '_, '_> {
             self.calc_untyped_block_diagnostics(block)
         }
         if self.i_s.db.python_state.project.disallow_untyped_defs {
+            dbg!(function);
             match (
                 function.is_missing_param_annotations(self.i_s),
                 function.return_annotation().is_none(),
