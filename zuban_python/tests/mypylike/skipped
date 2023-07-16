@@ -261,6 +261,13 @@ testColumnListOrDictItemHasIncompatibleType
 # context inference from class statement
 testSetDescriptorOnClass
 
+# union list context inference
+testUnpackingUnionOfListsInFunction
+testNestedProtocolGenericUnions
+testNestedProtocolGenericUnionsDeep
+# Tuple iter fixes
+testTupleBaseClass
+
 # Not able to infer context with unions and literals
 testLiteralAndGenericWithUnion
 testLiteralAndGenericsNoMatch
@@ -622,17 +629,8 @@ testCallingNoTypeCheckFunction
 testCallingNoTypeCheckFunction2
 testNoTypeCheckDecoratorSemanticError
 
-# union list context inference
-testUnpackingUnionOfListsInFunction
-testNestedProtocolGenericUnions
-testNestedProtocolGenericUnionsDeep
-# Tuple iter fixes
-testTupleBaseClass
-
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
-# Function duplicate param names
-testFastParserDuplicateNames
 
 # Comprehensions
 testNewAnalyzerListComprehension
@@ -675,6 +673,7 @@ testEnclosingScopeLambdaNoCrashExplicit
 testLambdaAndReachability
 testNoCrashOnPartialLambdaInference
 testGenericLambdaGenericMethodNoCrash
+testFastParserDuplicateNames
 # lambda: Name "UNDEFINED" is not defined
 testLambdaInheritsCheckedContextFromTypedFunc
 testLambdaInheritsCheckedContextFromTypedFuncForced
