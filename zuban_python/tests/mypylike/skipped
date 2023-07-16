@@ -635,7 +635,6 @@ testInferringTypesFromIterable
 testFastParserDuplicateNames
 # "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
 testContextForAttributeDeclaredInInit
-testUncheckedAnnotationCodeShown
 # --disallow-untyped-defs weird
 testSerializeAbstractPropertyDisallowUntypedIncremental
 # semanal issues

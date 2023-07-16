@@ -162,7 +162,7 @@ impl IssueType {
     pub fn mypy_error_code(&self) -> Option<&'static str> {
         use IssueType::*;
         Some(match &self {
-            Note(_) | InvariantNote { .. } | AnnotationInUntypedFunction => return None,
+            Note(_) | InvariantNote { .. } => return None,
             AttributeError { .. } | ImportAttributeError { .. } | ModuleAttributeError { .. } => {
                 "attr-defined"
             }
@@ -196,6 +196,7 @@ impl IssueType {
             | FunctionMissingReturnAnnotation
             | FunctionMissingParamAnnotations => "no-untyped-def",
             CallToUntypedFunction { .. } => "no-untyped-call",
+            AnnotationInUntypedFunction => "annotation-unchecked",
             _ => "misc",
         })
     }
