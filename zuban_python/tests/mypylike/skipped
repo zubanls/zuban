@@ -633,8 +633,6 @@ testTupleBaseClass
 testInferringTypesFromIterable
 # Function duplicate param names
 testFastParserDuplicateNames
-# "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
-testContextForAttributeDeclaredInInit
 # --disallow-untyped-defs weird
 testSerializeAbstractPropertyDisallowUntypedIncremental
 
