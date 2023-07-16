@@ -150,6 +150,8 @@ pub(crate) enum IssueType {
     FunctionIsDynamic,
     FunctionMissingReturnAnnotation,
     FunctionMissingParamAnnotations,
+    // From --disallow-untyped-calls
+    CallToUntypedFunction { name: Box<str> },
 
     InvariantNote { actual: &'static str, maybe: &'static str },
     Note(Box<str>),
@@ -192,6 +194,7 @@ impl IssueType {
             FunctionIsDynamic
             | FunctionMissingReturnAnnotation
             | FunctionMissingParamAnnotations => "no-untyped-def",
+            CallToUntypedFunction { .. } => "no-untyped-call",
             _ => "misc",
         })
     }
@@ -389,6 +392,9 @@ impl<'db> Diagnostic<'db> {
                 "Function is missing a return type annotation".to_string(),
             FunctionMissingParamAnnotations =>
                 "Function is missing a type annotation for one or more arguments".to_string(),
+            CallToUntypedFunction{name} => format!(
+                "Call to untyped function \"{name}\" in typed context"
+            ),
 
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()

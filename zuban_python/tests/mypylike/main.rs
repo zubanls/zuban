@@ -208,6 +208,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if steps.flags.contains(&"--disallow-untyped-defs") {
             config.disallow_untyped_defs = true;
         }
+        if steps.flags.contains(&"--disallow-untyped-calls") {
+            config.disallow_untyped_calls = true;
+        }
         if mypy_compatible_override || steps.flags.contains(&"--mypy-compatible") {
             config.mypy_compatible = true;
         }
@@ -628,6 +631,7 @@ struct BaseConfig {
     implicit_optional: bool,
     check_untyped_defs: bool,
     disallow_untyped_defs: bool,
+    disallow_untyped_calls: bool,
 }
 
 struct LazyProject {
@@ -674,24 +678,28 @@ fn main() {
             for mypy_compatible in [false, true] {
                 for check_untyped_defs in [false, true] {
                     for disallow_untyped_defs in [false, true] {
-                        let config = BaseConfig {
-                            strict_optional,
-                            implicit_optional,
-                            mypy_compatible,
-                            check_untyped_defs,
-                            disallow_untyped_defs,
-                        };
-                        projects.insert(
-                            config,
-                            LazyProject::new(ProjectOptions {
-                                path: BASE_PATH.into(),
-                                implicit_optional: config.implicit_optional,
-                                check_untyped_defs: config.check_untyped_defs,
-                                disallow_untyped_defs: config.disallow_untyped_defs,
-                                strict_optional: config.strict_optional,
-                                mypy_compatible: config.mypy_compatible,
-                            }),
-                        );
+                        for disallow_untyped_calls in [false, true] {
+                            let config = BaseConfig {
+                                strict_optional,
+                                implicit_optional,
+                                mypy_compatible,
+                                check_untyped_defs,
+                                disallow_untyped_defs,
+                                disallow_untyped_calls,
+                            };
+                            projects.insert(
+                                config,
+                                LazyProject::new(ProjectOptions {
+                                    path: BASE_PATH.into(),
+                                    implicit_optional: config.implicit_optional,
+                                    check_untyped_defs: config.check_untyped_defs,
+                                    disallow_untyped_defs: config.disallow_untyped_defs,
+                                    disallow_untyped_calls: config.disallow_untyped_calls,
+                                    strict_optional: config.strict_optional,
+                                    mypy_compatible: config.mypy_compatible,
+                                }),
+                            );
+                        }
                     }
                 }
             }

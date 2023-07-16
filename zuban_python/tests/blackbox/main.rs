@@ -71,6 +71,7 @@ fn main() {
         implicit_optional: false,
         check_untyped_defs: true,
         disallow_untyped_defs: false,
+        disallow_untyped_calls: false,
         mypy_compatible: false,
     });
 

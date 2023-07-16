@@ -1003,6 +1003,14 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 return_annotation,
             )
         } else {
+            if i_s.db.python_state.project.disallow_untyped_calls && self.is_dynamic() {
+                args.as_node_ref().add_issue(
+                    i_s,
+                    IssueType::CallToUntypedFunction {
+                        name: self.name().into(),
+                    },
+                )
+            }
             self.execute_without_annotation(i_s, args)
         }
     }

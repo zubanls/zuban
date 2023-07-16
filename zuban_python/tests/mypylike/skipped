@@ -644,14 +644,10 @@ testDeclareAttributeTypeInInit
 testAccessAttributeDeclaredInInitBeforeDeclaration
 testNoteUncheckedAnnotation
 testUncheckedAnnotationCodeShown
-# --disallow-untyped-defs
-testErrorCodeCallUntypedFunction
 # --disallow-untyped-defs weird
 testSerializeAbstractPropertyDisallowUntypedIncremental
 # "Function is missing a return type annotation"
 testColumnFunctionMissingTypeAnnotation
-# --disallow-untyped-calls
-testColumnCallToUntypedFunction
 
 # Comprehensions
 testNewAnalyzerListComprehension
