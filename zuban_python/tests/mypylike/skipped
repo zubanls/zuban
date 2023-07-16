@@ -637,11 +637,6 @@ testFastParserDuplicateNames
 testContextForAttributeDeclaredInInit
 # --disallow-untyped-defs weird
 testSerializeAbstractPropertyDisallowUntypedIncremental
-# semanal issues
-testNoInvalidTypeInDynamicFunctions
-testLocalVarWithType
-testMemberVarWithType
-testAssignmentAfterDef
 
 # Comprehensions
 testNewAnalyzerListComprehension
