@@ -645,9 +645,9 @@ testAccessAttributeDeclaredInInitBeforeDeclaration
 testNoteUncheckedAnnotation
 testUncheckedAnnotationCodeShown
 # --disallow-untyped-defs
-testIgnoreInsideFunctionDoesntAffectWhole
-testErrorCodeFunctionHasNoAnnotation
 testErrorCodeCallUntypedFunction
+# --disallow-untyped-defs weird
+testSerializeAbstractPropertyDisallowUntypedIncremental
 # "Function is missing a return type annotation"
 testColumnFunctionMissingTypeAnnotation
 # --disallow-untyped-calls
@@ -2165,6 +2165,7 @@ testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
 testNewNamedTupleWithMethods
+testErrorCodeFunctionHasNoAnnotation
 
 # "Trying to read deleted variable "Foo""
 testDelStmtWithTypeInfo
@@ -2538,6 +2539,7 @@ testSerializeIgnoredMissingBaseClass
 testSerializeIgnoredInvalidBaseClass
 # type ignore on statement, end of line
 testIncompatibleOverrideFromCachedModuleIncremental
+testErrorCodeNoneReturnNoteIgnore
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3

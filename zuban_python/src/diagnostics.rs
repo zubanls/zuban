@@ -146,6 +146,11 @@ pub(crate) enum IssueType {
 
     MethodWithoutArguments,
 
+    // From --disallow-untyped-defs
+    FunctionIsDynamic,
+    FunctionMissingReturnAnnotation,
+    FunctionMissingParamAnnotations,
+
     InvariantNote { actual: &'static str, maybe: &'static str },
     Note(Box<str>),
 }
@@ -184,6 +189,9 @@ impl IssueType {
             IncompatibleAssignmentInSubclass { .. } | SignatureIncompatibleWithSupertype { .. } => {
                 "override"
             }
+            FunctionIsDynamic
+            | FunctionMissingReturnAnnotation
+            | FunctionMissingParamAnnotations => "no-untyped-def",
             _ => "misc",
         })
     }
@@ -374,6 +382,14 @@ impl<'db> Diagnostic<'db> {
             MethodWithoutArguments => {
                 "Method must have at least one argument. Did you forget the \"self\" argument?".to_string()
             }
+
+
+            FunctionIsDynamic => "Function is missing a type annotation".to_string(),
+            FunctionMissingReturnAnnotation =>
+                "Function is missing a return type annotation".to_string(),
+            FunctionMissingParamAnnotations =>
+                "Function is missing a type annotation for one or more arguments".to_string(),
+
             OnlyClassTypeApplication => {
                 "Type application is only supported for generic classes".to_string()
             }

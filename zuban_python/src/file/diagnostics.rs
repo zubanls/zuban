@@ -405,11 +405,29 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
-        if self.i_s.db.python_state.project.check_untyped_defs || !function.is_dynamic() {
+        let is_dynamic = function.is_dynamic();
+        if !is_dynamic || self.i_s.db.python_state.project.check_untyped_defs {
             let args = NoArguments::new(NodeRef::new(self.file, f.index()));
             let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
             let mut inference = self.file.inference(function_i_s);
             inference.calc_block_diagnostics(block, None, Some(&function))
+        }
+        if self.i_s.db.python_state.project.disallow_untyped_defs {
+            match (
+                function.is_missing_param_annotations(self.i_s),
+                function.return_annotation().is_none(),
+            ) {
+                (true, true) => function
+                    .node_ref
+                    .add_issue(self.i_s, IssueType::FunctionIsDynamic),
+                (true, false) => function
+                    .node_ref
+                    .add_issue(self.i_s, IssueType::FunctionMissingParamAnnotations),
+                (false, true) => function
+                    .node_ref
+                    .add_issue(self.i_s, IssueType::FunctionMissingReturnAnnotation),
+                (false, false) => (),
+            }
         }
     }
 

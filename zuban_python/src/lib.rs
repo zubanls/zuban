@@ -38,6 +38,7 @@ pub struct ProjectOptions {
     pub strict_optional: bool,
     pub implicit_optional: bool,
     pub check_untyped_defs: bool,
+    pub disallow_untyped_defs: bool,
     pub mypy_compatible: bool,
 }
 
@@ -62,6 +63,7 @@ impl Project {
                 strict_optional: options.strict_optional,
                 implicit_optional: options.implicit_optional,
                 check_untyped_defs: options.check_untyped_defs,
+                disallow_untyped_defs: options.disallow_untyped_defs,
                 mypy_compatible: options.mypy_compatible,
             },
         );
@@ -122,6 +124,7 @@ pub struct PythonProject {
     implicit_optional: bool,
     mypy_compatible: bool,
     check_untyped_defs: bool,
+    disallow_untyped_defs: bool,
     // is_django: bool,  // TODO maybe add?
 }
 

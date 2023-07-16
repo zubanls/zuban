@@ -85,6 +85,19 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .any(|p| p.annotation().is_some())
     }
 
+    pub fn is_missing_param_annotations(&self, i_s: &InferenceState) -> bool {
+        if self.class.is_some()
+            && self.node().params().iter().count() == 1
+            && self.kind(i_s) != FunctionKind::Staticmethod
+        {
+            return false;
+        }
+        self.node()
+            .params()
+            .iter()
+            .any(|p| p.annotation().is_none())
+    }
+
     pub fn iter_inferrable_params<'b>(
         &self,
         db: &'db Database,
