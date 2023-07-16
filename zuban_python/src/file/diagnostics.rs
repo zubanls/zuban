@@ -405,7 +405,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
 
-        if !function.is_dynamic() {
+        if self.i_s.db.python_state.project.check_untyped_defs || !function.is_dynamic() {
             let args = NoArguments::new(NodeRef::new(self.file, f.index()));
             let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
             let mut inference = self.file.inference(function_i_s);

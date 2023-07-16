@@ -69,6 +69,7 @@ fn main() {
         path: "tests/blackbox/".into(),
         strict_optional: true,
         implicit_optional: false,
+        check_untyped_defs: true,
         mypy_compatible: false,
     });
 

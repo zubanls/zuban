@@ -2,6 +2,10 @@
 testSelfTypeRestrictedClassMethod
 testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 testMixinProtocolSuper
+# weird from check-untyped-defs
+testCheckUntypedDefsSelf2
+testCheckUntypedDefsSelf3
+testLambdaInheritsCheckedContextFromFuncForced
 
 # super with Type[...]
 testSuperWithAny
@@ -634,12 +638,6 @@ testInferringTypesFromIterable
 testRevealUncheckedFunction
 # Function duplicate param names
 testFastParserDuplicateNames
-# --check-untyped-defs
-testCheckUntypedDefsSelf2
-testCheckUntypedDefsSelf3
-testLambdaInheritsCheckedContextFromFuncForced
-testRevealCheckUntypedDefs
-testLambdaCheckUnypedContext
 # "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"
 testContextForAttributeDeclaredInInit
 testDeclareAttributeTypeInInit

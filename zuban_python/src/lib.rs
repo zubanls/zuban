@@ -37,6 +37,7 @@ pub struct ProjectOptions {
     pub path: Box<str>,
     pub strict_optional: bool,
     pub implicit_optional: bool,
+    pub check_untyped_defs: bool,
     pub mypy_compatible: bool,
 }
 
@@ -60,6 +61,7 @@ impl Project {
                 sys_path,
                 strict_optional: options.strict_optional,
                 implicit_optional: options.implicit_optional,
+                check_untyped_defs: options.check_untyped_defs,
                 mypy_compatible: options.mypy_compatible,
             },
         );
@@ -119,6 +121,7 @@ pub struct PythonProject {
     strict_optional: bool,
     implicit_optional: bool,
     mypy_compatible: bool,
+    check_untyped_defs: bool,
     // is_django: bool,  // TODO maybe add?
 }
 

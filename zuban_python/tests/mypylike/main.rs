@@ -202,6 +202,9 @@ impl<'name, 'code> TestCase<'name, 'code> {
         if steps.flags.contains(&"--implicit-optional") {
             config.implicit_optional = true;
         }
+        if steps.flags.contains(&"--check-untyped-defs") {
+            config.check_untyped_defs = true;
+        }
         if mypy_compatible_override || steps.flags.contains(&"--mypy-compatible") {
             config.mypy_compatible = true;
         }
@@ -617,9 +620,10 @@ fn calculate_filters(args: Vec<String>) -> Vec<String> {
 
 #[derive(PartialEq, Eq, Hash, Default, Copy, Clone)]
 struct BaseConfig {
+    mypy_compatible: bool,
     strict_optional: bool,
     implicit_optional: bool,
-    mypy_compatible: bool,
+    check_untyped_defs: bool,
 }
 
 struct LazyProject {
@@ -664,20 +668,24 @@ fn main() {
     for strict_optional in [false, true] {
         for implicit_optional in [false, true] {
             for mypy_compatible in [false, true] {
-                let config = BaseConfig {
-                    strict_optional,
-                    implicit_optional,
-                    mypy_compatible,
-                };
-                projects.insert(
-                    config,
-                    LazyProject::new(ProjectOptions {
-                        path: BASE_PATH.into(),
-                        implicit_optional: config.implicit_optional,
-                        strict_optional: config.strict_optional,
-                        mypy_compatible: config.mypy_compatible,
-                    }),
-                );
+                for check_untyped_defs in [false, true] {
+                    let config = BaseConfig {
+                        strict_optional,
+                        implicit_optional,
+                        mypy_compatible,
+                        check_untyped_defs,
+                    };
+                    projects.insert(
+                        config,
+                        LazyProject::new(ProjectOptions {
+                            path: BASE_PATH.into(),
+                            implicit_optional: config.implicit_optional,
+                            check_untyped_defs: config.check_untyped_defs,
+                            strict_optional: config.strict_optional,
+                            mypy_compatible: config.mypy_compatible,
+                        }),
+                    );
+                }
             }
         }
     }
