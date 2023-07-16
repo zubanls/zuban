@@ -629,13 +629,8 @@ testNestedProtocolGenericUnionsDeep
 # Tuple iter fixes
 testTupleBaseClass
 
-# Imports in untyped functions are still type checked??
-testUnknownModuleImportedWithinFunction
-testUnknownModuleImportedWithinFunction2
 # Dynamic functions are ignored in classes and the super class is used?
 testInferringTypesFromIterable
-# "'reveal_type' always outputs 'Any' in unchecked functions"
-testRevealUncheckedFunction
 # Function duplicate param names
 testFastParserDuplicateNames
 # "By default the bodies of untyped functions are not checked, consider using --check-untyped-defs"

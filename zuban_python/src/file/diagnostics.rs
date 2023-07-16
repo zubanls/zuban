@@ -186,6 +186,37 @@ impl<'db> Inference<'db, '_, '_> {
         }
     }
 
+    fn calc_untyped_block_diagnostics(&mut self, block: Block) {
+        for interesting in block.search_relevant_untyped_nodes() {
+            match interesting {
+                RelevantUntypedNode::ImportFrom(i) => self.cache_import_from(i),
+                RelevantUntypedNode::ImportName(i) => self.cache_import_name(i),
+                RelevantUntypedNode::Primary(p) => {
+                    let PrimaryOrAtom::Atom(atom) = p.first() else {
+                        continue
+                    };
+                    let AtomContent::Name(n) = atom.unpack() else {
+                        continue
+                    };
+                    if n.as_code() == "reveal_type" && !self.file.points.get(n.index()).calculated()
+                    {
+                        let PrimaryContent::Execution(_) = p.second() else {
+                            continue
+                        };
+                        let n = NodeRef::new(self.file, p.index());
+                        n.add_issue(self.i_s, IssueType::Note("Revealed type is \"Any\"".into()));
+                        n.add_issue(
+                            self.i_s,
+                            IssueType::Note(
+                                "'reveal_type' always outputs 'Any' in unchecked functions".into(),
+                            ),
+                        );
+                    }
+                }
+            }
+        }
+    }
+
     pub fn calc_block_diagnostics(
         &mut self,
         block: Block,
@@ -415,6 +446,8 @@ impl<'db> Inference<'db, '_, '_> {
             let function_i_s = &mut self.i_s.with_diagnostic_func_and_args(&function, &args);
             let mut inference = self.file.inference(function_i_s);
             inference.calc_block_diagnostics(block, None, Some(&function))
+        } else {
+            self.calc_untyped_block_diagnostics(block)
         }
         if self.i_s.db.python_state.project.disallow_untyped_defs {
             match (

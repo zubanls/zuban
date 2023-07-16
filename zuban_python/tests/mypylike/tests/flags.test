@@ -1,0 +1,4 @@
+[case reveal_type_defined_in_untyped_func]
+def reveal_type(a: str) -> None: ...
+def foo():
+    reveal_type(1)
