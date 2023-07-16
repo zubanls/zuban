@@ -1153,17 +1153,6 @@ testForIndex
 testForIndexInClassBody
 testWithStmt
 testWithStmtInClassBody
-# "Invalid type: ClassVar nested inside other type"
-testClassVarInCallableArgs
-testClassVarInCallableRet
-testClassVarInUnion
-testClassVarInUnionAsAttribute
-testListWithClassVars
-testTupleClassVar
-testMultipleLvaluesWithList
-testDeeplyNested
-testClassVarInClassVar
-testInsideGeneric
 # "ClassVar cannot contain type variables"
 testClassVarWithTypeVariable
 # semanal

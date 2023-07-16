@@ -563,6 +563,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     return;
                 }
+                TypeContent::ClassVar(t) => t,
                 _ => {
                     let mut d =
                         self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index()));
@@ -628,6 +629,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Any => DbType::Any,
                 SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
+                SpecialType::ClassVar => {
+                    self.add_issue(
+                        node_ref,
+                        IssueType::InvalidType(Box::from(
+                            "Invalid Type: ClassVar nested inside other type",
+                        )),
+                    );
+                    DbType::Any
+                }
                 SpecialType::LiteralString => DbType::new_class(
                     self.inference.i_s.db.python_state.str_node_ref().as_link(),
                     ClassGenerics::None,
@@ -715,7 +725,15 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 DbType::RecursiveAlias(Rc::new(RecursiveAlias::new(link, None)))
             }
             TypeContent::Unknown => DbType::Any,
-            TypeContent::ClassVar(t) => t,
+            TypeContent::ClassVar(t) => {
+                self.add_issue(
+                    node_ref,
+                    IssueType::InvalidType(Box::from(
+                        "Invalid Type: ClassVar nested inside other type",
+                    )),
+                );
+                DbType::Any
+            }
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
                     self.inference.i_s.db,
