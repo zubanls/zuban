@@ -154,3 +154,10 @@ class C(B):
     def g(self: Self) -> Self:
         reveal_type(super(C, self).f) # N: Revealed type is "def () -> builtins.float"
         return self
+
+[case class_var_in_method_annotation]
+class Foo:
+    def method1(self, x: ClassVar) -> None: ...  # E: ClassVar can only be used for assignments in class body
+    def method2(self, x: ClassVar[int]) -> None: ...  # E: ClassVar can only be used for assignments in class body
+    def method3(self) -> ClassVar: ...  # E: ClassVar can only be used for assignments in class body
+    def method4(self) -> ClassVar[int]: ...  # E: ClassVar can only be used for assignments in class body

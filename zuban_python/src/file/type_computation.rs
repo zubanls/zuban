@@ -564,13 +564,29 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     return;
                 }
-                TypeContent::SpecialType(SpecialType::ClassVar) => todo!(),
+                TypeContent::SpecialType(SpecialType::ClassVar) => {
+                    let i_s = self.inference.i_s;
+                    if self.origin == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
+                        && i_s.current_class().is_some()
+                        && i_s.current_function().is_none()
+                    {
+                        todo!()
+                    } else {
+                        self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
+                        DbType::Any
+                    }
+                }
                 TypeContent::ClassVar(t) => {
                     if self.has_type_vars {
                         self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
                         DbType::Any
-                    } else {
+                    } else if self.origin
+                        == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
+                    {
                         t
+                    } else {
+                        self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
+                        DbType::Any
                     }
                 }
                 _ => {
@@ -651,7 +667,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
                 SpecialType::ClassVar => {
-                    let i_s = self.inference.i_s;
                     if is_definition {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                     } else {
