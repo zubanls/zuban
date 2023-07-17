@@ -1909,7 +1909,18 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.add_issue(slice_type.as_node_ref(), todo!());
             TypeContent::Unknown
         } else {
-            TypeContent::ClassVar(self.compute_slice_db_type(first))
+            let i_s = self.inference.i_s;
+            if i_s.current_class().is_none() || i_s.current_function().is_some() {
+                self.add_issue(
+                    slice_type.as_node_ref(),
+                    IssueType::InvalidType(
+                        "ClassVar can only be used for assignments in class body".into(),
+                    ),
+                );
+                TypeContent::Unknown
+            } else {
+                TypeContent::ClassVar(self.compute_slice_db_type(first))
+            }
         }
     }
 

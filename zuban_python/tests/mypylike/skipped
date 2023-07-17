@@ -1140,8 +1140,6 @@ testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
 # "ClassVar can only be used for assignments in class body"
-testClassVarDefInModuleScope
-testClassVarDefInFuncScope
 testClassVarDefInMethod
 testClassVarInFunctionArgs
 testClassVarInMethodArgs
