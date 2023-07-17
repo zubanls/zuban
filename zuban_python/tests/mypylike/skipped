@@ -1139,8 +1139,6 @@ testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
-# "ClassVar cannot contain type variables"
-testClassVarWithTypeVariable
 # semanal
 testClassVarWithoutArguments
 

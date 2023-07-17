@@ -530,6 +530,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
 
         let type_ = self.compute_type(expr);
 
+        let node_ref = NodeRef::new(self.inference.file, expr.index());
         let mut db_type = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
             None => match type_ {
@@ -563,12 +564,16 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     return;
                 }
-                TypeContent::ClassVar(t) => t,
+                TypeContent::ClassVar(t) => {
+                    if self.has_type_vars {
+                        self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
+                        DbType::Any
+                    } else {
+                        t
+                    }
+                }
                 _ => {
-                    let mut d = self.as_db_type_definition(
-                        type_,
-                        NodeRef::new(self.inference.file, expr.index()),
-                    );
+                    let mut d = self.as_db_type_definition(type_, node_ref);
                     if self.has_type_vars {
                         if is_implicit_optional {
                             d.make_optional(self.inference.i_s.db)

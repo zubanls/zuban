@@ -62,6 +62,7 @@ pub(crate) enum IssueType {
     ClassVarOnlyInAssignmentsInClass,
     ClassVarNestedInsideOtherType,
     ClassVarTooManyArguments,
+    ClassVarCannotContainTypeVariables,
     InvalidCallableParams,
     InvalidParamSpecGenerics { got: Box<str> },
     NewTypeInvalidType,
@@ -442,6 +443,7 @@ impl<'db> Diagnostic<'db> {
             ClassVarNestedInsideOtherType =>
                 "Invalid Type: ClassVar nested inside other type".to_string(),
             ClassVarTooManyArguments => "ClassVar[...] must have at most one type argument".to_string(),
+            ClassVarCannotContainTypeVariables => "ClassVar cannot contain type variables".to_string(),
             InvalidCallableParams => {
                 additional_notes.push("See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas".into());
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"".to_string()
