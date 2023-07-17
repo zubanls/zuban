@@ -23,7 +23,6 @@ pub(crate) enum IssueType {
     TooFewArguments(Box<str>),
     TooManyArguments(Box<str>),
     IncompatibleDefaultArgument{ argument_name: Box<str>, got: Box<str>, expected: Box<str> },
-    InvalidType(Box<str>),
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
@@ -32,7 +31,6 @@ pub(crate) enum IssueType {
     ModuleNotFound { module_name: Box<str> },
     NoParentModule,
     TypeNotFound,
-    InvalidTypeDeclaration,
     UnexpectedTypeDeclaration,
     TypeArgumentIssue { class: Box<str>, expected_count: usize, given_count: usize },
     TypeAliasArgumentIssue { expected_count: usize, given_count: usize },
@@ -58,10 +56,13 @@ pub(crate) enum IssueType {
     DuplicateBaseClass { name: Box<str> },
     CyclicDefinition { name: Box<str> },
     EnsureSingleGenericOrProtocol,
+
+    InvalidType(Box<str>),
+    InvalidTypeDeclaration,
     InvalidCallableParams,
     InvalidParamSpecGenerics { got: Box<str> },
-    NewTypeMustBeSubclassable { got: Box<str> },
     NewTypeInvalidType,
+    NewTypeMustBeSubclassable { got: Box<str> },
     OptionalMustHaveOneArgument,
 
     DuplicateTypeVar,
@@ -325,8 +326,6 @@ impl<'db> Diagnostic<'db> {
                 let primary = NodeRef::new(self.node_file(), self.issue.node_index);
                 format!("Name {:?} is not defined", primary.as_code())
             }
-            InvalidTypeDeclaration =>
-                "Type cannot be declared in assignment to non-self attribute".to_string(),
             UnexpectedTypeDeclaration => "Unexpected type declaration".to_string(),
             OverloadMismatch{name, args, variants} => {
                 let arg_str = args.join("\", \"");
@@ -432,6 +431,9 @@ impl<'db> Diagnostic<'db> {
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             EnsureSingleGenericOrProtocol =>
                 "Only single Generic[...] or Protocol[...] can be in bases".to_string(),
+
+            InvalidTypeDeclaration =>
+                "Type cannot be declared in assignment to non-self attribute".to_string(),
             InvalidCallableParams => {
                 additional_notes.push("See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas".into());
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"".to_string()
