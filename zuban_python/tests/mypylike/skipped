@@ -1150,7 +1150,6 @@ testDefineOnSelf
 # "ClassVar cannot contain type variables"
 testClassVarWithTypeVariable
 # semanal
-testClassVarTooManyArguments
 testClassVarWithoutArguments
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"

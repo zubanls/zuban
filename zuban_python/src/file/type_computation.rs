@@ -1902,7 +1902,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
         if iterator.next().is_some() {
-            self.add_issue(slice_type.as_node_ref(), todo!());
+            self.add_issue(
+                slice_type.as_node_ref(),
+                IssueType::ClassVarTooManyArguments,
+            );
             TypeContent::Unknown
         } else {
             let i_s = self.inference.i_s;
