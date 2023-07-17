@@ -565,8 +565,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeContent::ClassVar(t) => t,
                 _ => {
-                    let mut d =
-                        self.as_db_type(type_, NodeRef::new(self.inference.file, expr.index()));
+                    let mut d = self.as_db_type_definition(
+                        type_,
+                        NodeRef::new(self.inference.file, expr.index()),
+                    );
                     if self.has_type_vars {
                         if is_implicit_optional {
                             d.make_optional(self.inference.i_s.db)
@@ -598,6 +600,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
+        self.as_db_type_detailed(type_, node_ref, false)
+    }
+
+    fn as_db_type_definition(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
+        self.as_db_type_detailed(type_, node_ref, true)
+    }
+
+    fn as_db_type_detailed(
+        &mut self,
+        type_: TypeContent,
+        node_ref: NodeRef,
+        is_definition: bool,
+    ) -> DbType {
         match type_ {
             TypeContent::Class { node_ref, .. } => {
                 let db = self.inference.i_s.db;
@@ -631,9 +646,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
                 SpecialType::ClassVar => {
                     let i_s = self.inference.i_s;
-                    if i_s.current_class().is_none() || i_s.current_function().is_some() {
-                        //self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
-                        self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
+                    if is_definition {
+                        self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                     } else {
                         self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
                     }
@@ -727,7 +741,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unknown => DbType::Any,
             TypeContent::ClassVar(t) => {
-                self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
+                if is_definition {
+                    todo!()
+                } else {
+                    self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
+                }
                 DbType::Any
             }
             TypeContent::InvalidVariable(t) => {

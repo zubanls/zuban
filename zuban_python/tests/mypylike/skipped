@@ -1139,14 +1139,6 @@ testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
-# "ClassVar can only be used for assignments in class body"
-testClassVarDefInMethod
-testClassVarInFunctionArgs
-testClassVarInMethodArgs
-testClassVarFunctionRetType
-testClassVarMethodRetType
-testMultipleClassVarInFunctionSig
-testDefineOnSelf
 # "ClassVar cannot contain type variables"
 testClassVarWithTypeVariable
 # semanal
