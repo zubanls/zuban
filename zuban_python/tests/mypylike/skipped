@@ -1147,10 +1147,6 @@ testClassVarFunctionRetType
 testClassVarMethodRetType
 testMultipleClassVarInFunctionSig
 testDefineOnSelf
-testForIndex
-testForIndexInClassBody
-testWithStmt
-testWithStmtInClassBody
 # "ClassVar cannot contain type variables"
 testClassVarWithTypeVariable
 # semanal
@@ -2846,6 +2842,11 @@ testRefreshForWithTypeComment1
 testRefreshForWithTypeComment2
 testForStatementTypeComments
 testForStatementMultipleTypeComments
+testForIndex
+testForIndexInClassBody
+# with type comment
+testWithStmt
+testWithStmtInClassBody
 
 # Type Vars qualified names
 testQualifiedTypeVariableName

@@ -630,7 +630,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
                 SpecialType::ClassVar => {
-                    self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
+                    let i_s = self.inference.i_s;
+                    if i_s.current_class().is_none() || i_s.current_function().is_some() {
+                        //self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
+                        self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
+                    } else {
+                        self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
+                    }
                     DbType::Any
                 }
                 SpecialType::LiteralString => DbType::new_class(
