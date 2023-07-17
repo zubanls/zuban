@@ -1139,7 +1139,7 @@ testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
-# semanal
+# x = 1  # type: ClassVar
 testClassVarWithoutArguments
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"

@@ -564,6 +564,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     );
                     return;
                 }
+                TypeContent::SpecialType(SpecialType::ClassVar) => todo!(),
                 TypeContent::ClassVar(t) => {
                     if self.has_type_vars {
                         self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
