@@ -630,12 +630,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
                 SpecialType::ClassVar => {
-                    self.add_issue(
-                        node_ref,
-                        IssueType::InvalidType(Box::from(
-                            "Invalid Type: ClassVar nested inside other type",
-                        )),
-                    );
+                    self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
                     DbType::Any
                 }
                 SpecialType::LiteralString => DbType::new_class(
@@ -726,12 +721,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Unknown => DbType::Any,
             TypeContent::ClassVar(t) => {
-                self.add_issue(
-                    node_ref,
-                    IssueType::InvalidType(Box::from(
-                        "Invalid Type: ClassVar nested inside other type",
-                    )),
-                );
+                self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
                 DbType::Any
             }
             TypeContent::InvalidVariable(t) => {

@@ -60,6 +60,7 @@ pub(crate) enum IssueType {
     InvalidType(Box<str>),
     InvalidTypeDeclaration,
     ClassVarOnlyInAssignmentsInClass,
+    ClassVarNestedInsideOtherType,
     InvalidCallableParams,
     InvalidParamSpecGenerics { got: Box<str> },
     NewTypeInvalidType,
@@ -437,6 +438,8 @@ impl<'db> Diagnostic<'db> {
                 "Type cannot be declared in assignment to non-self attribute".to_string(),
             ClassVarOnlyInAssignmentsInClass =>
                 "ClassVar can only be used for assignments in class body".to_string(),
+            ClassVarNestedInsideOtherType =>
+                "Invalid Type: ClassVar nested inside other type".to_string(),
             InvalidCallableParams => {
                 additional_notes.push("See https://mypy.readthedocs.io/en/stable/kinds_of_types.html#callable-types-and-lambdas".into());
                 "The first argument to Callable must be a list of types, parameter specification, or \"...\"".to_string()
