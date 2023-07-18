@@ -26,6 +26,7 @@ pub(crate) enum IssueType {
     InvalidCastTarget,
     IncompatibleReturn { got: Box<str>, expected: Box<str> },
     IncompatibleAssignment { got: Box<str>, expected: Box<str> },
+    CannotAssignToClassVarViaInstance { name: Box<str> },
     ListItemMismatch { item: usize, got: Box<str>, expected: Box<str> },
     Redefinition { line: usize },
     ModuleNotFound { module_name: Box<str> },
@@ -306,6 +307,9 @@ impl<'db> Diagnostic<'db> {
                     "Incompatible types in assignment (expression has type \"{got}\", variable has type \"{expected}\")",
                 )
             }
+            CannotAssignToClassVarViaInstance { name } => format!(
+                "Cannot assign to class variable \"{name}\" via instance"
+            ),
             ListItemMismatch{item, got, expected} => format!(
                 "List item {item} has incompatible type \"{got}\"; expected \"{expected}\"",
             ),

@@ -379,17 +379,9 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    fn maybe_complex_point(&'slf self, db: &'db Database) -> Option<&'slf ComplexPoint> {
+    pub fn maybe_complex_point(&'slf self, db: &'db Database) -> Option<&'slf ComplexPoint> {
         match &self.state {
-            InferredState::Saved(definition) => {
-                let definition = NodeRef::from_link(db, *definition);
-                Some(
-                    definition
-                        .file
-                        .complex_points
-                        .get(definition.point().complex_index()),
-                )
-            }
+            InferredState::Saved(definition) => NodeRef::from_link(db, *definition).complex(),
             InferredState::UnsavedComplex(t) => Some(t),
             _ => None,
         }

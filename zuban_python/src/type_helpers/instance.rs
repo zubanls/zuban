@@ -5,7 +5,7 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, DbType, FunctionKind, GenericClass, PointLink};
+use crate::database::{ClassType, ComplexPoint, DbType, FunctionKind, GenericClass, PointLink};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
@@ -50,6 +50,15 @@ impl<'a> Instance<'a> {
                     .lookup_symbol(i_s, name.as_str())
                     .into_maybe_inferred()
                 {
+                    if let Some(ComplexPoint::ClassVar(t)) = inf.maybe_complex_point(i_s.db) {
+                        from.add_issue(
+                            i_s,
+                            IssueType::CannotAssignToClassVarViaInstance {
+                                name: name.as_str().into(),
+                            },
+                        );
+                        break;
+                    }
                     inf.resolve_class_type_vars(i_s, &self.class, &class)
                         .as_type(i_s)
                         .run_on_each_union_type(&mut |t| {
