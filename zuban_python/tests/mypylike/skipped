@@ -1125,15 +1125,6 @@ no_self
 # ClassVar
 testOverrideOnSelf
 testOverrideOnSelfInSubclass
-testOverrideWithNormalAttribute
-testOverrideWithAttributeWithClassVar
-testOverrideClassVarManyBases
-testClassVarWithList
-
-testClassVarWithGeneric
-testClassVarWithNestedGeneric
-testSuggestClassVarOnTooFewArgumentsMethod
-testOverrideWithNarrowedUnion
 testMetaclassStrictSupertypeOfTypeWithClassmethods
 testClassVarsInProtocols
 # class property lookups
@@ -1235,6 +1226,7 @@ testMultipleInheritance_NestedVariableOverriddenWithCompatibleType
 testSelfTypeOverrideCompatibilitySelfTypeVar
 testDecoratorMethodCompat
 testNamedTupleUpdate5
+testOverrideWithNarrowedUnion
 # Liskov abstract
 testImplementingAbstractMethod
 testImplementingAbstractMethodWithMultipleBaseClasses
@@ -1344,6 +1336,11 @@ testMultipleInheritanceAndDifferentButCompatibleSignatures
 # with decorator
 testMultipleInheritanceOverridingOfFunctionsWithCallableInstances
 testMixinTypedPropertyReversed
+# "Cannot override class variable (previously declared on base class "A") with instance variable"
+testOverrideWithNormalAttribute
+# "Cannot override instance variable (previously declared on base class "A") with class variable"
+testOverrideWithAttributeWithClassVar
+testOverrideClassVarManyBases
 
 # "Method "g" is marked as an override, but no base method was found with this name"
 explicitOverride
@@ -2855,6 +2852,12 @@ testSerializeSimpleTypeVar
 testSerializeBoundedTypeVar
 testSerializeTypeVarWithValues
 testSerializeTypeVarInClassBody
+
+# "Access to generic class variables is ambiguous" (unimportant, because similar lint exists)
+testClassVarWithGeneric
+testClassVarWithNestedGeneric
+# ""foo" is considered instance variable, to make it class variable use ClassVar[...]"
+testSuggestClassVarOnTooFewArgumentsMethod
 
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
