@@ -501,6 +501,7 @@ pub enum ComplexPoint {
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<DbType>),
+    ClassVar(Rc<DbType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),

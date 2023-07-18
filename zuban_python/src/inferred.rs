@@ -791,6 +791,23 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                                 _ => (),
                             },
+                            ComplexPoint::ClassVar(t) => {
+                                if let DbType::Callable(c) = t.as_ref() {
+                                    debug_assert_eq!(c.kind, FunctionKind::Function);
+                                    if let Some(f) = c.first_positional_type() {
+                                        return create_signature_without_self_for_callable(
+                                            i_s,
+                                            c,
+                                            instance,
+                                            &func_class,
+                                            f,
+                                        )
+                                        .map(Inferred::from_type);
+                                    } else {
+                                        todo!()
+                                    }
+                                }
+                            }
                             ComplexPoint::Class(cls_storage) => {
                                 let class = Class::new(
                                     node_ref,
@@ -1691,6 +1708,7 @@ fn type_of_complex<'db: 'x, 'x>(
             overload.as_type(i_s)
         }
         ComplexPoint::TypeInstance(t) => Type::new(t),
+        ComplexPoint::ClassVar(t) => Type::new(t),
         // TODO is this type correct with the Any?
         ComplexPoint::TypeAlias(alias) => Type::owned(DbType::Type(Rc::new(
             alias.as_db_type_and_set_type_vars_any(i_s.db),

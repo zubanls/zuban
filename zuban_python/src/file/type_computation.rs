@@ -583,7 +583,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } else if self.origin
                         == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
                     {
-                        t
+                        Inferred::new_unsaved_complex(ComplexPoint::ClassVar(Rc::new(t)))
+                            .save_redirect(
+                                self.inference.i_s,
+                                self.inference.file,
+                                annotation_index,
+                            );
+                        return;
                     } else {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                         DbType::Any
@@ -2401,7 +2407,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
                 debug_assert!(matches!(
                     self.file.complex_points.get(point.complex_index()),
-                    ComplexPoint::TypeInstance(_)
+                    ComplexPoint::TypeInstance(_) | ComplexPoint::ClassVar(_)
                 ));
             }
         }
@@ -2472,14 +2478,14 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             debug_assert_eq!(point.type_(), PointType::Complex, "{expr:?}");
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
-                ComplexPoint::TypeInstance(_)
+                ComplexPoint::TypeInstance(_) | ComplexPoint::ClassVar(_)
             ));
             point.complex_index()
         };
-        if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
-            Type::new(db_type)
-        } else {
-            unreachable!()
+        match self.file.complex_points.get(complex_index) {
+            ComplexPoint::TypeInstance(t) => Type::new(t),
+            ComplexPoint::ClassVar(t) => Type::new(t),
+            _ => unreachable!(),
         }
     }
 
