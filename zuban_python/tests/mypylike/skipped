@@ -1123,21 +1123,20 @@ testClassValuedAttributesBasics
 no_self
 
 # ClassVar
-testTypingSelfClassVar
-testTypingSelfCallableClassVar
-testSelfTypeCallableClassVarOldStyle
 testMetaclassStrictSupertypeOfTypeWithClassmethods
-testMetaclassAsAnyWithAFlag
 testClassVarsInProtocols
-testClassVarProtocolImmutable
+# class property lookups
+testSelfTypeCallableClassVarOldStyle
+testTypingSelfCallableClassVar
+testTypingSelfClassVar
 testProtocolClassObjectClassVarRejected
-testIncrementalClassVar
 testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
 # x = 1  # type: ClassVar
 testClassVarWithoutArguments
+testIncrementalClassVar
 
 # "Variance of TypeVar "T_contra" incompatible with variance in parent type"
 testIncompatibleVariance
@@ -2709,6 +2708,9 @@ testFileAddedAndImported
 testFileAddedAndImported2
 testDeleteFileWithErrors
 testDoNotFollowImportToNonStubFile
+
+# --disallow-subclassing-any
+testMetaclassAsAnyWithAFlag
 
 # --no-namespace-packages
 testClassicNotPackage
