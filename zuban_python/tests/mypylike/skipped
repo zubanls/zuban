@@ -1123,6 +1123,17 @@ testClassValuedAttributesBasics
 no_self
 
 # ClassVar
+testOverrideOnSelf
+testOverrideOnSelfInSubclass
+testOverrideWithNormalAttribute
+testOverrideWithAttributeWithClassVar
+testOverrideClassVarManyBases
+testClassVarWithList
+
+testClassVarWithGeneric
+testClassVarWithNestedGeneric
+testSuggestClassVarOnTooFewArgumentsMethod
+testOverrideWithNarrowedUnion
 testMetaclassStrictSupertypeOfTypeWithClassmethods
 testClassVarsInProtocols
 # class property lookups
@@ -1134,6 +1145,7 @@ testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
 testSelfTypeProperSupertypeAttributeGeneric
+testClassVarProtocolImmutable
 # x = 1  # type: ClassVar
 testClassVarWithoutArguments
 testIncrementalClassVar
