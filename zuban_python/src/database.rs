@@ -2627,9 +2627,15 @@ pub struct EnumMember {
 }
 
 #[derive(Debug, PartialEq, Clone)]
+pub struct EnumMemberDefinition {
+    name: StringSlice,
+}
+
+#[derive(Debug, PartialEq, Clone)]
 pub struct Enum {
     name: StringSlice,
     class: PointLink,
+    members: Box<[EnumMemberDefinition]>,
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -2983,6 +2989,7 @@ impl Database {
             self.py_load_tmp(&dir, "../typeshed/stdlib/_typeshed/__init__.pyi") as *const _;
         let types = self.py_load_tmp(&dir, "../typeshed/stdlib/types.pyi") as *const _;
         let abc = self.py_load_tmp(&dir, "../typeshed/stdlib/abc.pyi") as *const _;
+        let enum_file = self.py_load_tmp(&dir, "../typeshed/stdlib/enum.pyi") as *const _;
         let typing_extensions =
             self.py_load_tmp(&dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
         let mypy_extensions = self.py_load_tmp(
@@ -3007,6 +3014,7 @@ impl Database {
             collections,
             types,
             abc,
+            enum_file,
             typing_extensions,
             mypy_extensions,
         );

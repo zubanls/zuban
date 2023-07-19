@@ -333,6 +333,9 @@ impl<'db: 'a, 'a> Class<'a> {
                                 link,
                                 generics: ClassGenerics::None,
                             })) => {
+                                if link == i_s.db.python_state.enum_meta_link() {
+                                    todo!()
+                                }
                                 let c = Class::from_generic_class_components(
                                     i_s.db,
                                     link,

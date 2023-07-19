@@ -61,6 +61,9 @@ pub fn global_import<'a>(
     if name == "abc" {
         return Some(ImportResult::File(db.python_state.abc().file_index()));
     }
+    if name == "enum" {
+        return Some(ImportResult::File(db.python_state.enum_file().file_index()));
+    }
 
     for (dir_path, dir) in db.workspaces.directories() {
         let result = python_import(db, from_file, dir_path, dir, name);

@@ -57,6 +57,7 @@ pub struct PythonState {
     collections: *const PythonFile,
     types: *const PythonFile,
     abc: *const PythonFile,
+    enum_file: *const PythonFile,
     mypy_extensions: *const PythonFile,
     typing_extensions: *const PythonFile,
 
@@ -90,6 +91,7 @@ pub struct PythonState {
     abc_abc_meta_index: NodeIndex,
     abc_abstractmethod_index: NodeIndex,
     abc_abstractproperty_index: NodeIndex,
+    enum_enum_meta_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
     mypy_extensions_named_arg_func: NodeIndex,
@@ -112,6 +114,7 @@ impl PythonState {
             collections: null(),
             types: null(),
             abc: null(),
+            enum_file: null(),
             mypy_extensions: null(),
             typing_extensions: null(),
             builtins_object_index: 0,
@@ -144,6 +147,7 @@ impl PythonState {
             abc_abc_meta_index: 0,
             abc_abstractmethod_index: 0,
             abc_abstractproperty_index: 0,
+            enum_enum_meta_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
             mypy_extensions_named_arg_func: 0,
@@ -167,6 +171,7 @@ impl PythonState {
         collections: *const PythonFile,
         types: *const PythonFile,
         abc: *const PythonFile,
+        enum_file: *const PythonFile,
         typing_extensions: *const PythonFile,
         mypy_extensions: *const PythonFile,
     ) {
@@ -177,6 +182,7 @@ impl PythonState {
         s.collections = collections;
         s.types = types;
         s.abc = abc;
+        s.enum_file = enum_file;
         s.typing_extensions = typing_extensions;
         s.mypy_extensions = mypy_extensions;
 
@@ -270,6 +276,7 @@ impl PythonState {
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
+        cache_index!(enum_enum_meta_index, db, enum_file, "EnumMeta");
 
         db.python_state.abc_abstractmethod_index = db
             .python_state
@@ -352,6 +359,12 @@ impl PythonState {
     pub fn abc(&self) -> &PythonFile {
         debug_assert!(!self.abc.is_null());
         unsafe { &*self.abc }
+    }
+
+    #[inline]
+    pub fn enum_file(&self) -> &PythonFile {
+        debug_assert!(!self.enum_file.is_null());
+        unsafe { &*self.enum_file }
     }
 
     #[inline]
@@ -484,6 +497,11 @@ impl PythonState {
     pub fn abstractproperty_link(&self) -> PointLink {
         debug_assert!(self.abc_abstractproperty_index != 0);
         PointLink::new(self.abc().file_index(), self.abc_abstractproperty_index)
+    }
+
+    pub fn enum_meta_link(&self) -> PointLink {
+        debug_assert!(self.enum_enum_meta_index != 0);
+        PointLink::new(self.enum_file().file_index(), self.enum_enum_meta_index)
     }
 
     pub fn overload_link(&self) -> PointLink {
