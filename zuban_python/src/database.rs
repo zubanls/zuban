@@ -759,6 +759,8 @@ pub enum DbType {
     ParamSpecKwargs(ParamSpecUsage),
     Literal(Literal),
     NamedTuple(Rc<NamedTuple>),
+    Enum(Rc<Enum>),
+    EnumMember(EnumMember),
     Module(FileIndex),
     Namespace(Rc<Namespace>),
     Super {
@@ -932,6 +934,8 @@ impl DbType {
                     ),
                 }
             }
+            Self::Enum(e) => todo!(),
+            Self::EnumMember(e) => todo!(),
             Self::Module(file_index) => format_data
                 .db
                 .python_state
@@ -1034,6 +1038,8 @@ impl DbType {
             | Self::Self_
             | Self::Namespace(_)
             | Self::Super { .. }
+            | Self::Enum(_)
+            | Self::EnumMember(_)
             | Self::NewType(_) => (),
             Self::RecursiveAlias(rec) => {
                 if let Some(generics) = rec.generics.as_ref() {
@@ -1132,6 +1138,8 @@ impl DbType {
             | Self::Module(_)
             | Self::Namespace(_) => false,
             Self::NamedTuple(nt) => todo!(),
+            Self::Enum(_) => todo!(),
+            Self::EnumMember(_) => todo!(),
             Self::Super { .. } => todo!(),
         }
     }
@@ -1164,6 +1172,8 @@ impl DbType {
                 debug!("TODO namedtuple has_self_type");
                 false
             }
+            Self::Enum(_) => todo!(),
+            Self::EnumMember(_) => todo!(),
             Self::Class(..)
             | Self::None
             | Self::Never
@@ -2608,6 +2618,18 @@ impl NamedTuple {
             ))
         })
     }
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct EnumMember {
+    enum_: Rc<Enum>,
+    member_index: usize,
+}
+
+#[derive(Debug, PartialEq, Clone)]
+pub struct Enum {
+    name: StringSlice,
+    class: PointLink,
 }
 
 #[derive(Debug, PartialEq, Clone)]

@@ -251,6 +251,8 @@ impl<'a> Type<'a> {
             DbType::Module(file_index) => todo!(),
             DbType::Namespace(file_index) => todo!(),
             DbType::NamedTuple(_) => todo!(),
+            DbType::Enum(_) => todo!(),
+            DbType::EnumMember(_) => todo!(),
             DbType::Super { .. } => todo!(),
         }
     }
@@ -367,6 +369,8 @@ impl<'a> Type<'a> {
                 }
                 _ => Match::new_false(),
             },
+            DbType::Enum(_) => todo!(),
+            DbType::EnumMember(_) => todo!(),
             DbType::Module(file_index) => Match::new_false(),
             DbType::Namespace(file_index) => todo!(),
             DbType::Super { .. } => todo!(),
@@ -1456,6 +1460,8 @@ impl<'a> Type<'a> {
                 );
                 DbType::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
             }
+            DbType::Enum(_) => todo!(),
+            DbType::EnumMember(_) => todo!(),
             DbType::Super { .. } => todo!(),
         }
     }
@@ -1840,6 +1846,8 @@ impl<'a> Type<'a> {
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::NamedTuple(_) => todo!(),
+            DbType::Enum(_) => todo!(),
+            DbType::EnumMember(_) => todo!(),
             DbType::Super { .. } => todo!(),
             t @ (DbType::Module(_) | DbType::Namespace(_) | DbType::Self_) => t.clone(),
         }

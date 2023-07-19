@@ -502,7 +502,6 @@ testTypingNamedTupleAttributesAreReadOnly
 # data class (currently all are passing)
 
 # Enum
-testNewAnalyzerEnumRedefinition
 testRefreshFunctionalEnum
 testRefreshClassBasedEnum
 testRefreshClassBasedIntEnum
@@ -526,6 +525,17 @@ testStrictEqualityAndEnumWithCustomEq
 testBadEnumLoading
 testNewAnalyzerIncrementalNestedEnum
 testEnumAreStillFinalAfterCache
+# "Enum class cannot be generic"
+# "Enum index should be a string (actual index type "int")"
+# "Enum() expects a string literal as the first argument"
+# "Enum type as attribute is not supported"
+# "Cannot assign to final attribute "gold""
+# "Attempted to reuse member name "A" in Enum definition "Foo""
+# "Cannot extend enum with existing members: "NonEmptyEnum""
+# "Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")"
+# "Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2""
+# "No non-enum mixin classes are allowed after "__main__.Correct2""
+# "Assigned "__members__" will be overridden by "Enum" internally"
 
 # TypedDict
 testTypedDictWithDocString
@@ -2035,6 +2045,7 @@ testMemberRedefinition
 testMemberRedefinitionDefinedInClass
 testDecorateOverloadedFunction
 testErrorCodeAlreadyDefined
+testNewAnalyzerEnumRedefinition
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
