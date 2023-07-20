@@ -375,7 +375,10 @@ impl<'a> Type<'a> {
                 DbType::EnumMember(member) => (e1 == &member.enum_).into(),
                 _ => Match::new_false(),
             },
-            DbType::EnumMember(_) => todo!(),
+            DbType::EnumMember(m1) => match value_type.as_ref() {
+                DbType::EnumMember(m2) => (m1 == m2).into(),
+                _ => Match::new_false(),
+            },
             DbType::Module(file_index) => Match::new_false(),
             DbType::Namespace(file_index) => todo!(),
             DbType::Super { .. } => todo!(),
@@ -662,7 +665,7 @@ impl<'a> Type<'a> {
                 )
             }),
             DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => Some({
-                let class = Class::from_generic_class_components(db, e.class, &ClassGenerics::None);
+                let class = e.class(db);
                 MroIterator::new(
                     db,
                     TypeOrClass::Type(self.clone()),
@@ -2223,6 +2226,10 @@ impl<'a> Type<'a> {
                 Some(t) => callable(self, LookupResult::UnknownName(Inferred::from_type(t))),
                 None => callable(self, LookupResult::None),
             },
+            DbType::EnumMember(member) => callable(
+                self,
+                Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),
+            ),
             _ => todo!("{self:?}"),
         }
     }

@@ -2664,6 +2664,10 @@ pub struct Enum {
 }
 
 impl Enum {
+    pub fn class<'db>(&self, db: &'db Database) -> Class<'db> {
+        Class::from_generic_class_components(db, self.class, &ClassGenerics::None)
+    }
+
     pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str) -> Option<DbType> {
         for (index, member) in rc.members.iter().enumerate() {
             if name == member.name(db) {

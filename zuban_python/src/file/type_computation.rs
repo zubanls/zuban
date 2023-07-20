@@ -999,9 +999,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         base: TypeContent<'db, 'x>,
         name: Name<'x>,
     ) -> TypeContent<'db, 'x> {
+        let db = self.inference.i_s.db;
         match base {
             TypeContent::Module(f) => {
-                let db = self.inference.i_s.db;
                 if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
                     self.inference.file.points.set(
                         name.index(),
@@ -1033,14 +1033,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::Namespace(n) => {
                 match python_import(
-                    self.inference.i_s.db,
+                    db,
                     self.inference.file_index,
                     &n.path,
                     &n.content,
                     name.as_str(),
                 ) {
                     Some(ImportResult::File(file_index)) => {
-                        let file = self.inference.i_s.db.loaded_python_file(file_index);
+                        let file = db.loaded_python_file(file_index);
                         TypeContent::Module(file)
                     }
                     Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
@@ -1059,20 +1059,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 generics,
                 ..
             } => {
-                let cls = Class::from_generic_class_components(
-                    self.inference.i_s.db,
-                    class_link,
-                    &generics,
-                );
+                let cls = Class::from_generic_class_components(db, class_link, &generics);
                 self.check_attribute_on_class(cls, primary, name)
             }
             TypeContent::DbType(t) => match t {
                 DbType::Class(..) => todo!(),
                 DbType::Any => TypeContent::DbType(DbType::Any),
-                DbType::Enum(e) => match Enum::lookup(&e, self.inference.i_s.db, name.as_str()) {
+                DbType::Enum(e) => match Enum::lookup(&e, db, name.as_str()) {
                     Some(t) => TypeContent::DbType(t),
                     _ => {
-                        todo!()
+                        let content = TypeContent::Class {
+                            node_ref: NodeRef::from_link(db, e.class),
+                            has_type_vars: false, // Enums have no type vars ever.
+                        };
+                        self.compute_type_attribute(primary, content, name)
                     }
                 },
                 _ => todo!("{primary:?} {t:?}"),
@@ -1902,10 +1902,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             t => match self.as_db_type(t, slice.as_node_ref()) {
                 DbType::Any => TypeContent::Unknown,
-                t @ (DbType::None | DbType::Literal(_)) => TypeContent::DbType(t),
+                t @ (DbType::None | DbType::Literal(_) | DbType::EnumMember(_)) => {
+                    TypeContent::DbType(t)
+                }
                 DbType::Union(u)
-                    if u.iter()
-                        .all(|t| matches!(t, DbType::Literal(_) | DbType::None)) =>
+                    if u.iter().all(|t| {
+                        matches!(t, DbType::Literal(_) | DbType::None | DbType::EnumMember(_))
+                    }) =>
                 {
                     TypeContent::DbType(DbType::Union(u))
                 }
