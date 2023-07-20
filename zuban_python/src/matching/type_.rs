@@ -1478,8 +1478,7 @@ impl<'a> Type<'a> {
                 );
                 DbType::NamedTuple(Rc::new(NamedTuple::new(nt.name, constructor)))
             }
-            DbType::Enum(_) => todo!(),
-            DbType::EnumMember(_) => todo!(),
+            t @ (DbType::Enum(_) | DbType::EnumMember(_)) => t.clone(),
             DbType::Super { .. } => todo!(),
         }
     }

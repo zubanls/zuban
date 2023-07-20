@@ -514,7 +514,6 @@ testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts
 # Enum
 testClassBasedEnumPropagation1
-testInvariance
 testBadEnumLoading
 # "Enum class cannot be generic"
 # "Enum index should be a string (actual index type "int")"
