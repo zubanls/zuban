@@ -2634,7 +2634,7 @@ impl EnumMember {
         }
     }
 
-    fn format(&self, format_data: &FormatData) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match format_data.style {
             FormatStyle::MypyRevealType => {
                 let class_name = self
@@ -2676,10 +2676,10 @@ impl Enum {
         Class::from_generic_class_components(db, self.class, &ClassGenerics::None)
     }
 
-    pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str) -> Option<DbType> {
+    pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str) -> Option<EnumMember> {
         for (index, member) in rc.members.iter().enumerate() {
             if name == member.name(db) {
-                return Some(DbType::EnumMember(EnumMember::new(rc.clone(), index)));
+                return Some(EnumMember::new(rc.clone(), index));
             }
         }
         None

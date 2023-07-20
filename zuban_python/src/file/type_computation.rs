@@ -7,12 +7,13 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, Enum, FunctionKind, GenericClass,
-    GenericItem, GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace, NewType,
-    ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
-    Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, Enum, EnumMember, FormatStyle,
+    FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, Locality,
+    NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point,
+    PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
+    UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -22,7 +23,7 @@ use crate::getitem::{SliceOrSimple, SliceType, SliceTypeIterator};
 use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{Generics, ResultContext, Type};
+use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{Class, Function, Module};
 
@@ -213,6 +214,7 @@ enum TypeContent<'db, 'a> {
     Unpacked(TypeOrTypeVarTuple),
     Concatenate(CallableParams),
     ClassVar(DbType),
+    EnumMember(EnumMember),
     Unknown,
 }
 
@@ -755,6 +757,22 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
                 DbType::Any
             }
+            TypeContent::EnumMember(m) => {
+                self.add_issue(
+                    node_ref,
+                    IssueType::InvalidType(
+                        format!(
+                            "Invalid type: try using {} instead",
+                            m.format(&FormatData::with_style(
+                                self.inference.i_s.db,
+                                FormatStyle::MypyRevealType
+                            ))
+                        )
+                        .into(),
+                    ),
+                );
+                DbType::Any
+            }
             TypeContent::InvalidVariable(t) => {
                 t.add_issue(
                     self.inference.i_s.db,
@@ -987,6 +1005,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Unpacked(_) => todo!(),
                     TypeContent::Concatenate(_) => todo!(),
                     TypeContent::ClassVar(_) => todo!(),
+                    TypeContent::EnumMember(_) => todo!(),
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
@@ -1066,7 +1085,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 DbType::Class(..) => todo!(),
                 DbType::Any => TypeContent::DbType(DbType::Any),
                 DbType::Enum(e) => match Enum::lookup(&e, db, name.as_str()) {
-                    Some(t) => TypeContent::DbType(t),
+                    Some(m) => TypeContent::EnumMember(m),
                     _ => {
                         let content = TypeContent::Class {
                             node_ref: NodeRef::from_link(db, e.class),
@@ -1089,6 +1108,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::Concatenate(_) => todo!(),
             TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeContent::ClassVar(_) => todo!(),
+            TypeContent::EnumMember(_) => todo!(),
             TypeContent::Unknown => TypeContent::Unknown,
         }
     }
@@ -1900,11 +1920,10 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 );
                 TypeContent::Unknown
             }
+            TypeContent::EnumMember(e) => TypeContent::DbType(DbType::EnumMember(e)),
             t => match self.as_db_type(t, slice.as_node_ref()) {
                 DbType::Any => TypeContent::Unknown,
-                t @ (DbType::None | DbType::Literal(_) | DbType::EnumMember(_)) => {
-                    TypeContent::DbType(t)
-                }
+                t @ (DbType::None | DbType::Literal(_)) => TypeContent::DbType(t),
                 DbType::Union(u)
                     if u.iter().all(|t| {
                         matches!(t, DbType::Literal(_) | DbType::None | DbType::EnumMember(_))

@@ -2223,7 +2223,10 @@ impl<'a> Type<'a> {
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
             DbType::Enum(e) => match Enum::lookup(e, i_s.db, name) {
-                Some(t) => callable(self, LookupResult::UnknownName(Inferred::from_type(t))),
+                Some(m) => callable(
+                    self,
+                    LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(m))),
+                ),
                 None => callable(self, LookupResult::None),
             },
             DbType::EnumMember(member) => callable(
