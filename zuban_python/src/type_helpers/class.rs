@@ -1032,7 +1032,7 @@ impl<'db: 'a, 'a> Class<'a> {
         self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
     }
 
-    fn qualified_name(&self, db: &Database) -> String {
+    pub fn qualified_name(&self, db: &Database) -> String {
         match self.class_storage.parent_scope {
             ParentScope::Module => base_qualified_name!(self, db, self.name()),
             ParentScope::Class(node_index) => {

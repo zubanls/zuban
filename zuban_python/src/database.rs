@@ -935,7 +935,7 @@ impl DbType {
                 }
             }
             Self::Enum(e) => e.name.as_str(format_data.db).into(),
-            Self::EnumMember(e) => e.enum_.name.as_str(format_data.db).into(), //e.format(format_data),
+            Self::EnumMember(e) => e.format(format_data),
             Self::Module(file_index) => format_data
                 .db
                 .python_state
@@ -2635,9 +2635,17 @@ impl EnumMember {
     }
 
     fn format(&self, format_data: &FormatData) -> Box<str> {
-        let class_name = self.enum_.name.as_str(format_data.db);
-        let member_name = self.enum_.members[self.member_index].name(format_data.db);
-        format!("Literal({class_name}.{member_name})").into()
+        match format_data.style {
+            FormatStyle::MypyRevealType => {
+                let class_name = self
+                    .enum_
+                    .class(format_data.db)
+                    .qualified_name(format_data.db);
+                let member_name = self.enum_.members[self.member_index].name(format_data.db);
+                format!("Literal({class_name}.{member_name})").into()
+            }
+            _ => self.enum_.name.as_str(format_data.db).into(),
+        }
     }
 }
 
