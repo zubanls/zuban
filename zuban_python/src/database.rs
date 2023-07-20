@@ -2635,16 +2635,25 @@ impl EnumMember {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
+        let fmt = |class_name: &str| {
+            let member_name = self.enum_.members[self.member_index].name(format_data.db);
+            format!("Literal[{class_name}.{member_name}]").into()
+        };
         match format_data.style {
             FormatStyle::MypyRevealType => {
                 let class_name = self
                     .enum_
                     .class(format_data.db)
                     .qualified_name(format_data.db);
-                let member_name = self.enum_.members[self.member_index].name(format_data.db);
-                format!("Literal({class_name}.{member_name})").into()
+                fmt(&class_name)
             }
-            _ => self.enum_.name.as_str(format_data.db).into(),
+            _ => {
+                if format_data.verbose {
+                    fmt(self.enum_.name.as_str(format_data.db))
+                } else {
+                    self.enum_.name.as_str(format_data.db).into()
+                }
+            }
         }
     }
 }

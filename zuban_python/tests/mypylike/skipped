@@ -508,21 +508,17 @@ testRefreshFuncBasedEnum
 testRefreshFuncBasedIntEnum
 testFuncBasedEnumPropagation1
 testFuncBasedEnumPropagation2
+testNewAnalyzerIncrementalNestedEnum
 # Enum
 testClassBasedEnumPropagation1
-testLiteralWithEnumsBasic
-testLiteralWithEnumsDefinedInClass
 testLiteralWithEnumsSimilarDefinitions
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testLiteralWithEnumsDerivedEnums
-testLiteralWithEnumsAliases
 testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts
-testAliasForEnumTypeAsLiteral
 testInvariance
 testStrictEqualityAndEnumWithCustomEq
 testBadEnumLoading
-testNewAnalyzerIncrementalNestedEnum
 testEnumAreStillFinalAfterCache
 # "Enum class cannot be generic"
 # "Enum index should be a string (actual index type "int")"
