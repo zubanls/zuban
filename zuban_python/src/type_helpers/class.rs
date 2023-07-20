@@ -960,7 +960,6 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn enum_members(&self) -> Box<[EnumMemberDefinition]> {
         let mut members = vec![];
-        // TODO delete find_enum_members_in_block()?
         for (name, name_index) in unsafe {
             self.class_storage
                 .class_symbol_table
@@ -1216,56 +1215,6 @@ fn find_stmt_named_tuple_types(
         }
     }
 }
-
-/*
-fn find_enum_members_in_block(
-    members: &mut Vec<EnumMemberDefinition>,
-    block: Block,
-) {
-    match block.unpack() {
-        BlockContent::Indented(stmts) => {
-            for stmt in stmts {
-                match stmt.unpack() {
-                    StmtContent::SimpleStmts(simple) => {
-                        find_enum_members_in_simple_stmts(members, simple)
-                    }
-                    StmtContent::FunctionDef(_) => (),
-                    StmtContent::Decorated(dec)
-                        if matches!(
-                            dec.decoratee(),
-                            Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
-                        ) => {}
-                    _ => todo!(),
-                }
-            }
-        }
-        BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
-    }
-}
-
-fn find_enum_members_in_simple_stmts(members: &mut Vec<EnumMemberDefinition>, simple: SimpleStmts) {
-    for simple in simple_stmts.iter() {
-        match simple.unpack() {
-            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
-                AssignmentContent::WithAnnotation(target, annot, default) => match target {
-                    Target::Name(name) => {
-                        file.inference(i_s).ensure_cached_annotation(annot);
-                        let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
-                        vec.push(CallableParam {
-                            param_specific: ParamSpecific::PositionalOrKeyword(t),
-                            has_default: default.is_some(),
-                            name: Some(StringSlice::from_name(file.file_index(), name.name())),
-                        })
-                    }
-                    _ => todo!(),
-                },
-                _ => todo!(),
-            },
-            _ => todo!(),
-        }
-    }
-}
-*/
 
 fn add_protocol_mismatch(
     i_s: &InferenceState,
