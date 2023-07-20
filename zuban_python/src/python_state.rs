@@ -18,7 +18,7 @@ use crate::{InferenceState, PythonProject};
 // wrong. Basically it goes three nodes back: name_def class literal and then the actual
 // class.
 const NAME_TO_CLASS_DIFF: u32 = 3;
-const NAME_TO_FUNCTION_DIFF: u32 = 3;
+pub const NAME_TO_FUNCTION_DIFF: u32 = 3;
 
 macro_rules! builtins_attribute_node_ref {
     ($name:ident, $attr:ident) => {
@@ -247,6 +247,7 @@ impl PythonState {
         cache_index!(builtins_object_index, db, builtins, "object");
         cache_index!(builtins_type_index, db, builtins, "type");
         cache_index!(abc_abc_meta_index, db, abc, "ABCMeta");
+        cache_index!(enum_enum_meta_index, db, enum_file, "EnumMeta");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
         cache_index!(builtins_set_index, db, builtins, "set");
@@ -276,7 +277,6 @@ impl PythonState {
         cache_index!(types_module_type_index, db, types, "ModuleType");
         cache_index!(types_none_type_index, db, types, "NoneType");
         cache_index!(abc_abstractproperty_index, db, abc, "abstractproperty");
-        cache_index!(enum_enum_meta_index, db, enum_file, "EnumMeta");
 
         db.python_state.abc_abstractmethod_index = db
             .python_state

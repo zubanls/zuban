@@ -2,8 +2,8 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, AssignmentContent, BlockContent, ClassDef, Decoratee, SimpleStmtContent, SimpleStmts,
-    StmtContent, Target,
+    Argument, AssignmentContent, Block, BlockContent, ClassDef, Decoratee, SimpleStmt,
+    SimpleStmtContent, SimpleStmts, StmtContent, Target,
 };
 
 use super::function::OverloadResult;
@@ -11,10 +11,10 @@ use super::{Callable, Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, FormatStyle, FunctionKind,
-    GenericClass, GenericsList, Locality, MetaclassState, MroIndex, NamedTuple, ParamSpecific,
-    ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, Variance,
+    ClassStorage, ClassType, ComplexPoint, Database, DbType, EnumMemberDefinition, FormatStyle,
+    FunctionKind, GenericClass, GenericsList, Locality, MetaclassState, MroIndex, NamedTuple,
+    ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -31,6 +31,7 @@ use crate::matching::{
     MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
+use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_helpers::format_pretty_callable;
 use crate::{base_qualified_name, debug};
 
@@ -266,6 +267,15 @@ impl<'db: 'a, 'a> Class<'a> {
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             let class_infos = self.calculate_class_infos(i_s);
+            if let MetaclassState::Some(link) = class_infos.metaclass {
+                if link == i_s.db.python_state.enum_meta_link() {
+                    let members = self.enum_members();
+                    if !members.is_empty() {
+                        dbg!(members);
+                        todo!()
+                    }
+                }
+            }
             node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
             debug_assert!(node_ref.point().calculated());
         }
@@ -333,9 +343,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                 link,
                                 generics: ClassGenerics::None,
                             })) => {
-                                if link == i_s.db.python_state.enum_meta_link() {
-                                    todo!()
-                                }
                                 let c = Class::from_generic_class_components(
                                     i_s.db,
                                     link,
@@ -951,6 +958,34 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    fn enum_members(&self) -> Box<[EnumMemberDefinition]> {
+        let mut members = vec![];
+        // TODO delete find_enum_members_in_block()?
+        for (name, name_index) in unsafe {
+            self.class_storage
+                .class_symbol_table
+                .iter_on_finished_table()
+        } {
+            if name.starts_with('_') {
+                continue;
+            }
+            let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
+            if name_node_ref
+                .add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64))
+                .maybe_function()
+                .is_none()
+            {
+                // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
+                // however only filter for functions and ignore decorators.
+                members.push(EnumMemberDefinition::new(StringSlice::from_name(
+                    self.node_ref.file_index(),
+                    name_node_ref.as_name(),
+                )))
+            }
+        }
+        members.into_boxed_slice()
+    }
+
     pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1181,6 +1216,56 @@ fn find_stmt_named_tuple_types(
         }
     }
 }
+
+/*
+fn find_enum_members_in_block(
+    members: &mut Vec<EnumMemberDefinition>,
+    block: Block,
+) {
+    match block.unpack() {
+        BlockContent::Indented(stmts) => {
+            for stmt in stmts {
+                match stmt.unpack() {
+                    StmtContent::SimpleStmts(simple) => {
+                        find_enum_members_in_simple_stmts(members, simple)
+                    }
+                    StmtContent::FunctionDef(_) => (),
+                    StmtContent::Decorated(dec)
+                        if matches!(
+                            dec.decoratee(),
+                            Decoratee::FunctionDef(_) | Decoratee::AsyncFunctionDef(_)
+                        ) => {}
+                    _ => todo!(),
+                }
+            }
+        }
+        BlockContent::OneLine(simple) => todo!(), //find_stmt_named_tuple_types(i_s, file, &mut vec, simple),
+    }
+}
+
+fn find_enum_members_in_simple_stmts(members: &mut Vec<EnumMemberDefinition>, simple: SimpleStmts) {
+    for simple in simple_stmts.iter() {
+        match simple.unpack() {
+            SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
+                AssignmentContent::WithAnnotation(target, annot, default) => match target {
+                    Target::Name(name) => {
+                        file.inference(i_s).ensure_cached_annotation(annot);
+                        let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
+                        vec.push(CallableParam {
+                            param_specific: ParamSpecific::PositionalOrKeyword(t),
+                            has_default: default.is_some(),
+                            name: Some(StringSlice::from_name(file.file_index(), name.name())),
+                        })
+                    }
+                    _ => todo!(),
+                },
+                _ => todo!(),
+            },
+            _ => todo!(),
+        }
+    }
+}
+*/
 
 fn add_protocol_mismatch(
     i_s: &InferenceState,

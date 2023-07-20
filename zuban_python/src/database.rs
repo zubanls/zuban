@@ -2631,6 +2631,12 @@ pub struct EnumMemberDefinition {
     name: StringSlice,
 }
 
+impl EnumMemberDefinition {
+    pub fn new(name: StringSlice) -> Self {
+        Self { name }
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 pub struct Enum {
     name: StringSlice,
