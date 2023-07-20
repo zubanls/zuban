@@ -2225,7 +2225,7 @@ impl<'a> Type<'a> {
             DbType::Enum(e) => match Enum::lookup(e, i_s.db, name) {
                 Some(m) => callable(
                     self,
-                    LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(m))),
+                    LookupResult::UnknownName(Inferred::from_type(DbType::Enum(m.enum_))),
                 ),
                 None => callable(self, LookupResult::None),
             },
