@@ -10,7 +10,7 @@ mod typing;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::{format_pretty_callable, Callable};
-pub use class::{Class, MroIterator, TypeOrClass};
+pub use class::{lookup_on_enum, Class, MroIterator, TypeOrClass};
 pub use function::{
     is_private, FirstParamProperties, Function, InferrableParam, OverloadedFunction,
 };

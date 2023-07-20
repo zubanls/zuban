@@ -1,7 +1,7 @@
 use std::fmt;
 use std::rc::Rc;
 
-use super::Class;
+use super::{lookup_on_enum, Class};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
@@ -96,6 +96,7 @@ impl<'a> TypingType<'a> {
             DbType::Callable(_) => LookupResult::None,
             DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, node_ref, name),
             DbType::Any => LookupResult::any(),
+            t @ DbType::Enum(e) => lookup_on_enum(i_s.db, e, name),
             _ => todo!("{:?}", self.db_type),
         }
     }

@@ -7,13 +7,12 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, Enum, EnumMember, FormatStyle,
-    FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, Locality,
-    NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point,
-    PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
-    UnionType,
+    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind,
+    GenericClass, GenericItem, GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace,
+    NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType,
+    RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias,
+    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -3066,13 +3065,14 @@ fn check_type_name<'db: 'file, 'file>(
                 new_name.name_definition().unwrap().index(),
             );
             name_def.file.inference(i_s).cache_class(name_def, c);
-            if let Some(ComplexPoint::TypeInstance(DbType::Enum(e))) = name_def.complex() {
-                TypeNameLookup::Enum(e.clone())
-            } else {
-                // Classes can be defined recursive, so use the NamedTuple stuff here.
-                TypeNameLookup::Class {
-                    node_ref: NodeRef::new(name_node_ref.file, c.index()),
+            if let Some(ComplexPoint::TypeInstance(DbType::Type(t))) = name_def.complex() {
+                if let DbType::Enum(e) = t.as_ref() {
+                    return TypeNameLookup::Enum(e.clone());
                 }
+            }
+            // Classes can be defined recursive, so use the NamedTuple stuff here.
+            TypeNameLookup::Class {
+                node_ref: NodeRef::new(name_node_ref.file, c.index()),
             }
         }
         TypeLike::Assignment(assignment) => {

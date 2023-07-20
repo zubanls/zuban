@@ -279,11 +279,13 @@ impl<'db: 'a, 'a> Class<'a> {
                 if link == i_s.db.python_state.enum_meta_link() {
                     let members = self.enum_members();
                     if !members.is_empty() {
-                        let c = ComplexPoint::TypeInstance(DbType::Enum(Rc::new(Enum {
-                            name: self.name_string_slice(),
-                            class: self.node_ref.as_link(),
-                            members,
-                        })));
+                        let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
+                            Rc::new(Enum {
+                                name: self.name_string_slice(),
+                                class: self.node_ref.as_link(),
+                                members,
+                            }),
+                        ))));
                         name_def.insert_complex(c, Locality::Todo);
                     }
                 }
@@ -1254,5 +1256,12 @@ fn add_protocol_mismatch(
             )
             .into(),
         ),
+    }
+}
+
+pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
+    match Enum::lookup(enum_, db, name) {
+        Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::Enum(enum_.clone()))),
+        None => LookupResult::None,
     }
 }

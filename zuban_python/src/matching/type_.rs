@@ -10,7 +10,7 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, Enum, EnumMember, GenericClass, GenericItem, GenericsList,
+    DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList,
     MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
     ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
     TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
@@ -2221,13 +2221,7 @@ impl<'a> Type<'a> {
             DbType::Never => (),
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
-            DbType::Enum(e) => match Enum::lookup(e, i_s.db, name) {
-                Some(m) => callable(
-                    self,
-                    LookupResult::UnknownName(Inferred::from_type(DbType::Enum(m.enum_))),
-                ),
-                None => callable(self, LookupResult::None),
-            },
+            DbType::Enum(e) => todo!(), //callable(self, lookup_on_enum(i_s.db, e, name)),
             DbType::EnumMember(member) => callable(
                 self,
                 Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),

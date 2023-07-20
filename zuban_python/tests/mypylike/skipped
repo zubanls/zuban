@@ -512,8 +512,6 @@ testNewAnalyzerIncrementalNestedEnum
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts
-# Enum
-testClassBasedEnumPropagation1
 testBadEnumLoading
 # "Enum class cannot be generic"
 # "Enum index should be a string (actual index type "int")"
