@@ -1777,6 +1777,13 @@ pub enum LiteralValue<'db> {
 }
 
 impl Literal {
+    pub fn new(kind: LiteralKind) -> Self {
+        Self {
+            kind,
+            implicit: false,
+        }
+    }
+
     pub fn value(self, db: &Database) -> LiteralValue {
         match self.kind {
             LiteralKind::Int(i) => LiteralValue::Int(i),

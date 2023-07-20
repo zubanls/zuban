@@ -3,8 +3,8 @@ use std::rc::Rc;
 
 use parsa_python_ast::{
     Argument, AssignmentContent, AtomContent, BlockContent, ClassDef, CodeIndex, Decoratee,
-    ExpressionContent, ExpressionPart, SimpleStmtContent, SimpleStmts, StarLikeExpression,
-    StmtContent, Target,
+    DictElement, ExpressionContent, ExpressionPart, SimpleStmtContent, SimpleStmts,
+    StarLikeExpression, StmtContent, Target,
 };
 
 use super::function::OverloadResult;
@@ -1372,6 +1372,20 @@ fn gather_enum_members(node_ref: NodeRef) -> Box<[EnumMemberDefinition]> {
             }
             _ => todo!(),
         },
+        AtomContent::Dict(d) => {
+            for element in d.iter_elements() {
+                let DictElement::KeyValue(kv) = element else {
+                    todo!()
+                };
+                let Some(name) = StringSlice::from_string_in_expression(
+                    node_ref.file.file_index(),
+                    kv.key(),
+                ) else {
+                    todo!()
+                };
+                members.push(EnumMemberDefinition::new(name));
+            }
+        }
         _ => {
             todo!("{atom:?}")
         }
