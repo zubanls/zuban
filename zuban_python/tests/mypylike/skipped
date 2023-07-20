@@ -509,17 +509,15 @@ testRefreshFuncBasedIntEnum
 testFuncBasedEnumPropagation1
 testFuncBasedEnumPropagation2
 testNewAnalyzerIncrementalNestedEnum
-# Enum
-testClassBasedEnumPropagation1
-testLiteralWithEnumsSimilarDefinitions
 testLiteralWithEnumsDeclaredUsingCallSyntax
-testLiteralWithEnumsDerivedEnums
 testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts
+# Non literal inference content?
+testClassBasedEnumPropagation2
+# Enum
+testClassBasedEnumPropagation1
 testInvariance
-testStrictEqualityAndEnumWithCustomEq
 testBadEnumLoading
-testEnumAreStillFinalAfterCache
 # "Enum class cannot be generic"
 # "Enum index should be a string (actual index type "int")"
 # "Enum() expects a string literal as the first argument"
@@ -527,6 +525,7 @@ testEnumAreStillFinalAfterCache
 # "Cannot assign to final attribute "gold""
 # "Attempted to reuse member name "A" in Enum definition "Foo""
 # "Cannot extend enum with existing members: "NonEmptyEnum""
+testEnumAreStillFinalAfterCache
 # "Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")"
 # "Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2""
 # "No non-enum mixin classes are allowed after "__main__.Correct2""
@@ -2416,6 +2415,8 @@ testModuleAliasRepeatedWithAnnotation
 
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
+# qualified name for Enum for different module
+testLiteralWithEnumsSimilarDefinitions
 # NewType formatting instead of internal type
 testNewTypeDependencies3
 
@@ -2652,6 +2653,7 @@ testStrictEqualityWithFixedLengthTupleInCheck
 testStrictEqualityBytesSpecialUnion
 testErrorCodeNonOverlappingEquality
 testColumnNonOverlappingEqualityCheck
+testStrictEqualityAndEnumWithCustomEq
 
 # --show-column-numbers and tuple targets
 testColumnsAssignment

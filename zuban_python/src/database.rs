@@ -2647,13 +2647,7 @@ impl EnumMember {
                     .qualified_name(format_data.db);
                 fmt(&class_name)
             }
-            _ => {
-                if format_data.verbose {
-                    fmt(self.enum_.name.as_str(format_data.db))
-                } else {
-                    self.enum_.name.as_str(format_data.db).into()
-                }
-            }
+            _ => fmt(self.enum_.name.as_str(format_data.db)),
         }
     }
 }
