@@ -1026,80 +1026,16 @@ impl<'db: 'a, 'a> Class<'a> {
             todo!()
         };
 
-        let ArgumentKind::Positional { node_ref, .. } = fields_arg.kind else {
+        let ArgumentKind::Positional { node_ref: fields_node_ref, .. } = fields_arg.kind else {
             todo!();
             return Inferred::new_any()
         };
-        let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
-            todo!()
-        };
+        let members = gather_enum_members(fields_node_ref);
 
-        let mut members = vec![];
-
-        let mut add_from_iterator = |iterator| {
-            for element in iterator {
-                let StarLikeExpression::NamedExpression(ne) = element else {
-                    todo!()
-                };
-                let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
-                    todo!()
-                };
-                let name = match atom.unpack() {
-                    AtomContent::List(list) => todo!(),
-                    AtomContent::Tuple(tup) => {
-                        let mut iterator = tup.iter();
-                        let Some(first) = iterator.next() else {
-                            todo!()
-                        };
-                        let Some(second) = iterator.next() else {
-                            todo!()
-                        };
-                        let StarLikeExpression::NamedExpression(n) = first else {
-                            todo!()
-                        };
-                        StringSlice::from_string_in_expression(
-                            node_ref.file.file_index(),
-                            n.expression(),
-                        )
-                    }
-                    _ => StringSlice::from_string_in_expression(
-                        node_ref.file.file_index(),
-                        ne.expression(),
-                    ),
-                };
-                let Some(name) = name else {
-                    todo!("Add issue");
-                };
-                members.push(EnumMemberDefinition::new(name))
-            }
-        };
-        match atom.unpack() {
-            AtomContent::List(list) => add_from_iterator(list.unpack()),
-            AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
-            AtomContent::Strings(s) => match s.maybe_single_string_literal() {
-                Some(s) => {
-                    let (mut start, _) = s.content_start_and_end_in_literal();
-                    start += s.start();
-                    for part in s.content().split(&[',', ' ']) {
-                        let name = StringSlice::new(
-                            node_ref.file_index(),
-                            start,
-                            start + part.len() as CodeIndex,
-                        );
-                        members.push(EnumMemberDefinition::new(name));
-                        start += part.len() as CodeIndex + 1;
-                    }
-                }
-                _ => todo!(),
-            },
-            _ => {
-                todo!()
-            }
-        };
         Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(Rc::new(Enum {
             name,
             class: self.node_ref.as_link(),
-            members: members.into_boxed_slice(),
+            members,
         })))))
     }
 
@@ -1371,4 +1307,74 @@ pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResu
         Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::Enum(enum_.clone()))),
         None => LookupResult::None,
     }
+}
+
+fn gather_enum_members(node_ref: NodeRef) -> Box<[EnumMemberDefinition]> {
+    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
+        todo!()
+    };
+
+    let mut members = vec![];
+
+    let mut add_from_iterator = |iterator| {
+        for element in iterator {
+            let StarLikeExpression::NamedExpression(ne) = element else {
+                todo!()
+            };
+            let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
+                todo!()
+            };
+            let name = match atom.unpack() {
+                AtomContent::List(list) => todo!(),
+                AtomContent::Tuple(tup) => {
+                    let mut iterator = tup.iter();
+                    let Some(first) = iterator.next() else {
+                        todo!()
+                    };
+                    let Some(second) = iterator.next() else {
+                        todo!()
+                    };
+                    let StarLikeExpression::NamedExpression(n) = first else {
+                        todo!()
+                    };
+                    StringSlice::from_string_in_expression(
+                        node_ref.file.file_index(),
+                        n.expression(),
+                    )
+                }
+                _ => StringSlice::from_string_in_expression(
+                    node_ref.file.file_index(),
+                    ne.expression(),
+                ),
+            };
+            let Some(name) = name else {
+                todo!("Add issue");
+            };
+            members.push(EnumMemberDefinition::new(name))
+        }
+    };
+    match atom.unpack() {
+        AtomContent::List(list) => add_from_iterator(list.unpack()),
+        AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
+        AtomContent::Strings(s) => match s.maybe_single_string_literal() {
+            Some(s) => {
+                let (mut start, _) = s.content_start_and_end_in_literal();
+                start += s.start();
+                for part in s.content().split(&[',', ' ']) {
+                    let name = StringSlice::new(
+                        node_ref.file_index(),
+                        start,
+                        start + part.len() as CodeIndex,
+                    );
+                    members.push(EnumMemberDefinition::new(name));
+                    start += part.len() as CodeIndex + 1;
+                }
+            }
+            _ => todo!(),
+        },
+        _ => {
+            todo!("{atom:?}")
+        }
+    };
+    members.into()
 }
