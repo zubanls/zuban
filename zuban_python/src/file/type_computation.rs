@@ -2615,6 +2615,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 TypeNameLookup::NewType(n)
             } else if let Some(t) = inferred.maybe_named_tuple_definition(self.i_s) {
                 TypeNameLookup::NamedTupleDefinition(t)
+            } else if let Some(t) = inferred.maybe_enum_definition(self.i_s) {
+                TypeNameLookup::Enum(t)
             } else {
                 cached_type_node_ref.set_point(Point::new_calculating());
                 let type_var_likes = TypeVarFinder::find_alias_type_vars(self, expr);

@@ -3098,6 +3098,7 @@ pub enum MetaclassState {
 pub enum ClassType {
     Normal,
     Protocol,
+    Enum,
     NamedTuple(Rc<NamedTuple>),
 }
 

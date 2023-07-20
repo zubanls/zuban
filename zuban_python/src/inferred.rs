@@ -4,10 +4,10 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, FileIndex,
-    FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList, Literal as DbLiteral,
-    LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType, Specific, TypeVarLike,
-    TypeVarLikes,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, Enum,
+    FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
+    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
+    Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -275,6 +275,18 @@ impl<'db: 'slf, 'slf> Inferred {
             let node_ref = NodeRef::from_link(i_s.db, definition);
             if let Some(ComplexPoint::NamedTupleDefinition(n)) = node_ref.complex() {
                 return Some(n.as_ref().clone());
+            }
+        }
+        None
+    }
+
+    pub fn maybe_enum_definition(&self, i_s: &InferenceState) -> Option<Rc<Enum>> {
+        if let InferredState::Saved(definition) = self.state {
+            let node_ref = NodeRef::from_link(i_s.db, definition);
+            if let Some(ComplexPoint::TypeInstance(DbType::Type(t))) = node_ref.complex() {
+                if let DbType::Enum(e) = t.as_ref() {
+                    return Some(e.clone());
+                }
             }
         }
         None

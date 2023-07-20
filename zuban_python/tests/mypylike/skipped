@@ -503,12 +503,8 @@ testTypingNamedTupleAttributesAreReadOnly
 # data class (currently all are passing)
 
 # Func based enum
-testRefreshFunctionalEnum
 testRefreshFuncBasedEnum
-testRefreshFuncBasedIntEnum
-testFuncBasedEnumPropagation1
 testFuncBasedEnumPropagation2
-testNewAnalyzerIncrementalNestedEnum
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts

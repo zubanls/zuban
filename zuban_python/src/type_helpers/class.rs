@@ -2,13 +2,14 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, AssignmentContent, BlockContent, ClassDef, Decoratee, SimpleStmtContent, SimpleStmts,
+    Argument, AssignmentContent, AtomContent, BlockContent, ClassDef, CodeIndex, Decoratee,
+    ExpressionContent, ExpressionPart, SimpleStmtContent, SimpleStmts, StarLikeExpression,
     StmtContent, Target,
 };
 
 use super::function::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue};
-use crate::arguments::Arguments;
+use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
@@ -274,9 +275,10 @@ impl<'db: 'a, 'a> Class<'a> {
 
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
-            let class_infos = self.calculate_class_infos(i_s);
+            let mut class_infos = self.calculate_class_infos(i_s);
             if let MetaclassState::Some(link) = class_infos.metaclass {
                 if link == i_s.db.python_state.enum_meta_link() {
+                    class_infos.class_type = ClassType::Enum;
                     let members = self.enum_members();
                     if !members.is_empty() {
                         let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
@@ -999,6 +1001,83 @@ impl<'db: 'a, 'a> Class<'a> {
         members.into_boxed_slice()
     }
 
+    fn execute_functional_enum(
+        &self,
+        i_s: &InferenceState,
+        args: &dyn Arguments,
+        result_context: &mut ResultContext,
+    ) -> Inferred {
+        let mut iterator = args.iter();
+        let Some(name_arg) = iterator.next() else {
+            todo!()
+        };
+        let Some(fields_arg) = iterator.next() else {
+            todo!()
+        };
+        if iterator.next().is_some() {
+            todo!()
+        }
+
+        let ArgumentKind::Positional { node_ref: name_node_ref, .. } = name_arg.kind else {
+            todo!();
+            return Inferred::new_any()
+        };
+        let Some(name) = StringSlice::from_string_in_expression(name_node_ref.file_index(), name_node_ref.as_named_expression().expression()) else {
+            todo!()
+        };
+
+        let ArgumentKind::Positional { node_ref, .. } = fields_arg.kind else {
+            todo!();
+            return Inferred::new_any()
+        };
+        let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
+            todo!()
+        };
+
+        let mut members = vec![];
+
+        let mut add_from_iterator = |iterator| {
+            for element in iterator {
+                let StarLikeExpression::NamedExpression(ne) = element else {
+                    todo!()
+                };
+                let Some(string_slice) = StringSlice::from_string_in_expression(node_ref.file.file_index(), ne.expression()) else {
+                    todo!("Add issue");
+                    continue
+                };
+                members.push(EnumMemberDefinition::new(name))
+            }
+        };
+        match atom.unpack() {
+            AtomContent::List(list) => add_from_iterator(list.unpack()),
+            AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
+            AtomContent::Strings(s) => match s.maybe_single_string_literal() {
+                Some(s) => {
+                    let (mut start, _) = s.content_start_and_end_in_literal();
+                    start += s.start();
+                    for part in s.content().split(&[',', ' ']) {
+                        let name = StringSlice::new(
+                            node_ref.file_index(),
+                            start,
+                            start + part.len() as CodeIndex,
+                        );
+                        members.push(EnumMemberDefinition::new(name));
+                        start += part.len() as CodeIndex + 1;
+                    }
+                }
+                _ => todo!(),
+            },
+            _ => {
+                todo!()
+            }
+        };
+        Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(Rc::new(Enum {
+            name,
+            class: self.node_ref.as_link(),
+            members: members.into_boxed_slice(),
+        })))))
+    }
+
     pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1006,6 +1085,9 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
+        if self.use_cached_class_infos(i_s.db).class_type == ClassType::Enum {
+            return self.execute_functional_enum(i_s, args, result_context);
+        }
         if let Some(generics) = self.type_check_init_func(
             i_s,
             args,
