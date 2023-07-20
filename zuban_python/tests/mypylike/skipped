@@ -503,11 +503,9 @@ testTypingNamedTupleAttributesAreReadOnly
 # data class (currently all are passing)
 
 # Func based enum
-testRefreshFuncBasedEnum
-testFuncBasedEnumPropagation2
 testLiteralWithEnumsDeclaredUsingCallSyntax
-testLiteralUsingEnumAttributesInLiteralContexts
 testLiteralUsingEnumAttributeNamesInLiteralContexts
+testLiteralUsingEnumAttributesInLiteralContexts
 testBadEnumLoading
 # "Enum class cannot be generic"
 # "Enum index should be a string (actual index type "int")"

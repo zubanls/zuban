@@ -1041,9 +1041,34 @@ impl<'db: 'a, 'a> Class<'a> {
                 let StarLikeExpression::NamedExpression(ne) = element else {
                     todo!()
                 };
-                let Some(string_slice) = StringSlice::from_string_in_expression(node_ref.file.file_index(), ne.expression()) else {
+                let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = ne.expression().unpack() else {
+                    todo!()
+                };
+                let name = match atom.unpack() {
+                    AtomContent::List(list) => todo!(),
+                    AtomContent::Tuple(tup) => {
+                        let mut iterator = tup.iter();
+                        let Some(first) = iterator.next() else {
+                            todo!()
+                        };
+                        let Some(second) = iterator.next() else {
+                            todo!()
+                        };
+                        let StarLikeExpression::NamedExpression(n) = first else {
+                            todo!()
+                        };
+                        StringSlice::from_string_in_expression(
+                            node_ref.file.file_index(),
+                            n.expression(),
+                        )
+                    }
+                    _ => StringSlice::from_string_in_expression(
+                        node_ref.file.file_index(),
+                        ne.expression(),
+                    ),
+                };
+                let Some(name) = name else {
                     todo!("Add issue");
-                    continue
                 };
                 members.push(EnumMemberDefinition::new(name))
             }
