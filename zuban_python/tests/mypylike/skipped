@@ -502,14 +502,14 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
-# Enum
+# Func based enum
 testRefreshFunctionalEnum
-testClassBasedEnumPropagation1
-testClassBasedEnumPropagation2
 testRefreshFuncBasedEnum
 testRefreshFuncBasedIntEnum
 testFuncBasedEnumPropagation1
 testFuncBasedEnumPropagation2
+# Enum
+testClassBasedEnumPropagation1
 testLiteralWithEnumsBasic
 testLiteralWithEnumsDefinedInClass
 testLiteralWithEnumsSimilarDefinitions

@@ -935,7 +935,7 @@ impl DbType {
                 }
             }
             Self::Enum(e) => e.name.as_str(format_data.db).into(),
-            Self::EnumMember(e) => e.format(format_data),
+            Self::EnumMember(e) => e.enum_.name.as_str(format_data.db).into(), //e.format(format_data),
             Self::Module(file_index) => format_data
                 .db
                 .python_state

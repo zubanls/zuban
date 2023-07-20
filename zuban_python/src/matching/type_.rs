@@ -2231,7 +2231,7 @@ impl<'a> Type<'a> {
                         return;
                     }
                 }
-                todo!()
+                callable(self, LookupResult::None);
             }
             _ => todo!("{self:?}"),
         }
