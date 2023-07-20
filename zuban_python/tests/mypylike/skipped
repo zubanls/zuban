@@ -504,7 +504,6 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # Enum
 testRefreshFunctionalEnum
-testRefreshClassBasedIntEnum
 testClassBasedEnumPropagation1
 testClassBasedEnumPropagation2
 testRefreshFuncBasedEnum

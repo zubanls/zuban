@@ -661,6 +661,16 @@ impl<'a> Type<'a> {
                     false,
                 )
             }),
+            DbType::Enum(e) | DbType::EnumMember(EnumMember { enum_: e, .. }) => Some({
+                let class = Class::from_generic_class_components(db, e.class, &ClassGenerics::None);
+                MroIterator::new(
+                    db,
+                    TypeOrClass::Type(self.clone()),
+                    class.generics,
+                    class.use_cached_class_infos(db).mro.iter(),
+                    false,
+                )
+            }),
             _ => None,
         }
     }
