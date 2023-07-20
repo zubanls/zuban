@@ -10,7 +10,7 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList,
+    DoubleStarredParamSpecific, Enum, EnumMember, GenericClass, GenericItem, GenericsList,
     MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
     ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
     TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
@@ -2219,20 +2219,10 @@ impl<'a> Type<'a> {
             DbType::Never => (),
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
-            DbType::Enum(e) => {
-                for (index, member) in e.members.iter().enumerate() {
-                    if name == member.name(i_s.db) {
-                        callable(
-                            self,
-                            LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(
-                                EnumMember::new(e.clone(), index),
-                            ))),
-                        );
-                        return;
-                    }
-                }
-                callable(self, LookupResult::None);
-            }
+            DbType::Enum(e) => match Enum::lookup(e, i_s.db, name) {
+                Some(t) => callable(self, LookupResult::UnknownName(Inferred::from_type(t))),
+                None => callable(self, LookupResult::None),
+            },
             _ => todo!("{self:?}"),
         }
     }

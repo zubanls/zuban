@@ -921,6 +921,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 TypeContent::DbType(t) => match t {
                     DbType::Class(..) => todo!(),
                     DbType::Any => TypeContent::DbType(DbType::Any),
+                    DbType::Enum(e) => match Enum::lookup(&e, self.inference.i_s.db, name.as_str())
+                    {
+                        Some(t) => TypeContent::DbType(t),
+                        _ => {
+                            todo!()
+                        }
+                    },
                     _ => todo!("{primary:?} {t:?}"),
                 },
                 TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),

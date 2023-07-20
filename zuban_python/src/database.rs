@@ -2663,6 +2663,17 @@ pub struct Enum {
     pub members: Box<[EnumMemberDefinition]>,
 }
 
+impl Enum {
+    pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str) -> Option<DbType> {
+        for (index, member) in rc.members.iter().enumerate() {
+            if name == member.name(db) {
+                return Some(DbType::EnumMember(EnumMember::new(rc.clone(), index)));
+            }
+        }
+        None
+    }
+}
+
 #[derive(Debug, PartialEq, Clone)]
 struct CalculatedTypeAlias {
     // This is intentionally private, it should not be used anywhere else, because the behavior of
