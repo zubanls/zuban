@@ -390,31 +390,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    fn first_defined_name(&mut self, name_index: NodeIndex) -> Option<NodeIndex> {
-        let point = self.file.points.get(name_index);
-        if !point.calculated() {
-            return None;
-        }
-        debug_assert_eq!(point.type_(), PointType::MultiDefinition);
-        let mut current = point.node_index();
-        loop {
-            let point = self.file.points.get(current);
-            debug_assert!(point.calculated());
-            debug_assert_eq!(point.type_(), PointType::MultiDefinition);
-            // Here we circle through multi definitions to find the first one.
-            // Note that multi definition links loop, i.e. A -> B -> C -> A.
-            let next = point.node_index();
-            if next <= current {
-                if next == name_index {
-                    return None;
-                }
-                debug_assert_ne!(next, current);
-                return Some(next);
-            }
-            current = next;
-        }
-    }
-
     fn original_definition(&mut self, assignment: Assignment) -> Option<Inferred> {
         // TODO shouldn't this be merged/using infer_single_target
 
@@ -423,7 +398,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             for target in targets {
                 match target {
                     Target::Name(name_def) => {
-                        if let Some(first_index) = self.first_defined_name(name_def.name_index()) {
+                        if let Some(first_index) =
+                            first_defined_name(self.file, name_def.name_index())
+                        {
                             let inferred = self.infer_name_by_index(first_index);
                             return Some(inferred);
                         }
@@ -647,7 +624,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match target {
             // TODO it's a bit weird that we cannot just call self.infer_name_definition here
             Target::Name(name_def) => {
-                if let Some(first_index) = self.first_defined_name(name_def.name().index()) {
+                if let Some(first_index) = first_defined_name(self.file, name_def.name().index()) {
                     self.infer_name_by_index(first_index)
                 } else {
                     todo!()
@@ -672,7 +649,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match target {
             Target::Name(name_def) => {
                 let current_index = name_def.name_index();
-                if let Some(first_index) = self.first_defined_name(current_index) {
+                if let Some(first_index) = first_defined_name(self.file, current_index) {
                     if current_index != first_index {
                         let inferred = self.infer_name_by_index(first_index);
                         inferred.as_type(self.i_s).error_if_not_matches(
@@ -2009,5 +1986,30 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
                 .collect(),
         )),
         _ => todo!("{t:?}"),
+    }
+}
+
+fn first_defined_name(file: &PythonFile, name_index: NodeIndex) -> Option<NodeIndex> {
+    let point = file.points.get(name_index);
+    if !point.calculated() {
+        return None;
+    }
+    debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+    let mut current = point.node_index();
+    loop {
+        let point = file.points.get(current);
+        debug_assert!(point.calculated());
+        debug_assert_eq!(point.type_(), PointType::MultiDefinition);
+        // Here we circle through multi definitions to find the first one.
+        // Note that multi definition links loop, i.e. A -> B -> C -> A.
+        let next = point.node_index();
+        if next <= current {
+            if next == name_index {
+                return None;
+            }
+            debug_assert_ne!(next, current);
+            return Some(next);
+        }
+        current = next;
     }
 }
