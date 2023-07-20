@@ -3040,19 +3040,6 @@ fn check_type_name<'db: 'file, 'file>(
             }
         }
         TypeLike::Assignment(assignment) => {
-            if point.calculated() {
-                // TODO This is mostly for loading Callable and other builtins. Should probably be
-                //      changed/removed
-                debug_assert!(
-                    matches!(
-                        point.type_(),
-                        PointType::Complex | PointType::MultiDefinition
-                    ),
-                    "{:?}",
-                    point.type_()
-                );
-                return load_cached_type(name_node_ref);
-            }
             let def_point = name_node_ref
                 .file
                 .points
