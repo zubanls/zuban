@@ -2,8 +2,8 @@ use std::fmt;
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    Argument, AssignmentContent, Block, BlockContent, ClassDef, Decoratee, SimpleStmt,
-    SimpleStmtContent, SimpleStmts, StmtContent, Target,
+    Argument, AssignmentContent, BlockContent, ClassDef, Decoratee, SimpleStmtContent, SimpleStmts,
+    StmtContent, Target,
 };
 
 use super::function::OverloadResult;
@@ -11,9 +11,9 @@ use super::{Callable, Instance, Module, NamedTupleValue};
 use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, EnumMemberDefinition, FormatStyle,
-    FunctionKind, GenericClass, GenericsList, Locality, MetaclassState, MroIndex, NamedTuple,
-    ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
+    ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
+    FormatStyle, FunctionKind, GenericClass, GenericsList, Locality, MetaclassState, MroIndex,
+    NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::diagnostics::IssueType;
@@ -279,8 +279,12 @@ impl<'db: 'a, 'a> Class<'a> {
                 if link == i_s.db.python_state.enum_meta_link() {
                     let members = self.enum_members();
                     if !members.is_empty() {
-                        dbg!(members);
-                        todo!()
+                        let c = ComplexPoint::TypeInstance(DbType::Enum(Rc::new(Enum {
+                            name: self.name_string_slice(),
+                            class: self.node_ref.as_link(),
+                            members,
+                        })));
+                        name_def.insert_complex(c, Locality::Todo);
                     }
                 }
             }

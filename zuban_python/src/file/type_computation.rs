@@ -7,7 +7,7 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, FunctionKind, GenericClass,
+    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, Enum, FunctionKind, GenericClass,
     GenericItem, GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace, NewType,
     ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType, RecursiveAlias,
     Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias, TypeArguments,
@@ -227,6 +227,7 @@ pub(super) enum TypeNameLookup<'db, 'a> {
     SpecialType(SpecialType),
     InvalidVariable(InvalidVariableType<'a>),
     NamedTupleDefinition(DbType),
+    Enum(Rc<Enum>),
     RecursiveAlias(PointLink),
     Unknown,
 }
@@ -2070,6 +2071,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeNameLookup::TypeAlias(alias) => TypeContent::TypeAlias(alias),
             TypeNameLookup::NewType(n) => TypeContent::DbType(DbType::NewType(n)),
             TypeNameLookup::NamedTupleDefinition(t) => TypeContent::DbType(t),
+            TypeNameLookup::Enum(t) => TypeContent::DbType(DbType::Enum(t)),
             TypeNameLookup::InvalidVariable(t) => TypeContent::InvalidVariable(t),
             TypeNameLookup::Unknown => TypeContent::Unknown,
             TypeNameLookup::SpecialType(special) => TypeContent::SpecialType(special),
@@ -3028,9 +3030,13 @@ fn check_type_name<'db: 'file, 'file>(
                 new_name.name_definition().unwrap().index(),
             );
             name_def.file.inference(i_s).cache_class(name_def, c);
-            // Classes can be defined recursive, so use the NamedTuple stuff here.
-            TypeNameLookup::Class {
-                node_ref: NodeRef::new(name_node_ref.file, c.index()),
+            if let Some(ComplexPoint::TypeInstance(DbType::Enum(e))) = name_def.complex() {
+                TypeNameLookup::Enum(e.clone())
+            } else {
+                // Classes can be defined recursive, so use the NamedTuple stuff here.
+                TypeNameLookup::Class {
+                    node_ref: NodeRef::new(name_node_ref.file, c.index()),
+                }
             }
         }
         TypeLike::Assignment(assignment) => {

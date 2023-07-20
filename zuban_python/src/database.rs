@@ -934,8 +934,8 @@ impl DbType {
                     ),
                 }
             }
-            Self::Enum(e) => todo!(),
-            Self::EnumMember(e) => todo!(),
+            Self::Enum(e) => e.name.as_str(format_data.db).into(),
+            Self::EnumMember(e) => e.format(format_data),
             Self::Module(file_index) => format_data
                 .db
                 .python_state
@@ -2622,8 +2622,23 @@ impl NamedTuple {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumMember {
-    enum_: Rc<Enum>,
+    pub enum_: Rc<Enum>,
     member_index: usize,
+}
+
+impl EnumMember {
+    pub fn new(enum_: Rc<Enum>, member_index: usize) -> Self {
+        Self {
+            enum_,
+            member_index,
+        }
+    }
+
+    fn format(&self, format_data: &FormatData) -> Box<str> {
+        let class_name = self.enum_.name.as_str(format_data.db);
+        let member_name = self.enum_.members[self.member_index].name(format_data.db);
+        format!("Literal({class_name}.{member_name})").into()
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
@@ -2635,13 +2650,17 @@ impl EnumMemberDefinition {
     pub fn new(name: StringSlice) -> Self {
         Self { name }
     }
+
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        self.name.as_str(db)
+    }
 }
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct Enum {
-    name: StringSlice,
-    class: PointLink,
-    members: Box<[EnumMemberDefinition]>,
+    pub name: StringSlice,
+    pub class: PointLink,
+    pub members: Box<[EnumMemberDefinition]>,
 }
 
 #[derive(Debug, PartialEq, Clone)]

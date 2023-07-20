@@ -10,11 +10,12 @@ use super::{
 use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, GenericClass, GenericItem, GenericsList, MetaclassState,
-    NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink,
-    RecursiveAlias, StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias,
-    TypeArguments, TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType, Variance,
+    DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList,
+    MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
+    ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
+    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
+    UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -369,7 +370,11 @@ impl<'a> Type<'a> {
                 }
                 _ => Match::new_false(),
             },
-            DbType::Enum(_) => todo!(),
+            DbType::Enum(e1) => match value_type.as_ref() {
+                DbType::Enum(e2) => (e1 == e2).into(),
+                DbType::EnumMember(member) => (e1 == &member.enum_).into(),
+                _ => Match::new_false(),
+            },
             DbType::EnumMember(_) => todo!(),
             DbType::Module(file_index) => Match::new_false(),
             DbType::Namespace(file_index) => todo!(),
@@ -2204,6 +2209,20 @@ impl<'a> Type<'a> {
             DbType::Never => (),
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
+            DbType::Enum(e) => {
+                for (index, member) in e.members.iter().enumerate() {
+                    if name == member.name(i_s.db) {
+                        callable(
+                            self,
+                            LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(
+                                EnumMember::new(e.clone(), index),
+                            ))),
+                        );
+                        return;
+                    }
+                }
+                todo!()
+            }
             _ => todo!("{self:?}"),
         }
     }
