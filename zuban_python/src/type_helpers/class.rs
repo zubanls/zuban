@@ -260,10 +260,18 @@ impl<'db: 'a, 'a> Class<'a> {
         self.node_ref.add_to_node_index(4)
     }
 
-    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>) {
+    pub fn ensure_calculated_class_infos(&self, i_s: &InferenceState<'db, '_>, name_def: NodeRef) {
         let node_ref = self.class_info_node_ref();
         let point = node_ref.point();
         if !point.calculated() {
+            debug_assert!(!name_def.point().calculated());
+            // We can redirect now, because we are going to calculate the class infos.
+            name_def.set_point(Point::new_redirect(
+                self.node_ref.file_index(),
+                self.node_ref.node_index,
+                Locality::Todo,
+            ));
+
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             let class_infos = self.calculate_class_infos(i_s);

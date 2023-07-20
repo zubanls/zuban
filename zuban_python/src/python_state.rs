@@ -241,7 +241,10 @@ impl PythonState {
                 $db.python_state.$attr_name = class_index;
                 let module = db.python_state.$module_name();
                 let class = Class::with_undefined_generics(NodeRef::new(module, class_index));
-                class.ensure_calculated_class_infos(&InferenceState::new(db));
+                class.ensure_calculated_class_infos(
+                    &InferenceState::new(db),
+                    NodeRef::new(class.node_ref.file, class.node().name_definition().index()),
+                );
             };
         }
         cache_index!(builtins_object_index, db, builtins, "object");
@@ -464,7 +467,10 @@ impl PythonState {
     pub fn supports_keys_and_get_item_class<'a>(&'a self, db: &'a Database) -> Class<'a> {
         let node_ref = self.supports_keys_and_get_item_node_ref();
         let cls = Class::with_undefined_generics(node_ref);
-        cls.ensure_calculated_class_infos(&InferenceState::new(db));
+        cls.ensure_calculated_class_infos(
+            &InferenceState::new(db),
+            NodeRef::new(node_ref.file, cls.node().name_definition().index()),
+        );
         Class::with_self_generics(db, node_ref)
     }
 

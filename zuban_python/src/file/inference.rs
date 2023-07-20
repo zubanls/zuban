@@ -146,17 +146,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 unreachable!()
             };
 
-            debug_assert!(!name_def.point().calculated());
-            // We can redirect now, because we are going to calculate the class infos.
-            name_def.set_point(Point::new_redirect(
-                self.file_index,
-                class_node.index(),
-                Locality::Todo,
-            ));
-
             let class = Class::new(definition, cls_storage, Generics::NotDefinedYet, None);
             // Make sure the type vars are properly pre-calculated
-            class.ensure_calculated_class_infos(self.i_s);
+            class.ensure_calculated_class_infos(self.i_s, name_def);
         }
     }
 
