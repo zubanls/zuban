@@ -851,99 +851,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_primary(&mut self, primary: Primary<'x>) -> TypeContent<'db, 'x> {
         let base = self.compute_type_primary_or_atom(primary.first());
         match primary.second() {
-            PrimaryContent::Attribute(name) => match base {
-                TypeContent::Module(f) => {
-                    let db = self.inference.i_s.db;
-                    if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
-                        self.inference.file.points.set(
-                            name.index(),
-                            Point::new_redirect(f.file_index(), index, Locality::Todo),
-                        );
-                        self.compute_type_name(name)
-                    } else {
-                        match Module::new(f).sub_module(db, name.as_str()) {
-                            Some(ImportResult::File(file_index)) => {
-                                self.inference.file.points.set(
-                                    name.index(),
-                                    Point::new_file_reference(file_index, Locality::Todo),
-                                );
-                                TypeContent::Module(db.loaded_python_file(file_index))
-                            }
-                            Some(ImportResult::Namespace { .. }) => todo!(),
-                            None => {
-                                let node_ref = NodeRef::new(self.inference.file, primary.index());
-                                debug!("TypeComputation: Attribute on class not found");
-                                self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
-                                self.inference
-                                    .file
-                                    .points
-                                    .set(name.index(), Point::new_unknown(Locality::Todo));
-                                TypeContent::Unknown
-                            }
-                        }
-                    }
-                }
-                TypeContent::Namespace(n) => {
-                    match python_import(
-                        self.inference.i_s.db,
-                        self.inference.file_index,
-                        &n.path,
-                        &n.content,
-                        name.as_str(),
-                    ) {
-                        Some(ImportResult::File(file_index)) => {
-                            let file = self.inference.i_s.db.loaded_python_file(file_index);
-                            TypeContent::Module(file)
-                        }
-                        Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
-                        None => {
-                            self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
-                            TypeContent::Unknown
-                        }
-                    }
-                }
-                TypeContent::Class { node_ref, .. } => {
-                    let cls = Class::with_undefined_generics(node_ref);
-                    self.check_attribute_on_class(cls, primary, name)
-                }
-                TypeContent::SimpleGeneric {
-                    class_link,
-                    generics,
-                    ..
-                } => {
-                    let cls = Class::from_generic_class_components(
-                        self.inference.i_s.db,
-                        class_link,
-                        &generics,
-                    );
-                    self.check_attribute_on_class(cls, primary, name)
-                }
-                TypeContent::DbType(t) => match t {
-                    DbType::Class(..) => todo!(),
-                    DbType::Any => TypeContent::DbType(DbType::Any),
-                    DbType::Enum(e) => match Enum::lookup(&e, self.inference.i_s.db, name.as_str())
-                    {
-                        Some(t) => TypeContent::DbType(t),
-                        _ => {
-                            todo!()
-                        }
-                    },
-                    _ => todo!("{primary:?} {t:?}"),
-                },
-                TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
-                TypeContent::SpecialType(m) => todo!(),
-                TypeContent::TypeVarTuple(_) => todo!(),
-                TypeContent::ParamSpec(param_spec) => match name.as_code() {
-                    "args" => TypeContent::DbType(DbType::ParamSpecArgs(param_spec)),
-                    "kwargs" => TypeContent::DbType(DbType::ParamSpecKwargs(param_spec)),
-                    _ => todo!(),
-                },
-                TypeContent::Unpacked(_) => todo!(),
-                TypeContent::Concatenate(_) => todo!(),
-                TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
-                TypeContent::ClassVar(_) => todo!(),
-                TypeContent::Unknown => TypeContent::Unknown,
-            },
+            PrimaryContent::Attribute(name) => self.compute_type_attribute(primary, base, name),
             PrimaryContent::Execution(details) => match base {
                 TypeContent::SpecialType(SpecialType::MypyExtensionsParamType(s)) => {
                     self.execute_mypy_extension_param(primary, s, details)
@@ -1082,6 +990,106 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeContent::Unknown => TypeContent::Unknown,
                 }
             }
+        }
+    }
+
+    fn compute_type_attribute(
+        &mut self,
+        primary: Primary,
+        base: TypeContent<'db, 'x>,
+        name: Name<'x>,
+    ) -> TypeContent<'db, 'x> {
+        match base {
+            TypeContent::Module(f) => {
+                let db = self.inference.i_s.db;
+                if let Some(index) = f.symbol_table.lookup_symbol(name.as_str()) {
+                    self.inference.file.points.set(
+                        name.index(),
+                        Point::new_redirect(f.file_index(), index, Locality::Todo),
+                    );
+                    self.compute_type_name(name)
+                } else {
+                    match Module::new(f).sub_module(db, name.as_str()) {
+                        Some(ImportResult::File(file_index)) => {
+                            self.inference.file.points.set(
+                                name.index(),
+                                Point::new_file_reference(file_index, Locality::Todo),
+                            );
+                            TypeContent::Module(db.loaded_python_file(file_index))
+                        }
+                        Some(ImportResult::Namespace { .. }) => todo!(),
+                        None => {
+                            let node_ref = NodeRef::new(self.inference.file, primary.index());
+                            debug!("TypeComputation: Attribute on class not found");
+                            self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
+                            self.inference
+                                .file
+                                .points
+                                .set(name.index(), Point::new_unknown(Locality::Todo));
+                            TypeContent::Unknown
+                        }
+                    }
+                }
+            }
+            TypeContent::Namespace(n) => {
+                match python_import(
+                    self.inference.i_s.db,
+                    self.inference.file_index,
+                    &n.path,
+                    &n.content,
+                    name.as_str(),
+                ) {
+                    Some(ImportResult::File(file_index)) => {
+                        let file = self.inference.i_s.db.loaded_python_file(file_index);
+                        TypeContent::Module(file)
+                    }
+                    Some(ImportResult::Namespace(ns)) => TypeContent::Namespace(ns),
+                    None => {
+                        self.add_issue_for_index(primary.index(), IssueType::TypeNotFound);
+                        TypeContent::Unknown
+                    }
+                }
+            }
+            TypeContent::Class { node_ref, .. } => {
+                let cls = Class::with_undefined_generics(node_ref);
+                self.check_attribute_on_class(cls, primary, name)
+            }
+            TypeContent::SimpleGeneric {
+                class_link,
+                generics,
+                ..
+            } => {
+                let cls = Class::from_generic_class_components(
+                    self.inference.i_s.db,
+                    class_link,
+                    &generics,
+                );
+                self.check_attribute_on_class(cls, primary, name)
+            }
+            TypeContent::DbType(t) => match t {
+                DbType::Class(..) => todo!(),
+                DbType::Any => TypeContent::DbType(DbType::Any),
+                DbType::Enum(e) => match Enum::lookup(&e, self.inference.i_s.db, name.as_str()) {
+                    Some(t) => TypeContent::DbType(t),
+                    _ => {
+                        todo!()
+                    }
+                },
+                _ => todo!("{primary:?} {t:?}"),
+            },
+            TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
+            TypeContent::SpecialType(m) => todo!(),
+            TypeContent::TypeVarTuple(_) => todo!(),
+            TypeContent::ParamSpec(param_spec) => match name.as_code() {
+                "args" => TypeContent::DbType(DbType::ParamSpecArgs(param_spec)),
+                "kwargs" => TypeContent::DbType(DbType::ParamSpecKwargs(param_spec)),
+                _ => todo!(),
+            },
+            TypeContent::Unpacked(_) => todo!(),
+            TypeContent::Concatenate(_) => todo!(),
+            TypeContent::InvalidVariable(t) => TypeContent::InvalidVariable(t),
+            TypeContent::ClassVar(_) => todo!(),
+            TypeContent::Unknown => TypeContent::Unknown,
         }
     }
 
