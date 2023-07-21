@@ -12,8 +12,8 @@ use super::{Callable, Instance, Module, NamedTupleValue};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
-    ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
-    FormatStyle, FunctionKind, GenericClass, GenericsList, LiteralValue, Locality, MetaclassState,
+    ClassStorage, ClassType, ComplexPoint, Database, DbString, DbType, Enum, EnumMemberDefinition,
+    FormatStyle, FunctionKind, GenericClass, GenericsList, LiteralKind, Locality, MetaclassState,
     MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice,
     TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
@@ -1367,19 +1367,11 @@ fn gather_functional_enum_members(
         AtomContent::List(list) => add_from_iterator(list.unpack()),
         AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
         AtomContent::Strings(s) => match s.maybe_single_string_literal() {
-            Some(s) => {
-                let (mut start, _) = s.content_start_and_end_in_literal();
-                start += s.start();
-                for part in s.content().split(&[',', ' ']) {
-                    let name = StringSlice::new(
-                        node_ref.file_index(),
-                        start,
-                        start + part.len() as CodeIndex,
-                    );
-                    members.push(EnumMemberDefinition::new(name.into()));
-                    start += part.len() as CodeIndex + 1;
-                }
-            }
+            Some(s) => split_enum_members(
+                i_s.db,
+                &mut members,
+                DbString::from_python_string(node_ref.file_index(), s.as_python_string()).unwrap(),
+            ),
             _ => todo!(),
         },
         AtomContent::Dict(d) => {
@@ -1402,7 +1394,7 @@ fn gather_functional_enum_members(
                 .inference(i_s)
                 .infer_atom(atom, &mut ResultContext::Unknown);
             if let DbType::Literal(literal) = inf.as_type(i_s).as_ref() {
-                if let LiteralValue::String(s) = literal.value(i_s.db) {
+                if let LiteralKind::String(s) = &literal.kind {
                     todo!();
                     //return members.into()
                 }
@@ -1411,4 +1403,19 @@ fn gather_functional_enum_members(
         }
     };
     members.into()
+}
+
+fn split_enum_members(db: &Database, members: &mut Vec<EnumMemberDefinition>, s: DbString) {
+    let mut start = 0;
+    for part in s.as_str(db).split(&[',', ' ']) {
+        let name = match &s {
+            DbString::StringSlice(slice) => {
+                let start = slice.start + start;
+                StringSlice::new(slice.file_index, start, start + part.len() as CodeIndex).into()
+            }
+            DbString::RcStr(_) => DbString::RcStr(part.into()),
+        };
+        members.push(EnumMemberDefinition::new(name));
+        start += part.len() as CodeIndex + 1;
+    }
 }

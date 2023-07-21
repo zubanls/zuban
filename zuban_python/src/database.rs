@@ -52,7 +52,7 @@ impl From<usize> for MroIndex {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct StringSlice {
     pub file_index: FileIndex,
-    start: CodeIndex,
+    pub start: CodeIndex,
     end: u32,
 }
 
