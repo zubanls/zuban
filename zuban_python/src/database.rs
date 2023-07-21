@@ -650,7 +650,7 @@ impl UnionType {
                         iterator
                             .by_ref()
                             .take(count)
-                            .map(|t| match t.type_ {
+                            .map(|t| match &t.type_ {
                                 DbType::Literal(l) => l.format_inner(format_data.db),
                                 _ => unreachable!(),
                             })
@@ -1754,15 +1754,16 @@ impl NewType {
     }
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Literal {
     pub kind: LiteralKind,
     pub implicit: bool,
 }
 
-#[derive(Debug, Copy, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiteralKind {
     String(PointLink),
+    OwnedString(Rc<str>),
     Int(i64), // TODO this does not work for Python ints > usize
     Bytes(PointLink),
     Bool(bool),
@@ -1784,11 +1785,11 @@ impl Literal {
         }
     }
 
-    pub fn value(self, db: &Database) -> LiteralValue {
-        match self.kind {
-            LiteralKind::Int(i) => LiteralValue::Int(i),
+    pub fn value<'x>(&'x self, db: &'x Database) -> LiteralValue<'x> {
+        match &self.kind {
+            LiteralKind::Int(i) => LiteralValue::Int(*i),
             LiteralKind::String(link) => {
-                let node_ref = NodeRef::from_link(db, link);
+                let node_ref = NodeRef::from_link(db, *link);
                 LiteralValue::String(
                     node_ref
                         .maybe_str()
@@ -1798,15 +1799,16 @@ impl Literal {
                         .unwrap(), // Can unwrap, because we know that there was never an f-string.
                 )
             }
-            LiteralKind::Bool(b) => LiteralValue::Bool(b),
+            LiteralKind::Bool(b) => LiteralValue::Bool(*b),
             LiteralKind::Bytes(link) => {
-                let node_ref = NodeRef::from_link(db, link);
+                let node_ref = NodeRef::from_link(db, *link);
                 LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
             }
+            LiteralKind::OwnedString(s) => LiteralValue::String(Cow::Borrowed(s.as_ref())),
         }
     }
 
-    fn format_inner(self, db: &Database) -> Cow<str> {
+    fn format_inner(&self, db: &Database) -> Cow<str> {
         match self.value(db) {
             LiteralValue::String(s) => Cow::Owned(str_repr(s)),
             LiteralValue::Int(i) => Cow::Owned(format!("{i}")),
@@ -1816,7 +1818,7 @@ impl Literal {
         }
     }
 
-    pub fn format(self, format_data: &FormatData) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> Box<str> {
         format!("Literal[{}]", self.format_inner(format_data.db)).into()
     }
 }

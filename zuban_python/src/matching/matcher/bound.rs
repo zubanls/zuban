@@ -43,7 +43,7 @@ impl TypeVarBound {
             Self::Upper(DbType::Literal(l)) | Self::LowerAndUpper(_, DbType::Literal(l))
                 if l.implicit =>
             {
-                db.python_state.literal_db_type(l.kind)
+                db.python_state.literal_db_type(&l.kind)
             }
             Self::Invariant(t) | Self::Lower(t) | Self::Upper(t) | Self::LowerAndUpper(t, _) => t,
         }

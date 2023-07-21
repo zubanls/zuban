@@ -529,15 +529,15 @@ impl PythonState {
             .decorated(&InferenceState::new(db))
     }
 
-    pub fn literal_type(&self, literal_kind: LiteralKind) -> Type {
+    pub fn literal_type(&self, literal_kind: &LiteralKind) -> Type {
         Type::owned(self.literal_db_type(literal_kind))
     }
 
-    pub fn literal_db_type(&self, literal_kind: LiteralKind) -> DbType {
+    pub fn literal_db_type(&self, literal_kind: &LiteralKind) -> DbType {
         DbType::new_class(
             match literal_kind {
                 LiteralKind::Int(_) => self.int_node_ref(),
-                LiteralKind::String(_) => self.str_node_ref(),
+                LiteralKind::String(_) | LiteralKind::OwnedString(_) => self.str_node_ref(),
                 LiteralKind::Bool(_) => self.bool_node_ref(),
                 LiteralKind::Bytes(_) => self.bytes_node_ref(),
             }

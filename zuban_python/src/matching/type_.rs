@@ -225,7 +225,7 @@ impl<'a> Type<'a> {
                 _ => i_s
                     .db
                     .python_state
-                    .literal_type(literal1.kind)
+                    .literal_type(&literal1.kind)
                     .overlaps(i_s, other),
             },
             DbType::None => matches!(other.as_ref(), DbType::None),
@@ -812,7 +812,7 @@ impl<'a> Type<'a> {
                     i_s,
                     matcher,
                     class1,
-                    &i_s.db.python_state.literal_type(literal.kind),
+                    &i_s.db.python_state.literal_type(&literal.kind),
                     variance,
                 )
             }
@@ -2107,7 +2107,7 @@ impl<'a> Type<'a> {
                     .lookup_without_error(i_s, name),
             ),
             DbType::Literal(literal) => {
-                let t = i_s.db.python_state.literal_type(literal.kind);
+                let t = i_s.db.python_state.literal_type(&literal.kind);
                 callable(self, t.lookup_without_error(i_s, name))
             }
             t @ DbType::TypeVar(tv) => {

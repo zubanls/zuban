@@ -417,13 +417,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 DbType::Union(t) => match t.iter().next() {
                     Some(DbType::Literal(_)) => {
                         UnionValue::Multiple(t.iter().map_while(|t| match t {
-                            DbType::Literal(literal) => Some(*literal),
+                            DbType::Literal(literal) => Some(literal.clone()),
                             _ => None,
                         }))
                     }
                     _ => UnionValue::Any,
                 },
-                DbType::Literal(literal) => UnionValue::Single(*literal),
+                DbType::Literal(literal) => UnionValue::Single(literal.clone()),
                 _ => UnionValue::Any,
             }
         } else {
