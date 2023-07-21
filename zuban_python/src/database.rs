@@ -108,6 +108,26 @@ impl fmt::Display for FileIndex {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum DbString {
+    StringSlice(StringSlice),
+    RcStr(Rc<str>),
+}
+
+impl DbString {
+    pub fn as_str<'x>(&'x self, db: &'x Database) -> &'x str {
+        match self {
+            Self::StringSlice(s) => s.as_str(db),
+            Self::RcStr(s) => s,
+        }
+    }
+}
+
+impl From<StringSlice> for DbString {
+    fn from(item: StringSlice) -> Self {
+        Self::StringSlice(item)
+    }
+}
 type FileStateLoaders = Box<[Box<dyn FileStateLoader>]>;
 
 // Most significant bits
@@ -2643,7 +2663,7 @@ impl EnumMember {
         }
     }
 
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {
         self.enum_.members[self.member_index].name(db)
     }
 
@@ -2666,15 +2686,15 @@ impl EnumMember {
 
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumMemberDefinition {
-    name: StringSlice,
+    name: DbString,
 }
 
 impl EnumMemberDefinition {
-    pub fn new(name: StringSlice) -> Self {
+    pub fn new(name: DbString) -> Self {
         Self { name }
     }
 
-    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+    pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {
         self.name.as_str(db)
     }
 }

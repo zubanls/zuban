@@ -995,10 +995,10 @@ impl<'db: 'a, 'a> Class<'a> {
             {
                 // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
                 // however only filter for functions and ignore decorators.
-                members.push(EnumMemberDefinition::new(StringSlice::from_name(
-                    self.node_ref.file_index(),
-                    name_node_ref.as_name(),
-                )))
+                members.push(EnumMemberDefinition::new(
+                    StringSlice::from_name(self.node_ref.file_index(), name_node_ref.as_name())
+                        .into(),
+                ))
             }
         }
         members.into_boxed_slice()
@@ -1360,7 +1360,7 @@ fn gather_functional_enum_members(
             let Some(name) = name else {
                 todo!("Add issue");
             };
-            members.push(EnumMemberDefinition::new(name))
+            members.push(EnumMemberDefinition::new(name.into()))
         }
     };
     match atom.unpack() {
@@ -1376,7 +1376,7 @@ fn gather_functional_enum_members(
                         start,
                         start + part.len() as CodeIndex,
                     );
-                    members.push(EnumMemberDefinition::new(name));
+                    members.push(EnumMemberDefinition::new(name.into()));
                     start += part.len() as CodeIndex + 1;
                 }
             }
@@ -1393,7 +1393,7 @@ fn gather_functional_enum_members(
                 ) else {
                     todo!()
                 };
-                members.push(EnumMemberDefinition::new(name));
+                members.push(EnumMemberDefinition::new(name.into()));
             }
         }
         _ => {
