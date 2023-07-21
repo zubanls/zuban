@@ -1304,7 +1304,7 @@ fn add_protocol_mismatch(
 
 pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
     match Enum::lookup(enum_, db, name) {
-        Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::Enum(enum_.clone()))),
+        Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(m.clone()))),
         None => LookupResult::None,
     }
 }

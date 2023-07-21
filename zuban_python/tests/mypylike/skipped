@@ -502,9 +502,11 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
+# ResultContext used to infer enum
+testClassBasedEnumPropagation2
+testFuncBasedEnumPropagation2
 # Func based enum
 testLiteralWithEnumsDeclaredUsingCallSyntax
-testLiteralUsingEnumAttributeNamesInLiteralContexts
 testLiteralUsingEnumAttributesInLiteralContexts
 testBadEnumLoading
 # "Enum class cannot be generic"

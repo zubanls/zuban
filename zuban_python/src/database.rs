@@ -2643,10 +2643,13 @@ impl EnumMember {
         }
     }
 
+    pub fn name<'db>(&self, db: &'db Database) -> &'db str {
+        self.enum_.members[self.member_index].name(db)
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let fmt = |class_name: &str| {
-            let member_name = self.enum_.members[self.member_index].name(format_data.db);
-            format!("Literal[{class_name}.{member_name}]").into()
+            format!("Literal[{class_name}.{}]", self.name(format_data.db)).into()
         };
         match format_data.style {
             FormatStyle::MypyRevealType => {

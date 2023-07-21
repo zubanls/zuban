@@ -11,7 +11,7 @@ use crate::arguments::Arguments;
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
     DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList, Literal,
-    MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
+    LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
     ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
     TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
@@ -2222,17 +2222,22 @@ impl<'a> Type<'a> {
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
             DbType::Enum(e) => {
-                match name {
-                    "name" => Type::owned(DbType::Literal(Literal::new(todo!())))
-                        .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
-                    "value" => todo!(),
-                    _ => todo!(), //callable(self, lookup_on_enum(i_s.db, e, name)),
-                }
+                dbg!(e);
+                todo!() //callable(self, lookup_on_enum(i_s.db, e, name)),
             }
-            DbType::EnumMember(member) => callable(
-                self,
-                Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),
-            ),
+            DbType::EnumMember(member) => match name {
+                "name" => callable(
+                    self,
+                    LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal::new(
+                        LiteralKind::OwnedString(member.name(i_s.db).into()),
+                    )))),
+                ),
+                "value" => todo!(),
+                _ => callable(
+                    self,
+                    Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),
+                ),
+            },
             _ => todo!("{self:?}"),
         }
     }
