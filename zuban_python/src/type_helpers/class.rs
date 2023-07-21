@@ -13,9 +13,9 @@ use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
-    FormatStyle, FunctionKind, GenericClass, GenericsList, Locality, MetaclassState, MroIndex,
-    NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, Variance,
+    FormatStyle, FunctionKind, GenericClass, GenericsList, Literal, LiteralValue, Locality,
+    MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
+    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
@@ -1033,7 +1033,7 @@ impl<'db: 'a, 'a> Class<'a> {
             todo!();
             return Inferred::new_any()
         };
-        let members = gather_functional_enum_members(fields_node_ref);
+        let members = gather_functional_enum_members(i_s, fields_node_ref);
 
         Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(Rc::new(Enum {
             name,
@@ -1315,7 +1315,10 @@ pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResu
     }
 }
 
-fn gather_functional_enum_members(node_ref: NodeRef) -> Box<[EnumMemberDefinition]> {
+fn gather_functional_enum_members(
+    i_s: &InferenceState,
+    node_ref: NodeRef,
+) -> Box<[EnumMemberDefinition]> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
         debug!("TODO enum creation param missing");
         return Default::default()
@@ -1394,6 +1397,16 @@ fn gather_functional_enum_members(node_ref: NodeRef) -> Box<[EnumMemberDefinitio
             }
         }
         _ => {
+            let inf = node_ref
+                .file
+                .inference(i_s)
+                .infer_atom(atom, &mut ResultContext::Unknown);
+            if let DbType::Literal(literal) = inf.as_type(i_s).as_ref() {
+                if let LiteralValue::String(s) = literal.value(i_s.db) {
+                    todo!();
+                    //return members.into()
+                }
+            }
             todo!("{atom:?}")
         }
     };
