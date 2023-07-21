@@ -234,9 +234,9 @@ pub fn bytes_repr(bytes: Cow<[u8]>) -> String {
     format!("b'{string}'")
 }
 
-pub fn str_repr(content: Cow<str>) -> String {
+pub fn str_repr(content: &str) -> String {
     let mut repr = String::new();
-    for c in content.as_ref().chars() {
+    for c in content.chars() {
         if c.is_ascii_control() {
             match c {
                 '\n' => repr += "\\n",

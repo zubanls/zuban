@@ -13,9 +13,9 @@ use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
-    FormatStyle, FunctionKind, GenericClass, GenericsList, Literal, LiteralValue, Locality,
-    MetaclassState, MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType,
-    StringSlice, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
+    FormatStyle, FunctionKind, GenericClass, GenericsList, LiteralValue, Locality, MetaclassState,
+    MroIndex, NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice,
+    TypeVarLike, TypeVarLikeUsage, TypeVarLikes, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};

@@ -10,6 +10,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::Expression;
 use parsa_python_ast::Name;
+use parsa_python_ast::PythonString;
 use parsa_python_ast::{CodeIndex, NodeIndex, ParamKind};
 use std::cell::OnceCell;
 
@@ -119,6 +120,18 @@ impl DbString {
         match self {
             Self::StringSlice(s) => s.as_str(db),
             Self::RcStr(s) => s,
+        }
+    }
+
+    pub fn from_python_string(file_index: FileIndex, python_string: PythonString) -> Option<Self> {
+        match python_string {
+            PythonString::Ref(code_index, s) => Some(Self::StringSlice(StringSlice::new(
+                file_index,
+                code_index,
+                code_index + s.len() as CodeIndex,
+            ))),
+            PythonString::String(code_index, s) => Some(Self::RcStr(s.into())),
+            PythonString::FString => None,
         }
     }
 }
@@ -1782,8 +1795,7 @@ pub struct Literal {
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum LiteralKind {
-    String(PointLink),
-    OwnedString(Rc<str>),
+    String(DbString),
     Int(i64), // TODO this does not work for Python ints > usize
     Bytes(PointLink),
     Bool(bool),
@@ -1791,7 +1803,7 @@ pub enum LiteralKind {
 
 #[derive(PartialEq, Eq, Debug)]
 pub enum LiteralValue<'db> {
-    String(Cow<'db, str>),
+    String(&'db str),
     Int(i64),
     Bytes(Cow<'db, [u8]>),
     Bool(bool),
@@ -1808,23 +1820,12 @@ impl Literal {
     pub fn value<'x>(&'x self, db: &'x Database) -> LiteralValue<'x> {
         match &self.kind {
             LiteralKind::Int(i) => LiteralValue::Int(*i),
-            LiteralKind::String(link) => {
-                let node_ref = NodeRef::from_link(db, *link);
-                LiteralValue::String(
-                    node_ref
-                        .maybe_str()
-                        .unwrap()
-                        .as_python_string()
-                        .into_cow()
-                        .unwrap(), // Can unwrap, because we know that there was never an f-string.
-                )
-            }
+            LiteralKind::String(s) => LiteralValue::String(s.as_str(db)),
             LiteralKind::Bool(b) => LiteralValue::Bool(*b),
             LiteralKind::Bytes(link) => {
                 let node_ref = NodeRef::from_link(db, *link);
                 LiteralValue::Bytes(node_ref.as_bytes_literal().content_as_bytes())
             }
-            LiteralKind::OwnedString(s) => LiteralValue::String(Cow::Borrowed(s.as_ref())),
         }
     }
 

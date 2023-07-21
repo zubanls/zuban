@@ -1,5 +1,3 @@
-use std::borrow::Cow;
-
 use parsa_python::NonterminalType::fstring;
 use parsa_python::PyNodeType::Nonterminal;
 use parsa_python::{CodeIndex, PyNode, SiblingIterator};
@@ -21,14 +19,6 @@ impl<'db> PythonString<'db> {
             });
         }
         result.unwrap()
-    }
-
-    pub fn into_cow(self) -> Option<Cow<'db, str>> {
-        match self {
-            Self::Ref(_, s) => Some(Cow::Borrowed(s)),
-            Self::String(_, s) => Some(Cow::Owned(s)),
-            Self::FString => None,
-        }
     }
 
     pub fn from_literal(literal: PyNode<'db>) -> Self {
@@ -82,7 +72,7 @@ impl<'db> PythonString<'db> {
             }
             if let Some(mut string) = string {
                 string.push_str(&inner[previous_insert..inner.len()]);
-                Self::String(literal.start() + start as u32, string)
+                Self::String(literal.start() + start as u32, string.into())
             } else {
                 Self::Ref(literal.start() + start as u32, inner)
             }

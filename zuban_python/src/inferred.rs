@@ -4,7 +4,7 @@ use std::rc::Rc;
 
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
-    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbType, Enum,
+    CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
     FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
     Specific, TypeVarLike, TypeVarLikes,
@@ -1745,7 +1745,13 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                     implicit: true,
                 })),
                 Specific::StringLiteral => Type::owned(DbType::Literal(DbLiteral {
-                    kind: LiteralKind::String(definition.as_link()),
+                    kind: LiteralKind::String(
+                        DbString::from_python_string(
+                            definition.file_index(),
+                            definition.maybe_str().unwrap().as_python_string(),
+                        )
+                        .unwrap(),
+                    ),
                     implicit: true,
                 })),
                 Specific::BoolLiteral => Type::owned(DbType::Literal(DbLiteral {

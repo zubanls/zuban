@@ -7,12 +7,13 @@ use super::TypeVarFinder;
 use crate::arguments::{ArgumentIterator, ArgumentKind, Arguments, SimpleArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, CallableWithParent, ClassGenerics,
-    ComplexPoint, Database, DbType, DoubleStarredParamSpecific, Enum, EnumMember, FunctionKind,
-    GenericClass, GenericItem, GenericsList, Literal, LiteralKind, Locality, NamedTuple, Namespace,
-    NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point, PointLink, PointType,
-    RecursiveAlias, Specific, StarredParamSpecific, StringSlice, TupleContent, TypeAlias,
-    TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType,
+    ComplexPoint, Database, DbString, DbType, DoubleStarredParamSpecific, Enum, EnumMember,
+    FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, Locality,
+    NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point,
+    PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
+    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
+    UnionType,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -1829,7 +1830,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         )),
                         AtomContent::Strings(s) => s.maybe_single_string_literal().map(|s| {
                             LiteralKind::String(
-                                NodeRef::new(self.inference.file, s.index()).as_link(),
+                                DbString::from_python_string(
+                                    self.inference.file_index,
+                                    s.as_python_string(),
+                                )
+                                .unwrap(),
                             )
                         }),
                         AtomContent::Bool(keyword) => {

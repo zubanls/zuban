@@ -537,7 +537,7 @@ impl PythonState {
         DbType::new_class(
             match literal_kind {
                 LiteralKind::Int(_) => self.int_node_ref(),
-                LiteralKind::String(_) | LiteralKind::OwnedString(_) => self.str_node_ref(),
+                LiteralKind::String(_) => self.str_node_ref(),
                 LiteralKind::Bool(_) => self.bool_node_ref(),
                 LiteralKind::Bytes(_) => self.bytes_node_ref(),
             }

@@ -9,13 +9,13 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList, Literal,
-    LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
-    ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
-    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
-    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
-    UnionType, Variance,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
+    DbString, DbType, DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem,
+    GenericsList, Literal, LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument,
+    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
+    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
+    TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
+    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -2226,7 +2226,7 @@ impl<'a> Type<'a> {
                 "name" => callable(
                     self,
                     LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal::new(
-                        LiteralKind::OwnedString(member.name(i_s.db).into()),
+                        LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
                     )))),
                 ),
                 "value" => todo!(),
