@@ -1030,7 +1030,7 @@ impl<'db: 'a, 'a> Class<'a> {
             todo!();
             return Inferred::new_any()
         };
-        let members = gather_enum_members(fields_node_ref);
+        let members = gather_functional_enum_members(fields_node_ref);
 
         Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(Rc::new(Enum {
             name,
@@ -1309,7 +1309,7 @@ pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResu
     }
 }
 
-fn gather_enum_members(node_ref: NodeRef) -> Box<[EnumMemberDefinition]> {
+fn gather_functional_enum_members(node_ref: NodeRef) -> Box<[EnumMemberDefinition]> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
         debug!("TODO enum creation param missing");
         return Default::default()
