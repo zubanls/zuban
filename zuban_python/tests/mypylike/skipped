@@ -505,7 +505,6 @@ testTypingNamedTupleAttributesAreReadOnly
 # data class (currently all are passing)
 
 # Random enum tests
-testEnumCreatedFromStringLiteral
 testEnumCreatedFromFinalValue
 testEnumNameAndValue
 testEnumValueExtended
@@ -567,6 +566,7 @@ testLiteralWithEnumsDeclaredUsingCallSyntax
 testEnumIncremental
 testFunctionalEnumListOfStrings
 testEnumReachabilityNoNarrowingForUnionMessiness
+testEnumCreatedFromStringLiteral
 # "Enum class cannot be generic"
 testEnumFromEnumMetaGeneric
 testGenericEnum

@@ -1370,7 +1370,7 @@ fn gather_functional_enum_members(
             Some(s) => split_enum_members(
                 i_s.db,
                 &mut members,
-                DbString::from_python_string(node_ref.file_index(), s.as_python_string()).unwrap(),
+                &DbString::from_python_string(node_ref.file_index(), s.as_python_string()).unwrap(),
             ),
             _ => todo!(),
         },
@@ -1395,8 +1395,8 @@ fn gather_functional_enum_members(
                 .infer_atom(atom, &mut ResultContext::Unknown);
             if let DbType::Literal(literal) = inf.as_type(i_s).as_ref() {
                 if let LiteralKind::String(s) = &literal.kind {
-                    todo!();
-                    //return members.into()
+                    split_enum_members(i_s.db, &mut members, s);
+                    return members.into();
                 }
             }
             todo!("{atom:?}")
@@ -1405,10 +1405,10 @@ fn gather_functional_enum_members(
     members.into()
 }
 
-fn split_enum_members(db: &Database, members: &mut Vec<EnumMemberDefinition>, s: DbString) {
+fn split_enum_members(db: &Database, members: &mut Vec<EnumMemberDefinition>, s: &DbString) {
     let mut start = 0;
     for part in s.as_str(db).split(&[',', ' ']) {
-        let name = match &s {
+        let name = match s {
             DbString::StringSlice(slice) => {
                 let start = slice.start + start;
                 StringSlice::new(slice.file_index, start, start + part.len() as CodeIndex).into()
