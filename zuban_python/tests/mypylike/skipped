@@ -567,6 +567,7 @@ testEnumIncremental
 testFunctionalEnumListOfStrings
 testEnumReachabilityNoNarrowingForUnionMessiness
 testEnumCreatedFromStringLiteral
+enum_multi_literal
 # "Enum class cannot be generic"
 testEnumFromEnumMetaGeneric
 testGenericEnum

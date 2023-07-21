@@ -15,3 +15,11 @@ c: C
 cy: Literal[C.Y]
 c._ignore_ # E: "C" has no attribute "_ignore_"
 cy._ignore_ # E: "Literal[C.Y]" has no attribute "_ignore_"
+
+[case enum_multi_literal]
+from enum import Enum
+
+E = Enum("E", "Fo" "o Bar")
+
+reveal_type(E.Foo)  # N: Revealed type is "Literal[__main__.E.Foo]"
+reveal_type(E.Bar)  # N: Revealed type is "Literal[__main__.E.Bar]"

@@ -1366,14 +1366,12 @@ fn gather_functional_enum_members(
     match atom.unpack() {
         AtomContent::List(list) => add_from_iterator(list.unpack()),
         AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
-        AtomContent::Strings(s) => match s.maybe_single_string_literal() {
-            Some(s) => split_enum_members(
-                i_s.db,
-                &mut members,
-                &DbString::from_python_string(node_ref.file_index(), s.as_python_string()).unwrap(),
-            ),
-            _ => todo!(),
-        },
+        AtomContent::Strings(s) => {
+            match DbString::from_python_string(node_ref.file_index(), s.as_python_string()) {
+                Some(s) => split_enum_members(i_s.db, &mut members, &s),
+                _ => todo!(),
+            }
+        }
         AtomContent::Dict(d) => {
             for element in d.iter_elements() {
                 let DictElement::KeyValue(kv) = element else {
