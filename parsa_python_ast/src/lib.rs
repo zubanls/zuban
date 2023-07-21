@@ -3138,7 +3138,11 @@ impl<'db> Strings<'db> {
     pub fn maybe_single_string_literal(&self) -> Option<StringLiteral<'db>> {
         let mut iterator = self.iter();
         if let Some(StringType::String(s)) = iterator.next() {
-            Some(s)
+            if iterator.next().is_some() {
+                None
+            } else {
+                Some(s)
+            }
         } else {
             None
         }
