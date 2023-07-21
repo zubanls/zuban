@@ -508,7 +508,6 @@ testFuncBasedEnumPropagation2
 # Func based enum
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testLiteralUsingEnumAttributesInLiteralContexts
-testBadEnumLoading
 # "Enum class cannot be generic"
 # "Enum index should be a string (actual index type "int")"
 # "Enum() expects a string literal as the first argument"

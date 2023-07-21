@@ -1311,7 +1311,8 @@ pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResu
 
 fn gather_enum_members(node_ref: NodeRef) -> Box<[EnumMemberDefinition]> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
-        todo!()
+        debug!("TODO enum creation param missing");
+        return Default::default()
     };
 
     let mut members = vec![];
