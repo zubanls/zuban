@@ -502,23 +502,94 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
+# Random enum tests
+testEnumIgnoreIsDeleted
+testEnumCreatedFromStringLiteral
+testEnumCreatedFromFinalValue
+testEnumNameAndValue
+testEnumValueExtended
+testEnumValueAllAuto
+testEnumValueSomeAuto
+testEnumValueExtraMethods
+testEnumValueCustomAuto
+testEnumValueInhomogenous
+testEnumValueSameType
+testIntEnum_functionTakingIntEnum
+testIntEnum_functionReturningIntEnum
+testStrEnumCreation
+testEnumMethods
+testEnumCall
+testEnumIndex
+testEnumIndexError
+testEnumIndexIsNotAnAlias
+testFunctionalEnumString
+testFunctionalEnumListOfPairs
+testFunctionalEnumDict
+testEnumKeywordsArgs
+testFunctionalEnumErrors
+testFunctionalEnumFlag
+testAnonymousFunctionalEnum
+testFunctionalEnumInClassBody
+testFunctionalEnumProtocols
+testFunctionalEnum
+testEnumAuto
+testEnumAttributeAccessMatrix
+testEnumAttributeChangeIncremental
+testPrivateAttributeNotAsEnumMembers
+testEnumWithInstanceAttributes
+testNewSetsUnexpectedValueType
+testValueTypeWithNewInParentClass
+testEnumTypeCompatibleWithLiteralUnion
+testIntEnumWithNewTypeValue
+testEnumFinalValuesCannotRedefineValueProp
+testEnumReusedKeys
+testEnumLiteralValues
+testFinalWithMethodAssignment
+testEnumValueUnionSimplification
+testCanNotInitialize__members__
 # ResultContext used to infer enum
 testClassBasedEnumPropagation2
 testFuncBasedEnumPropagation2
-# Func based enum
-testLiteralWithEnumsDeclaredUsingCallSyntax
 testLiteralUsingEnumAttributesInLiteralContexts
+testEnumBasics
+testEnumFromEnumMetaBasics
+testEnumFromEnumMetaSubclass
+testEnumUnique
+testIntEnum_assignToIntVariable
+testEnumFlag
+testEnumIntFlag
+testAnonymousEnum
+testEnumInClassBody
+testEnumFinalSpecialProps
+# qualified name
+testLiteralWithEnumsDeclaredUsingCallSyntax
+testEnumIncremental
+testFunctionalEnumListOfStrings
+testEnumReachabilityNoNarrowingForUnionMessiness
 # "Enum class cannot be generic"
+testEnumFromEnumMetaGeneric
+testGenericEnum
+# "Enum type as attribute is not supported"
+testAssignEnumAsAttribute
 # "Enum index should be a string (actual index type "int")"
 # "Enum() expects a string literal as the first argument"
 # "Enum type as attribute is not supported"
 # "Cannot assign to final attribute "gold""
+testEnumFinalValues
 # "Attempted to reuse member name "A" in Enum definition "Foo""
 # "Cannot extend enum with existing members: "NonEmptyEnum""
 testEnumAreStillFinalAfterCache
+testEnumImplicitlyFinalForSubclassing
+testEnumExplicitlyAndImplicitlyFinal
+testEnumFinalSubtypingMethodAndValueSpecialCase
+testFinalEnumWithClassDef
+testEnumNotFinalWithMethodsAndUninitializedValuesStub
 # "Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")"
+testEnumNotFinalWithMethodsAndUninitializedValues
 # "Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2""
+testEnumWithNewHierarchy
 # "No non-enum mixin classes are allowed after "__main__.Correct2""
+testEnumBaseClassesOrder
 # "Assigned "__members__" will be overridden by "Enum" internally"
 
 # TypedDict
@@ -1823,6 +1894,21 @@ testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedFunctionMore1
 testNarrowedVariableInNestedFunctionMore2
 testAliasRecursiveUnpackMultiple
+# narrowing if is
+testEnumReachabilityChecksBasic
+testEnumReachabilityChecksWithOrdering
+testEnumReachabilityChecksIndirect
+testEnumReachabilityWithNone
+testEnumReachabilityWithMultipleEnums
+testEnumReachabilityPEP484ExampleWithFinal
+testEnumReachabilityPEP484ExampleWithMultipleValues
+testEnumReachabilityPEP484ExampleSingleton
+testEnumReachabilityPEP484ExampleSingletonWithMethod
+testEnumReachabilityWithChaining
+testEnumReachabilityWithChainingDisjoint
+testEnumReachabilityWithChainingDirectConflict
+testEnumReachabilityWithChainingBigDisjoints
+testEnumNarrowedToTwoLiterals
 # narrowing with or/and
 testRestrictedTypeAnd
 testRestrictedTypeOr
