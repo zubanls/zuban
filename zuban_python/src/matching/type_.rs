@@ -24,8 +24,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    lookup_in_namespace, Callable, Class, Instance, Module, MroIterator, NamedTupleValue,
-    OverloadedFunction, Tuple, TypeOrClass, TypingType,
+    lookup_in_namespace, lookup_on_enum, Callable, Class, Instance, Module, MroIterator,
+    NamedTupleValue, OverloadedFunction, Tuple, TypeOrClass, TypingType,
 };
 use crate::utils::rc_unwrap_or_clone;
 
@@ -2221,10 +2221,7 @@ impl<'a> Type<'a> {
             DbType::Never => (),
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
-            DbType::Enum(e) => {
-                dbg!(e);
-                todo!() //callable(self, lookup_on_enum(i_s.db, e, name)),
-            }
+            DbType::Enum(e) => callable(self, lookup_on_enum(i_s.db, e, name)),
             DbType::EnumMember(member) => match name {
                 "name" => callable(
                     self,
@@ -2233,6 +2230,7 @@ impl<'a> Type<'a> {
                     )))),
                 ),
                 "value" => todo!(),
+                "_ignore_" => callable(self, LookupResult::None),
                 _ => callable(
                     self,
                     Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),

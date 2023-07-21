@@ -259,6 +259,8 @@ testColumnListOrDictItemHasIncompatibleType
 
 # context inference from class statement
 testSetDescriptorOnClass
+testEnumIgnoreIsDeleted
+enum_ignore_deleted
 
 # union list context inference
 testUnpackingUnionOfListsInFunction
@@ -503,7 +505,6 @@ testTypingNamedTupleAttributesAreReadOnly
 # data class (currently all are passing)
 
 # Random enum tests
-testEnumIgnoreIsDeleted
 testEnumCreatedFromStringLiteral
 testEnumCreatedFromFinalValue
 testEnumNameAndValue

@@ -795,6 +795,10 @@ impl<'db: 'a, 'a> Class<'a> {
         use_descriptors: bool,
         ignore_self: bool,
     ) -> (LookupResult, Option<Class>) {
+        let class_infos = self.use_cached_class_infos(i_s.db);
+        if class_infos.class_type == ClassType::Enum && use_descriptors && name == "_ignore_" {
+            return (LookupResult::None, Some(*self));
+        }
         let (lookup_result, in_class) =
             self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
         let result = lookup_result.and_then(|inf| {
@@ -807,7 +811,6 @@ impl<'db: 'a, 'a> Class<'a> {
         });
         match result {
             Some(LookupResult::None) | None => {
-                let class_infos = self.use_cached_class_infos(i_s.db);
                 let result = match class_infos.metaclass {
                     MetaclassState::Some(link) => {
                         let instance = Instance::new(
@@ -1303,6 +1306,9 @@ fn add_protocol_mismatch(
 }
 
 pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
+    if name == "_ignore_" {
+        return LookupResult::None;
+    }
     match Enum::lookup(enum_, db, name) {
         Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(m.clone()))),
         None => LookupResult::None,
