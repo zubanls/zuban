@@ -9,13 +9,13 @@ use super::{
 };
 use crate::arguments::Arguments;
 use crate::database::{
-    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database,
-    DbString, DbType, DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem,
-    GenericsList, Literal, LiteralKind, MetaclassState, NamedTuple, ParamSpecArgument,
-    ParamSpecTypeVars, ParamSpecUsage, ParamSpecific, PointLink, RecursiveAlias,
-    StarredParamSpecific, TupleContent, TupleTypeArguments, TypeAlias, TypeArguments,
-    TypeOrTypeVarTuple, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarTupleUsage, TypeVarUsage, UnionEntry, UnionType, Variance,
+    CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
+    DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList,
+    MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
+    ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
+    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
+    UnionType, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -2222,7 +2222,7 @@ impl<'a> Type<'a> {
             DbType::Never => (),
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
-            DbType::Enum(e) => callable(self, lookup_on_enum_instance(i_s.db, e, name)),
+            DbType::Enum(e) => callable(self, lookup_on_enum_instance(i_s, from, e, name)),
             DbType::EnumMember(member) => callable(
                 self,
                 lookup_on_enum_member_instance(i_s, from, member, name),

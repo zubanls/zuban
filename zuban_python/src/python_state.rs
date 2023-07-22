@@ -425,6 +425,7 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub object_db_type, object_node_ref);
     node_ref_to_db_type_class_without_generic!(pub slice_db_type, slice_node_ref);
     node_ref_to_db_type_class_without_generic!(pub str_db_type, str_node_ref);
+    node_ref_to_db_type_class_without_generic!(pub int_db_type, int_node_ref);
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
     node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
     node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
@@ -513,9 +514,9 @@ impl PythonState {
         PointLink::new(self.enum_file().file_index(), self.enum_enum_meta_index)
     }
 
-    pub fn enum_auto_node_ref(&self) -> NodeRef {
+    pub fn enum_auto_link(&self) -> PointLink {
         debug_assert!(self.enum_auto_index != 0);
-        NodeRef::new(self.enum_file(), self.enum_auto_index)
+        PointLink::new(self.enum_file().file_index(), self.enum_auto_index)
     }
 
     pub fn overload_link(&self) -> PointLink {

@@ -1052,7 +1052,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> Inferred {
         if self.use_cached_class_infos(i_s.db).class_type == ClassType::Enum
             // For whatever reason, auto is special, because
-            && self.node_ref != i_s.db.python_state.enum_auto_node_ref()
+            && self.node_ref.as_link() != i_s.db.python_state.enum_auto_link()
         {
             return self.execute_functional_enum(i_s, args, result_context);
         }

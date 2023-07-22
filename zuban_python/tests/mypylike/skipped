@@ -504,16 +504,14 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
-# Random enum tests
-testEnumCreatedFromFinalValue
+# Enum should be inferred in a literal context
 testEnumNameAndValue
 testEnumValueExtended
-testEnumValueAllAuto
-testEnumValueSomeAuto
 testEnumValueExtraMethods
+# Random enum tests
+testEnumCreatedFromFinalValue
 testEnumValueCustomAuto
 testEnumValueInhomogenous
-testEnumValueSameType
 testIntEnum_functionTakingIntEnum
 testIntEnum_functionReturningIntEnum
 testStrEnumCreation
@@ -522,19 +520,14 @@ testEnumCall
 testEnumIndex
 testEnumIndexError
 testEnumIndexIsNotAnAlias
-testFunctionalEnumString
 testFunctionalEnumListOfPairs
 testFunctionalEnumDict
 testEnumKeywordsArgs
 testFunctionalEnumErrors
-testFunctionalEnumFlag
-testAnonymousFunctionalEnum
 testFunctionalEnumInClassBody
 testFunctionalEnumProtocols
 testFunctionalEnum
-testEnumAuto
 testEnumAttributeAccessMatrix
-testEnumAttributeChangeIncremental
 testPrivateAttributeNotAsEnumMembers
 testEnumWithInstanceAttributes
 testNewSetsUnexpectedValueType
@@ -542,7 +535,6 @@ testValueTypeWithNewInParentClass
 testEnumTypeCompatibleWithLiteralUnion
 testIntEnumWithNewTypeValue
 testEnumFinalValuesCannotRedefineValueProp
-testEnumReusedKeys
 testEnumLiteralValues
 testFinalWithMethodAssignment
 testEnumValueUnionSimplification
@@ -561,6 +553,8 @@ testEnumIntFlag
 testAnonymousEnum
 testEnumInClassBody
 testEnumFinalSpecialProps
+testAnonymousFunctionalEnum
+testEnumAttributeChangeIncremental
 # qualified name
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testEnumIncremental
@@ -568,6 +562,8 @@ testFunctionalEnumListOfStrings
 testEnumReachabilityNoNarrowingForUnionMessiness
 testEnumCreatedFromStringLiteral
 enum_multi_literal
+testFunctionalEnumString
+testFunctionalEnumFlag
 # "Enum class cannot be generic"
 testEnumFromEnumMetaGeneric
 testGenericEnum
@@ -579,6 +575,7 @@ testAssignEnumAsAttribute
 # "Cannot assign to final attribute "gold""
 testEnumFinalValues
 # "Attempted to reuse member name "A" in Enum definition "Foo""
+testEnumReusedKeys
 # "Cannot extend enum with existing members: "NonEmptyEnum""
 testEnumAreStillFinalAfterCache
 testEnumImplicitlyFinalForSubclassing
