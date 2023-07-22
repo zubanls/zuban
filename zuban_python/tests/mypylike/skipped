@@ -417,10 +417,6 @@ testAssertTypeGeneric
 testAssertTypeUncheckedFunction
 testAssertTypeUncheckedFunctionWithUntypedCheck
 
-# Final literal issues
-testLiteralWithFinalPropagation
-testLiteralWithFinalPropagationIsNotLeaking
-
 # Tuple Super Class
 testGenericTupleTypeCreation
 testGenericTupleTypeSubclassing
@@ -508,9 +504,9 @@ testTypingNamedTupleAttributesAreReadOnly
 testEnumNameAndValue
 testEnumValueExtended
 testEnumValueExtraMethods
-# Random enum tests
-testEnumCreatedFromFinalValue
+# _generate_next_value_
 testEnumValueCustomAuto
+# Random enum tests
 testEnumValueInhomogenous
 testIntEnum_functionTakingIntEnum
 testIntEnum_functionReturningIntEnum
@@ -1754,6 +1750,10 @@ testFinalAddFinalVarAssign
 testFinalAddFinalVarOverride
 # Final: "Cannot override final attribute "meth" (previously declared in base class "C")"
 testFinalAddFinalMethodOverride
+# Final literal issues
+testLiteralWithFinalPropagation
+testLiteralWithFinalPropagationIsNotLeaking
+testEnumCreatedFromFinalValue
 
 # Conditional definitions
 testNewAnalyzerConditionalFunc
