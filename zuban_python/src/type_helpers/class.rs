@@ -28,8 +28,9 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, replace_class_type_vars, FormatData, Generics,
-    LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
+    calculate_class_init_type_vars_and_return, replace_class_type_vars, FormatData,
+    FunctionOrCallable, Generics, LookupResult, Match, Matcher, MismatchReason, OnTypeError,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -1021,6 +1022,10 @@ impl<'db: 'a, 'a> Class<'a> {
         }
 
         let i_s = &i_s.with_class_context(self);
+        let d = |_: &FunctionOrCallable, _: &Database, _: Option<&Class>| {
+            Some(format!("\"{}\"", self.name()))
+        };
+        let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
         let (__init__, init_class, init_mro_index) =
             self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
         let (__new__, _, new_mro_index) =
@@ -1035,7 +1040,9 @@ impl<'db: 'a, 'a> Class<'a> {
             let cls_t = Inferred::from_type(self.as_type(i_s).into_db_type());
             let class_arg = KnownArguments::new(&cls_t, args.as_node_ref());
             let args = CombinedArguments::new(&class_arg, args);
-            let result = __new__.execute(i_s, &args).class_as_db_type(i_s);
+            let result = __new__
+                .execute_with_details(i_s, &args, result_context, on_type_error)
+                .class_as_db_type(i_s);
             if !Type::new(&result).is_any() {
                 return Inferred::from_type(replace_class_type_vars(i_s.db, &result, self, self));
             }
@@ -1047,9 +1054,7 @@ impl<'db: 'a, 'a> Class<'a> {
             init_class,
             args,
             result_context,
-            on_type_error.with_custom_generate_diagnostic_string(&|_, _, _| {
-                Some(format!("\"{}\"", self.name()))
-            }),
+            on_type_error,
         ) {
             let result = Inferred::from_type(DbType::Class(GenericClass {
                 link: self.node_ref.as_link(),

@@ -1471,11 +1471,7 @@ testTypeUsingTypeCJoin
 # new __new__ failures
 testNewReturnType9
 # __new__
-testDunderNewUpdatedMethod
-testDunderNewUpdatedSubclass
-testDunderNewUpdatedAlias
 testDunderNewUpdatedCallable
-testDunderNewDefine
 testOverride__new__AndCallObject
 testConstructInstanceWith__new__
 testConstructInstanceWithDynamicallyTyped__new__
@@ -1492,7 +1488,6 @@ testNewReturnType12
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNamedTupleNew
-testSerialize__new__
 testSuperWithNew
 
 # __init_subclass__
