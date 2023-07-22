@@ -521,8 +521,6 @@ testEnumIndex
 testEnumIndexError
 testEnumIndexIsNotAnAlias
 testFunctionalEnumProtocols
-# enum_.rs:115
-testFunctionalEnumListOfPairs
 # class.rs:1019
 testFunctionalEnumErrors
 # class.rs:1022
@@ -542,6 +540,7 @@ testPrivateAttributeNotAsEnumMembers
 testEnumTypeCompatibleWithLiteralUnion
 # functional attributes
 testFunctionalEnumDict
+testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
 # ResultContext used to infer enum

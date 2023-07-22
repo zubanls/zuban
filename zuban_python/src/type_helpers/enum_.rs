@@ -2,6 +2,7 @@ use std::rc::Rc;
 
 use parsa_python_ast::{
     AtomContent, CodeIndex, DictElement, ExpressionContent, ExpressionPart, StarLikeExpression,
+    StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -103,6 +104,19 @@ pub fn gather_functional_enum_members(
 
     let mut members = vec![];
 
+    let get_tuple_like = |mut iterator: StarLikeExpressionIterator| {
+        let Some(first) = iterator.next() else {
+            todo!()
+        };
+        let Some(second) = iterator.next() else {
+            todo!()
+        };
+        let StarLikeExpression::NamedExpression(n) = first else {
+            todo!()
+        };
+        StringSlice::from_string_in_expression(node_ref.file.file_index(), n.expression())
+    };
+
     let mut add_from_iterator = |iterator| {
         for element in iterator {
             let StarLikeExpression::NamedExpression(ne) = element else {
@@ -112,23 +126,8 @@ pub fn gather_functional_enum_members(
                 todo!()
             };
             let name = match atom.unpack() {
-                AtomContent::List(list) => todo!(),
-                AtomContent::Tuple(tup) => {
-                    let mut iterator = tup.iter();
-                    let Some(first) = iterator.next() else {
-                        todo!()
-                    };
-                    let Some(second) = iterator.next() else {
-                        todo!()
-                    };
-                    let StarLikeExpression::NamedExpression(n) = first else {
-                        todo!()
-                    };
-                    StringSlice::from_string_in_expression(
-                        node_ref.file.file_index(),
-                        n.expression(),
-                    )
-                }
+                AtomContent::List(list) => get_tuple_like(list.unpack()),
+                AtomContent::Tuple(tup) => get_tuple_like(tup.iter()),
                 _ => StringSlice::from_string_in_expression(
                     node_ref.file.file_index(),
                     ne.expression(),
