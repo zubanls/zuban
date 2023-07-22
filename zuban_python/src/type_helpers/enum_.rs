@@ -106,10 +106,11 @@ pub fn execute_functional_enum(
         todo!()
     };
     let Some(fields_arg) = iterator.next() else {
-        todo!()
+        args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(format!(" for {}", class.name()).into()));
+        return None
     };
     if iterator.next().is_some() {
-        todo!()
+        debug!("TODO enum issue too many args?");
     }
 
     let ArgumentKind::Positional { node_ref: name_node_ref, .. } = name_arg.kind else {
@@ -121,7 +122,7 @@ pub fn execute_functional_enum(
     };
 
     let ArgumentKind::Positional { node_ref: fields_node_ref, .. } = fields_arg.kind else {
-        todo!();
+        debug!("TODO kw params for enum");
         return None
     };
     let members = gather_functional_enum_members(i_s, fields_node_ref);
@@ -176,7 +177,8 @@ fn gather_functional_enum_members(
                 ),
             };
             let Some(name) = name else {
-                todo!("Add issue");
+                debug!("TODO enum Add issue");
+                continue
             };
             members.push(EnumMemberDefinition::new(name.into(), None))
         }
@@ -199,7 +201,8 @@ fn gather_functional_enum_members(
                     node_ref.file.file_index(),
                     kv.key(),
                 ) else {
-                    todo!()
+                    debug!("TODO enum dict key wrong");
+                    continue
                 };
                 members.push(EnumMemberDefinition::new(name.into(), None));
             }
@@ -215,7 +218,7 @@ fn gather_functional_enum_members(
                     return members.into();
                 }
             }
-            todo!("{atom:?}")
+            debug!("TODO {atom:?}");
         }
     };
     members.into()

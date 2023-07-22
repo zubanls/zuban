@@ -525,7 +525,7 @@ testFunctionalEnumProtocols
 testFunctionalEnumErrors
 # class.rs:1022
 testEnumKeywordsArgs
-# inferred:784
+# Enum defines value.
 testEnumFinalValuesCannotRedefineValueProp
 # enum __new__
 testNewSetsUnexpectedValueType
