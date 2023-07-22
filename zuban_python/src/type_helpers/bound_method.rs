@@ -2,7 +2,7 @@ use std::rc::Rc;
 
 use super::{Callable, FirstParamProperties, Function, Instance, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
-use crate::database::{DbType, MroIndex};
+use crate::database::DbType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{replace_class_type_vars_in_callable, OnTypeError, ResultContext, Type};
@@ -18,20 +18,11 @@ pub enum BoundMethodFunction<'a> {
 pub struct BoundMethod<'a, 'b> {
     instance: &'b Instance<'a>,
     function: BoundMethodFunction<'a>,
-    mro_index: MroIndex,
 }
 
 impl<'a, 'b> BoundMethod<'a, 'b> {
-    pub fn new(
-        instance: &'b Instance<'a>,
-        mro_index: MroIndex,
-        function: BoundMethodFunction<'a>,
-    ) -> Self {
-        Self {
-            instance,
-            mro_index,
-            function,
-        }
+    pub fn new(instance: &'b Instance<'a>, function: BoundMethodFunction<'a>) -> Self {
+        Self { instance, function }
     }
 
     pub fn execute<'db>(
@@ -42,8 +33,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let instance_inf = self.instance.as_inferred(i_s);
-        let instance_arg =
-            KnownArguments::new_bound(&instance_inf, self.mro_index, args.as_node_ref());
+        let instance_arg = KnownArguments::new_bound(&instance_inf, args.as_node_ref());
         let args = CombinedArguments::new(&instance_arg, args);
         let class = &self.instance.class;
         match &self.function {

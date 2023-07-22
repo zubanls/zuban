@@ -2,8 +2,7 @@ use std::mem;
 use std::rc::Rc;
 
 use crate::database::{
-    Database, DbType, GenericItem, MroIndex, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple,
-    Variance,
+    Database, DbType, GenericItem, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple, Variance,
 };
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
@@ -180,7 +179,7 @@ impl<'a> KnownArguments<'a> {
         }
     }
 
-    pub fn new_bound(inferred: &'a Inferred, mro_index: MroIndex, node_ref: NodeRef<'a>) -> Self {
+    pub fn new_bound(inferred: &'a Inferred, node_ref: NodeRef<'a>) -> Self {
         Self {
             inferred,
             node_ref,

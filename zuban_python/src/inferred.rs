@@ -200,7 +200,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 // TODO this is potentially not needed, a class could lazily be fetched with a
                 // closure
                 let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
-                load_bound_method(i_s, &instance, class, *mro_index, *func_link).as_type(i_s)
+                load_bound_method(i_s, &instance, class, *func_link).as_type(i_s)
             }
             InferredState::Unknown => Type::new(&DbType::Any),
         }
@@ -506,7 +506,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 func_link,
             } => {
                 let (instance, class) = Self::load_bound_method_instance(i_s, &instance, mro_index);
-                let bound_method = load_bound_method(i_s, &instance, class, mro_index, func_link);
+                let bound_method = load_bound_method(i_s, &instance, class, func_link);
                 file.complex_points.insert(
                     &file.points,
                     index,
@@ -1339,7 +1339,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 func_link,
             } => {
                 let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
-                return load_bound_method(i_s, &instance, class, *mro_index, *func_link).execute(
+                return load_bound_method(i_s, &instance, class, *func_link).execute(
                     i_s,
                     args,
                     result_context,
@@ -1441,26 +1441,24 @@ fn load_bound_method<'db: 'a, 'a, 'b>(
     i_s: &InferenceState<'db, '_>,
     instance: &'b Instance<'a>,
     class: Class<'a>,
-    mro_index: MroIndex,
     func_link: PointLink,
 ) -> BoundMethod<'a, 'b> {
     let reference = NodeRef::from_link(i_s.db, func_link);
     match reference.complex() {
         Some(ComplexPoint::FunctionOverload(overload)) => {
             let func = OverloadedFunction::new(&overload.functions, Some(class));
-            BoundMethod::new(instance, mro_index, BoundMethodFunction::Overload(func))
+            BoundMethod::new(instance, BoundMethodFunction::Overload(func))
         }
         Some(ComplexPoint::TypeInstance(t)) => match t {
             DbType::Callable(c) => BoundMethod::new(
                 instance,
-                mro_index,
                 BoundMethodFunction::Callable(Callable::new(c, Some(class))),
             ),
             _ => unreachable!("{t:?}"),
         },
         None => {
             let func = Function::new(reference, Some(class));
-            BoundMethod::new(instance, mro_index, BoundMethodFunction::Function(func))
+            BoundMethod::new(instance, BoundMethodFunction::Function(func))
         }
         _ => unreachable!(),
     }
