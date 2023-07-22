@@ -1016,7 +1016,8 @@ impl<'db: 'a, 'a> Class<'a> {
             // For whatever reason, auto is special, because
             && self.node_ref.as_link() != i_s.db.python_state.enum_auto_link()
         {
-            return execute_functional_enum(i_s, *self, args, result_context);
+            return execute_functional_enum(i_s, *self, args, result_context)
+                .unwrap_or_else(Inferred::new_any);
         }
         if let Some(generics) = self.type_check_init_func(
             i_s,

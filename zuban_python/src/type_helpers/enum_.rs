@@ -12,6 +12,7 @@ use crate::{
         PointLink, StringSlice,
     },
     debug,
+    diagnostics::IssueType,
     file::File,
     inference_state::InferenceState,
     inferred::Inferred,
@@ -99,7 +100,7 @@ pub fn execute_functional_enum(
     class: Class,
     args: &dyn Arguments,
     result_context: &mut ResultContext,
-) -> Inferred {
+) -> Option<Inferred> {
     let mut iterator = args.iter();
     let Some(name_arg) = iterator.next() else {
         todo!()
@@ -112,24 +113,26 @@ pub fn execute_functional_enum(
     }
 
     let ArgumentKind::Positional { node_ref: name_node_ref, .. } = name_arg.kind else {
-        todo!();
-        return Inferred::new_any()
+        todo!()
     };
     let Some(name) = StringSlice::from_string_in_expression(name_node_ref.file_index(), name_node_ref.as_named_expression().expression()) else {
-        todo!()
+        name_arg.as_node_ref().add_issue(i_s, IssueType::EnumFirstArgMustBeString);
+        return None
     };
 
     let ArgumentKind::Positional { node_ref: fields_node_ref, .. } = fields_arg.kind else {
         todo!();
-        return Inferred::new_any()
+        return None
     };
     let members = gather_functional_enum_members(i_s, fields_node_ref);
 
-    Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(Rc::new(Enum {
-        name,
-        class: class.node_ref.as_link(),
-        members,
-    })))))
+    Some(Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(
+        Rc::new(Enum {
+            name,
+            class: class.node_ref.as_link(),
+            members,
+        }),
+    )))))
 }
 
 fn gather_functional_enum_members(

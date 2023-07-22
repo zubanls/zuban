@@ -152,6 +152,8 @@ pub(crate) enum IssueType {
 
     MethodWithoutArguments,
 
+    EnumFirstArgMustBeString,
+
     // From --disallow-untyped-defs
     FunctionIsDynamic,
     FunctionMissingReturnAnnotation,
@@ -395,6 +397,8 @@ impl<'db> Diagnostic<'db> {
                 "Method must have at least one argument. Did you forget the \"self\" argument?".to_string()
             }
 
+            EnumFirstArgMustBeString =>
+                "Enum() expects a string literal as the first argument".to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>
