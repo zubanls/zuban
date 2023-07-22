@@ -1,6 +1,7 @@
 mod bound_method;
 mod callable;
 mod class;
+mod enum_;
 mod function;
 mod instance;
 mod module;
@@ -10,7 +11,8 @@ mod typing;
 
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::{format_pretty_callable, Callable};
-pub use class::{lookup_on_enum, Class, MroIterator, TypeOrClass};
+pub use class::{Class, MroIterator, TypeOrClass};
+pub use enum_::lookup_on_enum;
 pub use function::{
     is_private, FirstParamProperties, Function, InferrableParam, OverloadedFunction,
 };
