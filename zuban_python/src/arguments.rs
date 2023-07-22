@@ -150,7 +150,7 @@ impl<'db: 'a, 'a> SimpleArguments<'db, 'a> {
 pub struct KnownArguments<'a> {
     inferred: &'a Inferred,
     node_ref: NodeRef<'a>,
-    is_bound_self: bool,
+    is_bound: bool,
 }
 
 impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
@@ -158,7 +158,7 @@ impl<'db, 'a> Arguments<'db> for KnownArguments<'a> {
         ArgumentIterator::new(ArgumentIteratorBase::Inferred {
             inferred: self.inferred,
             node_ref: self.node_ref,
-            is_bound_self: self.is_bound_self,
+            is_bound: self.is_bound,
         })
     }
 
@@ -176,15 +176,15 @@ impl<'a> KnownArguments<'a> {
         Self {
             inferred,
             node_ref,
-            is_bound_self: false,
+            is_bound: false,
         }
     }
 
-    pub fn new_self(inferred: &'a Inferred, mro_index: MroIndex, node_ref: NodeRef<'a>) -> Self {
+    pub fn new_bound(inferred: &'a Inferred, mro_index: MroIndex, node_ref: NodeRef<'a>) -> Self {
         Self {
             inferred,
             node_ref,
-            is_bound_self: true,
+            is_bound: true,
         }
     }
 }
@@ -420,7 +420,7 @@ enum ArgumentIteratorBase<'db, 'a> {
     Inferred {
         inferred: &'a Inferred,
         node_ref: NodeRef<'a>,
-        is_bound_self: bool,
+        is_bound: bool,
     },
     SliceType(InferenceState<'db, 'a>, SliceType<'a>),
     Finished,
@@ -442,10 +442,8 @@ impl<'db, 'a> ArgumentIteratorBase<'db, 'a> {
     fn into_argument_types(self, i_s: &InferenceState) -> Vec<Box<str>> {
         match self {
             Self::Inferred {
-                inferred,
-                is_bound_self,
-                ..
-            } => match is_bound_self {
+                inferred, is_bound, ..
+            } => match is_bound {
                 false => vec![inferred.as_type(i_s).format_short(i_s.db)],
                 true => vec![],
             },
@@ -503,12 +501,12 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                 if let Self::Inferred {
                     inferred,
                     node_ref,
-                    is_bound_self,
+                    is_bound,
                 } = mem::replace(self, Self::Finished)
                 {
                     Some(BaseArgumentReturn::Argument(ArgumentKind::Inferred {
                         inferred: inferred.clone(),
-                        position: (!is_bound_self).into(),
+                        position: (!is_bound).into(),
                         node_ref,
                         in_args_or_kwargs_and_arbitrary_len: false,
                         is_keyword: false,

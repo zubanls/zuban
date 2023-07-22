@@ -43,7 +43,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
     ) -> Inferred {
         let instance_inf = self.instance.as_inferred(i_s);
         let instance_arg =
-            KnownArguments::new_self(&instance_inf, self.mro_index, args.as_node_ref());
+            KnownArguments::new_bound(&instance_inf, self.mro_index, args.as_node_ref());
         let args = CombinedArguments::new(&instance_arg, args);
         let class = &self.instance.class;
         match &self.function {
