@@ -1050,7 +1050,10 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        if self.use_cached_class_infos(i_s.db).class_type == ClassType::Enum {
+        if self.use_cached_class_infos(i_s.db).class_type == ClassType::Enum
+            // For whatever reason, auto is special, because
+            && self.node_ref != i_s.db.python_state.enum_auto_node_ref()
+        {
             return self.execute_functional_enum(i_s, args, result_context);
         }
         if let Some(generics) = self.type_check_init_func(
