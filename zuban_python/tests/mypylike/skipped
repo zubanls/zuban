@@ -500,41 +500,50 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
-# Enum should be inferred in a literal context
+# Enum value should be inferred in a literal context
 testEnumNameAndValue
 testEnumValueExtended
 testEnumValueExtraMethods
+testStrEnumCreation
+testEnumLiteralValues
+testEnumAttributeAccessMatrix
 # _generate_next_value_
 testEnumValueCustomAuto
-# Random enum tests
+# int | str leads to Any when using Enum().value
 testEnumValueInhomogenous
+# SpecificEnum(1)
 testIntEnum_functionTakingIntEnum
-testIntEnum_functionReturningIntEnum
-testStrEnumCreation
-testEnumMethods
 testEnumCall
+# function lookups
+testEnumMethods
+# Enum getitem
 testEnumIndex
 testEnumIndexError
 testEnumIndexIsNotAnAlias
-testFunctionalEnumListOfPairs
-testFunctionalEnumDict
-testEnumKeywordsArgs
-testFunctionalEnumErrors
-testFunctionalEnumInClassBody
 testFunctionalEnumProtocols
+# enum_.rs:115
+testFunctionalEnumListOfPairs
+# class.rs:1019
+testFunctionalEnumErrors
+# class.rs:1022
+testEnumKeywordsArgs
+# class.rs:1030
 testFunctionalEnum
-testEnumAttributeAccessMatrix
-testPrivateAttributeNotAsEnumMembers
-testEnumWithInstanceAttributes
+# inferred:784
+testEnumFinalValuesCannotRedefineValueProp
+# enum __new__
 testNewSetsUnexpectedValueType
 testValueTypeWithNewInParentClass
+# _value_
+testEnumWithInstanceAttributes
+# class attributes
+testPrivateAttributeNotAsEnumMembers
+# Literal formatting
 testEnumTypeCompatibleWithLiteralUnion
-testIntEnumWithNewTypeValue
-testEnumFinalValuesCannotRedefineValueProp
-testEnumLiteralValues
+# functional attributes
+testFunctionalEnumDict
+# enum member gathering
 testFinalWithMethodAssignment
-testEnumValueUnionSimplification
-testCanNotInitialize__members__
 # ResultContext used to infer enum
 testClassBasedEnumPropagation2
 testFuncBasedEnumPropagation2
@@ -551,6 +560,8 @@ testEnumInClassBody
 testEnumFinalSpecialProps
 testAnonymousFunctionalEnum
 testEnumAttributeChangeIncremental
+testIntEnum_functionReturningIntEnum
+testFunctionalEnumInClassBody
 # qualified name
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testEnumIncremental
@@ -560,6 +571,8 @@ testEnumCreatedFromStringLiteral
 enum_multi_literal
 testFunctionalEnumString
 testFunctionalEnumFlag
+# Enum access merging leads to int | Any instead of Any
+testEnumValueUnionSimplification
 # "Enum class cannot be generic"
 testEnumFromEnumMetaGeneric
 testGenericEnum
@@ -586,6 +599,7 @@ testEnumWithNewHierarchy
 # "No non-enum mixin classes are allowed after "__main__.Correct2""
 testEnumBaseClassesOrder
 # "Assigned "__members__" will be overridden by "Enum" internally"
+testCanNotInitialize__members__
 
 # TypedDict
 testTypedDictWithDocString
