@@ -2668,6 +2668,10 @@ impl EnumMember {
         self.enum_.members[self.member_index].name(db)
     }
 
+    pub fn value(&self) -> Option<PointLink> {
+        self.enum_.members[self.member_index].value
+    }
+
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         let fmt = |class_name: &str| {
             format!("Literal[{class_name}.{}]", self.name(format_data.db)).into()
@@ -2688,11 +2692,12 @@ impl EnumMember {
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumMemberDefinition {
     name: DbString,
+    value: Option<PointLink>,
 }
 
 impl EnumMemberDefinition {
-    pub fn new(name: DbString) -> Self {
-        Self { name }
+    pub fn new(name: DbString, value: Option<PointLink>) -> Self {
+        Self { name, value }
     }
 
     pub fn name<'x>(&'x self, db: &'x Database) -> &'x str {

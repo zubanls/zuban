@@ -998,6 +998,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 members.push(EnumMemberDefinition::new(
                     StringSlice::from_name(self.node_ref.file_index(), name_node_ref.as_name())
                         .into(),
+                    Some(name_node_ref.as_link()),
                 ))
             }
         }
@@ -1360,7 +1361,7 @@ fn gather_functional_enum_members(
             let Some(name) = name else {
                 todo!("Add issue");
             };
-            members.push(EnumMemberDefinition::new(name.into()))
+            members.push(EnumMemberDefinition::new(name.into(), None))
         }
     };
     match atom.unpack() {
@@ -1383,7 +1384,7 @@ fn gather_functional_enum_members(
                 ) else {
                     todo!()
                 };
-                members.push(EnumMemberDefinition::new(name.into()));
+                members.push(EnumMemberDefinition::new(name.into(), None));
             }
         }
         _ => {
@@ -1413,7 +1414,7 @@ fn split_enum_members(db: &Database, members: &mut Vec<EnumMemberDefinition>, s:
             }
             DbString::RcStr(_) => DbString::RcStr(part.into()),
         };
-        members.push(EnumMemberDefinition::new(name));
+        members.push(EnumMemberDefinition::new(name, None));
         start += part.len() as CodeIndex + 1;
     }
 }

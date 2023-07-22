@@ -2229,7 +2229,22 @@ impl<'a> Type<'a> {
                         LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
                     )))),
                 ),
-                "value" => todo!(),
+                "value" => callable(
+                    self,
+                    match &member.value() {
+                        Some(link) => LookupResult::UnknownName({
+                            let node_ref = NodeRef::from_link(i_s.db, *link);
+                            if let Some(name) = node_ref.maybe_name() {
+                                node_ref.file.inference(i_s).infer_name(name)
+                            } else {
+                                let expr = node_ref.as_expression();
+                                node_ref.file.inference(i_s).infer_expression(expr);
+                                todo!();
+                            }
+                        }),
+                        None => LookupResult::any(),
+                    },
+                ),
                 "_ignore_" => callable(self, LookupResult::None),
                 _ => callable(
                     self,
