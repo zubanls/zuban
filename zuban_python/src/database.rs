@@ -2692,7 +2692,7 @@ impl EnumMember {
 #[derive(Debug, PartialEq, Clone)]
 pub struct EnumMemberDefinition {
     name: DbString,
-    value: Option<PointLink>,
+    pub value: Option<PointLink>,
 }
 
 impl EnumMemberDefinition {

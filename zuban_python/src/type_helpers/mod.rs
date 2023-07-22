@@ -12,7 +12,7 @@ mod typing;
 pub use bound_method::{BoundMethod, BoundMethodFunction};
 pub use callable::{format_pretty_callable, Callable};
 pub use class::{Class, MroIterator, TypeOrClass};
-pub use enum_::lookup_on_enum;
+pub use enum_::{lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance};
 pub use function::{
     is_private, FirstParamProperties, Function, InferrableParam, OverloadedFunction,
 };

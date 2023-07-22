@@ -5,7 +5,10 @@ use parsa_python_ast::{
 };
 
 use crate::{
-    database::{Database, DbString, DbType, Enum, EnumMemberDefinition, LiteralKind, StringSlice},
+    database::{
+        Database, DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind,
+        StringSlice,
+    },
     debug,
     file::File,
     inference_state::InferenceState,
@@ -14,7 +17,52 @@ use crate::{
     node_ref::NodeRef,
 };
 
-pub fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
+use super::Instance;
+
+pub fn lookup_on_enum_class(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
+    lookup_on_enum(db, enum_, name)
+}
+
+pub fn lookup_on_enum_instance(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
+    if name == "value" {
+        if enum_
+            .members
+            .iter()
+            .all(|member| member.value.is_some_and(|v| true))
+        {}
+    }
+    lookup_on_enum(db, enum_, name)
+}
+
+pub fn lookup_on_enum_member_instance(
+    i_s: &InferenceState,
+    from: Option<NodeRef>,
+    member: &EnumMember,
+    name: &str,
+) -> LookupResult {
+    match name {
+        "name" => LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal::new(
+            LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
+        )))),
+        "value" => match &member.value() {
+            Some(link) => LookupResult::UnknownName({
+                let node_ref = NodeRef::from_link(i_s.db, *link);
+                if let Some(name) = node_ref.maybe_name() {
+                    node_ref.file.inference(i_s).infer_name(name)
+                } else {
+                    let expr = node_ref.as_expression();
+                    node_ref.file.inference(i_s).infer_expression(expr);
+                    todo!();
+                }
+            }),
+            None => LookupResult::any(),
+        },
+        "_ignore_" => LookupResult::None,
+        _ => Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),
+    }
+}
+
+fn lookup_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
     if name == "_ignore_" {
         return LookupResult::None;
     }
