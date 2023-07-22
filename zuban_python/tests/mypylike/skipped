@@ -1439,8 +1439,6 @@ testChangeBaseClassAttributeType
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
 
-# base class: type alias
-testOptionalAndAnyBaseClass
 # base class: callable
 testInvalidBaseClass
 # class base Any in combination with overload
@@ -1451,17 +1449,13 @@ testObfuscatedTypeConstructorReturnsTypeType
 testOtherTypeConstructorsSucceed
 testTypeTypeComparisonWorks
 # type vs type[object]
-testGeneralTypeMatchesSpecificTypeInOverloadedFunctions
 testNonTypeDoesNotMatchOverloadedFunctions
 testTypeConstructorLookalikeFails
 # `class type` access on class
-testTypeUsingTypeCTypeAnyMember
 testTypeUsingTypeCTypeAnyMemberFallback
-testTypeUsingTypeCTypeNoArg
 testTypeUsingTypeCClassMethod
 testTypeUsingTypeCClassMethodUnion
 testTypeUsingTypeCClassMethodFromTypeVar
-testTypeUsingTypeCClassMethodFromTypeVarUnionBound
 testTypeUsingTypeCClassMethodFromTypeVarUnionBound
 testTypeUsingTypeCErrorUnsupportedType
 testTypeUsingTypeCOverloadedClass
