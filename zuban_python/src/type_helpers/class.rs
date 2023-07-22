@@ -6,10 +6,10 @@ use parsa_python_ast::{
     StmtContent, Target,
 };
 
-use super::enum_::gather_functional_enum_members;
+use super::enum_::execute_functional_enum;
 use super::function::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue};
-use crate::arguments::{ArgumentKind, Arguments};
+use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
@@ -1005,44 +1005,6 @@ impl<'db: 'a, 'a> Class<'a> {
         members.into_boxed_slice()
     }
 
-    fn execute_functional_enum(
-        &self,
-        i_s: &InferenceState,
-        args: &dyn Arguments,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        let mut iterator = args.iter();
-        let Some(name_arg) = iterator.next() else {
-            todo!()
-        };
-        let Some(fields_arg) = iterator.next() else {
-            todo!()
-        };
-        if iterator.next().is_some() {
-            todo!()
-        }
-
-        let ArgumentKind::Positional { node_ref: name_node_ref, .. } = name_arg.kind else {
-            todo!();
-            return Inferred::new_any()
-        };
-        let Some(name) = StringSlice::from_string_in_expression(name_node_ref.file_index(), name_node_ref.as_named_expression().expression()) else {
-            todo!()
-        };
-
-        let ArgumentKind::Positional { node_ref: fields_node_ref, .. } = fields_arg.kind else {
-            todo!();
-            return Inferred::new_any()
-        };
-        let members = gather_functional_enum_members(i_s, fields_node_ref);
-
-        Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(Rc::new(Enum {
-            name,
-            class: self.node_ref.as_link(),
-            members,
-        })))))
-    }
-
     pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1054,7 +1016,7 @@ impl<'db: 'a, 'a> Class<'a> {
             // For whatever reason, auto is special, because
             && self.node_ref.as_link() != i_s.db.python_state.enum_auto_link()
         {
-            return self.execute_functional_enum(i_s, args, result_context);
+            return execute_functional_enum(i_s, *self, args, result_context);
         }
         if let Some(generics) = self.type_check_init_func(
             i_s,

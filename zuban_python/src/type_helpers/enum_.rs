@@ -6,6 +6,7 @@ use parsa_python_ast::{
 };
 
 use crate::{
+    arguments::{ArgumentKind, Arguments},
     database::{
         Database, DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind,
         PointLink, StringSlice,
@@ -18,7 +19,7 @@ use crate::{
     node_ref::NodeRef,
 };
 
-use super::Instance;
+use super::{Class, Instance};
 
 pub fn lookup_on_enum_class(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
     lookup_members_on_enum(db, enum_, name)
@@ -93,7 +94,45 @@ fn lookup_members_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> Lookup
     }
 }
 
-pub fn gather_functional_enum_members(
+pub fn execute_functional_enum(
+    i_s: &InferenceState,
+    class: Class,
+    args: &dyn Arguments,
+    result_context: &mut ResultContext,
+) -> Inferred {
+    let mut iterator = args.iter();
+    let Some(name_arg) = iterator.next() else {
+        todo!()
+    };
+    let Some(fields_arg) = iterator.next() else {
+        todo!()
+    };
+    if iterator.next().is_some() {
+        todo!()
+    }
+
+    let ArgumentKind::Positional { node_ref: name_node_ref, .. } = name_arg.kind else {
+        todo!();
+        return Inferred::new_any()
+    };
+    let Some(name) = StringSlice::from_string_in_expression(name_node_ref.file_index(), name_node_ref.as_named_expression().expression()) else {
+        todo!()
+    };
+
+    let ArgumentKind::Positional { node_ref: fields_node_ref, .. } = fields_arg.kind else {
+        todo!();
+        return Inferred::new_any()
+    };
+    let members = gather_functional_enum_members(i_s, fields_node_ref);
+
+    Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(Rc::new(Enum {
+        name,
+        class: class.node_ref.as_link(),
+        members,
+    })))))
+}
+
+fn gather_functional_enum_members(
     i_s: &InferenceState,
     node_ref: NodeRef,
 ) -> Box<[EnumMemberDefinition]> {
