@@ -2657,14 +2657,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     unreachable!()
                 };
                 match t {
-                    TypeContent::SimpleGeneric { .. } | TypeContent::Class { .. }
-                        if !comp.inference.i_s.db.python_state.project.mypy_compatible =>
-                    {
-                        cached_type_node_ref.set_point(Point::new_uncalculated());
-                        //return TypeNameLookup::Class(i);
-                        // TODO should we really only do this without mypy compatible? why?
-                        todo!()
-                    }
                     TypeContent::InvalidVariable(t) if !is_explicit => {
                         alias.set_invalid();
                     }

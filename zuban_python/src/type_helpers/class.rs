@@ -9,7 +9,7 @@ use parsa_python_ast::{
 use super::enum_::execute_functional_enum;
 use super::function::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue};
-use crate::arguments::Arguments;
+use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
@@ -28,8 +28,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, FormatData, Generics, LookupResult, Match, Matcher,
-    MismatchReason, OnTypeError, ResultContext, Type,
+    calculate_class_init_type_vars_and_return, replace_class_type_vars, FormatData, Generics,
+    LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -104,13 +104,13 @@ impl<'db: 'a, 'a> Class<'a> {
     fn type_check_init_func(
         &self,
         i_s: &InferenceState<'db, '_>,
+        __init__: LookupResult,
+        init_class: Option<Class>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Option<ClassGenerics> {
-        let (init, class) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
-        let Some(inf) = init.into_maybe_inferred() else {
+        let Some(inf) = __init__.into_maybe_inferred() else {
             if self.is_protocol(i_s.db) {
                 args.as_node_ref().add_issue(i_s, IssueType::CannotInstantiateProtocol {
                     name: self.name().into()
@@ -123,7 +123,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 None => ClassGenerics::None,
             })
         };
-        match inf.init_as_function(i_s.db, class) {
+        match inf.init_as_function(i_s.db, init_class) {
             Some(FunctionOrOverload::Function(func)) => {
                 let calculated_type_args = calculate_class_init_type_vars_and_return(
                     i_s,
@@ -137,7 +137,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 Some(calculated_type_args.type_arguments_into_class_generics())
             }
             Some(FunctionOrOverload::Callable(callable_content)) => {
-                let calculated_type_args = match class {
+                let calculated_type_args = match init_class {
                     Some(class) => todo!() /*calculate_callable_init_type_vars_and_return(
                         i_s,
                         &class,
@@ -744,7 +744,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         name: &str,
         ignore_self: bool,
-    ) -> (LookupResult, Option<Class>) {
+    ) -> (LookupResult, Option<Class>, MroIndex) {
         for (mro_index, c) in self
             .mro_maybe_without_object(i_s.db, self.incomplete_mro(i_s.db))
             .skip(ignore_self as usize)
@@ -752,13 +752,13 @@ impl<'db: 'a, 'a> Class<'a> {
             let result = c.lookup_symbol(i_s, name);
             if !matches!(result, LookupResult::None) {
                 if let TypeOrClass::Class(c) = c {
-                    return (result, Some(c));
+                    return (result, Some(c), mro_index);
                 } else {
-                    return (result, None);
+                    return (result, None, mro_index);
                 }
             }
         }
-        (LookupResult::None, None)
+        (LookupResult::None, None, 0.into())
     }
 
     pub fn lookup_and_class_and_maybe_ignore_self(
@@ -799,7 +799,7 @@ impl<'db: 'a, 'a> Class<'a> {
         if class_infos.class_type == ClassType::Enum && use_descriptors && name == "_ignore_" {
             return (LookupResult::None, Some(*self));
         }
-        let (lookup_result, in_class) =
+        let (lookup_result, in_class, _) =
             self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
         let result = lookup_result.and_then(|inf| {
             if let Some(in_class) = in_class {
@@ -1019,8 +1019,32 @@ impl<'db: 'a, 'a> Class<'a> {
             return execute_functional_enum(i_s, *self, args, result_context)
                 .unwrap_or_else(Inferred::new_any);
         }
+
+        let i_s = &i_s.with_class_context(self);
+        let (__init__, init_class, init_mro_index) =
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
+        let (__new__, _, new_mro_index) =
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__new__", false);
+        // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
+        // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
+        // a lower MRO than an __init__.
+        let __new__ = __new__
+            .into_maybe_inferred()
+            .filter(|_| new_mro_index < init_mro_index);
+        if let Some(__new__) = __new__ {
+            let cls_t = Inferred::from_type(self.as_type(i_s).into_db_type());
+            let class_arg = KnownArguments::new(&cls_t, args.as_node_ref());
+            let args = CombinedArguments::new(&class_arg, args);
+            let result = __new__.execute(i_s, &args).class_as_db_type(i_s);
+            if !Type::new(&result).is_any() {
+                return Inferred::from_type(replace_class_type_vars(i_s.db, &result, self, self));
+            }
+        }
+
         if let Some(generics) = self.type_check_init_func(
             i_s,
+            __init__,
+            init_class,
             args,
             result_context,
             on_type_error.with_custom_generate_diagnostic_string(&|_, _, _| {

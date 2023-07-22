@@ -40,7 +40,7 @@ thread_local! {
 pub struct FileIndex(pub u32);
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct TypeVarIndex(u32);
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd)]
 pub struct MroIndex(pub u32);
 
 impl From<usize> for MroIndex {

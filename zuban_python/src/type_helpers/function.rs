@@ -895,17 +895,25 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
-                        if has_self_type_var_usage {
-                            DbType::Self_
-                        } else {
-                            self.class.unwrap().as_db_type(i_s.db)
-                            /*
-                            match kind {
-                                FunctionKind::Function | FunctionKind::Property => self.class.unwrap().as_db_type(i_s.db),
-                                FunctionKind::Classmethod => todo!(),
-                                FunctionKind::Staticmethod => self.class.unwrap().as_db_type(i_s.db),
+                        if self.class.is_some() && self.name() == "__new__" {
+                            if has_self_type_var_usage {
+                                todo!()
+                            } else {
+                                self.class.unwrap().as_type(i_s).into_db_type()
                             }
-                            */
+                        } else {
+                            if has_self_type_var_usage {
+                                DbType::Self_
+                            } else {
+                                self.class.unwrap().as_db_type(i_s.db)
+                                /*
+                                match kind {
+                                    FunctionKind::Function | FunctionKind::Property => self.class.unwrap().as_db_type(i_s.db),
+                                    FunctionKind::Classmethod => todo!(),
+                                    FunctionKind::Staticmethod => self.class.unwrap().as_db_type(i_s.db),
+                                }
+                                */
+                            }
                         }
                     } else {
                         DbType::Any
