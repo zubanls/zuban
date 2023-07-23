@@ -1465,14 +1465,7 @@ testTypeUsingTypeCJoin
 # new __new__ failures
 testNewReturnType9
 # __new__
-testOverride__new__AndCallObject
-testConstructInstanceWith__new__
 testConstructInstanceWithDynamicallyTyped__new__
-testClassWith__new__AndCompatibilityWithType
-testGenericClassWith__new__
-testOverloaded__new__
-testNewAndInit2
-testNewAndInit3
 testNewReturnType3
 testNewReturnType6
 testNewReturnType7
@@ -1481,6 +1474,12 @@ testNewReturnType12
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNamedTupleNew
+# function.rs:900
+testOverride__new__AndCallObject
+testConstructInstanceWith__new__
+testClassWith__new__AndCompatibilityWithType
+testGenericClassWith__new__
+testOverloaded__new__
 testSuperWithNew
 
 # __init_subclass__
