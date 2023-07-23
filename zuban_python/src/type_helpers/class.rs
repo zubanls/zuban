@@ -1054,7 +1054,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {
             let cls_t = Inferred::from_type(self.as_type(i_s).into_db_type());
-            let class_arg = KnownArguments::new(&cls_t, args.as_node_ref());
+            let class_arg = KnownArguments::new_bound(&cls_t, args.as_node_ref());
             let args = CombinedArguments::new(&class_arg, args);
             // TODO is this clone really necessary?
             let result = constructor

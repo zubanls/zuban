@@ -157,6 +157,7 @@ testSerializeOverloaded__init__
 # overload classmethod variants formatting cls type should be Class not any
 testOverloadClassmethodDisappears
 testGenericClassAlternativeConstructorPreciseOverloaded
+testOverloaded__new__
 
 # Class function Foo.bar something like a BoundFunction
 testParamSpecConstraintOnOtherParamSpec
@@ -1478,7 +1479,6 @@ testNamedTupleNew
 # function.rs:900
 testOverride__new__AndCallObject
 testGenericClassWith__new__
-testOverloaded__new__
 testSuperWithNew
 
 # __init_subclass__

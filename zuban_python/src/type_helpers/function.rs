@@ -389,6 +389,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
+        if self.class.is_some() && self.name() == "__new__" {
+            return FunctionKind::Classmethod;
+        }
         if self.node_ref.point().specific() == Specific::DecoratedFunction {
             // Ensure it's cached
             let inf = self.decorated(i_s);
@@ -405,11 +408,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 _ => FunctionKind::Function,
             }
         } else {
-            if self.class.is_some() && self.name() == "__new__" {
-                FunctionKind::Classmethod
-            } else {
-                FunctionKind::Function
-            }
+            FunctionKind::Function
         }
     }
 
