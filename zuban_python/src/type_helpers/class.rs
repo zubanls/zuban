@@ -1006,6 +1006,28 @@ impl<'db: 'a, 'a> Class<'a> {
         members.into_boxed_slice()
     }
 
+    fn find_relevant_constructor(&self, i_s: &InferenceState<'db, '_>) -> NewOrInitConstructor<'_> {
+        let (__init__, init_class, init_mro_index) =
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
+        let (__new__, new_class, new_mro_index) =
+            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__new__", false);
+        // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
+        // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
+        // a lower MRO than an __init__.
+        let is_new = !matches!(__new__, LookupResult::None) && new_mro_index < init_mro_index;
+        NewOrInitConstructor {
+            is_new,
+            defined_in: match is_new {
+                true => new_class,
+                false => init_class,
+            },
+            probably_a_func: match is_new {
+                true => __new__,
+                false => __init__,
+            },
+        }
+    }
+
     pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1026,21 +1048,16 @@ impl<'db: 'a, 'a> Class<'a> {
             Some(format!("\"{}\"", self.name()))
         };
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
-        let (__init__, init_class, init_mro_index) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
-        let (__new__, _, new_mro_index) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__new__", false);
-        // This is just a weird heuristic Mypy uses, because the type system itself is very unclear
-        // what to do if both __new__ and __init__ are present. So just only use __new__ if it's in
-        // a lower MRO than an __init__.
-        let __new__ = __new__
-            .into_maybe_inferred()
-            .filter(|_| new_mro_index < init_mro_index);
-        if let Some(__new__) = __new__ {
+        let constructor = self.find_relevant_constructor(i_s);
+        if constructor.is_new {
             let cls_t = Inferred::from_type(self.as_type(i_s).into_db_type());
             let class_arg = KnownArguments::new(&cls_t, args.as_node_ref());
             let args = CombinedArguments::new(&class_arg, args);
-            let result = __new__
+            // TODO is this clone really necessary?
+            let result = constructor
+                .probably_a_func
+                .clone()
+                .into_inferred()
                 .execute_with_details(i_s, &args, result_context, on_type_error)
                 .class_as_db_type(i_s);
             if !Type::new(&result).is_any() {
@@ -1050,8 +1067,8 @@ impl<'db: 'a, 'a> Class<'a> {
 
         if let Some(generics) = self.type_check_init_func(
             i_s,
-            __init__,
-            init_class,
+            constructor.probably_a_func,
+            constructor.defined_in,
             args,
             result_context,
             on_type_error,
@@ -1299,4 +1316,11 @@ fn add_protocol_mismatch(
             .into(),
         ),
     }
+}
+
+struct NewOrInitConstructor<'a> {
+    // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
+    probably_a_func: LookupResult,
+    defined_in: Option<Class<'a>>,
+    is_new: bool,
 }

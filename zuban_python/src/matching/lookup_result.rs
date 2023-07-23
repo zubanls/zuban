@@ -5,7 +5,7 @@ use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum LookupResult {
     // Locality is part of Inferred
     GotoName(PointLink, Inferred),
