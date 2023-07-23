@@ -123,23 +123,7 @@ impl<'a> Type<'a> {
             DbType::Type(t) => match t.as_ref() {
                 DbType::Class(c) => {
                     let cls = Class::from_generic_class(i_s.db, c);
-                    // TODO the __init__ should actually be looked up on the original class, not
-                    // the subclass
-                    let lookup = Instance::new(cls, None).lookup(i_s, None, "__init__");
-                    if let LookupResult::GotoName(_, init) = lookup {
-                        let c = init.as_type(i_s).into_db_type();
-                        if let DbType::Callable(c) = c {
-                            let mut c = c.as_ref().clone();
-                            // Since __init__ does not have a return, We need to check the params
-                            // of the __init__ functions and the class as a return type separately.
-                            if c.type_vars.is_some() {
-                                todo!()
-                            }
-                            c.result_type = cls.as_db_type(i_s.db);
-                            return Some(Rc::new(c));
-                        }
-                    }
-                    None
+                    return cls.find_relevant_constructor(i_s).maybe_callable(i_s, cls);
                 }
                 _ => {
                     /*

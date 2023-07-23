@@ -1760,7 +1760,9 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                     kind: LiteralKind::Bytes(definition.as_link()),
                     implicit: true,
                 })),
-                Specific::Function => Function::new(definition, None).as_type(i_s),
+                Specific::Function => {
+                    Function::new(definition, i_s.current_class().copied()).as_type(i_s)
+                }
                 Specific::AnnotationOrTypeCommentClassInstance
                 | Specific::AnnotationOrTypeCommentWithTypeVars => definition
                     .file

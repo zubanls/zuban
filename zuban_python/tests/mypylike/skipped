@@ -1465,7 +1465,6 @@ testTypeUsingTypeCJoin
 # new __new__ failures
 testNewReturnType9
 # __new__
-testDunderNewUpdatedCallable
 testOverride__new__AndCallObject
 testConstructInstanceWith__new__
 testConstructInstanceWithDynamicallyTyped__new__

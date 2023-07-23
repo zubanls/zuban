@@ -1006,7 +1006,10 @@ impl<'db: 'a, 'a> Class<'a> {
         members.into_boxed_slice()
     }
 
-    fn find_relevant_constructor(&self, i_s: &InferenceState<'db, '_>) -> NewOrInitConstructor<'_> {
+    pub fn find_relevant_constructor(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+    ) -> NewOrInitConstructor<'_> {
         let (__init__, init_class, init_mro_index) =
             self.lookup_and_class_and_maybe_ignore_self_internal(i_s, "__init__", false);
         let (__new__, new_class, new_mro_index) =
@@ -1318,9 +1321,33 @@ fn add_protocol_mismatch(
     }
 }
 
-struct NewOrInitConstructor<'a> {
+pub struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
     probably_a_func: LookupResult,
     defined_in: Option<Class<'a>>,
     is_new: bool,
+}
+
+impl NewOrInitConstructor<'_> {
+    pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<Rc<CallableContent>> {
+        let inf = self.probably_a_func.into_inferred();
+        let callable = if let Some(c) = self.defined_in {
+            let i_s = &i_s.with_class_context(&c);
+            inf.as_type(i_s).maybe_callable(i_s)
+        } else {
+            inf.as_type(i_s).maybe_callable(i_s)
+        };
+        callable.and_then(|c| {
+            // Since __init__ does not have a return, We need to check the params
+            // of the __init__ functions and the class as a return type separately.
+            if c.type_vars.is_some() {
+                todo!()
+            }
+            let mut c = c.remove_first_param();
+            if let Some(c) = &mut c {
+                c.result_type = cls.as_db_type(i_s.db);
+            }
+            c.map(Rc::new)
+        })
+    }
 }
