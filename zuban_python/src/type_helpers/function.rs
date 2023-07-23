@@ -405,7 +405,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 _ => FunctionKind::Function,
             }
         } else {
-            FunctionKind::Function
+            if self.class.is_some() && self.name() == "__new__" {
+                FunctionKind::Classmethod
+            } else {
+                FunctionKind::Function
+            }
         }
     }
 
@@ -897,7 +901,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
                         if self.class.is_some() && self.name() == "__new__" {
                             if has_self_type_var_usage {
-                                todo!()
+                                DbType::Type(Rc::new(DbType::Self_))
                             } else {
                                 self.class.unwrap().as_type(i_s).into_db_type()
                             }

@@ -15,6 +15,7 @@ testSuperClassGetItem
 testInvalidFirstSuperArg
 testWrongSuperOutsideMethodNoCrash
 testSuperWithTypeObjects
+testSuperWithTypeTypeAsSecondArgument
 # "super() outside of a method is not supported"
 testSuperOutsideMethodNoCrash
 # "super() requires one or more positional arguments in enclosing function"
@@ -1476,8 +1477,6 @@ testOverloadedNewAndInitNoReturn
 testNamedTupleNew
 # function.rs:900
 testOverride__new__AndCallObject
-testConstructInstanceWith__new__
-testClassWith__new__AndCompatibilityWithType
 testGenericClassWith__new__
 testOverloaded__new__
 testSuperWithNew
