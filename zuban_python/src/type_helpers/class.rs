@@ -1020,14 +1020,10 @@ impl<'db: 'a, 'a> Class<'a> {
         let is_new = !matches!(__new__, LookupResult::None) && new_mro_index < init_mro_index;
         NewOrInitConstructor {
             is_new,
-            defined_in: match is_new {
-                true => new_class,
-                false => init_class,
-            },
-            probably_a_func: match is_new {
-                true => __new__,
-                false => __init__,
-            },
+            __new__,
+            __init__,
+            init_class,
+            new_class,
         }
     }
 
@@ -1058,7 +1054,7 @@ impl<'db: 'a, 'a> Class<'a> {
             let args = CombinedArguments::new(&class_arg, args);
             // TODO is this clone really necessary?
             let result = constructor
-                .probably_a_func
+                .__new__
                 .clone()
                 .into_inferred()
                 .execute_with_details(i_s, &args, result_context, on_type_error)
@@ -1070,8 +1066,8 @@ impl<'db: 'a, 'a> Class<'a> {
 
         if let Some(generics) = self.type_check_init_func(
             i_s,
-            constructor.probably_a_func,
-            constructor.defined_in,
+            constructor.__init__,
+            constructor.init_class,
             args,
             result_context,
             on_type_error,
@@ -1323,15 +1319,25 @@ fn add_protocol_mismatch(
 
 pub struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
-    probably_a_func: LookupResult,
-    defined_in: Option<Class<'a>>,
+    __new__: LookupResult,
+    __init__: LookupResult,
+    new_class: Option<Class<'a>>,
+    init_class: Option<Class<'a>>,
     is_new: bool,
 }
 
 impl NewOrInitConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<Rc<CallableContent>> {
-        let inf = self.probably_a_func.into_inferred();
-        let callable = if let Some(c) = self.defined_in {
+        let func = match self.is_new {
+            true => self.__new__,
+            false => self.__init__,
+        };
+        let class = match self.is_new {
+            true => self.new_class,
+            false => self.init_class,
+        };
+        let inf = func.into_inferred();
+        let callable = if let Some(c) = class {
             let i_s = &i_s.with_class_context(&c);
             inf.as_type(i_s).maybe_callable(i_s)
         } else {

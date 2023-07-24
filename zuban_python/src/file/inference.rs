@@ -135,8 +135,21 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
             }
+            StmtContent::FunctionDef(func) => self.cache_new_func(func, name_def),
             _ => unreachable!("Found type {:?}", stmt.short_debug()),
         }
+    }
+
+    pub fn cache_new_func(&mut self, func: FunctionDef, name_def: NodeRef) {
+        debug_assert_eq!(func.name().as_code(), "__new__");
+        debug_assert!(self.i_s.current_class().is_some());
+        let t = Function::new(
+            NodeRef::new(self.file, func.index()),
+            self.i_s.current_class().copied(),
+        )
+        .as_type(self.i_s)
+        .into_db_type();
+        name_def.insert_complex(ComplexPoint::TypeInstance(t), Locality::Todo)
     }
 
     pub fn cache_class(&mut self, name_def: NodeRef, class_node: ClassDef) {

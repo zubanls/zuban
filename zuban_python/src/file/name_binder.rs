@@ -851,7 +851,17 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.index_annotation_expression(&return_annotation.expression());
         }
 
-        self.add_redirect_definition(name_def, func.index(), in_base_scope);
+        // This is kind of a special case where we want to set the value of __new__ on its name
+        // definition.
+        if self.type_ == NameBinderType::Class
+            && name_def.as_code() == "__new__"
+            && !is_decorated
+            && self.symbol_table.lookup_symbol("__new__").is_none()
+        {
+            self.add_new_definition(name_def, Point::new_uncalculated(), in_base_scope);
+        } else {
+            self.add_redirect_definition(name_def, func.index(), in_base_scope);
+        }
 
         self.points.set(
             func.index(),
