@@ -1062,7 +1062,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 .clone()
                 .into_inferred()
                 .execute_with_details(i_s, &args, result_context, on_type_error)
-                .class_as_db_type(i_s);
+                .as_db_type(i_s);
             if !Type::new(&result).is_any() {
                 return Inferred::from_type(replace_class_type_vars(i_s.db, &result, self, self));
             }

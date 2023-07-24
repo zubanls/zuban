@@ -795,7 +795,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 }
                             });
 
-                            let generic = union.class_as_db_type(self.i_s);
+                            let generic = union.as_db_type(self.i_s);
                             let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
                                 Some(Rc::new([GenericItem::TypeArgument(generic)])),
@@ -811,7 +811,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             let list = Inferred::create_instance(
                                 self.i_s.db.python_state.list_node_ref().as_link(),
                                 Some(Rc::new([GenericItem::TypeArgument(
-                                    value.class_as_db_type(self.i_s),
+                                    value.as_db_type(self.i_s),
                                 )])),
                             );
                             self.assign_targets(
@@ -1195,7 +1195,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         kind: FunctionKind::Function,
                         type_vars: None,
                         params: CallableParams::Simple(Rc::new([])),
-                        result_type: result.class_as_db_type(self.i_s),
+                        result_type: result.as_db_type(self.i_s),
                     };
                     Inferred::from_type(DbType::Callable(Rc::new(c)))
                 } else {
@@ -1524,10 +1524,10 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         for e in iterator {
             match e {
                 StarLikeExpression::NamedExpression(e) => generics.push(TypeOrTypeVarTuple::Type(
-                    self.infer_named_expression(e).class_as_db_type(self.i_s),
+                    self.infer_named_expression(e).as_db_type(self.i_s),
                 )),
                 StarLikeExpression::Expression(e) => generics.push(TypeOrTypeVarTuple::Type(
-                    self.infer_expression(e).class_as_db_type(self.i_s),
+                    self.infer_expression(e).as_db_type(self.i_s),
                 )),
                 StarLikeExpression::StarNamedExpression(e) => {
                     let inferred = self
@@ -1536,7 +1536,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         inferred.save_and_iter(self.i_s, NodeRef::new(self.file, e.index()));
                     if iterator.len().is_some() {
                         while let Some(inf) = iterator.next(self.i_s) {
-                            generics.push(TypeOrTypeVarTuple::Type(inf.class_as_db_type(self.i_s)))
+                            generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))
                         }
                     } else {
                         todo!()

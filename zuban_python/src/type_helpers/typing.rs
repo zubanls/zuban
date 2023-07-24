@@ -60,7 +60,7 @@ impl TypingClass {
             Inferred::from_type(DbType::Type(Rc::new(
                 first
                     .infer(i_s, &mut ResultContext::Unknown)
-                    .class_as_db_type(i_s),
+                    .as_db_type(i_s),
             )))
         } else {
             todo!()

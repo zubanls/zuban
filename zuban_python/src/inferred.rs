@@ -206,7 +206,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn class_as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
+    pub fn as_db_type(&self, i_s: &InferenceState<'db, '_>) -> DbType {
         self.as_type(i_s).into_db_type()
     }
 

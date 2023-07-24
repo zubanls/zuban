@@ -342,8 +342,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                     .map(|x| {
                         let i_s = &i_s.use_mode_of(func_i_s);
                         TypeOrTypeVarTuple::Type(
-                            x.infer(i_s, &mut ResultContext::Unknown)
-                                .class_as_db_type(i_s),
+                            x.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s),
                         )
                     })
                     .collect();

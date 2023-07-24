@@ -1399,8 +1399,7 @@ impl<'db> InferrableParam<'db, '_> {
                         todo!()
                     }
                     list.push(TypeOrTypeVarTuple::Type(
-                        arg.infer(i_s, &mut ResultContext::Unknown)
-                            .class_as_db_type(i_s),
+                        arg.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s),
                     ))
                 }
                 let t = TupleContent::new_fixed_length(list.into_boxed_slice());
@@ -1747,7 +1746,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                         class,
                                         &calculated_type_args,
                                     )
-                                    .class_as_db_type(i_s),
+                                    .as_db_type(i_s),
                                 first_similar_index: i,
                             };
                         }

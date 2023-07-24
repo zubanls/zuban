@@ -26,14 +26,14 @@ impl<'db> Inference<'db, '_, '_> {
         let mut result = DbType::Never;
         for child in elements {
             let mut t = match child {
-                StarLikeExpression::NamedExpression(named_expr) => self
-                    .infer_named_expression(named_expr)
-                    .class_as_db_type(self.i_s),
+                StarLikeExpression::NamedExpression(named_expr) => {
+                    self.infer_named_expression(named_expr).as_db_type(self.i_s)
+                }
                 StarLikeExpression::StarNamedExpression(e) => self
                     .infer_expression_part(e.expression_part(), &mut ResultContext::Unknown)
                     .save_and_iter(self.i_s, NodeRef::new(self.file, e.index()))
                     .infer_all(self.i_s)
-                    .class_as_db_type(self.i_s),
+                    .as_db_type(self.i_s),
                 StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
                     unreachable!()
                 }
@@ -100,16 +100,14 @@ impl<'db> Inference<'db, '_, '_> {
         for child in dict.iter_elements() {
             match child {
                 DictElement::KeyValue(key_value) => {
-                    let key_t = self
-                        .infer_expression(key_value.key())
-                        .class_as_db_type(self.i_s);
+                    let key_t = self.infer_expression(key_value.key()).as_db_type(self.i_s);
                     match keys.as_mut() {
                         Some(keys) => keys.union_in_place(self.i_s.db, key_t),
                         None => keys = Some(key_t),
                     };
                     let value_t = self
                         .infer_expression(key_value.value())
-                        .class_as_db_type(self.i_s);
+                        .as_db_type(self.i_s);
                     match values.as_mut() {
                         Some(values) => values.union_in_place(self.i_s.db, value_t),
                         None => values = Some(value_t),
