@@ -25,6 +25,8 @@ testSuperSelfTypeInstanceMethod
 testSuperSelfTypeClassMethod
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
+# Super in classmethod or __new__
+testSuperWithNew
 
 # Any base class now matches everything for union simplification
 testUnionSimplificationSpecialCases2
@@ -1479,7 +1481,6 @@ testNamedTupleNew
 # function.rs:900
 testOverride__new__AndCallObject
 testGenericClassWith__new__
-testSuperWithNew
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature

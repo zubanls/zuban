@@ -46,6 +46,13 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
         }
     }
 
+    pub fn class(&self) -> Option<Class> {
+        match self {
+            Self::Function(function) => function.class,
+            Self::Callable(c) => c.defined_in,
+        }
+    }
+
     pub fn has_keyword_param_with_name(&self, db: &Database, name: &str) -> bool {
         match self {
             Self::Function(function) => function.iter_params().any(|p| {
