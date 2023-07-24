@@ -843,7 +843,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 self.index_annotation_expression(&annotation.expression());
             }
             if let Some(expression) = param.default() {
-                self.index_non_block_node(&expression, ordered, false);
+                self.index_non_block_node(&expression, ordered, in_base_scope);
             }
         }
         if let Some(return_annotation) = return_annotation {
@@ -851,7 +851,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             self.index_annotation_expression(&return_annotation.expression());
         }
 
-        self.add_redirect_definition(name_def, func.index(), true);
+        self.add_redirect_definition(name_def, func.index(), in_base_scope);
 
         self.points.set(
             func.index(),
