@@ -1773,7 +1773,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         match func.kind(self.i_s) {
                                             FunctionKind::Function
                                             | FunctionKind::Property { .. } => {
-                                                Inferred::new_saved(self.file, node_index, point)
+                                                Inferred::new_saved(self.file, node_index)
                                             }
                                             FunctionKind::Classmethod => Inferred::from_type(
                                                 DbType::Type(Rc::new(DbType::Self_)),
@@ -1784,7 +1784,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         function.infer_param(self.i_s, node_index, args)
                                     }
                                 } else if specific == Specific::MaybeSelfParam {
-                                    todo!("Inferred::new_saved(self.file, node_index, point)")
+                                    todo!("Inferred::new_saved(self.file, node_index)")
                                 } else {
                                     todo!("{:?} {:?}", self.i_s, specific)
                                 }
@@ -1853,7 +1853,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         todo!();
                         //self.check_point_cache(node_index).unwrap()
                     }
-                    _ => Inferred::new_saved(self.file, node_index, point),
+                    _ => Inferred::new_saved(self.file, node_index),
                 },
                 PointType::MultiDefinition => {
                     // MultiDefinition means we are on a Name that has a NameDefinition as a
@@ -1862,10 +1862,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.infer_name_definition(name.name_definition().unwrap())
                 }
                 PointType::Complex | PointType::Unknown | PointType::FileReference => {
-                    Inferred::new_saved(self.file, node_index, point)
+                    Inferred::new_saved(self.file, node_index)
                 }
                 PointType::NodeAnalysis => {
-                    panic!("Invalid NodeAnalysis, should not happen on node index {node_index:?}");
+                    unreachable!(
+                        "Invalid NodeAnalysis, should not happen on node index {node_index:?}"
+                    );
                 }
             })
             .or_else(|| {

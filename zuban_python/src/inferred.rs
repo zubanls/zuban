@@ -55,7 +55,7 @@ pub struct Inferred {
 impl<'db: 'slf, 'slf> Inferred {
     pub fn new_and_save(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
         file.points.set(node_index, point);
-        Self::new_saved(file, node_index, point)
+        Self::new_saved(file, node_index)
     }
 
     pub fn from_saved_node_ref(node_ref: NodeRef) -> Self {
@@ -68,7 +68,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn new_saved(file: &'db PythonFile, node_index: NodeIndex, point: Point) -> Self {
+    pub fn new_saved(file: &'db PythonFile, node_index: NodeIndex) -> Self {
         Self {
             state: InferredState::Saved(PointLink::new(file.file_index(), node_index)),
         }
@@ -455,7 +455,7 @@ impl<'db: 'slf, 'slf> Inferred {
         // TODO this locality should be calculated in a more correct way
         let p = file.points.get(index);
         if p.calculated() && p.maybe_specific() == Some(Specific::Cycle) {
-            return Self::new_saved(file, index, file.points.get(index));
+            return Self::new_saved(file, index);
         }
         let point = match self.state {
             InferredState::Saved(definition) => {
@@ -482,7 +482,7 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::UnsavedComplex(complex) => {
                 file.complex_points
                     .insert(&file.points, index, complex, Locality::Todo);
-                return Self::new_saved(file, index, file.points.get(index));
+                return Self::new_saved(file, index);
             }
             InferredState::UnsavedSpecific(mut specific) => {
                 if specific == Specific::Cycle {
@@ -513,12 +513,12 @@ impl<'db: 'slf, 'slf> Inferred {
                     ComplexPoint::TypeInstance(bound_method.as_type(i_s).into_db_type()),
                     Locality::Todo,
                 );
-                return Self::new_saved(file, index, file.points.get(index));
+                return Self::new_saved(file, index);
             }
             InferredState::Unknown => Point::new_unknown(Locality::Todo),
         };
         file.points.set(index, point);
-        Self::new_saved(file, index, point)
+        Self::new_saved(file, index)
     }
 
     pub fn save_if_unsaved(
