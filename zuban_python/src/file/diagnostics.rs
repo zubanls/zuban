@@ -368,10 +368,6 @@ impl<'db> Inference<'db, '_, '_> {
     }
 
     fn calc_function_diagnostics(&mut self, f: FunctionDef, class: Option<Class>) {
-        let name_def_ref = NodeRef::new(self.file, f.name_definition().index());
-        if !name_def_ref.point().calculated() {
-            self.cache_new_func(f, name_def_ref)
-        }
         let function = Function::new(NodeRef::new(self.file, f.index()), class);
         let decorator_ref = function.decorator_ref();
         let mut is_overload_member = false;
