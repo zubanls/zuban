@@ -13,7 +13,9 @@ use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::infer_class_method;
 use crate::matching::params::has_overlapping_params;
-use crate::matching::{matches_params, LookupResult, Match, Matcher, ResultContext, Type};
+use crate::matching::{
+    matches_params, Generics, LookupResult, Match, Matcher, ResultContext, Type,
+};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
     format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
@@ -484,7 +486,9 @@ impl<'db> Inference<'db, '_, '_> {
 
         if function.is_dunder_new() {
             let i_s = self.i_s;
-            let class = class.unwrap();
+            let mut class = class.unwrap();
+            // Here we do not want self generics, we actually want Any generics.
+            class.generics = Generics::NotDefinedYet;
             let Some(callable) = infer_class_method(
                 i_s,
                 class,
@@ -493,15 +497,30 @@ impl<'db> Inference<'db, '_, '_> {
             ) else {
                 todo!()
             };
-            if class.is_meta_class(self.i_s.db) {
+            if class.is_meta_class(i_s.db) {
                 todo!()
             } else {
                 match &callable.result_type {
-                    DbType::Class(_) | DbType::Any => (),
+                    DbType::Class(_) => {
+                        let t = Type::new(&callable.result_type);
+                        if !Type::new(&class.as_db_type(i_s.db))
+                            .is_simple_super_type_of(i_s, &t)
+                            .bool()
+                        {
+                            function.expect_return_annotation_node_ref().add_issue(
+                                i_s,
+                                IssueType::NewIncompatibleReturnType {
+                                    returns: t.format_short(i_s.db),
+                                    must_return: class.format_short(i_s.db),
+                                },
+                            )
+                        }
+                    }
+                    DbType::Any => (),
                     t => function.expect_return_annotation_node_ref().add_issue(
-                        self.i_s,
+                        i_s,
                         IssueType::NewMustReturnAnInstance {
-                            got: t.format_short(self.i_s.db),
+                            got: t.format_short(i_s.db),
                         },
                     ),
                 }

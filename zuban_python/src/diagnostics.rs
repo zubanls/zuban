@@ -117,6 +117,7 @@ pub(crate) enum IssueType {
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
     NewMustReturnAnInstance { got: Box<str> },
+    NewIncompatibleReturnType { returns: Box<str>, must_return: Box<str> },
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -572,6 +573,10 @@ impl<'db> Diagnostic<'db> {
             ),
             NewMustReturnAnInstance { got } => format!(
                 "\"__new__\" must return a class instance (got \"{got}\")"
+            ),
+            NewIncompatibleReturnType { returns, must_return } => format!(
+                "Incompatible return type for \"__new__\" (returns \
+                 \"{returns}\", but must return a subtype of \"{must_return}\")"
             ),
 
             BaseExceptionExpected =>
