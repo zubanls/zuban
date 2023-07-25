@@ -122,6 +122,8 @@ testTypeCheckNamedModule
 testTypeCheckNamedModule2
 testTypeCheckNamedModule3
 testInferOptionalFromDefaultNone
+# non strict optional issues
+testConstructInstanceWith__new__
 
 # In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
@@ -694,6 +696,8 @@ testOverloadsAndNoReturnNarrowWhenBlacklistingSubtype2
 testDontNeedAnnotationForCallable
 testLiteralCheckSubtypingStrictOptional
 testLiteralCheckSubtypingNoStrictOptional
+testNewAndInitNoReturn
+testOverloadedNewAndInitNoReturn
 
 # typing.no_type_check
 testNoTypeCheckDecoratorOnMethod1
@@ -1467,20 +1471,16 @@ testTypeUsingTypeCOverloadedClass
 testTypeUsingTypeCTuple
 testTypeUsingTypeCJoin
 
-# new __new__ failures
-testNewReturnType9
-testConstructInstanceWith__new__
 # __new__
+testNewReturnType9
+testNamedTupleNew
+testOverride__new__AndCallObject
+# Incompatible return type for "__new__" (returns "int", but must return a subtype of "type")
 testNewReturnType3
 testNewReturnType12
-testNewAndInitNoReturn
-testOverloadedNewAndInitNoReturn
-testNamedTupleNew
 # ""__new__" must return a class instance (got "Optional[Y]")"
 testNewReturnType6
 testNewReturnType8
-# function.rs:900
-testOverride__new__AndCallObject
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
