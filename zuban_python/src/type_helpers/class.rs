@@ -1053,11 +1053,18 @@ impl<'db: 'a, 'a> Class<'a> {
                 .__new__
                 .execute_with_details(i_s, args, result_context, on_type_error)
                 .as_db_type(i_s);
-            if Type::new(&result).is_any() {
-                return Inferred::from_type(self.as_db_type(i_s.db));
-            } else {
-                return Inferred::from_type(result);
-            }
+            return Inferred::from_type(match &result {
+                // Only subclasses of the current class are valid, otherwise return the current
+                // class. Diagnostics will care about these cases and raise errors when needed.
+                DbType::Class(c)
+                    if Type::new(&self.as_db_type(i_s.db))
+                        .is_simple_super_type_of(i_s, &Type::new(&result))
+                        .bool() =>
+                {
+                    result
+                }
+                _ => self.as_db_type(i_s.db),
+            });
         }
 
         if let Some(generics) = self.type_check_init_func(

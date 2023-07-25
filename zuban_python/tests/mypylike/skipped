@@ -1473,7 +1473,6 @@ testTypeUsingTypeCTuple
 testTypeUsingTypeCJoin
 
 # __new__
-testNewReturnType9
 testNamedTupleNew
 testOverride__new__AndCallObject
 # Incompatible return type for "__new__" (returns "int", but must return a subtype of "type")
