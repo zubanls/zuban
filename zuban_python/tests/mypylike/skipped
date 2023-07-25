@@ -377,6 +377,9 @@ testForwardBoundFunctionScopeWorks
 testOverrideByBadFunction
 testIncrementalNestedTypeAlias
 
+# object.__new__(cls) -> Self where object.__new__(int) leads to Never
+testOverride__new__AndCallObject
+
 # classmethod not a valid classmethod
 testClassmethodAndNonMethod
 # Self type classmethod access with type vars(no Self)
@@ -504,6 +507,8 @@ testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames
 # "Protocol member HasX.x expected settable variable, got read-only attribute"
 testTypingNamedTupleAttributesAreReadOnly
+# NamedTuple __new__
+testNamedTupleNew
 
 # data class (currently all are passing)
 
@@ -1471,10 +1476,6 @@ testTypeUsingTypeCErrorUnsupportedType
 testTypeUsingTypeCOverloadedClass
 testTypeUsingTypeCTuple
 testTypeUsingTypeCJoin
-
-# __new__
-testNamedTupleNew
-testOverride__new__AndCallObject
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
