@@ -19,7 +19,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
 use crate::matching::{FormatData, Generics, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{lookup_in_namespace, Class, Function, Instance, Module};
+use crate::type_helpers::{lookup_in_namespace, Class, FirstParamKind, Function, Instance, Module};
 use crate::utils::debug_indent;
 
 pub struct Inference<'db: 'file, 'file, 'i_s> {
@@ -1770,15 +1770,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 } else if let Some((function, args)) = self.i_s.current_execution()
                                 {
                                     if specific == Specific::MaybeSelfParam {
-                                        match func.kind(self.i_s) {
-                                            FunctionKind::Function
-                                            | FunctionKind::Property { .. } => {
+                                        match func.first_param_kind(self.i_s) {
+                                            FirstParamKind::Self_ => {
                                                 Inferred::new_saved(self.file, node_index)
                                             }
-                                            FunctionKind::Classmethod => Inferred::from_type(
+                                            FirstParamKind::ClassOfSelf => Inferred::from_type(
                                                 DbType::Type(Rc::new(DbType::Self_)),
                                             ),
-                                            FunctionKind::Staticmethod => todo!(), //Inferred::new_any(),
+                                            FirstParamKind::InStaticmethod => todo!(),
                                         }
                                     } else {
                                         function.infer_param(self.i_s, node_index, args)

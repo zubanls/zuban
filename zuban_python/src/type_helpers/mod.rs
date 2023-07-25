@@ -14,7 +14,7 @@ pub use callable::{format_pretty_callable, Callable};
 pub use class::{Class, MroIterator, TypeOrClass};
 pub use enum_::{lookup_on_enum_class, lookup_on_enum_instance, lookup_on_enum_member_instance};
 pub use function::{
-    is_private, FirstParamProperties, Function, InferrableParam, OverloadedFunction,
+    is_private, FirstParamKind, FirstParamProperties, Function, InferrableParam, OverloadedFunction,
 };
 pub use instance::{execute_super, Instance};
 pub use module::{lookup_in_namespace, Module};

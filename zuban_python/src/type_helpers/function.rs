@@ -388,10 +388,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
     }
 
-    pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
+    pub fn first_param_kind(&self, i_s: &InferenceState<'db, '_>) -> FirstParamKind {
         if self.class.is_some() && self.name() == "__new__" {
-            return FunctionKind::Classmethod;
+            return FirstParamKind::ClassOfSelf;
         }
+        match self.kind(i_s) {
+            FunctionKind::Function | FunctionKind::Property { .. } => FirstParamKind::Self_,
+            FunctionKind::Classmethod => FirstParamKind::ClassOfSelf,
+            FunctionKind::Staticmethod => FirstParamKind::InStaticmethod,
+        }
+    }
+
+    pub fn kind(&self, i_s: &InferenceState<'db, '_>) -> FunctionKind {
         if self.node_ref.point().specific() == Specific::DecoratedFunction {
             // Ensure it's cached
             let inf = self.decorated(i_s);
@@ -2012,4 +2020,10 @@ enum PropertyModifier {
     JustADecorator,
     Setter,
     Deleter,
+}
+
+pub enum FirstParamKind {
+    Self_,
+    ClassOfSelf,
+    InStaticmethod,
 }
