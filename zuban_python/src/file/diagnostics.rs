@@ -265,7 +265,7 @@ impl<'db> Inference<'db, '_, '_> {
             for base2 in c.bases(self.i_s.db).skip(i + 1) {
                 let instance2 = match base2 {
                     TypeOrClass::Class(c) => Instance::new(c, None),
-                    TypeOrClass::Type(t) => todo!(),
+                    TypeOrClass::Type(t) => continue,
                 };
                 instance1.run_on_symbols(|name| {
                     if name.starts_with("__") {

@@ -1472,7 +1472,6 @@ testNewReturnType9
 testConstructInstanceWith__new__
 # __new__
 testNewReturnType3
-testNewReturnType7
 testNewReturnType12
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
