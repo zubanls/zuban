@@ -388,8 +388,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         .save_redirect(i_s, decorator_ref.file, decorator_ref.node_index)
     }
 
+    pub fn is_dunder_new(&self) -> bool {
+        self.class.is_some() && self.name() == "__new__"
+    }
+
     pub fn first_param_kind(&self, i_s: &InferenceState<'db, '_>) -> FirstParamKind {
-        if self.class.is_some() && self.name() == "__new__" {
+        if self.is_dunder_new() {
             return FirstParamKind::ClassOfSelf;
         }
         match self.kind(i_s) {
@@ -906,7 +910,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     let name_ref =
                         NodeRef::new(self.node_ref.file, p.param.name_definition().index());
                     if name_ref.point().maybe_specific() == Some(Specific::MaybeSelfParam) {
-                        if self.class.is_some() && self.name() == "__new__" {
+                        if self.is_dunder_new() {
                             if has_self_type_var_usage {
                                 DbType::Type(Rc::new(DbType::Self_))
                             } else {

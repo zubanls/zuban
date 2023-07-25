@@ -1471,7 +1471,6 @@ testTypeUsingTypeCJoin
 testNewReturnType9
 testConstructInstanceWith__new__
 # __new__
-testConstructInstanceWithDynamicallyTyped__new__
 testNewReturnType3
 testNewReturnType7
 testNewReturnType12

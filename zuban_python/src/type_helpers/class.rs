@@ -1054,7 +1054,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 .__new__
                 .execute_with_details(i_s, args, result_context, on_type_error)
                 .as_db_type(i_s);
-            if !Type::new(&result).is_any() {
+            if Type::new(&result).is_any() {
+                return Inferred::from_type(self.as_db_type(i_s.db));
+            } else {
                 return Inferred::from_type(replace_class_type_vars(i_s.db, &result, self, self));
             }
         }
