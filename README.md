@@ -35,3 +35,8 @@ with debug enabled:
 - 2023-03-22: 2106 / 3866 (0.30s ->  7262 tests/s d5b94d4a3dcb75fbdb2abb7c6feb41dd7bd287ec)
 - 2023-04-23: 2328 / 4006 (0.31s ->  7510 tests/s 515d90a4a5c12af68cd885db0bf2b79afe88f54d)
 - 2023-07-23: 3411 / 5752 (0.39s ->  8746 tests/s 52f55a6477c9ecb71a76323cb9f8937e8f0c2433)
+
+### Unsound?
+
+- Chosing `__new__` or `__init__` via heuristic
+- Initializing casting `Type[Class]` to `Type[object]` and then `Type[object]()` is ok?
