@@ -940,6 +940,7 @@ testVariadicAliasEmptyArg
 testVariadicAliasVariadicTupleArg
 testVariadicAliasVariadicTupleArgGeneric
 testVariadicAliasVariadicTupleArgSplit
+testTypeVarTuplePep646ArrayExampleInfer
 # typing_extensions.Unpack
 testRuntimeProtoTwoBases
 testUnpackKwargsReveal
@@ -1468,19 +1469,20 @@ testTypeUsingTypeCJoin
 
 # new __new__ failures
 testNewReturnType9
+testConstructInstanceWith__new__
 # __new__
 testConstructInstanceWithDynamicallyTyped__new__
 testNewReturnType3
-testNewReturnType6
 testNewReturnType7
-testNewReturnType8
 testNewReturnType12
 testNewAndInitNoReturn
 testOverloadedNewAndInitNoReturn
 testNamedTupleNew
+# ""__new__" must return a class instance (got "Optional[Y]")"
+testNewReturnType6
+testNewReturnType8
 # function.rs:900
 testOverride__new__AndCallObject
-testGenericClassWith__new__
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature

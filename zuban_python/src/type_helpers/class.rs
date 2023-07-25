@@ -9,7 +9,7 @@ use parsa_python_ast::{
 use super::enum_::execute_functional_enum;
 use super::function::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue};
-use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
+use crate::arguments::Arguments;
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
@@ -1020,10 +1020,11 @@ impl<'db: 'a, 'a> Class<'a> {
         let is_new = !matches!(__new__, LookupResult::None) && new_mro_index < init_mro_index;
         NewOrInitConstructor {
             is_new,
-            __new__,
+            __new__: __new__
+                .into_inferred()
+                .bind_new_descriptors(&i_s, self, new_class),
             __init__,
             init_class,
-            new_class,
         }
     }
 
@@ -1049,15 +1050,9 @@ impl<'db: 'a, 'a> Class<'a> {
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {
-            let cls_t = Inferred::from_type(self.as_type(i_s).into_db_type());
-            let class_arg = KnownArguments::new_bound(&cls_t, args.as_node_ref());
-            let args = CombinedArguments::new(&class_arg, args);
-            // TODO is this clone really necessary?
             let result = constructor
                 .__new__
-                .clone()
-                .into_inferred()
-                .execute_with_details(i_s, &args, result_context, on_type_error)
+                .execute_with_details(i_s, args, result_context, on_type_error)
                 .as_db_type(i_s);
             if !Type::new(&result).is_any() {
                 return Inferred::from_type(replace_class_type_vars(i_s.db, &result, self, self));
@@ -1319,41 +1314,36 @@ fn add_protocol_mismatch(
 
 pub struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
-    __new__: LookupResult,
+    __new__: Inferred,
     __init__: LookupResult,
-    new_class: Option<Class<'a>>,
     init_class: Option<Class<'a>>,
     is_new: bool,
 }
 
 impl NewOrInitConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<Rc<CallableContent>> {
-        let func = match self.is_new {
-            true => self.__new__,
-            false => self.__init__,
-        };
-        let class = match self.is_new {
-            true => self.new_class,
-            false => self.init_class,
-        };
-        let inf = func.into_inferred();
-        let callable = if let Some(c) = class {
-            let i_s = &i_s.with_class_context(&c);
-            inf.as_type(i_s).maybe_callable(i_s)
+        if self.is_new {
+            self.__new__.as_type(i_s).maybe_callable(i_s)
         } else {
-            inf.as_type(i_s).maybe_callable(i_s)
-        };
-        callable.and_then(|c| {
-            // Since __init__ does not have a return, We need to check the params
-            // of the __init__ functions and the class as a return type separately.
-            if c.type_vars.is_some() {
-                todo!()
-            }
-            let mut c = c.remove_first_param();
-            if let Some(c) = &mut c {
-                c.result_type = cls.as_db_type(i_s.db);
-            }
-            c.map(Rc::new)
-        })
+            let inf = self.__init__.into_inferred();
+            let callable = if let Some(c) = self.init_class {
+                let i_s = &i_s.with_class_context(&c);
+                inf.as_type(i_s).maybe_callable(i_s)
+            } else {
+                inf.as_type(i_s).maybe_callable(i_s)
+            };
+            callable.and_then(|c| {
+                // Since __init__ does not have a return, We need to check the params
+                // of the __init__ functions and the class as a return type separately.
+                if c.type_vars.is_some() {
+                    todo!()
+                }
+                let mut c = c.remove_first_param();
+                if let Some(c) = &mut c {
+                    c.result_type = cls.as_db_type(i_s.db);
+                }
+                c.map(Rc::new)
+            })
+        }
     }
 }

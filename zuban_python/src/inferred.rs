@@ -6,8 +6,8 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
     FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, Point, PointLink, PointType,
-    Specific, TypeVarLike, TypeVarLikes,
+    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, OverloadDefinition, Point,
+    PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -884,21 +884,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                                 FunctionKind::Property { .. } => unreachable!(),
                                 FunctionKind::Classmethod => {
-                                    return Some(Inferred::from_type(DbType::FunctionOverload(
-                                        Rc::new(FunctionOverload::new(
-                                            o.iter_functions()
-                                                .map(|callable| {
-                                                    infer_class_method(
-                                                        i_s,
-                                                        *class,
-                                                        attribute_class,
-                                                        callable,
-                                                    )
-                                                    .unwrap_or_else(|| todo!())
-                                                })
-                                                .collect(),
-                                        )),
-                                    )))
+                                    return Some(infer_overloaded_class_method(
+                                        i_s,
+                                        *class,
+                                        attribute_class,
+                                        o,
+                                    ))
                                 }
                                 FunctionKind::Staticmethod => (),
                             },
@@ -969,6 +960,66 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Unknown => (),
         }
         Some(self)
+    }
+
+    pub fn bind_new_descriptors(
+        self,
+        i_s: &InferenceState<'db, '_>,
+        class: &Class,
+        attribute_class: Option<Class>,
+    ) -> Self {
+        // This method exists for __new__
+        let attribute_class = attribute_class.unwrap_or(*class);
+        match &self.state {
+            InferredState::Saved(definition) => {
+                let node_ref = NodeRef::from_link(i_s.db, *definition);
+                let point = node_ref.point();
+                match point.type_() {
+                    PointType::Specific => match point.specific() {
+                        Specific::Function => {
+                            let func = Function::new(node_ref, Some(attribute_class));
+                            let result = infer_class_method(
+                                i_s,
+                                *class,
+                                attribute_class,
+                                &func.as_callable(i_s, FirstParamProperties::None),
+                            );
+                            if let Some(result) = result {
+                                return callable_into_inferred(result);
+                            } else {
+                                todo!()
+                            }
+                        }
+                        _ => (),
+                    },
+                    PointType::Complex => {
+                        let file = i_s.db.loaded_python_file(definition.file);
+                        match file.complex_points.get(point.complex_index()) {
+                            ComplexPoint::FunctionOverload(o) => {
+                                return infer_overloaded_class_method(
+                                    i_s,
+                                    *class,
+                                    attribute_class,
+                                    o,
+                                )
+                            }
+                            ComplexPoint::TypeInstance(t) => match t {
+                                DbType::Callable(c) => todo!(),
+                                _ => (),
+                            },
+                            _ => (),
+                        }
+                    }
+                    _ => (),
+                }
+            }
+            InferredState::UnsavedComplex(complex) => (),
+            InferredState::UnsavedSpecific(specific) => todo!(),
+            InferredState::UnsavedFileReference(file_index) => todo!(),
+            InferredState::BoundMethod { .. } => todo!(),
+            InferredState::Unknown => (),
+        }
+        self
     }
 
     pub fn debug_info(&self, i_s: &InferenceState<'db, '_>) -> String {
@@ -1522,6 +1573,21 @@ pub enum UnionValue<T, I: Iterator<Item = T>> {
     Single(T),
     Multiple(I),
     Any,
+}
+
+fn infer_overloaded_class_method(
+    i_s: &InferenceState,
+    class: Class,
+    attribute_class: Class,
+    o: &OverloadDefinition,
+) -> Inferred {
+    Inferred::from_type(DbType::FunctionOverload(Rc::new(FunctionOverload::new(
+        o.iter_functions()
+            .map(|callable| {
+                infer_class_method(i_s, class, attribute_class, callable).unwrap_or_else(|| todo!())
+            })
+            .collect(),
+    ))))
 }
 
 fn infer_class_method(
