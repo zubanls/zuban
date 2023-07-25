@@ -28,9 +28,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
-    calculate_class_init_type_vars_and_return, replace_class_type_vars, FormatData,
-    FunctionOrCallable, Generics, LookupResult, Match, Matcher, MismatchReason, OnTypeError,
-    ResultContext, Type,
+    calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
+    LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -1057,7 +1056,7 @@ impl<'db: 'a, 'a> Class<'a> {
             if Type::new(&result).is_any() {
                 return Inferred::from_type(self.as_db_type(i_s.db));
             } else {
-                return Inferred::from_type(replace_class_type_vars(i_s.db, &result, self, self));
+                return Inferred::from_type(result);
             }
         }
 
