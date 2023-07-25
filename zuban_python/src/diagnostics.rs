@@ -116,6 +116,7 @@ pub(crate) enum IssueType {
     IncompatibleAssignmentInSubclass { base_class: Box<str>, got: Box<str>, expected: Box<str> },
     SignatureIncompatibleWithSupertype { base_class: Box<str>, name: Box<str>, notes: Box<[Box<str>]> },
     MultipleInheritanceIncompatibility { name: Box<str>, class1: Box<str>, class2: Box<str> },
+    NewMustReturnAnInstance { got: Box<str> },
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
@@ -568,6 +569,9 @@ impl<'db> Diagnostic<'db> {
             MultipleInheritanceIncompatibility { name, class1, class2 } => format!(
                 "Definition of \"{name}\" in base class \"{class1}\" is incompatible \
                  with definition in base class \"{class2}\""
+            ),
+            NewMustReturnAnInstance { got } => format!(
+                "\"__new__\" must return a class instance (got \"{got}\")"
             ),
 
             BaseExceptionExpected =>

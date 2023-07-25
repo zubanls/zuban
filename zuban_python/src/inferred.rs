@@ -1590,7 +1590,7 @@ fn infer_overloaded_class_method(
     ))))
 }
 
-fn infer_class_method(
+pub fn infer_class_method(
     i_s: &InferenceState,
     mut class: Class,
     func_class: Class,

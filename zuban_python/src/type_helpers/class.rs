@@ -1133,6 +1133,13 @@ impl<'db: 'a, 'a> Class<'a> {
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
     }
+
+    pub fn is_meta_class(&self, db: &Database) -> bool {
+        self.use_cached_class_infos(db)
+            .mro
+            .iter()
+            .any(|m| matches!(m.type_, DbType::Type(_)))
+    }
 }
 
 impl fmt::Debug for Class<'_> {

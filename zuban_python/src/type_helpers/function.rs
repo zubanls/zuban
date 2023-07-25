@@ -77,6 +77,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         self.node().return_annotation()
     }
 
+    pub fn expect_return_annotation_node_ref(&self) -> NodeRef {
+        NodeRef::new(
+            self.node_ref.file,
+            self.return_annotation().unwrap().expression().index(),
+        )
+    }
+
     pub fn is_dynamic(&self) -> bool {
         self.return_annotation().is_none()
             && !self
@@ -284,10 +291,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if !unbound_type_vars.is_empty() {
             if let DbType::TypeVar(t) = self.result_type(i_s).as_ref() {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
-                    let node_ref = NodeRef::new(
-                        self.node_ref.file,
-                        func_node.return_annotation().unwrap().expression().index(),
-                    );
+                    let node_ref = self.expect_return_annotation_node_ref();
                     node_ref.add_issue(i_s, IssueType::TypeVarInReturnButNotArgument);
                     if let Some(bound) = t.type_var.bound.as_ref() {
                         node_ref.add_issue(

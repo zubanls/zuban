@@ -11,11 +11,13 @@ use crate::diagnostics::IssueType;
 use crate::file::Inference;
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
+use crate::inferred::infer_class_method;
 use crate::matching::params::has_overlapping_params;
 use crate::matching::{matches_params, LookupResult, Match, Matcher, ResultContext, Type};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
-    format_pretty_callable, is_private, Class, Function, Instance, TypeOrClass,
+    format_pretty_callable, is_private, Class, FirstParamProperties, Function, Instance,
+    TypeOrClass,
 };
 
 impl<'db> Inference<'db, '_, '_> {
@@ -463,7 +465,6 @@ impl<'db> Inference<'db, '_, '_> {
             self.calc_untyped_block_diagnostics(block)
         }
         if self.i_s.db.python_state.project.disallow_untyped_defs {
-            dbg!(function);
             match (
                 function.is_missing_param_annotations(self.i_s),
                 function.return_annotation().is_none(),
@@ -478,6 +479,32 @@ impl<'db> Inference<'db, '_, '_> {
                     .node_ref
                     .add_issue(self.i_s, IssueType::FunctionMissingReturnAnnotation),
                 (false, false) => (),
+            }
+        }
+
+        if function.is_dunder_new() {
+            let i_s = self.i_s;
+            let class = class.unwrap();
+            let Some(callable) = infer_class_method(
+                i_s,
+                class,
+                class,
+                &function.as_callable(i_s, FirstParamProperties::None),
+            ) else {
+                todo!()
+            };
+            if class.is_meta_class(self.i_s.db) {
+                todo!()
+            } else {
+                match &callable.result_type {
+                    DbType::Class(_) | DbType::Any => (),
+                    t => function.expect_return_annotation_node_ref().add_issue(
+                        self.i_s,
+                        IssueType::NewMustReturnAnInstance {
+                            got: t.format_short(self.i_s.db),
+                        },
+                    ),
+                }
             }
         }
     }

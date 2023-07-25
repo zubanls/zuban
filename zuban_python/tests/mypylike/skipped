@@ -124,6 +124,7 @@ testTypeCheckNamedModule3
 testInferOptionalFromDefaultNone
 # non strict optional issues
 testConstructInstanceWith__new__
+testNewReturnType6
 
 # In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
@@ -1478,9 +1479,9 @@ testOverride__new__AndCallObject
 # Incompatible return type for "__new__" (returns "int", but must return a subtype of "type")
 testNewReturnType3
 testNewReturnType12
-# ""__new__" must return a class instance (got "Optional[Y]")"
-testNewReturnType6
-testNewReturnType8
+# type
+testNewReturnType10
+testNewReturnType11
 
 # __init_subclass__
 testOverride__init_subclass__WithDifferentSignature
