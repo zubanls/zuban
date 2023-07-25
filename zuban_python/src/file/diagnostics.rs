@@ -497,33 +497,30 @@ impl<'db> Inference<'db, '_, '_> {
             ) else {
                 todo!()
             };
-            if class.is_meta_class(i_s.db) {
-                todo!()
-            } else {
-                match &callable.result_type {
-                    DbType::Class(_) => {
-                        let t = Type::new(&callable.result_type);
-                        if !Type::new(&class.as_db_type(i_s.db))
-                            .is_simple_super_type_of(i_s, &t)
-                            .bool()
-                        {
-                            function.expect_return_annotation_node_ref().add_issue(
-                                i_s,
-                                IssueType::NewIncompatibleReturnType {
-                                    returns: t.format_short(i_s.db),
-                                    must_return: class.format_short(i_s.db),
-                                },
-                            )
-                        }
+            match &callable.result_type {
+                DbType::Class(_) => {
+                    let t = Type::new(&callable.result_type);
+                    if !Type::new(&class.as_db_type(i_s.db))
+                        .is_simple_super_type_of(i_s, &t)
+                        .bool()
+                    {
+                        function.expect_return_annotation_node_ref().add_issue(
+                            i_s,
+                            IssueType::NewIncompatibleReturnType {
+                                returns: t.format_short(i_s.db),
+                                must_return: class.format_short(i_s.db),
+                            },
+                        )
                     }
-                    DbType::Any => (),
-                    t => function.expect_return_annotation_node_ref().add_issue(
-                        i_s,
-                        IssueType::NewMustReturnAnInstance {
-                            got: t.format_short(i_s.db),
-                        },
-                    ),
                 }
+                DbType::Type(_) => (),
+                DbType::Any => (),
+                t => function.expect_return_annotation_node_ref().add_issue(
+                    i_s,
+                    IssueType::NewMustReturnAnInstance {
+                        got: t.format_short(i_s.db),
+                    },
+                ),
             }
         }
     }
