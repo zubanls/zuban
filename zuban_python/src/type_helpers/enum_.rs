@@ -236,8 +236,10 @@ fn gather_functional_enum_members(
                     node_ref.file.file_index(),
                     kv.key(),
                 ) else {
-                    debug!("TODO enum dict key wrong");
-                    continue
+                    node_ref.add_issue(i_s, IssueType::EnumWithDictRequiresStringLiterals {
+                        name: class.name().into(),
+                    });
+                    return None
                 };
                 members.push(EnumMemberDefinition::new(name.into(), None));
             }

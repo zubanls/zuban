@@ -514,6 +514,7 @@ testTypingNamedTupleAttributesAreReadOnly
 testBadEnumLoading
 testLiteralUsingEnumAttributeNamesInLiteralContexts
 testRefreshFuncBasedEnum
+testFunctionalEnumErrors
 # Enum value should be inferred in a literal context
 testEnumNameAndValue
 testEnumValueExtended
@@ -536,8 +537,6 @@ testEnumIndex
 testEnumIndexError
 testEnumIndexIsNotAnAlias
 testFunctionalEnumProtocols
-# Enum() with dict literal requires string literals
-testFunctionalEnumErrors
 # class.rs:1022
 testEnumKeywordsArgs
 # Enum defines value.

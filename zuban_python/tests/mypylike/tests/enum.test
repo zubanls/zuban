@@ -28,3 +28,9 @@ reveal_type(E.Bar)  # N: Revealed type is "Literal[__main__.E.Bar]"
 from enum import Enum
 x = "Foo"
 E = Enum(x, 'a b') # E: Enum() expects a string literal as the first argument
+
+[case functional_enum_dict_literal_errors]
+from enum import Enum
+x = "asdf"
+E = Enum("E", {x: 1}) # E: Enum() with dict literal requires string literals
+

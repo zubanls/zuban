@@ -158,6 +158,7 @@ pub(crate) enum IssueType {
     EnumInvalidSecondArgument,
     EnumNeedsAtLeastOneItem { name: Box<str> },
     EnumWithTupleOrListExpectsStringPairs { name: Box<str> },
+    EnumWithDictRequiresStringLiterals { name: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -412,6 +413,9 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumWithTupleOrListExpectsStringPairs { name } => format!(
                 "{name}() with tuple or list expects strings or (name, value) pairs"
+            ),
+            EnumWithDictRequiresStringLiterals { name } => format!(
+                "{name}() with dict literal requires string literals"
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
