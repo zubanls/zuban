@@ -23,3 +23,8 @@ E = Enum("E", "Fo" "o Bar")
 
 reveal_type(E.Foo)  # N: Revealed type is "Literal[__main__.E.Foo]"
 reveal_type(E.Bar)  # N: Revealed type is "Literal[__main__.E.Bar]"
+
+[case enum_str_passed]
+from enum import Enum
+x = "Foo"
+E = Enum(x, 'a b') # E: Enum() expects a string literal as the first argument
