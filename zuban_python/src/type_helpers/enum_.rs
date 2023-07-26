@@ -1,8 +1,8 @@
 use std::rc::Rc;
 
 use parsa_python_ast::{
-    AtomContent, CodeIndex, DictElement, ExpressionContent, ExpressionPart, StarLikeExpression,
-    StarLikeExpressionIterator,
+    AtomContent, CodeIndex, DictElement, Expression, ExpressionContent, ExpressionPart,
+    StarLikeExpression, StarLikeExpressionIterator,
 };
 
 use crate::{
@@ -109,33 +109,45 @@ pub fn execute_functional_enum(
     args: &dyn Arguments,
     result_context: &mut ResultContext,
 ) -> Option<Inferred> {
-    let mut iterator = args.iter();
-    let Some(name_arg) = iterator.next() else {
-        todo!()
-    };
-    let Some(fields_arg) = iterator.next() else {
-        args.as_node_ref().add_issue(i_s, IssueType::TooFewArguments(format!(" for {}", class.name()).into()));
-        return None
-    };
-    if iterator.next().is_some() {
-        debug!("TODO enum issue too many args?");
+    let mut name_infos = None;
+    let mut fields_infos = None;
+    for arg in args.iter() {
+        match arg.kind {
+            ArgumentKind::Positional { node_ref, .. } => {
+                let expr = node_ref.as_named_expression().expression();
+                if name_infos.is_none() {
+                    name_infos = Some((node_ref, expr));
+                } else if fields_infos.is_none() {
+                    fields_infos = Some((node_ref, expr));
+                }
+                // All the other arguments are not relevant here and were checked by checking
+                // EnumMeta.__call__.
+            }
+            ArgumentKind::Keyword {
+                key,
+                node_ref,
+                expression,
+                ..
+            } => match key {
+                "value" => name_infos = Some((node_ref, expression)),
+                "names" => fields_infos = Some((node_ref, expression)),
+                // Keyword names were checked by checking EnumMeta.__call__
+                _ => (),
+            },
+            _ => todo!(),
+        }
     }
+    let name_infos = name_infos.unwrap();
+    let fields_infos = fields_infos.unwrap();
 
-    let ArgumentKind::Positional { node_ref: name_node_ref, .. } = name_arg.kind else {
-        todo!()
-    };
-    let Some(name) = StringSlice::from_string_in_expression(name_node_ref.file_index(), name_node_ref.as_named_expression().expression()) else {
-        name_arg.as_node_ref().add_issue(i_s, IssueType::EnumFirstArgMustBeString);
+    let Some(name) = StringSlice::from_string_in_expression(name_infos.0.file_index(), name_infos.1) else {
+        name_infos.0.add_issue(i_s, IssueType::EnumFirstArgMustBeString);
         return None
     };
 
-    let ArgumentKind::Positional { node_ref: fields_node_ref, .. } = fields_arg.kind else {
-        debug!("TODO kw params for enum");
-        return None
-    };
-    let members = gather_functional_enum_members(i_s, class, fields_node_ref)?;
+    let members = gather_functional_enum_members(i_s, class, fields_infos.0, fields_infos.1)?;
     if members.len() == 0 {
-        fields_node_ref.add_issue(
+        fields_infos.0.add_issue(
             i_s,
             IssueType::EnumNeedsAtLeastOneItem {
                 name: class.name().into(),
@@ -158,8 +170,9 @@ fn gather_functional_enum_members(
     i_s: &InferenceState,
     class: Class,
     node_ref: NodeRef,
+    expression: Expression,
 ) -> Option<Box<[EnumMemberDefinition]>> {
-    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
+    let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expression.unpack() else {
         debug!("TODO enum creation param missing");
         return Default::default()
     };

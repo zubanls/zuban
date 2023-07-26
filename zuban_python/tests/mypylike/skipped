@@ -535,8 +535,6 @@ testEnumIndex
 testEnumIndexError
 testEnumIndexIsNotAnAlias
 testFunctionalEnumProtocols
-# class.rs:1022
-testEnumKeywordsArgs
 # Enum defines value.
 testEnumFinalValuesCannotRedefineValueProp
 # class attributes
