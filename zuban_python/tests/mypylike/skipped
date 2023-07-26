@@ -2925,6 +2925,9 @@ testClassVarWithNestedGeneric
 # ""foo" is considered instance variable, to make it class variable use ClassVar[...]"
 testSuggestClassVarOnTooFewArgumentsMethod
 
+# My own hard tests
+namedtuple__new__
+
 # Won't support for now: "t" is a type variable and only valid in type context
 testExpressionRefersToTypeVariable
 

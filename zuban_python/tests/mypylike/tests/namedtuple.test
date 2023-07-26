@@ -1,0 +1,11 @@
+[case namedtuple__new__]
+
+from typing import NamedTuple
+class A(NamedTuple):
+    x: int
+
+reveal_type(A.__new__)  # N: Revealed type is "?"
+reveal_type(A(1).__new__)  # N: Revealed type is "?"
+
+reveal_type(A.__new__(A, 1))  # N: Revealed type is "A"
+reveal_type(A(1).__new__(A, 1))  # N: Revealed type is "A"
