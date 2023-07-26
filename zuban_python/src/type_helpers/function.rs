@@ -784,7 +784,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
         debug_assert!(!functions.is_empty());
         (!should_error_out).then(|| OverloadDefinition {
-            functions: Rc::new(FunctionOverload::new(functions.into_boxed_slice())),
+            functions: FunctionOverload::new(functions.into_boxed_slice()),
             implementation,
         })
     }
@@ -1814,7 +1814,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         remove_first_param: Option<&Instance>,
     ) -> DbType {
         if let Some(instance) = remove_first_param {
-            DbType::FunctionOverload(Rc::new(FunctionOverload::new(
+            DbType::FunctionOverload(FunctionOverload::new(
                 self.overload
                     .iter_functions()
                     .map(|callable| {
@@ -1826,7 +1826,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         )
                     })
                     .collect(),
-            )))
+            ))
         } else {
             DbType::FunctionOverload(self.overload.clone())
         }
@@ -1864,7 +1864,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         self.execute_internal(i_s, args, on_type_error, None, result_context)
     }
 
-    fn name(&self, db: &'a Database) -> &'a str {
+    pub fn name(&self, db: &'a Database) -> &'a str {
         self.overload
             .iter_functions()
             .next()

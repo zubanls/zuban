@@ -652,7 +652,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     &func_class,
                                     first_type.as_ref(),
                                 ) {
-                                    Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(t)))
+                                    Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(
+                                        DbType::Callable(Rc::new(t)),
+                                    )))
                                 } else if let Some(from) = from {
                                     let t = IssueType::InvalidSelfArgument {
                                         argument_type: instance.class.format_short(i_s.db),
@@ -706,12 +708,52 @@ impl<'db: 'slf, 'slf> Inferred {
                                             }
                                         })
                                         .collect();
-                                    if results.len() == 1 {
-                                        return Some(Inferred::from_type(
-                                            results.into_iter().next().unwrap(),
-                                        ));
-                                    } else if results.len() != o.iter_functions().count() {
-                                        todo!("{}:{}", results.len(), o.iter_functions().count())
+                                    match results.len() {
+                                        0 => {
+                                            if let Some(from) = from {
+                                                let overload = OverloadedFunction::new(
+                                                    &o.functions,
+                                                    Some(func_class),
+                                                );
+                                                let t =
+                                                    IssueType::InvalidClassMethodFirstArgument {
+                                                        argument_type: instance
+                                                            .class
+                                                            .as_type(i_s)
+                                                            .format_short(i_s.db),
+                                                        function_name: Box::from(
+                                                            overload.name(i_s.db),
+                                                        ),
+                                                        // Mypy just picks the first function.
+                                                        callable: o
+                                                            .functions
+                                                            .iter_functions()
+                                                            .next()
+                                                            .unwrap()
+                                                            .format(&FormatData::new_short(i_s.db))
+                                                            .into(),
+                                                    };
+                                                from.add_issue(i_s, t);
+                                                return Some(Self::new_any());
+                                            } else {
+                                                todo!()
+                                            }
+                                        }
+                                        1 => {
+                                            return Some(Inferred::from_type(DbType::Callable(
+                                                Rc::new(results.into_iter().next().unwrap()),
+                                            )));
+                                        }
+                                        // That's just everything, so we can just return it as a
+                                        // bound method instance.
+                                        _ if results.len() == o.iter_functions().count() => (),
+                                        _ => {
+                                            return Some(Inferred::from_type(
+                                                DbType::FunctionOverload(FunctionOverload::new(
+                                                    results.into_iter().collect(),
+                                                )),
+                                            ));
+                                        }
                                     }
                                 }
                                 return Some(Self::new_bound_method(
@@ -806,7 +848,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                             &func_class,
                                             f,
                                         )
-                                        .map(Inferred::from_type);
+                                        .map(|c| {
+                                            Inferred::from_type(DbType::Callable(Rc::new(c)))
+                                        });
                                     } else {
                                         todo!()
                                     }
@@ -1590,13 +1634,13 @@ fn infer_overloaded_class_method(
     attribute_class: Class,
     o: &OverloadDefinition,
 ) -> Inferred {
-    Inferred::from_type(DbType::FunctionOverload(Rc::new(FunctionOverload::new(
+    Inferred::from_type(DbType::FunctionOverload(FunctionOverload::new(
         o.iter_functions()
             .map(|callable| {
                 infer_class_method(i_s, class, attribute_class, callable).unwrap_or_else(|| todo!())
             })
             .collect(),
-    ))))
+    )))
 }
 
 pub fn infer_class_method(

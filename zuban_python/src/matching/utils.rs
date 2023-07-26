@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use crate::database::{
     CallableContent, Database, DbType, GenericItem, TypeVarLikeUsage, TypeVarLikes,
 };
@@ -60,7 +58,7 @@ pub fn create_signature_without_self_for_callable(
     instance: &Instance,
     func_class: &Class,
     self_type: &DbType,
-) -> Option<DbType> {
+) -> Option<CallableContent> {
     let matcher = Matcher::new_callable_matcher(callable);
     create_signature_without_self(
         i_s,
@@ -84,7 +82,7 @@ pub fn create_signature_without_self(
     instance: &Instance,
     func_class: &Class,
     self_type: &DbType,
-) -> Option<DbType> {
+) -> Option<CallableContent> {
     let expected = replace_class_type_vars(i_s.db, self_type, func_class, func_class);
     if !Type::owned(expected)
         .is_super_type_of(
@@ -129,5 +127,5 @@ pub fn create_signature_without_self(
             callable.type_vars = Some(TypeVarLikes::from_vec(old_type_vars));
         }
     }
-    Some(DbType::Callable(Rc::new(callable)))
+    Some(callable)
 }

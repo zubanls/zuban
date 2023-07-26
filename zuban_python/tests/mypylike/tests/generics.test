@@ -773,3 +773,35 @@ def x(x: X[Sequence[T]], y: X[Sequence[T]]) -> T: ...
 x_s_c: X[Sequence[C]]
 x_s_d: X[Sequence[D]]
 x(x_s_c, x_s_d)  # E: Argument 2 to "x" has incompatible type "X[Sequence[D]]"; expected "X[Sequence[C]]"
+
+[case self_generic_filter]
+from typing import Generic, TypeVar, overload, Any
+
+T = TypeVar('T')
+
+class X(Generic[T]):
+    @overload
+    def foo(self: X[int]) -> T: ...
+    @overload
+    def foo(self: X[int], second: int) -> T: ...
+    @overload
+    def foo(self: X[float]) -> T: ...
+    @overload
+    def foo(self: X[str]) -> T: ...
+    def foo(self: X[Any], second: int = 1) -> T: ...
+
+x_int: X[int]
+x_str: X[str]
+x_float: X[float]
+x_bytes: X[bytes]
+x_any: X[Any]
+
+reveal_type(x_int.foo())  # N: Revealed type is "int"
+reveal_type(x_str.foo())  # N: Revealed type is "str"
+reveal_type(x_float.foo())  # N: Revealed type is "float"
+reveal_type(x_any.foo())  # N: Revealed type is "Any"
+
+reveal_type(x_int.foo(1))  # N: Revealed type is "int"
+x_str.foo(1)  # E: Too many arguments for "foo" of "X"
+
+x_bytes.foo()  # E: Invalid self argument "Type[X[bytes]]" to class attribute function "foo" with type "Callable[[X[int]], T]"

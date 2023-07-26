@@ -748,9 +748,9 @@ impl std::cmp::PartialEq for Namespace {
 pub struct FunctionOverload(Box<[CallableContent]>);
 
 impl FunctionOverload {
-    pub fn new(functions: Box<[CallableContent]>) -> Self {
+    pub fn new(functions: Box<[CallableContent]>) -> Rc<Self> {
         debug_assert!(!functions.is_empty());
-        Self(functions)
+        Rc::new(Self(functions))
     }
 
     pub fn kind(&self) -> FunctionKind {
