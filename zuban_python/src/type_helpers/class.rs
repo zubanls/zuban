@@ -1,4 +1,4 @@
-use std::cell::OnceCell;
+use std::cell::{Cell, OnceCell};
 use std::fmt;
 use std::rc::Rc;
 
@@ -736,7 +736,6 @@ impl<'db: 'a, 'a> Class<'a> {
                 let TypeOrClass::Class(class) = c else {
                     unreachable!()
                 };
-                dbg!(class.node_ref.file.file_index());
                 return class.node_ref.file.file_index()
                     != i_s.db.python_state.enum_file().file_index();
             }
@@ -1057,19 +1056,43 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
+        let i_s = &i_s.with_class_context(self);
+        let had_type_error = Cell::new(false);
+        let d = |_: &FunctionOrCallable, _: &Database, _: Option<&Class>| {
+            had_type_error.set(true);
+            Some(format!("\"{}\"", self.name()))
+        };
+        let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
+
         if self.use_cached_class_infos(i_s.db).class_type == ClassType::Enum
             // For whatever reason, auto is special, because
             && self.node_ref.as_link() != i_s.db.python_state.enum_auto_link()
         {
+            let metaclass = Instance::new(
+                Class::from_generic_class_components(
+                    i_s.db,
+                    i_s.db.python_state.enum_meta_link(),
+                    &ClassGenerics::None,
+                ),
+                None,
+            );
+            let call = metaclass.lookup(i_s, None, "__call__").into_inferred();
+            let DbType::FunctionOverload(o) = call.as_db_type(i_s) else {
+                todo!()
+            };
+            // Enum currently has multiple signatures that are not all relevant. Just pick the one
+            // that's relevant, because otherwise we would have very very ugly error messages with
+            // overload outputs.
+            let significant_call =
+                Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
+            let result = significant_call.execute(i_s, args, on_type_error, result_context);
+            if had_type_error.get() {
+                return Inferred::new_any();
+            }
             return execute_functional_enum(i_s, *self, args, result_context)
                 .unwrap_or_else(Inferred::new_any);
         }
 
-        let i_s = &i_s.with_class_context(self);
-        let d = |_: &FunctionOrCallable, _: &Database, _: Option<&Class>| {
-            Some(format!("\"{}\"", self.name()))
-        };
-        let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {
             let result = constructor
