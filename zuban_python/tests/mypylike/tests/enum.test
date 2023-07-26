@@ -39,3 +39,9 @@ from enum import Enum
 c = {"x": 1}
 E = Enum("E", {**c}) # E: ?
 
+[case functional_enum_with_list_input]
+from enum import Enum
+def foo() -> list[str]: return []
+c: list[str]
+E = Enum("E", c) # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
+E = Enum("E", foo()) # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members

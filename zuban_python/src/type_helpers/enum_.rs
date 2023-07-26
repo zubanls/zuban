@@ -11,7 +11,6 @@ use crate::{
         Database, DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind,
         PointLink, StringSlice,
     },
-    debug,
     diagnostics::IssueType,
     file::File,
     inference_state::InferenceState,
@@ -181,8 +180,8 @@ fn gather_functional_enum_members(
     expression: Expression,
 ) -> Option<Box<[EnumMemberDefinition]>> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = expression.unpack() else {
-        debug!("TODO enum creation param missing");
-        return Default::default()
+        node_ref.add_issue(i_s, IssueType::EnumInvalidSecondArgument);
+        return None
     };
 
     let mut members = vec![];
