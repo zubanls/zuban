@@ -133,7 +133,7 @@ pub fn execute_functional_enum(
         debug!("TODO kw params for enum");
         return None
     };
-    let members = gather_functional_enum_members(i_s, fields_node_ref)?;
+    let members = gather_functional_enum_members(i_s, class, fields_node_ref)?;
     if members.len() == 0 {
         fields_node_ref.add_issue(
             i_s,
@@ -156,6 +156,7 @@ pub fn execute_functional_enum(
 
 fn gather_functional_enum_members(
     i_s: &InferenceState,
+    class: Class,
     node_ref: NodeRef,
 ) -> Option<Box<[EnumMemberDefinition]>> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
@@ -165,20 +166,23 @@ fn gather_functional_enum_members(
 
     let mut members = vec![];
 
-    let get_tuple_like = |mut iterator: StarLikeExpressionIterator| {
+    let get_tuple_like = |mut iterator: StarLikeExpressionIterator| -> Option<StringSlice> {
         let Some(first) = iterator.next() else {
             todo!()
         };
         let Some(second) = iterator.next() else {
             todo!()
         };
+        if iterator.next().is_some() {
+            return None;
+        }
         let StarLikeExpression::NamedExpression(n) = first else {
             todo!()
         };
         StringSlice::from_string_in_expression(node_ref.file.file_index(), n.expression())
     };
 
-    let mut add_from_iterator = |iterator| {
+    let mut add_from_iterator = |iterator| -> Option<()> {
         for element in iterator {
             let StarLikeExpression::NamedExpression(ne) = element else {
                 todo!()
@@ -187,23 +191,36 @@ fn gather_functional_enum_members(
                 todo!()
             };
             let name = match atom.unpack() {
-                AtomContent::List(list) => get_tuple_like(list.unpack()),
-                AtomContent::Tuple(tup) => get_tuple_like(tup.iter()),
+                AtomContent::List(list) => get_tuple_like(list.unpack())?,
+                AtomContent::Tuple(tup) => get_tuple_like(tup.iter())?,
                 _ => StringSlice::from_string_in_expression(
                     node_ref.file.file_index(),
                     ne.expression(),
-                ),
-            };
-            let Some(name) = name else {
-                debug!("TODO enum Add issue");
-                continue
+                )?,
             };
             members.push(EnumMemberDefinition::new(name.into(), None))
         }
+        return Some(());
+    };
+
+    let mut add_from_iterator_with_error = |iterator| -> Option<()> {
+        if add_from_iterator(iterator).is_none() {
+            NodeRef::new(node_ref.file, atom.index()).add_issue(
+                i_s,
+                IssueType::EnumWithTupleOrListExpectsStringPairs {
+                    name: class.name().into(),
+                },
+            );
+        }
+        None
     };
     match atom.unpack() {
-        AtomContent::List(list) => add_from_iterator(list.unpack()),
-        AtomContent::Tuple(tup) => add_from_iterator(tup.iter()),
+        AtomContent::List(list) => {
+            add_from_iterator_with_error(list.unpack())?;
+        }
+        AtomContent::Tuple(tup) => {
+            add_from_iterator_with_error(tup.iter())?;
+        }
         AtomContent::Strings(s) => {
             match DbString::from_python_string(node_ref.file_index(), s.as_python_string()) {
                 Some(s) => split_enum_members(i_s.db, &mut members, &s),

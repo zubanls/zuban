@@ -157,6 +157,7 @@ pub(crate) enum IssueType {
     EnumFirstArgMustBeString,
     EnumInvalidSecondArgument,
     EnumNeedsAtLeastOneItem { name: Box<str> },
+    EnumWithTupleOrListExpectsStringPairs { name: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -408,6 +409,9 @@ impl<'db> Diagnostic<'db> {
                  literal for mypy to determine Enum members".to_string(),
             EnumNeedsAtLeastOneItem { name } => format!(
                 "{name}() needs at least one item"
+            ),
+            EnumWithTupleOrListExpectsStringPairs { name } => format!(
+                "{name}() with tuple or list expects strings or (name, value) pairs"
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
