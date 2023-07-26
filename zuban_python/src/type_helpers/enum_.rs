@@ -211,8 +211,10 @@ fn gather_functional_enum_members(
                     name: class.name().into(),
                 },
             );
+            None
+        } else {
+            Some(())
         }
-        None
     };
     match atom.unpack() {
         AtomContent::List(list) => {

@@ -512,8 +512,6 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # Enum new issues
 testBadEnumLoading
-testLiteralUsingEnumAttributeNamesInLiteralContexts
-testRefreshFuncBasedEnum
 testFunctionalEnumErrors
 # Enum value should be inferred in a literal context
 testEnumNameAndValue
