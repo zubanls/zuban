@@ -155,6 +155,7 @@ pub(crate) enum IssueType {
     MethodWithoutArguments,
 
     EnumFirstArgMustBeString,
+    EnumInvalidSecondArgument,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -401,6 +402,9 @@ impl<'db> Diagnostic<'db> {
 
             EnumFirstArgMustBeString =>
                 "Enum() expects a string literal as the first argument".to_string(),
+            EnumInvalidSecondArgument =>
+                "Second argument of Enum() must be string, tuple, list or dict \
+                 literal for mypy to determine Enum members".to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>

@@ -532,7 +532,9 @@ testEnumIndex
 testEnumIndexError
 testEnumIndexIsNotAnAlias
 testFunctionalEnumProtocols
-# class.rs:1019
+# IntEnum() needs at least one item
+# IntEnum() with tuple or list expects strings or (name, value) pairs
+# Enum() with dict literal requires string literals
 testFunctionalEnumErrors
 # class.rs:1022
 testEnumKeywordsArgs

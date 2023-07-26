@@ -227,7 +227,7 @@ fn gather_functional_enum_members(
                     return members.into();
                 }
             }
-            debug!("TODO {atom:?}");
+            node_ref.add_issue(i_s, IssueType::EnumInvalidSecondArgument);
         }
     };
     members.into()
