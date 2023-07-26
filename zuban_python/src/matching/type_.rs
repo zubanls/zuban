@@ -345,8 +345,8 @@ impl<'a> Type<'a> {
             },
             DbType::NamedTuple(nt1) => match value_type.as_ref() {
                 DbType::NamedTuple(nt2) => {
-                    let c1 = &nt1.constructor;
-                    let c2 = &nt2.constructor;
+                    let c1 = &nt1.__new__;
+                    let c2 = &nt2.__new__;
                     if c1.type_vars.is_some() || c2.type_vars.is_some() {
                         todo!()
                     } else {
@@ -1436,7 +1436,7 @@ impl<'a> Type<'a> {
             DbType::ParamSpecArgs(usage) => todo!(),
             DbType::ParamSpecKwargs(usage) => todo!(),
             DbType::NamedTuple(nt) => {
-                let mut constructor = nt.constructor.as_ref().clone();
+                let mut constructor = nt.__new__.as_ref().clone();
                 let CallableParams::Simple(params) = &constructor.params else {
                     unreachable!();
                 };
@@ -2587,7 +2587,7 @@ pub fn execute_type_of_type<'db>(
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
                 None,
-                Callable::new(&nt.constructor, None),
+                Callable::new(&nt.__new__, None),
                 args.iter(),
                 &|| args.as_node_ref(),
                 true,

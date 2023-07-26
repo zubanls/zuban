@@ -33,7 +33,7 @@ impl<'a> NamedTupleValue<'a> {
         let params = self.nt.params();
         // We need to check recursions here, because for class definitions of named tuples can
         // recurse with their attributes.
-        let rec = RecursiveAlias::new(self.nt.constructor.defined_at, None);
+        let rec = RecursiveAlias::new(self.nt.__new__.defined_at, None);
         if format_data.has_already_seen_recursive_alias(&rec) {
             return Box::from(name);
         }
@@ -84,7 +84,7 @@ impl<'a> NamedTupleValue<'a> {
         }
         if name == "__new__" {
             return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(
-                self.nt.constructor.clone(),
+                self.nt.__new__.clone(),
             )));
         }
         debug!("TODO lookup of NamedTuple base classes");

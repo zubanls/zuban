@@ -2596,30 +2596,29 @@ impl CallableParams {
 #[derive(Debug, PartialEq, Clone)]
 pub struct NamedTuple {
     pub name: StringSlice,
-    // Basically __new__
-    pub constructor: Rc<CallableContent>,
+    pub __new__: Rc<CallableContent>,
     tuple: OnceCell<Rc<TupleContent>>,
 }
 
 impl NamedTuple {
-    pub fn new(name: StringSlice, constructor: CallableContent) -> Self {
+    pub fn new(name: StringSlice, __new__: CallableContent) -> Self {
         Self {
             name,
-            constructor: Rc::new(constructor),
+            __new__: Rc::new(__new__),
             tuple: OnceCell::new(),
         }
     }
 
     pub fn clone_with_new_init_class(&self, name: StringSlice) -> Rc<NamedTuple> {
         let mut nt = self.clone();
-        let mut callable = nt.constructor.as_ref().clone();
+        let mut callable = nt.__new__.as_ref().clone();
         callable.name = Some(name);
-        nt.constructor = Rc::new(callable);
+        nt.__new__ = Rc::new(callable);
         Rc::new(nt)
     }
 
     pub fn params(&self) -> &[CallableParam] {
-        let CallableParams::Simple(params) = &self.constructor.params else {
+        let CallableParams::Simple(params) = &self.__new__.params else {
             unreachable!();
         };
         // Namedtuple callables contain a first param `Type[Self]` that we should skip.
