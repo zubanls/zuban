@@ -34,3 +34,8 @@ from enum import Enum
 x = "asdf"
 E = Enum("E", {x: 1}) # E: Enum() with dict literal requires string literals
 
+[case functional_enum_starred_dict_literal_errors]
+from enum import Enum
+c = {"x": 1}
+E = Enum("E", {**c}) # E: ?
+

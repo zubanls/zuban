@@ -2282,6 +2282,7 @@ testSubtypingMappingUnpacking2
 testSubtypingMappingUnpacking3
 testNotDirectIterableAndMappingSubtyping
 testUnpackInExpression3-only_when_nocache
+functional_enum_starred_dict_literal_errors
 
 # "???" does not return a value / Function does not return a value
 testCallingVarArgsFunction

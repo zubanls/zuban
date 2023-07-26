@@ -230,7 +230,7 @@ fn gather_functional_enum_members(
         AtomContent::Dict(d) => {
             for element in d.iter_elements() {
                 let DictElement::KeyValue(kv) = element else {
-                    todo!()
+                    todo!("In test functional_enum_starred_dict_literal_errors")
                 };
                 let Some(name) = StringSlice::from_string_in_expression(
                     node_ref.file.file_index(),
