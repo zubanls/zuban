@@ -97,6 +97,12 @@ impl<'a> TypingType<'a> {
             DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, node_ref, name),
             DbType::Any => LookupResult::any(),
             t @ DbType::Enum(e) => lookup_on_enum_class(i_s.db, e, name),
+            DbType::NamedTuple(nt) => match name {
+                "__new__" => LookupResult::UnknownName(Inferred::from_type(DbType::Callable(
+                    nt.__new__.clone(),
+                ))),
+                _ => todo!(),
+            },
             _ => todo!("{:?}", self.db_type),
         }
     }

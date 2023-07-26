@@ -507,8 +507,6 @@ testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames
 # "Protocol member HasX.x expected settable variable, got read-only attribute"
 testTypingNamedTupleAttributesAreReadOnly
-# NamedTuple __new__
-testNamedTupleNew
 
 # data class (currently all are passing)
 
