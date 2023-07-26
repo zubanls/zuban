@@ -82,7 +82,7 @@ pub fn lookup_on_enum_member_instance(
         "name" => LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal::new(
             LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
         )))),
-        "value" => LookupResult::UnknownName(infer_value_on_member(
+        "value" | "_value_" => LookupResult::UnknownName(infer_value_on_member(
             i_s,
             from,
             &member.enum_,

@@ -517,6 +517,7 @@ testEnumValueExtraMethods
 testStrEnumCreation
 testEnumLiteralValues
 testEnumAttributeAccessMatrix
+testEnumWithInstanceAttributes
 # _generate_next_value_
 testEnumValueCustomAuto
 # int | str leads to Any when using Enum().value
@@ -537,8 +538,6 @@ testFunctionalEnumErrors
 testEnumKeywordsArgs
 # Enum defines value.
 testEnumFinalValuesCannotRedefineValueProp
-# _value_
-testEnumWithInstanceAttributes
 # class attributes
 testPrivateAttributeNotAsEnumMembers
 # Literal formatting
