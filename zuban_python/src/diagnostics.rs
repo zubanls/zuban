@@ -159,6 +159,7 @@ pub(crate) enum IssueType {
     EnumNeedsAtLeastOneItem { name: Box<str> },
     EnumWithTupleOrListExpectsStringPairs { name: Box<str> },
     EnumWithDictRequiresStringLiterals { name: Box<str> },
+    EnumUnexpectedArguments { name: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -416,6 +417,9 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumWithDictRequiresStringLiterals { name } => format!(
                 "{name}() with dict literal requires string literals"
+            ),
+            EnumUnexpectedArguments { name } => format!(
+                "Unexpected arguments to {name}()"
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),

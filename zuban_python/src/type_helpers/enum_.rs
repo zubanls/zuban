@@ -134,7 +134,15 @@ pub fn execute_functional_enum(
                 // Keyword names were checked by checking EnumMeta.__call__
                 _ => (),
             },
-            _ => todo!(),
+            _ => {
+                args.as_node_ref().add_issue(
+                    i_s,
+                    IssueType::EnumUnexpectedArguments {
+                        name: class.name().into(),
+                    },
+                );
+                return None;
+            }
         }
     }
     let name_infos = name_infos.unwrap();
