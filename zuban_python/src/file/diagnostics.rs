@@ -515,6 +515,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 DbType::Type(_) => (),
                 DbType::Any => (),
+                DbType::Enum(e) if e.class == class.node_ref.as_link() => (),
                 t => function.expect_return_annotation_node_ref().add_issue(
                     i_s,
                     IssueType::NewMustReturnAnInstance {

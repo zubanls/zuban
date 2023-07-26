@@ -2710,9 +2710,24 @@ pub struct Enum {
     pub name: StringSlice,
     pub class: PointLink,
     pub members: Box<[EnumMemberDefinition]>,
+    has_customized_new: OnceCell<bool>,
 }
 
 impl Enum {
+    pub fn new(
+        name: StringSlice,
+        class: PointLink,
+        members: Box<[EnumMemberDefinition]>,
+        has_customized_new: OnceCell<bool>,
+    ) -> Rc<Self> {
+        Rc::new(Self {
+            name,
+            class,
+            members,
+            has_customized_new,
+        })
+    }
+
     pub fn class<'db>(&self, db: &'db Database) -> Class<'db> {
         Class::from_generic_class_components(db, self.class, &ClassGenerics::None)
     }
@@ -2724,6 +2739,12 @@ impl Enum {
             }
         }
         None
+    }
+
+    pub fn has_customized_new(&self, i_s: &InferenceState) -> bool {
+        *self
+            .has_customized_new
+            .get_or_init(|| self.class(i_s.db).has_customized_enum_new(i_s))
     }
 }
 

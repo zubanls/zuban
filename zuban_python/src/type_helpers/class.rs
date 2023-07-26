@@ -1,3 +1,4 @@
+use std::cell::OnceCell;
 use std::fmt;
 use std::rc::Rc;
 
@@ -283,13 +284,16 @@ impl<'db: 'a, 'a> Class<'a> {
                     let members = self.enum_members();
                     if !members.is_empty() {
                         let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
-                            Rc::new(Enum {
-                                name: self.name_string_slice(),
-                                class: self.node_ref.as_link(),
+                            Enum::new(
+                                self.name_string_slice(),
+                                self.node_ref.as_link(),
                                 members,
-                            }),
+                                OnceCell::new(),
+                            ),
                         ))));
-                        name_def.insert_complex(c, Locality::Todo);
+                        // The locality is implicit, because we have a OnceCell that is inferred
+                        // after what we are doing here.
+                        name_def.insert_complex(c, Locality::ImplicitExtern);
                     }
                 }
             }
@@ -721,6 +725,23 @@ impl<'db: 'a, 'a> Class<'a> {
                 },
             }
         }
+    }
+
+    pub fn has_customized_enum_new(&self, i_s: &InferenceState) -> bool {
+        for (_, c) in self.mro_maybe_without_object(i_s.db, true) {
+            if c.lookup_symbol(i_s, "__new__")
+                .into_maybe_inferred()
+                .is_some()
+            {
+                let TypeOrClass::Class(class) = c else {
+                    unreachable!()
+                };
+                dbg!(class.node_ref.file.file_index());
+                return class.node_ref.file.file_index()
+                    != i_s.db.python_state.enum_file().file_index();
+            }
+        }
+        false
     }
 
     pub fn lookup_symbol(&self, i_s: &InferenceState<'db, '_>, name: &str) -> LookupResult {

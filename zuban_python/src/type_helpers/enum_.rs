@@ -35,7 +35,7 @@ pub fn lookup_on_enum_instance(
     if name == "value" {
         LookupResult::UnknownName(Inferred::gather_types_union(|add| {
             for member in enum_.members.iter() {
-                add(i_s, infer_value_on_member(i_s, from, member.value))
+                add(i_s, infer_value_on_member(i_s, from, enum_, member.value))
             }
         }))
     } else {
@@ -46,10 +46,13 @@ pub fn lookup_on_enum_instance(
 fn infer_value_on_member(
     i_s: &InferenceState,
     from: Option<NodeRef>,
+    enum_: &Enum,
     definition: Option<PointLink>,
 ) -> Inferred {
     match definition {
-        Some(link) => {
+        // I'm not 100% sure why this is, but Mypy returns Any on all enums that have a __new__
+        // defined.
+        Some(link) if !enum_.has_customized_new(i_s) => {
             let node_ref = NodeRef::from_link(i_s.db, link);
             let inferred = if let Some(name) = node_ref.maybe_name() {
                 node_ref.file.inference(i_s).infer_name(name)
@@ -65,7 +68,7 @@ fn infer_value_on_member(
                 _ => inferred,
             }
         }
-        None => Inferred::new_any(),
+        _ => Inferred::new_any(),
     }
 }
 
@@ -79,7 +82,12 @@ pub fn lookup_on_enum_member_instance(
         "name" => LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal::new(
             LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
         )))),
-        "value" => LookupResult::UnknownName(infer_value_on_member(i_s, from, member.value())),
+        "value" => LookupResult::UnknownName(infer_value_on_member(
+            i_s,
+            from,
+            &member.enum_,
+            member.value(),
+        )),
         "_ignore_" => LookupResult::None,
         _ => Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),
     }
@@ -128,11 +136,12 @@ pub fn execute_functional_enum(
     let members = gather_functional_enum_members(i_s, fields_node_ref);
 
     Some(Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(
-        Rc::new(Enum {
+        Enum::new(
             name,
-            class: class.node_ref.as_link(),
+            class.node_ref.as_link(),
             members,
-        }),
+            class.has_customized_enum_new(i_s).into(),
+        ),
     )))))
 }
 
