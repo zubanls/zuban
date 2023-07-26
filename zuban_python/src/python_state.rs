@@ -101,6 +101,7 @@ pub struct PythonState {
     mypy_extensions_var_arg_func: NodeIndex,
     pub type_of_object: DbType,
     pub type_of_any: DbType,
+    pub type_of_self: DbType,
     pub type_of_arbitrary_tuple: DbType,
     pub any_callable: Rc<CallableContent>,
 }
@@ -158,6 +159,7 @@ impl PythonState {
             mypy_extensions_var_arg_func: 0,
             type_of_object: DbType::Any, // Will be set later
             type_of_any: DbType::Type(Rc::new(DbType::Any)),
+            type_of_self: DbType::Type(Rc::new(DbType::Self_)),
             type_of_arbitrary_tuple: DbType::Type(Rc::new(
                 DbType::Tuple(TupleContent::new_empty()),
             )),

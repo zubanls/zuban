@@ -1013,6 +1013,15 @@ impl<'db: 'slf, 'slf> Inferred {
                     _ => (),
                 }
             }
+            InferredState::UnsavedComplex(ComplexPoint::TypeInstance(DbType::Callable(c))) => {
+                // This is reached by NamedTuples. Not sure it this reached otherwise as well.
+                let result = infer_class_method(i_s, *class, attribute_class, c);
+                if let Some(result) = result {
+                    return callable_into_inferred(result);
+                } else {
+                    todo!()
+                }
+            }
             InferredState::UnsavedComplex(complex) => (),
             InferredState::UnsavedSpecific(specific) => todo!(),
             InferredState::UnsavedFileReference(file_index) => todo!(),

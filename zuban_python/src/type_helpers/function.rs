@@ -1482,6 +1482,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     callable,
                     args.iter(),
                     &|| args.as_node_ref(),
+                    false,
                     result_context,
                     None,
                 )
@@ -1741,6 +1742,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             callable,
                             non_union_args.clone().into_iter(),
                             &|| args_node_ref,
+                            false,
                             result_context,
                             None,
                         )

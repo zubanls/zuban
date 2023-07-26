@@ -154,6 +154,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(),
                         &|| args.as_node_ref(),
+                        false,
                         result_context,
                         Some(on_type_error),
                     ),
@@ -944,7 +945,7 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState,
         name: StringSlice,
     ) -> CallableContent {
-        let mut vec = vec![];
+        let mut vec = start_namedtuple_params(i_s.db);
         let file = self.node_ref.file;
         match self.node().block().unpack() {
             BlockContent::Indented(stmts) => {
@@ -973,7 +974,7 @@ impl<'db: 'a, 'a> Class<'a> {
             kind: FunctionKind::Function,
             type_vars: self.use_cached_type_vars(i_s.db).cloned(),
             params: CallableParams::Simple(Rc::from(vec)),
-            result_type: DbType::None,
+            result_type: DbType::Self_,
         }
     }
 
@@ -1019,6 +1020,7 @@ impl<'db: 'a, 'a> Class<'a> {
         let is_new = !matches!(__new__, LookupResult::None) && new_mro_index < init_mro_index;
         NewOrInitConstructor {
             is_new,
+            // TODO this should not be bound if is_new = false
             __new__: __new__
                 .into_inferred()
                 .bind_new_descriptors(&i_s, self, new_class),
@@ -1354,4 +1356,12 @@ impl NewOrInitConstructor<'_> {
             })
         }
     }
+}
+
+pub fn start_namedtuple_params(db: &Database) -> Vec<CallableParam> {
+    vec![CallableParam {
+        param_specific: ParamSpecific::PositionalOnly(db.python_state.type_of_self.clone()),
+        has_default: false,
+        name: None,
+    }]
 }

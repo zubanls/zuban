@@ -25,7 +25,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{FormatData, Generics, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function, Module};
+use crate::type_helpers::{start_namedtuple_params, Class, Function, Module};
 
 pub(super) const ASSIGNMENT_TYPE_CACHE_OFFSET: u32 = 1;
 const ANNOTATION_TO_EXPR_DIFFERENCE: u32 = 2;
@@ -2228,7 +2228,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         // From NamedTuple('x', [('a', int)]) to a callable that matches those params
 
         let file_index = self.inference.file_index;
-        let mut params = vec![];
+        let mut params = start_namedtuple_params(self.inference.i_s.db);
         for element in list {
             let StarLikeExpression::NamedExpression(ne) = element else {
                 todo!()
@@ -3326,7 +3326,7 @@ pub fn new_collections_named_tuple(
         return None;
     }
     let args_node_ref = args.as_node_ref();
-    let mut params = vec![];
+    let mut params = start_namedtuple_params(i_s.db);
 
     let mut add_param = |name| {
         params.push(CallableParam {
@@ -3397,8 +3397,10 @@ fn check_named_tuple_has_no_fields_with_underscore(
     let field_names_with_underscore: Vec<_> = params
         .iter()
         .filter_map(|p| {
-            let name_str = p.name.unwrap().as_str(i_s.db);
-            name_str.starts_with('_').then_some(name_str)
+            p.name.and_then(|name| {
+                let name_str = name.as_str(i_s.db);
+                name_str.starts_with('_').then_some(name_str)
+            })
         })
         .collect();
     if !field_names_with_underscore.is_empty() {

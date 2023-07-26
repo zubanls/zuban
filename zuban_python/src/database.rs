@@ -2622,7 +2622,8 @@ impl NamedTuple {
         let CallableParams::Simple(params) = &self.constructor.params else {
             unreachable!();
         };
-        params
+        // Namedtuple callables contain a first param `Type[Self]` that we should skip.
+        &params[1..]
     }
 
     pub fn name<'a>(&self, db: &'a Database) -> &'a str {

@@ -1445,8 +1445,8 @@ impl<'a> Type<'a> {
                         .iter()
                         .map(|param| {
                             let ParamSpecific::PositionalOrKeyword(t) = &param.param_specific else {
-                        unreachable!()
-                    };
+                                return param.clone()
+                            };
                             CallableParam {
                                 param_specific: ParamSpecific::PositionalOrKeyword(
                                     Type::new(t).replace_type_var_likes_and_self(
@@ -2590,6 +2590,7 @@ pub fn execute_type_of_type<'db>(
                 Callable::new(&nt.constructor, None),
                 args.iter(),
                 &|| args.as_node_ref(),
+                true,
                 &mut ResultContext::Unknown,
                 Some(on_type_error),
             );

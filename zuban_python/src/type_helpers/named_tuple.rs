@@ -82,7 +82,7 @@ impl<'a> NamedTupleValue<'a> {
                 ));
             }
         }
-        if name == "__init__" {
+        if name == "__new__" {
             return LookupResult::UnknownName(Inferred::from_type(DbType::Callable(
                 self.nt.constructor.clone(),
             )));
