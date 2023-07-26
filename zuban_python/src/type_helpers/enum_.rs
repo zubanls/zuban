@@ -133,7 +133,16 @@ pub fn execute_functional_enum(
         debug!("TODO kw params for enum");
         return None
     };
-    let members = gather_functional_enum_members(i_s, fields_node_ref);
+    let members = gather_functional_enum_members(i_s, fields_node_ref)?;
+    if members.len() == 0 {
+        fields_node_ref.add_issue(
+            i_s,
+            IssueType::EnumNeedsAtLeastOneItem {
+                name: class.name().into(),
+            },
+        );
+        return None;
+    }
 
     Some(Inferred::from_type(DbType::Type(Rc::new(DbType::Enum(
         Enum::new(
@@ -148,7 +157,7 @@ pub fn execute_functional_enum(
 fn gather_functional_enum_members(
     i_s: &InferenceState,
     node_ref: NodeRef,
-) -> Box<[EnumMemberDefinition]> {
+) -> Option<Box<[EnumMemberDefinition]>> {
     let ExpressionContent::ExpressionPart(ExpressionPart::Atom(atom)) = node_ref.as_named_expression().expression().unpack() else {
         debug!("TODO enum creation param missing");
         return Default::default()
@@ -224,18 +233,22 @@ fn gather_functional_enum_members(
             if let DbType::Literal(literal) = inf.as_type(i_s).as_ref() {
                 if let LiteralKind::String(s) = &literal.kind {
                     split_enum_members(i_s.db, &mut members, s);
-                    return members.into();
+                    return Some(members.into());
                 }
             }
             node_ref.add_issue(i_s, IssueType::EnumInvalidSecondArgument);
+            return None;
         }
     };
-    members.into()
+    Some(members.into())
 }
 
 fn split_enum_members(db: &Database, members: &mut Vec<EnumMemberDefinition>, s: &DbString) {
     let mut start = 0;
     for part in s.as_str(db).split(&[',', ' ']) {
+        if part == "" {
+            continue;
+        }
         let name = match s {
             DbString::StringSlice(slice) => {
                 let start = slice.start + start;
