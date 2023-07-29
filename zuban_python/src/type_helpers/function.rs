@@ -411,11 +411,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         if self.node_ref.point().specific() == Specific::DecoratedFunction {
             // Ensure it's cached
             let inf = self.decorated(i_s);
-            if NodeRef::from_link(i_s.db, inf.maybe_saved_link().unwrap())
-                .point()
-                .maybe_specific()
-                == Some(Specific::OverloadUnreachable)
-            {
+            if inf.maybe_saved_specific(i_s.db) == Some(Specific::OverloadUnreachable) {
                 return FunctionKind::Function;
             }
             match self.decorator_ref().complex() {

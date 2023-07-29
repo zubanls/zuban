@@ -299,6 +299,11 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
+    pub fn maybe_saved_specific(&self, db: &Database) -> Option<Specific> {
+        self.maybe_saved_link()
+            .and_then(|link| NodeRef::from_link(db, link).point().maybe_specific())
+    }
+
     pub fn resolve_untyped_function_return(self, i_s: &InferenceState<'db, '_>) -> Self {
         todo!();
         /*
