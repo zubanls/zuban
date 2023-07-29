@@ -15,7 +15,7 @@ use crate::{
     file::File,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupResult, ResultContext},
+    matching::{Generics, LookupResult, ResultContext},
     node_ref::NodeRef,
 };
 
@@ -68,7 +68,27 @@ fn infer_value_on_member(
             };
             match inferred.as_type(i_s).as_ref() {
                 DbType::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
-                    Inferred::from_type(i_s.db.python_state.int_db_type())
+                    Inferred::from_type(
+                        Class::from_position(
+                            NodeRef::from_link(i_s.db, enum_.class),
+                            Generics::None,
+                            None,
+                        )
+                        .lookup(i_s, None, "_generate_next_value_")
+                        .into_maybe_inferred()
+                        .and_then(|inf| {
+                            // Check We have a proper callable that is not part of the enum module
+                            // and overwrites the default of int.
+                            if inf.maybe_saved_link().is_some_and(|link| {
+                                link.file == i_s.db.python_state.enum_file().file_index()
+                            }) {
+                                return None;
+                            }
+                            inf.as_type(i_s).maybe_callable(i_s)
+                        })
+                        .map(|callable| callable.result_type.clone())
+                        .unwrap_or(i_s.db.python_state.int_db_type()),
+                    )
                 }
                 _ => inferred,
             }

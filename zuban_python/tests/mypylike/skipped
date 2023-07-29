@@ -521,8 +521,6 @@ testEnumLiteralValues
 testEnumAttributeAccessMatrix
 testEnumWithInstanceAttributes
 testEnumAttributeChangeIncremental
-# _generate_next_value_
-testEnumValueCustomAuto
 # int | str leads to object instead of Any when using Enum().value
 testEnumValueInhomogenous
 testNewSetsUnexpectedValueType
