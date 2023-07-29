@@ -510,9 +510,6 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
-# Enum _value_ issues on Enum
-testNewSetsUnexpectedValueType
-testValueTypeWithNewInParentClass
 # Enum inferred.rs:831
 testEnumFinalSpecialProps
 # Enum value should be inferred in a literal context
@@ -526,8 +523,10 @@ testEnumWithInstanceAttributes
 testEnumAttributeChangeIncremental
 # _generate_next_value_
 testEnumValueCustomAuto
-# int | str leads to Any when using Enum().value
+# int | str leads to object instead of Any when using Enum().value
 testEnumValueInhomogenous
+testNewSetsUnexpectedValueType
+testValueTypeWithNewInParentClass
 # SpecificEnum(1)
 testIntEnum_functionTakingIntEnum
 testEnumCall
