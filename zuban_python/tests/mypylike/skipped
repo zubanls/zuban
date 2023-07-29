@@ -549,8 +549,6 @@ testFunctionalEnumDict
 testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
-# ResultContext with a similar enum
-testLiteralUsingEnumAttributesInLiteralContexts
 # qualified name
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testEnumIncremental

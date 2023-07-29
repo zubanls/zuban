@@ -51,8 +51,10 @@ impl<'a> ResultContext<'a, '_> {
         self.with_type_if_exists_and_replace_type_var_likes(
             i_s,
             |i_s: &InferenceState<'db, '_>, type_| match type_.as_ref() {
-                DbType::Literal(_) => true,
-                DbType::Union(items) => items.iter().any(|i| matches!(i, DbType::Literal(_))),
+                DbType::Literal(_) | DbType::EnumMember(_) => true,
+                DbType::Union(items) => items
+                    .iter()
+                    .any(|i| matches!(i, DbType::Literal(_) | DbType::EnumMember(_))),
                 _ => false,
             },
         )
