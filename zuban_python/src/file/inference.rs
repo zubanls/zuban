@@ -966,7 +966,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 self.infer_expression_part(or.as_operation().left, &mut ResultContext::Unknown);
                 self.infer_expression_part(or.as_operation().right, &mut ResultContext::Unknown);
                 debug!("TODO Use: self.infer_operation(or.as_operation())");
-                Inferred::new_any()
+                Inferred::new_none()
             }
             ExpressionPart::BitwiseAnd(and) => self.infer_operation(and.as_operation()),
             ExpressionPart::BitwiseXor(xor) => self.infer_operation(xor.as_operation()),

@@ -1086,7 +1086,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let definition = NodeRef::from_link(i_s.db, *definition);
                 format!(
                     "{} (complex?: {:?})",
-                    definition.file.file_path(i_s.db),
+                    definition.debug_info(i_s.db),
                     definition.complex(),
                 )
             }
@@ -1094,7 +1094,7 @@ impl<'db: 'slf, 'slf> Inferred {
         };
         format!(
             "description = {}\ndebug = {self:?}\ndetails = {details}",
-            self.format_short(i_s),
+            "",
         )
     }
 

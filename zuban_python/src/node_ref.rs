@@ -188,9 +188,10 @@ impl<'file> NodeRef<'file> {
 
     pub fn debug_info(&self, db: &Database) -> String {
         format!(
-            "{}: {}",
+            "{}: {}, {:?}",
             self.file.file_path(db),
-            self.file.tree.debug_info(self.node_index)
+            self.file.tree.debug_info(self.node_index),
+            self.point(),
         )
     }
 

@@ -510,8 +510,6 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
-# Enum new issues
-testBadEnumLoading
 # Enum value should be inferred in a literal context
 testEnumNameAndValue
 testEnumValueExtended
@@ -1016,6 +1014,7 @@ testNoCrashDoubleReexportOverloadEmpty
 
 # Binary or implementation missing
 testMiscBinaryOperators
+testUnionOrSyntaxWithLiteral
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll
