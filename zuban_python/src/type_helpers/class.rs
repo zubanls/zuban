@@ -73,6 +73,10 @@ impl<'db: 'a, 'a> Class<'a> {
         Self::from_position(NodeRef::from_link(db, link), generics, None)
     }
 
+    pub fn from_non_generic_link(db: &'db Database, link: PointLink) -> Self {
+        Self::from_position(NodeRef::from_link(db, link), Generics::None, None)
+    }
+
     #[inline]
     pub fn from_position(
         node_ref: NodeRef<'a>,
@@ -364,11 +368,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 link,
                                 generics: ClassGenerics::None,
                             })) => {
-                                let c = Class::from_generic_class_components(
-                                    i_s.db,
-                                    link,
-                                    &ClassGenerics::None,
-                                );
+                                let c = Class::from_non_generic_link(i_s.db, link);
                                 if c.incomplete_mro(i_s.db)
                                     || c.in_mro(
                                         i_s.db,
@@ -834,14 +834,8 @@ impl<'db: 'a, 'a> Class<'a> {
             Some(LookupResult::None) | None => {
                 let result = match class_infos.metaclass {
                     MetaclassState::Some(link) => {
-                        let instance = Instance::new(
-                            Class::from_generic_class_components(
-                                i_s.db,
-                                link,
-                                &ClassGenerics::None,
-                            ),
-                            None,
-                        );
+                        let instance =
+                            Instance::new(Class::from_non_generic_link(i_s.db, link), None);
                         instance.lookup(i_s, node_ref, name)
                     }
                     MetaclassState::Unknown => LookupResult::any(),
@@ -1069,11 +1063,7 @@ impl<'db: 'a, 'a> Class<'a> {
             && self.node_ref.as_link() != i_s.db.python_state.enum_auto_link()
         {
             let metaclass = Instance::new(
-                Class::from_generic_class_components(
-                    i_s.db,
-                    i_s.db.python_state.enum_meta_link(),
-                    &ClassGenerics::None,
-                ),
+                Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link()),
                 None,
             );
             let call = metaclass.lookup(i_s, None, "__call__").into_inferred();

@@ -2729,7 +2729,7 @@ impl Enum {
     }
 
     pub fn class<'db>(&self, db: &'db Database) -> Class<'db> {
-        Class::from_generic_class_components(db, self.class, &ClassGenerics::None)
+        Class::from_non_generic_link(db, self.class)
     }
 
     pub fn lookup(rc: &Rc<Enum>, db: &Database, name: &str) -> Option<EnumMember> {

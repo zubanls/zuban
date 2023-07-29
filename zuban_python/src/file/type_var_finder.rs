@@ -127,11 +127,7 @@ impl<'db, 'file: 'd, 'i_s, 'c, 'd> TypeVarFinder<'db, 'file, 'i_s, 'c, 'd> {
                         }
                     }
                     BaseLookup::Class(link) => {
-                        let cls = Class::from_generic_class_components(
-                            self.inference.i_s.db,
-                            link,
-                            &ClassGenerics::None,
-                        );
+                        let cls = Class::from_non_generic_link(self.inference.i_s.db, link);
                         let point_type = cache_name_on_class(cls, self.inference.file, name);
                         if point_type == PointType::Redirect {
                             self.find_in_name(name)

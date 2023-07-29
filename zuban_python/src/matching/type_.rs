@@ -1940,11 +1940,8 @@ impl<'a> Type<'a> {
                     },
                 ) = self.as_ref()
                 {
-                    return Instance::new(
-                        Class::from_generic_class_components(i_s.db, c.link, &ClassGenerics::None),
-                        None,
-                    )
-                    .iter(i_s, from);
+                    return Instance::new(Class::from_non_generic_link(i_s.db, c.link), None)
+                        .iter(i_s, from);
                 }
                 let t = self.format_short(i_s.db);
                 from.add_issue(
