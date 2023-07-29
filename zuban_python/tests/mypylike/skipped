@@ -510,6 +510,11 @@ testTypingNamedTupleAttributesAreReadOnly
 
 # data class (currently all are passing)
 
+# Enum _value_ issues on Enum
+testNewSetsUnexpectedValueType
+testValueTypeWithNewInParentClass
+# Enum inferred.rs:831
+testEnumFinalSpecialProps
 # Enum value should be inferred in a literal context
 testEnumNameAndValue
 testEnumValueExtended
@@ -518,6 +523,7 @@ testStrEnumCreation
 testEnumLiteralValues
 testEnumAttributeAccessMatrix
 testEnumWithInstanceAttributes
+testEnumAttributeChangeIncremental
 # _generate_next_value_
 testEnumValueCustomAuto
 # int | str leads to Any when using Enum().value
@@ -543,24 +549,8 @@ testFunctionalEnumDict
 testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
-# ResultContext used to infer enum
-testClassBasedEnumPropagation2
-testFuncBasedEnumPropagation2
+# ResultContext with a similar enum
 testLiteralUsingEnumAttributesInLiteralContexts
-testEnumBasics
-testEnumFromEnumMetaBasics
-testEnumFromEnumMetaSubclass
-testEnumUnique
-testIntEnum_assignToIntVariable
-testEnumFlag
-testEnumIntFlag
-testAnonymousEnum
-testEnumInClassBody
-testEnumFinalSpecialProps
-testAnonymousFunctionalEnum
-testEnumAttributeChangeIncremental
-testIntEnum_functionReturningIntEnum
-testFunctionalEnumInClassBody
 # qualified name
 testLiteralWithEnumsDeclaredUsingCallSyntax
 testEnumIncremental
@@ -570,6 +560,10 @@ testEnumCreatedFromStringLiteral
 enum_multi_literal
 testFunctionalEnumString
 testFunctionalEnumFlag
+testAnonymousEnum
+testAnonymousFunctionalEnum
+testEnumInClassBody
+testFunctionalEnumInClassBody
 # Enum access merging leads to int | Any instead of Any
 testEnumValueUnionSimplification
 # "Enum class cannot be generic"

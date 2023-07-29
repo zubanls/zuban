@@ -21,8 +21,13 @@ use crate::{
 
 use super::{Class, Instance};
 
-pub fn lookup_on_enum_class(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
-    lookup_members_on_enum(db, enum_, name)
+pub fn lookup_on_enum_class(
+    i_s: &InferenceState,
+    enum_: &Rc<Enum>,
+    name: &str,
+    result_context: &mut ResultContext,
+) -> LookupResult {
+    lookup_members_on_enum(i_s, enum_, name, result_context)
 }
 
 pub fn lookup_on_enum_instance(
@@ -30,6 +35,7 @@ pub fn lookup_on_enum_instance(
     from: Option<NodeRef>,
     enum_: &Rc<Enum>,
     name: &str,
+    result_context: &mut ResultContext,
 ) -> LookupResult {
     if name == "value" {
         LookupResult::UnknownName(Inferred::gather_types_union(|add| {
@@ -38,7 +44,7 @@ pub fn lookup_on_enum_instance(
             }
         }))
     } else {
-        lookup_members_on_enum(i_s.db, enum_, name)
+        lookup_members_on_enum(i_s, enum_, name, result_context)
     }
 }
 
@@ -92,12 +98,22 @@ pub fn lookup_on_enum_member_instance(
     }
 }
 
-fn lookup_members_on_enum(db: &Database, enum_: &Rc<Enum>, name: &str) -> LookupResult {
+fn lookup_members_on_enum(
+    i_s: &InferenceState,
+    enum_: &Rc<Enum>,
+    name: &str,
+    result_context: &mut ResultContext,
+) -> LookupResult {
     if name == "_ignore_" {
         return LookupResult::None;
     }
-    match Enum::lookup(enum_, db, name) {
-        Some(m) => LookupResult::UnknownName(Inferred::from_type(DbType::EnumMember(m.clone()))),
+    match Enum::lookup(enum_, i_s.db, name) {
+        Some(m) => LookupResult::UnknownName(Inferred::from_type(
+            match result_context.is_literal_context(i_s) {
+                true => DbType::EnumMember(m.clone()),
+                false => DbType::Enum(enum_.clone()),
+            },
+        )),
         None => LookupResult::None,
     }
 }

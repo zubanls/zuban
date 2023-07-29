@@ -2073,6 +2073,7 @@ impl<'a> Type<'a> {
         from_inferred: Option<&Inferred>,
         from: Option<NodeRef>,
         name: &str,
+        result_context: &mut ResultContext,
         callable: &mut impl FnMut(&Type, LookupResult),
     ) {
         match self.as_ref() {
@@ -2112,8 +2113,14 @@ impl<'a> Type<'a> {
                     */
                 }
                 if let Some(t) = &tv.type_var.bound {
-                    Type::new(t)
-                        .run_after_lookup_on_each_union_member(i_s, None, from, name, callable);
+                    Type::new(t).run_after_lookup_on_each_union_member(
+                        i_s,
+                        None,
+                        from,
+                        name,
+                        result_context,
+                        callable,
+                    );
                     /*
                     if matches!(result, LookupResult::None) {
                         debug!(
@@ -2139,19 +2146,31 @@ impl<'a> Type<'a> {
             DbType::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
-                    Type::new(t)
-                        .run_after_lookup_on_each_union_member(i_s, None, from, name, callable)
+                    Type::new(t).run_after_lookup_on_each_union_member(
+                        i_s,
+                        None,
+                        from,
+                        name,
+                        result_context,
+                        callable,
+                    )
                 }
             }
             DbType::Type(t) => match t.as_ref() {
                 DbType::Union(union) => {
                     debug_assert!(!union.entries.is_empty());
                     for t in union.iter() {
-                        callable(self, TypingType::new(i_s.db, t).lookup(i_s, None, name))
+                        callable(
+                            self,
+                            TypingType::new(i_s.db, t).lookup(i_s, None, name, result_context),
+                        )
                     }
                 }
                 DbType::Any => callable(self, LookupResult::any()),
-                _ => callable(self, TypingType::new(i_s.db, t).lookup(i_s, from, name)),
+                _ => callable(
+                    self,
+                    TypingType::new(i_s.db, t).lookup(i_s, from, name, result_context),
+                ),
             },
             DbType::Callable(_) | DbType::FunctionOverload(_) => callable(
                 self,
@@ -2205,8 +2224,18 @@ impl<'a> Type<'a> {
             ),
             DbType::Never => (),
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
-                .run_after_lookup_on_each_union_member(i_s, None, from, name, callable),
-            DbType::Enum(e) => callable(self, lookup_on_enum_instance(i_s, from, e, name)),
+                .run_after_lookup_on_each_union_member(
+                    i_s,
+                    None,
+                    from,
+                    name,
+                    result_context,
+                    callable,
+                ),
+            DbType::Enum(e) => callable(
+                self,
+                lookup_on_enum_instance(i_s, from, e, name, result_context),
+            ),
             DbType::EnumMember(member) => callable(
                 self,
                 lookup_on_enum_member_instance(i_s, from, member, name),
@@ -2216,7 +2245,7 @@ impl<'a> Type<'a> {
     }
 
     pub fn lookup_without_error(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        self.lookup_helper(i_s, None, name, &|_| ())
+        self.lookup_helper(i_s, None, name, &mut ResultContext::Unknown, &|_| ())
     }
 
     pub fn lookup_with_error(
@@ -2224,9 +2253,10 @@ impl<'a> Type<'a> {
         i_s: &InferenceState,
         from: NodeRef,
         name: &str,
+        result_context: &mut ResultContext,
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
-        self.lookup_helper(i_s, Some(from), name, on_lookup_error)
+        self.lookup_helper(i_s, Some(from), name, result_context, on_lookup_error)
     }
 
     #[inline]
@@ -2235,6 +2265,7 @@ impl<'a> Type<'a> {
         i_s: &InferenceState,
         from: Option<NodeRef>,
         name: &str,
+        result_context: &mut ResultContext,
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
         let mut result: Option<LookupResult> = None;
@@ -2243,6 +2274,7 @@ impl<'a> Type<'a> {
             None,
             from,
             name,
+            result_context,
             &mut |t, lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {
                     on_lookup_error(t);

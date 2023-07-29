@@ -708,6 +708,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     node_ref,
                                     name_definition.as_code(),
+                                    &mut ResultContext::Unknown,
                                     &|t| {
                                         add_attribute_error(
                                             self.i_s,
@@ -1050,6 +1051,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     self.i_s,
                                                     from,
                                                     "__iter__",
+                                                    &mut ResultContext::Unknown,
                                                     &|_| {
                                                         let right = second.format_short(self.i_s);
                                                         from.add_issue(
@@ -1261,13 +1263,19 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let result = if error.get() != LookupError::ShortCircuit {
                             let left_inf = Inferred::execute_db_type_allocation_todo(i_s, l_type);
                             r_type
-                                .lookup_with_error(i_s, node_ref, op.reverse_magic_method, &|_| {
-                                    if left_op_method.as_ref().is_some() {
-                                        error.set(LookupError::BothSidesError);
-                                    } else {
-                                        error.set(LookupError::LeftError);
-                                    }
-                                })
+                                .lookup_with_error(
+                                    i_s,
+                                    node_ref,
+                                    op.reverse_magic_method,
+                                    &mut ResultContext::Unknown,
+                                    &|_| {
+                                        if left_op_method.as_ref().is_some() {
+                                            error.set(LookupError::BothSidesError);
+                                        } else {
+                                            error.set(LookupError::LeftError);
+                                        }
+                                    },
+                                )
                                 .into_inferred()
                                 .execute_with_details(
                                     i_s,
@@ -1370,9 +1378,14 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                base.lookup_with_error(self.i_s, node_ref, name.as_str())
-                    .save_name(self.i_s, self.file, name)
-                    .unwrap_or_else(Inferred::new_unknown)
+                base.lookup_with_error_and_result_context(
+                    self.i_s,
+                    node_ref,
+                    name.as_str(),
+                    result_context,
+                )
+                .save_name(self.i_s, self.file, name)
+                .unwrap_or_else(Inferred::new_unknown)
             }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
@@ -1400,7 +1413,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     pub fn infer_primary_or_atom(&mut self, p: PrimaryOrAtom) -> Inferred {
         match p {
             PrimaryOrAtom::Primary(primary) => {
-                self.infer_primary(primary, &mut ResultContext::Unknown)
+                self.infer_primary(primary, &mut ResultContext::ExpectLiteral)
             }
             PrimaryOrAtom::Atom(atom) => self.infer_atom(atom, &mut ResultContext::Unknown),
         }

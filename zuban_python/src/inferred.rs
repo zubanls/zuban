@@ -1166,6 +1166,7 @@ impl<'db: 'slf, 'slf> Inferred {
             Some(self),
             from,
             name,
+            &mut ResultContext::Unknown,
             callable,
         )
     }
@@ -1176,8 +1177,18 @@ impl<'db: 'slf, 'slf> Inferred {
         node_ref: NodeRef,
         name: &str,
     ) -> LookupResult {
+        self.lookup_with_error_and_result_context(i_s, node_ref, name, &mut ResultContext::Unknown)
+    }
+
+    pub fn lookup_with_error_and_result_context(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        node_ref: NodeRef,
+        name: &str,
+        result_context: &mut ResultContext,
+    ) -> LookupResult {
         let base_type = self.as_type(i_s);
-        base_type.lookup_with_error(i_s, node_ref, name, &|t| {
+        base_type.lookup_with_error(i_s, node_ref, name, result_context, &|t| {
             add_attribute_error(i_s, node_ref, &base_type, t, name)
         })
     }

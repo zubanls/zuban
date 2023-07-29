@@ -83,11 +83,12 @@ impl<'a> TypingType<'a> {
         i_s: &InferenceState,
         node_ref: Option<NodeRef>,
         name: &str,
+        result_context: &mut ResultContext,
     ) -> LookupResult {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).lookup(i_s, node_ref, name)
+                    TypingType::new(self.db, bound).lookup(i_s, node_ref, name, result_context)
                 } else {
                     todo!("{t:?}")
                 }
@@ -96,7 +97,7 @@ impl<'a> TypingType<'a> {
             DbType::Callable(_) => LookupResult::None,
             DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, node_ref, name),
             DbType::Any => LookupResult::any(),
-            t @ DbType::Enum(e) => lookup_on_enum_class(i_s.db, e, name),
+            t @ DbType::Enum(e) => lookup_on_enum_class(i_s, e, name, result_context),
             DbType::NamedTuple(nt) => match name {
                 "__new__" => LookupResult::UnknownName(Inferred::from_type(DbType::Callable(
                     nt.__new__.clone(),
