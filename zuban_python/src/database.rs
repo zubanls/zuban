@@ -53,7 +53,7 @@ impl From<usize> for MroIndex {
 pub struct StringSlice {
     pub file_index: FileIndex,
     pub start: CodeIndex,
-    end: u32,
+    end: CodeIndex,
 }
 
 impl StringSlice {
