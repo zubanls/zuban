@@ -206,6 +206,23 @@ pub fn execute_functional_enum(
     )))))
 }
 
+#[derive(Default)]
+struct EnumMembers(Vec<EnumMemberDefinition>);
+
+impl EnumMembers {
+    fn add_member(&mut self, i_s: &InferenceState, d: EnumMemberDefinition) {
+        if self.0.iter().any(|t| t.name(i_s.db) == d.name(i_s.db)) {
+            // TODO  this still needs to be handled
+        } else {
+            self.0.push(d)
+        }
+    }
+
+    fn into_boxed_slice(self) -> Box<[EnumMemberDefinition]> {
+        self.0.into()
+    }
+}
+
 fn gather_functional_enum_members(
     i_s: &InferenceState,
     class: Class,
@@ -217,7 +234,7 @@ fn gather_functional_enum_members(
         return None
     };
 
-    let mut members = vec![];
+    let mut members = EnumMembers::default();
 
     let get_tuple_like = |mut iterator: StarLikeExpressionIterator| -> Option<StringSlice> {
         let Some(first) = iterator.next() else {
@@ -251,7 +268,7 @@ fn gather_functional_enum_members(
                     ne.expression(),
                 )?,
             };
-            members.push(EnumMemberDefinition::new(name.into(), None))
+            members.add_member(i_s, EnumMemberDefinition::new(name.into(), None))
         }
         return Some(());
     };
@@ -278,7 +295,7 @@ fn gather_functional_enum_members(
         }
         AtomContent::Strings(s) => {
             match DbString::from_python_string(node_ref.file_index(), s.as_python_string()) {
-                Some(s) => split_enum_members(i_s.db, &mut members, &s),
+                Some(s) => split_enum_members(i_s, &mut members, &s),
                 _ => todo!(),
             }
         }
@@ -296,7 +313,7 @@ fn gather_functional_enum_members(
                     });
                     return None
                 };
-                members.push(EnumMemberDefinition::new(name.into(), None));
+                members.add_member(i_s, EnumMemberDefinition::new(name.into(), None));
             }
         }
         _ => {
@@ -306,20 +323,20 @@ fn gather_functional_enum_members(
                 .infer_atom(atom, &mut ResultContext::Unknown);
             if let DbType::Literal(literal) = inf.as_type(i_s).as_ref() {
                 if let LiteralKind::String(s) = &literal.kind {
-                    split_enum_members(i_s.db, &mut members, s);
-                    return Some(members.into());
+                    split_enum_members(i_s, &mut members, s);
+                    return Some(members.into_boxed_slice());
                 }
             }
             node_ref.add_issue(i_s, IssueType::EnumInvalidSecondArgument);
             return None;
         }
     };
-    Some(members.into())
+    Some(members.into_boxed_slice())
 }
 
-fn split_enum_members(db: &Database, members: &mut Vec<EnumMemberDefinition>, s: &DbString) {
+fn split_enum_members(i_s: &InferenceState, members: &mut EnumMembers, s: &DbString) {
     let mut start = 0;
-    for part in s.as_str(db).split(&[',', ' ']) {
+    for part in s.as_str(i_s.db).split(&[',', ' ']) {
         if part == "" {
             continue;
         }
@@ -330,7 +347,7 @@ fn split_enum_members(db: &Database, members: &mut Vec<EnumMemberDefinition>, s:
             }
             DbString::RcStr(_) => DbString::RcStr(part.into()),
         };
-        members.push(EnumMemberDefinition::new(name, None));
+        members.add_member(i_s, EnumMemberDefinition::new(name, None));
         start += part.len() as CodeIndex + 1;
     }
 }

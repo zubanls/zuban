@@ -160,6 +160,7 @@ pub(crate) enum IssueType {
     EnumWithTupleOrListExpectsStringPairs { name: Box<str> },
     EnumWithDictRequiresStringLiterals { name: Box<str> },
     EnumUnexpectedArguments { name: Box<str> },
+    EnumAttemptedReuseOfMemberName { member_name: Box<str>, enum_name: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -420,6 +421,9 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumUnexpectedArguments { name } => format!(
                 "Unexpected arguments to {name}()"
+            ),
+            EnumAttemptedReuseOfMemberName { member_name, enum_name } => format!(
+                r#"Attempted to reuse member name "{member_name}" in Enum definition "{enum_name}""#
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
