@@ -303,7 +303,9 @@ impl<'db> PythonFile {
         if !i_s.should_add_issue() {
             return;
         }
-        let maybe_ignored = self.tree.node_type_ignore_comment(node_index);
+        let maybe_ignored = self
+            .tree
+            .type_ignore_comment_for(issue.start_position, issue.end_position);
         let config = DiagnosticConfig {
             show_column_numbers: true,
             ..Default::default()

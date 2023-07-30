@@ -63,27 +63,32 @@ impl Tree {
         self.0.node_by_index(index).end()
     }
 
-    pub fn node_type_ignore_comment(&self, index: NodeIndex) -> Option<Option<&str>> {
+    pub fn type_ignore_comment_for(
+        &self,
+        start: CodeIndex,
+        end: CodeIndex,
+    ) -> Option<Option<&str>> {
         // Returns Some(None) when there is a type: ignore
         // Returns Some("foo") when there is a type: ignore['foo']
-        self.0
-            .node_by_index(index)
-            .parent_until(&[Nonterminal(simple_stmt)])
-            .and_then(|s| {
-                for comment in s.suffix().split('#').skip(1) {
-                    let rest = comment.trim_start_matches(' ');
-                    if let Some(ignore) = rest.strip_prefix("type:") {
-                        let ignore = ignore.trim_start_matches(' ');
-                        let r = maybe_type_ignore(ignore);
-                        if r.is_some() {
-                            return r;
-                        }
-                    } else {
-                        return None;
-                    }
+        let code = self.code();
+        let relevant_region = if let Some(newline) = code[end as usize..].find(['\n', '\r']) {
+            &code[start as usize..end as usize + newline]
+        } else {
+            &code[start as usize..]
+        };
+        for comment in relevant_region.split('#').skip(1) {
+            let rest = comment.trim_start_matches(' ');
+            if let Some(ignore) = rest.strip_prefix("type:") {
+                let ignore = ignore.trim_start_matches(' ');
+                let r = maybe_type_ignore(ignore);
+                if r.is_some() {
+                    return r;
                 }
-                None
-            })
+            } else {
+                return None;
+            }
+        }
+        None
     }
 
     pub fn debug_info(&self, index: NodeIndex) -> String {

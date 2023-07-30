@@ -2559,19 +2559,13 @@ testTestExtendPrimitives
 testDecoratorTypeAfterReprocessing
 
 # type ignore on statement, but not exact line
-testIgnoreImportFromErrorMultiline
-testIgnoreTooManyTypeArguments
 testErrorCodeMultiLineBinaryOperatorOperand
-testSerializeIgnoredMissingBaseClass
-testSerializeIgnoredInvalidBaseClass
 # type ignore on statement, end of line
-testIncompatibleOverrideFromCachedModuleIncremental
 testErrorCodeNoneReturnNoteIgnore
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3
 testIgnoreWholeModule4
-testIgnoreWholeModule5
 testDontIgnoreWholeModule2
 testDontIgnoreWholeModule3
 # type ignore leads to "Revealed type is "A?""

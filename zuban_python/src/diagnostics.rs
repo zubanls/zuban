@@ -221,7 +221,7 @@ impl IssueType {
 pub struct Issue {
     pub(crate) type_: IssueType,
     pub start_position: CodeIndex,
-    end_position: CodeIndex,
+    pub end_position: CodeIndex,
 }
 
 impl Issue {
