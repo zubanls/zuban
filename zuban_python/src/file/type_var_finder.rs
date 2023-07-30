@@ -4,8 +4,7 @@ use super::type_computation::{
     cache_name_on_class, SpecialType, TypeNameLookup, ASSIGNMENT_TYPE_CACHE_OFFSET,
 };
 use crate::database::{
-    ClassGenerics, Locality, Point, PointLink, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes,
-    TypeVarManager,
+    Locality, Point, PointLink, PointType, TypeVarIndex, TypeVarLike, TypeVarLikes, TypeVarManager,
 };
 use crate::diagnostics::IssueType;
 use crate::file::file_state::File;

@@ -1,10 +1,9 @@
-use parsa_python_ast::{CodeIndex, NodeIndex};
+use parsa_python_ast::{CodeIndex, NodeIndex, Tree};
 
 use crate::database::{Database, FunctionKind, TypeVarLike};
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::name::TreePosition;
-use crate::node_ref::NodeRef;
 use crate::utils::InsertOnlyVec;
 
 #[derive(Debug)]
@@ -221,9 +220,19 @@ impl IssueType {
 #[derive(Debug)]
 pub struct Issue {
     pub(crate) type_: IssueType,
-    pub node_index: NodeIndex,
+    pub start_position: CodeIndex,
+    end_position: CodeIndex,
 }
 
+impl Issue {
+    pub(crate) fn from_node_index(tree: &Tree, node_index: NodeIndex, type_: IssueType) -> Self {
+        Self {
+            type_,
+            start_position: tree.node_start_position(node_index),
+            end_position: tree.node_end_position(node_index),
+        }
+    }
+}
 struct SubFileOffset<'db> {
     file: &'db PythonFile,
     offset: CodeIndex,
@@ -269,16 +278,20 @@ impl<'db> Diagnostic<'db> {
         }
     }
     fn start_position(&self) -> TreePosition<'db> {
-        self.account_for_sub_file(self.node_file().node_start_position(self.issue.node_index))
+        self.account_for_sub_file(TreePosition::new(
+            self.node_file(),
+            self.issue.start_position,
+        ))
     }
 
     #[allow(dead_code)] // TODO remove this
     fn end_position(&self) -> TreePosition<'db> {
-        self.account_for_sub_file(self.node_file().node_end_position(self.issue.node_index))
+        self.account_for_sub_file(TreePosition::new(self.node_file(), self.issue.end_position))
     }
 
     fn code_under_issue(&self) -> &'db str {
-        NodeRef::new(self.node_file(), self.issue.node_index).as_code()
+        &self.file.tree.code()[self.start_position().byte_position() as usize
+            ..self.end_position().byte_position() as usize]
     }
 
     fn node_file(&self) -> &'db PythonFile {
@@ -774,7 +787,8 @@ impl Diagnostics {
                 type_: IssueType::Note(
                     format!(r#"Error code "{s}" not covered by "type: ignore" comment"#).into(),
                 ),
-                node_index: last_issue.node_index,
+                start_position: last_issue.start_position,
+                end_position: last_issue.end_position,
             }));
         }
         Ok(last_issue)

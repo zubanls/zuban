@@ -147,7 +147,7 @@ impl File for PythonFile {
                     .map(|d| d.wrap_subfile(self, *code_index)),
             );
         }
-        vec.sort_by_key(|diag| diag.issue.node_index);
+        vec.sort_by_key(|diag| diag.issue.start_position);
         vec.into_boxed_slice()
     }
 
@@ -299,11 +299,11 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
+    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue, node_index: NodeIndex) {
         if !i_s.should_add_issue() {
             return;
         }
-        let maybe_ignored = self.tree.node_type_ignore_comment(issue.node_index);
+        let maybe_ignored = self.tree.node_type_ignore_comment(node_index);
         let config = DiagnosticConfig {
             show_column_numbers: true,
             ..Default::default()

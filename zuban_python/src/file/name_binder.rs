@@ -177,9 +177,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         }
     }
 
-    pub(crate) fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
+    fn add_issue(&self, node_index: NodeIndex, type_: IssueType) {
         let maybe_ignored = self.tree.node_type_ignore_comment(node_index);
-        let issue = Issue { type_, node_index };
+        let issue = Issue::from_node_index(self.tree, node_index, type_);
         match self.issues.add_if_not_ignored(issue, maybe_ignored) {
             Ok(issue) => debug!("New name binder issue: {:?}", issue.type_),
             Err(issue) => debug!("New ignored name binder issue: {:?}", issue.type_),

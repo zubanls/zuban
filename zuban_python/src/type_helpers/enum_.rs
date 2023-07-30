@@ -8,14 +8,14 @@ use parsa_python_ast::{
 use crate::{
     arguments::{ArgumentKind, Arguments},
     database::{
-        Database, DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind,
-        PointLink, StringSlice,
+        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind, PointLink,
+        StringSlice,
     },
     diagnostics::IssueType,
     file::File,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{Generics, LookupResult, ResultContext},
+    matching::{LookupResult, ResultContext},
     node_ref::NodeRef,
 };
 

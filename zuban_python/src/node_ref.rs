@@ -206,11 +206,8 @@ impl<'file> NodeRef<'file> {
     }
 
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue_type: IssueType) {
-        let issue = Issue {
-            type_: issue_type,
-            node_index: self.node_index,
-        };
-        self.file.add_issue(i_s, issue)
+        let issue = Issue::from_node_index(&self.file.tree, self.node_index, issue_type);
+        self.file.add_issue(i_s, issue, self.node_index)
     }
 
     pub fn into_saved_inferred(self) -> Inferred {
