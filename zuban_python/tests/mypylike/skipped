@@ -2558,8 +2558,6 @@ testTestExtendPrimitives
 # Probably fixed eventually by updating mypy or typeshed
 testDecoratorTypeAfterReprocessing
 
-# type ignore on statement, but not exact line
-testErrorCodeMultiLineBinaryOperatorOperand
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3
