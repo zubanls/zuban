@@ -277,6 +277,10 @@ impl<'db> Diagnostic<'db> {
         self.account_for_sub_file(self.node_file().node_end_position(self.issue.node_index))
     }
 
+    fn code_under_issue(&self) -> &'db str {
+        NodeRef::new(self.node_file(), self.issue.node_index).as_code()
+    }
+
     fn node_file(&self) -> &'db PythonFile {
         self.in_sub_file
             .as_ref()
@@ -324,8 +328,7 @@ impl<'db> Diagnostic<'db> {
                 "List item {item} has incompatible type \"{got}\"; expected \"{expected}\"",
             ),
             Redefinition{line} => {
-                let node_ref = NodeRef::new(self.node_file(), self.issue.node_index);
-                format!("Name {:?} already defined line {line}", node_ref.as_code())
+                format!("Name {:?} already defined line {line}", self.code_under_issue())
             }
             ArgumentIssue(s) | ArgumentTypeIssue(s) | InvalidType(s) => s.clone().into(),
             TooManyArguments(rest) => format!("Too many arguments{rest}"),
@@ -340,10 +343,7 @@ impl<'db> Diagnostic<'db> {
                      (default has type \"{got}\", argument has type \"{expected}\")"
                 )
             },
-            TypeNotFound => {
-                let primary = NodeRef::new(self.node_file(), self.issue.node_index);
-                format!("Name {:?} is not defined", primary.as_code())
-            }
+            TypeNotFound => format!("Name {:?} is not defined", self.code_under_issue()),
             UnexpectedTypeDeclaration => "Unexpected type declaration".to_string(),
             OverloadMismatch{name, args, variants} => {
                 let arg_str = args.join("\", \"");
@@ -444,14 +444,8 @@ impl<'db> Diagnostic<'db> {
             },
             StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
-            InvalidBaseClass => {
-                let primary = NodeRef::new(self.node_file(), self.issue.node_index);
-                format!("Invalid base class {:?}", primary.as_code())
-            }
-            InvalidMetaclass => {
-                let primary = NodeRef::new(self.node_file(), self.issue.node_index);
-                format!("Invalid metaclass {:?}", primary.as_code())
-            }
+            InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
+            InvalidMetaclass => format!("Invalid metaclass {:?}", self.code_under_issue()),
             DynamicMetaclassNotSupported{class_name} => {
                 format!("Dynamic metaclass not supported for \"{class_name}\"")
             }
@@ -461,10 +455,7 @@ impl<'db> Diagnostic<'db> {
                 "Metaclass conflict: the metaclass of a derived class must be \
                  a (non-strict) subclass of the metaclasses of all its bases".to_string(),
             CannotSubclassNewType => "Cannot subclass \"NewType\"".to_string(),
-            DuplicateBaseClass{name} => {
-                let primary = NodeRef::new(self.node_file(), self.issue.node_index);
-                format!("Duplicate base class \"{name}\"")
-            }
+            DuplicateBaseClass{name} => format!("Duplicate base class \"{name}\""),
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             EnsureSingleGenericOrProtocol =>
