@@ -299,7 +299,7 @@ impl<'db> PythonFile {
         }
     }
 
-    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue, node_index: NodeIndex) {
+    pub fn add_issue(&self, i_s: &InferenceState, issue: Issue) {
         if !i_s.should_add_issue() {
             return;
         }

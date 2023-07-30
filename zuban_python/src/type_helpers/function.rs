@@ -18,7 +18,7 @@ use crate::database::{
     TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
     TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
-use crate::diagnostics::IssueType;
+use crate::diagnostics::{Issue, IssueType};
 use crate::file::{
     use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
     TypeVarCallbackReturn,
@@ -783,6 +783,18 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             functions: FunctionOverload::new(functions.into_boxed_slice()),
             implementation,
         })
+    }
+
+    pub(crate) fn add_issue_for_declaration(&self, i_s: &InferenceState, type_: IssueType) {
+        let node = self.node();
+        self.node_ref.file.add_issue(
+            i_s,
+            Issue {
+                type_,
+                start_position: node.start(),
+                end_position: node.end_position_of_colon(),
+            },
+        )
     }
 
     pub fn as_callable(

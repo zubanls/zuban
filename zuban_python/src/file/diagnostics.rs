@@ -471,15 +471,17 @@ impl<'db> Inference<'db, '_, '_> {
                 function.is_missing_param_annotations(self.i_s),
                 function.return_annotation().is_none(),
             ) {
-                (true, true) => function
-                    .node_ref
-                    .add_issue(self.i_s, IssueType::FunctionIsDynamic),
-                (true, false) => function
-                    .node_ref
-                    .add_issue(self.i_s, IssueType::FunctionMissingParamAnnotations),
-                (false, true) => function
-                    .node_ref
-                    .add_issue(self.i_s, IssueType::FunctionMissingReturnAnnotation),
+                (true, true) => {
+                    function.add_issue_for_declaration(self.i_s, IssueType::FunctionIsDynamic)
+                }
+                (true, false) => function.add_issue_for_declaration(
+                    self.i_s,
+                    IssueType::FunctionMissingParamAnnotations,
+                ),
+                (false, true) => function.add_issue_for_declaration(
+                    self.i_s,
+                    IssueType::FunctionMissingReturnAnnotation,
+                ),
                 (false, false) => (),
             }
         }

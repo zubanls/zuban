@@ -86,7 +86,7 @@ impl Tree {
                         return r;
                     }
                 } else {
-                    return None;
+                    break;
                 }
             }
         }
@@ -1625,6 +1625,15 @@ impl<'db> FunctionDef<'db> {
 
     pub fn name(&self) -> Name<'db> {
         self.name_definition().name()
+    }
+
+    pub fn end_position_of_colon(&self) -> CodeIndex {
+        for child in self.node.iter_children().skip(3) {
+            if child.is_leaf() {
+                return child.end();
+            }
+        }
+        unreachable!()
     }
 
     pub fn from_param_name_def_index(tree: &'db Tree, param_name_index: NodeIndex) -> Self {

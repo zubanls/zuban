@@ -1,7 +1,7 @@
 use std::fmt;
 
 use parsa_python_ast::{
-    Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, DoubleStarredExpression,
+    Annotation, Assignment, Atom, AtomContent, Bytes, ClassDef, CodeIndex, DoubleStarredExpression,
     Expression, Factor, FunctionDef, ImportFrom, Int, Name, NameDefinition, NamedExpression,
     NodeIndex, Primary, PythonString, Slices, StarredExpression, StringLiteral,
 };
@@ -207,17 +207,19 @@ impl<'file> NodeRef<'file> {
 
     pub(crate) fn add_issue(&self, i_s: &InferenceState, issue_type: IssueType) {
         let issue = Issue::from_node_index(&self.file.tree, self.node_index, issue_type);
-        self.file.add_issue(i_s, issue, self.node_index)
+        self.file.add_issue(i_s, issue)
     }
 
     pub fn into_saved_inferred(self) -> Inferred {
         Inferred::from_saved_node_ref(self)
     }
 
+    pub fn node_start_position(self) -> CodeIndex {
+        self.file.tree.node_start_position(self.node_index)
+    }
+
     pub fn line(&self) -> usize {
-        self.file
-            .byte_to_line_column(self.file.tree.node_start_position(self.node_index))
-            .0
+        self.file.byte_to_line_column(self.node_start_position()).0
     }
 }
 
