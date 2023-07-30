@@ -76,16 +76,18 @@ impl Tree {
         } else {
             &code[start as usize..]
         };
-        for comment in relevant_region.split('#').skip(1) {
-            let rest = comment.trim_start_matches(' ');
-            if let Some(ignore) = rest.strip_prefix("type:") {
-                let ignore = ignore.trim_start_matches(' ');
-                let r = maybe_type_ignore(ignore);
-                if r.is_some() {
-                    return r;
+        for line in relevant_region.split(['\n', '\r']) {
+            for comment in line.split('#').skip(1) {
+                let rest = comment.trim_start_matches(' ');
+                if let Some(ignore) = rest.strip_prefix("type:") {
+                    let ignore = ignore.trim_start_matches(' ');
+                    let r = maybe_type_ignore(ignore);
+                    if r.is_some() {
+                        return r;
+                    }
+                } else {
+                    return None;
                 }
-            } else {
-                return None;
             }
         }
         None

@@ -2560,8 +2560,6 @@ testDecoratorTypeAfterReprocessing
 
 # type ignore on statement, but not exact line
 testErrorCodeMultiLineBinaryOperatorOperand
-# type ignore on statement, end of line
-testErrorCodeNoneReturnNoteIgnore
 # type ignore whole module
 testIgnoreWholeModule2
 testIgnoreWholeModule3
