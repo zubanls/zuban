@@ -767,81 +767,20 @@ impl<'db: 'slf, 'slf> Inferred {
                                     *definition,
                                 ));
                             }
-                            ComplexPoint::TypeInstance(t) => match t {
-                                DbType::Callable(c) => {
-                                    match c.kind {
-                                        FunctionKind::Function => {
-                                            // TODO should use create_signature_without_self_for_callable!
-                                            return Some(Self::new_bound_method(
-                                                get_inferred(i_s).as_bound_method_instance(i_s),
-                                                mro_index,
-                                                *definition,
-                                            ));
-                                        }
-                                        FunctionKind::Property { .. } => {
-                                            return Some(Inferred::from_type(
-                                                replace_class_type_vars(
-                                                    i_s.db,
-                                                    &c.result_type,
-                                                    &instance.class,
-                                                    &func_class,
-                                                ),
-                                            ))
-                                        }
-                                        FunctionKind::Classmethod => {
-                                            let result = infer_class_method(
-                                                i_s,
-                                                instance.class,
-                                                func_class,
-                                                c,
-                                            );
-                                            if result.is_none() {
-                                                if let Some(from) = from {
-                                                    let func =
-                                                        prepare_func(i_s, *definition, func_class);
-                                                    let t = IssueType::InvalidClassMethodFirstArgument {
-                                                        argument_type: instance
-                                                            .class
-                                                            .as_type(i_s)
-                                                            .format_short(i_s.db),
-                                                        function_name: Box::from(func.name()),
-                                                        callable: func.as_type(i_s).format_short(i_s.db),
-                                                    };
-                                                    from.add_issue(i_s, t);
-                                                    return Some(Self::new_any());
-                                                } else {
-                                                    todo!()
-                                                }
-                                            }
-                                            return result.map(callable_into_inferred);
-                                        }
-                                        // Static methods can be passed out without any remapping.
-                                        FunctionKind::Staticmethod => (),
-                                    }
+                            ComplexPoint::TypeInstance(t) => {
+                                if let Some(inf) = self.bind_instance_descriptors_for_type(
+                                    i_s,
+                                    instance,
+                                    func_class,
+                                    get_inferred,
+                                    from,
+                                    mro_index,
+                                    *definition,
+                                    t,
+                                ) {
+                                    return inf;
                                 }
-                                DbType::Class(c) => {
-                                    let inst = use_instance_with_ref(
-                                        NodeRef::from_link(i_s.db, c.link),
-                                        Generics::from_class_generics(i_s.db, &c.generics),
-                                        Some(&self),
-                                    );
-                                    if let Some(inf) =
-                                        inst.lookup(i_s, from, "__get__").into_maybe_inferred()
-                                    {
-                                        let from = from.unwrap_or_else(|| todo!());
-                                        let class_as_inferred = instance.class.as_inferred(i_s);
-                                        let instance = get_inferred(i_s);
-                                        return Some(inf.execute(
-                                            i_s,
-                                            &CombinedArguments::new(
-                                                &KnownArguments::new(&instance, from),
-                                                &KnownArguments::new(&class_as_inferred, from),
-                                            ),
-                                        ));
-                                    }
-                                }
-                                _ => (),
-                            },
+                            }
                             ComplexPoint::ClassVar(t) => {
                                 if let DbType::Callable(c) = t.as_ref() {
                                     debug_assert_eq!(c.kind, FunctionKind::Function);
@@ -887,6 +826,82 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Unknown => (),
         }
         Some(self)
+    }
+
+    fn bind_instance_descriptors_for_type(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        instance: &Instance,
+        func_class: Class,
+        get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
+        from: Option<NodeRef>,
+        mro_index: MroIndex,
+        definition: PointLink,
+        t: &DbType,
+    ) -> Option<Option<Self>> {
+        match t {
+            DbType::Callable(c) => {
+                match c.kind {
+                    FunctionKind::Function => {
+                        // TODO should use create_signature_without_self_for_callable!
+                        return Some(Some(Self::new_bound_method(
+                            get_inferred(i_s).as_bound_method_instance(i_s),
+                            mro_index,
+                            definition,
+                        )));
+                    }
+                    FunctionKind::Property { .. } => {
+                        return Some(Some(Inferred::from_type(replace_class_type_vars(
+                            i_s.db,
+                            &c.result_type,
+                            &instance.class,
+                            &func_class,
+                        ))))
+                    }
+                    FunctionKind::Classmethod => {
+                        let result = infer_class_method(i_s, instance.class, func_class, c);
+                        if result.is_none() {
+                            if let Some(from) = from {
+                                let func = prepare_func(i_s, definition, func_class);
+                                let t = IssueType::InvalidClassMethodFirstArgument {
+                                    argument_type: instance.class.as_type(i_s).format_short(i_s.db),
+                                    function_name: Box::from(func.name()),
+                                    callable: func.as_type(i_s).format_short(i_s.db),
+                                };
+                                from.add_issue(i_s, t);
+                                return Some(Some(Self::new_any()));
+                            } else {
+                                todo!()
+                            }
+                        }
+                        return Some(result.map(callable_into_inferred));
+                    }
+                    // Static methods can be passed out without any remapping.
+                    FunctionKind::Staticmethod => (),
+                }
+            }
+            DbType::Class(c) => {
+                let inst = use_instance_with_ref(
+                    NodeRef::from_link(i_s.db, c.link),
+                    Generics::from_class_generics(i_s.db, &c.generics),
+                    Some(&self),
+                );
+                if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
+                    let from = from.unwrap_or_else(|| todo!());
+                    let class_as_inferred = instance.class.as_inferred(i_s);
+                    let instance = get_inferred(i_s);
+                    return Some(Some(inf.execute(
+                        i_s,
+                        &CombinedArguments::new(
+                            &KnownArguments::new(&instance, from),
+                            &KnownArguments::new(&class_as_inferred, from),
+                        ),
+                    )));
+                }
+            }
+            _ => (),
+        }
+        None
     }
 
     pub fn bind_class_descriptors(
