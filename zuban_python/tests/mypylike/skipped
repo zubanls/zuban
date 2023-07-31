@@ -8,6 +8,8 @@ testCheckUntypedDefsSelf2
 testCheckUntypedDefsSelf3
 testLambdaInheritsCheckedContextFromFuncForced
 
+callable_on_class_without_classvar
+
 # super with Type[...]
 testSuperWithAny
 testSuperInClassMethod

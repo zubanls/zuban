@@ -174,3 +174,33 @@ reveal_type(Foo().foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (__main__.Foo, int)"
 Foo.foo  # E: "Type[Foo]" has no attribute "foo"
+
+[case callable_on_class_with_classvar]
+class Foo:
+    o: ClassVar[Callable[[], Callable[[Foo, int], None]]]
+    foo: ClassVar[Callable[[Foo, int], str]]
+    bar = foo
+    bla = o()
+
+reveal_type(Foo.foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo.bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo.bla)  # N: Revealed type is "def (__main__.Foo, int)"
+
+reveal_type(Foo().foo)  # N: Revealed type is "def (int) -> str"
+reveal_type(Foo().bar)  # N: Revealed type is "def (int) -> str"
+reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
+
+[case callable_on_class_without_classvar]
+class Foo:
+    o: Callable[[], Callable[[Foo, int], None]]
+    foo: Callable[[Foo, int], str]
+    bar = foo
+    bla = o()
+
+reveal_type(Foo.foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo.bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo.bla)  # N: Revealed type is "def (__main__.Foo, int)"
+
+reveal_type(Foo().foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo().bla)  # N: Revealed type is "def (__main__.Foo, int)"
