@@ -93,3 +93,26 @@ t1: Z[int]
 t2: Z[bytes, str]
 reveal_type(t1)  # N: Revealed type is "__main__.Z[[builtins.int]]"
 reveal_type(t2)  # N: Revealed type is "__main__.Z[[builtins.bytes, builtins.str]]"
+
+[case alias_applying_param_spec]
+# Similar to testConcatDeferralNoCrash
+from typing import Callable, TypeVar
+from typing_extensions import Concatenate, ParamSpec
+
+P = ParamSpec("P")
+
+Alias = Callable[P, bool]
+
+def test(f: Alias[Concatenate[int, P]]) -> Callable[P, float]: ...
+
+x: Callable[[int, int], bool]
+y: Callable[[int, int, str], bool]
+z: Callable[[int], bool]
+reveal_type(test(x))  # N: Revealed type is "def (int) -> float"
+reveal_type(test(y))  # N: Revealed type is "def (int, str) -> float"
+reveal_type(test(z))  # N: Revealed type is "def () -> float"
+
+f: Callable[[str], bool]
+g: Callable[[int], str]
+test(f)  # E: Argument 1 to "test" has incompatible type "Callable[[str], bool]"; expected "Callable[[int, <nothing>], bool]"
+test(g)  # E: Argument 1 to "test" has incompatible type "Callable[[int], str]"; expected "Callable[[int], bool]"
