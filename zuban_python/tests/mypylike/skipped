@@ -396,8 +396,6 @@ testGenericClassInGenericFunctionOverloadedConstructor-skip
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
 
-# ""property" used with a non-method"
-testNonMethodProperty
 # "staticmethod" used with a non-method"
 testStaticmethodAndNonMethod
 # "classmethod" used with a non-method"

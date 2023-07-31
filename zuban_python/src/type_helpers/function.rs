@@ -478,6 +478,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState,
     ) -> Option<FunctionDetails> {
         let decorated = self.expect_decorated_node();
+        let used_with_a_non_method = |name| {
+            NodeRef::new(self.node_ref.file, decorated.index())
+                .add_issue(i_s, IssueType::UsedWithANonMethod { name })
+        };
+
         let mut inferred = Inferred::from_type(self.as_db_type(i_s, FirstParamProperties::None));
         let mut kind = FunctionKind::Function;
         let mut is_overload = false;
@@ -500,12 +505,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     return None;
                 }
                 if self.class.is_none() {
-                    NodeRef::new(self.node_ref.file, decorated.index()).add_issue(
-                        i_s,
-                        IssueType::UsedWithANonMethod {
-                            name: "classmethod",
-                        },
-                    );
+                    used_with_a_non_method("classmethod");
                     return None;
                 }
                 kind = FunctionKind::Classmethod;
@@ -517,6 +517,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
                 }
                 kind = FunctionKind::Staticmethod;
+                if self.class.is_none() {
+                    used_with_a_non_method("staticmethod");
+                    return None;
+                }
                 continue;
             }
             if saved_link == Some(i_s.db.python_state.overload_link()) {
@@ -532,6 +536,10 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if is_overload {
                     NodeRef::new(self.node_ref.file, decorator.index())
                         .add_issue(i_s, IssueType::OverloadedPropertyNotSupported);
+                    return None;
+                }
+                if self.class.is_none() {
+                    used_with_a_non_method("property");
                     return None;
                 }
                 kind = FunctionKind::Property { writable: false };
