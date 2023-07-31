@@ -337,8 +337,6 @@ testConcatDeferralNoCrash
 testSelfTypeBadTypeIgnoredInConstructorGeneric
 testSelfTypeRestrictedMethodOverloadInit
 
-# function call in class of function in class
-testCallConditionalMethodInClassBody
 # Class: decorator defined inside class
 testBadClassLevelDecoratorHack
 
