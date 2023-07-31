@@ -161,3 +161,16 @@ class Foo:
     def method2(self, x: ClassVar[int]) -> None: ...  # E: ClassVar can only be used for assignments in class body
     def method3(self) -> ClassVar: ...  # E: ClassVar can only be used for assignments in class body
     def method4(self) -> ClassVar[int]: ...  # E: ClassVar can only be used for assignments in class body
+
+[case self_callable]
+class Foo:
+    def __init__(self) -> None:
+        o: Callable[[], Callable[[Foo, int], None]]
+        self.foo: Callable[[Foo, int], str]
+        self.bar = self.foo
+        self.bla = o()
+
+reveal_type(Foo().foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
+reveal_type(Foo().bla)  # N: Revealed type is "def (__main__.Foo, int)"
+Foo.foo  # E: "Type[Foo]" has no attribute "foo"
