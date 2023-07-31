@@ -991,7 +991,23 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = replace_class_type_vars(i_s.db, t, class, &attribute_class);
                             return Some(Inferred::from_type(t));
                         }
-                        Specific::AnnotationOrTypeCommentWithoutTypeVars => (),
+                        Specific::AnnotationOrTypeCommentWithoutTypeVars => {
+                            let file = i_s.db.loaded_python_file(definition.file);
+                            let t = file
+                                .inference(i_s)
+                                .use_db_type_of_annotation_or_type_comment(definition.node_index);
+                            if let Some(r) = self.bind_class_descriptors_for_type(
+                                i_s,
+                                class,
+                                attribute_class,
+                                from,
+                                apply_descriptor,
+                                *definition,
+                                t,
+                            ) {
+                                return r;
+                            }
+                        }
                         _ => (),
                     },
                     PointType::Complex => {
@@ -1012,83 +1028,32 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                                 FunctionKind::Staticmethod => (),
                             },
-                            ComplexPoint::TypeInstance(t) => match t {
-                                DbType::Callable(c) => match c.kind {
-                                    FunctionKind::Function => {
-                                        debug!("TODO callable decorated class descriptor")
-                                    }
-                                    FunctionKind::Property { .. } => todo!(),
-                                    FunctionKind::Classmethod => {
-                                        let result =
-                                            infer_class_method(i_s, *class, attribute_class, c);
-                                        if result.is_none() {
-                                            if let Some(from) = from {
-                                                let func =
-                                                    prepare_func(i_s, *definition, attribute_class);
-                                                let t = IssueType::InvalidSelfArgument {
-                                                    argument_type: class
-                                                        .as_type(i_s)
-                                                        .format_short(i_s.db),
-                                                    function_name: Box::from(func.name()),
-                                                    callable: func
-                                                        .as_type(i_s)
-                                                        .format_short(i_s.db),
-                                                };
-                                                from.add_issue(i_s, t);
-                                                return Some(Self::new_any());
-                                            } else {
-                                                todo!()
-                                            }
-                                        }
-                                        return result.map(callable_into_inferred);
-                                    }
-                                    FunctionKind::Staticmethod => (),
-                                },
-                                DbType::Class(c) if apply_descriptor => {
-                                    let inst = use_instance_with_ref(
-                                        NodeRef::from_link(i_s.db, c.link),
-                                        Generics::from_class_generics(i_s.db, &c.generics),
-                                        Some(&self),
-                                    );
-                                    if let Some(inf) =
-                                        inst.lookup(i_s, from, "__get__").into_maybe_inferred()
-                                    {
-                                        let from = from.unwrap_or_else(|| todo!());
-                                        let class_as_inferred = class.as_inferred(i_s);
-                                        return Some(inf.execute(
-                                            i_s,
-                                            &CombinedArguments::new(
-                                                &KnownArguments::new(&Inferred::new_none(), from),
-                                                &KnownArguments::new(&class_as_inferred, from),
-                                            ),
-                                        ));
-                                    }
+                            ComplexPoint::TypeInstance(t) => {
+                                if let Some(r) = self.bind_class_descriptors_for_type(
+                                    i_s,
+                                    class,
+                                    attribute_class,
+                                    from,
+                                    apply_descriptor,
+                                    *definition,
+                                    t,
+                                ) {
+                                    return r;
                                 }
-                                _ => (),
-                            },
-                            ComplexPoint::ClassVar(t) => match t.as_ref() {
-                                DbType::Class(c) if apply_descriptor => {
-                                    let inst = use_instance_with_ref(
-                                        NodeRef::from_link(i_s.db, c.link),
-                                        Generics::from_class_generics(i_s.db, &c.generics),
-                                        Some(&self),
-                                    );
-                                    if let Some(inf) =
-                                        inst.lookup(i_s, from, "__get__").into_maybe_inferred()
-                                    {
-                                        let from = from.unwrap_or_else(|| todo!());
-                                        let class_as_inferred = class.as_inferred(i_s);
-                                        return Some(inf.execute(
-                                            i_s,
-                                            &CombinedArguments::new(
-                                                &KnownArguments::new(&Inferred::new_none(), from),
-                                                &KnownArguments::new(&class_as_inferred, from),
-                                            ),
-                                        ));
-                                    }
+                            }
+                            ComplexPoint::ClassVar(t) => {
+                                if let Some(r) = self.bind_class_descriptors_for_type(
+                                    i_s,
+                                    class,
+                                    attribute_class,
+                                    from,
+                                    apply_descriptor,
+                                    *definition,
+                                    t.as_ref(),
+                                ) {
+                                    return r;
                                 }
-                                _ => (),
-                            },
+                            }
                             _ => (),
                         }
                     }
@@ -1102,6 +1067,65 @@ impl<'db: 'slf, 'slf> Inferred {
             InferredState::Unknown => (),
         }
         Some(self)
+    }
+
+    pub fn bind_class_descriptors_for_type(
+        &self,
+        i_s: &InferenceState<'db, '_>,
+        class: &Class,
+        attribute_class: Class, // The (sub-)class in which an attribute is defined
+        from: Option<NodeRef>,
+        apply_descriptor: bool,
+        definition: PointLink,
+        t: &DbType,
+    ) -> Option<Option<Self>> {
+        match t {
+            DbType::Callable(c) => match c.kind {
+                FunctionKind::Function => {
+                    debug!("TODO callable decorated class descriptor")
+                }
+                FunctionKind::Property { .. } => todo!(),
+                FunctionKind::Classmethod => {
+                    let result = infer_class_method(i_s, *class, attribute_class, c);
+                    if result.is_none() {
+                        if let Some(from) = from {
+                            let func = prepare_func(i_s, definition, attribute_class);
+                            let t = IssueType::InvalidSelfArgument {
+                                argument_type: class.as_type(i_s).format_short(i_s.db),
+                                function_name: Box::from(func.name()),
+                                callable: func.as_type(i_s).format_short(i_s.db),
+                            };
+                            from.add_issue(i_s, t);
+                            return Some(Some(Self::new_any()));
+                        } else {
+                            todo!()
+                        }
+                    }
+                    return Some(result.map(callable_into_inferred));
+                }
+                FunctionKind::Staticmethod => (),
+            },
+            DbType::Class(c) if apply_descriptor => {
+                let inst = use_instance_with_ref(
+                    NodeRef::from_link(i_s.db, c.link),
+                    Generics::from_class_generics(i_s.db, &c.generics),
+                    Some(&self),
+                );
+                if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
+                    let from = from.unwrap_or_else(|| todo!());
+                    let class_as_inferred = class.as_inferred(i_s);
+                    return Some(Some(inf.execute(
+                        i_s,
+                        &CombinedArguments::new(
+                            &KnownArguments::new(&Inferred::new_none(), from),
+                            &KnownArguments::new(&class_as_inferred, from),
+                        ),
+                    )));
+                }
+            }
+            _ => (),
+        }
+        None
     }
 
     pub fn bind_new_descriptors(

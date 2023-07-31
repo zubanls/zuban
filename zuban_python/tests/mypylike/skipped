@@ -8,8 +8,6 @@ testCheckUntypedDefsSelf2
 testCheckUntypedDefsSelf3
 testLambdaInheritsCheckedContextFromFuncForced
 
-testAccessingGenericDescriptorFromClassBadOverload
-
 # super with Type[...]
 testSuperWithAny
 testSuperInClassMethod
