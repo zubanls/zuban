@@ -544,7 +544,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     self.inference.file.points.set(
                         annotation_index,
                         Point::new_simple_specific(
-                            Specific::AnnotationOrTypeCommentClassInstance,
+                            Specific::AnnotationOrTypeCommentSimpleClassInstance,
                             Locality::Todo,
                         ),
                     );
@@ -2439,7 +2439,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if std::cfg!(debug_assertions) {
             let point = self.file.points.get(annotation.index());
             if point.type_() == PointType::Specific {
-                if point.specific() != Specific::AnnotationOrTypeCommentClassInstance {
+                if point.specific() != Specific::AnnotationOrTypeCommentSimpleClassInstance {
                     debug_assert_eq!(
                         point.specific(),
                         Specific::AnnotationOrTypeCommentWithTypeVars
@@ -2461,7 +2461,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             let point = self.file.points.get(annotation.index());
             assert!(point.calculated());
             if point.type_() == PointType::Specific {
-                if point.specific() != Specific::AnnotationOrTypeCommentClassInstance {
+                if point.specific() != Specific::AnnotationOrTypeCommentSimpleClassInstance {
                     debug_assert_eq!(
                         point.specific(),
                         Specific::AnnotationOrTypeCommentWithTypeVars
@@ -2504,7 +2504,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
         let complex_index = if point.type_() == PointType::Specific {
-            if point.specific() == Specific::AnnotationOrTypeCommentClassInstance {
+            if point.specific() == Specific::AnnotationOrTypeCommentSimpleClassInstance {
                 return self
                     .infer_expression(expr)
                     .expect_class_or_simple_generic(self.i_s);

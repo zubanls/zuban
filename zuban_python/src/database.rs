@@ -430,8 +430,11 @@ pub enum Specific {
     Function,          // The node point so the index of the result
     Closure,           // TODO remove this?
     // NoReturnFunction,  // TODO Remove or use?
-    AnnotationOrTypeCommentClassInstance,
-    AnnotationOrTypeCommentWithTypeVars,
+
+    // A class with either SimpleGeneric or just a class that contains no generics
+    AnnotationOrTypeCommentSimpleClassInstance,
+    AnnotationOrTypeCommentWithTypeVars, // Will contain a DbType a few points later.
+    // A generic class where the generics are either SimpleGeneric or classes without generics
     SimpleGeneric, // primary: primary '[' slices ']'
 
     BuiltinsSuper,

@@ -1985,7 +1985,7 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                     // Caches the decorated inference properly
                     saved_as_type(i_s, func.decorated(i_s).maybe_saved_link().unwrap())
                 }
-                Specific::AnnotationOrTypeCommentClassInstance
+                Specific::AnnotationOrTypeCommentSimpleClassInstance
                 | Specific::AnnotationOrTypeCommentWithTypeVars => definition
                     .file
                     .inference(i_s)
