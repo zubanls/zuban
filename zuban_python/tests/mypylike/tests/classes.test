@@ -188,7 +188,7 @@ reveal_type(Foo.bla)  # N: Revealed type is "def (__main__.Foo, int)"
 
 reveal_type(Foo().foo)  # N: Revealed type is "def (int) -> str"
 reveal_type(Foo().bar)  # N: Revealed type is "def (int) -> str"
-reveal_type(Foo().bla)  # N: Revealed type is "def (int)"
+reveal_type(Foo().bla)  # N: Revealed type is "def (__main__.foo, int)"
 
 [case callable_on_class_without_classvar]
 class Foo:

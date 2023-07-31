@@ -462,8 +462,13 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             drop(details);
             self.calculate_property_setter_and_deleter(i_s, Rc::make_mut(&mut callable));
             return Inferred::from_type(DbType::Callable(callable));
+        } else if details.kind == FunctionKind::Function {
+            Inferred::new_unsaved_complex(ComplexPoint::ClassVar(Rc::new(
+                details.inferred.as_db_type(i_s),
+            )))
+        } else {
+            details.inferred
         }
-        details.inferred
     }
 
     fn expect_decorated_node(&self) -> Decorated {
