@@ -1674,7 +1674,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     ) -> UnionMathResult {
         if let Some(next_arg) = args.next() {
             let inf = next_arg.infer(i_s, result_context);
-            if inf.is_union(i_s.db) {
+            if inf.is_union(i_s) {
                 // TODO this is shit
                 let nxt_arg: &'x Argument<'db, 'x> = unsafe { std::mem::transmute(&next_arg) };
                 non_union_args.push(Argument {

@@ -11,7 +11,7 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{on_argument_type_error, use_cached_annotation_type, File, PythonFile};
+use crate::file::{on_argument_type_error, File, PythonFile};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
@@ -605,7 +605,7 @@ impl<'db: 'slf, 'slf> Inferred {
         other: Self,
         result_context: &mut ResultContext,
     ) -> Self {
-        if result_context.expects_union(i_s) || self.is_union(i_s.db) || other.is_union(i_s.db) {
+        if result_context.expects_union(i_s) || self.is_union(i_s) || other.is_union(i_s) {
             self.union(i_s, other)
         } else {
             let second = other.as_type(i_s);
@@ -700,6 +700,24 @@ impl<'db: 'slf, 'slf> Inferred {
                                 from,
                                 mro_index,
                             );
+                        }
+                        Specific::AnnotationOrTypeCommentWithoutTypeVars => {
+                            let t = node_ref
+                                .file
+                                .inference(i_s)
+                                .use_db_type_of_annotation_or_type_comment(node_ref.node_index);
+                            if let Some(inf) = self.bind_instance_descriptors_for_type(
+                                i_s,
+                                instance,
+                                func_class,
+                                get_inferred,
+                                from,
+                                mro_index,
+                                *definition,
+                                t,
+                            ) {
+                                return inf;
+                            }
                         }
                         _ => (),
                     },
@@ -973,6 +991,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = replace_class_type_vars(i_s.db, t, class, &attribute_class);
                             return Some(Inferred::from_type(t));
                         }
+                        Specific::AnnotationOrTypeCommentWithoutTypeVars => (),
                         _ => (),
                     },
                     PointType::Complex => {
@@ -1209,20 +1228,29 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    pub fn is_union(&self, db: &'db Database) -> bool {
+    pub fn is_union(&self, i_s: &InferenceState) -> bool {
         let check_complex_point = |c: &_| match c {
             ComplexPoint::TypeInstance(t) => Type::new(t).is_union(),
             _ => false,
         };
         match &self.state {
             InferredState::Saved(reference) => {
-                let node_ref = NodeRef::from_link(db, *reference);
+                let node_ref = NodeRef::from_link(i_s.db, *reference);
                 let point = node_ref.point();
                 if point.type_() == PointType::Specific {
-                    if point.specific() == Specific::AnnotationOrTypeCommentWithTypeVars {
+                    if matches!(
+                        point.specific(),
+                        Specific::AnnotationOrTypeCommentWithTypeVars
+                            | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                    ) {
                         // TODO the node_ref may not be an annotation.
-                        use_cached_annotation_type(db, node_ref.file, node_ref.as_annotation())
-                            .is_union()
+                        matches!(
+                            node_ref
+                                .file
+                                .inference(i_s)
+                                .use_db_type_of_annotation_or_type_comment(node_ref.node_index),
+                            DbType::Union(_)
+                        )
                     } else {
                         false
                     }
@@ -1986,6 +2014,7 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                     saved_as_type(i_s, func.decorated(i_s).maybe_saved_link().unwrap())
                 }
                 Specific::AnnotationOrTypeCommentSimpleClassInstance
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
                 | Specific::AnnotationOrTypeCommentWithTypeVars => definition
                     .file
                     .inference(i_s)

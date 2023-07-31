@@ -434,6 +434,7 @@ pub enum Specific {
     // A class with either SimpleGeneric or just a class that contains no generics
     AnnotationOrTypeCommentSimpleClassInstance,
     AnnotationOrTypeCommentWithTypeVars, // Will contain a DbType a few points later.
+    AnnotationOrTypeCommentWithoutTypeVars, // Will contain a DbType a few points later.
     // A generic class where the generics are either SimpleGeneric or classes without generics
     SimpleGeneric, // primary: primary '[' slices ']'
 

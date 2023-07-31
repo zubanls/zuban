@@ -600,26 +600,26 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 _ => {
                     let mut d = self.as_db_type(type_, node_ref);
-                    if self.has_type_vars {
-                        if is_implicit_optional {
-                            d.make_optional(self.inference.i_s.db)
-                        }
-                        Inferred::from_type(d).save_redirect(
-                            self.inference.i_s,
-                            self.inference.file,
-                            expr.index(),
-                        );
-                        self.inference.file.points.set(
-                            annotation_index,
-                            Point::new_simple_specific(
-                                Specific::AnnotationOrTypeCommentWithTypeVars,
-                                Locality::Todo,
-                            ),
-                        );
-                        return;
-                    } else {
-                        d
+                    if is_implicit_optional {
+                        d.make_optional(self.inference.i_s.db)
                     }
+                    Inferred::from_type(d).save_redirect(
+                        self.inference.i_s,
+                        self.inference.file,
+                        expr.index(),
+                    );
+                    self.inference.file.points.set(
+                        annotation_index,
+                        Point::new_simple_specific(
+                            if self.has_type_vars {
+                                Specific::AnnotationOrTypeCommentWithTypeVars
+                            } else {
+                                Specific::AnnotationOrTypeCommentWithoutTypeVars
+                            },
+                            Locality::Todo,
+                        ),
+                    );
+                    return;
                 }
             },
         };
@@ -2440,10 +2440,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             let point = self.file.points.get(annotation.index());
             if point.type_() == PointType::Specific {
                 if point.specific() != Specific::AnnotationOrTypeCommentSimpleClassInstance {
-                    debug_assert_eq!(
+                    debug_assert!(matches!(
                         point.specific(),
                         Specific::AnnotationOrTypeCommentWithTypeVars
-                    );
+                            | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                    ));
                 }
             } else {
                 debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
@@ -2462,10 +2463,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             assert!(point.calculated());
             if point.type_() == PointType::Specific {
                 if point.specific() != Specific::AnnotationOrTypeCommentSimpleClassInstance {
-                    debug_assert_eq!(
+                    debug_assert!(matches!(
                         point.specific(),
                         Specific::AnnotationOrTypeCommentWithTypeVars
-                    );
+                            | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                    ));
                 }
             } else {
                 debug_assert_eq!(point.type_(), PointType::Complex, "{annotation:?}");
@@ -2509,10 +2511,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     .infer_expression(expr)
                     .expect_class_or_simple_generic(self.i_s);
             } else {
-                debug_assert_eq!(
+                debug_assert!(matches!(
                     point.specific(),
                     Specific::AnnotationOrTypeCommentWithTypeVars
-                );
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                ));
                 self.file.points.get(expr.index()).complex_index()
             }
         } else {
@@ -2535,10 +2538,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         &self,
         node_index: NodeIndex,
     ) -> &'file DbType {
-        debug_assert_eq!(
+        debug_assert!(matches!(
             self.file.points.get(node_index).specific(),
             Specific::AnnotationOrTypeCommentWithTypeVars
-        );
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
+        ));
         // annotations look like `":" expr`
         let complex_index = self
             .file
