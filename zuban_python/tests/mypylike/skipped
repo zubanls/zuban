@@ -380,8 +380,6 @@ testIncrementalNestedTypeAlias
 # object.__new__(cls) -> Self where object.__new__(int) leads to Never
 testOverride__new__AndCallObject
 
-# classmethod not a valid classmethod
-testClassmethodAndNonMethod
 # Self type classmethod access with type vars(no Self)
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
@@ -402,6 +400,8 @@ SelfTypeOverloadedClassMethod
 testNonMethodProperty
 # "staticmethod" used with a non-method"
 testStaticmethodAndNonMethod
+# "classmethod" used with a non-method"
+testClassmethodAndNonMethod
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
 testOverloadWithStaticMethods
 testOverloadWithSwappedDecorators2

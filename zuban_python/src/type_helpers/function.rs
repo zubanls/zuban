@@ -499,6 +499,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
                     return None;
                 }
+                if self.class.is_none() {
+                    NodeRef::new(self.node_ref.file, decorated.index()).add_issue(
+                        i_s,
+                        IssueType::UsedWithANonMethod {
+                            name: "classmethod",
+                        },
+                    );
+                    return None;
+                }
                 kind = FunctionKind::Classmethod;
                 continue;
             }

@@ -98,6 +98,7 @@ pub(crate) enum IssueType {
     InvalidSelfArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     InvalidClassMethodFirstArgument { argument_type: Box<str>, function_name: Box<str>, callable: Box<str> },
     InvalidClassmethodAndStaticmethod,
+    UsedWithANonMethod { name: &'static str },
     UnexpectedComprehension,
     AmbigousClassVariableAccess,
     CannotInstantiateProtocol { name: Box<str> },
@@ -564,6 +565,7 @@ impl<'db> Diagnostic<'db> {
             ),
             InvalidClassmethodAndStaticmethod =>
                 "Cannot have both classmethod and staticmethod".to_string(),
+            UsedWithANonMethod{name} => format!(r#""{name}" used with a non-method"#),
             UnexpectedComprehension => "Unexpected comprehension".to_string(),
             AmbigousClassVariableAccess =>
                 "Access to generic instance variables via class is ambiguous".to_string(),
