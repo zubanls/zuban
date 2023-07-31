@@ -40,3 +40,8 @@ with debug enabled:
 
 - Chosing `__new__` or `__init__` via heuristic
 - Initializing casting `Type[Class]` to `Type[object]` and then `Type[object]()` is ok?
+- Ignoring positional arg names when assigning functions in:
+  - Override checks (including multiple inheritance checks)
+  - Checks where one side of callables is implicitly typed (i.e. `def foo...`)
+  - Checks of inplace operators (However this does not matter, probably).
+  - overlapping checks
