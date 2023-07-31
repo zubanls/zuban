@@ -1839,14 +1839,6 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                             }
                         }
                     }
-                    Specific::DecoratedFunction => {
-                        let func = Function::new(
-                            NodeRef::new(self.file, node_index),
-                            self.i_s.current_class().copied(),
-                        );
-                        // Caches the decorated inference on properly
-                        func.decorated(self.i_s)
-                    }
                     Specific::LazyInferredClass => {
                         // TODO this does not analyze decorators
                         let name_def = NameDefinition::by_index(&self.file.tree, node_index);

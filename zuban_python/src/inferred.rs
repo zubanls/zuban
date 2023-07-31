@@ -541,7 +541,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     pub fn init_as_function<'a>(
         &self,
-        db: &'db Database,
+        i_s: &InferenceState<'db, '_>,
         class: Option<Class<'a>>,
     ) -> Option<FunctionOrOverload<'a>>
     where
@@ -549,11 +549,19 @@ impl<'db: 'slf, 'slf> Inferred {
     {
         match &self.state {
             InferredState::Saved(link) => {
-                let definition = NodeRef::from_link(db, *link);
-                if let Some(Specific::Function) = definition.point().maybe_specific() {
-                    return Some(FunctionOrOverload::Function(Function::new(
-                        definition, class,
-                    )));
+                let definition = NodeRef::from_link(i_s.db, *link);
+                match definition.point().maybe_specific() {
+                    Some(Specific::Function) => {
+                        return Some(FunctionOrOverload::Function(Function::new(
+                            definition, class,
+                        )));
+                    }
+                    Some(Specific::DecoratedFunction) => {
+                        return Function::new(definition, class)
+                            .decorated(i_s)
+                            .init_as_function(i_s, class)
+                    }
+                    _ => (),
                 }
                 match definition.complex() {
                     Some(ComplexPoint::FunctionOverload(overload)) => {
@@ -681,6 +689,17 @@ impl<'db: 'slf, 'slf> Inferred {
                                     *definition,
                                 ))
                             };
+                        }
+                        Specific::DecoratedFunction => {
+                            let func = prepare_func(i_s, *definition, func_class);
+                            return func.decorated(i_s).bind_instance_descriptors(
+                                i_s,
+                                instance,
+                                func_class,
+                                get_inferred,
+                                from,
+                                mro_index,
+                            );
                         }
                         _ => (),
                     },
@@ -930,6 +949,17 @@ impl<'db: 'slf, 'slf> Inferred {
                                 func.as_db_type(i_s, FirstParamProperties::MethodAccessedOnClass);
                             return Some(Inferred::from_type(t));
                         }
+                        Specific::DecoratedFunction => {
+                            return Function::new(node_ref, Some(attribute_class))
+                                .decorated(i_s)
+                                .bind_class_descriptors(
+                                    i_s,
+                                    class,
+                                    attribute_class,
+                                    from,
+                                    apply_descriptor,
+                                );
+                        }
                         Specific::AnnotationOrTypeCommentWithTypeVars => {
                             if let Some(from) = from {
                                 from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
@@ -1059,10 +1089,10 @@ impl<'db: 'slf, 'slf> Inferred {
         self,
         i_s: &InferenceState<'db, '_>,
         class: &Class,
-        attribute_class: Option<Class>,
+        class_of_attribute: Option<Class>,
     ) -> Self {
         // This method exists for __new__
-        let attribute_class = attribute_class.unwrap_or(*class);
+        let attribute_class = class_of_attribute.unwrap_or(*class);
         match &self.state {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
@@ -1082,6 +1112,14 @@ impl<'db: 'slf, 'slf> Inferred {
                             } else {
                                 todo!()
                             }
+                        }
+                        Specific::DecoratedFunction => {
+                            let func = Function::new(node_ref, Some(attribute_class));
+                            return func.decorated(i_s).bind_new_descriptors(
+                                i_s,
+                                class,
+                                class_of_attribute,
+                            );
                         }
                         _ => (),
                     },
@@ -1941,6 +1979,11 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                 })),
                 Specific::Function => {
                     Function::new(definition, i_s.current_class().copied()).as_type(i_s)
+                }
+                Specific::DecoratedFunction => {
+                    let func = Function::new(definition, i_s.current_class().copied());
+                    // Caches the decorated inference properly
+                    saved_as_type(i_s, func.decorated(i_s).maybe_saved_link().unwrap())
                 }
                 Specific::AnnotationOrTypeCommentClassInstance
                 | Specific::AnnotationOrTypeCommentWithTypeVars => definition

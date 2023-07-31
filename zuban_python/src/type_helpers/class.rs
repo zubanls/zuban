@@ -128,7 +128,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 None => ClassGenerics::None,
             })
         };
-        match inf.init_as_function(i_s.db, init_class) {
+        match inf.init_as_function(i_s, init_class) {
             Some(FunctionOrOverload::Function(func)) => {
                 let calculated_type_args = calculate_class_init_type_vars_and_return(
                     i_s,
