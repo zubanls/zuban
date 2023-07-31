@@ -1035,10 +1035,12 @@ impl<'db: 'a, 'a> Class<'a> {
         NewOrInitConstructor {
             is_new,
             // TODO this should not be bound if is_new = false
-            __new__: __new__
-                .into_inferred()
-                .bind_new_descriptors(&i_s, self, new_class),
-            __init__,
+            constructor: match is_new {
+                false => __init__,
+                true => __new__
+                    .and_then(|inf| Some(inf.bind_new_descriptors(&i_s, self, new_class)))
+                    .unwrap(),
+            },
             init_class,
         }
     }
@@ -1086,7 +1088,8 @@ impl<'db: 'a, 'a> Class<'a> {
         let constructor = self.find_relevant_constructor(i_s);
         if constructor.is_new {
             let result = constructor
-                .__new__
+                .constructor
+                .into_inferred()
                 .execute_with_details(i_s, args, result_context, on_type_error)
                 .as_db_type(i_s);
             return Inferred::from_type(match &result {
@@ -1105,7 +1108,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
         if let Some(generics) = self.type_check_init_func(
             i_s,
-            constructor.__init__,
+            constructor.constructor,
             constructor.init_class,
             args,
             result_context,
@@ -1358,18 +1361,17 @@ fn add_protocol_mismatch(
 
 pub struct NewOrInitConstructor<'a> {
     // A data structure to show wheter __init__ or __new__ is the relevant constructor for a class
-    __new__: Inferred,
-    __init__: LookupResult,
+    constructor: LookupResult,
     init_class: Option<Class<'a>>,
     is_new: bool,
 }
 
 impl NewOrInitConstructor<'_> {
     pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<Rc<CallableContent>> {
+        let inf = self.constructor.into_inferred();
         if self.is_new {
-            self.__new__.as_type(i_s).maybe_callable(i_s)
+            inf.as_type(i_s).maybe_callable(i_s)
         } else {
-            let inf = self.__init__.into_inferred();
             let callable = if let Some(c) = self.init_class {
                 let i_s = &i_s.with_class_context(&c);
                 inf.as_type(i_s).maybe_callable(i_s)
