@@ -206,6 +206,7 @@ impl<'a> Instance<'a> {
                         |i_s| self.as_inferred(i_s),
                         node_ref,
                         mro_index,
+                        true,
                     )
                 } else {
                     Some(inf)
@@ -380,6 +381,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                                 |i_s| self.instance.as_inferred(i_s),
                                 Some(self.from),
                                 mro_index,
+                                true,
                             )
                         })
                         .and_then(|lookup_result| lookup_result.into_maybe_inferred());

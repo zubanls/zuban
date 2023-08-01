@@ -57,6 +57,7 @@ impl<'a> Tuple<'a> {
                     |i_s| tuple_instance.as_inferred(i_s),
                     node_ref,
                     mro_index,
+                    true,
                 )
             });
             match result {

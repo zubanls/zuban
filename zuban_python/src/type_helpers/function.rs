@@ -461,11 +461,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             // Make sure the old Rc count is decreased, so we can use it mutable without cloning.
             drop(details);
             self.calculate_property_setter_and_deleter(i_s, Rc::make_mut(&mut callable));
-            return Inferred::from_type(DbType::Callable(callable));
-        } else if details.kind == FunctionKind::Function {
-            Inferred::new_unsaved_complex(ComplexPoint::ClassVar(Rc::new(
-                details.inferred.as_db_type(i_s),
-            )))
+            Inferred::from_type(DbType::Callable(callable))
         } else {
             details.inferred
         }

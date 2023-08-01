@@ -647,6 +647,7 @@ impl<'db: 'slf, 'slf> Inferred {
         get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
         mro_index: MroIndex,
+        apply_bound_method: bool,
     ) -> Option<Self> {
         match &self.state {
             InferredState::Saved(definition) => {
@@ -699,6 +700,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 get_inferred,
                                 from,
                                 mro_index,
+                                apply_bound_method,
                             );
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars
@@ -718,6 +720,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 get_inferred,
                                 from,
                                 mro_index,
+                                false,
                             );
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars
@@ -735,6 +738,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 mro_index,
                                 None,
                                 t,
+                                false,
                             ) {
                                 return inf;
                             }
@@ -834,28 +838,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                     mro_index,
                                     Some(*definition),
                                     t,
+                                    apply_bound_method,
                                 ) {
                                     return inf;
                                 }
                             }
                             ComplexPoint::ClassVar(t) => {
-                                if let DbType::Callable(c) = t.as_ref() {
-                                    debug_assert_eq!(c.kind, FunctionKind::Function);
-                                    if let Some(f) = c.first_positional_type() {
-                                        return create_signature_without_self_for_callable(
-                                            i_s,
-                                            c,
-                                            instance,
-                                            &func_class,
-                                            f,
-                                        )
-                                        .map(|c| {
-                                            Inferred::from_type(DbType::Callable(Rc::new(c)))
-                                        });
-                                    } else {
-                                        todo!()
-                                    }
-                                }
                                 if let Some(inf) = self.bind_instance_descriptors_for_type(
                                     i_s,
                                     instance,
@@ -865,9 +853,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                     mro_index,
                                     None,
                                     t,
+                                    apply_bound_method,
                                 ) {
                                     return inf;
-                                } else {
                                 }
                             }
                             ComplexPoint::Class(cls_storage) => {
@@ -896,6 +884,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         mro_index,
                         None,
                         t,
+                        apply_bound_method,
                     ) {
                         return inf;
                     }
@@ -919,10 +908,28 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
         definition: Option<PointLink>,
         t: &DbType,
+        apply_bound_method: bool,
     ) -> Option<Option<Self>> {
         match t {
             DbType::Callable(c) => {
                 match c.kind {
+                    FunctionKind::Function if apply_bound_method => {
+                        debug_assert_eq!(c.kind, FunctionKind::Function);
+                        if let Some(f) = c.first_positional_type() {
+                            return Some(
+                                create_signature_without_self_for_callable(
+                                    i_s,
+                                    c,
+                                    instance,
+                                    &func_class,
+                                    f,
+                                )
+                                .map(|c| Inferred::from_type(DbType::Callable(Rc::new(c)))),
+                            );
+                        } else {
+                            todo!()
+                        }
+                    }
                     FunctionKind::Function => (),
                     FunctionKind::Property { .. } => {
                         return Some(Some(Inferred::from_type(replace_class_type_vars(
