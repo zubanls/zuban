@@ -541,30 +541,24 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if !is_implicit_optional =>
                 {
                     debug_assert!(self.inference.file.points.get(expr.index()).calculated());
-                    self.inference.file.points.set(
-                        annotation_index,
-                        Point::new_simple_specific(
-                            Specific::AnnotationOrTypeCommentSimpleClassInstance,
-                            Locality::Todo,
-                        ),
-                    );
+                    annotation_node_ref.set_point(Point::new_simple_specific(
+                        Specific::AnnotationOrTypeCommentSimpleClassInstance,
+                        Locality::Todo,
+                    ));
                     return;
                 }
                 TypeContent::SpecialType(
                     special @ (SpecialType::TypeAlias | SpecialType::Final),
                 ) if self.origin == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation => {
                     debug_assert!(!is_implicit_optional);
-                    self.inference.file.points.set(
-                        annotation_index,
-                        Point::new_simple_specific(
-                            match special {
-                                SpecialType::TypeAlias => Specific::TypingTypeAlias,
-                                SpecialType::Final => Specific::TypingFinal,
-                                _ => unreachable!(),
-                            },
-                            Locality::Todo,
-                        ),
-                    );
+                    annotation_node_ref.set_point(Point::new_simple_specific(
+                        match special {
+                            SpecialType::TypeAlias => Specific::TypingTypeAlias,
+                            SpecialType::Final => Specific::TypingFinal,
+                            _ => unreachable!(),
+                        },
+                        Locality::Todo,
+                    ));
                     return;
                 }
                 TypeContent::SpecialType(SpecialType::ClassVar) => {
@@ -586,12 +580,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     } else if self.origin
                         == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
                     {
-                        Inferred::new_unsaved_complex(ComplexPoint::ClassVar(Rc::new(t)))
-                            .save_redirect(
-                                self.inference.i_s,
-                                self.inference.file,
-                                annotation_index,
-                            );
+                        annotation_node_ref
+                            .insert_complex(ComplexPoint::ClassVar(Rc::new(t)), Locality::Todo);
                         return;
                     } else {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
@@ -609,17 +599,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             self.inference.file,
             expr.index(),
         );
-        self.inference.file.points.set(
-            annotation_index,
-            Point::new_simple_specific(
-                if self.has_type_vars {
-                    Specific::AnnotationOrTypeCommentWithTypeVars
-                } else {
-                    Specific::AnnotationOrTypeCommentWithoutTypeVars
-                },
-                Locality::Todo,
-            ),
-        );
+        annotation_node_ref.set_point(Point::new_simple_specific(
+            if self.has_type_vars {
+                Specific::AnnotationOrTypeCommentWithTypeVars
+            } else {
+                Specific::AnnotationOrTypeCommentWithoutTypeVars
+            },
+            Locality::Todo,
+        ));
     }
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
