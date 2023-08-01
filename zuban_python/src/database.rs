@@ -435,6 +435,7 @@ pub enum Specific {
     AnnotationOrTypeCommentSimpleClassInstance,
     AnnotationOrTypeCommentWithTypeVars, // Will contain a DbType a few points later.
     AnnotationOrTypeCommentWithoutTypeVars, // Will contain a DbType a few points later.
+    AnnotationOrTypeCommentClassVar,
     // A generic class where the generics are either SimpleGeneric or classes without generics
     SimpleGeneric, // primary: primary '[' slices ']'
 
@@ -538,7 +539,6 @@ pub enum ComplexPoint {
     NewTypeDefinition(Rc<NewType>),
     // e.g. X = NamedTuple('X', []), does not include classes.
     NamedTupleDefinition(Rc<DbType>),
-    ClassVar(Rc<DbType>),
 
     // Relevant for types only (not inference)
     TypeVarLike(TypeVarLike),

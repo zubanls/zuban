@@ -534,6 +534,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         let type_ = self.compute_type(expr);
 
         let node_ref = NodeRef::new(self.inference.file, expr.index());
+        let mut is_class_var = false;
         let mut db_type = match map_type_callback {
             Some(map_type_callback) => map_type_callback(self, type_),
             None => match type_ {
@@ -574,15 +575,14 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     }
                 }
                 TypeContent::ClassVar(t) => {
+                    is_class_var = true;
                     if self.has_type_vars {
                         self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
                         DbType::Any
                     } else if self.origin
                         == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
                     {
-                        annotation_node_ref
-                            .insert_complex(ComplexPoint::ClassVar(Rc::new(t)), Locality::Todo);
-                        return;
+                        t
                     } else {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                         DbType::Any
@@ -600,7 +600,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             expr.index(),
         );
         annotation_node_ref.set_point(Point::new_simple_specific(
-            if self.has_type_vars {
+            if is_class_var {
+                Specific::AnnotationOrTypeCommentClassVar
+            } else if self.has_type_vars {
                 Specific::AnnotationOrTypeCommentWithTypeVars
             } else {
                 Specific::AnnotationOrTypeCommentWithoutTypeVars
@@ -2422,11 +2424,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                 Specific::AnnotationOrTypeCommentWithTypeVars
                     | Specific::AnnotationOrTypeCommentWithoutTypeVars
                     | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                    | Specific::AnnotationOrTypeCommentClassVar
             ));
         } else {
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
-                ComplexPoint::TypeInstance(_) | ComplexPoint::ClassVar(_)
+                ComplexPoint::TypeInstance(_)
             ));
         }
         self.check_point_cache(annotation.index()).unwrap()
@@ -2477,6 +2480,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     point.specific(),
                     Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentClassVar
                 ));
                 self.file.points.get(expr.index()).complex_index()
             }
@@ -2485,13 +2489,12 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             debug_assert_eq!(point.type_(), PointType::Complex, "{expr:?}");
             debug_assert!(matches!(
                 self.file.complex_points.get(point.complex_index()),
-                ComplexPoint::TypeInstance(_) | ComplexPoint::ClassVar(_)
+                ComplexPoint::TypeInstance(_)
             ));
             point.complex_index()
         };
         match self.file.complex_points.get(complex_index) {
             ComplexPoint::TypeInstance(t) => Type::new(t),
-            ComplexPoint::ClassVar(t) => Type::new(t),
             _ => unreachable!(),
         }
     }
@@ -2504,6 +2507,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             self.file.points.get(node_index).specific(),
             Specific::AnnotationOrTypeCommentWithTypeVars
                 | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                | Specific::AnnotationOrTypeCommentClassVar
         ));
         // annotations look like `":" expr`
         let complex_index = self

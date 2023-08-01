@@ -723,8 +723,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 false,
                             );
                         }
-                        Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentWithoutTypeVars => {
+                        specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentClassVar) => {
                             let t = node_ref
                                 .file
                                 .inference(i_s)
@@ -738,7 +739,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 mro_index,
                                 None,
                                 t,
-                                false,
+                                matches!(specific, Specific::AnnotationOrTypeCommentClassVar),
                             ) {
                                 return inf;
                             }
@@ -837,21 +838,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     from,
                                     mro_index,
                                     Some(*definition),
-                                    t,
-                                    apply_bound_method,
-                                ) {
-                                    return inf;
-                                }
-                            }
-                            ComplexPoint::ClassVar(t) => {
-                                if let Some(inf) = self.bind_instance_descriptors_for_type(
-                                    i_s,
-                                    instance,
-                                    func_class,
-                                    get_inferred,
-                                    from,
-                                    mro_index,
-                                    None,
                                     t,
                                     apply_bound_method,
                                 ) {
@@ -1040,7 +1026,8 @@ impl<'db: 'slf, 'slf> Inferred {
                             }
                             return Some(Inferred::from_type(t));
                         }
-                        Specific::AnnotationOrTypeCommentWithoutTypeVars => {
+                        Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentClassVar => {
                             let file = i_s.db.loaded_python_file(definition.file);
                             let t = file
                                 .inference(i_s)
@@ -1086,19 +1073,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     apply_descriptor,
                                     *definition,
                                     t,
-                                ) {
-                                    return r;
-                                }
-                            }
-                            ComplexPoint::ClassVar(t) => {
-                                if let Some(r) = Self::bind_class_descriptors_for_type(
-                                    i_s,
-                                    class,
-                                    attribute_class,
-                                    from,
-                                    apply_descriptor,
-                                    *definition,
-                                    t.as_ref(),
                                 ) {
                                     return r;
                                 }
@@ -2027,7 +2001,6 @@ fn type_of_complex<'db: 'x, 'x>(
             overload.as_type(i_s)
         }
         ComplexPoint::TypeInstance(t) => Type::new(t),
-        ComplexPoint::ClassVar(t) => Type::new(t),
         // TODO is this type correct with the Any?
         ComplexPoint::TypeAlias(alias) => Type::owned(DbType::Type(Rc::new(
             alias.as_db_type_and_set_type_vars_any(i_s.db),
@@ -2087,7 +2060,8 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                 }
                 Specific::AnnotationOrTypeCommentSimpleClassInstance
                 | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                | Specific::AnnotationOrTypeCommentWithTypeVars => definition
+                | Specific::AnnotationOrTypeCommentWithTypeVars
+                | Specific::AnnotationOrTypeCommentClassVar => definition
                     .file
                     .inference(i_s)
                     .use_cached_annotation_or_type_comment_type_internal(
