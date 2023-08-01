@@ -1000,6 +1000,17 @@ impl<'db: 'slf, 'slf> Inferred {
                                 .inference(i_s)
                                 .use_db_type_of_annotation_or_type_comment(definition.node_index);
                             let t = replace_class_type_vars(i_s.db, t, class, &attribute_class);
+                            if let Some(r) = Self::bind_class_descriptors_for_type(
+                                i_s,
+                                class,
+                                attribute_class,
+                                from,
+                                apply_descriptor,
+                                *definition,
+                                &t,
+                            ) {
+                                return r;
+                            }
                             return Some(Inferred::from_type(t));
                         }
                         Specific::AnnotationOrTypeCommentWithoutTypeVars => {
@@ -1007,7 +1018,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = file
                                 .inference(i_s)
                                 .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                            if let Some(r) = self.bind_class_descriptors_for_type(
+                            if let Some(r) = Self::bind_class_descriptors_for_type(
                                 i_s,
                                 class,
                                 attribute_class,
@@ -1040,7 +1051,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 FunctionKind::Staticmethod => (),
                             },
                             ComplexPoint::TypeInstance(t) => {
-                                if let Some(r) = self.bind_class_descriptors_for_type(
+                                if let Some(r) = Self::bind_class_descriptors_for_type(
                                     i_s,
                                     class,
                                     attribute_class,
@@ -1053,7 +1064,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                             }
                             ComplexPoint::ClassVar(t) => {
-                                if let Some(r) = self.bind_class_descriptors_for_type(
+                                if let Some(r) = Self::bind_class_descriptors_for_type(
                                     i_s,
                                     class,
                                     attribute_class,
@@ -1081,7 +1092,6 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     pub fn bind_class_descriptors_for_type(
-        &self,
         i_s: &InferenceState<'db, '_>,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
@@ -1120,7 +1130,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let inst = use_instance_with_ref(
                     NodeRef::from_link(i_s.db, c.link),
                     Generics::from_class_generics(i_s.db, &c.generics),
-                    Some(&self),
+                    None,
                 );
                 if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
                     let from = from.unwrap_or_else(|| todo!());
