@@ -521,8 +521,8 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         is_implicit_optional: bool,
         map_type_callback: MapAnnotationTypeCallback,
     ) {
-        let point = self.inference.file.points.get(annotation_index);
-        if point.calculated() {
+        let annotation_node_ref = NodeRef::new(self.inference.file, annotation_index);
+        if annotation_node_ref.point().calculated() {
             return;
         }
         debug!(
@@ -598,36 +598,28 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         DbType::Any
                     }
                 }
-                _ => {
-                    let mut d = self.as_db_type(type_, node_ref);
-                    if is_implicit_optional {
-                        d.make_optional(self.inference.i_s.db)
-                    }
-                    Inferred::from_type(d).save_redirect(
-                        self.inference.i_s,
-                        self.inference.file,
-                        expr.index(),
-                    );
-                    self.inference.file.points.set(
-                        annotation_index,
-                        Point::new_simple_specific(
-                            if self.has_type_vars {
-                                Specific::AnnotationOrTypeCommentWithTypeVars
-                            } else {
-                                Specific::AnnotationOrTypeCommentWithoutTypeVars
-                            },
-                            Locality::Todo,
-                        ),
-                    );
-                    return;
-                }
+                _ => self.as_db_type(type_, node_ref),
             },
         };
         if is_implicit_optional {
             db_type.make_optional(self.inference.i_s.db)
         }
-        let unsaved = Inferred::from_type(db_type);
-        unsaved.save_redirect(self.inference.i_s, self.inference.file, annotation_index);
+        Inferred::from_type(db_type).save_redirect(
+            self.inference.i_s,
+            self.inference.file,
+            expr.index(),
+        );
+        self.inference.file.points.set(
+            annotation_index,
+            Point::new_simple_specific(
+                if self.has_type_vars {
+                    Specific::AnnotationOrTypeCommentWithTypeVars
+                } else {
+                    Specific::AnnotationOrTypeCommentWithoutTypeVars
+                },
+                Locality::Todo,
+            ),
+        );
     }
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
