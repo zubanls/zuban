@@ -713,7 +713,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 get_inferred,
                                 from,
                                 mro_index,
-                                *definition,
+                                None,
                                 t,
                             ) {
                                 return inf;
@@ -812,7 +812,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     get_inferred,
                                     from,
                                     mro_index,
-                                    *definition,
+                                    Some(*definition),
                                     t,
                                 ) {
                                     return inf;
@@ -843,7 +843,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     get_inferred,
                                     from,
                                     mro_index,
-                                    *definition,
+                                    None,
                                     t,
                                 ) {
                                     return inf;
@@ -867,7 +867,18 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedComplex(complex) => {
                 if let ComplexPoint::TypeInstance(t) = complex {
-                    debug!("TODO type instances");
+                    if let Some(inf) = self.bind_instance_descriptors_for_type(
+                        i_s,
+                        instance,
+                        func_class,
+                        get_inferred,
+                        from,
+                        mro_index,
+                        None,
+                        t,
+                    ) {
+                        return inf;
+                    }
                 }
             }
             InferredState::UnsavedSpecific(specific) => todo!(),
@@ -886,7 +897,7 @@ impl<'db: 'slf, 'slf> Inferred {
         get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
         mro_index: MroIndex,
-        definition: PointLink,
+        definition: Option<PointLink>,
         t: &DbType,
     ) -> Option<Option<Self>> {
         match t {
@@ -905,7 +916,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         let result = infer_class_method(i_s, instance.class, func_class, c);
                         if result.is_none() {
                             if let Some(from) = from {
-                                let func = prepare_func(i_s, definition, func_class);
+                                let func = prepare_func(i_s, definition.unwrap(), func_class);
                                 let t = IssueType::InvalidClassMethodFirstArgument {
                                     argument_type: instance.class.as_type(i_s).format_short(i_s.db),
                                     function_name: Box::from(func.name()),

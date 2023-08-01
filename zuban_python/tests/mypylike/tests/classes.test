@@ -204,3 +204,22 @@ reveal_type(Foo.bla)  # N: Revealed type is "def (__main__.Foo, int)"
 reveal_type(Foo().foo)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bar)  # N: Revealed type is "def (__main__.Foo, int) -> str"
 reveal_type(Foo().bla)  # N: Revealed type is "def (__main__.Foo, int)"
+
+[case generic_descriptor]
+from typing import Generic, TypeVar
+T = TypeVar("T")
+
+class Descriptor(Generic[T]):
+    def __get__(self, instance, cls) -> T:
+        raise NotImplementedError
+
+class Foo(Generic[T]):
+    def __init__(self, x: T):
+        raise NotImplementedError
+
+    d1: Descriptor[T]
+    d2 = Descriptor[T]()
+
+reveal_type(Foo(1).d1)  # N: Revealed type is "int"
+# TODO enable this
+-- reveal_type(Foo(1).d2)  # N: Revealed type is "int"
