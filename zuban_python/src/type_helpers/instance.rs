@@ -199,15 +199,14 @@ impl<'a> Instance<'a> {
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let TypeOrClass::Class(c) = class {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.resolve_class_type_vars(&i_s.with_class_context(&c), &self.class, &c)
-                        .bind_instance_descriptors(
-                            &i_s,
-                            self,
-                            c,
-                            |i_s| self.as_inferred(i_s),
-                            node_ref,
-                            mro_index,
-                        )
+                    inf.bind_instance_descriptors(
+                        &i_s,
+                        self,
+                        c,
+                        |i_s| self.as_inferred(i_s),
+                        node_ref,
+                        mro_index,
+                    )
                 } else {
                     Some(inf)
                 }
@@ -374,15 +373,14 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                     let result = class
                         .lookup_symbol(self.i_s, self.name)
                         .and_then(|inf| {
-                            inf.resolve_class_type_vars(self.i_s, &self.instance.class, &class)
-                                .bind_instance_descriptors(
-                                    self.i_s,
-                                    self.instance,
-                                    class,
-                                    |i_s| self.instance.as_inferred(i_s),
-                                    Some(self.from),
-                                    mro_index,
-                                )
+                            inf.bind_instance_descriptors(
+                                self.i_s,
+                                self.instance,
+                                class,
+                                |i_s| self.instance.as_inferred(i_s),
+                                Some(self.from),
+                                mro_index,
+                            )
                         })
                         .and_then(|lookup_result| lookup_result.into_maybe_inferred());
                     if let Some(result) = result {

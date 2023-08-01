@@ -701,7 +701,27 @@ impl<'db: 'slf, 'slf> Inferred {
                                 mro_index,
                             );
                         }
-                        Specific::AnnotationOrTypeCommentWithoutTypeVars => {
+                        Specific::AnnotationOrTypeCommentWithTypeVars
+                            if !(matches!(func_class.generics, Generics::Self_ { .. })
+                                && func_class.type_var_remap.is_none()) =>
+                        {
+                            let t = node_ref
+                                .file
+                                .inference(i_s)
+                                .use_db_type_of_annotation_or_type_comment(definition.node_index);
+                            let t =
+                                replace_class_type_vars(i_s.db, t, &instance.class, &func_class);
+                            return Inferred::from_type(t).bind_instance_descriptors(
+                                i_s,
+                                instance,
+                                func_class,
+                                get_inferred,
+                                from,
+                                mro_index,
+                            );
+                        }
+                        Specific::AnnotationOrTypeCommentWithTypeVars
+                        | Specific::AnnotationOrTypeCommentWithoutTypeVars => {
                             let t = node_ref
                                 .file
                                 .inference(i_s)
@@ -938,7 +958,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 let inst = use_instance_with_ref(
                     NodeRef::from_link(i_s.db, c.link),
                     Generics::from_class_generics(i_s.db, &c.generics),
-                    Some(&self),
+                    Some(self),
                 );
                 if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
                     let from = from.unwrap_or_else(|| todo!());
