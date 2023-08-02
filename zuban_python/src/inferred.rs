@@ -1135,11 +1135,10 @@ impl<'db: 'slf, 'slf> Inferred {
         definition: PointLink,
         t: &DbType,
     ) -> Option<Option<Self>> {
-        match t {
-            DbType::Callable(c) => match c.kind {
-                FunctionKind::Function => {
-                    debug!("TODO callable decorated class descriptor")
-                }
+        let mut t = t;
+        if let DbType::Callable(c) = t {
+            match c.kind {
+                FunctionKind::Function => (),
                 FunctionKind::Property { .. } => todo!(),
                 FunctionKind::Classmethod => {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
@@ -1160,8 +1159,25 @@ impl<'db: 'slf, 'slf> Inferred {
                     return Some(result.map(callable_into_inferred));
                 }
                 FunctionKind::Staticmethod => (),
-            },
-            DbType::Class(c) if apply_descriptor => {
+            }
+        }
+        let needs_remapping = match attribute_class.generics {
+            Generics::Self_ { .. } => attribute_class.type_var_remap.is_some(),
+            _ => attribute_class.type_vars(i_s).is_some(),
+        };
+        let mut new = None;
+        if needs_remapping {
+            new = Some(replace_class_type_vars(
+                i_s.db,
+                &t,
+                &class,
+                &attribute_class,
+            ));
+            t = new.as_ref().unwrap();
+        }
+
+        if let DbType::Class(c) = t {
+            if apply_descriptor {
                 let inst = use_instance_with_ref(
                     NodeRef::from_link(i_s.db, c.link),
                     Generics::from_class_generics(i_s.db, &c.generics),
@@ -1179,7 +1195,9 @@ impl<'db: 'slf, 'slf> Inferred {
                     )));
                 }
             }
-            _ => (),
+        }
+        if let Some(new) = new {
+            return Some(Some(Inferred::from_type(new)));
         }
         None
     }

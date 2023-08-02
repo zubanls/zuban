@@ -224,5 +224,4 @@ reveal_type(Foo(1).d1)  # N: Revealed type is "int"
 reveal_type(Foo(1).d2)  # N: Revealed type is "int"
 reveal_type(Foo[int].d1)  # E: Access to generic instance variables via class is ambiguous \
                           # N: Revealed type is "int"
-# TODO enable this
--- reveal_type(Foo[int].d2)  # N: Revealed type is "int"
+reveal_type(Foo[int].d2)  # N: Revealed type is "int"

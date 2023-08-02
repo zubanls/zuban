@@ -361,7 +361,6 @@ testOverloadedToGeneric
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
-testGenericClassPropertyBound
 
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4
