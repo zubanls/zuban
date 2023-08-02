@@ -3194,6 +3194,28 @@ pub fn use_cached_annotation_type<'db: 'file, 'file>(
         )
 }
 
+pub fn use_cached_annotation_or_type_comment<'db: 'file, 'file>(
+    i_s: &InferenceState<'db, '_>,
+    definition: NodeRef<'file>,
+) -> Type<'file> {
+    debug_assert!(matches!(
+        definition.point().specific(),
+        Specific::AnnotationOrTypeCommentSimpleClassInstance
+            | Specific::AnnotationOrTypeCommentWithoutTypeVars
+            | Specific::AnnotationOrTypeCommentWithTypeVars
+            | Specific::AnnotationOrTypeCommentClassVar
+    ));
+    definition
+        .file
+        .inference(i_s)
+        .use_cached_annotation_or_type_comment_type_internal(
+            definition.node_index,
+            definition
+                .add_to_node_index(ANNOTATION_TO_EXPR_DIFFERENCE as i64)
+                .as_expression(),
+        )
+}
+
 fn check_named_tuple_name<'x, 'y>(
     i_s: &InferenceState,
     executable_name: &'static str,

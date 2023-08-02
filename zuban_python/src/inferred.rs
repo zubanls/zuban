@@ -11,7 +11,9 @@ use crate::database::{
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
-use crate::file::{on_argument_type_error, File, PythonFile};
+use crate::file::{
+    on_argument_type_error, use_cached_annotation_or_type_comment, File, PythonFile,
+};
 use crate::getitem::{SliceType, SliceTypeContent};
 use crate::inference_state::InferenceState;
 use crate::matching::{
@@ -2061,13 +2063,9 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
                 Specific::AnnotationOrTypeCommentSimpleClassInstance
                 | Specific::AnnotationOrTypeCommentWithoutTypeVars
                 | Specific::AnnotationOrTypeCommentWithTypeVars
-                | Specific::AnnotationOrTypeCommentClassVar => definition
-                    .file
-                    .inference(i_s)
-                    .use_cached_annotation_or_type_comment_type_internal(
-                        definition.node_index,
-                        definition.add_to_node_index(2).as_expression(),
-                    ),
+                | Specific::AnnotationOrTypeCommentClassVar => {
+                    use_cached_annotation_or_type_comment(i_s, definition)
+                }
                 Specific::MaybeSelfParam => Type::new(&DbType::Self_),
                 Specific::TypingTypeVarClass => todo!(),
                 Specific::TypingTypeVarTupleClass => todo!(),
