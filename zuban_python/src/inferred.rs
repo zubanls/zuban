@@ -726,7 +726,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                 get_inferred,
                                 from,
                                 mro_index,
-                                apply_descriptors_kind,
+                                // Class vars are remapped separatly
+                                ApplyDescriptorsKind::NoClassVars,
                             );
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars if needs_remapping() => {
@@ -857,6 +858,21 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ));
                             }
                             ComplexPoint::TypeInstance(t) => {
+                                let mut t = t;
+                                let mut new = None;
+                                if !matches!(
+                                    apply_descriptors_kind,
+                                    ApplyDescriptorsKind::NoClassVars
+                                ) && needs_remapping()
+                                {
+                                    new = Some(replace_class_type_vars(
+                                        i_s.db,
+                                        &t,
+                                        &instance.class,
+                                        &func_class,
+                                    ));
+                                    t = new.as_ref().unwrap();
+                                }
                                 if let Some(inf) = self.bind_instance_descriptors_for_type(
                                     i_s,
                                     instance,
@@ -869,6 +885,8 @@ impl<'db: 'slf, 'slf> Inferred {
                                     apply_descriptors_kind,
                                 ) {
                                     return inf;
+                                } else if let Some(remapped) = new {
+                                    return Some(Inferred::from_type(remapped));
                                 }
                             }
                             ComplexPoint::Class(cls_storage) => {
@@ -927,7 +945,10 @@ impl<'db: 'slf, 'slf> Inferred {
             DbType::Callable(c) => {
                 match c.kind {
                     FunctionKind::Function
-                        if matches!(apply_descriptors_kind, ApplyDescriptorsKind::All) =>
+                        if !matches!(
+                            apply_descriptors_kind,
+                            ApplyDescriptorsKind::NoBoundMethod
+                        ) =>
                     {
                         debug_assert_eq!(c.kind, FunctionKind::Function);
                         if let Some(f) = c.first_positional_type() {
@@ -2148,6 +2169,7 @@ enum BoundMethodInstance {
 enum ApplyDescriptorsKind {
     All,
     NoBoundMethod,
+    NoClassVars,
 }
 
 pub fn add_attribute_error(

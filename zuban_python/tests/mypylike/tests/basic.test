@@ -59,7 +59,7 @@ class Foo(Generic[T]):
     u, v = any  # type: T, int
 
 foo: Foo[str]
-reveal_type(foo.x)  # Revealed type is "str"
-reveal_type(foo.y)  # Revealed type is "int"
-reveal_type(foo.u)  # Revealed type is "str"
-reveal_type(foo.v)  # Revealed type is "int"
+reveal_type(foo.x)  # N: Revealed type is "str"
+reveal_type(foo.y)  # N: Revealed type is "int"
+reveal_type(foo.u)  # N: Revealed type is "str"
+reveal_type(foo.v)  # N: Revealed type is "int"

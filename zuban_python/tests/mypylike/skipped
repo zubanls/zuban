@@ -330,6 +330,8 @@ testParamSpecInvalidCalls
 
 # Callable type alias definition
 testConcatDeferralNoCrash
+# "Self type cannot be used in type alias target"
+testTypingSelfNonAnnotationUses
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
@@ -358,17 +360,12 @@ testOverloadedToGeneric
 
 # Class: generic access from outside
 # Type application vs. type declaration (type alias)
-testGenericTypeAliasesTypeVarBinding
 testNewAnalyzerAliasToNotReadyClassDoubleGeneric
-testTypeAliasesResultingInPlainInstance
-testTypingSelfNonAnnotationUses
 testGenericClassPropertyBound
-tuple_generic_class_type_comment
 
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4
 testForwardBoundFunctionScopeWorks
-testOverrideByBadFunction
 testIncrementalNestedTypeAlias
 
 # object.__new__(cls) -> Self where object.__new__(int) leads to Never
