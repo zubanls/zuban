@@ -910,7 +910,7 @@ impl<'db: 'slf, 'slf> Inferred {
         func_class: Class,
         from: Option<NodeRef>,
         mro_index: MroIndex,
-        mut definition: Option<PointLink>,
+        definition: Option<PointLink>,
         t: &DbType,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<Self>> {
@@ -979,15 +979,13 @@ impl<'db: 'slf, 'slf> Inferred {
                 &func_class,
             ));
             t = new.as_ref().unwrap();
-            definition = None;
         }
 
         if let DbType::Class(c) = t {
-            let definition = definition.map(Inferred::from_saved_link);
             let inst = use_instance_with_ref(
                 NodeRef::from_link(i_s.db, c.link),
                 Generics::from_class_generics(i_s.db, &c.generics),
-                definition.as_ref(),
+                None,
             );
             if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
                 let from = from.unwrap_or_else(|| todo!());
