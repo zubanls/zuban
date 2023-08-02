@@ -723,7 +723,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 from,
                                 mro_index,
                                 // Class vars are remapped separatly
-                                ApplyDescriptorsKind::NoClassVars,
+                                apply_descriptors_kind,
                             );
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars if needs_remapping() => {
@@ -2154,7 +2154,6 @@ enum BoundMethodInstance {
 enum ApplyDescriptorsKind {
     All,
     NoBoundMethod,
-    NoClassVars,
 }
 
 pub fn add_attribute_error(
