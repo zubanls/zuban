@@ -2418,20 +2418,13 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
 
     pub(super) fn use_cached_annotation(&mut self, annotation: Annotation) -> Inferred {
         let point = self.file.points.get(annotation.index());
-        if let Some(specific) = point.maybe_specific() {
-            debug_assert!(matches!(
-                specific,
-                Specific::AnnotationOrTypeCommentWithTypeVars
-                    | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                    | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                    | Specific::AnnotationOrTypeCommentClassVar
-            ));
-        } else {
-            debug_assert!(matches!(
-                self.file.complex_points.get(point.complex_index()),
-                ComplexPoint::TypeInstance(_)
-            ));
-        }
+        debug_assert!(matches!(
+            point.specific(),
+            Specific::AnnotationOrTypeCommentWithTypeVars
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                | Specific::AnnotationOrTypeCommentSimpleClassInstance
+                | Specific::AnnotationOrTypeCommentClassVar
+        ));
         self.check_point_cache(annotation.index()).unwrap()
     }
 
