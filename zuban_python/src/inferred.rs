@@ -651,6 +651,10 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
         apply_bound_method: bool,
     ) -> Option<Self> {
+        let needs_remapping = || match func_class.generics {
+            Generics::Self_ { .. } => func_class.type_var_remap.is_some(),
+            _ => true,
+        };
         match &self.state {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
@@ -705,10 +709,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_bound_method,
                             );
                         }
-                        Specific::AnnotationOrTypeCommentWithTypeVars
-                            if !(matches!(func_class.generics, Generics::Self_ { .. })
-                                && func_class.type_var_remap.is_none()) =>
-                        {
+                        Specific::AnnotationOrTypeCommentWithTypeVars if needs_remapping() => {
                             let t = node_ref
                                 .file
                                 .inference(i_s)
