@@ -191,15 +191,6 @@ testInheritedConstructor2
 # Uses function context but is in fact in module context
 testFunctionForwardRefAlias
 
-# None + 1 non strict optional
-testTypeCheckNamedModule
-testTypeCheckNamedModule2
-testTypeCheckNamedModule3
-testInferOptionalFromDefaultNone
-# non strict optional issues
-testConstructInstanceWith__new__
-testNewReturnType6
-
 # In A + B, if B is a subclass of A, __radd__ on B is called first
 testReverseOperatorOrderingCase4
 testReverseOperatorOrderingCase6
@@ -901,9 +892,6 @@ testProtocolTypeTypeAttribute
 testProtocolClassObjectAttributeAndCall
 # small protocol formatting issues
 testGenericSubProtocolsExtensionCovariant
-# non-strict optional protocol issues not shown
-testNoneDisablesProtocolImplementation
-testProtocolNotesForComplexSignatures
 # Protocol Override inheritance
 testNoneDisablesProtocolSubclassingWithStrictOptional
 # Context inference for protocols
