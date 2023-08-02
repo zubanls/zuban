@@ -2463,29 +2463,18 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
     ) -> Type<'file> {
         let point = self.file.points.get(annotation_index);
         assert!(point.calculated(), "Expr: {:?}", expr);
-        let complex_index = if point.type_() == PointType::Specific {
-            if point.specific() == Specific::AnnotationOrTypeCommentSimpleClassInstance {
-                return self
-                    .infer_expression(expr)
-                    .expect_class_or_simple_generic(self.i_s);
-            } else {
-                debug_assert!(matches!(
-                    point.specific(),
-                    Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                        | Specific::AnnotationOrTypeCommentClassVar
-                ));
-                self.file.points.get(expr.index()).complex_index()
-            }
-        } else {
-            self.file.complex_points.get(point.complex_index());
-            debug_assert_eq!(point.type_(), PointType::Complex, "{expr:?}");
-            debug_assert!(matches!(
-                self.file.complex_points.get(point.complex_index()),
-                ComplexPoint::TypeInstance(_)
-            ));
-            point.complex_index()
-        };
+        if point.specific() == Specific::AnnotationOrTypeCommentSimpleClassInstance {
+            return self
+                .infer_expression(expr)
+                .expect_class_or_simple_generic(self.i_s);
+        }
+        debug_assert!(matches!(
+            point.specific(),
+            Specific::AnnotationOrTypeCommentWithTypeVars
+                | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                | Specific::AnnotationOrTypeCommentClassVar
+        ));
+        let complex_index = self.file.points.get(expr.index()).complex_index();
         match self.file.complex_points.get(complex_index) {
             ComplexPoint::TypeInstance(t) => Type::new(t),
             _ => unreachable!(),
@@ -2689,12 +2678,16 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     // It is kind of a hack to use the ANNOTATION_TO_EXPR_DIFFERENCE here. However this
                     // allows us to reuse the code for annotations completely and the nodes before the expr
                     // should really never be used by anything productive.
-                    let index = expr.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
+                    let expr_index = expr.index();
+                    let index = expr_index - ANNOTATION_TO_EXPR_DIFFERENCE;
                     if let Some(tuple) = expr.maybe_tuple() {
                         let db_type =
                             inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
-                        let unsaved = Inferred::from_type(db_type);
-                        unsaved.save_redirect(inference.i_s, f, index);
+                        NodeRef::new(f, index).set_point(Point::new_simple_specific(
+                            Specific::AnnotationOrTypeCommentWithoutTypeVars,
+                            Locality::Todo,
+                        ));
+                        Inferred::from_type(db_type).save_redirect(inference.i_s, f, expr_index);
                     } else {
                         let mut x = type_computation_for_variable_annotation;
                         let mut comp = TypeComputation::new(
@@ -2715,7 +2708,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     )
                 }
                 StarExpressionContent::Tuple(t) => {
-                    let index = star_exprs.index() - ANNOTATION_TO_EXPR_DIFFERENCE;
+                    let star_exprs_index = star_exprs.index();
+                    let index = star_exprs_index - ANNOTATION_TO_EXPR_DIFFERENCE;
                     let db_type = inference.calc_type_comment_tuple(assignment_node_ref, t.iter());
                     let unsaved = Inferred::from_type(db_type);
                     unsaved.save_redirect(self.i_s, f, index);
