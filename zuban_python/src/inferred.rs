@@ -649,7 +649,27 @@ impl<'db: 'slf, 'slf> Inferred {
         get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
         mro_index: MroIndex,
-        apply_bound_method: bool,
+    ) -> Option<Self> {
+        self.bind_instance_descriptors_internal(
+            i_s,
+            instance,
+            func_class,
+            get_inferred,
+            from,
+            mro_index,
+            ApplyDescriptorsKind::All,
+        )
+    }
+
+    fn bind_instance_descriptors_internal(
+        self,
+        i_s: &InferenceState<'db, '_>,
+        instance: &Instance,
+        func_class: Class,
+        get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
+        from: Option<NodeRef>,
+        mro_index: MroIndex,
+        apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Self> {
         let needs_remapping = || match func_class.generics {
             Generics::Self_ { .. } => func_class.type_var_remap.is_some(),
@@ -699,14 +719,14 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         Specific::DecoratedFunction => {
                             let func = prepare_func(i_s, *definition, func_class);
-                            return func.decorated(i_s).bind_instance_descriptors(
+                            return func.decorated(i_s).bind_instance_descriptors_internal(
                                 i_s,
                                 instance,
                                 func_class,
                                 get_inferred,
                                 from,
                                 mro_index,
-                                apply_bound_method,
+                                apply_descriptors_kind,
                             );
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars if needs_remapping() => {
@@ -716,14 +736,14 @@ impl<'db: 'slf, 'slf> Inferred {
                                 .use_db_type_of_annotation_or_type_comment(definition.node_index);
                             let t =
                                 replace_class_type_vars(i_s.db, t, &instance.class, &func_class);
-                            return Inferred::from_type(t).bind_instance_descriptors(
+                            return Inferred::from_type(t).bind_instance_descriptors_internal(
                                 i_s,
                                 instance,
                                 func_class,
                                 get_inferred,
                                 from,
                                 mro_index,
-                                false,
+                                ApplyDescriptorsKind::NoBoundMethod,
                             );
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
@@ -742,7 +762,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                 mro_index,
                                 None,
                                 t,
-                                matches!(specific, Specific::AnnotationOrTypeCommentClassVar),
+                                if specific == Specific::AnnotationOrTypeCommentClassVar {
+                                    ApplyDescriptorsKind::All
+                                } else {
+                                    ApplyDescriptorsKind::NoBoundMethod
+                                },
                             ) {
                                 return inf;
                             }
@@ -842,7 +866,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     mro_index,
                                     Some(*definition),
                                     t,
-                                    apply_bound_method,
+                                    apply_descriptors_kind,
                                 ) {
                                     return inf;
                                 }
@@ -873,7 +897,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         mro_index,
                         None,
                         t,
-                        apply_bound_method,
+                        apply_descriptors_kind,
                     ) {
                         return inf;
                     }
@@ -897,12 +921,14 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
         definition: Option<PointLink>,
         t: &DbType,
-        apply_bound_method: bool,
+        apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<Self>> {
         match t {
             DbType::Callable(c) => {
                 match c.kind {
-                    FunctionKind::Function if apply_bound_method => {
+                    FunctionKind::Function
+                        if matches!(apply_descriptors_kind, ApplyDescriptorsKind::All) =>
+                    {
                         debug_assert_eq!(c.kind, FunctionKind::Function);
                         if let Some(f) = c.first_positional_type() {
                             return Some(
@@ -2117,6 +2143,11 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
 enum BoundMethodInstance {
     Reference(PointLink),
     Complex(ComplexPoint),
+}
+
+enum ApplyDescriptorsKind {
+    All,
+    NoBoundMethod,
 }
 
 pub fn add_attribute_error(
