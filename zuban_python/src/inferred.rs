@@ -910,7 +910,7 @@ impl<'db: 'slf, 'slf> Inferred {
         func_class: Class,
         from: Option<NodeRef>,
         mro_index: MroIndex,
-        definition: Option<PointLink>,
+        mut definition: Option<PointLink>,
         t: &DbType,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<Self>> {
@@ -979,6 +979,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 &func_class,
             ));
             t = new.as_ref().unwrap();
+            definition = None;
         }
 
         if let DbType::Class(c) = t {
