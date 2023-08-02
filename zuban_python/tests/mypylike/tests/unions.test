@@ -1,5 +1,4 @@
 [case union_simplification_with_none_strict_optional]
-# flags: --strict-optional
 from typing import TypeVar, Generic, Union
 
 T = TypeVar('T')

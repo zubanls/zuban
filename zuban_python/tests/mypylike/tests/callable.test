@@ -151,24 +151,26 @@ reveal_type(x(1)) # N: Revealed type is "def [U] (U) -> tuple[int, U]"
 reveal_type(x(1)("")) # N: Revealed type is "tuple[int, str]"
 
 [case callable_on_type_comment]
-from typing import Callable, TypeVar, Tuple, Generic
+from typing import Callable, TypeVar, Tuple, Generic, Any
 
 T = TypeVar('T')
 U = TypeVar('U')
 
-x = None # type: Callable[[T], Callable[[U], Tuple[T, U]]]
+any: Any
+x = any # type: Callable[[T], Callable[[U], Tuple[T, U]]]
 
 reveal_type(x) # N: Revealed type is "def [T] (T) -> def [U] (U) -> tuple[T, U]"
 reveal_type(x(1)) # N: Revealed type is "def [U] (U) -> tuple[int, U]"
 reveal_type(x(1)("")) # N: Revealed type is "tuple[int, str]"
 
 [case callable_on_type_comment_tuple_without_parentheses]
-from typing import Callable, TypeVar, Tuple, Generic
+from typing import Callable, TypeVar, Tuple, Generic, Any
 
 T = TypeVar('T')
 U = TypeVar('U')
 
-x, y = None # type: Callable[[T], Callable[[U], Tuple[T, U]]], str
+any: Any
+x, y = any # type: Callable[[T], Callable[[U], Tuple[T, U]]], str
 
 reveal_type(x) # N: Revealed type is "def [T] (T) -> def [U] (U) -> tuple[T, U]"
 reveal_type(x(1)) # N: Revealed type is "def [U] (U) -> tuple[int, U]"
@@ -181,7 +183,8 @@ from typing import Callable, TypeVar, Tuple, Generic
 T = TypeVar('T')
 U = TypeVar('U')
 
-x, y = None # type: (Callable[[T], Callable[[U], Tuple[T, U]]], str)
+any: Any
+x, y = any # type: (Callable[[T], Callable[[U], Tuple[T, U]]], str)
 
 reveal_type(x) # N: Revealed type is "def [T] (T) -> def [U] (U) -> tuple[T, U]"
 reveal_type(x(1)) # N: Revealed type is "def [U] (U) -> tuple[int, U]"
@@ -211,16 +214,17 @@ from typing import Callable, TypeVar, Tuple, Generic
 T = TypeVar('T')
 U = TypeVar('U')
 
-x, y = None # type: (Callable[[T], Tuple[T, U]], U)
+any: Any
+x, y = any # type: (Callable[[T], Tuple[T, U]], U)
 
 reveal_type(x) # N: Revealed type is "def [T, U] (T) -> tuple[T, U]"
 reveal_type(x(1)) # N: Revealed type is "tuple[int, <nothing>]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
-main:6: error: Type variable "__main__.U" is unbound
-main:6: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
-main:6: note: (Hint: Use "U" in function signature to bind "U" inside a function)
+main:7: error: Type variable "__main__.U" is unbound
+main:7: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
+main:7: note: (Hint: Use "U" in function signature to bind "U" inside a function)
 
 [case callable_on_cast_target]
 from typing import Callable, TypeVar, Tuple, cast

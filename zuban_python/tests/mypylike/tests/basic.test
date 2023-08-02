@@ -33,11 +33,11 @@ dct: dict[str, int]
 foo(**dct) # E: Missing positional argument "x" in call to "foo"
 
 [case strict_optional_none_return]
-# flags: --strict-optional
 def foo() -> str:
     return None  # E: Incompatible return value type (got "None", expected "str")
 
 [case no_strict_optional_none_return]
+# flags: --no-strict-optional
 def foo() -> str:
     return None
 
