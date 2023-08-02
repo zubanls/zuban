@@ -332,6 +332,8 @@ testParamSpecInvalidCalls
 testConcatDeferralNoCrash
 # "Self type cannot be used in type alias target"
 testTypingSelfNonAnnotationUses
+# Weird alias applications
+testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 
 # Are generics in self types always bound to the function?
 # https://github.com/python/typing/discussions/1340
@@ -357,10 +359,6 @@ testDeclareVariableWithNestedClassType
 testMethodRefInClassBody
 # Class argument and __init__ as overloaded DbType
 testOverloadedToGeneric
-
-# Class: generic access from outside
-# Type application vs. type declaration (type alias)
-testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4
