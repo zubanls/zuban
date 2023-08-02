@@ -1,7 +1,8 @@
 use std::cell::Cell;
 
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, Database};
+use crate::database::{CallableContent, Database, TypeVarLike};
+use crate::file::TypeVarCallbackReturn;
 use crate::type_helpers::{Class, Function};
 
 #[derive(Debug, Copy, Clone)]
@@ -145,6 +146,21 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             Context::LambdaCallable(c) => Some(c),
             _ => None,
         }
+    }
+
+    pub fn find_parent_type_var(&self, searched: &TypeVarLike) -> Option<TypeVarCallbackReturn> {
+        if let Some(func) = self.current_function() {
+            if let Some(type_vars) = func.type_vars(self) {
+                for (index, type_var) in type_vars.iter().enumerate() {
+                    if type_var == searched {
+                        return Some(TypeVarCallbackReturn::TypeVarLike(
+                            type_var.as_type_var_like_usage(index.into(), func.node_ref.as_link()),
+                        ));
+                    }
+                }
+            }
+        }
+        None
     }
 
     pub fn is_diagnostic(&self) -> bool {

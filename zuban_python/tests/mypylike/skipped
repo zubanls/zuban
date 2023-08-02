@@ -305,16 +305,8 @@ multiple_lambda_mypy_issue_4226
 testChainedAssignmentInferenceContexts
 
 # Nested type vars
-testInnerFunctionWithTypevarValues
-testInnerFunctionMutualRecursionWithTypevarValues
-testGenericClassInnerFunctionTypeVariable
 testFunctionInGenericInnerClassTypeVariable-skip
-testSubtypingWithGenericInnerFunctions
-testNestedGenericFunctions
-testInnerFunctionTypeVar
 testConstraintsBetweenConcatenatePrefixes
-testParamSpecDecoratorImplementation
-testParamSpecArgsAndKwargsMissmatch
 testParamSpecTestPropAccess
 testTupleAndDictOperationsOnParamSpecArgsAndKwargs
 testUnpackingParamsSpecArgsAndKwargs
@@ -325,6 +317,7 @@ param_spec_with_identity_mypy_issue_12278
 testInvalidParamSpecDefinitionsWithArgsKwargs
 testInvalidParamSpecAndConcatenateDefinitionsWithArgsKwargs
 testUnboundParamSpec
+testParamSpecArgsAndKwargsMissmatch
 # Param spec invalid calls
 testParamSpecInvalidCalls
 
@@ -1652,6 +1645,8 @@ testOverloadingInferUnionReturnWithTypevarsAndValueRestrictions
 testColumnFunctionWithTypeVarValues
 testSuperWithTypeVarValues1
 testSuperWithTypeVarValues2
+testInnerFunctionWithTypevarValues
+testInnerFunctionMutualRecursionWithTypevarValues
 
 # Callable[..., int] | Callable[..., str] lambda inference may conflict
 testOptionalLambdaInference
