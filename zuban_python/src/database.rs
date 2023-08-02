@@ -1174,8 +1174,8 @@ impl DbType {
             | Self::ParamSpecKwargs(_)
             | Self::Module(_)
             | Self::Namespace(_) => false,
+            Self::Enum(_) => false,
             Self::NamedTuple(nt) => todo!(),
-            Self::Enum(_) => todo!(),
             Self::EnumMember(_) => todo!(),
             Self::Super { .. } => todo!(),
         }
