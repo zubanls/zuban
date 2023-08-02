@@ -646,7 +646,6 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
         func_class: Class,
-        get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
         mro_index: MroIndex,
     ) -> Option<Self> {
@@ -654,7 +653,6 @@ impl<'db: 'slf, 'slf> Inferred {
             i_s,
             instance,
             func_class,
-            get_inferred,
             from,
             mro_index,
             ApplyDescriptorsKind::All,
@@ -666,7 +664,6 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
         func_class: Class,
-        get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
@@ -711,7 +708,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 }
                             } else {
                                 Some(Self::new_bound_method(
-                                    get_inferred(i_s).as_bound_method_instance(i_s),
+                                    instance.as_inferred(i_s).as_bound_method_instance(i_s),
                                     mro_index,
                                     *definition,
                                 ))
@@ -723,7 +720,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 instance,
                                 func_class,
-                                get_inferred,
                                 from,
                                 mro_index,
                                 // Class vars are remapped separatly
@@ -741,7 +737,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 instance,
                                 func_class,
-                                get_inferred,
                                 from,
                                 mro_index,
                                 ApplyDescriptorsKind::NoBoundMethod,
@@ -758,7 +753,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 instance,
                                 func_class,
-                                get_inferred,
                                 from,
                                 mro_index,
                                 None,
@@ -852,7 +846,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                 }
                                 return Some(Self::new_bound_method(
-                                    get_inferred(i_s).as_bound_method_instance(i_s),
+                                    instance.as_inferred(i_s).as_bound_method_instance(i_s),
                                     mro_index,
                                     *definition,
                                 ));
@@ -862,7 +856,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     i_s,
                                     instance,
                                     func_class,
-                                    get_inferred,
                                     from,
                                     mro_index,
                                     Some(*definition),
@@ -893,7 +886,6 @@ impl<'db: 'slf, 'slf> Inferred {
                         i_s,
                         instance,
                         func_class,
-                        get_inferred,
                         from,
                         mro_index,
                         None,
@@ -917,7 +909,6 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
         func_class: Class,
-        get_inferred: impl Fn(&InferenceState<'db, '_>) -> Inferred,
         from: Option<NodeRef>,
         mro_index: MroIndex,
         definition: Option<PointLink>,
@@ -1003,11 +994,10 @@ impl<'db: 'slf, 'slf> Inferred {
             if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
                 let from = from.unwrap_or_else(|| todo!());
                 let class_as_inferred = instance.class.as_inferred(i_s);
-                let instance = get_inferred(i_s);
                 return Some(Some(inf.execute(
                     i_s,
                     &CombinedArguments::new(
-                        &KnownArguments::new(&instance, from),
+                        &KnownArguments::new(&instance.as_inferred(i_s), from),
                         &KnownArguments::new(&class_as_inferred, from),
                     ),
                 )));
