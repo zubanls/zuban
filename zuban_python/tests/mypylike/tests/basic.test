@@ -46,3 +46,20 @@ try:
     1
 except (AttributeError, (NotImplementedError, NameError)) as e:  # E: Exception type must be derived from BaseException (or be a tuple of exception classes)
     reveal_type(e)  # N: Revealed type is "Exception"
+
+[case tuple_generic_class_type_comment]
+from typing import Generic, TypeVar, Any
+
+T = TypeVar("T")
+
+any: Any
+
+class Foo(Generic[T]):
+    x, y = any  # type: (T, int)
+    u, v = any  # type: T, int
+
+foo: Foo[str]
+reveal_type(foo.x)  # Revealed type is "str"
+reveal_type(foo.y)  # Revealed type is "int"
+reveal_type(foo.u)  # Revealed type is "str"
+reveal_type(foo.v)  # Revealed type is "int"

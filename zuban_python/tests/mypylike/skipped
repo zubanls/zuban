@@ -363,6 +363,7 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testTypeAliasesResultingInPlainInstance
 testTypingSelfNonAnnotationUses
 testGenericClassPropertyBound
+tuple_generic_class_type_comment
 
 # name binding of type definitions within function/class scopes
 testSerializeNamedTupleInMethod4

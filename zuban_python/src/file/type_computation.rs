@@ -2684,7 +2684,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                         let db_type =
                             inference.calc_type_comment_tuple(assignment_node_ref, tuple.iter());
                         NodeRef::new(f, index).set_point(Point::new_simple_specific(
-                            Specific::AnnotationOrTypeCommentWithoutTypeVars,
+                            Specific::AnnotationOrTypeCommentWithTypeVars,
                             Locality::Todo,
                         ));
                         Inferred::from_type(db_type).save_redirect(inference.i_s, f, expr_index);
