@@ -341,9 +341,6 @@ testNewAnalyzerAliasToNotReadyClassDoubleGeneric
 testSelfTypeBadTypeIgnoredInConstructorGeneric
 testSelfTypeRestrictedMethodOverloadInit
 
-# Class: decorator defined inside class
-testBadClassLevelDecoratorHack
-
 # NewType in function "A@6" as qualified name
 testNewTypeInLocalScope
 # class in class forward reference

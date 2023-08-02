@@ -620,7 +620,7 @@ impl<'db: 'a, 'a> Class<'a> {
             for (name, _) in unsafe { symbol_table.iter_on_finished_table() } {
                 // It is possible to match a Callable against a Protocol that only implements
                 // __call__.
-                if name == "__call__" {
+                if name == "__call__" && !matches!(other.as_ref(), DbType::Class(_)) {
                     let inf1 = Instance::new(c, None)
                         .lookup(i_s, None, name)
                         .into_inferred();
