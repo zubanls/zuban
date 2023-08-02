@@ -22,9 +22,6 @@ testModuleAliasPassedToFunction
 testOverrideAttributeWithMethod
 testInvalidSecondArgumentToSuper
 testNamedTupleNew
-testEnumFlag
-testEnumIntFlag
-testFunctionalEnumErrors
 callable_on_type_comment_with_unbound
 
 # --new-type-inference
@@ -584,6 +581,9 @@ testEnumInClassBody
 testFunctionalEnumInClassBody
 # Enum access merging leads to int | Any instead of Any
 testEnumValueUnionSimplification
+# Enum |
+testEnumFlag
+testEnumIntFlag
 # "Enum class cannot be generic"
 testEnumFromEnumMetaGeneric
 testGenericEnum
