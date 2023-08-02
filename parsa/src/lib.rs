@@ -426,9 +426,9 @@ macro_rules! __create_node {
         }
 
         impl<'a> SiblingIterator<'a> {
-            pub fn new_empty(tree: &'a $Tree) -> Self {
+            pub fn new_empty(any_node: &$Node<'a>) -> Self {
                 Self {
-                    internal_tree: &tree.internal_tree,
+                    internal_tree: &any_node.internal_tree,
                     next_index: 0,
                     ended: true,
                 }

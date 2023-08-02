@@ -3277,7 +3277,14 @@ impl<'db> Target<'db> {
             let keyword = iterator.next().unwrap();
             let star_targets_ = iterator.next().unwrap();
             if keyword.as_code() == "(" {
-                Self::new(star_targets_)
+                if star_targets_.is_leaf() {
+                    debug_assert_eq!(star_targets_.as_code(), ")");
+                    Self::Tuple(TargetIterator(
+                        SiblingIterator::new_empty(&keyword).step_by(1),
+                    ))
+                } else {
+                    Self::new(star_targets_)
+                }
             } else {
                 Self::Tuple(TargetIterator(star_targets_.iter_children().step_by(2)))
             }

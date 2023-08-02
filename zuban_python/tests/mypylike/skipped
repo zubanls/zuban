@@ -50,7 +50,6 @@ testStrictOptionalMethod
 testParamSpecCached
 testErrorInReAddedModule
 testColumnsInvalidArgumentType
-testAssignEmpty
 
 # super with Type[...]
 testSuperWithAny
