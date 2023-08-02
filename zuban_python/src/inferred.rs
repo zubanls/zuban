@@ -749,7 +749,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 .file
                                 .inference(i_s)
                                 .use_db_type_of_annotation_or_type_comment(node_ref.node_index);
-                            if let Some(inf) = self.bind_instance_descriptors_for_type(
+                            if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                 i_s,
                                 instance,
                                 func_class,
@@ -852,7 +852,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ));
                             }
                             ComplexPoint::TypeInstance(t) => {
-                                if let Some(inf) = self.bind_instance_descriptors_for_type(
+                                if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                     i_s,
                                     instance,
                                     func_class,
@@ -882,7 +882,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
             InferredState::UnsavedComplex(complex) => {
                 if let ComplexPoint::TypeInstance(t) = complex {
-                    if let Some(inf) = self.bind_instance_descriptors_for_type(
+                    if let Some(inf) = Self::bind_instance_descriptors_for_type(
                         i_s,
                         instance,
                         func_class,
@@ -905,7 +905,6 @@ impl<'db: 'slf, 'slf> Inferred {
     }
 
     fn bind_instance_descriptors_for_type(
-        &self,
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
         func_class: Class,
@@ -986,10 +985,11 @@ impl<'db: 'slf, 'slf> Inferred {
         }
 
         if let DbType::Class(c) = t {
+            let definition = definition.map(Inferred::from_saved_link);
             let inst = use_instance_with_ref(
                 NodeRef::from_link(i_s.db, c.link),
                 Generics::from_class_generics(i_s.db, &c.generics),
-                Some(self),
+                definition.as_ref(),
             );
             if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
                 let from = from.unwrap_or_else(|| todo!());
