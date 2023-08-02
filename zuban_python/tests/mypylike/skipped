@@ -50,16 +50,7 @@ testStrictOptionalMethod
 testParamSpecCached
 testErrorInReAddedModule
 testColumnsInvalidArgumentType
-# tuple[()]
-testUnionTypeAlias
-testImportUnionAlias
-testEmptyTupleTypeAlias
-testOverloadingAndIntFloatSubtyping
-testTupleExpressions
-testTupleSingleton
 testAssignEmpty
-testEmptyTupleTypeRepr
-testEmptyNamedTupleTypeRepr
 
 # super with Type[...]
 testSuperWithAny

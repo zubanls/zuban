@@ -38,27 +38,30 @@ impl<'a> NamedTupleValue<'a> {
             return Box::from(name);
         }
         let format_data = &format_data.with_seen_recursive_alias(&rec);
-        let types = params
-            .iter()
-            .map(|p| {
-                let t = p.param_specific.expect_positional_db_type_as_ref();
-                match generics {
-                    Generics::NotDefinedYet | Generics::None => t.format(format_data),
-                    _ => Type::new(t)
-                        .replace_type_var_likes_and_self(
-                            format_data.db,
-                            &mut |usage| {
-                                generics
-                                    .nth_usage(format_data.db, &usage)
-                                    .into_generic_item(format_data.db)
-                            },
-                            &mut || todo!(),
-                        )
-                        .format(format_data),
-                }
-            })
-            .collect::<Vec<_>>()
-            .join(", ");
+        let types = match params.is_empty() {
+            true => "()".into(),
+            false => params
+                .iter()
+                .map(|p| {
+                    let t = p.param_specific.expect_positional_db_type_as_ref();
+                    match generics {
+                        Generics::NotDefinedYet | Generics::None => t.format(format_data),
+                        _ => Type::new(t)
+                            .replace_type_var_likes_and_self(
+                                format_data.db,
+                                &mut |usage| {
+                                    generics
+                                        .nth_usage(format_data.db, &usage)
+                                        .into_generic_item(format_data.db)
+                                },
+                                &mut || todo!(),
+                            )
+                            .format(format_data),
+                    }
+                })
+                .collect::<Vec<_>>()
+                .join(", "),
+        };
         format!("tuple[{types}, fallback={name}]",).into()
     }
 

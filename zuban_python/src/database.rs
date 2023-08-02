@@ -1339,6 +1339,7 @@ impl TupleTypeArguments {
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
         match self {
+            Self::FixedLength(ts) if ts.is_empty() => Box::from("()"),
             Self::FixedLength(ts) => ts
                 .iter()
                 .map(|g| g.format(format_data))
