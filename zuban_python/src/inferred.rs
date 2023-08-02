@@ -858,21 +858,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                 ));
                             }
                             ComplexPoint::TypeInstance(t) => {
-                                let mut t = t;
-                                let mut new = None;
-                                if !matches!(
-                                    apply_descriptors_kind,
-                                    ApplyDescriptorsKind::NoClassVars
-                                ) && needs_remapping()
-                                {
-                                    new = Some(replace_class_type_vars(
-                                        i_s.db,
-                                        &t,
-                                        &instance.class,
-                                        &func_class,
-                                    ));
-                                    t = new.as_ref().unwrap();
-                                }
                                 if let Some(inf) = self.bind_instance_descriptors_for_type(
                                     i_s,
                                     instance,
@@ -885,8 +870,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     apply_descriptors_kind,
                                 ) {
                                     return inf;
-                                } else if let Some(remapped) = new {
-                                    return Some(Inferred::from_type(remapped));
                                 }
                             }
                             ComplexPoint::Class(cls_storage) => {
@@ -941,82 +924,97 @@ impl<'db: 'slf, 'slf> Inferred {
         t: &DbType,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Option<Self>> {
-        match t {
-            DbType::Callable(c) => {
-                match c.kind {
-                    FunctionKind::Function
-                        if !matches!(
-                            apply_descriptors_kind,
-                            ApplyDescriptorsKind::NoBoundMethod
-                        ) =>
-                    {
-                        debug_assert_eq!(c.kind, FunctionKind::Function);
-                        if let Some(f) = c.first_positional_type() {
-                            return Some(
-                                create_signature_without_self_for_callable(
-                                    i_s,
-                                    c,
-                                    instance,
-                                    &func_class,
-                                    f,
-                                )
-                                .map(|c| Inferred::from_type(DbType::Callable(Rc::new(c)))),
-                            );
+        let mut t = t; // Weird lifetime issue
+        if let DbType::Callable(c) = t {
+            match c.kind {
+                FunctionKind::Function
+                    if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoBoundMethod) =>
+                {
+                    debug_assert_eq!(c.kind, FunctionKind::Function);
+                    if let Some(f) = c.first_positional_type() {
+                        return Some(
+                            create_signature_without_self_for_callable(
+                                i_s,
+                                c,
+                                instance,
+                                &func_class,
+                                f,
+                            )
+                            .map(|c| Inferred::from_type(DbType::Callable(Rc::new(c)))),
+                        );
+                    } else {
+                        todo!()
+                    }
+                }
+                FunctionKind::Function => (),
+                FunctionKind::Property { .. } => {
+                    return Some(Some(Inferred::from_type(replace_class_type_vars(
+                        i_s.db,
+                        &c.result_type,
+                        &instance.class,
+                        &func_class,
+                    ))))
+                }
+                FunctionKind::Classmethod => {
+                    let result = infer_class_method(i_s, instance.class, func_class, c);
+                    if result.is_none() {
+                        if let Some(from) = from {
+                            let func = prepare_func(i_s, definition.unwrap(), func_class);
+                            let t = IssueType::InvalidClassMethodFirstArgument {
+                                argument_type: instance.class.as_type(i_s).format_short(i_s.db),
+                                function_name: Box::from(func.name()),
+                                callable: func.as_type(i_s).format_short(i_s.db),
+                            };
+                            from.add_issue(i_s, t);
+                            return Some(Some(Self::new_any()));
                         } else {
                             todo!()
                         }
                     }
-                    FunctionKind::Function => (),
-                    FunctionKind::Property { .. } => {
-                        return Some(Some(Inferred::from_type(replace_class_type_vars(
-                            i_s.db,
-                            &c.result_type,
-                            &instance.class,
-                            &func_class,
-                        ))))
-                    }
-                    FunctionKind::Classmethod => {
-                        let result = infer_class_method(i_s, instance.class, func_class, c);
-                        if result.is_none() {
-                            if let Some(from) = from {
-                                let func = prepare_func(i_s, definition.unwrap(), func_class);
-                                let t = IssueType::InvalidClassMethodFirstArgument {
-                                    argument_type: instance.class.as_type(i_s).format_short(i_s.db),
-                                    function_name: Box::from(func.name()),
-                                    callable: func.as_type(i_s).format_short(i_s.db),
-                                };
-                                from.add_issue(i_s, t);
-                                return Some(Some(Self::new_any()));
-                            } else {
-                                todo!()
-                            }
-                        }
-                        return Some(result.map(callable_into_inferred));
-                    }
-                    // Static methods can be passed out without any remapping.
-                    FunctionKind::Staticmethod => (),
+                    return Some(result.map(callable_into_inferred));
                 }
+                // Static methods can be passed out without any remapping.
+                FunctionKind::Staticmethod => (),
             }
-            DbType::Class(c) => {
-                let inst = use_instance_with_ref(
-                    NodeRef::from_link(i_s.db, c.link),
-                    Generics::from_class_generics(i_s.db, &c.generics),
-                    Some(self),
-                );
-                if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
-                    let from = from.unwrap_or_else(|| todo!());
-                    let class_as_inferred = instance.class.as_inferred(i_s);
-                    let instance = get_inferred(i_s);
-                    return Some(Some(inf.execute(
-                        i_s,
-                        &CombinedArguments::new(
-                            &KnownArguments::new(&instance, from),
-                            &KnownArguments::new(&class_as_inferred, from),
-                        ),
-                    )));
-                }
+        }
+
+        let needs_remapping = || match func_class.generics {
+            Generics::Self_ { .. } => func_class.type_var_remap.is_some(),
+            _ => true,
+        };
+        let mut new = None;
+        if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoClassVars) && needs_remapping()
+        {
+            new = Some(replace_class_type_vars(
+                i_s.db,
+                &t,
+                &instance.class,
+                &func_class,
+            ));
+            t = new.as_ref().unwrap();
+        }
+
+        if let DbType::Class(c) = t {
+            let inst = use_instance_with_ref(
+                NodeRef::from_link(i_s.db, c.link),
+                Generics::from_class_generics(i_s.db, &c.generics),
+                Some(self),
+            );
+            if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
+                let from = from.unwrap_or_else(|| todo!());
+                let class_as_inferred = instance.class.as_inferred(i_s);
+                let instance = get_inferred(i_s);
+                return Some(Some(inf.execute(
+                    i_s,
+                    &CombinedArguments::new(
+                        &KnownArguments::new(&instance, from),
+                        &KnownArguments::new(&class_as_inferred, from),
+                    ),
+                )));
             }
-            _ => (),
+        }
+        if let Some(new) = new {
+            return Some(Some(Inferred::from_type(new)));
         }
         None
     }
