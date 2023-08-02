@@ -1651,7 +1651,6 @@ testExtremeForwardReferencing
 testConditionalExpressionUnionWithAny
 testJoinWithAnyFallback
 # join callables
-testOverloadedInIter
 testCallableMeetAndJoin
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
@@ -1673,12 +1672,6 @@ testTupleValueAsExceptionType
 testExceptWithMultipleTypes3
 testExceptWithMultipleTypes4
 testExceptWithAnyTypes
-# union simplification with None
-testUnionSimplificationSpecialCase3
-testUnionSimplificationWithDuplicateItems
-testUnionWithGenericTypeItemContext
-testUnionWithGenericTypeItemContextAndStrictOptional
-testUnionWithGenericTypeItemContextInMethod
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
