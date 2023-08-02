@@ -968,13 +968,10 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
 
-        let needs_remapping = || match func_class.generics {
-            Generics::Self_ { .. } => func_class.type_var_remap.is_some(),
-            _ => true,
-        };
+        let needs_remapping = !(matches!(func_class.generics, Generics::Self_ { .. })
+            && func_class.type_var_remap.is_none());
         let mut new = None;
-        if !matches!(apply_descriptors_kind, ApplyDescriptorsKind::NoClassVars) && needs_remapping()
-        {
+        if needs_remapping {
             new = Some(replace_class_type_vars(
                 i_s.db,
                 &t,
