@@ -7,6 +7,59 @@ testMixinProtocolSuper
 testCheckUntypedDefsSelf2
 testCheckUntypedDefsSelf3
 testLambdaInheritsCheckedContextFromFuncForced
+# Mypy upgrade
+testGenericTypeAliasesWrongAliases
+testInferenceAgainstGenericCallable
+testInferenceAgainstGenericCallableNoLeak
+testInferenceAgainstGenericCallableChain
+testInferenceAgainstGenericCallableGeneric
+testInferenceAgainstGenericCallableGenericReverse
+testInferenceAgainstGenericCallableGenericArg
+testInferenceAgainstGenericCallableGenericChain
+testInferenceAgainstGenericCallableGenericNonLinear
+testInferenceAgainstGenericCurry
+testInferenceAgainstGenericCallableGenericAlias
+testInferenceAgainstGenericCallableGenericProtocol
+testInferenceAgainstGenericSplitOrder
+testInferenceAgainstGenericSplitOrderGeneric
+testAccessMethodViaClass
+testAccessingGenericDescriptorFromClassBadOverload
+testMetaclassConflictingInstanceVars
+testOverloadInferUnionWithMixOfPositionalAndOptionalArgs
+testOverloadsAndNoneWithStrictOptional
+testOverloadsNoneAndTypeVarsWithStrictOptional
+testOverloadsWithNoneComingSecondIsOkInStrictOptional
+testProtocolsWithNoneAndStrictOptional
+testNoneSubtypeOfEmptyProtocolStrict
+testProtocolSlotsIsNotProtocolMember
+testProtocolWithClassGetItem
+testSingleItemListExpressions
+testGenericMethodCalledInGenericContext
+testWideOuterContextOptional
+testWideOuterContextOptionalGenericReturn
+testSelfTypeNew_explicit
+testAbstractTypeInADict
+testFastParseInvalidTypes3
+testSerializeOptionalType
+testIncrementalStrictOptional
+testIncrementalInheritanceAddAnnotation
+testPreviousErrorInOverloadedFunction
+testStrictOptionalModule
+testStrictOptionalFunction
+testStrictOptionalMethod
+testParamSpecCached
+testErrorInReAddedModule
+testColumnsInvalidArgumentType
+# tuple[()]
+testUnionTypeAlias
+testImportUnionAlias
+testEmptyTupleTypeAlias
+testOverloadingAndIntFloatSubtyping
+testTupleExpressions
+testTupleSingleton
+testAssignEmpty
+testEmptyTupleTypeRepr
+testEmptyNamedTupleTypeRepr
 
 # super with Type[...]
 testSuperWithAny
@@ -423,6 +476,23 @@ testIndexingTuplesWithNegativeIntegers
 testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
+# NamedTuple uncategorized
+testNewNamedTupleShouldBeSingleBase
+testNewNamedTupleWithItemTypes
+testNewNamedTupleSelfTypeWithNamedTupleAsBase
+testNewNamedTupleTypeReferenceToClassDerivedFrom
+testNewNamedTupleSimpleTypeInference
+testNewNamedTupleEmptyItems
+testNewNamedTupleAsDict
+testNewNamedTupleReplaceTyped
+testNewNamedTupleFields
+testNewNamedTupleUnit
+testNewNamedTupleWithTooManyArguments
+testNewNamedTupleWithInvalidItems2
+testNewNamedTupleWithoutTypesSpecified
+testNewNamedTupleWithDefaults
+testNewNamedTupleWithDefaultsStrictOptional
+testNewNamedTupleErrorInDefault
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
@@ -447,10 +517,13 @@ testNamedTupleSelfItemNotAllowed
 # "Property "y" defined in "Point" is read-only"
 testTypingExtensionsNamedTuple
 testNamedTupleAttributesAreReadOnly
+testNewNamedTupleAttributesAreReadOnly
 # Namedtuple unpacking size messages
 testNamedTupleUsedAsTuple
 # Joining namedtuples (especially generic once)
 testGenericNamedTupleJoin
+testNewNamedTupleJoinNamedTuple
+testNewNamedTupleJoinTuple
 # "Generic named tuples are not supported for legacy class syntax"
 testGenericNamedTupleNoLegacySyntax
 # Recursive generic NamedTuple
@@ -483,6 +556,8 @@ testNamedTupleIncompatibleRedefinition
 testNewNamedTupleIllegalNames
 # "Protocol member HasX.x expected settable variable, got read-only attribute"
 testTypingNamedTupleAttributesAreReadOnly
+# "NamedTuple field name cannot start with an underscore: _y"
+testNewNamedTupleNoUnderscoreFields
 
 # data class (currently all are passing)
 
@@ -1257,6 +1332,11 @@ testOverridePropertyMethod
 # Self definitions different from parent
 testCantImplementAbstractPropertyViaInstanceVariable
 
+# @override
+requireExplicitOverrideMethod
+requireExplicitOverrideProperty
+requireExplicitOverrideOverload
+requireExplicitOverrideMultipleInheritance
 # Liskov basics
 testAbstractGenericMethodInference
 testAllowCovarianceInReadOnlyAttributes
@@ -1563,6 +1643,7 @@ testConditionalExpressionUnionWithAny
 testJoinWithAnyFallback
 # join callables
 testOverloadedInIter
+testCallableMeetAndJoin
 # join sub and super classes
 testOverloadInferUnionWithDifferingLengths
 testForLoopOverTupleAndSubtyping
@@ -1583,6 +1664,12 @@ testTupleValueAsExceptionType
 testExceptWithMultipleTypes3
 testExceptWithMultipleTypes4
 testExceptWithAnyTypes
+# union simplification with None
+testUnionSimplificationSpecialCase3
+testUnionSimplificationWithDuplicateItems
+testUnionWithGenericTypeItemContext
+testUnionWithGenericTypeItemContextAndStrictOptional
+testUnionWithGenericTypeItemContextInMethod
 
 # __setitem__
 testInferOptionalDictKeyValueTypes
@@ -2641,8 +2728,9 @@ testErrorCodeRedundantCast
 testColumnRedundantCast
 
 # enable-error-code="redundant-self"
-# "Redundant Self annotation on method first argument"
+# "Redundant "Self" annotation for the first method argument"
 testTypingSelfRedundantWarning
+testTypingSelfRedundantWarning_pep585
 
 # --strict-equality strict equality
 testStrictEqualityEq

@@ -121,6 +121,7 @@ const USE_MYPY_TEST_FILES: [&str; 78] = [
     "fine-grained-cache-incremental.test",
     "fine-grained-cycles.test",
     //"fine-grained-attr.test",
+    //"fine-grained-dataclass.test",
     //"fine-grained-dataclass-transform.test",
     // Mypy flag checking
     "check-columns.test",
