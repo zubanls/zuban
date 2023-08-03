@@ -17,10 +17,6 @@ testSelfTypeNew_explicit
 testAbstractTypeInADict
 testFastParseInvalidTypes3
 testErrorInReAddedModule
-testNewNamedTupleWithItemTypes
-testNewNamedTupleSelfTypeWithNamedTupleAsBase
-testNewNamedTupleTypeReferenceToClassDerivedFrom
-testNewNamedTupleSimpleTypeInference
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -69,6 +65,8 @@ testErrorCodeNoAttribute
 # iter on Self
 testNamedTupleTypeReferenceToClassDerivedFrom
 testNamedTupleSelfTypeWithNamedTupleAsBase
+testNewNamedTupleSelfTypeWithNamedTupleAsBase
+testNewNamedTupleTypeReferenceToClassDerivedFrom
 
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
