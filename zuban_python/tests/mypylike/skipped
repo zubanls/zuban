@@ -8,13 +8,8 @@ testCheckUntypedDefsSelf2
 testCheckUntypedDefsSelf3
 testLambdaInheritsCheckedContextFromFuncForced
 # Mypy upgrade
-testGenericTypeAliasesWrongAliases
-testMetaclassConflictingInstanceVars
-testProtocolSlotsIsNotProtocolMember
-testProtocolWithClassGetItem
 testSingleItemListExpressions
 testSelfTypeNew_explicit
-testAbstractTypeInADict
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -300,6 +295,7 @@ testLiteralAndGenericsNoMatch
 testClassMemberTypeVarInFunctionBody
 # Type variable "__main__.Ts" is invalid as target for type alias
 testTypeVarTupleIsNotValidAliasTarget
+testGenericTypeAliasesWrongAliases
 # Type variable "__main__.T" is unbound
 # (Hint: Use "Generic[T]" or "Protocol[T]" base class to bind "T" inside a class)
 # (Hint: Use "T" in function signature to bind "T" inside a function)
@@ -885,6 +881,7 @@ testProtocolTypeTypeSelfTypeInstanceMethod
 testDivmod
 testGenericSubProtocolsExtensionInvariant
 testWeirdRecursiveInferenceForProtocols-skip
+testProtocolWithClassGetItem
 # Protocol inference
 testCallbackProtocolFunctionAttributesInference
 testProtocolTypeTypeInference
@@ -1114,6 +1111,8 @@ testInferringLvarTypesUnpackedFromIterableClassObject
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 testMetaclassOperators
 testMetaclassOperatorsDirect
+# Metaclass instance vs. class members
+testMetaclassConflictingInstanceVars
 
 # Use type(foo) when foo has a metaclass
 testMetaclassTypeCallable
@@ -1144,6 +1143,7 @@ testAbstractGlobalFunction
 testAbstractClasses
 # "Only concrete class can be given where "Type[C]" is expected"
 testDedicatedErrorCodeTypeAbstract
+testAbstractTypeInADict
 # "Can only assign concrete classes to a variable of type "Type[A]""
 testInstantiationAbstractsInTypeForVariables
 # "Overloaded method has both abstract and non-abstract variants"
@@ -1509,6 +1509,7 @@ testGetattrAndSetattr
 
 # __slots__
 testSlotsSerialization
+testProtocolSlotsIsNotProtocolMember
 
 # "The return type of "__init__" must be None"
 testConstructorWithReturnValueType
