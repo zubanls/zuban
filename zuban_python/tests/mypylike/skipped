@@ -387,7 +387,6 @@ testOverloadWithSwappedDecorators2
 # "Static methods cannot use Self type"
 testTypingSelfClassMethod
 # staticmethod
-testForwardReferenceToDynamicallyTypedStaticMethod
 testBuiltinStaticMethod
 testRefMethodWithDecorator
 testForwardReferenceToDynamicallyTypedDecoratedStaticMethod

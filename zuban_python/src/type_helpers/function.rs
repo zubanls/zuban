@@ -951,15 +951,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             if has_self_type_var_usage {
                                 DbType::Self_
                             } else {
-                                self.class.unwrap().as_db_type(i_s.db)
-                                /*
                                 match kind {
-                                    FunctionKind::Function | FunctionKind::Property { .. } => self.class.unwrap().as_db_type(i_s.db),
-                                    FunctionKind::Function | FunctionKind::Property => self.class.unwrap().as_db_type(i_s.db),
-                                    FunctionKind::Classmethod => todo!(),
-                                    FunctionKind::Staticmethod => self.class.unwrap().as_db_type(i_s.db),
+                                    FunctionKind::Function | FunctionKind::Property { .. } => {
+                                        self.class.unwrap().as_db_type(i_s.db)
+                                    }
+                                    FunctionKind::Classmethod => {
+                                        self.class.unwrap().as_db_type(i_s.db)
+                                    }
+                                    FunctionKind::Staticmethod => DbType::Any,
                                 }
-                                */
                             }
                         }
                     } else {
@@ -2052,7 +2052,11 @@ fn kind_of_decorators(
     file: &PythonFile,
     decorated: Decorated,
 ) -> FunctionKind {
-    for decorator in decorated.decorators().iter() {}
+    for decorator in decorated.decorators().iter() {
+        if let InferredDecorator::FunctionKind(kind) = infer_decorator(i_s, file, decorator) {
+            return kind;
+        }
+    }
     FunctionKind::Function
 }
 
@@ -2061,10 +2065,15 @@ fn infer_decorator(
     file: &PythonFile,
     decorator: Decorator,
 ) -> InferredDecorator {
-    let i = file
-        .inference(i_s)
-        .infer_named_expression(decorator.named_expression());
-    let saved_link = i.maybe_saved_link();
+    let node_ref = NodeRef::new(file, decorator.index());
+    let mut inference = file.inference(i_s);
+    let redirect = if node_ref.point().calculated() {
+        inference.check_point_cache(node_ref.node_index).unwrap()
+    } else {
+        let i = inference.infer_named_expression(decorator.named_expression());
+        i.save_redirect(i_s, file, node_ref.node_index)
+    };
+    let saved_link = redirect.maybe_saved_link();
     if saved_link == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
         return InferredDecorator::FunctionKind(FunctionKind::Classmethod);
     }
@@ -2082,7 +2091,7 @@ fn infer_decorator(
     {
         return InferredDecorator::FunctionKind(FunctionKind::Property { writable: false });
     }
-    InferredDecorator::Inferred(i)
+    InferredDecorator::Inferred(redirect)
 }
 
 enum InferredDecorator {
