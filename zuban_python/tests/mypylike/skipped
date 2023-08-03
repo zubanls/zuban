@@ -1,6 +1,5 @@
 # Next up
 testSelfTypeRestrictedClassMethod
-testCheckUntypedDefsSelf3
 
 # --new-type-inference
 testInferenceAgainstGenericCallable

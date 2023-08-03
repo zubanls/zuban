@@ -650,7 +650,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
 
     fn is_self_param(&self, name: Name<'db>) -> bool {
         let point = self.points.get(name.index());
-        if point.type_() == PointType::Redirect {
+        if point.calculated() && point.type_() == PointType::Redirect {
             let param_index = point.node_index();
             // Points to the name and not the name definition, therefore check that.
             // It should be safe to check the index before, because the name binder only ever

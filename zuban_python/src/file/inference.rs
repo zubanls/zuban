@@ -675,15 +675,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 save(self.i_s, name_def.index());
             }
             Target::NameExpression(primary_target, name_definition) => {
-                if primary_target.as_code().contains("self") {
-                    // TODO here we should do something as well.
+                let base = self.infer_primary_target_or_atom(primary_target.first());
+                if base.maybe_saved_specific(self.i_s.db) == Some(Specific::MaybeSelfParam) {
+                    // TODO we should probably check if we are in a staticmethod/classmethod
                 } else {
                     let i_s = self.i_s;
                     if is_definition {
                         NodeRef::new(self.file, primary_target.index())
                             .add_issue(i_s, IssueType::InvalidTypeDeclaration);
                     }
-                    let base = self.infer_primary_target_or_atom(primary_target.first());
                     let base = base.as_type(i_s);
                     let node_ref = NodeRef::new(self.file, primary_target.index());
                     base.run_on_each_union_type(&mut |t| {
@@ -1803,7 +1803,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         function.infer_param(self.i_s, node_index, args)
                                     }
                                 } else if specific == Specific::MaybeSelfParam {
-                                    todo!("Inferred::new_saved(self.file, node_index)")
+                                    Inferred::new_saved(self.file, node_index)
                                 } else {
                                     todo!("{:?} {:?}", self.i_s, specific)
                                 }
