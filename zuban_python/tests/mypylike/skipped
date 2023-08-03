@@ -8,7 +8,6 @@ testCheckUntypedDefsSelf2
 testCheckUntypedDefsSelf3
 testLambdaInheritsCheckedContextFromFuncForced
 # Mypy upgrade
-testSingleItemListExpressions
 testSelfTypeNew_explicit
 
 # --new-type-inference

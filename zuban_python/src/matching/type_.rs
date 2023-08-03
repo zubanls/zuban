@@ -1088,6 +1088,10 @@ impl<'a> Type<'a> {
                         }
                     }
                 }
+                // Everything can be an object.
+                if class.node_ref == i_s.db.python_state.object_node_ref() {
+                    return t.as_db_type();
+                }
             }
             DbType::Tuple(t1) => {
                 if let DbType::Tuple(t2) = self.as_ref() {
@@ -1148,6 +1152,40 @@ impl<'a> Type<'a> {
                 }
             }
             DbType::Type(t1) => todo!(),
+            DbType::Union(union) => {
+                if self.is_union() {
+                    debug!("TODO we should try to resemble unions");
+                } else {
+                    let mut same_index = None;
+                    for (i, union_item) in union.iter().enumerate() {
+                        if self.is_simple_same_type(i_s, &Type::new(union_item)).bool() {
+                            same_index = Some(i);
+                            break;
+                        }
+                    }
+                    // If no union entry matches, we do not want to return the full context type.
+                    if let Some(same_index) = same_index {
+                        return DbType::Union(UnionType {
+                            entries: union
+                                .entries
+                                .iter()
+                                .enumerate()
+                                .map(|(i, entry)| UnionEntry {
+                                    type_: {
+                                        if i == same_index {
+                                            self.as_db_type()
+                                        } else {
+                                            entry.type_.clone()
+                                        }
+                                    },
+                                    format_index: entry.format_index,
+                                })
+                                .collect(),
+                            format_as_optional: union.format_as_optional,
+                        });
+                    }
+                }
+            }
             _ => (),
         }
         self.into_db_type()
