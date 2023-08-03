@@ -52,6 +52,7 @@ pub fn maybe_class_usage(
             .into_generic_item(db)
     })
 }
+
 pub fn create_signature_without_self_for_callable(
     i_s: &InferenceState,
     callable: &CallableContent,

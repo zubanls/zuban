@@ -949,7 +949,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let result = infer_class_method(i_s, instance.class, func_class, c);
                     if result.is_none() {
                         if let Some(from) = from {
-                            let func = prepare_func(i_s, definition.unwrap(), func_class);
+                            let func = prepare_func(i_s, c.defined_at, func_class);
                             let t = IssueType::InvalidClassMethodFirstArgument {
                                 argument_type: instance.class.as_type(i_s).format_short(i_s.db),
                                 function_name: Box::from(func.name()),
@@ -1144,7 +1144,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
                     if result.is_none() {
                         if let Some(from) = from {
-                            let func = prepare_func(i_s, definition, attribute_class);
+                            let func = prepare_func(i_s, c.defined_at, attribute_class);
                             let t = IssueType::InvalidSelfArgument {
                                 argument_type: class.as_type(i_s).format_short(i_s.db),
                                 function_name: Box::from(func.name()),
@@ -1885,33 +1885,14 @@ pub fn infer_class_method(
         class.generics = self_generics;
         func_class.generics = self_generics;
     }
-    /*
-    if let Some(first_type) = func.first_param_annotation_type(i_s) {
-        let type_vars = func.type_vars(i_s);
-        let mut matcher = Matcher::new_function_matcher(Some(&class), func, type_vars);
-        let instance_t = class.as_type(i_s);
-        // TODO It is questionable that we do not match Self here
-        if !first_type
-            .is_super_type_of(i_s, &mut matcher, &instance_t)
-            .bool()
-        {
-            return None;
-        }
-    }
-    */
-    let t = proper_classmethod_callable(
+
+    proper_classmethod_callable(
         i_s,
         callable,
         &class,
         &func_class,
         class_generics_not_defined_yet,
-    );
-
-    /*
-    let mut c = callable.remove_first_param()
-    let t = DbType::Callable(Rc::new(c));
-    */
-    Some(t)
+    )
 }
 
 fn proper_classmethod_callable(
@@ -1920,7 +1901,7 @@ fn proper_classmethod_callable(
     class: &Class,
     func_class: &Class,
     class_generics_not_defined_yet: bool,
-) -> CallableContent {
+) -> Option<CallableContent> {
     let mut class_method_type_var_usage = None;
     // TODO performance this clone might not be necessary.
     let mut callable = callable.clone();
@@ -1947,7 +1928,19 @@ fn proper_classmethod_callable(
             }
             let mut vec = params.to_vec();
             // The first argument in a class param is not relevant if we execute descriptors.
-            vec.remove(0);
+            let first_param = vec.remove(0);
+
+            let mut matcher = Matcher::new_callable_matcher(&callable);
+            let instance_t = class.as_type(i_s);
+            let t = first_param.param_specific.expect_positional_db_type();
+            let t = replace_class_type_vars(i_s.db, &t, class, func_class);
+            if !Type::new(&t)
+                .is_super_type_of(i_s, &mut matcher, &instance_t)
+                .bool()
+            {
+                debug!("TODO should return None");
+                // return None;
+            }
             callable.params = CallableParams::Simple(Rc::from(vec));
         }
         CallableParams::WithParamSpec(_, _) => todo!(),
@@ -2027,7 +2020,7 @@ fn proper_classmethod_callable(
     );
     let type_vars = type_vars.into_inner();
     callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-    callable
+    Some(callable)
 }
 
 fn callable_into_inferred(callable: CallableContent) -> Inferred {
