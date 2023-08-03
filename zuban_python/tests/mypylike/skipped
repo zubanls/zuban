@@ -17,6 +17,10 @@ testSelfTypeNew_explicit
 testAbstractTypeInADict
 testFastParseInvalidTypes3
 testErrorInReAddedModule
+testNewNamedTupleWithItemTypes
+testNewNamedTupleSelfTypeWithNamedTupleAsBase
+testNewNamedTupleTypeReferenceToClassDerivedFrom
+testNewNamedTupleSimpleTypeInference
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -439,20 +443,8 @@ testIndexingTuplesWithNegativeIntegers
 testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
-# NamedTuple uncategorized
-testNewNamedTupleShouldBeSingleBase
-testNewNamedTupleWithItemTypes
-testNewNamedTupleSelfTypeWithNamedTupleAsBase
-testNewNamedTupleTypeReferenceToClassDerivedFrom
-testNewNamedTupleSimpleTypeInference
-testNewNamedTupleEmptyItems
-testNewNamedTupleAsDict
-testNewNamedTupleReplaceTyped
-testNewNamedTupleFields
-testNewNamedTupleUnit
-testNewNamedTupleWithTooManyArguments
+# "Non-default NamedTuple fields cannot follow default fields"
 testNewNamedTupleWithInvalidItems2
-testNewNamedTupleWithoutTypesSpecified
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
@@ -508,6 +500,10 @@ testNamedTupleSelfTypeMake
 testNamedTupleTypingSelfMethod
 testGenericNamedTupleMethods
 testUnionUnpackingInForTuple
+testNewNamedTupleAsDict
+testNewNamedTupleReplaceTyped
+testNewNamedTupleFields
+testNewNamedTupleUnit
 # Namedtuple class attr access
 testNamedTupleForwardFunctionIndirectReveal
 testNamedTupleMissingClassAttribute
@@ -518,6 +514,8 @@ testNewNamedTupleIllegalNames
 testTypingNamedTupleAttributesAreReadOnly
 # "NamedTuple field name cannot start with an underscore: _y"
 testNewNamedTupleNoUnderscoreFields
+# "NamedTuple should be a single base"
+testNewNamedTupleShouldBeSingleBase
 
 # data class (currently all are passing)
 

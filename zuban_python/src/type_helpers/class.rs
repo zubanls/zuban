@@ -1321,11 +1321,13 @@ fn find_stmt_named_tuple_types(
                             name: Some(StringSlice::from_name(file.file_index(), name.name())),
                         })
                     }
-                    _ => todo!(),
+                    _ => NodeRef::new(file, assignment.index())
+                        .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
                 },
-                _ => todo!(),
+                _ => NodeRef::new(file, assignment.index())
+                    .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
             },
-            _ => todo!(),
+            _ => (),
         }
     }
 }
