@@ -1912,34 +1912,30 @@ fn proper_classmethod_callable(
     };
     match &callable.params {
         CallableParams::Simple(params) => {
-            if let Some(param) = params.iter().next() {
-                if let Some(t) = param.param_specific.maybe_positional_db_type() {
-                    match t {
-                        DbType::Type(t) => {
-                            if let DbType::TypeVar(usage) = t.as_ref() {
-                                class_method_type_var_usage = Some(usage.clone());
-                                type_vars.remove(0);
-                            }
-                        }
-                        DbType::Any => (),
-                        _ => todo!("{t:?}"),
-                    }
-                }
-            }
             let mut vec = params.to_vec();
             // The first argument in a class param is not relevant if we execute descriptors.
             let first_param = vec.remove(0);
 
-            let mut matcher = Matcher::new_callable_matcher(&callable);
-            let instance_t = class.as_type(i_s);
-            let t = first_param.param_specific.expect_positional_db_type();
-            let t = replace_class_type_vars(i_s.db, &t, class, func_class);
-            dbg!(&t);
-            if !Type::new(&t)
-                .is_super_type_of(i_s, &mut matcher, &instance_t)
-                .bool()
-            {
-                return None;
+            if let Some(t) = first_param.param_specific.maybe_positional_db_type() {
+                let mut matcher = Matcher::new_callable_matcher(&callable);
+                let instance_t = class.as_type(i_s);
+                let t = replace_class_type_vars(i_s.db, &t, class, func_class);
+                if !Type::new(&t)
+                    .is_super_type_of(i_s, &mut matcher, &instance_t)
+                    .bool()
+                {
+                    return None;
+                }
+                match t {
+                    DbType::Type(t) => {
+                        if let DbType::TypeVar(usage) = t.as_ref() {
+                            class_method_type_var_usage = Some(usage.clone());
+                            type_vars.remove(0);
+                        }
+                    }
+                    DbType::Any => (),
+                    _ => todo!("{t:?}"),
+                }
             }
             callable.params = CallableParams::Simple(Rc::from(vec));
         }
