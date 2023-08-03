@@ -805,3 +805,18 @@ reveal_type(x_int.foo(1))  # N: Revealed type is "int"
 x_str.foo(1)  # E: Too many arguments for "foo" of "X"
 
 x_bytes.foo()  # E: Invalid self argument "Type[X[bytes]]" to class attribute function "foo" with type "Callable[[X[int]], T]"
+
+[case type_var_restriction_subtyping]
+from typing import TypeVar, Generic
+X = TypeVar('X', int, str)
+class S(str): pass
+class C(Generic[X]):
+    def __init__(self, x: X) -> None: pass
+x = C("")
+y = C(S())
+if int():
+    x = y
+    y = x
+c_int = C(1) # type: C[int]
+if int():
+    y = c_int # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[str]")
