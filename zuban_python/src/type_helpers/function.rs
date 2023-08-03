@@ -565,7 +565,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             inferred = Inferred::from_type(DbType::Callable(Rc::new(callable_content)));
         } else {
             if kind != FunctionKind::Function {
-                todo!()
+                todo!("{kind:?}")
             }
         }
         Some(FunctionDetails {

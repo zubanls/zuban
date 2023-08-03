@@ -1,11 +1,6 @@
 # Next up
 testSelfTypeRestrictedClassMethod
-testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
-testMixinProtocolSuper
-# weird from check-untyped-defs
-testCheckUntypedDefsSelf2
 testCheckUntypedDefsSelf3
-testLambdaInheritsCheckedContextFromFuncForced
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -39,6 +34,7 @@ testSuperSelfTypeInstanceMethod
 testSuperSelfTypeClassMethod
 testTypingSelfOnSuperTypeVarValues
 testSelfTypeSuper
+testMixinProtocolSuper
 # Super in classmethod or __new__
 testSuperWithNew
 
@@ -395,6 +391,7 @@ testTypingSelfClassMethod
 testForwardReferenceToDynamicallyTypedStaticMethod
 testBuiltinStaticMethod
 testRefMethodWithDecorator
+testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 # Incompatible with superclass
 testClassMethodSubclassing
 testClassStaticMethodSubclassing
@@ -747,6 +744,7 @@ testLambdaInheritsCheckedContextFromTypedFuncLambdaStack
 testLambdaInheritsCheckedContextFromTypedFuncLambdaStackForce
 testLambdaInheritsCheckedContextFromClassLambdaStack
 testLambdaInheritsCheckedContextFromClassLambdaStackForce
+testLambdaInheritsCheckedContextFromFuncForced
 # Lambda with defined return types (inferred context)
 testInferLambdaTypeUsingContext
 testLambdaWithoutContext
@@ -1436,6 +1434,7 @@ testTypingSelfClashInBodies
 
 # untyped (inferred?) instance attributes
 testChangeBaseClassAttributeType
+testCheckUntypedDefsSelf2
 
 # subclass preferred over class for types
 testAddBaseClassAttributeCausingErrorInSubclass
