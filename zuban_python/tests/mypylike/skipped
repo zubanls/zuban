@@ -19,7 +19,6 @@ testFastParseInvalidTypes3
 testErrorInReAddedModule
 # non-strict-optional
 testInvalidSecondArgumentToSuper
-testNamedTupleNew
 
 # --new-type-inference
 testInferenceAgainstGenericCallable

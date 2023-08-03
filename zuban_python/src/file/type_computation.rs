@@ -3289,7 +3289,7 @@ pub fn new_typing_named_tuple(
             kind: FunctionKind::Function,
             type_vars: (!type_var_likes.is_empty()).then_some(type_var_likes),
             params: CallableParams::Simple(Rc::from(params)),
-            result_type: DbType::None,
+            result_type: DbType::Self_,
         };
         Some(Rc::new(NamedTuple::new(name, callable)))
     } else {
@@ -3365,7 +3365,7 @@ pub fn new_collections_named_tuple(
         kind: FunctionKind::Function,
         type_vars: None,
         params: CallableParams::Simple(Rc::from(params)),
-        result_type: DbType::None,
+        result_type: DbType::Self_,
     };
     Some(Rc::new(NamedTuple::new(name, callable)))
 }
