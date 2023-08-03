@@ -1,5 +1,4 @@
 # Next up
-testProhibitUsingVariablesAsTypesAndAllowAliasesAsTypes
 testSelfTypeRestrictedClassMethod
 testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 testMixinProtocolSuper
