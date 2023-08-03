@@ -1061,7 +1061,8 @@ impl<'db: 'a, 'a> Class<'a> {
         let on_type_error = on_type_error.with_custom_generate_diagnostic_string(&d);
 
         if self.use_cached_class_infos(i_s.db).class_type == ClassType::Enum
-            // For whatever reason, auto is special, because
+            // For whatever reason, auto is special, because it is somehow defined as an enum as
+            // well, which is very weird.
             && self.node_ref.as_link() != i_s.db.python_state.enum_auto_link()
         {
             let metaclass = Instance::new(
