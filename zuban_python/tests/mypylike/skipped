@@ -1,5 +1,4 @@
 # Next up
-testSelfTypeRestrictedClassMethod
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -365,33 +364,25 @@ testOverride__new__AndCallObject
 testSelfTypeClone
 testNewAnalyzerTypeVarBoundInCycle
 testSelfTypeVarIndexExpr
-
 # classmethod self param in overload is not a self param
 testOverloadClassMethodImplementation
 testClassMethodBeforeInit3
 # Recursion error wtf?
 testRefMethodWithOverloadDecorator
-# classmethod overloads
-testGenericClassInGenericFunctionOverloadedConstructor-skip
 # classmethod self type with overload
 testSelfTypeClassMethodOverloadedOnInstance
 SelfTypeOverloadedClassMethod
-
 # "staticmethod" used with a non-method"
 testStaticmethodAndNonMethod
 # "classmethod" used with a non-method"
 testClassmethodAndNonMethod
 # Error for staticmethod: "Overloaded function implementation does not accept all possible arguments of signature 1"
-testOverloadWithStaticMethods
 testOverloadWithSwappedDecorators2
 # "Static methods cannot use Self type"
 testTypingSelfClassMethod
 # staticmethod
 testBuiltinStaticMethod
 testRefMethodWithDecorator
-# Incompatible with superclass
-testClassMethodSubclassing
-testClassStaticMethodSubclassing
 
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical
@@ -1358,6 +1349,9 @@ testMethodOverridingWithIncompatibleTypesOnMultipleLines
 testMultiLineMethodOverridingWithIncompatibleTypesWrongIgnore
 testOverridingMethodAcrossHierarchy
 testMultipleInheritance_MethodDefinitionsIncompatibleOverride
+# classmethod/staticmethod Incompatible with superclass
+testClassMethodSubclassing
+testClassStaticMethodSubclassing
 
 # "Return type "int" of "foo" incompatible with return type "str" in supertype "B""
 testPreviousErrorInDecoratedMethodOverride

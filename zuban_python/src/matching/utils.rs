@@ -118,7 +118,7 @@ pub fn create_signature_without_self(
             },
             &mut || unreachable!("Self should have been remapped already"),
         );
-        let mut old_type_vars = callable.type_vars.take().unwrap().into_vec();
+        let mut old_type_vars = callable.type_vars.take().unwrap().as_vec();
         for (i, c) in calculated.iter().enumerate().rev() {
             if c.calculated() {
                 old_type_vars.remove(i);

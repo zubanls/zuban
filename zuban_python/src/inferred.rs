@@ -1905,8 +1905,8 @@ fn proper_classmethod_callable(
     let mut class_method_type_var_usage = None;
     // TODO performance this clone might not be necessary.
     let mut callable = callable.clone();
-    let mut type_vars = if let Some(type_vars) = callable.type_vars.take() {
-        type_vars.into_vec()
+    let mut type_vars = if let Some(type_vars) = &callable.type_vars {
+        type_vars.as_vec()
     } else {
         vec![]
     };
@@ -1921,7 +1921,7 @@ fn proper_classmethod_callable(
                                 type_vars.remove(0);
                             }
                         }
-                        DbType::Class(..) => (),
+                        DbType::Any => (),
                         _ => todo!("{t:?}"),
                     }
                 }
@@ -1934,12 +1934,12 @@ fn proper_classmethod_callable(
             let instance_t = class.as_type(i_s);
             let t = first_param.param_specific.expect_positional_db_type();
             let t = replace_class_type_vars(i_s.db, &t, class, func_class);
+            dbg!(&t);
             if !Type::new(&t)
                 .is_super_type_of(i_s, &mut matcher, &instance_t)
                 .bool()
             {
-                debug!("TODO should return None");
-                // return None;
+                return None;
             }
             callable.params = CallableParams::Simple(Rc::from(vec));
         }

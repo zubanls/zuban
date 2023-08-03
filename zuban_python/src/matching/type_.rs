@@ -1306,7 +1306,7 @@ impl<'a> Type<'a> {
                             })
                         }
                         GenericItem::ParamSpecArgument(p) => {
-                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.into_vec());
+                            let mut type_vars = p.type_vars.clone().map(|t| t.type_vars.as_vec());
                             GenericItem::ParamSpecArgument(ParamSpecArgument::new(
                                 Self::remap_callable_params(
                                     db,
@@ -1512,7 +1512,7 @@ impl<'a> Type<'a> {
         callable: ReplaceTypeVarLike,
         replace_self: ReplaceSelf,
     ) -> CallableContent {
-        let mut type_vars = c.type_vars.clone().map(|t| t.into_vec());
+        let mut type_vars = c.type_vars.clone().map(|t| t.as_vec());
         let (params, remap_data) = Self::remap_callable_params(
             db,
             &c.params,
@@ -1710,14 +1710,14 @@ impl<'a> Type<'a> {
                             replace_self,
                         );
                         if let Some(type_vars) = type_vars.as_mut() {
-                            type_vars.extend(new_spec_type_vars.type_vars.into_vec());
+                            type_vars.extend(new_spec_type_vars.type_vars.as_vec());
                         } else {
-                            *type_vars = Some(new_spec_type_vars.type_vars.into_vec());
+                            *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
                         }
                         new.params = new_params.0;
                     } else {
                         debug_assert!(type_vars.is_none());
-                        *type_vars = Some(new_spec_type_vars.type_vars.into_vec());
+                        *type_vars = Some(new_spec_type_vars.type_vars.as_vec());
                         todo!("Can probably just be removed")
                     }
                 }

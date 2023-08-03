@@ -819,7 +819,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let defined_at = self.node_ref.as_link();
         let mut type_vars = self.type_vars(i_s).cloned(); // Cache annotation types
         let mut type_vars = if let Some(type_vars) = type_vars.take() {
-            type_vars.into_vec()
+            type_vars.as_vec()
         } else {
             vec![]
         };
@@ -955,9 +955,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                                     FunctionKind::Function | FunctionKind::Property { .. } => {
                                         self.class.unwrap().as_db_type(i_s.db)
                                     }
-                                    FunctionKind::Classmethod => {
-                                        self.class.unwrap().as_db_type(i_s.db)
-                                    }
+                                    FunctionKind::Classmethod => DbType::Any,
                                     FunctionKind::Staticmethod => DbType::Any,
                                 }
                             }

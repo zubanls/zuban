@@ -2108,7 +2108,7 @@ impl TypeVarLikes {
         Self(Rc::from(vec))
     }
 
-    pub fn into_vec(self) -> Vec<TypeVarLike> {
+    pub fn as_vec(&self) -> Vec<TypeVarLike> {
         Vec::from(self.0.as_ref())
     }
 
