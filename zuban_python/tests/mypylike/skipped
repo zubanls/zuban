@@ -18,11 +18,8 @@ testAbstractTypeInADict
 testFastParseInvalidTypes3
 testErrorInReAddedModule
 # non-strict-optional
-testModuleAliasPassedToFunction
-testOverrideAttributeWithMethod
 testInvalidSecondArgumentToSuper
 testNamedTupleNew
-callable_on_type_comment_with_unbound
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -1307,6 +1304,7 @@ requireExplicitOverrideProperty
 requireExplicitOverrideOverload
 requireExplicitOverrideMultipleInheritance
 # Liskov basics
+testOverrideAttributeWithMethod
 testAbstractGenericMethodInference
 testAllowCovarianceInReadOnlyAttributes
 testClassSpec

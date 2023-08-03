@@ -192,21 +192,22 @@ reveal_type(x(1)("")) # N: Revealed type is "tuple[int, str]"
 reveal_type(y) # N: Revealed type is "str"
 
 [case callable_on_type_comment_with_unbound]
-from typing import Callable, TypeVar, Tuple, Generic
+from typing import Callable, TypeVar, Tuple, Generic, Any
 
 T = TypeVar('T')
 U = TypeVar('U')
 
-x, y = None # type: Tuple[Callable[[T], Tuple[T, U]], U]
+any: Any
+x, y = any # type: Tuple[Callable[[T], Tuple[T, U]], U]
 
 reveal_type(x) # N: Revealed type is "def [T, U] (T) -> tuple[T, U]"
 reveal_type(x(1)) # N: Revealed type is "tuple[int, <nothing>]"
 reveal_type(y) # N: Revealed type is "Any"
 
 [out]
-main:6: error: Type variable "__main__.U" is unbound
-main:6: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
-main:6: note: (Hint: Use "U" in function signature to bind "U" inside a function)
+main:7: error: Type variable "__main__.U" is unbound
+main:7: note: (Hint: Use "Generic[U]" or "Protocol[U]" base class to bind "U" inside a class)
+main:7: note: (Hint: Use "U" in function signature to bind "U" inside a function)
 
 [case callable_on_type_comment_tuple_with_unbound]
 from typing import Callable, TypeVar, Tuple, Generic
