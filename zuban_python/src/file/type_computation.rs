@@ -1062,7 +1062,6 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 self.check_attribute_on_class(cls, primary, name)
             }
             TypeContent::DbType(t) => match t {
-                DbType::Class(..) => todo!(),
                 DbType::Any => TypeContent::DbType(DbType::Any),
                 DbType::Enum(e) => match Enum::lookup(&e, db, name.as_str()) {
                     Some(m) => TypeContent::EnumMember(m),
@@ -1074,7 +1073,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.compute_type_attribute(primary, content, name)
                     }
                 },
-                _ => todo!("{primary:?} {t:?}"),
+                _ => TypeContent::InvalidVariable(InvalidVariableType::Other),
             },
             TypeContent::TypeAlias(_) | TypeContent::RecursiveAlias(_) => todo!(),
             TypeContent::SpecialType(m) => todo!(),

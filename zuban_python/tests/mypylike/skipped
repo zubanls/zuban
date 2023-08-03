@@ -15,8 +15,6 @@ testProtocolWithClassGetItem
 testSingleItemListExpressions
 testSelfTypeNew_explicit
 testAbstractTypeInADict
-testFastParseInvalidTypes3
-testErrorInReAddedModule
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -2817,6 +2815,8 @@ testTypeCheckNamedModule4
 testTypeCheckNamedModule5
 testTypeCheckNamedModuleWithImportCycle
 testStubImportNonStubWhileSilent
+# cmd: mypy a.py
+testErrorInReAddedModule
 
 # --soft-error-limit
 testLimitLegacyStubErrorVolume
