@@ -1926,15 +1926,11 @@ fn proper_classmethod_callable(
                 {
                     return None;
                 }
-                match t {
-                    DbType::Type(t) => {
-                        if let DbType::TypeVar(usage) = t.as_ref() {
-                            class_method_type_var_usage = Some(usage.clone());
-                            type_vars.remove(0);
-                        }
+                if let DbType::Type(t) = t {
+                    if let DbType::TypeVar(usage) = t.as_ref() {
+                        class_method_type_var_usage = Some(usage.clone());
+                        type_vars.remove(0);
                     }
-                    DbType::Any => (),
-                    _ => todo!("{t:?}"),
                 }
             }
             callable.params = CallableParams::Simple(Rc::from(vec));
