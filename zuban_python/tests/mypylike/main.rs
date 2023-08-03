@@ -11,26 +11,6 @@ use regex::{Captures, Regex, Replacer};
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
 const USE_MYPY_TEST_FILES: [&str; 78] = [
-    // Semanal tests
-    "semanal-abstractclasses.test",
-    "semanal-basic.test",
-    "semanal-classes.test",
-    "semanal-classvar.test",
-    "semanal-errors-python310.test",
-    "semanal-errors.test",
-    "semanal-expressions.test",
-    "semanal-lambda.test",
-    "semanal-literal.test",
-    "semanal-modules.test",
-    "semanal-namedtuple.test",
-    "semanal-python310.test",
-    "semanal-statements.test",
-    "semanal-typealiases.test",
-    "semanal-typeddict.test",
-    "semanal-typeinfo.test",
-    "semanal-types.test",
-    "check-semanal-error.test",
-    "check-newsemanal.test",
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -132,7 +112,26 @@ const USE_MYPY_TEST_FILES: [&str; 78] = [
     "pep561.test",
     //"check-reports.test",
     //"check-inline-config.test",
-
+    // Semanal tests
+    "semanal-abstractclasses.test",
+    "semanal-basic.test",
+    "semanal-classes.test",
+    "semanal-classvar.test",
+    "semanal-errors-python310.test",
+    "semanal-errors.test",
+    "semanal-expressions.test",
+    "semanal-lambda.test",
+    "semanal-literal.test",
+    "semanal-modules.test",
+    "semanal-namedtuple.test",
+    "semanal-python310.test",
+    "semanal-statements.test",
+    "semanal-typealiases.test",
+    "semanal-typeddict.test",
+    "semanal-typeinfo.test",
+    "semanal-types.test",
+    "check-semanal-error.test",
+    "check-newsemanal.test",
     // Won't do:
     // dmypy suggest feature,
     // see https://mypy.readthedocs.io/en/stable/mypy_daemon.html#static-inference-of-annotations
