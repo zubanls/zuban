@@ -494,68 +494,61 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     .add_issue(i_s, IssueType::DecoratorOnTopOfPropertyNotSupported);
                 break;
             }
-            let i = self
-                .node_ref
-                .file
-                .inference(i_s)
-                .infer_named_expression(decorator.named_expression());
-            let saved_link = i.maybe_saved_link();
-            if saved_link == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
-                if kind == FunctionKind::Staticmethod {
-                    NodeRef::new(self.node_ref.file, decorated.index())
-                        .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
-                    return None;
+
+            match infer_decorator(i_s, self.node_ref.file, decorator) {
+                InferredDecorator::FunctionKind(k) => {
+                    match k {
+                        FunctionKind::Property { .. } => {
+                            if is_overload {
+                                NodeRef::new(self.node_ref.file, decorator.index())
+                                    .add_issue(i_s, IssueType::OverloadedPropertyNotSupported);
+                                return None;
+                            }
+                            if self.class.is_none() {
+                                used_with_a_non_method("property");
+                                return None;
+                            }
+                        }
+                        FunctionKind::Classmethod => {
+                            if kind == FunctionKind::Staticmethod {
+                                NodeRef::new(self.node_ref.file, decorated.index())
+                                    .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod);
+                                return None;
+                            }
+                            if self.class.is_none() {
+                                used_with_a_non_method("classmethod");
+                                return None;
+                            }
+                        }
+                        FunctionKind::Staticmethod => {
+                            if kind == FunctionKind::Classmethod {
+                                NodeRef::new(self.node_ref.file, decorated.index())
+                                    .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
+                            }
+                            if self.class.is_none() {
+                                used_with_a_non_method("staticmethod");
+                                return None;
+                            }
+                        }
+                        // A decorator has no way to specify its a normal function.
+                        FunctionKind::Function => unreachable!(),
+                    }
+                    kind = k
                 }
-                if self.class.is_none() {
-                    used_with_a_non_method("classmethod");
-                    return None;
+                InferredDecorator::Inferred(inf) => {
+                    // TODO check if it's an function without a return annotation and
+                    // abort in that case.
+                    inferred = inf.execute(
+                        i_s,
+                        &KnownArguments::new(
+                            &inferred,
+                            NodeRef::new(self.node_ref.file, decorator.index()),
+                        ),
+                    );
                 }
-                kind = FunctionKind::Classmethod;
-                continue;
+                InferredDecorator::Overload => is_overload = true,
+                InferredDecorator::Abstractmethod => (),
             }
-            if saved_link == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
-                if kind == FunctionKind::Classmethod {
-                    NodeRef::new(self.node_ref.file, decorated.index())
-                        .add_issue(i_s, IssueType::InvalidClassmethodAndStaticmethod)
-                }
-                kind = FunctionKind::Staticmethod;
-                if self.class.is_none() {
-                    used_with_a_non_method("staticmethod");
-                    return None;
-                }
-                continue;
-            }
-            if saved_link == Some(i_s.db.python_state.overload_link()) {
-                is_overload = true;
-                continue;
-            }
-            if saved_link == Some(i_s.db.python_state.abstractmethod_link()) {
-                continue;
-            }
-            if saved_link == Some(i_s.db.python_state.property_node_ref().as_link())
-                || saved_link == Some(i_s.db.python_state.abstractproperty_link())
-            {
-                if is_overload {
-                    NodeRef::new(self.node_ref.file, decorator.index())
-                        .add_issue(i_s, IssueType::OverloadedPropertyNotSupported);
-                    return None;
-                }
-                if self.class.is_none() {
-                    used_with_a_non_method("property");
-                    return None;
-                }
-                kind = FunctionKind::Property { writable: false };
-                continue;
-            }
-            // TODO check if it's an function without a return annotation and
-            // abort in that case.
-            inferred = i.execute(
-                i_s,
-                &KnownArguments::new(
-                    &inferred,
-                    NodeRef::new(self.node_ref.file, decorator.index()),
-                ),
-            );
         }
         if let DbType::Callable(callable_content) = inferred.as_type(i_s).as_ref() {
             let mut callable_content = (**callable_content).clone();
@@ -917,6 +910,12 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         has_self_type_var_usage: bool,
         mut as_db_type: impl FnMut(&InferenceState, Type) -> DbType,
     ) -> CallableContent {
+        let kind = match self.node_ref.point().specific() {
+            Specific::DecoratedFunction => {
+                kind_of_decorators(i_s, self.node_ref.file, self.expect_decorated_node())
+            }
+            _ => FunctionKind::Function,
+        };
         let mut params = params.peekable();
         let result_type = self.result_type(i_s);
         let result_type = as_db_type(i_s, result_type);
@@ -925,6 +924,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             name: Some(self.name_string_slice()),
             class_name: self.class.map(|c| c.name_string_slice()),
             defined_at: self.node_ref.as_link(),
+            // The actual kind is set by using the decorated() function.
             kind: FunctionKind::Function,
             params,
             type_vars: None,
@@ -2045,6 +2045,51 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     } else {
         format!("def {type_var_str}{name}({args})").into()
     }
+}
+
+fn kind_of_decorators(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    decorated: Decorated,
+) -> FunctionKind {
+    for decorator in decorated.decorators().iter() {}
+    FunctionKind::Function
+}
+
+fn infer_decorator(
+    i_s: &InferenceState,
+    file: &PythonFile,
+    decorator: Decorator,
+) -> InferredDecorator {
+    let i = file
+        .inference(i_s)
+        .infer_named_expression(decorator.named_expression());
+    let saved_link = i.maybe_saved_link();
+    if saved_link == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
+        return InferredDecorator::FunctionKind(FunctionKind::Classmethod);
+    }
+    if saved_link == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
+        return InferredDecorator::FunctionKind(FunctionKind::Staticmethod);
+    }
+    if saved_link == Some(i_s.db.python_state.overload_link()) {
+        return InferredDecorator::Overload;
+    }
+    if saved_link == Some(i_s.db.python_state.abstractmethod_link()) {
+        return InferredDecorator::Abstractmethod;
+    }
+    if saved_link == Some(i_s.db.python_state.property_node_ref().as_link())
+        || saved_link == Some(i_s.db.python_state.abstractproperty_link())
+    {
+        return InferredDecorator::FunctionKind(FunctionKind::Property { writable: false });
+    }
+    InferredDecorator::Inferred(i)
+}
+
+enum InferredDecorator {
+    FunctionKind(FunctionKind),
+    Inferred(Inferred),
+    Overload,
+    Abstractmethod,
 }
 
 struct FunctionDetails {
