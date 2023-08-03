@@ -389,7 +389,6 @@ testTypingSelfClassMethod
 # staticmethod
 testBuiltinStaticMethod
 testRefMethodWithDecorator
-testForwardReferenceToDynamicallyTypedDecoratedStaticMethod
 # Incompatible with superclass
 testClassMethodSubclassing
 testClassStaticMethodSubclassing

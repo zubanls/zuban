@@ -557,7 +557,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable_content.kind = kind;
             inferred = Inferred::from_type(DbType::Callable(Rc::new(callable_content)));
         } else {
-            if kind != FunctionKind::Function {
+            if !matches!(kind, FunctionKind::Function | FunctionKind::Staticmethod) {
                 todo!("{kind:?}")
             }
         }
