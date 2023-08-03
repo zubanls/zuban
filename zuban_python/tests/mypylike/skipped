@@ -17,8 +17,6 @@ testSelfTypeNew_explicit
 testAbstractTypeInADict
 testFastParseInvalidTypes3
 testErrorInReAddedModule
-# non-strict-optional
-testInvalidSecondArgumentToSuper
 
 # --new-type-inference
 testInferenceAgainstGenericCallable

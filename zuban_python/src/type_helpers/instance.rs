@@ -455,18 +455,18 @@ fn execute_super_internal<'db>(
         Some(result) => result?,
         None => return Err(IssueType::SuperWithSingleArgumentNotSupported),
     };
-    if !Type::owned(first_type)
-        .is_simple_super_type_of(i_s, &instance.as_type(i_s))
-        .bool()
-    {
-        return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);
-    }
     let cls = match get_relevant_type_for_super(instance.as_type(i_s).as_ref()) {
         DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
         DbType::Class(g) => g.clone(),
         DbType::Any => return Ok(Inferred::new_any()),
         _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };
+    if !Type::owned(first_type)
+        .is_simple_super_type_of(i_s, &instance.as_type(i_s))
+        .bool()
+    {
+        return Err(IssueType::SuperArgument2MustBeAnInstanceOfArgument1);
+    }
     if iterator.next().is_some() {
         return Err(IssueType::TooManyArguments(" for \"super\"".into()));
     }
