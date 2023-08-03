@@ -246,3 +246,18 @@ reveal_type(Foo(1).d2)  # N: Revealed type is "int"
 reveal_type(Foo[int].d1)  # E: Access to generic instance variables via class is ambiguous \
                           # N: Revealed type is "int"
 reveal_type(Foo[int].d2)  # N: Revealed type is "int"
+
+[case class_context_super_class]
+from typing import TypeVar, Generic
+
+T = TypeVar('T')
+
+class I(Generic[T]): ...
+class A(I[list[T]]): ...
+
+x = A() # type: I[list[int]]
+
+a_object = A() # type: A[object]
+y = a_object # type: I[int] # E: Incompatible types in assignment (expression has type "A[object]", variable has t>
+
+z = A() # type: I[int]

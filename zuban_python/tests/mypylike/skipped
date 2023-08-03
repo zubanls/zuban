@@ -2916,6 +2916,7 @@ testSuggestClassVarOnTooFewArgumentsMethod
 testNewAnalyzerUnsupportedBaseClassInsideFunction
 
 # My own hard tests
+class_context_super_class
 namedtuple__new__
 
 # Won't support for now: "t" is a type variable and only valid in type context
