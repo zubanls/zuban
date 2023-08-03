@@ -1975,7 +1975,7 @@ fn proper_classmethod_callable(
             class.as_db_type(i_s.db)
         }
     };
-    let mut callable = Type::replace_type_var_likes_and_self_for_callable(
+    let mut new_callable = Type::replace_type_var_likes_and_self_for_callable(
         &callable,
         i_s.db,
         &mut |mut usage| {
@@ -2019,8 +2019,8 @@ fn proper_classmethod_callable(
         &mut || get_class_method_class(),
     );
     let type_vars = type_vars.into_inner();
-    callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
-    Some(callable)
+    new_callable.type_vars = (!type_vars.is_empty()).then(|| TypeVarLikes::from_vec(type_vars));
+    Some(new_callable)
 }
 
 fn callable_into_inferred(callable: CallableContent) -> Inferred {
