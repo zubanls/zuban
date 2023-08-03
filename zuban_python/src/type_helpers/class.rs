@@ -1313,6 +1313,11 @@ fn find_stmt_named_tuple_types(
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
                 AssignmentContent::WithAnnotation(target, annot, default) => match target {
                     Target::Name(name) => {
+                        if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
+                            NodeRef::new(file, assignment.index())
+                                .add_issue(i_s, IssueType::NamedTupleNonDefaultFieldFollowsDefault);
+                            continue;
+                        }
                         file.inference(i_s).ensure_cached_annotation(annot);
                         let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
                         vec.push(CallableParam {

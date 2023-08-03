@@ -7,8 +7,6 @@ testMixinProtocolSuper
 testCheckUntypedDefsSelf2
 testCheckUntypedDefsSelf3
 testLambdaInheritsCheckedContextFromFuncForced
-# Mypy upgrade
-testSelfTypeNew_explicit
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -405,6 +403,7 @@ testClassStaticMethodSubclassing
 # "The erased type of self "Type[__main__.A]" is not a supertype of its class "Type[__main__.B]""
 testSelfTypeNonsensical
 testSelfTypeNew
+testSelfTypeNew_explicit
 
 # typing assert_type
 testTypingSelfAssertType
@@ -434,8 +433,6 @@ testIndexingTuplesWithNegativeIntegers
 testMultipleAssignmentWithIndexedLvalues
 testTupleMeetTupleVariable
 testNonliteralTupleIndex
-# "Non-default NamedTuple fields cannot follow default fields"
-testNewNamedTupleWithInvalidItems2
 # `Foo: NamedTuple` used as definition
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuples
 testNamedTupleTypeIsASuperTypeOfOtherNamedTuplesReturns
