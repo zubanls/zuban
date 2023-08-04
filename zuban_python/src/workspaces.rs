@@ -303,13 +303,6 @@ impl DirEntry {
         }
     }
 
-    fn expect_workspace_index(&self) -> &WorkspaceFileIndex {
-        match &self.type_ {
-            DirOrFile::File(index) => index,
-            _ => unreachable!(),
-        }
-    }
-
     fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         let (name, rest) = vfs.split_off_folder(path);
         match &self.type_ {
@@ -336,15 +329,19 @@ pub struct DirContent(RefCell<Vec<Rc<DirEntry>>>);
 #[derive(Debug)]
 pub struct AddedFile {
     pub invalidations: Invalidations,
+    pub entry: Rc<DirEntry>,
     pub directory: Rc<DirContent>,
-    pub workspace_file_index: *const WorkspaceFileIndex,
 }
 
 impl AddedFile {
     pub fn set_file_index(&self, index: FileIndex) {
         // Theoretically we could just search in the directory for the entry again, but I'm too
         // lazy for that and it's faster this way.
-        unsafe { &*self.workspace_file_index }.set(index);
+        let DirOrFile::File(file) = &self.entry.type_ else {
+            unreachable!()
+        };
+        debug_assert!(file.get().is_none());
+        file.set(index);
     }
 }
 
@@ -371,35 +368,38 @@ impl DirContent {
 
     fn ensure_file(dir: &Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
-        let workspace_file_index = dir
+        let entry = dir
             .search(name)
-            .map(|mut entry| match &entry.type_ {
-                DirOrFile::File(index) => index as *const WorkspaceFileIndex,
-                DirOrFile::MissingEntry(_) => {
-                    let old_entry = std::mem::replace(
-                        &mut *entry,
-                        Rc::new(DirEntry {
-                            name: Box::from(name),
-                            type_: DirOrFile::File(WorkspaceFileIndex::none()),
-                        }),
-                    );
-                    let DirOrFile::MissingEntry(inv) = rc_unwrap_or_clone(old_entry).type_ else {
-                        unreachable!();
-                    };
-                    invalidations = inv;
-                    entry.expect_workspace_index()
+            .map(|mut entry| {
+                match &entry.type_ {
+                    DirOrFile::File(index) => (),
+                    DirOrFile::MissingEntry(_) => {
+                        let old_entry = std::mem::replace(
+                            &mut *entry,
+                            Rc::new(DirEntry {
+                                name: Box::from(name),
+                                type_: DirOrFile::File(WorkspaceFileIndex::none()),
+                            }),
+                        );
+                        let DirOrFile::MissingEntry(inv) = rc_unwrap_or_clone(old_entry).type_ else {
+                            unreachable!();
+                        };
+                        invalidations = inv;
+                    }
+                    DirOrFile::Directory(..) => todo!(),
                 }
-                DirOrFile::Directory(..) => todo!(),
+                entry.clone()
             })
             .unwrap_or_else(|| {
                 let mut borrow = dir.0.borrow_mut();
-                borrow.push(Rc::new(DirEntry::new_file(name.into())));
-                borrow.last().unwrap().expect_workspace_index()
+                let entry = Rc::new(DirEntry::new_file(name.into()));
+                borrow.push(entry.clone());
+                entry
             });
         AddedFile {
             invalidations,
             directory: dir.clone(),
-            workspace_file_index,
+            entry,
         }
     }
 
