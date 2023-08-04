@@ -303,7 +303,7 @@ impl DirEntry {
         }
     }
 
-    fn expect_workspace_index(&mut self) -> &mut WorkspaceFileIndex {
+    fn expect_workspace_index(&mut self) -> &WorkspaceFileIndex {
         match &mut self.type_ {
             DirOrFile::File(index) => index,
             _ => unreachable!(),
@@ -337,14 +337,14 @@ pub struct DirContent(RefCell<Vec<DirEntry>>);
 pub struct AddedFile {
     pub invalidations: Invalidations,
     pub directory: Rc<DirContent>,
-    pub workspace_file_index: *mut WorkspaceFileIndex,
+    pub workspace_file_index: *const WorkspaceFileIndex,
 }
 
 impl AddedFile {
     pub fn set_file_index(&self, index: FileIndex) {
         // Theoretically we could just search in the directory for the entry again, but I'm too
         // lazy for that and it's faster this way.
-        unsafe { &mut *self.workspace_file_index }.set(index);
+        unsafe { &*self.workspace_file_index }.set(index);
     }
 }
 
@@ -374,7 +374,7 @@ impl DirContent {
         let workspace_file_index = dir
             .search(name)
             .map(|mut entry| match &mut entry.type_ {
-                DirOrFile::File(index) => index as *mut WorkspaceFileIndex,
+                DirOrFile::File(index) => index as *const WorkspaceFileIndex,
                 DirOrFile::MissingEntry(inv) => {
                     invalidations = std::mem::take(inv);
                     entry.type_ = DirOrFile::File(WorkspaceFileIndex::none());
