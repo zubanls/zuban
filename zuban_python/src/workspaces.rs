@@ -84,16 +84,23 @@ pub struct Workspace {
 impl Workspace {
     fn new(loaders: &[Box<dyn FileStateLoader>], root: Box<str>) -> Self {
         let mut stack = vec![(PathBuf::from(root.as_ref()), DirEntry::new_dir(root))];
+        let mut first = true;
         // TODO optimize if there are a lot of files
         for entry in WalkDir::new(stack[0].1.name.as_ref())
             .follow_links(true)
             .into_iter()
             .filter_entry(|entry| {
+                if first {
+                    // The first entry needs to be passed, because it's the directory itself.
+                    first = false;
+                    return true;
+                }
                 entry.file_name().to_str().is_some_and(|name| {
                     !loaders.iter().any(|l| l.should_be_ignored(name))
                         && loaders.iter().any(|l| l.might_be_relevant(name))
                 })
             })
+            // TODO is it ok that we filter out all errors?
             .filter_map(|e| e.ok())
             .skip(1)
         {

@@ -49,12 +49,13 @@ impl Project {
         // TODO use a real sys path
         let sys_path = vec![
             "../typeshed/stdlib".into(),
+            "../typeshed/stubs/mypy-extensions".into(),
             //"../typeshed/stubs".into(),
-            "/usr/lib/python3/dist-packages".into(),
-            "/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
-            "/usr/lib/python3.8".into(),
-            "/home/dave/.local/lib/python3.8/site-packages".into(),
-            "/usr/local/lib/python3.8/dist-packages".into(),
+            //"/usr/lib/python3/dist-packages".into(),
+            //"/usr/local/lib/python3.8/dist-packages/pip-20.0.2-py3.8.egg".into(),
+            //"/usr/lib/python3.8".into(),
+            //"/home/dave/.local/lib/python3.8/site-packages".into(),
+            //"/usr/local/lib/python3.8/dist-packages".into(),
         ];
         let db = Database::new(
             loaders,

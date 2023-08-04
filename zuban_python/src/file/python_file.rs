@@ -273,7 +273,7 @@ impl<'db> PythonFile {
         let mut file = PythonFile::new(None, Box::from(code.into_string() + "\n"));
         file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
-        let f = db.load_sub_file(file);
+        let f = db.load_sub_file(self, file);
         self.sub_files.borrow_mut().insert(start, f.file_index());
         f
     }

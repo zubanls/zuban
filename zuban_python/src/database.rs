@@ -26,6 +26,7 @@ use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::type_helpers::{Class, Module};
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
+use crate::workspaces::DirEntry;
 use crate::workspaces::{DirContent, DirOrFile, Invalidations, WorkspaceFileIndex, Workspaces};
 use crate::PythonProject;
 
@@ -2952,13 +2953,18 @@ impl Database {
         self.files.set(file_index.0 as usize, file_state);
     }
 
-    pub fn load_sub_file(&self, file: PythonFile) -> &PythonFile {
-        let index = self.add_file_state(Box::pin(LanguageFileState::new_parsed("".into(), file)));
+    pub fn load_sub_file(&self, super_file: &PythonFile, file: PythonFile) -> &PythonFile {
+        let index = self.add_file_state(Box::pin(LanguageFileState::new_parsed(
+            self.file_state(super_file.file_index()).dir_entry(),
+            "".into(),
+            file,
+        )));
         self.loaded_python_file(index)
     }
 
     pub fn load_file_from_workspace(
         &self,
+        dir_entry: Rc<DirEntry>,
         dir: Rc<DirContent>,
         path: Box<str>,
         index: &WorkspaceFileIndex,
@@ -2966,7 +2972,7 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(dir, path, code.into())
+            loader.load_parsed(dir_entry, dir, path, code.into())
         } else {
             //loader.inexistent_file_state(path)
             todo!()
@@ -2985,7 +2991,12 @@ impl Database {
         let ensured = self.workspaces.ensure_file(&*self.vfs, &path);
         // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
-        let file_state = loader.load_parsed(ensured.directory.clone(), path.clone(), code);
+        let file_state = loader.load_parsed(
+            ensured.entry.clone(),
+            ensured.directory.clone(),
+            path.clone(),
+            code,
+        );
         let file_index = if let Some(file_index) = in_mem_file {
             self.update_file_state(file_index, file_state);
             file_index
@@ -3085,8 +3096,9 @@ impl Database {
         // TODO give this function a better name and put it into a workspace
         let loader = self.loader(p).unwrap();
         let code = self.vfs.read_file(p).unwrap();
+        let entry = dir.search(self.vfs.dir_and_name(p).1).unwrap().clone();
         let file_index =
-            self.add_file_state(loader.load_parsed(dir.clone(), p.into(), code.into()));
+            self.add_file_state(loader.load_parsed(entry, dir.clone(), p.into(), code.into()));
         self.loaded_python_file(file_index)
     }
 
@@ -3096,26 +3108,35 @@ impl Database {
 
     fn initial_python_load(&mut self) {
         // TODO this is wrong, because it's just a random dir...
-        let dir = self.workspaces.directories().next().unwrap().1.clone();
-
-        let builtins = self.py_load_tmp(&dir, "../typeshed/stdlib/builtins.pyi") as *const _;
-        let typing = self.py_load_tmp(&dir, "../typeshed/stdlib/typing.pyi") as *const _;
-        let typeshed =
-            self.py_load_tmp(&dir, "../typeshed/stdlib/_typeshed/__init__.pyi") as *const _;
-        let types = self.py_load_tmp(&dir, "../typeshed/stdlib/types.pyi") as *const _;
-        let abc = self.py_load_tmp(&dir, "../typeshed/stdlib/abc.pyi") as *const _;
-        let enum_file = self.py_load_tmp(&dir, "../typeshed/stdlib/enum.pyi") as *const _;
-        let typing_extensions =
-            self.py_load_tmp(&dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
-        let mypy_extensions = self.py_load_tmp(
-            &dir,
-            "../typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
-        ) as *const _;
-
-        let collections_dir = match &dir.search("collections").unwrap().type_ {
+        let mut dirs = self.workspaces.directories();
+        let stdlib_dir = dirs.next().unwrap().1.clone();
+        let mypy_extensions_dir = dirs.next().unwrap().1.clone();
+        let collections_dir = match &stdlib_dir.search("collections").unwrap().type_ {
             DirOrFile::Directory(c) => c.clone(),
             _ => unreachable!(),
         };
+        let typeshed_dir = match &stdlib_dir.search("_typeshed").unwrap().type_ {
+            DirOrFile::Directory(c) => c.clone(),
+            _ => unreachable!(),
+        };
+        drop(dirs);
+
+        let builtins = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/builtins.pyi") as *const _;
+        let typing = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/typing.pyi") as *const _;
+        let typeshed = self.py_load_tmp(
+            &typeshed_dir.content,
+            "../typeshed/stdlib/_typeshed/__init__.pyi",
+        ) as *const _;
+        let types = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/types.pyi") as *const _;
+        let abc = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/abc.pyi") as *const _;
+        let enum_file = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/enum.pyi") as *const _;
+        let typing_extensions =
+            self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/typing_extensions.pyi") as *const _;
+        let mypy_extensions = self.py_load_tmp(
+            &mypy_extensions_dir,
+            "../typeshed/stubs/mypy-extensions/mypy_extensions.pyi",
+        ) as *const _;
+
         let collections = self.py_load_tmp(
             &collections_dir.content,
             "../typeshed/stdlib/collections/__init__.pyi",
