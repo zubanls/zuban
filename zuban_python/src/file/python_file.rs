@@ -56,6 +56,22 @@ impl ComplexValues {
     }
 }
 
+pub struct PythonFile {
+    pub tree: Tree, // TODO should probably not be public
+    pub symbol_table: SymbolTable,
+    //all_names_bloom_filter: Option<BloomFilter<&str>>,
+    pub points: Points,
+    pub complex_points: ComplexValues,
+    file_index: Cell<Option<FileIndex>>,
+    issues: Diagnostics,
+    pub star_imports: RefCell<Vec<StarImport>>,
+    pub package_dir: Option<Rc<DirContent>>,
+    sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
+    pub(crate) super_file: Option<FileIndex>,
+
+    newline_indices: NewlineIndices,
+}
+
 impl File for PythonFile {
     fn ensure_initialized(&self, project: &PythonProject) {
         if self.points.get(0).calculated() {
@@ -179,22 +195,6 @@ impl StarImport {
         debug_assert!(inf.file.points.get(self.star_node).calculated());
         self.to_file(inf)
     }
-}
-
-pub struct PythonFile {
-    pub tree: Tree, // TODO should probably not be public
-    pub symbol_table: SymbolTable,
-    //all_names_bloom_filter: Option<BloomFilter<&str>>,
-    pub points: Points,
-    pub complex_points: ComplexValues,
-    file_index: Cell<Option<FileIndex>>,
-    issues: Diagnostics,
-    pub star_imports: RefCell<Vec<StarImport>>,
-    pub package_dir: Option<Rc<DirContent>>,
-    sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
-    pub(crate) super_file: Option<FileIndex>,
-
-    newline_indices: NewlineIndices,
 }
 
 impl fmt::Debug for PythonFile {
