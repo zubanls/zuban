@@ -5,7 +5,7 @@ use walkdir::WalkDir;
 
 use crate::database::FileIndex;
 use crate::file::{FileStateLoader, Vfs};
-use crate::utils::{rc_unwrap_or_clone, VecRefWrapper};
+use crate::utils::VecRefWrapper;
 
 #[derive(Debug, Default)]
 pub struct Workspaces(Vec<Workspace>);
@@ -381,17 +381,12 @@ impl DirContent {
                 match &entry.type_ {
                     DirOrFile::File(index) => (),
                     DirOrFile::MissingEntry(_) => {
-                        let old_entry = std::mem::replace(
-                            &mut *entry,
-                            Rc::new(DirEntry {
-                                name: Box::from(name),
-                                type_: DirOrFile::File(WorkspaceFileIndex::none()),
-                            }),
-                        );
-                        let DirOrFile::MissingEntry(inv) = rc_unwrap_or_clone(old_entry).type_ else {
+                        let mut_entry = &mut Rc::make_mut(&mut entry);
+                        let DirOrFile::MissingEntry(inv) = &mut mut_entry.type_ else {
                             unreachable!();
                         };
-                        invalidations = inv;
+                        invalidations = inv.take();
+                        mut_entry.type_ = DirOrFile::File(WorkspaceFileIndex::none());
                     }
                     DirOrFile::Directory(..) => todo!(),
                 }
