@@ -29,7 +29,7 @@ impl Workspaces {
             if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
                 if let DirOrFile::Directory(d) = &mut workspace.root.type_ {
                     let (dir, name, invalidations) = d.ensure_dir_and_return_name(vfs, p);
-                    let mut result = DirContent::ensure_file(&dir, vfs, name);
+                    let mut result = DirContent::ensure_file(dir.clone(), vfs, name);
                     result.invalidations.extend(invalidations);
                     return result;
                 }
@@ -373,9 +373,9 @@ impl DirContent {
         }))
     }
 
-    fn ensure_file(dir: &Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
+    fn ensure_file(directory: Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
-        let entry = dir
+        let entry = directory
             .search(name)
             .map(|mut entry| {
                 match &entry.type_ {
@@ -398,14 +398,14 @@ impl DirContent {
                 entry.clone()
             })
             .unwrap_or_else(|| {
-                let mut borrow = dir.0.borrow_mut();
+                let mut borrow = directory.0.borrow_mut();
                 let entry = Rc::new(DirEntry::new_file(name.into()));
                 borrow.push(entry.clone());
                 entry
             });
         AddedFile {
             invalidations,
-            directory: dir.clone(),
+            directory,
             entry,
         }
     }
