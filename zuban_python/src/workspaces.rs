@@ -1,6 +1,6 @@
 use std::cell::{Cell, RefCell, RefMut};
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::rc::{Rc, Weak};
 use walkdir::WalkDir;
 
 use crate::database::FileIndex;
@@ -16,14 +16,12 @@ impl Workspaces {
     }
 
     pub fn directories(&self) -> impl Iterator<Item = (&str, &Rc<DirContent>)> {
-        self.0
-            .iter()
-            .map(|x| (x.root_path.as_ref(), &x.directory.content))
+        self.0.iter().map(|x| (x.root_path(), &x.directory.content))
     }
 
     pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+            if let Some(p) = path.strip_prefix(workspace.root_path()) {
                 return workspace.directory.ensure_dirs_and_file(vfs, p);
             }
         }
@@ -33,7 +31,7 @@ impl Workspaces {
     pub fn unload_file(&mut self, vfs: &dyn Vfs, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+            if let Some(p) = path.strip_prefix(workspace.root_path()) {
                 workspace.directory.content.unload_file(vfs, p);
             }
         }
@@ -41,7 +39,7 @@ impl Workspaces {
 
     pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+            if let Some(p) = path.strip_prefix(workspace.root_path()) {
                 return workspace.directory.content.delete_directory(vfs, p);
             }
         }
@@ -55,7 +53,7 @@ impl Workspaces {
 
     pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         for workspace in &self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+            if let Some(p) = path.strip_prefix(workspace.root_path()) {
                 if let Some(content) = workspace.directory.content.find_dir_content(vfs, p) {
                     return Some(content);
                 }
@@ -67,7 +65,7 @@ impl Workspaces {
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    root_path: Box<str>,
+    root_path: Rc<Box<str>>,
     directory: Directory,
     //watcher: dyn notify::Watcher,
 }
@@ -143,7 +141,7 @@ impl Workspace {
                     directory: Directory {
                         content: current.1.expect_directory_entries().clone(),
                     },
-                    root_path: path,
+                    root_path: Rc::new(path),
                 };
             }
         }
@@ -152,6 +150,10 @@ impl Workspace {
 
     pub fn directory(&self) -> &Directory {
         &self.directory
+    }
+
+    fn root_path(&self) -> &str {
+        &self.root_path
     }
 }
 
@@ -170,6 +172,13 @@ impl WorkspaceFileIndex {
     pub fn get(&self) -> Option<FileIndex> {
         self.0.get()
     }
+}
+
+pub enum Parent {
+    Directory(Weak<DirEntry>),
+    // This is not an Rc<str>, because that would make the enum 8 bytes bigger. It's used a lot, so
+    // this is probably better.
+    Workspace(Rc<Box<str>>),
 }
 
 #[derive(Debug, Clone)]
