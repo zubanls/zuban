@@ -100,8 +100,8 @@ impl Project {
         self.db
             .workspaces
             .last()
-            .root()
-            .clone()
+            .directory()
+            .content
             .for_each_file(&mut |file_index| {
                 file_indexes.push(file_index);
             });

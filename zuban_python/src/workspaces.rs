@@ -16,20 +16,15 @@ impl Workspaces {
     }
 
     pub fn directories(&self) -> impl Iterator<Item = (&str, &Rc<DirContent>)> {
-        self.0.iter().map(|x| {
-            (
-                x.root().name.as_ref(),
-                x.root().directory_entries().unwrap(),
-            )
-        })
+        self.0
+            .iter()
+            .map(|x| (x.root_path.as_ref(), &x.directory.content))
     }
 
     pub fn ensure_file(&mut self, vfs: &dyn Vfs, path: &str) -> AddedFile {
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
-                if let DirOrFile::Directory(d) = &mut workspace.root.type_ {
-                    return d.ensure_dirs_and_file(vfs, p);
-                }
+            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+                return workspace.directory.ensure_dirs_and_file(vfs, p);
             }
         }
         todo!()
@@ -38,18 +33,16 @@ impl Workspaces {
     pub fn unload_file(&mut self, vfs: &dyn Vfs, path: &str) {
         // TODO for now we always unload, fix that.
         for workspace in &mut self.0 {
-            if let DirOrFile::Directory(files) = &mut workspace.root.type_ {
-                if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
-                    workspace.root.unload_file(vfs, p);
-                }
+            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+                workspace.directory.content.unload_file(vfs, p);
             }
         }
     }
 
     pub fn delete_directory(&mut self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
         for workspace in &mut self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
-                return workspace.root.delete_directory(vfs, p);
+            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+                return workspace.directory.content.delete_directory(vfs, p);
             }
         }
         Err(format!("Workspace of path {path} cannot be found"))
@@ -62,8 +55,8 @@ impl Workspaces {
 
     pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         for workspace in &self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
-                if let Some(content) = workspace.root.find_dir_content(vfs, p) {
+            if let Some(p) = path.strip_prefix(workspace.root_path.as_ref()) {
+                if let Some(content) = workspace.directory.content.find_dir_content(vfs, p) {
                     return Some(content);
                 }
             }
@@ -74,16 +67,17 @@ impl Workspaces {
 
 #[derive(Debug, Clone)]
 pub struct Workspace {
-    root: DirEntry,
+    root_path: Box<str>,
+    directory: Directory,
     //watcher: dyn notify::Watcher,
 }
 
 impl Workspace {
-    fn new(loaders: &[Box<dyn FileStateLoader>], root: Box<str>) -> Self {
-        let mut stack = vec![(PathBuf::from(root.as_ref()), DirEntry::new_dir(root))];
+    fn new(loaders: &[Box<dyn FileStateLoader>], path: Box<str>) -> Self {
+        let mut stack = vec![(PathBuf::from(path.as_ref()), DirEntry::new_dir("".into()))];
         let mut first = true;
         // TODO optimize if there are a lot of files
-        for entry in WalkDir::new(stack[0].1.name.as_ref())
+        for entry in WalkDir::new(path.as_ref())
             .follow_links(true)
             .into_iter()
             .filter_entry(|entry| {
@@ -107,8 +101,7 @@ impl Workspace {
                     .last_mut()
                     .unwrap()
                     .1
-                    .directory_entries()
-                    .unwrap()
+                    .expect_directory_entries()
                     .0
                     .borrow_mut()
                     .push(Rc::new(n));
@@ -124,8 +117,7 @@ impl Workspace {
                                 .last_mut()
                                 .unwrap()
                                 .1
-                                .directory_entries()
-                                .unwrap()
+                                .expect_directory_entries()
                                 .0
                                 .borrow_mut()
                                 .push(Rc::new(DirEntry::new_file(name.into())));
@@ -142,20 +134,24 @@ impl Workspace {
             if let Some(parent) = stack.last_mut() {
                 parent
                     .1
-                    .directory_entries()
-                    .unwrap()
+                    .expect_directory_entries()
                     .0
                     .borrow_mut()
                     .push(Rc::new(current.1))
             } else {
-                return Self { root: current.1 };
+                return Self {
+                    directory: Directory {
+                        content: current.1.expect_directory_entries().clone(),
+                    },
+                    root_path: path,
+                };
             }
         }
         unreachable!()
     }
 
-    pub fn root(&self) -> &DirEntry {
-        &self.root
+    pub fn directory(&self) -> &Directory {
+        &self.directory
     }
 }
 
@@ -239,51 +235,10 @@ impl DirEntry {
         }
     }
 
-    fn directory_entries(&self) -> Option<&Rc<DirContent>> {
+    fn expect_directory_entries(&self) -> &Rc<DirContent> {
         match &self.type_ {
-            DirOrFile::Directory(dir) => Some(&dir.content),
-            _ => None,
-        }
-    }
-
-    fn unload_file(&self, vfs: &dyn Vfs, path: &str) {
-        if let DirOrFile::Directory(dir) = &self.type_ {
-            let (name, rest) = vfs.split_off_folder(path);
-            if let Some(entry) = dir.content.search(name) {
-                if let Some(rest) = rest {
-                    entry.unload_file(vfs, rest);
-                } else if matches!(entry.type_, DirOrFile::File(_)) {
-                    drop(entry);
-                    dir.content.remove_name(name);
-                }
-            }
-        }
-    }
-
-    pub fn delete_directory(&self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
-        if let DirOrFile::Directory(dir) = &self.type_ {
-            let (name, rest) = vfs.split_off_folder(path);
-            if let Some(inner) = dir.content.search(name) {
-                if let Some(rest) = rest {
-                    inner.delete_directory(vfs, rest)
-                } else {
-                    match &inner.type_ {
-                        DirOrFile::Directory(..) => {
-                            drop(inner);
-                            dir.content.remove_name(name);
-                            Ok(())
-                        }
-                        DirOrFile::MissingEntry(_) => {
-                            Err(format!("Path {path} cannot be found (missing)"))
-                        }
-                        t => todo!("{t:?}"),
-                    }
-                }
-            } else {
-                Err(format!("Path {path} cannot be found"))
-            }
-        } else {
-            todo!()
+            DirOrFile::Directory(dir) => &dir.content,
+            _ => unreachable!(),
         }
     }
 
@@ -294,32 +249,9 @@ impl DirEntry {
                     callable(index)
                 }
             }
-            DirOrFile::Directory(files) => {
-                for n in files.content.0.borrow_mut().iter_mut() {
-                    n.for_each_file(callable)
-                }
-            }
+            DirOrFile::Directory(files) => files.content.for_each_file(callable),
             DirOrFile::MissingEntry(_) => (),
         }
-    }
-
-    fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
-        let (name, rest) = vfs.split_off_folder(path);
-        match &self.type_ {
-            DirOrFile::Directory(files) => {
-                for n in files.content.0.borrow().iter() {
-                    if name == n.name.as_ref() {
-                        return match rest {
-                            Some(rest) => n.find_dir_content(vfs, rest),
-                            None => Some(n.directory_entries().unwrap().clone()),
-                        };
-                    }
-                }
-            }
-            DirOrFile::File(_) => unreachable!(),
-            DirOrFile::MissingEntry(_) => unreachable!(),
-        }
-        None
     }
 }
 
@@ -398,6 +330,20 @@ impl DirContent {
         }
     }
 
+    fn unload_file(&self, vfs: &dyn Vfs, path: &str) {
+        let (name, rest) = vfs.split_off_folder(path);
+        if let Some(entry) = self.search(name) {
+            if let Some(rest) = rest {
+                if let DirOrFile::Directory(dir) = &entry.type_ {
+                    dir.content.unload_file(vfs, rest);
+                }
+            } else if matches!(entry.type_, DirOrFile::File(_)) {
+                drop(entry);
+                self.remove_name(name);
+            }
+        }
+    }
+
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.0.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name == name) {
@@ -413,6 +359,51 @@ impl DirContent {
                 name,
                 type_: DirOrFile::MissingEntry(invalidations),
             }))
+        }
+    }
+
+    fn delete_directory(&self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
+        let (name, rest) = vfs.split_off_folder(path);
+        if let Some(inner) = self.search(name) {
+            match &inner.type_ {
+                DirOrFile::Directory(dir) => {
+                    if let Some(rest) = rest {
+                        dir.content.delete_directory(vfs, rest)
+                    } else {
+                        drop(inner);
+                        self.remove_name(name);
+                        Ok(())
+                    }
+                }
+                DirOrFile::MissingEntry(_) => Err(format!("Path {path} cannot be found (missing)")),
+                t => todo!("{t:?}"),
+            }
+        } else {
+            Err(format!("Path {path} cannot be found"))
+        }
+    }
+
+    fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
+        let (name, rest) = vfs.split_off_folder(path);
+        for n in self.0.borrow().iter() {
+            if name == n.name.as_ref() {
+                match &n.type_ {
+                    DirOrFile::Directory(files) => {
+                        return match rest {
+                            Some(rest) => files.content.find_dir_content(vfs, rest),
+                            None => Some(files.content.clone()),
+                        };
+                    }
+                    DirOrFile::File(_) => unreachable!(),
+                    DirOrFile::MissingEntry(_) => unreachable!(),
+                }
+            }
+        }
+        None
+    }
+    pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
+        for n in self.0.borrow_mut().iter_mut() {
+            n.for_each_file(callable)
         }
     }
 }
