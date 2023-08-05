@@ -28,10 +28,7 @@ impl Workspaces {
         for workspace in &mut self.0 {
             if let Some(p) = path.strip_prefix(workspace.root.name.as_ref()) {
                 if let DirOrFile::Directory(d) = &mut workspace.root.type_ {
-                    let (dir, name, invalidations) = d.ensure_dir_and_return_name(vfs, p);
-                    let mut result = DirContent::ensure_file(dir.clone(), vfs, name);
-                    result.invalidations.extend(invalidations);
-                    return result;
+                    return d.ensure_dirs_and_file(vfs, p);
                 }
             }
         }
@@ -192,17 +189,13 @@ pub struct Directory {
 }
 
 impl Directory {
-    fn ensure_dir_and_return_name<'a>(
-        &self,
-        vfs: &dyn Vfs,
-        path: &'a str,
-    ) -> (Rc<DirContent>, &'a str, Invalidations) {
+    fn ensure_dirs_and_file<'a>(&self, vfs: &dyn Vfs, path: &'a str) -> AddedFile {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(rest) = rest {
             let mut invalidations = Default::default();
             if let Some(x) = self.content.search(name) {
                 match &x.type_ {
-                    DirOrFile::Directory(rc) => return rc.ensure_dir_and_return_name(vfs, rest),
+                    DirOrFile::Directory(rc) => return rc.ensure_dirs_and_file(vfs, rest),
                     DirOrFile::MissingEntry(inv) => {
                         invalidations = inv.take();
                         drop(x);
@@ -212,15 +205,15 @@ impl Directory {
                 }
             };
             let dir2 = Directory::default();
-            let mut result = dir2.ensure_dir_and_return_name(vfs, rest);
+            let mut result = dir2.ensure_dirs_and_file(vfs, rest);
             self.content.0.borrow_mut().push(Rc::new(DirEntry {
                 name: name.into(),
                 type_: DirOrFile::Directory(dir2),
             }));
-            result.2 = invalidations;
+            result.invalidations.extend(invalidations);
             result
         } else {
-            (self.content.clone(), name, Invalidations::default())
+            DirContent::ensure_file(self.content.clone(), vfs, name)
         }
     }
 }
