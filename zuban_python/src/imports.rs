@@ -125,7 +125,7 @@ pub fn python_import<'a>(
                     }
                 }
             }
-            DirOrFile::MissingEntry(_) => (),
+            DirOrFile::MissingEntry { .. } => (),
         }
     }
     if let Some(file_index) = stub_file_index.or(python_file_index) {

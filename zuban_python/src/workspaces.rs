@@ -184,7 +184,10 @@ pub enum Parent {
 #[derive(Debug, Clone)]
 pub enum DirOrFile {
     File(WorkspaceFileIndex),
-    MissingEntry(Invalidations),
+    MissingEntry {
+        name: Box<str>,
+        invalidations: Invalidations,
+    },
     Directory(Directory),
 }
 
@@ -197,12 +200,12 @@ impl Directory {
     fn ensure_dirs_and_file<'a>(&self, vfs: &dyn Vfs, path: &'a str) -> AddedFile {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(rest) = rest {
-            let mut invalidations = Default::default();
+            let mut invs = Default::default();
             if let Some(x) = self.content.search(name) {
                 match &x.type_ {
                     DirOrFile::Directory(rc) => return rc.ensure_dirs_and_file(vfs, rest),
-                    DirOrFile::MissingEntry(inv) => {
-                        invalidations = inv.take();
+                    DirOrFile::MissingEntry { invalidations, .. } => {
+                        invs = invalidations.take();
                         drop(x);
                         self.content.remove_name(name);
                     }
@@ -215,7 +218,7 @@ impl Directory {
                 name: name.into(),
                 type_: DirOrFile::Directory(dir2),
             }));
-            result.invalidations.extend(invalidations);
+            result.invalidations.extend(invs);
             result
         } else {
             DirContent::ensure_file(self.content.clone(), vfs, name)
@@ -259,7 +262,7 @@ impl DirEntry {
                 }
             }
             DirOrFile::Directory(files) => files.content.for_each_file(callable),
-            DirOrFile::MissingEntry(_) => (),
+            DirOrFile::MissingEntry { .. } => (),
         }
     }
 }
@@ -314,9 +317,9 @@ impl DirContent {
             .map(|mut entry| {
                 match &entry.type_ {
                     DirOrFile::File(index) => (),
-                    DirOrFile::MissingEntry(_) => {
+                    DirOrFile::MissingEntry{..} => {
                         let mut_entry = &mut Rc::make_mut(&mut entry);
-                        let DirOrFile::MissingEntry(inv) = &mut mut_entry.type_ else {
+                        let DirOrFile::MissingEntry{invalidations: inv, ..} = &mut mut_entry.type_ else {
                             unreachable!();
                         };
                         invalidations = inv.take();
@@ -356,7 +359,7 @@ impl DirContent {
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.0.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name == name) {
-            if let DirOrFile::MissingEntry(invalidations) = &vec[pos].type_ {
+            if let DirOrFile::MissingEntry { invalidations, .. } = &vec[pos].type_ {
                 invalidations.add(invalidates)
             } else {
                 unreachable!("{:?}", &vec[pos].type_)
@@ -365,8 +368,11 @@ impl DirContent {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
             vec.push(Rc::new(DirEntry {
-                name,
-                type_: DirOrFile::MissingEntry(invalidations),
+                name: name.clone(),
+                type_: DirOrFile::MissingEntry {
+                    invalidations,
+                    name,
+                },
             }))
         }
     }
@@ -384,7 +390,9 @@ impl DirContent {
                         Ok(())
                     }
                 }
-                DirOrFile::MissingEntry(_) => Err(format!("Path {path} cannot be found (missing)")),
+                DirOrFile::MissingEntry { .. } => {
+                    Err(format!("Path {path} cannot be found (missing)"))
+                }
                 t => todo!("{t:?}"),
             }
         } else {
@@ -404,7 +412,7 @@ impl DirContent {
                         };
                     }
                     DirOrFile::File(_) => unreachable!(),
-                    DirOrFile::MissingEntry(_) => unreachable!(),
+                    DirOrFile::MissingEntry { .. } => unreachable!(),
                 }
             }
         }
