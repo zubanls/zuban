@@ -87,11 +87,11 @@ pub fn python_import<'a>(
     for entry in &dir.iter() {
         match &entry.type_ {
             DirOrFile::Directory(dir2) => {
-                if entry.name.as_ref() == name {
+                if dir2.name.as_ref() == name {
                     let result = load_init_file(db, &dir2, |child| {
                         format!(
                             "{dir_path}{SEPARATOR}{dir_name}{SEPARATOR}{child}",
-                            dir_name = entry.name
+                            dir_name = dir2.name
                         )
                         .into()
                     });
@@ -105,13 +105,13 @@ pub fn python_import<'a>(
                 }
             }
             DirOrFile::File(file) => {
-                let is_py_file = entry.name.as_ref() == format!("{name}.py");
-                if is_py_file || entry.name.as_ref() == format!("{name}.pyi") {
+                let is_py_file = file.name.as_ref() == format!("{name}.py");
+                if is_py_file || file.name.as_ref() == format!("{name}.pyi") {
                     if file.file_index.get().is_none() {
                         db.load_file_from_workspace(
                             file.clone(),
                             dir.clone(),
-                            format!("{dir_path}{SEPARATOR}{}", entry.name).into(),
+                            format!("{dir_path}{SEPARATOR}{}", file.name).into(),
                             &file.file_index,
                         );
                     }
@@ -151,12 +151,12 @@ fn load_init_file(
 ) -> Option<FileIndex> {
     for child in &content.iter() {
         if let DirOrFile::File(file) = &child.type_ {
-            if child.name.as_ref() == "__init__.py" || child.name.as_ref() == "__init__.pyi" {
+            if file.name.as_ref() == "__init__.py" || file.name.as_ref() == "__init__.pyi" {
                 if file.file_index.get().is_none() {
                     db.load_file_from_workspace(
                         file.clone(),
                         content.clone(),
-                        on_new(&child.name),
+                        on_new(&file.name),
                         &file.file_index,
                     );
                 }

@@ -219,7 +219,6 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
         let dir2 = Directory::new(Box::from(name));
         let mut result = ensure_dirs_and_file(&dir2, vfs, rest);
         rc.entries.borrow_mut().push(DirectoryEntry {
-            name: name.into(),
             type_: DirOrFile::Directory(dir2),
         });
         result.invalidations.extend(invs);
@@ -231,25 +230,30 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
 
 #[derive(Debug, Clone)]
 pub struct DirectoryEntry {
-    pub name: Box<str>,
     pub type_: DirOrFile,
 }
 
 impl DirectoryEntry {
     pub fn new_dir(name: Box<str>) -> Self {
         Self {
-            name: name.clone(),
             type_: DirOrFile::Directory(Directory::new(Box::from(name))),
         }
     }
 
     pub fn new_file(name: Box<str>) -> Self {
         Self {
-            name: name.clone(),
             type_: DirOrFile::File(Rc::new(FileEntry {
                 name,
                 file_index: WorkspaceFileIndex::none(),
             })),
+        }
+    }
+
+    fn name(&self) -> &str {
+        match &self.type_ {
+            DirOrFile::File(file) => &file.name,
+            DirOrFile::Directory(dir) => &dir.name,
+            DirOrFile::MissingEntry { name, .. } => name,
         }
     }
 
@@ -276,7 +280,7 @@ impl DirectoryEntry {
 #[derive(Debug, Clone)]
 pub struct Directory {
     entries: RefCell<Vec<DirectoryEntry>>,
-    name: Box<str>,
+    pub name: Box<str>,
 }
 
 #[derive(Debug)]
@@ -307,20 +311,16 @@ impl Directory {
     }
 
     fn remove_name(&self, name: &str) {
-        self.entries
-            .borrow_mut()
-            .retain(|f| f.name.as_ref() != name)
+        self.entries.borrow_mut().retain(|f| f.name() != name)
     }
 
     pub fn search(&self, name: &str) -> Option<RefMut<DirectoryEntry>> {
         let borrow = self.entries.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
-        borrow.iter().find(|entry| entry.name.as_ref() == name)?;
+        borrow.iter().find(|entry| entry.name() == name)?;
         Some(RefMut::map(borrow, |dir| {
-            dir.iter_mut()
-                .find(|entry| entry.name.as_ref() == name)
-                .unwrap()
+            dir.iter_mut().find(|entry| entry.name() == name).unwrap()
         }))
     }
 
@@ -377,7 +377,7 @@ impl Directory {
 
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
-        if let Some(pos) = vec.iter().position(|x| x.name == name) {
+        if let Some(pos) = vec.iter().position(|x| x.name() == name.as_ref()) {
             if let DirOrFile::MissingEntry { invalidations, .. } = &vec[pos].type_ {
                 invalidations.add(invalidates)
             } else {
@@ -387,7 +387,6 @@ impl Directory {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
             vec.push(DirectoryEntry {
-                name: name.clone(),
                 type_: DirOrFile::MissingEntry {
                     invalidations,
                     name,
@@ -422,7 +421,7 @@ impl Directory {
     fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<Directory>> {
         let (name, rest) = vfs.split_off_folder(path);
         for n in self.entries.borrow().iter() {
-            if name == n.name.as_ref() {
+            if name == n.name() {
                 match &n.type_ {
                     DirOrFile::Directory(files) => {
                         return match rest {
