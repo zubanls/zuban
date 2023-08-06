@@ -5,7 +5,7 @@ use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::type_helpers::Module;
-use crate::workspaces::{Directory, DirectoryEntry, Parent};
+use crate::workspaces::{Directory, DirectoryEntry};
 
 const SEPARATOR: &str = "/"; // TODO different separator
 

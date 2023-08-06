@@ -51,8 +51,8 @@ impl Workspaces {
         Err(format!("Workspace of path {path} cannot be found"))
     }
 
+    // TODO this should probably not be needed
     pub fn last(&self) -> &Workspace {
-        // TODO this should probably not be needed
         self.0.last().unwrap()
     }
 }
@@ -121,7 +121,7 @@ impl Workspace {
                                 .1
                                 .entries
                                 .borrow_mut()
-                                .push(DirectoryEntry::new_file(parent, name.into()));
+                                .push(DirectoryEntry::File(FileEntry::new(parent, name.into())));
                         }
                     }
                     Err(e) => {
@@ -198,6 +198,16 @@ pub struct FileEntry {
     pub parent: Parent,
 }
 
+impl FileEntry {
+    pub fn new(parent: Parent, name: Box<str>) -> Rc<Self> {
+        Rc::new(Self {
+            name,
+            file_index: WorkspaceFileIndex::none(),
+            parent,
+        })
+    }
+}
+
 fn ensure_dirs_and_file<'a>(
     parent: Parent,
     dir: &Directory,
@@ -234,7 +244,7 @@ fn ensure_dirs_and_file<'a>(
         result.invalidations.extend(invs);
         result
     } else {
-        Directory::ensure_file(parent, dir, vfs, name)
+        dir.ensure_file(parent, vfs, name)
     }
 }
 
@@ -249,14 +259,6 @@ pub enum DirectoryEntry {
 }
 
 impl DirectoryEntry {
-    pub fn new_file(parent: Parent, name: Box<str>) -> Self {
-        Self::File(Rc::new(FileEntry {
-            name,
-            file_index: WorkspaceFileIndex::none(),
-            parent,
-        }))
-    }
-
     fn name(&self) -> &str {
         match self {
             DirectoryEntry::File(file) => &file.name,
@@ -326,33 +328,31 @@ impl Directory {
         }))
     }
 
-    fn ensure_file(parent: Parent, directory: &Directory, vfs: &dyn Vfs, name: &str) -> AddedFile {
+    fn ensure_file(&self, parent: Parent, vfs: &dyn Vfs, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
-        let entry = if let Some(mut entry) = directory.search(name) {
+        let file_entry = if let Some(mut entry) = self.search(name) {
             match &mut *entry {
-                DirectoryEntry::File(file) => (),
+                DirectoryEntry::File(file_entry) => file_entry.clone(),
                 DirectoryEntry::MissingEntry {
                     invalidations: inv,
                     name,
                 } => {
                     invalidations = inv.take();
-                    *entry = DirectoryEntry::File(Rc::new(FileEntry {
+                    let file_entry = Rc::new(FileEntry {
                         parent,
-                        name: name.clone(), //std::mem::replace(&mut mut_entry.name, Box::from("")),
+                        name: std::mem::take(name),
                         file_index: WorkspaceFileIndex::none(),
-                    }));
+                    });
+                    *entry = DirectoryEntry::File(file_entry.clone());
+                    file_entry
                 }
                 DirectoryEntry::Directory(..) => todo!(),
             }
-            entry.clone()
         } else {
-            let mut borrow = directory.entries.borrow_mut();
-            let entry = DirectoryEntry::new_file(parent, name.into());
-            borrow.push(entry.clone());
+            let mut borrow = self.entries.borrow_mut();
+            let entry = FileEntry::new(parent, name.into());
+            borrow.push(DirectoryEntry::File(entry.clone()));
             entry
-        };
-        let DirectoryEntry::File(file_entry) = entry else {
-            unreachable!()
         };
         AddedFile {
             invalidations,
