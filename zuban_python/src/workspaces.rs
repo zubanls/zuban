@@ -288,7 +288,6 @@ pub struct Directory {
 pub struct AddedFile {
     pub invalidations: Invalidations,
     pub file_entry: Rc<FileEntry>,
-    pub directory: Rc<Directory>,
 }
 
 impl AddedFile {
@@ -360,7 +359,6 @@ impl Directory {
         };
         AddedFile {
             invalidations,
-            directory,
             file_entry: file_entry.clone(),
         }
     }

@@ -277,12 +277,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
 
                 if let Some(link) = import_file.lookup_global(name) {
                     LookupResult::GotoName(link.into(), Inferred::from_saved_link(link.into()))
-                } else if let Some(import_result) = import_file
-                    .package_dir
-                    .as_ref()
-                    // TODO this dir is unused???
-                    .and_then(|dir| module.sub_module(self.i_s.db, name))
-                {
+                } else if let Some(import_result) = module.sub_module(self.i_s.db, name) {
                     let ImportResult::File(file_index) = import_result else {
                         todo!()
                     };

@@ -9,6 +9,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{LookupResult, Type};
 use crate::node_ref::NodeRef;
+use crate::workspaces::Parent;
 
 #[derive(Copy, Clone)]
 pub struct Module<'a> {
@@ -25,10 +26,17 @@ impl<'a> Module<'a> {
     }
 
     pub fn sub_module(&self, db: &'a Database, name: &str) -> Option<ImportResult> {
-        self.file.package_dir.as_ref().and_then(|dir| {
-            let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
-            python_import(db, self.file.file_index(), p, dir, name)
-        })
+        let entry = self.file.file_entry(db);
+        match &entry.parent {
+            Parent::Directory(dir) => {
+                if &*entry.name != "__init__.py" && &*entry.name != "__init__.pyi" {
+                    return None;
+                }
+                let p = db.vfs.dir_path(self.file.file_path(db)).unwrap();
+                python_import(db, self.file.file_index(), p, &dir.upgrade().unwrap(), name)
+            }
+            Parent::Workspace(_) => None,
+        }
     }
 
     pub fn name(&self, db: &'a Database) -> &'a str {

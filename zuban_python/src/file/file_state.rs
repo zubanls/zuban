@@ -10,7 +10,7 @@ use crate::diagnostics::{Diagnostic, DiagnosticConfig};
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
-use crate::workspaces::{Directory, FileEntry, Invalidations};
+use crate::workspaces::{FileEntry, Invalidations};
 use crate::PythonProject;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 
@@ -77,7 +77,6 @@ pub trait FileStateLoader {
     fn load_parsed(
         &self,
         file_entry: Rc<FileEntry>,
-        dir: Rc<Directory>,
         path: Box<str>,
         code: Box<str>,
     ) -> Pin<Box<dyn FileState>>;
@@ -105,17 +104,13 @@ impl FileStateLoader for PythonFileLoader {
     fn load_parsed(
         &self,
         file_entry: Rc<FileEntry>,
-        dir: Rc<Directory>,
         path: Box<str>,
         code: Box<str>,
     ) -> Pin<Box<dyn FileState>> {
-        // TODO this check is really stupid.
-        let package_dir =
-            (path.ends_with("/__init__.py") || path.ends_with("/__init__.pyi")).then_some(dir);
         Box::pin(LanguageFileState::new_parsed(
             file_entry,
             path,
-            PythonFile::new(package_dir, code),
+            PythonFile::new(code),
         ))
     }
 }

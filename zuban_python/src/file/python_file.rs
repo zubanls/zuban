@@ -21,7 +21,7 @@ use crate::matching::ResultContext;
 use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{InsertOnlyVec, SymbolTable};
-use crate::workspaces::Directory;
+use crate::workspaces::FileEntry;
 use crate::PythonProject;
 
 #[derive(Default, Debug)]
@@ -65,7 +65,6 @@ pub struct PythonFile {
     file_index: Cell<Option<FileIndex>>,
     issues: Diagnostics,
     pub star_imports: RefCell<Vec<StarImport>>,
-    pub package_dir: Option<Rc<Directory>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<FileIndex>,
 
@@ -206,7 +205,7 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn new(package_dir: Option<Rc<Directory>>, code: Box<str>) -> Self {
+    pub fn new(code: Box<str>) -> Self {
         let tree = Tree::parse(code);
         let length = tree.length();
         Self {
@@ -220,7 +219,6 @@ impl<'db> PythonFile {
             newline_indices: NewlineIndices::new(),
             sub_files: Default::default(),
             super_file: None,
-            package_dir,
         }
     }
 
@@ -270,7 +268,7 @@ impl<'db> PythonFile {
         code: Box<str>, // TODO this should not be a string, but probably cow
     ) -> &'db Self {
         // TODO should probably not need a newline
-        let mut file = PythonFile::new(None, Box::from(code.into_string() + "\n"));
+        let mut file = PythonFile::new(Box::from(code.into_string() + "\n"));
         file.super_file = Some(self.file_index());
         // TODO just saving this in the cache and forgetting about it is a bad idea
         let f = db.load_sub_file(self, file);
@@ -289,6 +287,10 @@ impl<'db> PythonFile {
             }
         }
         self.is_stub(i_s.db)
+    }
+
+    pub fn file_entry(&self, db: &Database) -> Rc<FileEntry> {
+        db.file_state(self.file_index()).file_entry()
     }
 
     pub fn reset_non_name_cache_between(&self, range: Range<NodeIndex>) {
