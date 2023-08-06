@@ -105,7 +105,7 @@ impl Workspace {
                     .expect_directory_entries()
                     .entries
                     .borrow_mut()
-                    .push(Rc::new(n));
+                    .push(n);
             }
             let name = entry.file_name();
             if let Some(name) = name.to_str() {
@@ -124,7 +124,7 @@ impl Workspace {
                                 .expect_directory_entries()
                                 .entries
                                 .borrow_mut()
-                                .push(Rc::new(DirectoryEntry::new_file(name.into())));
+                                .push(DirectoryEntry::new_file(name.into()));
                         }
                     }
                     Err(e) => {
@@ -141,7 +141,7 @@ impl Workspace {
                     .expect_directory_entries()
                     .entries
                     .borrow_mut()
-                    .push(Rc::new(current.1))
+                    .push(current.1)
             } else {
                 return Self {
                     directory: current.1.expect_directory_entries().clone(),
@@ -218,10 +218,10 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
         };
         let dir2 = Directory::new(Box::from(name));
         let mut result = ensure_dirs_and_file(&dir2, vfs, rest);
-        rc.entries.borrow_mut().push(Rc::new(DirectoryEntry {
+        rc.entries.borrow_mut().push(DirectoryEntry {
             name: name.into(),
             type_: DirOrFile::Directory(dir2),
-        }));
+        });
         result.invalidations.extend(invs);
         result
     } else {
@@ -275,7 +275,7 @@ impl DirectoryEntry {
 
 #[derive(Debug, Clone)]
 pub struct Directory {
-    entries: RefCell<Vec<Rc<DirectoryEntry>>>,
+    entries: RefCell<Vec<DirectoryEntry>>,
     name: Box<str>,
 }
 
@@ -302,7 +302,7 @@ impl Directory {
             name,
         })
     }
-    pub fn iter(&self) -> VecRefWrapper<Rc<DirectoryEntry>> {
+    pub fn iter(&self) -> VecRefWrapper<DirectoryEntry> {
         VecRefWrapper(self.entries.borrow())
     }
 
@@ -312,7 +312,7 @@ impl Directory {
             .retain(|f| f.name.as_ref() != name)
     }
 
-    pub fn search(&self, name: &str) -> Option<RefMut<Rc<DirectoryEntry>>> {
+    pub fn search(&self, name: &str) -> Option<RefMut<DirectoryEntry>> {
         let borrow = self.entries.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
@@ -329,17 +329,16 @@ impl Directory {
         let entry = directory
             .search(name)
             .map(|mut entry| {
-                match &entry.type_ {
+                match &mut entry.type_ {
                     DirOrFile::File(file) => (),
-                    DirOrFile::MissingEntry{..} => {
-                        let mut_entry = &mut Rc::make_mut(&mut entry);
-                        let DirOrFile::MissingEntry{invalidations: inv, ..} = &mut mut_entry.type_ else {
-                            unreachable!();
-                        };
+                    DirOrFile::MissingEntry {
+                        invalidations: inv,
+                        name,
+                    } => {
                         invalidations = inv.take();
-                        mut_entry.type_ = DirOrFile::File(Rc::new(FileEntry {
-                            name: mut_entry.name.clone(),//std::mem::replace(&mut mut_entry.name, Box::from("")),
-                            file_index: WorkspaceFileIndex::none()
+                        entry.type_ = DirOrFile::File(Rc::new(FileEntry {
+                            name: name.clone(), //std::mem::replace(&mut mut_entry.name, Box::from("")),
+                            file_index: WorkspaceFileIndex::none(),
                         }));
                     }
                     DirOrFile::Directory(..) => todo!(),
@@ -348,7 +347,7 @@ impl Directory {
             })
             .unwrap_or_else(|| {
                 let mut borrow = directory.entries.borrow_mut();
-                let entry = Rc::new(DirectoryEntry::new_file(name.into()));
+                let entry = DirectoryEntry::new_file(name.into());
                 borrow.push(entry.clone());
                 entry
             });
@@ -387,13 +386,13 @@ impl Directory {
         } else {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
-            vec.push(Rc::new(DirectoryEntry {
+            vec.push(DirectoryEntry {
                 name: name.clone(),
                 type_: DirOrFile::MissingEntry {
                     invalidations,
                     name,
                 },
-            }))
+            })
         }
     }
 
