@@ -5,7 +5,7 @@ use walkdir::WalkDir;
 
 use crate::database::FileIndex;
 use crate::file::{FileStateLoader, Vfs};
-use crate::utils::VecRefWrapper;
+use crate::utils::{rc_unwrap_or_clone, VecRefWrapper};
 
 #[derive(Debug, Default)]
 pub struct Workspaces(Vec<Workspace>);
@@ -15,7 +15,7 @@ impl Workspaces {
         self.0.push(Workspace::new(loaders, root))
     }
 
-    pub fn directories(&self) -> impl Iterator<Item = (&str, &Rc<Directory>)> {
+    pub fn directories(&self) -> impl Iterator<Item = (&str, &Directory)> {
         self.0.iter().map(|x| (x.root_path(), &x.directory))
     }
 
@@ -71,7 +71,7 @@ impl Workspaces {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     root_path: Rc<Box<str>>,
-    directory: Rc<Directory>,
+    directory: Directory,
     //watcher: dyn notify::Watcher,
 }
 
@@ -145,7 +145,7 @@ impl Workspace {
                     .push(DirectoryEntry::Directory(current.1))
             } else {
                 return Self {
-                    directory: current.1,
+                    directory: rc_unwrap_or_clone(current.1),
                     root_path,
                 };
             }

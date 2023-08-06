@@ -78,7 +78,7 @@ pub fn python_import<'a>(
     db: &Database,
     from_file: FileIndex,
     dir_path: &'a str,
-    dir: &Rc<Directory>,
+    dir: &Directory,
     name: &'a str,
 ) -> Option<ImportResult> {
     let mut python_file_index = None;

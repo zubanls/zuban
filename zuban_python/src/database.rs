@@ -3087,7 +3087,7 @@ impl Database {
         }
     }
 
-    fn py_load_tmp(&self, dir: &Rc<Directory>, p: &'static str) -> &PythonFile {
+    fn py_load_tmp(&self, dir: &Directory, p: &'static str) -> &PythonFile {
         // TODO give this function a better name and put it into a workspace
         let loader = self.loader(p).unwrap();
         let code = self.vfs.read_file(p).unwrap();
