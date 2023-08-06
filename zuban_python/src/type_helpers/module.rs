@@ -39,23 +39,27 @@ impl<'a> Module<'a> {
         }
     }
 
-    pub fn name(&self, db: &'a Database) -> &'a str {
-        // TODO this is not correct...
-        let (dir, mut name) = db.vfs.dir_and_name(self.file.file_path(db));
-        if let Some(n) = name.strip_suffix(".py") {
-            name = n
+    pub fn name(&self, db: &'a Database) -> String {
+        let entry = self.file.file_entry(db);
+        let name = &entry.name;
+        let name = if let Some(n) = name.strip_suffix(".py") {
+            n
         } else {
-            name = name.trim_end_matches(".pyi");
-        }
+            name.trim_end_matches(".pyi")
+        };
         if name == "__init__" {
-            db.vfs.dir_and_name(dir.unwrap()).1
+            if let Ok(dir) = entry.parent.maybe_dir() {
+                dir.name.to_string()
+            } else {
+                todo!("Could be an imported __init__ in the workspace");
+            }
         } else {
-            name
+            name.to_string()
         }
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        self.name(db).to_owned()
+        self.name(db)
     }
 
     pub fn lookup(
