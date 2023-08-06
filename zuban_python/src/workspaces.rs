@@ -186,16 +186,6 @@ pub enum Parent {
 }
 
 #[derive(Debug, Clone)]
-pub enum DirOrFile {
-    File(Rc<FileEntry>),
-    MissingEntry {
-        name: Box<str>,
-        invalidations: Invalidations,
-    },
-    Directory(Rc<Directory>),
-}
-
-#[derive(Debug, Clone)]
 pub struct FileEntry {
     pub name: Box<str>,
     pub file_index: WorkspaceFileIndex,
@@ -206,9 +196,9 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
     if let Some(rest) = rest {
         let mut invs = Default::default();
         if let Some(x) = rc.search(name) {
-            match &x.type_ {
-                DirOrFile::Directory(rc) => return ensure_dirs_and_file(rc, vfs, rest),
-                DirOrFile::MissingEntry { invalidations, .. } => {
+            match &*x {
+                DirectoryEntry::Directory(rc) => return ensure_dirs_and_file(rc, vfs, rest),
+                DirectoryEntry::MissingEntry { invalidations, .. } => {
                     invs = invalidations.take();
                     drop(x);
                     rc.remove_name(name);
@@ -218,9 +208,9 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
         };
         let dir2 = Directory::new(Box::from(name));
         let mut result = ensure_dirs_and_file(&dir2, vfs, rest);
-        rc.entries.borrow_mut().push(DirectoryEntry {
-            type_: DirOrFile::Directory(dir2),
-        });
+        rc.entries
+            .borrow_mut()
+            .push(DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result
     } else {
@@ -229,50 +219,51 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
 }
 
 #[derive(Debug, Clone)]
-pub struct DirectoryEntry {
-    pub type_: DirOrFile,
+pub enum DirectoryEntry {
+    File(Rc<FileEntry>),
+    MissingEntry {
+        name: Box<str>,
+        invalidations: Invalidations,
+    },
+    Directory(Rc<Directory>),
 }
 
 impl DirectoryEntry {
     pub fn new_dir(name: Box<str>) -> Self {
-        Self {
-            type_: DirOrFile::Directory(Directory::new(Box::from(name))),
-        }
+        Self::Directory(Directory::new(Box::from(name)))
     }
 
     pub fn new_file(name: Box<str>) -> Self {
-        Self {
-            type_: DirOrFile::File(Rc::new(FileEntry {
-                name,
-                file_index: WorkspaceFileIndex::none(),
-            })),
-        }
+        Self::File(Rc::new(FileEntry {
+            name,
+            file_index: WorkspaceFileIndex::none(),
+        }))
     }
 
     fn name(&self) -> &str {
-        match &self.type_ {
-            DirOrFile::File(file) => &file.name,
-            DirOrFile::Directory(dir) => &dir.name,
-            DirOrFile::MissingEntry { name, .. } => name,
+        match self {
+            DirectoryEntry::File(file) => &file.name,
+            DirectoryEntry::Directory(dir) => &dir.name,
+            DirectoryEntry::MissingEntry { name, .. } => name,
         }
     }
 
     fn expect_directory_entries(&self) -> &Rc<Directory> {
-        match &self.type_ {
-            DirOrFile::Directory(dir) => dir,
+        match self {
+            DirectoryEntry::Directory(dir) => dir,
             _ => unreachable!(),
         }
     }
 
     pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
-        match &self.type_ {
-            DirOrFile::File(file) => {
+        match self {
+            DirectoryEntry::File(file) => {
                 if let Some(index) = file.file_index.get() {
                     callable(index)
                 }
             }
-            DirOrFile::Directory(dir) => dir.for_each_file(callable),
-            DirOrFile::MissingEntry { .. } => (),
+            DirectoryEntry::Directory(dir) => dir.for_each_file(callable),
+            DirectoryEntry::MissingEntry { .. } => (),
         }
     }
 }
@@ -329,19 +320,19 @@ impl Directory {
         let entry = directory
             .search(name)
             .map(|mut entry| {
-                match &mut entry.type_ {
-                    DirOrFile::File(file) => (),
-                    DirOrFile::MissingEntry {
+                match &mut *entry {
+                    DirectoryEntry::File(file) => (),
+                    DirectoryEntry::MissingEntry {
                         invalidations: inv,
                         name,
                     } => {
                         invalidations = inv.take();
-                        entry.type_ = DirOrFile::File(Rc::new(FileEntry {
+                        *entry = DirectoryEntry::File(Rc::new(FileEntry {
                             name: name.clone(), //std::mem::replace(&mut mut_entry.name, Box::from("")),
                             file_index: WorkspaceFileIndex::none(),
                         }));
                     }
-                    DirOrFile::Directory(..) => todo!(),
+                    DirectoryEntry::Directory(..) => todo!(),
                 }
                 entry.clone()
             })
@@ -351,7 +342,7 @@ impl Directory {
                 borrow.push(entry.clone());
                 entry
             });
-        let DirOrFile::File(file_entry) = &entry.type_ else {
+        let DirectoryEntry::File(file_entry) = entry else {
             unreachable!()
         };
         AddedFile {
@@ -365,10 +356,10 @@ impl Directory {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(entry) = self.search(name) {
             if let Some(rest) = rest {
-                if let DirOrFile::Directory(dir) = &entry.type_ {
+                if let DirectoryEntry::Directory(dir) = &*entry {
                     dir.unload_file(vfs, rest);
                 }
-            } else if matches!(entry.type_, DirOrFile::File(_)) {
+            } else if matches!(*entry, DirectoryEntry::File(_)) {
                 drop(entry);
                 self.remove_name(name);
             }
@@ -378,19 +369,17 @@ impl Directory {
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
         let mut vec = self.entries.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name() == name.as_ref()) {
-            if let DirOrFile::MissingEntry { invalidations, .. } = &vec[pos].type_ {
+            if let DirectoryEntry::MissingEntry { invalidations, .. } = &vec[pos] {
                 invalidations.add(invalidates)
             } else {
-                unreachable!("{:?}", &vec[pos].type_)
+                unreachable!("{:?}", &vec[pos])
             }
         } else {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
-            vec.push(DirectoryEntry {
-                type_: DirOrFile::MissingEntry {
-                    invalidations,
-                    name,
-                },
+            vec.push(DirectoryEntry::MissingEntry {
+                invalidations,
+                name,
             })
         }
     }
@@ -398,8 +387,8 @@ impl Directory {
     fn delete_directory(&self, vfs: &dyn Vfs, path: &str) -> Result<(), String> {
         let (name, rest) = vfs.split_off_folder(path);
         if let Some(inner) = self.search(name) {
-            match &inner.type_ {
-                DirOrFile::Directory(dir) => {
+            match &*inner {
+                DirectoryEntry::Directory(dir) => {
                     if let Some(rest) = rest {
                         dir.delete_directory(vfs, rest)
                     } else {
@@ -408,7 +397,7 @@ impl Directory {
                         Ok(())
                     }
                 }
-                DirOrFile::MissingEntry { .. } => {
+                DirectoryEntry::MissingEntry { .. } => {
                     Err(format!("Path {path} cannot be found (missing)"))
                 }
                 t => todo!("{t:?}"),
@@ -422,15 +411,15 @@ impl Directory {
         let (name, rest) = vfs.split_off_folder(path);
         for n in self.entries.borrow().iter() {
             if name == n.name() {
-                match &n.type_ {
-                    DirOrFile::Directory(files) => {
+                match n {
+                    DirectoryEntry::Directory(files) => {
                         return match rest {
                             Some(rest) => files.find_dir_content(vfs, rest),
                             None => Some(files.clone()),
                         };
                     }
-                    DirOrFile::File(_) => unreachable!(),
-                    DirOrFile::MissingEntry { .. } => unreachable!(),
+                    DirectoryEntry::File(_) => unreachable!(),
+                    DirectoryEntry::MissingEntry { .. } => unreachable!(),
                 }
             }
         }

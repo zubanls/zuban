@@ -5,7 +5,7 @@ use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::type_helpers::Module;
-use crate::workspaces::{DirOrFile, Directory};
+use crate::workspaces::{Directory, DirectoryEntry};
 
 const SEPARATOR: &str = "/"; // TODO different separator
 
@@ -85,8 +85,8 @@ pub fn python_import<'a>(
     let mut stub_file_index = None;
     let mut namespace_content = None;
     for entry in &dir.iter() {
-        match &entry.type_ {
-            DirOrFile::Directory(dir2) => {
+        match entry {
+            DirectoryEntry::Directory(dir2) => {
                 if dir2.name.as_ref() == name {
                     let result = load_init_file(db, &dir2, |child| {
                         format!(
@@ -104,7 +104,7 @@ pub fn python_import<'a>(
                     namespace_content = Some(dir2.clone());
                 }
             }
-            DirOrFile::File(file) => {
+            DirectoryEntry::File(file) => {
                 let is_py_file = file.name.as_ref() == format!("{name}.py");
                 if is_py_file || file.name.as_ref() == format!("{name}.pyi") {
                     if file.file_index.get().is_none() {
@@ -123,7 +123,7 @@ pub fn python_import<'a>(
                     }
                 }
             }
-            DirOrFile::MissingEntry { .. } => (),
+            DirectoryEntry::MissingEntry { .. } => (),
         }
     }
     if let Some(file_index) = stub_file_index.or(python_file_index) {
@@ -150,7 +150,7 @@ fn load_init_file(
     on_new: impl Fn(&str) -> Box<str>,
 ) -> Option<FileIndex> {
     for child in &content.iter() {
-        if let DirOrFile::File(file) = &child.type_ {
+        if let DirectoryEntry::File(file) = child {
             if file.name.as_ref() == "__init__.py" || file.name.as_ref() == "__init__.pyi" {
                 if file.file_index.get().is_none() {
                     db.load_file_from_workspace(

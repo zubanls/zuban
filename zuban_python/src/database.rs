@@ -27,7 +27,7 @@ use crate::python_state::PythonState;
 use crate::type_helpers::{Class, Module};
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
-    DirOrFile, Directory, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
+    Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
 };
 use crate::PythonProject;
 
@@ -3098,7 +3098,7 @@ impl Database {
         let loader = self.loader(p).unwrap();
         let code = self.vfs.read_file(p).unwrap();
         let entry = dir.search(self.vfs.dir_and_name(p).1).unwrap().clone();
-        let DirOrFile::File(file_entry) = &entry.type_ else {
+        let DirectoryEntry::File(file_entry) = &entry else {
             unreachable!()
         };
         let file_index = self.add_file_state(loader.load_parsed(
@@ -3119,12 +3119,12 @@ impl Database {
         let mut dirs = self.workspaces.directories();
         let stdlib_dir = dirs.next().unwrap().1.clone();
         let mypy_extensions_dir = dirs.next().unwrap().1.clone();
-        let collections_dir = match &stdlib_dir.search("collections").unwrap().type_ {
-            DirOrFile::Directory(c) => c.clone(),
+        let collections_dir = match &*stdlib_dir.search("collections").unwrap() {
+            DirectoryEntry::Directory(c) => c.clone(),
             _ => unreachable!(),
         };
-        let typeshed_dir = match &stdlib_dir.search("_typeshed").unwrap().type_ {
-            DirOrFile::Directory(c) => c.clone(),
+        let typeshed_dir = match &*stdlib_dir.search("_typeshed").unwrap() {
+            DirectoryEntry::Directory(c) => c.clone(),
             _ => unreachable!(),
         };
         drop(dirs);
