@@ -9,11 +9,11 @@ c: baz.X
 
 x: foo  # E: Module "foo" is not valid as a type \
         # N: Perhaps you meant to use a protocol matching the module structure?
-y: foo.bar  # E: Module "bar" is not valid as a type \
+y: foo.bar  # E: Module "foo.bar" is not valid as a type \
             # N: Perhaps you meant to use a protocol matching the module structure?
 z: bar  # E: Module "foo" is not valid as a type \
         # N: Perhaps you meant to use a protocol matching the module structure?
-u: baz  # E: Module "bar" is not valid as a type \
+u: baz  # E: Module "foo.bar" is not valid as a type \
         # N: Perhaps you meant to use a protocol matching the module structure?
 v: foo.undefined  # E: Name "foo.undefined" is not defined
 [file foo/bar.py]
@@ -39,13 +39,13 @@ a: bar.bla.X
 b: bbb.bla.X
 c: bla  # No error here, because there's already an import error
 
-x: bar  # E: Module "bar" is not valid as a type \
+x: bar  # E: Module "foo.bar" is not valid as a type \
         # N: Perhaps you meant to use a protocol matching the module structure?
-y: bbb  # E: Module "bar" is not valid as a type \
+y: bbb  # E: Module "foo.bar" is not valid as a type \
         # N: Perhaps you meant to use a protocol matching the module structure?
-z: bar.bla # E: Module "bla" is not valid as a type \
+z: bar.bla # E: Module "foo.bar.bla" is not valid as a type \
            # N: Perhaps you meant to use a protocol matching the module structure?
-u: bbb.bla # E: Module "bla" is not valid as a type \
+u: bbb.bla # E: Module "foo.bar.bla" is not valid as a type \
            # N: Perhaps you meant to use a protocol matching the module structure?
 v: bbb.X  # E: Name "bbb.X" is not defined
 [file foo/bar/bla.py]

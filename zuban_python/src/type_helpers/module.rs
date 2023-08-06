@@ -9,7 +9,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{LookupResult, Type};
 use crate::node_ref::NodeRef;
-use crate::workspaces::Parent;
+use crate::workspaces::{Directory, Parent};
 
 #[derive(Copy, Clone)]
 pub struct Module<'a> {
@@ -39,7 +39,7 @@ impl<'a> Module<'a> {
         }
     }
 
-    pub fn name(&self, db: &'a Database) -> String {
+    pub fn qualified_name(&self, db: &Database) -> String {
         let entry = self.file.file_entry(db);
         let name = &entry.name;
         let name = if let Some(n) = name.strip_suffix(".py") {
@@ -49,17 +49,14 @@ impl<'a> Module<'a> {
         };
         if name == "__init__" {
             if let Ok(dir) = entry.parent.maybe_dir() {
-                dir.name.to_string()
-            } else {
-                todo!("Could be an imported __init__ in the workspace");
+                return dir.name.to_string();
             }
+        }
+        if let Ok(parent_dir) = entry.parent.maybe_dir() {
+            dotted_path_from_dir(&parent_dir) + "." + name
         } else {
             name.to_string()
         }
-    }
-
-    pub fn qualified_name(&self, db: &Database) -> String {
-        self.name(db)
     }
 
     pub fn lookup(
@@ -104,5 +101,13 @@ pub fn lookup_in_namespace(
             debug!("TODO namespace basic lookups");
             LookupResult::None
         }
+    }
+}
+
+fn dotted_path_from_dir(dir: &Directory) -> String {
+    if let Ok(dir) = dir.parent.maybe_dir() {
+        dotted_path_from_dir(&dir) + "." + &dir.name
+    } else {
+        dir.name.to_string()
     }
 }

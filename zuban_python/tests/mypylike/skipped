@@ -1,4 +1,6 @@
 # Next up
+invalid_namespace_types_import_from
+testProtocolWithNestedClass
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -488,6 +490,13 @@ testTypingNamedTupleAttributesAreReadOnly
 testNewNamedTupleNoUnderscoreFields
 # "NamedTuple should be a single base"
 testNewNamedTupleShouldBeSingleBase
+# Tuple Qualified nested class name
+testNewAnalyzerNamedTupleClassNestedMethod
+testNewAnalyzerNamedTupleCallNested
+testNewAnalyzerNamedTupleCallNestedMethod
+testIncrementalInnerClassAttrInMethodReveal
+# Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
+testNewAnalyzerIncrementalMethodNamedTuple
 
 # data class (currently all are passing)
 
@@ -976,6 +985,8 @@ testSixMetaclass
 testFromSixMetaclass
 testSixMetaclassGenericBase
 testIgnoreInsideClassDoesntAffectWhole
+# import of typeshed stubs
+testErrorFromGoogleCloud
 
 # Override import cached files like typing types builtins etc.
 testNoCrashDoubleReexportFunctionEmpty
@@ -1073,6 +1084,7 @@ testUnimportedHintAny
 testUnimportedHintAnyLower
 testFromImportAsInStub
 testImportAsInStub
+testReExportChildStubs3
 
 # "Invalid metaclass "Explicit"" when Explicit: TypeAlias = type
 testValidTypeAliasAsMetaclass
@@ -2416,29 +2428,6 @@ testScriptsAreNotModules
 
 # __doc__ definitions
 testNewNamedTupleDocString
-
-# Formatting qualified module names
-testMetaclassPlaceholderNode
-testSubmoduleMixingImportFromAndImport2
-testErrorFromGoogleCloud
-testStubPackageSubModule
-testReExportChildStubs3
-testImportFromReExportInCycleUsingRelativeImport1
-testImportReExportInCycleUsingRelativeImport2
-testModuleLookupWeird
-testModuleLookupWeird2
-testModuleLookupWeird3
-testModuleLookupWeird5
-testModuleLookupWeird6
-testProtocolWithNestedClass
-testImportStarAddMissingDependencyInsidePackage1
-# Qualified nested class name
-testNewAnalyzerNamedTupleClassNestedMethod
-testNewAnalyzerNamedTupleCallNested
-testNewAnalyzerNamedTupleCallNestedMethod
-testIncrementalInnerClassAttrInMethodReveal
-# Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
-testNewAnalyzerIncrementalMethodNamedTuple
 
 # Formatting class in reveal_type (stashed in 860494e, see also https://github.com/python/mypy/issues/13062)
 testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses
