@@ -100,7 +100,7 @@ impl Workspace {
                     .unwrap()
                     .1
                     .expect_directory_entries()
-                    .0
+                    .entries
                     .borrow_mut()
                     .push(Rc::new(n));
             }
@@ -116,7 +116,7 @@ impl Workspace {
                                 .unwrap()
                                 .1
                                 .expect_directory_entries()
-                                .0
+                                .entries
                                 .borrow_mut()
                                 .push(Rc::new(DirEntry::new_file(name.into())));
                         }
@@ -133,7 +133,7 @@ impl Workspace {
                 parent
                     .1
                     .expect_directory_entries()
-                    .0
+                    .entries
                     .borrow_mut()
                     .push(Rc::new(current.1))
             } else {
@@ -220,7 +220,7 @@ impl Directory {
             };
             let dir2 = Directory::default();
             let mut result = dir2.ensure_dirs_and_file(vfs, rest);
-            self.content.0.borrow_mut().push(Rc::new(DirEntry {
+            self.content.entries.borrow_mut().push(Rc::new(DirEntry {
                 name: name.into(),
                 type_: DirOrFile::Directory(dir2),
             }));
@@ -277,7 +277,9 @@ impl DirEntry {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct DirContent(RefCell<Vec<Rc<DirEntry>>>);
+pub struct DirContent {
+    entries: RefCell<Vec<Rc<DirEntry>>>,
+}
 
 #[derive(Debug)]
 pub struct AddedFile {
@@ -297,15 +299,17 @@ impl AddedFile {
 
 impl DirContent {
     pub fn iter(&self) -> VecRefWrapper<Rc<DirEntry>> {
-        VecRefWrapper(self.0.borrow())
+        VecRefWrapper(self.entries.borrow())
     }
 
     fn remove_name(&self, name: &str) {
-        self.0.borrow_mut().retain(|f| f.name.as_ref() != name)
+        self.entries
+            .borrow_mut()
+            .retain(|f| f.name.as_ref() != name)
     }
 
     pub fn search(&self, name: &str) -> Option<RefMut<Rc<DirEntry>>> {
-        let borrow = self.0.borrow_mut();
+        let borrow = self.entries.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
         borrow.iter().find(|entry| entry.name.as_ref() == name)?;
@@ -339,7 +343,7 @@ impl DirContent {
                 entry.clone()
             })
             .unwrap_or_else(|| {
-                let mut borrow = directory.0.borrow_mut();
+                let mut borrow = directory.entries.borrow_mut();
                 let entry = Rc::new(DirEntry::new_file(name.into()));
                 borrow.push(entry.clone());
                 entry
@@ -369,7 +373,7 @@ impl DirContent {
     }
 
     pub fn add_missing_entry(&self, name: Box<str>, invalidates: FileIndex) {
-        let mut vec = self.0.borrow_mut();
+        let mut vec = self.entries.borrow_mut();
         if let Some(pos) = vec.iter().position(|x| x.name == name) {
             if let DirOrFile::MissingEntry { invalidations, .. } = &vec[pos].type_ {
                 invalidations.add(invalidates)
@@ -414,7 +418,7 @@ impl DirContent {
 
     fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
         let (name, rest) = vfs.split_off_folder(path);
-        for n in self.0.borrow().iter() {
+        for n in self.entries.borrow().iter() {
             if name == n.name.as_ref() {
                 match &n.type_ {
                     DirOrFile::Directory(files) => {
@@ -431,7 +435,7 @@ impl DirContent {
         None
     }
     pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
-        for n in self.0.borrow_mut().iter_mut() {
+        for n in self.entries.borrow_mut().iter_mut() {
             n.for_each_file(callable)
         }
     }
