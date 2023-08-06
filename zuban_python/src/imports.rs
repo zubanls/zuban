@@ -106,22 +106,22 @@ pub fn python_import<'a>(
                     namespace_content = Some(dir2.content.clone());
                 }
             }
-            DirOrFile::File(file_index) => {
+            DirOrFile::File(file) => {
                 let is_py_file = entry.name.as_ref() == format!("{name}.py");
                 if is_py_file || entry.name.as_ref() == format!("{name}.pyi") {
-                    if file_index.get().is_none() {
+                    if file.file_index.get().is_none() {
                         db.load_file_from_workspace(
                             entry.clone(),
                             dir.clone(),
                             format!("{dir_path}{SEPARATOR}{}", entry.name).into(),
-                            file_index,
+                            &file.file_index,
                         );
                     }
-                    debug_assert!(file_index.get().is_some());
+                    debug_assert!(file.file_index.get().is_some());
                     if is_py_file {
-                        python_file_index = file_index.get();
+                        python_file_index = file.file_index.get();
                     } else {
-                        stub_file_index = file_index.get();
+                        stub_file_index = file.file_index.get();
                     }
                 }
             }
@@ -152,17 +152,17 @@ fn load_init_file(
     on_new: impl Fn(&str) -> Box<str>,
 ) -> Option<FileIndex> {
     for child in &content.iter() {
-        if let DirOrFile::File(file_index) = &child.type_ {
+        if let DirOrFile::File(file) = &child.type_ {
             if child.name.as_ref() == "__init__.py" || child.name.as_ref() == "__init__.pyi" {
-                if file_index.get().is_none() {
+                if file.file_index.get().is_none() {
                     db.load_file_from_workspace(
                         child.clone(),
                         content.clone(),
                         on_new(&child.name),
-                        file_index,
+                        &file.file_index,
                     );
                 }
-                return file_index.get();
+                return file.file_index.get();
             }
         }
     }

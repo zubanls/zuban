@@ -183,12 +183,18 @@ pub enum Parent {
 
 #[derive(Debug, Clone)]
 pub enum DirOrFile {
-    File(WorkspaceFileIndex),
+    File(Rc<File>),
     MissingEntry {
         name: Box<str>,
         invalidations: Invalidations,
     },
     Directory(Directory),
+}
+
+#[derive(Debug, Clone)]
+pub struct File {
+    pub name: Box<str>,
+    pub file_index: WorkspaceFileIndex,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -242,8 +248,11 @@ impl DirEntry {
 
     pub fn new_file(name: Box<str>) -> Self {
         Self {
-            name,
-            type_: DirOrFile::File(WorkspaceFileIndex::none()),
+            name: name.clone(),
+            type_: DirOrFile::File(Rc::new(File {
+                name,
+                file_index: WorkspaceFileIndex::none(),
+            })),
         }
     }
 
@@ -256,8 +265,8 @@ impl DirEntry {
 
     pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
         match &self.type_ {
-            DirOrFile::File(index) => {
-                if let Some(index) = index.get() {
+            DirOrFile::File(file) => {
+                if let Some(index) = file.file_index.get() {
                     callable(index)
                 }
             }
@@ -284,8 +293,8 @@ impl AddedFile {
         let DirOrFile::File(file) = &self.entry.type_ else {
             unreachable!()
         };
-        debug_assert!(file.get().is_none());
-        file.set(index);
+        debug_assert!(file.file_index.get().is_none());
+        file.file_index.set(index);
     }
 }
 
@@ -323,7 +332,10 @@ impl DirContent {
                             unreachable!();
                         };
                         invalidations = inv.take();
-                        mut_entry.type_ = DirOrFile::File(WorkspaceFileIndex::none());
+                        mut_entry.type_ = DirOrFile::File(Rc::new(File {
+                            name: mut_entry.name.clone(),//std::mem::replace(&mut mut_entry.name, Box::from("")),
+                            file_index: WorkspaceFileIndex::none()
+                        }));
                     }
                     DirOrFile::Directory(..) => todo!(),
                 }
