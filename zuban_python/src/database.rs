@@ -27,7 +27,7 @@ use crate::python_state::PythonState;
 use crate::type_helpers::{Class, Module};
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
-    DirContent, DirOrFile, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
+    DirOrFile, Directory, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
 };
 use crate::PythonProject;
 
@@ -731,7 +731,7 @@ impl UnionType {
 #[derive(Debug, Clone)]
 pub struct Namespace {
     pub path: String,
-    pub content: Rc<DirContent>,
+    pub content: Rc<Directory>,
 }
 
 impl Namespace {
@@ -2966,7 +2966,7 @@ impl Database {
     pub fn load_file_from_workspace(
         &self,
         file_entry: Rc<FileEntry>,
-        dir: Rc<DirContent>,
+        dir: Rc<Directory>,
         path: Box<str>,
         index: &WorkspaceFileIndex,
     ) {
@@ -3093,7 +3093,7 @@ impl Database {
         }
     }
 
-    fn py_load_tmp(&self, dir: &Rc<DirContent>, p: &'static str) -> &PythonFile {
+    fn py_load_tmp(&self, dir: &Rc<Directory>, p: &'static str) -> &PythonFile {
         // TODO give this function a better name and put it into a workspace
         let loader = self.loader(p).unwrap();
         let code = self.vfs.read_file(p).unwrap();

@@ -5,7 +5,7 @@ use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::type_helpers::Module;
-use crate::workspaces::{DirContent, DirOrFile};
+use crate::workspaces::{DirOrFile, Directory};
 
 const SEPARATOR: &str = "/"; // TODO different separator
 
@@ -78,7 +78,7 @@ pub fn python_import<'a>(
     db: &Database,
     from_file: FileIndex,
     dir_path: &'a str,
-    dir: &Rc<DirContent>,
+    dir: &Rc<Directory>,
     name: &'a str,
 ) -> Option<ImportResult> {
     let mut python_file_index = None;
@@ -146,7 +146,7 @@ pub fn python_import<'a>(
 
 fn load_init_file(
     db: &Database,
-    content: &Rc<DirContent>,
+    content: &Rc<Directory>,
     on_new: impl Fn(&str) -> Box<str>,
 ) -> Option<FileIndex> {
     for child in &content.iter() {

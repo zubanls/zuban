@@ -10,7 +10,7 @@ use crate::diagnostics::{Diagnostic, DiagnosticConfig};
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
-use crate::workspaces::{DirContent, FileEntry, Invalidations};
+use crate::workspaces::{Directory, FileEntry, Invalidations};
 use crate::PythonProject;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 
@@ -77,7 +77,7 @@ pub trait FileStateLoader {
     fn load_parsed(
         &self,
         file_entry: Rc<FileEntry>,
-        dir: Rc<DirContent>,
+        dir: Rc<Directory>,
         path: Box<str>,
         code: Box<str>,
     ) -> Pin<Box<dyn FileState>>;
@@ -105,7 +105,7 @@ impl FileStateLoader for PythonFileLoader {
     fn load_parsed(
         &self,
         file_entry: Rc<FileEntry>,
-        dir: Rc<DirContent>,
+        dir: Rc<Directory>,
         path: Box<str>,
         code: Box<str>,
     ) -> Pin<Box<dyn FileState>> {

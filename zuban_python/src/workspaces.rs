@@ -15,7 +15,7 @@ impl Workspaces {
         self.0.push(Workspace::new(loaders, root))
     }
 
-    pub fn directories(&self) -> impl Iterator<Item = (&str, &Rc<DirContent>)> {
+    pub fn directories(&self) -> impl Iterator<Item = (&str, &Rc<Directory>)> {
         self.0.iter().map(|x| (x.root_path(), &x.directory))
     }
 
@@ -51,7 +51,7 @@ impl Workspaces {
         self.0.last().unwrap()
     }
 
-    pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
+    pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<Directory>> {
         for workspace in &self.0 {
             if let Some(p) = path.strip_prefix(workspace.root_path()) {
                 if let Some(content) = workspace.directory.find_dir_content(vfs, p) {
@@ -66,7 +66,7 @@ impl Workspaces {
 #[derive(Debug, Clone)]
 pub struct Workspace {
     root_path: Rc<Box<str>>,
-    directory: Rc<DirContent>,
+    directory: Rc<Directory>,
     //watcher: dyn notify::Watcher,
 }
 
@@ -146,7 +146,7 @@ impl Workspace {
         unreachable!()
     }
 
-    pub fn directory(&self) -> &DirContent {
+    pub fn directory(&self) -> &Directory {
         &self.directory
     }
 
@@ -186,7 +186,7 @@ pub enum DirOrFile {
         name: Box<str>,
         invalidations: Invalidations,
     },
-    Directory(Rc<DirContent>),
+    Directory(Rc<Directory>),
 }
 
 #[derive(Debug, Clone)]
@@ -195,7 +195,7 @@ pub struct FileEntry {
     pub file_index: WorkspaceFileIndex,
 }
 
-fn ensure_dirs_and_file<'a>(rc: &Rc<DirContent>, vfs: &dyn Vfs, path: &'a str) -> AddedFile {
+fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) -> AddedFile {
     let (name, rest) = vfs.split_off_folder(path);
     if let Some(rest) = rest {
         let mut invs = Default::default();
@@ -210,7 +210,7 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<DirContent>, vfs: &dyn Vfs, path: &'a str) -
                 _ => todo!(),
             }
         };
-        let dir2 = Rc::new(DirContent::default());
+        let dir2 = Rc::new(Directory::default());
         let mut result = ensure_dirs_and_file(&dir2, vfs, rest);
         rc.entries.borrow_mut().push(Rc::new(DirEntry {
             name: name.into(),
@@ -219,7 +219,7 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<DirContent>, vfs: &dyn Vfs, path: &'a str) -
         result.invalidations.extend(invs);
         result
     } else {
-        DirContent::ensure_file(rc.clone(), vfs, name)
+        Directory::ensure_file(rc.clone(), vfs, name)
     }
 }
 
@@ -247,7 +247,7 @@ impl DirEntry {
         }
     }
 
-    fn expect_directory_entries(&self) -> &Rc<DirContent> {
+    fn expect_directory_entries(&self) -> &Rc<Directory> {
         match &self.type_ {
             DirOrFile::Directory(dir) => dir,
             _ => unreachable!(),
@@ -268,7 +268,7 @@ impl DirEntry {
 }
 
 #[derive(Debug, Default, Clone)]
-pub struct DirContent {
+pub struct Directory {
     entries: RefCell<Vec<Rc<DirEntry>>>,
 }
 
@@ -276,7 +276,7 @@ pub struct DirContent {
 pub struct AddedFile {
     pub invalidations: Invalidations,
     pub file_entry: Rc<FileEntry>,
-    pub directory: Rc<DirContent>,
+    pub directory: Rc<Directory>,
 }
 
 impl AddedFile {
@@ -288,7 +288,7 @@ impl AddedFile {
     }
 }
 
-impl DirContent {
+impl Directory {
     pub fn iter(&self) -> VecRefWrapper<Rc<DirEntry>> {
         VecRefWrapper(self.entries.borrow())
     }
@@ -311,7 +311,7 @@ impl DirContent {
         }))
     }
 
-    fn ensure_file(directory: Rc<DirContent>, vfs: &dyn Vfs, name: &str) -> AddedFile {
+    fn ensure_file(directory: Rc<Directory>, vfs: &dyn Vfs, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
         let entry = directory
             .search(name)
@@ -407,7 +407,7 @@ impl DirContent {
         }
     }
 
-    fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<DirContent>> {
+    fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<Directory>> {
         let (name, rest) = vfs.split_off_folder(path);
         for n in self.entries.borrow().iter() {
             if name == n.name.as_ref() {

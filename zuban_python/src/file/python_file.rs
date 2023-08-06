@@ -21,7 +21,7 @@ use crate::matching::ResultContext;
 use crate::name::{Names, TreeName, TreePosition};
 use crate::node_ref::NodeRef;
 use crate::utils::{InsertOnlyVec, SymbolTable};
-use crate::workspaces::DirContent;
+use crate::workspaces::Directory;
 use crate::PythonProject;
 
 #[derive(Default, Debug)]
@@ -65,7 +65,7 @@ pub struct PythonFile {
     file_index: Cell<Option<FileIndex>>,
     issues: Diagnostics,
     pub star_imports: RefCell<Vec<StarImport>>,
-    pub package_dir: Option<Rc<DirContent>>,
+    pub package_dir: Option<Rc<Directory>>,
     sub_files: RefCell<HashMap<CodeIndex, FileIndex>>,
     pub(crate) super_file: Option<FileIndex>,
 
@@ -206,7 +206,7 @@ impl fmt::Debug for PythonFile {
 }
 
 impl<'db> PythonFile {
-    pub fn new(package_dir: Option<Rc<DirContent>>, code: Box<str>) -> Self {
+    pub fn new(package_dir: Option<Rc<Directory>>, code: Box<str>) -> Self {
         let tree = Tree::parse(code);
         let length = tree.length();
         Self {
