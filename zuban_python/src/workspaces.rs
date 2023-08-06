@@ -72,7 +72,10 @@ pub struct Workspace {
 
 impl Workspace {
     fn new(loaders: &[Box<dyn FileStateLoader>], path: Box<str>) -> Self {
-        let mut stack = vec![(PathBuf::from(path.as_ref()), DirEntry::new_dir("".into()))];
+        let mut stack = vec![(
+            PathBuf::from(path.as_ref()),
+            DirectoryEntry::new_dir("".into()),
+        )];
         let mut first = true;
         // TODO optimize if there are a lot of files
         for entry in WalkDir::new(path.as_ref())
@@ -109,7 +112,10 @@ impl Workspace {
                 match entry.metadata() {
                     Ok(m) => {
                         if m.is_dir() {
-                            stack.push((entry.path().to_owned(), DirEntry::new_dir(name.into())));
+                            stack.push((
+                                entry.path().to_owned(),
+                                DirectoryEntry::new_dir(name.into()),
+                            ));
                         } else {
                             stack
                                 .last_mut()
@@ -118,7 +124,7 @@ impl Workspace {
                                 .expect_directory_entries()
                                 .entries
                                 .borrow_mut()
-                                .push(Rc::new(DirEntry::new_file(name.into())));
+                                .push(Rc::new(DirectoryEntry::new_file(name.into())));
                         }
                     }
                     Err(e) => {
@@ -173,7 +179,7 @@ impl WorkspaceFileIndex {
 }
 
 pub enum Parent {
-    Directory(Weak<DirEntry>),
+    Directory(Weak<DirectoryEntry>),
     // This is not an Rc<str>, because that would make the enum 8 bytes bigger. It's used a lot, so
     // this is probably better.
     Workspace(Rc<Box<str>>),
@@ -212,7 +218,7 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
         };
         let dir2 = Directory::new(Box::from(name));
         let mut result = ensure_dirs_and_file(&dir2, vfs, rest);
-        rc.entries.borrow_mut().push(Rc::new(DirEntry {
+        rc.entries.borrow_mut().push(Rc::new(DirectoryEntry {
             name: name.into(),
             type_: DirOrFile::Directory(dir2),
         }));
@@ -224,12 +230,12 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
 }
 
 #[derive(Debug, Clone)]
-pub struct DirEntry {
+pub struct DirectoryEntry {
     pub name: Box<str>,
     pub type_: DirOrFile,
 }
 
-impl DirEntry {
+impl DirectoryEntry {
     pub fn new_dir(name: Box<str>) -> Self {
         Self {
             name: name.clone(),
@@ -269,7 +275,7 @@ impl DirEntry {
 
 #[derive(Debug, Clone)]
 pub struct Directory {
-    entries: RefCell<Vec<Rc<DirEntry>>>,
+    entries: RefCell<Vec<Rc<DirectoryEntry>>>,
     name: Box<str>,
 }
 
@@ -296,7 +302,7 @@ impl Directory {
             name,
         })
     }
-    pub fn iter(&self) -> VecRefWrapper<Rc<DirEntry>> {
+    pub fn iter(&self) -> VecRefWrapper<Rc<DirectoryEntry>> {
         VecRefWrapper(self.entries.borrow())
     }
 
@@ -306,7 +312,7 @@ impl Directory {
             .retain(|f| f.name.as_ref() != name)
     }
 
-    pub fn search(&self, name: &str) -> Option<RefMut<Rc<DirEntry>>> {
+    pub fn search(&self, name: &str) -> Option<RefMut<Rc<DirectoryEntry>>> {
         let borrow = self.entries.borrow_mut();
         // We need to run this search twice, because Rust needs #![feature(cell_filter_map)]
         // https://github.com/rust-lang/rust/issues/81061
@@ -342,7 +348,7 @@ impl Directory {
             })
             .unwrap_or_else(|| {
                 let mut borrow = directory.entries.borrow_mut();
-                let entry = Rc::new(DirEntry::new_file(name.into()));
+                let entry = Rc::new(DirectoryEntry::new_file(name.into()));
                 borrow.push(entry.clone());
                 entry
             });
@@ -381,7 +387,7 @@ impl Directory {
         } else {
             let invalidations = Invalidations::default();
             invalidations.add(invalidates);
-            vec.push(Rc::new(DirEntry {
+            vec.push(Rc::new(DirectoryEntry {
                 name: name.clone(),
                 type_: DirOrFile::MissingEntry {
                     invalidations,
