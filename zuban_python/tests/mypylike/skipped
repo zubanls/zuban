@@ -1,6 +1,7 @@
 # Next up
 invalid_namespace_types_import_from
 testProtocolWithNestedClass
+testNewAnalyzerTypeVarForwardReferenceErrors
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
@@ -2428,12 +2429,6 @@ testScriptsAreNotModules
 
 # __doc__ definitions
 testNewNamedTupleDocString
-
-# Formatting class in reveal_type (stashed in 860494e, see also https://github.com/python/mypy/issues/13062)
-testNewAnalyzerShadowOuterDefinitionBasedOnOrderTwoPasses
-testNewAnalyzerPlaceholderFromOuterScope
-testAliasInImportCycle3
-testNewAnalyzerTypeVarForwardReferenceErrors
 
 # Aliases in Mypy define generics as X = Foo as Foo[Any, Any]
 testAliasToTupleAndCallable
