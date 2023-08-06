@@ -735,12 +735,8 @@ pub struct Namespace {
 }
 
 impl Namespace {
-    pub fn qualified_name(&self, db: &Database) -> String {
-        db.vfs.dir_and_name(&self.path).1.into()
-    }
-
-    pub fn name(&self, db: &Database) -> &str {
-        db.vfs.dir_and_name(&self.path).1
+    pub fn qualified_name(&self) -> String {
+        self.content.name.to_string()
     }
 }
 

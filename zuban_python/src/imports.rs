@@ -19,7 +19,7 @@ impl ImportResult {
     pub fn qualified_name(&self, db: &Database) -> String {
         match self {
             Self::File(file_index) => Module::from_file_index(db, *file_index).qualified_name(db),
-            Self::Namespace(ns) => ns.qualified_name(db),
+            Self::Namespace(ns) => ns.qualified_name(),
         }
     }
 

@@ -631,7 +631,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 DbType::Any
             }
             TypeContent::Namespace(n) => {
-                self.add_module_issue(node_ref, &n.qualified_name(self.inference.i_s.db));
+                self.add_module_issue(node_ref, &n.qualified_name());
                 DbType::Any
             }
             TypeContent::TypeAlias(a) => {
