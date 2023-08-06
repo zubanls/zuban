@@ -5,7 +5,7 @@ use crate::debug;
 use crate::file::File;
 use crate::file::PythonFile;
 use crate::type_helpers::Module;
-use crate::workspaces::{Directory, DirectoryEntry};
+use crate::workspaces::{Directory, DirectoryEntry, Parent};
 
 const SEPARATOR: &str = "/"; // TODO different separator
 
@@ -145,7 +145,7 @@ pub fn python_import<'a>(
 
 fn load_init_file(
     db: &Database,
-    content: &Rc<Directory>,
+    content: &Directory,
     on_new: impl Fn(&str) -> Box<str>,
 ) -> Option<FileIndex> {
     for child in &content.iter() {
@@ -163,16 +163,11 @@ fn load_init_file(
 
 pub fn find_ancestor(db: &Database, file: &PythonFile, level: usize) -> Option<ImportResult> {
     debug_assert!(level > 0);
-    let mut path = file.file_path(db);
-    for _ in 0..level {
-        if let (Some(dir), _) = db.vfs.dir_and_name(path) {
-            path = dir;
-        } else {
-            todo!()
-        }
+    let mut parent = file.file_entry(db).parent.maybe_dir().ok()?;
+    for _ in 1..level {
+        parent = parent.parent.maybe_dir().ok()?;
     }
-    db.workspaces
-        .find_dir_content(db.vfs.as_ref(), path)
-        .and_then(|dir_content| load_init_file(db, &dir_content, |_| todo!()))
-        .map(ImportResult::File)
+    Some(ImportResult::File(
+        load_init_file(db, &parent, |_| todo!()).unwrap_or_else(|| todo!()),
+    ))
 }

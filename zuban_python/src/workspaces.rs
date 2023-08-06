@@ -55,17 +55,6 @@ impl Workspaces {
         // TODO this should probably not be needed
         self.0.last().unwrap()
     }
-
-    pub fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<Directory>> {
-        for workspace in &self.0 {
-            if let Some(p) = path.strip_prefix(workspace.root_path()) {
-                if let Some(content) = workspace.directory.find_dir_content(vfs, p) {
-                    return Some(content);
-                }
-            }
-        }
-        None
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -191,6 +180,15 @@ pub enum Parent {
     // This is not an Rc<str>, because that would make the enum 8 bytes bigger. It's used a lot, so
     // this is probably better.
     Workspace(Rc<Box<str>>),
+}
+
+impl Parent {
+    pub fn maybe_dir(&self) -> Result<Rc<Directory>, &Rc<Box<str>>> {
+        match self {
+            Self::Directory(dir) => Ok(dir.upgrade().expect("THere should always be a parent")),
+            Self::Workspace(w) => Err(w),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
@@ -417,24 +415,6 @@ impl Directory {
         }
     }
 
-    fn find_dir_content(&self, vfs: &dyn Vfs, path: &str) -> Option<Rc<Directory>> {
-        let (name, rest) = vfs.split_off_folder(path);
-        for n in self.entries.borrow().iter() {
-            if name == n.name() {
-                match n {
-                    DirectoryEntry::Directory(files) => {
-                        return match rest {
-                            Some(rest) => files.find_dir_content(vfs, rest),
-                            None => Some(files.clone()),
-                        };
-                    }
-                    DirectoryEntry::File(_) => unreachable!(),
-                    DirectoryEntry::MissingEntry { .. } => unreachable!(),
-                }
-            }
-        }
-        None
-    }
     pub fn for_each_file(&self, callable: &mut impl FnMut(FileIndex)) {
         for n in self.entries.borrow_mut().iter_mut() {
             n.for_each_file(callable)
