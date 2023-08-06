@@ -183,7 +183,7 @@ pub enum Parent {
 
 #[derive(Debug, Clone)]
 pub enum DirOrFile {
-    File(Rc<File>),
+    File(Rc<FileEntry>),
     MissingEntry {
         name: Box<str>,
         invalidations: Invalidations,
@@ -192,7 +192,7 @@ pub enum DirOrFile {
 }
 
 #[derive(Debug, Clone)]
-pub struct File {
+pub struct FileEntry {
     pub name: Box<str>,
     pub file_index: WorkspaceFileIndex,
 }
@@ -249,7 +249,7 @@ impl DirEntry {
     pub fn new_file(name: Box<str>) -> Self {
         Self {
             name: name.clone(),
-            type_: DirOrFile::File(Rc::new(File {
+            type_: DirOrFile::File(Rc::new(FileEntry {
                 name,
                 file_index: WorkspaceFileIndex::none(),
             })),
@@ -332,7 +332,7 @@ impl DirContent {
                             unreachable!();
                         };
                         invalidations = inv.take();
-                        mut_entry.type_ = DirOrFile::File(Rc::new(File {
+                        mut_entry.type_ = DirOrFile::File(Rc::new(FileEntry {
                             name: mut_entry.name.clone(),//std::mem::replace(&mut mut_entry.name, Box::from("")),
                             file_index: WorkspaceFileIndex::none()
                         }));
