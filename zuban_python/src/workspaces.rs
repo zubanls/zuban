@@ -210,7 +210,7 @@ fn ensure_dirs_and_file<'a>(rc: &Rc<Directory>, vfs: &dyn Vfs, path: &'a str) ->
                 _ => todo!(),
             }
         };
-        let dir2 = Rc::new(Directory::default());
+        let dir2 = Directory::new(Box::from(name));
         let mut result = ensure_dirs_and_file(&dir2, vfs, rest);
         rc.entries.borrow_mut().push(Rc::new(DirEntry {
             name: name.into(),
@@ -232,8 +232,8 @@ pub struct DirEntry {
 impl DirEntry {
     pub fn new_dir(name: Box<str>) -> Self {
         Self {
-            name,
-            type_: DirOrFile::Directory(Default::default()),
+            name: name.clone(),
+            type_: DirOrFile::Directory(Directory::new(Box::from(name))),
         }
     }
 
@@ -267,9 +267,10 @@ impl DirEntry {
     }
 }
 
-#[derive(Debug, Default, Clone)]
+#[derive(Debug, Clone)]
 pub struct Directory {
     entries: RefCell<Vec<Rc<DirEntry>>>,
+    name: Box<str>,
 }
 
 #[derive(Debug)]
@@ -289,6 +290,12 @@ impl AddedFile {
 }
 
 impl Directory {
+    pub fn new(name: Box<str>) -> Rc<Self> {
+        Rc::new(Self {
+            entries: Default::default(),
+            name,
+        })
+    }
     pub fn iter(&self) -> VecRefWrapper<Rc<DirEntry>> {
         VecRefWrapper(self.entries.borrow())
     }
