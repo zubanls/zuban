@@ -196,14 +196,14 @@ pub struct FileEntry {
 
 fn ensure_dirs_and_file<'a>(
     parent: Parent,
-    rc: &Rc<Directory>,
+    dir: &Directory,
     vfs: &dyn Vfs,
     path: &'a str,
 ) -> AddedFile {
     let (name, rest) = vfs.split_off_folder(path);
     if let Some(rest) = rest {
         let mut invs = Default::default();
-        if let Some(x) = rc.search(name) {
+        if let Some(x) = dir.search(name) {
             match &*x {
                 DirectoryEntry::Directory(rc) => {
                     return ensure_dirs_and_file(
@@ -216,7 +216,7 @@ fn ensure_dirs_and_file<'a>(
                 DirectoryEntry::MissingEntry { invalidations, .. } => {
                     invs = invalidations.take();
                     drop(x);
-                    rc.remove_name(name);
+                    dir.remove_name(name);
                 }
                 _ => todo!(),
             }
@@ -224,13 +224,13 @@ fn ensure_dirs_and_file<'a>(
         let dir2 = Directory::new(Box::from(name));
         let mut result =
             ensure_dirs_and_file(Parent::Directory(Rc::downgrade(&dir2)), &dir2, vfs, rest);
-        rc.entries
+        dir.entries
             .borrow_mut()
             .push(DirectoryEntry::Directory(dir2));
         result.invalidations.extend(invs);
         result
     } else {
-        Directory::ensure_file(parent, rc.clone(), vfs, name)
+        Directory::ensure_file(parent, dir, vfs, name)
     }
 }
 
@@ -324,12 +324,7 @@ impl Directory {
         }))
     }
 
-    fn ensure_file(
-        parent: Parent,
-        directory: Rc<Directory>,
-        vfs: &dyn Vfs,
-        name: &str,
-    ) -> AddedFile {
+    fn ensure_file(parent: Parent, directory: &Directory, vfs: &dyn Vfs, name: &str) -> AddedFile {
         let mut invalidations = Invalidations::default();
         let entry = if let Some(mut entry) = directory.search(name) {
             match &mut *entry {
