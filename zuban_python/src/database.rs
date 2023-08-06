@@ -26,8 +26,9 @@ use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
 use crate::type_helpers::{Class, Module};
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
-use crate::workspaces::DirEntry;
-use crate::workspaces::{DirContent, DirOrFile, Invalidations, WorkspaceFileIndex, Workspaces};
+use crate::workspaces::{
+    DirContent, DirOrFile, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
+};
 use crate::PythonProject;
 
 thread_local! {
@@ -2955,7 +2956,7 @@ impl Database {
 
     pub fn load_sub_file(&self, super_file: &PythonFile, file: PythonFile) -> &PythonFile {
         let index = self.add_file_state(Box::pin(LanguageFileState::new_parsed(
-            self.file_state(super_file.file_index()).dir_entry(),
+            self.file_state(super_file.file_index()).file_entry(),
             "".into(),
             file,
         )));
@@ -2964,7 +2965,7 @@ impl Database {
 
     pub fn load_file_from_workspace(
         &self,
-        dir_entry: Rc<DirEntry>,
+        file_entry: Rc<FileEntry>,
         dir: Rc<DirContent>,
         path: Box<str>,
         index: &WorkspaceFileIndex,
@@ -2972,7 +2973,7 @@ impl Database {
         // A loader should be available for all files in the workspace.
         let loader = self.loader(&path).unwrap();
         let file_index = self.add_file_state(if let Some(code) = self.vfs.read_file(&path) {
-            loader.load_parsed(dir_entry, dir, path, code.into())
+            loader.load_parsed(file_entry, dir, path, code.into())
         } else {
             //loader.inexistent_file_state(path)
             todo!()
@@ -2992,7 +2993,7 @@ impl Database {
         // TODO there could be no loader...
         let loader = self.loader(&path).unwrap();
         let file_state = loader.load_parsed(
-            ensured.entry.clone(),
+            ensured.file_entry.clone(),
             ensured.directory.clone(),
             path.clone(),
             code,
@@ -3097,8 +3098,15 @@ impl Database {
         let loader = self.loader(p).unwrap();
         let code = self.vfs.read_file(p).unwrap();
         let entry = dir.search(self.vfs.dir_and_name(p).1).unwrap().clone();
-        let file_index =
-            self.add_file_state(loader.load_parsed(entry, dir.clone(), p.into(), code.into()));
+        let DirOrFile::File(file_entry) = &entry.type_ else {
+            unreachable!()
+        };
+        let file_index = self.add_file_state(loader.load_parsed(
+            file_entry.clone(),
+            dir.clone(),
+            p.into(),
+            code.into(),
+        ));
         self.loaded_python_file(file_index)
     }
 

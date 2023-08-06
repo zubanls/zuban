@@ -111,7 +111,7 @@ pub fn python_import<'a>(
                 if is_py_file || entry.name.as_ref() == format!("{name}.pyi") {
                     if file.file_index.get().is_none() {
                         db.load_file_from_workspace(
-                            entry.clone(),
+                            file.clone(),
                             dir.clone(),
                             format!("{dir_path}{SEPARATOR}{}", entry.name).into(),
                             &file.file_index,
@@ -156,7 +156,7 @@ fn load_init_file(
             if child.name.as_ref() == "__init__.py" || child.name.as_ref() == "__init__.pyi" {
                 if file.file_index.get().is_none() {
                     db.load_file_from_workspace(
-                        child.clone(),
+                        file.clone(),
                         content.clone(),
                         on_new(&child.name),
                         &file.file_index,

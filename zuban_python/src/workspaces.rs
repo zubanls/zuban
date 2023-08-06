@@ -282,7 +282,7 @@ pub struct DirContent(RefCell<Vec<Rc<DirEntry>>>);
 #[derive(Debug)]
 pub struct AddedFile {
     pub invalidations: Invalidations,
-    pub entry: Rc<DirEntry>,
+    pub file_entry: Rc<FileEntry>,
     pub directory: Rc<DirContent>,
 }
 
@@ -290,11 +290,8 @@ impl AddedFile {
     pub fn set_file_index(&self, index: FileIndex) {
         // Theoretically we could just search in the directory for the entry again, but I'm too
         // lazy for that and it's faster this way.
-        let DirOrFile::File(file) = &self.entry.type_ else {
-            unreachable!()
-        };
-        debug_assert!(file.file_index.get().is_none());
-        file.file_index.set(index);
+        debug_assert!(self.file_entry.file_index.get().is_none());
+        self.file_entry.file_index.set(index);
     }
 }
 
@@ -325,7 +322,7 @@ impl DirContent {
             .search(name)
             .map(|mut entry| {
                 match &entry.type_ {
-                    DirOrFile::File(index) => (),
+                    DirOrFile::File(file) => (),
                     DirOrFile::MissingEntry{..} => {
                         let mut_entry = &mut Rc::make_mut(&mut entry);
                         let DirOrFile::MissingEntry{invalidations: inv, ..} = &mut mut_entry.type_ else {
@@ -347,10 +344,13 @@ impl DirContent {
                 borrow.push(entry.clone());
                 entry
             });
+        let DirOrFile::File(file_entry) = &entry.type_ else {
+            unreachable!()
+        };
         AddedFile {
             invalidations,
             directory,
-            entry,
+            file_entry: file_entry.clone(),
         }
     }
 

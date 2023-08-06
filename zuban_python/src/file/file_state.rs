@@ -10,7 +10,7 @@ use crate::diagnostics::{Diagnostic, DiagnosticConfig};
 use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::name::{Name, Names, TreePosition};
-use crate::workspaces::{DirContent, DirEntry, Invalidations};
+use crate::workspaces::{DirContent, FileEntry, Invalidations};
 use crate::PythonProject;
 use parsa_python_ast::{CodeIndex, Keyword, NodeIndex};
 
@@ -76,7 +76,7 @@ pub trait FileStateLoader {
 
     fn load_parsed(
         &self,
-        dir_entry: Rc<DirEntry>,
+        file_entry: Rc<FileEntry>,
         dir: Rc<DirContent>,
         path: Box<str>,
         code: Box<str>,
@@ -104,7 +104,7 @@ impl FileStateLoader for PythonFileLoader {
 
     fn load_parsed(
         &self,
-        dir_entry: Rc<DirEntry>,
+        file_entry: Rc<FileEntry>,
         dir: Rc<DirContent>,
         path: Box<str>,
         code: Box<str>,
@@ -113,7 +113,7 @@ impl FileStateLoader for PythonFileLoader {
         let package_dir =
             (path.ends_with("/__init__.py") || path.ends_with("/__init__.pyi")).then_some(dir);
         Box::pin(LanguageFileState::new_parsed(
-            dir_entry,
+            file_entry,
             path,
             PythonFile::new(package_dir, code),
         ))
@@ -165,7 +165,7 @@ pub trait File: std::fmt::Debug + AsAny {
 
 pub trait FileState: fmt::Debug + Unpin {
     fn path(&self) -> &str;
-    fn dir_entry(&self) -> Rc<DirEntry>;
+    fn file_entry(&self) -> Rc<FileEntry>;
     fn file(&self, reader: &dyn Vfs) -> Option<&(dyn File + 'static)>;
     fn maybe_loaded_file_mut(&mut self) -> Option<&mut dyn File>;
     fn set_file_index(&self, index: FileIndex);
@@ -179,8 +179,8 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
         &self.path
     }
 
-    fn dir_entry(&self) -> Rc<DirEntry> {
-        self.dir_entry.clone()
+    fn file_entry(&self) -> Rc<FileEntry> {
+        self.file_entry.clone()
     }
 
     fn file(&self, file_system_reader: &dyn Vfs) -> Option<&(dyn File + 'static)> {
@@ -221,7 +221,7 @@ impl<F: File + Unpin> FileState for LanguageFileState<F> {
 
 pub struct LanguageFileState<F: 'static> {
     path: Box<str>,
-    dir_entry: Rc<DirEntry>,
+    file_entry: Rc<FileEntry>,
     state: InternalFileExistence<F>,
     invalidates: Invalidations,
 }
@@ -237,9 +237,9 @@ impl<F> fmt::Debug for LanguageFileState<F> {
 }
 
 impl<F: File> LanguageFileState<F> {
-    pub fn new_parsed(dir_entry: Rc<DirEntry>, path: Box<str>, file: F) -> Self {
+    pub fn new_parsed(file_entry: Rc<FileEntry>, path: Box<str>, file: F) -> Self {
         Self {
-            dir_entry,
+            file_entry,
             path,
             state: InternalFileExistence::Parsed(file),
             invalidates: Default::default(),
