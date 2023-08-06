@@ -72,10 +72,7 @@ pub struct Workspace {
 
 impl Workspace {
     fn new(loaders: &[Box<dyn FileStateLoader>], path: Box<str>) -> Self {
-        let mut stack = vec![(
-            PathBuf::from(path.as_ref()),
-            DirectoryEntry::new_dir("".into()),
-        )];
+        let mut stack = vec![(PathBuf::from(path.as_ref()), Directory::new("".into()))];
         let mut first = true;
         // TODO optimize if there are a lot of files
         for entry in WalkDir::new(path.as_ref())
@@ -102,26 +99,21 @@ impl Workspace {
                     .last_mut()
                     .unwrap()
                     .1
-                    .expect_directory_entries()
                     .entries
                     .borrow_mut()
-                    .push(n);
+                    .push(DirectoryEntry::Directory(n));
             }
             let name = entry.file_name();
             if let Some(name) = name.to_str() {
                 match entry.metadata() {
                     Ok(m) => {
                         if m.is_dir() {
-                            stack.push((
-                                entry.path().to_owned(),
-                                DirectoryEntry::new_dir(name.into()),
-                            ));
+                            stack.push((entry.path().to_owned(), Directory::new(name.into())));
                         } else {
                             stack
                                 .last_mut()
                                 .unwrap()
                                 .1
-                                .expect_directory_entries()
                                 .entries
                                 .borrow_mut()
                                 .push(DirectoryEntry::new_file(name.into()));
@@ -138,13 +130,12 @@ impl Workspace {
             if let Some(parent) = stack.last_mut() {
                 parent
                     .1
-                    .expect_directory_entries()
                     .entries
                     .borrow_mut()
-                    .push(current.1)
+                    .push(DirectoryEntry::Directory(current.1))
             } else {
                 return Self {
-                    directory: current.1.expect_directory_entries().clone(),
+                    directory: current.1,
                     root_path: Rc::new(path),
                 };
             }
@@ -245,13 +236,6 @@ impl DirectoryEntry {
             DirectoryEntry::File(file) => &file.name,
             DirectoryEntry::Directory(dir) => &dir.name,
             DirectoryEntry::MissingEntry { name, .. } => name,
-        }
-    }
-
-    fn expect_directory_entries(&self) -> &Rc<Directory> {
-        match self {
-            DirectoryEntry::Directory(dir) => dir,
-            _ => unreachable!(),
         }
     }
 
