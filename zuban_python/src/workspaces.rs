@@ -78,7 +78,10 @@ pub struct Workspace {
 impl Workspace {
     fn new(loaders: &[Box<dyn FileStateLoader>], root_path: Box<str>) -> Self {
         let root_path = Rc::new(root_path);
-        let mut stack = vec![(PathBuf::from(&**root_path), Directory::new("".into()))];
+        let mut stack = vec![(
+            PathBuf::from(&**root_path),
+            Directory::new(Parent::Workspace(root_path.clone()), "".into()),
+        )];
         let mut first = true;
         // TODO optimize if there are a lot of files
         for entry in WalkDir::new(&**root_path)
@@ -118,7 +121,10 @@ impl Workspace {
                             _ => Parent::Directory(Rc::downgrade(&stack.last().unwrap().1)),
                         };
                         if m.is_dir() {
-                            stack.push((entry.path().to_owned(), Directory::new(name.into())));
+                            stack.push((
+                                entry.path().to_owned(),
+                                Directory::new(parent, name.into()),
+                            ));
                         } else {
                             stack
                                 .last_mut()
@@ -221,7 +227,7 @@ fn ensure_dirs_and_file<'a>(
                 _ => todo!(),
             }
         };
-        let dir2 = Directory::new(Box::from(name));
+        let dir2 = Directory::new(parent, Box::from(name));
         let mut result =
             ensure_dirs_and_file(Parent::Directory(Rc::downgrade(&dir2)), &dir2, vfs, rest);
         dir.entries
@@ -245,10 +251,6 @@ pub enum DirectoryEntry {
 }
 
 impl DirectoryEntry {
-    pub fn new_dir(name: Box<str>) -> Self {
-        Self::Directory(Directory::new(Box::from(name)))
-    }
-
     pub fn new_file(parent: Parent, name: Box<str>) -> Self {
         Self::File(Rc::new(FileEntry {
             name,
@@ -281,6 +283,7 @@ impl DirectoryEntry {
 #[derive(Debug, Clone)]
 pub struct Directory {
     entries: RefCell<Vec<DirectoryEntry>>,
+    pub parent: Parent,
     pub name: Box<str>,
 }
 
@@ -300,9 +303,10 @@ impl AddedFile {
 }
 
 impl Directory {
-    pub fn new(name: Box<str>) -> Rc<Self> {
+    fn new(parent: Parent, name: Box<str>) -> Rc<Self> {
         Rc::new(Self {
             entries: Default::default(),
+            parent,
             name,
         })
     }
