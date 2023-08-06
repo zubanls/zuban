@@ -101,7 +101,6 @@ impl Project {
             .workspaces
             .last()
             .directory()
-            .content
             .for_each_file(&mut |file_index| {
                 file_indexes.push(file_index);
             });

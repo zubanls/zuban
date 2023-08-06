@@ -88,7 +88,7 @@ pub fn python_import<'a>(
         match &entry.type_ {
             DirOrFile::Directory(dir2) => {
                 if entry.name.as_ref() == name {
-                    let result = load_init_file(db, &dir2.content, |child| {
+                    let result = load_init_file(db, &dir2, |child| {
                         format!(
                             "{dir_path}{SEPARATOR}{dir_name}{SEPARATOR}{child}",
                             dir_name = entry.name
@@ -99,11 +99,9 @@ pub fn python_import<'a>(
                         db.add_invalidates(*file_index, from_file);
                         return result.map(ImportResult::File);
                     }
-                    dir2.content
-                        .add_missing_entry(Box::from("__init__.py"), from_file);
-                    dir2.content
-                        .add_missing_entry(Box::from("__init__.pyi"), from_file);
-                    namespace_content = Some(dir2.content.clone());
+                    dir2.add_missing_entry(Box::from("__init__.py"), from_file);
+                    dir2.add_missing_entry(Box::from("__init__.pyi"), from_file);
+                    namespace_content = Some(dir2.clone());
                 }
             }
             DirOrFile::File(file) => {

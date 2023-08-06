@@ -3131,10 +3131,8 @@ impl Database {
 
         let builtins = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/builtins.pyi") as *const _;
         let typing = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/typing.pyi") as *const _;
-        let typeshed = self.py_load_tmp(
-            &typeshed_dir.content,
-            "../typeshed/stdlib/_typeshed/__init__.pyi",
-        ) as *const _;
+        let typeshed = self.py_load_tmp(&typeshed_dir, "../typeshed/stdlib/_typeshed/__init__.pyi")
+            as *const _;
         let types = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/types.pyi") as *const _;
         let abc = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/abc.pyi") as *const _;
         let enum_file = self.py_load_tmp(&stdlib_dir, "../typeshed/stdlib/enum.pyi") as *const _;
@@ -3146,7 +3144,7 @@ impl Database {
         ) as *const _;
 
         let collections = self.py_load_tmp(
-            &collections_dir.content,
+            &collections_dir,
             "../typeshed/stdlib/collections/__init__.pyi",
         ) as *const _;
 
