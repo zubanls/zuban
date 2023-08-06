@@ -1349,8 +1349,8 @@ fn add_protocol_mismatch(
 ) {
     match (full1.as_ref(), full2.as_ref()) {
         (DbType::Callable(c1), DbType::Callable(c2)) => {
-            let s1 = format_pretty_callable(i_s, c1);
-            let s2 = format_pretty_callable(i_s, c2);
+            let s1 = format_pretty_callable(i_s.db, c1);
+            let s2 = format_pretty_callable(i_s.db, c2);
             notes.push("    Expected:".into());
             notes.push(format!("        {s1}").into());
             notes.push("    Got:".into());

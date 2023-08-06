@@ -758,13 +758,13 @@ fn try_pretty_format(
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
         match inf.as_type(i_s).as_ref() {
             DbType::Callable(c) => {
-                notes.push(format!("{prefix}{}", format_pretty_callable(i_s, c)).into());
+                notes.push(format!("{prefix}{}", format_pretty_callable(i_s.db, c)).into());
                 return;
             }
             DbType::FunctionOverload(overloads) => {
                 for c in overloads.iter_functions() {
                     notes.push(format!("{prefix}@overload").into());
-                    notes.push(format!("{prefix}{}", format_pretty_callable(i_s, c)).into());
+                    notes.push(format!("{prefix}{}", format_pretty_callable(i_s.db, c)).into());
                 }
                 return;
             }

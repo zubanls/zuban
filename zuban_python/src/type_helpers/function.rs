@@ -1139,7 +1139,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             None => Type::new(&DbType::Any),
         };
         format_pretty_function_like(
-            i_s,
+            i_s.db,
             self.class,
             self.class.is_some()
                 && self
@@ -1922,7 +1922,7 @@ fn are_any_arguments_ambiguous_in_overload(
 }
 
 pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
-    i_s: &InferenceState<'db, '_>,
+    db: &'db Database,
     class: Option<Class>,
     avoid_self_annotation: bool,
     name: &str,
@@ -1933,16 +1933,16 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     let format_type = |t: &Type| {
         if let Some(func_class) = class {
             let t = t.replace_type_var_likes_and_self(
-                i_s.db,
+                db,
                 &mut |usage| {
-                    maybe_class_usage(i_s.db, &func_class, &usage)
+                    maybe_class_usage(db, &func_class, &usage)
                         .unwrap_or_else(|| usage.into_generic_item())
                 },
                 &mut || todo!(),
             );
-            t.format_short(i_s.db)
+            t.format_short(db)
         } else {
-            t.format_short(i_s.db)
+            t.format_short(db)
         }
     };
 
@@ -1951,7 +1951,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     let mut args = params
         .enumerate()
         .map(|(i, p)| {
-            let specific = p.specific(i_s.db);
+            let specific = p.specific(db);
             let annotation_str = match &specific {
                 WrappedParamSpecific::PositionalOnly(t)
                 | WrappedParamSpecific::PositionalOrKeyword(t)
@@ -1965,21 +1965,21 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                     todo!()
                 }
             };
-            let current_kind = p.kind(i_s.db);
+            let current_kind = p.kind(db);
             let stars = match current_kind {
                 ParamKind::Starred => "*",
                 ParamKind::DoubleStarred => "**",
                 _ => "",
             };
             let mut out = if i == 0 && avoid_self_annotation && stars.is_empty() {
-                p.name(i_s.db).unwrap().to_owned()
+                p.name(db).unwrap().to_owned()
             } else {
                 let mut out = if current_kind == ParamKind::PositionalOnly {
                     annotation_str.unwrap_or_else(|| Box::from("Any")).into()
                 } else {
                     format!(
                         "{stars}{}: {}",
-                        p.name(i_s.db).unwrap(),
+                        p.name(db).unwrap(),
                         annotation_str.as_deref().unwrap_or("Any")
                     )
                 };
@@ -2013,15 +2013,15 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 .iter()
                 .map(|t| match t {
                     TypeVarLike::TypeVar(t) => {
-                        let mut s = t.name(i_s.db).to_owned();
+                        let mut s = t.name(db).to_owned();
                         if let Some(bound) = &t.bound {
-                            s += &format!(" <: {}", Type::new(bound).format_short(i_s.db));
+                            s += &format!(" <: {}", Type::new(bound).format_short(db));
                         } else if !t.restrictions.is_empty() {
                             s += &format!(
                                 " in ({})",
                                 t.restrictions
                                     .iter()
-                                    .map(|t| Type::new(t).format_short(i_s.db))
+                                    .map(|t| Type::new(t).format_short(db))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             );

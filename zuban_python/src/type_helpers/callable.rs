@@ -57,19 +57,19 @@ impl<'a> Callable<'a> {
     }
 }
 
-pub fn format_pretty_callable(i_s: &InferenceState, callable: &CallableContent) -> Box<str> {
-    let name = callable.name.map(|s| s.as_str(i_s.db)).unwrap_or("");
+pub fn format_pretty_callable(db: &Database, callable: &CallableContent) -> Box<str> {
+    let name = callable.name.map(|s| s.as_str(db)).unwrap_or("");
     match &callable.params {
         CallableParams::Simple(params) => {
             let first_param = params
                 .iter()
                 .next()
                 .and_then(|p| p.param_specific.maybe_positional_db_type())
-                .map(|t| t.format_short(i_s.db));
+                .map(|t| t.format_short(db));
             format_pretty_function_like(
-                i_s,
+                db,
                 None,
-                callable.class_name.map(|c| c.as_str(i_s.db)) == first_param.as_deref(),
+                callable.class_name.map(|c| c.as_str(db)) == first_param.as_deref(),
                 name,
                 callable.type_vars.as_ref(),
                 params.iter(),
@@ -79,7 +79,7 @@ pub fn format_pretty_callable(i_s: &InferenceState, callable: &CallableContent) 
         CallableParams::WithParamSpec(_, _) => todo!(),
         CallableParams::Any => format!(
             "def {name}(*Any, **Any) -> {}",
-            callable.result_type.format_short(i_s.db)
+            callable.result_type.format_short(db)
         )
         .into(),
     }
