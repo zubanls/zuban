@@ -3105,6 +3105,25 @@ pub enum ParentScope {
     Class(NodeIndex),
 }
 
+impl ParentScope {
+    pub fn qualified_name(self, db: &Database, defined_at: NodeRef, name: &str) -> String {
+        let file = defined_at.file;
+        match self {
+            ParentScope::Module => format!("{}.{name}", Module::new(file).qualified_name(db)),
+            ParentScope::Class(node_index) => {
+                let parent_class = Class::with_undefined_generics(NodeRef::new(file, node_index));
+                format!("{}.{}", parent_class.qualified_name(db), name)
+            }
+            ParentScope::Function(node_index) => {
+                let node_ref = NodeRef::new(file, node_index);
+                let line = file.byte_to_line_column(defined_at.node_start_position()).0;
+                // Add the position like `foo.Bar@7`
+                format!("{}.{name}@{line}", Module::new(file).qualified_name(db))
+            }
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ClassStorage {
     pub class_symbol_table: SymbolTable,

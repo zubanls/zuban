@@ -1137,28 +1137,9 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
-        match self.class_storage.parent_scope {
-            ParentScope::Module => base_qualified_name!(self, db, self.name()),
-            ParentScope::Class(node_index) => {
-                let parent_class =
-                    Self::with_undefined_generics(NodeRef::new(self.node_ref.file, node_index));
-                format!("{}.{}", parent_class.qualified_name(db), self.name())
-            }
-            ParentScope::Function(node_index) => {
-                let node_ref = NodeRef::new(self.node_ref.file, node_index);
-                let line = self
-                    .node_ref
-                    .file
-                    .byte_to_line_column(self.node().start())
-                    .0;
-                // Add the position like `foo.Bar@7`
-                base_qualified_name!(self, db, format!("{}@{line}", self.name()))
-            }
-        }
-    }
-
-    fn module(&self) -> Module<'a> {
-        Module::new(self.node_ref.file)
+        self.class_storage
+            .parent_scope
+            .qualified_name(db, self.node_ref, self.name())
     }
 
     pub fn name(&self) -> &'a str {
