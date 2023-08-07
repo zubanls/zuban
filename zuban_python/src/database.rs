@@ -2626,14 +2626,14 @@ impl EnumMember {
             format!("Literal[{class_name}.{}]", self.name(format_data.db)).into()
         };
         match format_data.style {
-            FormatStyle::MypyRevealType => {
+            FormatStyle::Short => fmt(self.enum_.name.as_str(format_data.db)),
+            _ => {
                 let class_name = self
                     .enum_
                     .class(format_data.db)
                     .qualified_name(format_data.db);
                 fmt(&class_name)
             }
-            _ => fmt(self.enum_.name.as_str(format_data.db)),
         }
     }
 }
