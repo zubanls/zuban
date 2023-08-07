@@ -1049,12 +1049,12 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn execute(
         &self,
-        i_s: &InferenceState<'db, '_>,
+        original_i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        let i_s = &i_s.with_class_context(self);
+        let i_s = &original_i_s.with_class_context(self);
         let had_type_error = Cell::new(false);
         let d = |_: &FunctionOrCallable, _: &Database, _: Option<&Class>| {
             had_type_error.set(true);
@@ -1080,11 +1080,11 @@ impl<'db: 'a, 'a> Class<'a> {
             // overload outputs.
             let significant_call =
                 Callable::new(o.iter_functions().nth(1).unwrap(), Some(metaclass.class));
-            let result = significant_call.execute(i_s, args, on_type_error, result_context);
+            significant_call.execute(i_s, args, on_type_error, result_context);
             if had_type_error.get() {
                 return Inferred::new_any();
             }
-            return execute_functional_enum(i_s, *self, args, result_context)
+            return execute_functional_enum(original_i_s, *self, args, result_context)
                 .unwrap_or_else(Inferred::new_any);
         }
 

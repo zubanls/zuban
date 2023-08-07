@@ -1,7 +1,8 @@
 use std::cell::Cell;
 
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, Database, TypeVarLike};
+use crate::database::{CallableContent, Database, ParentScope, TypeVarLike};
+use crate::debug;
 use crate::file::TypeVarCallbackReturn;
 use crate::type_helpers::{Class, Function};
 
@@ -161,6 +162,16 @@ impl<'db, 'a> InferenceState<'db, 'a> {
             }
         }
         None
+    }
+
+    pub fn parent_scope(&self) -> ParentScope {
+        if let Some(func) = self.current_function() {
+            ParentScope::Function(func.node_ref.node_index)
+        } else if let Some(class) = self.current_class() {
+            ParentScope::Class(class.node_ref.node_index)
+        } else {
+            ParentScope::Module
+        }
     }
 
     pub fn is_diagnostic(&self) -> bool {
