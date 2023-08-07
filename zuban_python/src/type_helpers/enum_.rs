@@ -340,6 +340,7 @@ fn split_enum_members(i_s: &InferenceState, members: &mut EnumMembers, s: &DbStr
     let mut start = 0;
     for part in s.as_str(i_s.db).split(&[',', ' ']) {
         if part == "" {
+            start += 1;
             continue;
         }
         let name = match s {
