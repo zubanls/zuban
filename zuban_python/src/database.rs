@@ -2625,15 +2625,14 @@ impl EnumMember {
         let fmt = |class_name: &str| {
             format!("Literal[{class_name}.{}]", self.name(format_data.db)).into()
         };
+        let enum_name = self.enum_.name.as_str(format_data.db);
         match format_data.style {
-            FormatStyle::Short => fmt(self.enum_.name.as_str(format_data.db)),
-            _ => {
-                let class_name = self
-                    .enum_
-                    .class(format_data.db)
-                    .qualified_name(format_data.db);
-                fmt(&class_name)
-            }
+            FormatStyle::Short => fmt(enum_name),
+            _ => fmt(&self.enum_.parent_scope.qualified_name(
+                format_data.db,
+                NodeRef::from_link(format_data.db, self.enum_.defined_at),
+                enum_name,
+            )),
         }
     }
 }
@@ -2659,7 +2658,7 @@ pub struct Enum {
     pub name: StringSlice,
     pub class: PointLink,
     defined_at: PointLink,
-    parent: ParentScope,
+    parent_scope: ParentScope,
     pub members: Box<[EnumMemberDefinition]>,
     has_customized_new: OnceCell<bool>,
 }
@@ -2669,14 +2668,14 @@ impl Enum {
         name: StringSlice,
         class: PointLink,
         defined_at: PointLink,
-        parent: ParentScope,
+        parent_scope: ParentScope,
         members: Box<[EnumMemberDefinition]>,
         has_customized_new: OnceCell<bool>,
     ) -> Rc<Self> {
         Rc::new(Self {
             name,
             defined_at,
-            parent,
+            parent_scope,
             class,
             members,
             has_customized_new,

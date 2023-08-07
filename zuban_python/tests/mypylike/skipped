@@ -535,14 +535,8 @@ testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
 # qualified name
-testLiteralWithEnumsDeclaredUsingCallSyntax
-testEnumIncremental
-testFunctionalEnumListOfStrings
 testEnumReachabilityNoNarrowingForUnionMessiness
-testEnumCreatedFromStringLiteral
-enum_multi_literal
 testFunctionalEnumString
-testFunctionalEnumFlag
 testAnonymousEnum
 testAnonymousFunctionalEnum
 testEnumInClassBody
