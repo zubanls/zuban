@@ -40,7 +40,7 @@ pub fn lookup_on_enum_instance(
     if matches!(name, "value" | "_value_") {
         LookupResult::UnknownName(Inferred::gather_types_union(|add| {
             for member in enum_.members.iter() {
-                add(i_s, infer_value_on_member(i_s, from, enum_, member.value))
+                add(i_s, infer_value_on_member(i_s, enum_, member.value))
             }
         }))
     } else {
@@ -48,9 +48,8 @@ pub fn lookup_on_enum_instance(
     }
 }
 
-fn infer_value_on_member(
+pub fn infer_value_on_member(
     i_s: &InferenceState,
-    from: Option<NodeRef>,
     enum_: &Enum,
     definition: Option<PointLink>,
 ) -> Inferred {
@@ -60,7 +59,10 @@ fn infer_value_on_member(
         Some(link) if !enum_.has_customized_new(i_s) => {
             let node_ref = NodeRef::from_link(i_s.db, link);
             let inferred = if let Some(name) = node_ref.maybe_name() {
-                node_ref.file.inference(i_s).infer_name(name)
+                node_ref
+                    .file
+                    .inference(&i_s.with_enum_calculation_mode())
+                    .infer_name(name)
             } else {
                 let expr = node_ref.as_expression();
                 node_ref.file.inference(i_s).infer_expression(expr);
@@ -104,12 +106,9 @@ pub fn lookup_on_enum_member_instance(
         "name" => LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal::new(
             LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
         )))),
-        "value" | "_value_" => LookupResult::UnknownName(infer_value_on_member(
-            i_s,
-            from,
-            &member.enum_,
-            member.value(),
-        )),
+        "value" | "_value_" => {
+            LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, member.value()))
+        }
         "_ignore_" => LookupResult::None,
         _ => Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),
     }

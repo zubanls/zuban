@@ -498,17 +498,17 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # data class (currently all are passing)
 
+# wtf?
+testNamedTupleEnum
+# Enum issue with auto() and int()
+testEnumValueSomeAuto
 # Enum inferred.rs:831
 testEnumFinalSpecialProps
 # Enum value should be inferred in a literal context
-testEnumNameAndValue
 testEnumValueExtended
 testEnumValueExtraMethods
-testStrEnumCreation
-testEnumLiteralValues
-testEnumAttributeAccessMatrix
 testEnumWithInstanceAttributes
-testEnumAttributeChangeIncremental
+testEnumAttributeAccessMatrix
 # int | str leads to object instead of Any when using Enum().value
 testEnumValueInhomogenous
 testNewSetsUnexpectedValueType

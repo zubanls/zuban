@@ -18,6 +18,7 @@ enum Context<'db, 'a> {
 #[derive(Clone, Copy, Debug)]
 enum Mode<'a> {
     Normal,
+    EnumMemberCalculation,
     OverloadCheck { had_error: &'a Cell<bool> },
 }
 
@@ -99,6 +100,12 @@ impl<'db, 'a> InferenceState<'db, 'a> {
         new
     }
 
+    pub fn with_enum_calculation_mode(&self) -> Self {
+        let mut new = *self;
+        new.mode = Mode::EnumMemberCalculation;
+        new
+    }
+
     pub fn do_overload_check<T>(
         &self,
         mut callable: impl FnMut(&InferenceState<'db, '_>) -> T,
@@ -115,6 +122,10 @@ impl<'db, 'a> InferenceState<'db, 'a> {
 
     pub fn is_checking_overload(&self) -> bool {
         matches!(self.mode, Mode::OverloadCheck { .. })
+    }
+
+    pub fn is_calculating_enum_members(&self) -> bool {
+        matches!(self.mode, Mode::EnumMemberCalculation)
     }
 
     pub fn current_function(&self) -> Option<&'a Function<'a, 'a>> {
@@ -186,7 +197,7 @@ impl<'db, 'a> InferenceState<'db, 'a> {
                 had_error.set(true);
                 false
             }
-            Mode::Normal => true,
+            _ => true,
         }
     }
 }

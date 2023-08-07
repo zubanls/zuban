@@ -35,6 +35,7 @@ use crate::matching::{
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
+use crate::type_helpers::enum_::infer_value_on_member;
 use crate::type_helpers::format_pretty_callable;
 
 #[derive(Clone, Copy)]
@@ -282,29 +283,44 @@ impl<'db: 'a, 'a> Class<'a> {
             let node_ref = self.class_info_node_ref();
             node_ref.set_point(Point::new_calculating());
             let mut class_infos = self.calculate_class_infos(i_s);
+            let mut was_enum = None;
             if let MetaclassState::Some(link) = class_infos.metaclass {
                 if link == i_s.db.python_state.enum_meta_link() {
                     class_infos.class_type = ClassType::Enum;
                     let members = self.enum_members();
                     if !members.is_empty() {
+                        let enum_ = Enum::new(
+                            self.name_string_slice(),
+                            self.node_ref.as_link(),
+                            self.node_ref.as_link(),
+                            self.class_storage.parent_scope,
+                            members,
+                            OnceCell::new(),
+                        );
                         let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
-                            Enum::new(
-                                self.name_string_slice(),
-                                self.node_ref.as_link(),
-                                self.node_ref.as_link(),
-                                self.class_storage.parent_scope,
-                                members,
-                                OnceCell::new(),
-                            ),
+                            enum_.clone(),
                         ))));
                         // The locality is implicit, because we have a OnceCell that is inferred
                         // after what we are doing here.
                         name_def.insert_complex(c, Locality::ImplicitExtern);
+                        was_enum = Some(enum_);
                     }
                 }
             }
             node_ref.insert_complex(ComplexPoint::ClassInfos(class_infos), Locality::Todo);
             debug_assert!(node_ref.point().calculated());
+
+            if let Some(enum_) = was_enum {
+                // Precalculate the enum values here. Note that this is intentionally done after
+                // the insertion, to avoid recursions.
+                // We need to calculate here, because otherwise the normal class
+                // calculation will do it for us, which we probably do not want.
+                for member in enum_.members.iter() {
+                    if member.value.is_some() {
+                        infer_value_on_member(i_s, &enum_, member.value);
+                    }
+                }
+            }
         }
     }
 

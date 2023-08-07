@@ -45,7 +45,7 @@ impl<'a> ResultContext<'a, '_> {
     }
 
     pub fn is_literal_context<'db>(&self, i_s: &InferenceState<'db, '_>) -> bool {
-        if matches!(self, Self::ExpectLiteral) {
+        if matches!(self, Self::ExpectLiteral) || i_s.is_calculating_enum_members() {
             return true;
         }
         self.with_type_if_exists_and_replace_type_var_likes(
