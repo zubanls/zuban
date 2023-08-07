@@ -500,8 +500,6 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # wtf?
 testNamedTupleEnum
-# Enum issue with auto() and int()
-testEnumValueSomeAuto
 # Enum inferred.rs:831
 testEnumFinalSpecialProps
 # Enum value should be inferred in a literal context

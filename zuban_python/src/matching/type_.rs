@@ -2057,6 +2057,20 @@ impl<'a> Type<'a> {
             }
             _ => (),
         }
+        if let DbType::Literal(l) = self.as_ref() {
+            return i_s
+                .db
+                .python_state
+                .literal_type(&l.kind)
+                .common_base_type(i_s, other);
+        }
+        if let DbType::Literal(l) = other.as_ref() {
+            return i_s
+                .db
+                .python_state
+                .literal_type(&l.kind)
+                .common_base_type(i_s, self);
+        }
         i_s.db.python_state.object_db_type()
     }
 
