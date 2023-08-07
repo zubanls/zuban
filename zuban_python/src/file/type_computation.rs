@@ -739,8 +739,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 DbType::Any
             }
             TypeContent::EnumMember(m) => {
-                let mut format_data = FormatData::new_short(self.inference.i_s.db);
-                format_data.enable_verbose();
+                let format_data = FormatData::new_short(self.inference.i_s.db);
                 self.add_issue(
                     node_ref,
                     IssueType::InvalidType(

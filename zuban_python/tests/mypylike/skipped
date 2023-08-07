@@ -537,8 +537,6 @@ testFunctionalEnumListOfPairs
 testFinalWithMethodAssignment
 # qualified name
 testAnonymousFunctionalEnum
-testEnumInClassBody
-testFunctionalEnumInClassBody
 # Enum access merging leads to int | Any instead of Any
 testEnumValueUnionSimplification
 # Enum |

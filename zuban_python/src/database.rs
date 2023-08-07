@@ -2698,7 +2698,7 @@ impl Enum {
     pub fn format(&self, format_data: &FormatData) -> String {
         let enum_name = self.name.as_str(format_data.db);
         match format_data.style {
-            FormatStyle::Short => enum_name.to_string(),
+            FormatStyle::Short if !format_data.verbose => enum_name.to_string(),
             _ => self.parent_scope.qualified_name(
                 format_data.db,
                 NodeRef::from_link(format_data.db, self.defined_at),
