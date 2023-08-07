@@ -92,6 +92,7 @@ pub struct PythonState {
     abc_abstractmethod_index: NodeIndex,
     abc_abstractproperty_index: NodeIndex,
     enum_enum_meta_index: NodeIndex,
+    enum_enum_index: NodeIndex,
     enum_auto_index: NodeIndex,
     mypy_extensions_arg_func: NodeIndex,
     mypy_extensions_default_arg_func: NodeIndex,
@@ -150,6 +151,7 @@ impl PythonState {
             abc_abstractmethod_index: 0,
             abc_abstractproperty_index: 0,
             enum_enum_meta_index: 0,
+            enum_enum_index: 0,
             enum_auto_index: 0,
             mypy_extensions_arg_func: 0,
             mypy_extensions_default_arg_func: 0,
@@ -255,6 +257,7 @@ impl PythonState {
         cache_index!(builtins_type_index, db, builtins, "type");
         cache_index!(abc_abc_meta_index, db, abc, "ABCMeta");
         cache_index!(enum_enum_meta_index, db, enum_file, "EnumMeta");
+        cache_index!(enum_enum_index, db, enum_file, "Enum");
         cache_index!(enum_auto_index, db, enum_file, "auto");
         cache_index!(builtins_list_index, db, builtins, "list");
         cache_index!(builtins_dict_index, db, builtins, "dict");
@@ -514,6 +517,11 @@ impl PythonState {
     pub fn enum_meta_link(&self) -> PointLink {
         debug_assert!(self.enum_enum_meta_index != 0);
         PointLink::new(self.enum_file().file_index(), self.enum_enum_meta_index)
+    }
+
+    pub fn enum_node_ref(&self) -> NodeRef {
+        debug_assert!(self.enum_enum_index != 0);
+        NodeRef::new(self.enum_file(), self.enum_enum_index)
     }
 
     pub fn enum_auto_link(&self) -> PointLink {

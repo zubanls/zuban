@@ -19,7 +19,7 @@ use crate::{
     node_ref::NodeRef,
 };
 
-use super::{Class, Instance};
+use super::{Class, Instance, TypeOrClass};
 
 pub fn lookup_on_enum_class(
     i_s: &InferenceState,
@@ -102,16 +102,34 @@ pub fn lookup_on_enum_member_instance(
     member: &EnumMember,
     name: &str,
 ) -> LookupResult {
-    match name {
-        "name" => LookupResult::UnknownName(Inferred::from_type(DbType::Literal(Literal::new(
-            LiteralKind::String(DbString::RcStr(member.name(i_s.db).into())),
-        )))),
-        "value" | "_value_" => {
-            LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, member.value()))
+    let enum_class = member.enum_.class(i_s.db);
+    let is_enum = enum_class.mro(i_s.db).any(|(_, base)| match base {
+        TypeOrClass::Class(c) => c.node_ref == i_s.db.python_state.enum_node_ref(),
+        _ => false,
+    });
+    // An enum cannot be an Enum, but just an instance of the EnumType metaclass. In that case
+    // these specific hardcoded cases don't apply anymore.
+    if is_enum {
+        match name {
+            "name" | "_name_" => {
+                return LookupResult::UnknownName(Inferred::from_type(DbType::Literal(
+                    Literal::new(LiteralKind::String(DbString::RcStr(
+                        member.name(i_s.db).into(),
+                    ))),
+                )))
+            }
+            "value" | "_value_" => {
+                return LookupResult::UnknownName(infer_value_on_member(
+                    i_s,
+                    &member.enum_,
+                    member.value(),
+                ))
+            }
+            "_ignore_" => return LookupResult::None,
+            _ => (),
         }
-        "_ignore_" => LookupResult::None,
-        _ => Instance::new(member.enum_.class(i_s.db), None).lookup(i_s, from, name),
     }
+    Instance::new(enum_class, None).lookup(i_s, from, name)
 }
 
 fn lookup_members_on_enum(

@@ -498,7 +498,7 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # data class (currently all are passing)
 
-# enum _name_
+# IntEnum value
 testEnumAttributeAccessMatrix
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
