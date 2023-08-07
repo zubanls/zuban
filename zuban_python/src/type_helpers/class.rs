@@ -18,6 +18,7 @@ use crate::database::{
     NamedTuple, ParamSpecific, ParentScope, Point, PointLink, PointType, StringSlice, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, Variance,
 };
+use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{use_cached_annotation_type, File};
 use crate::file::{
@@ -35,7 +36,6 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
 use crate::type_helpers::format_pretty_callable;
-use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
 pub struct Class<'a> {
@@ -290,6 +290,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         let c = ComplexPoint::TypeInstance(DbType::Type(Rc::new(DbType::Enum(
                             Enum::new(
                                 self.name_string_slice(),
+                                self.node_ref.as_link(),
                                 self.node_ref.as_link(),
                                 self.class_storage.parent_scope,
                                 members,

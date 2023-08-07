@@ -200,6 +200,7 @@ pub fn execute_functional_enum(
         Enum::new(
             name,
             class.node_ref.as_link(),
+            args.as_node_ref().as_link(),
             ParentScope::Module,
             members,
             class.has_customized_enum_new(i_s).into(),
