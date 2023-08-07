@@ -18,7 +18,6 @@ impl DisplayedRecursive<'_> {
 
 #[derive(Clone, Copy)]
 pub enum ParamsStyle {
-    FunctionParams,
     CallableParamsInner,
     CallableParams,
     Unreachable,
@@ -123,6 +122,6 @@ impl<'db, 'a, 'b, 'c> FormatData<'db, 'a, 'b, 'c> {
         if let Some(matcher) = self.matcher {
             return matcher.format(type_var_usage, self, params_style);
         }
-        type_var_usage.format_without_matcher(self.db, self.style, params_style)
+        type_var_usage.format_without_matcher(self.db, params_style)
     }
 }

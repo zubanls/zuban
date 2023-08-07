@@ -587,7 +587,7 @@ impl<'a> Matcher<'a> {
                 return Generic::new(&type_var_remap[usage.index()]).format(format_data);
             }
         }
-        usage.format_without_matcher(format_data.db, format_data.style, params_style)
+        usage.format_without_matcher(format_data.db, params_style)
     }
 
     pub fn iter_calculated_type_vars(&mut self) -> std::slice::IterMut<CalculatedTypeVarLike> {

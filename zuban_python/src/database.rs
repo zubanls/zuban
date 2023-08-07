@@ -1695,13 +1695,7 @@ impl CallableContent {
             return format_pretty_callable(format_data, self).into();
         }
         let result = self.result_type.format(format_data);
-        let params = self.params.format(
-            format_data,
-            match format_data.style {
-                FormatStyle::MypyRevealType => ParamsStyle::FunctionParams,
-                _ => ParamsStyle::CallableParams,
-            },
-        );
+        let params = self.params.format(format_data, ParamsStyle::CallableParams);
         format!("Callable[{params}, {result}]")
     }
 }
@@ -2433,19 +2427,13 @@ impl<'a> TypeVarLikeUsage<'a> {
         }
     }
 
-    pub fn format_without_matcher(
-        &self,
-        db: &Database,
-        style: FormatStyle,
-        params_style: ParamsStyle,
-    ) -> Box<str> {
+    pub fn format_without_matcher(&self, db: &Database, params_style: ParamsStyle) -> Box<str> {
         match self {
             Self::TypeVar(type_var_usage) => type_var_usage.type_var.name(db).into(),
             Self::TypeVarTuple(t) => format!("*{}", t.type_var_tuple.name(db)).into(),
             Self::ParamSpec(p) => {
                 let name = p.param_spec.name(db);
                 match params_style {
-                    ParamsStyle::FunctionParams => format!("*{name}.args, **{name}.kwargs").into(),
                     ParamsStyle::CallableParams => name.into(),
                     ParamsStyle::CallableParamsInner => format!("**{}", name).into(),
                     ParamsStyle::Unreachable => unreachable!(),
@@ -2468,19 +2456,8 @@ impl CallableParams {
             Self::Simple(params) => {
                 let mut out_params = Vec::with_capacity(params.len());
                 // Display a star only if we are displaying a "normal" function signature
-                let mut display_star = !matches!(style, ParamsStyle::FunctionParams);
                 let mut had_param_spec_args = false;
                 for (i, param) in params.iter().enumerate() {
-                    if !display_star {
-                        match param.param_specific {
-                            ParamSpecific::KeywordOnly(_) => {
-                                display_star = true;
-                                out_params.push(Box::from("*"));
-                            }
-                            ParamSpecific::Starred(_) => display_star = true,
-                            _ => (),
-                        }
-                    }
                     use DoubleStarredParamSpecific::ParamSpecKwargs;
                     use ParamSpecific::{DoubleStarred, Starred};
                     use StarredParamSpecific::ParamSpecArgs;
@@ -2518,7 +2495,7 @@ impl CallableParams {
                     &TypeVarLikeUsage::ParamSpec(Cow::Borrowed(usage)),
                     style,
                 );
-                if matches!(style, ParamsStyle::CallableParams) {
+                if pre_types.len() == 0 {
                     return spec;
                 }
                 let parts = pre_types.iter().map(|t| t.format(format_data));
@@ -2528,12 +2505,7 @@ impl CallableParams {
                     parts.chain(std::iter::once(spec)).collect()
                 }
             }
-            Self::Any => {
-                return match style {
-                    ParamsStyle::FunctionParams => Box::from("*Any, **Any"),
-                    _ => Box::from("..."),
-                }
-            }
+            Self::Any => return Box::from("..."),
         };
         let params = parts.join(", ");
         match style {
