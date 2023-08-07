@@ -665,7 +665,7 @@ impl UnionType {
 
     pub fn sort_for_priority(&mut self) {
         self.entries.sort_by_key(|t| match t.type_ {
-            DbType::Literal(_) => -1,
+            DbType::Literal(_) | DbType::EnumMember(_) => -1,
             DbType::None => 2,
             DbType::TypeVar(_) => 3,
             DbType::Any => 4,
@@ -682,7 +682,7 @@ impl UnionType {
                 // instead of Literal[1] | Literal[2].
                 let count = self
                     .iter()
-                    .take_while(|t| matches!(t, DbType::Literal(_)))
+                    .take_while(|t| matches!(t, DbType::Literal(_) | DbType::EnumMember(_)))
                     .count();
                 if count > 1 {
                     let lit = format!(
@@ -692,6 +692,7 @@ impl UnionType {
                             .take(count)
                             .map(|t| match &t.type_ {
                                 DbType::Literal(l) => l.format_inner(format_data.db),
+                                DbType::EnumMember(m) => Cow::Owned(m.format_inner(format_data)),
                                 _ => unreachable!(),
                             })
                             .collect::<Vec<_>>()
@@ -971,7 +972,7 @@ impl DbType {
                 }
             }
             Self::Enum(e) => e.format(format_data).into(),
-            Self::EnumMember(e) => e.format(format_data),
+            Self::EnumMember(e) => e.format(format_data).into(),
             Self::Module(file_index) => format_data
                 .db
                 .python_state
@@ -2621,13 +2622,16 @@ impl EnumMember {
         self.enum_.members[self.member_index].value
     }
 
-    pub fn format(&self, format_data: &FormatData) -> Box<str> {
+    pub fn format(&self, format_data: &FormatData) -> String {
+        format!("Literal[{}]", self.format_inner(format_data))
+    }
+
+    pub fn format_inner(&self, format_data: &FormatData) -> String {
         format!(
-            "Literal[{}.{}]",
+            "{}.{}",
             &self.enum_.format(format_data),
             self.name(format_data.db)
         )
-        .into()
     }
 }
 

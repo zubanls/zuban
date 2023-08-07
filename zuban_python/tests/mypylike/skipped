@@ -528,15 +528,13 @@ testEnumFinalValuesCannotRedefineValueProp
 testFunctionalEnumString
 # class attributes
 testPrivateAttributeNotAsEnumMembers
-# Literal formatting
+# All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
 # functional attributes
 testFunctionalEnumDict
 testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
-# qualified name
-testAnonymousFunctionalEnum
 # Enum access merging leads to int | Any instead of Any
 testEnumValueUnionSimplification
 # Enum |
@@ -2425,6 +2423,8 @@ testInvalidOperationsOnModules
 testConditionalImportAndAssignInvalidToModule
 testModuleAliasRepeatedWithAnnotation
 
+# qualified name in function contains class path: __main__.Cls.FooEnum@4
+testAnonymousFunctionalEnum
 # qualified name for NewType for different module
 testNewTypeInMultipleFiles
 # qualified name for Enum for different module

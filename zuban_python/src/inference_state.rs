@@ -2,7 +2,6 @@ use std::cell::Cell;
 
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, Database, ParentScope, TypeVarLike};
-use crate::debug;
 use crate::file::TypeVarCallbackReturn;
 use crate::type_helpers::{Class, Function};
 

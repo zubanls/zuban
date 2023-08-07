@@ -8,8 +8,8 @@ use parsa_python_ast::{
 use crate::{
     arguments::{ArgumentKind, Arguments},
     database::{
-        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind,
-        ParentScope, PointLink, StringSlice,
+        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind, PointLink,
+        StringSlice,
     },
     diagnostics::IssueType,
     file::File,
