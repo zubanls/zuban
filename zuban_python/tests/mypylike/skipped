@@ -498,15 +498,12 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # data class (currently all are passing)
 
-# wtf?
-testNamedTupleEnum
-# Enum inferred.rs:831
-testEnumFinalSpecialProps
-# Enum value should be inferred in a literal context
-testEnumValueExtended
-testEnumValueExtraMethods
-testEnumWithInstanceAttributes
+# enum _name_
 testEnumAttributeAccessMatrix
+# Enum is also a NamedTuple. wtf?
+testNamedTupleEnum
+# Enum inferred.rs:991
+testEnumFinalSpecialProps
 # int | str leads to object instead of Any when using Enum().value
 testEnumValueInhomogenous
 testNewSetsUnexpectedValueType
@@ -1600,6 +1597,8 @@ testTupleValueAsExceptionType
 testExceptWithMultipleTypes3
 testExceptWithMultipleTypes4
 testExceptWithAnyTypes
+# Enum join of int | Literal[3] should lead to int
+testEnumValueSomeAuto
 
 # __setitem__
 testInferOptionalDictKeyValueTypes

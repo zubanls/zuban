@@ -38,9 +38,9 @@ pub fn lookup_on_enum_instance(
     result_context: &mut ResultContext,
 ) -> LookupResult {
     if matches!(name, "value" | "_value_") {
-        LookupResult::UnknownName(Inferred::gather_types_union(|add| {
+        LookupResult::UnknownName(Inferred::gather_union(i_s, |add| {
             for member in enum_.members.iter() {
-                add(i_s, infer_value_on_member(i_s, enum_, member.value))
+                add(infer_value_on_member(i_s, enum_, member.value))
             }
         }))
     } else {

@@ -1012,6 +1012,7 @@ impl<'db: 'a, 'a> Class<'a> {
 
     fn enum_members(&self) -> Box<[EnumMemberDefinition]> {
         let mut members = vec![];
+        let mut name_indexes = vec![];
         for (name, name_index) in unsafe {
             self.class_storage
                 .class_symbol_table
@@ -1020,6 +1021,14 @@ impl<'db: 'a, 'a> Class<'a> {
             if name.starts_with('_') {
                 continue;
             }
+            name_indexes.push(name_index);
+        }
+
+        // The name indexes are not guarantueed to be sorted by its order in the tree. We however
+        // want the original order in an enum.
+        name_indexes.sort();
+
+        for name_index in name_indexes {
             let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
             if name_node_ref
                 .add_to_node_index(-(NAME_TO_FUNCTION_DIFF as i64))
