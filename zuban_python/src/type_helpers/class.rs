@@ -1359,8 +1359,8 @@ fn add_protocol_mismatch(
         _ => notes.push(
             format!(
                 r#"    {name}: expected "{}", got "{}""#,
-                t1.format_short(i_s.db),
-                t2.format_short(i_s.db)
+                t1.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified)),
+                t2.format(&FormatData::with_style(i_s.db, FormatStyle::Qualified))
             )
             .into(),
         ),
