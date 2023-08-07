@@ -24,10 +24,3 @@ pub use typing::{
     NewTypeClass, ParamSpecClass, RevealTypeFunction, TypeVarClass, TypeVarTupleClass, TypingCast,
     TypingClass, TypingType,
 };
-
-#[macro_export]
-macro_rules! base_qualified_name {
-    ($value:ident, $db:ident, $name:expr) => {
-        format!("{}.{}", $value.module().qualified_name($db), $name)
-    };
-}

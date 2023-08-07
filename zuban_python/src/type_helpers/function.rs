@@ -18,6 +18,7 @@ use crate::database::{
     TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
     TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
+use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::{
     use_cached_annotation_type, PythonFile, TypeComputation, TypeComputationOrigin,
@@ -38,7 +39,6 @@ use crate::matching::{
 use crate::node_ref::NodeRef;
 use crate::type_helpers::Class;
 use crate::utils::rc_unwrap_or_clone;
-use crate::{base_qualified_name, debug};
 
 #[derive(Clone, Copy)]
 pub struct Function<'a, 'class> {
@@ -1184,11 +1184,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
     }
 
     pub fn qualified_name(&self, db: &'a Database) -> String {
-        base_qualified_name!(self, db, self.name())
-    }
-
-    fn module(&self) -> Module<'a> {
-        Module::new(self.node_ref.file)
+        format!(
+            "{}.{}",
+            Module::new(self.node_ref.file).qualified_name(db),
+            self.name()
+        )
     }
 
     pub fn name(&self) -> &str {
