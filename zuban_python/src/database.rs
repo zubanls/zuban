@@ -2658,6 +2658,7 @@ impl EnumMemberDefinition {
 pub struct Enum {
     pub name: StringSlice,
     pub class: PointLink,
+    parent: ParentScope,
     pub members: Box<[EnumMemberDefinition]>,
     has_customized_new: OnceCell<bool>,
 }
@@ -2666,11 +2667,13 @@ impl Enum {
     pub fn new(
         name: StringSlice,
         class: PointLink,
+        parent: ParentScope,
         members: Box<[EnumMemberDefinition]>,
         has_customized_new: OnceCell<bool>,
     ) -> Rc<Self> {
         Rc::new(Self {
             name,
+            parent,
             class,
             members,
             has_customized_new,
@@ -3095,7 +3098,7 @@ impl Database {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub enum ParentScope {
     Module,
     Function(NodeIndex),

@@ -291,6 +291,7 @@ impl<'db: 'a, 'a> Class<'a> {
                             Enum::new(
                                 self.name_string_slice(),
                                 self.node_ref.as_link(),
+                                self.class_storage.parent_scope,
                                 members,
                                 OnceCell::new(),
                             ),

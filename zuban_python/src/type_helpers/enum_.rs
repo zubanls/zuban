@@ -8,8 +8,8 @@ use parsa_python_ast::{
 use crate::{
     arguments::{ArgumentKind, Arguments},
     database::{
-        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind, PointLink,
-        StringSlice,
+        DbString, DbType, Enum, EnumMember, EnumMemberDefinition, Literal, LiteralKind,
+        ParentScope, PointLink, StringSlice,
     },
     diagnostics::IssueType,
     file::File,
@@ -200,6 +200,7 @@ pub fn execute_functional_enum(
         Enum::new(
             name,
             class.node_ref.as_link(),
+            ParentScope::Module,
             members,
             class.has_customized_enum_new(i_s).into(),
         ),
