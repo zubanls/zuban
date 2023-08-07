@@ -1932,21 +1932,6 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
 ) -> Box<str> {
     let db = format_data.db;
     let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
-    let format_type = |t: &Type| {
-        if let Some(func_class) = class {
-            let t = t.replace_type_var_likes_and_self(
-                db,
-                &mut |usage| {
-                    maybe_class_usage(db, &func_class, &usage)
-                        .unwrap_or_else(|| usage.into_generic_item())
-                },
-                &mut || todo!(),
-            );
-            t.format(format_data)
-        } else {
-            t.format(format_data)
-        }
-    };
 
     let mut previous_kind = None;
     let mut had_kwargs_separator = false;
@@ -1959,9 +1944,9 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 | WrappedParamSpecific::PositionalOrKeyword(t)
                 | WrappedParamSpecific::KeywordOnly(t)
                 | WrappedParamSpecific::Starred(WrappedStarred::ArbitraryLength(t))
-                | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => {
-                    t.as_ref().map(format_type)
-                }
+                | WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ValueType(t)) => t
+                    .as_ref()
+                    .map(|t| format_function_type(format_data, t, class)),
                 WrappedParamSpecific::Starred(WrappedStarred::ParamSpecArgs(u)) => todo!(),
                 WrappedParamSpecific::DoubleStarred(WrappedDoubleStarred::ParamSpecKwargs(u)) => {
                     todo!()
@@ -2013,6 +1998,17 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     if previous_kind == Some(ParamKind::PositionalOnly) && not_reveal_type {
         args += ", /";
     }
+    format_pretty_function_with_params(format_data, class, type_vars, return_type, name, &args)
+}
+
+pub fn format_pretty_function_with_params(
+    format_data: &FormatData,
+    class: Option<Class>,
+    type_vars: Option<&TypeVarLikes>,
+    return_type: Option<Type>,
+    name: &str,
+    params: &str,
+) -> Box<str> {
     let type_var_string = type_vars.map(|type_vars| {
         format!(
             "[{}] ",
@@ -2020,7 +2016,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 .iter()
                 .map(|t| match t {
                     TypeVarLike::TypeVar(t) => {
-                        let mut s = t.name(db).to_owned();
+                        let mut s = t.name(format_data.db).to_owned();
                         if let Some(bound) = &t.bound {
                             s += &format!(" <: {}", Type::new(bound).format(format_data));
                         } else if !t.restrictions.is_empty() {
@@ -2036,7 +2032,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                         s
                     }
                     TypeVarLike::TypeVarTuple(t) => todo!(),
-                    TypeVarLike::ParamSpec(s) => todo!(),
+                    TypeVarLike::ParamSpec(s) => s.name(format_data.db).into(),
                 })
                 .collect::<Vec<_>>()
                 .join(", "),
@@ -2045,13 +2041,31 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     let type_var_str = type_var_string.as_deref().unwrap_or("");
     let result_string = return_type
         .as_ref()
-        .filter(|t| not_reveal_type || !matches!(t.as_ref(), DbType::None))
-        .map(format_type);
+        .filter(|t| {
+            format_data.style != FormatStyle::MypyRevealType || !matches!(t.as_ref(), DbType::None)
+        })
+        .map(|t| format_function_type(format_data, t, class));
 
     if let Some(result_string) = result_string {
-        format!("def {type_var_str}{name}({args}) -> {result_string}").into()
+        format!("def {type_var_str}{name}({params}) -> {result_string}").into()
     } else {
-        format!("def {type_var_str}{name}({args})").into()
+        format!("def {type_var_str}{name}({params})").into()
+    }
+}
+
+fn format_function_type(format_data: &FormatData, t: &Type, class: Option<Class>) -> Box<str> {
+    if let Some(func_class) = class {
+        let t = t.replace_type_var_likes_and_self(
+            format_data.db,
+            &mut |usage| {
+                maybe_class_usage(format_data.db, &func_class, &usage)
+                    .unwrap_or_else(|| usage.into_generic_item())
+            },
+            &mut || todo!(),
+        );
+        t.format(format_data)
+    } else {
+        t.format(format_data)
     }
 }
 

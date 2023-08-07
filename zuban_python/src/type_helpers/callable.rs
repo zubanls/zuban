@@ -1,4 +1,4 @@
-use super::function::format_pretty_function_like;
+use super::function::{format_pretty_function_like, format_pretty_function_with_params};
 use super::Class;
 use crate::arguments::Arguments;
 use crate::database::{CallableContent, CallableParams, Database, FormatStyle};
@@ -84,7 +84,20 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
                 Some(Type::new(&callable.result_type)),
             )
         }
-        CallableParams::WithParamSpec(_, _) => todo!(),
+        CallableParams::WithParamSpec(pre_types, usage) => {
+            if !pre_types.is_empty() {
+                todo!()
+            }
+            let spec = usage.param_spec.name(db);
+            format_pretty_function_with_params(
+                format_data,
+                None,
+                callable.type_vars.as_ref(),
+                Some(Type::new(&callable.result_type)),
+                name,
+                &format!("*{spec}.args, **{spec}.kwargs"),
+            )
+        }
         CallableParams::Any => format!(
             "def {name}(*Any, **Any) -> {}",
             callable.result_type.format(format_data)

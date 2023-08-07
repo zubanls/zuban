@@ -2,12 +2,6 @@
 invalid_namespace_types_import_from
 testProtocolWithNestedClass
 
-testParamSpecRevealType
-testParamSpecJoin
-testConstraintBetweenParamSpecFunctions1
-testConstraintBetweenParamSpecFunctions2
-testParamSpecDecoratorAppliedToGeneric
-
 # --new-type-inference
 testInferenceAgainstGenericCallable
 testInferenceAgainstGenericCallableNoLeak
