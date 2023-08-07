@@ -24,7 +24,7 @@ use crate::matching::Generics;
 use crate::matching::{common_base_type, FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
-use crate::type_helpers::{Class, Module};
+use crate::type_helpers::{format_pretty_callable, Class, Module};
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
     Directory, DirectoryEntry, FileEntry, Invalidations, WorkspaceFileIndex, Workspaces,
@@ -1691,6 +1691,9 @@ impl CallableContent {
     }
 
     pub fn format(&self, format_data: &FormatData) -> String {
+        if format_data.style == FormatStyle::MypyRevealType {
+            return format_pretty_callable(format_data, self).into();
+        }
         let result = self.result_type.format(format_data);
         let params = self.params.format(
             format_data,
@@ -1699,37 +1702,7 @@ impl CallableContent {
                 _ => ParamsStyle::CallableParams,
             },
         );
-        match format_data.style {
-            FormatStyle::MypyRevealType => {
-                let type_vars = self.type_vars.as_ref().map(|t| {
-                    format!(
-                        " [{}]",
-                        t.iter()
-                            .map(|t| match t {
-                                TypeVarLike::TypeVar(t) => {
-                                    let mut name = t.name(format_data.db).to_owned();
-                                    if let Some(bound) = &t.bound {
-                                        name += " <: ";
-                                        name += &bound.format(format_data);
-                                    }
-                                    name
-                                }
-                                TypeVarLike::TypeVarTuple(_) => todo!(),
-                                TypeVarLike::ParamSpec(p) => p.name(format_data.db).to_owned(),
-                            })
-                            .collect::<Vec<_>>()
-                            .join(", ")
-                    )
-                });
-                let type_vars = type_vars.as_deref().unwrap_or("");
-                if result.as_ref() == "None" {
-                    format!("def{type_vars} ({params})")
-                } else {
-                    format!("def{type_vars} ({params}) -> {result}")
-                }
-            }
-            _ => format!("Callable[{params}, {result}]"),
-        }
+        format!("Callable[{params}, {result}]")
     }
 }
 

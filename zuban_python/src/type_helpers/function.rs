@@ -12,11 +12,11 @@ use super::{Callable, Instance, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
-    DoubleStarredParamSpecific, FunctionKind, FunctionOverload, GenericClass, GenericItem,
-    Locality, OverloadDefinition, OverloadImplementation, ParamSpecUsage, ParamSpecific, Point,
-    PointType, Specific, StarredParamSpecific, StringSlice, TupleContent, TupleTypeArguments,
-    TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes, TypeVarManager,
-    TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+    DoubleStarredParamSpecific, FormatStyle, FunctionKind, FunctionOverload, GenericClass,
+    GenericItem, Locality, OverloadDefinition, OverloadImplementation, ParamSpecUsage,
+    ParamSpecific, Point, PointType, Specific, StarredParamSpecific, StringSlice, TupleContent,
+    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
+    TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
 use crate::diagnostics::{Issue, IssueType};
 use crate::file::{
@@ -1931,6 +1931,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     return_type: Option<Type>,
 ) -> Box<str> {
     let db = format_data.db;
+    let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
     let format_type = |t: &Type| {
         if let Some(func_class) = class {
             let t = t.replace_type_var_likes_and_self(
@@ -1941,9 +1942,9 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 },
                 &mut || todo!(),
             );
-            t.format_short(db)
+            t.format(format_data)
         } else {
-            t.format_short(db)
+            t.format(format_data)
         }
     };
 
@@ -1986,6 +1987,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                 };
                 if previous_kind == Some(ParamKind::PositionalOnly)
                     && current_kind != ParamKind::PositionalOnly
+                    && not_reveal_type
                 {
                     out = format!("/, {out}")
                 }
@@ -1997,14 +1999,18 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
             }
             had_kwargs_separator |= matches!(specific, WrappedParamSpecific::Starred(_));
             if p.has_default() {
-                out += " = ...";
+                if not_reveal_type {
+                    out += " = ...";
+                } else {
+                    out += " =";
+                }
             }
             previous_kind = Some(current_kind);
             out
         })
         .collect::<Vec<_>>()
         .join(", ");
-    if previous_kind == Some(ParamKind::PositionalOnly) {
+    if previous_kind == Some(ParamKind::PositionalOnly) && not_reveal_type {
         args += ", /";
     }
     let type_var_string = type_vars.map(|type_vars| {
@@ -2016,13 +2022,13 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
                     TypeVarLike::TypeVar(t) => {
                         let mut s = t.name(db).to_owned();
                         if let Some(bound) = &t.bound {
-                            s += &format!(" <: {}", Type::new(bound).format_short(db));
+                            s += &format!(" <: {}", Type::new(bound).format(format_data));
                         } else if !t.restrictions.is_empty() {
                             s += &format!(
                                 " in ({})",
                                 t.restrictions
                                     .iter()
-                                    .map(|t| Type::new(t).format_short(db))
+                                    .map(|t| Type::new(t).format(format_data))
                                     .collect::<Vec<_>>()
                                     .join(", ")
                             );
@@ -2037,7 +2043,10 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
         )
     });
     let type_var_str = type_var_string.as_deref().unwrap_or("");
-    let result_string = return_type.as_ref().map(format_type);
+    let result_string = return_type
+        .as_ref()
+        .filter(|t| not_reveal_type || !matches!(t.as_ref(), DbType::None))
+        .map(format_type);
 
     if let Some(result_string) = result_string {
         format!("def {type_var_str}{name}({args}) -> {result_string}").into()

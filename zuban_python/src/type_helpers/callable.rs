@@ -1,7 +1,7 @@
 use super::function::format_pretty_function_like;
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, CallableParams, Database};
+use crate::database::{CallableContent, CallableParams, Database, FormatStyle};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
@@ -61,18 +61,23 @@ impl<'a> Callable<'a> {
 
 pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableContent) -> Box<str> {
     let db = format_data.db;
-    let name = callable.name.map(|s| s.as_str(db)).unwrap_or("");
+    let not_reveal_type = format_data.style != FormatStyle::MypyRevealType;
+    let name = callable
+        .name
+        .and_then(|s| not_reveal_type.then(|| s.as_str(db)))
+        .unwrap_or("");
     match &callable.params {
         CallableParams::Simple(params) => {
             let first_param = params
                 .iter()
                 .next()
                 .and_then(|p| p.param_specific.maybe_positional_db_type())
-                .map(|t| t.format_short(db));
+                .map(|t| t.format(format_data));
             format_pretty_function_like(
                 format_data,
                 None,
-                callable.class_name.map(|c| c.as_str(db)) == first_param.as_deref(),
+                callable.class_name.map(|c| c.as_str(db)) == first_param.as_deref()
+                    && not_reveal_type,
                 name,
                 callable.type_vars.as_ref(),
                 params.iter(),
@@ -82,7 +87,7 @@ pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableConte
         CallableParams::WithParamSpec(_, _) => todo!(),
         CallableParams::Any => format!(
             "def {name}(*Any, **Any) -> {}",
-            callable.result_type.format_short(db)
+            callable.result_type.format(format_data)
         )
         .into(),
     }
