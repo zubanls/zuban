@@ -534,10 +534,9 @@ testFunctionalEnumDict
 testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
-# qualified name
-testEnumReachabilityNoNarrowingForUnionMessiness
+# functional enum whitespace stripping
 testFunctionalEnumString
-testAnonymousEnum
+# qualified name
 testAnonymousFunctionalEnum
 testEnumInClassBody
 testFunctionalEnumInClassBody

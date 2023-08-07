@@ -970,7 +970,7 @@ impl DbType {
                     ),
                 }
             }
-            Self::Enum(e) => e.name.as_str(format_data.db).into(),
+            Self::Enum(e) => e.format(format_data).into(),
             Self::EnumMember(e) => e.format(format_data),
             Self::Module(file_index) => format_data
                 .db
@@ -2622,18 +2622,12 @@ impl EnumMember {
     }
 
     pub fn format(&self, format_data: &FormatData) -> Box<str> {
-        let fmt = |class_name: &str| {
-            format!("Literal[{class_name}.{}]", self.name(format_data.db)).into()
-        };
-        let enum_name = self.enum_.name.as_str(format_data.db);
-        match format_data.style {
-            FormatStyle::Short => fmt(enum_name),
-            _ => fmt(&self.enum_.parent_scope.qualified_name(
-                format_data.db,
-                NodeRef::from_link(format_data.db, self.enum_.defined_at),
-                enum_name,
-            )),
-        }
+        format!(
+            "Literal[{}.{}]",
+            &self.enum_.format(format_data),
+            self.name(format_data.db)
+        )
+        .into()
     }
 }
 
@@ -2699,6 +2693,18 @@ impl Enum {
         *self
             .has_customized_new
             .get_or_init(|| self.class(i_s.db).has_customized_enum_new(i_s))
+    }
+
+    pub fn format(&self, format_data: &FormatData) -> String {
+        let enum_name = self.name.as_str(format_data.db);
+        match format_data.style {
+            FormatStyle::Short => enum_name.to_string(),
+            _ => self.parent_scope.qualified_name(
+                format_data.db,
+                NodeRef::from_link(format_data.db, self.defined_at),
+                enum_name,
+            ),
+        }
     }
 }
 
