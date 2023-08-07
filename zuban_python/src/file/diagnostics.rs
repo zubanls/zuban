@@ -14,7 +14,7 @@ use crate::inference_state::InferenceState;
 use crate::inferred::infer_class_method;
 use crate::matching::params::has_overlapping_params;
 use crate::matching::{
-    matches_params, Generics, LookupResult, Match, Matcher, ResultContext, Type,
+    matches_params, FormatData, Generics, LookupResult, Match, Matcher, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -758,13 +758,25 @@ fn try_pretty_format(
     if let Some(inf) = class_lookup_result.into_maybe_inferred() {
         match inf.as_type(i_s).as_ref() {
             DbType::Callable(c) => {
-                notes.push(format!("{prefix}{}", format_pretty_callable(i_s.db, c)).into());
+                notes.push(
+                    format!(
+                        "{prefix}{}",
+                        format_pretty_callable(&FormatData::new_short(i_s.db), c)
+                    )
+                    .into(),
+                );
                 return;
             }
             DbType::FunctionOverload(overloads) => {
                 for c in overloads.iter_functions() {
                     notes.push(format!("{prefix}@overload").into());
-                    notes.push(format!("{prefix}{}", format_pretty_callable(i_s.db, c)).into());
+                    notes.push(
+                        format!(
+                            "{prefix}{}",
+                            format_pretty_callable(&FormatData::new_short(i_s.db), c)
+                        )
+                        .into(),
+                    );
                 }
                 return;
             }

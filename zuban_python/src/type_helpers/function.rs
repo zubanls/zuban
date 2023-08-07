@@ -1139,7 +1139,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             None => Type::new(&DbType::Any),
         };
         format_pretty_function_like(
-            i_s.db,
+            &FormatData::new_short(i_s.db),
             self.class,
             self.class.is_some()
                 && self
@@ -1922,7 +1922,7 @@ fn are_any_arguments_ambiguous_in_overload(
 }
 
 pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
-    db: &'db Database,
+    format_data: &FormatData<'db, '_, '_, '_>,
     class: Option<Class>,
     avoid_self_annotation: bool,
     name: &str,
@@ -1930,6 +1930,7 @@ pub fn format_pretty_function_like<'db: 'x, 'x, P: Param<'x>>(
     params: impl Iterator<Item = P>,
     return_type: Option<Type>,
 ) -> Box<str> {
+    let db = format_data.db;
     let format_type = |t: &Type| {
         if let Some(func_class) = class {
             let t = t.replace_type_var_likes_and_self(

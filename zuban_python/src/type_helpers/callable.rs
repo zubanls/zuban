@@ -4,7 +4,9 @@ use crate::arguments::Arguments;
 use crate::database::{CallableContent, CallableParams, Database};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{calculate_callable_type_vars_and_return, OnTypeError, ResultContext, Type};
+use crate::matching::{
+    calculate_callable_type_vars_and_return, FormatData, OnTypeError, ResultContext, Type,
+};
 
 #[derive(Debug, Copy, Clone)]
 pub struct Callable<'a> {
@@ -57,7 +59,8 @@ impl<'a> Callable<'a> {
     }
 }
 
-pub fn format_pretty_callable(db: &Database, callable: &CallableContent) -> Box<str> {
+pub fn format_pretty_callable(format_data: &FormatData, callable: &CallableContent) -> Box<str> {
+    let db = format_data.db;
     let name = callable.name.map(|s| s.as_str(db)).unwrap_or("");
     match &callable.params {
         CallableParams::Simple(params) => {
@@ -67,7 +70,7 @@ pub fn format_pretty_callable(db: &Database, callable: &CallableContent) -> Box<
                 .and_then(|p| p.param_specific.maybe_positional_db_type())
                 .map(|t| t.format_short(db));
             format_pretty_function_like(
-                db,
+                format_data,
                 None,
                 callable.class_name.map(|c| c.as_str(db)) == first_param.as_deref(),
                 name,
