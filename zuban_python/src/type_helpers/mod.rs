@@ -17,7 +17,7 @@ pub use function::{
     is_private, FirstParamKind, FirstParamProperties, Function, InferrableParam, OverloadedFunction,
 };
 pub use instance::{execute_super, Instance};
-pub use module::{lookup_in_namespace, Module};
+pub use module::{dotted_path_from_dir, lookup_in_namespace, Module};
 pub use named_tuple::NamedTupleValue;
 pub use tuple::Tuple;
 pub use typing::{

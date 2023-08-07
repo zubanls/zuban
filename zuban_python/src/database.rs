@@ -24,6 +24,7 @@ use crate::matching::Generics;
 use crate::matching::{common_base_type, FormatData, Generic, ParamsStyle};
 use crate::node_ref::NodeRef;
 use crate::python_state::PythonState;
+use crate::type_helpers::dotted_path_from_dir;
 use crate::type_helpers::{format_pretty_callable, Class, Module};
 use crate::utils::{bytes_repr, str_repr, InsertOnlyVec, SymbolTable};
 use crate::workspaces::{
@@ -736,7 +737,7 @@ pub struct Namespace {
 
 impl Namespace {
     pub fn qualified_name(&self) -> String {
-        self.content.name.to_string()
+        dotted_path_from_dir(&self.content)
     }
 }
 

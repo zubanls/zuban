@@ -1,5 +1,4 @@
 # Next up
-invalid_namespace_types_import_from
 
 # --new-type-inference
 testInferenceAgainstGenericCallable

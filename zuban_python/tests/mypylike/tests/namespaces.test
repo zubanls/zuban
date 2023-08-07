@@ -24,7 +24,7 @@ import foo
 
 a: foo.bar.bla.X
 
-x: foo.bar # E: Module "bar" is not valid as a type \
+x: foo.bar # E: Module "foo.bar" is not valid as a type \
            # N: Perhaps you meant to use a protocol matching the module structure?
 
 [file foo/bar/bla.py]
