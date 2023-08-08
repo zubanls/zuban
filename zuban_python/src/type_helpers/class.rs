@@ -909,6 +909,17 @@ impl<'db: 'a, 'a> Class<'a> {
         class_infos.mro.iter().any(|b| &b.type_ == t)
     }
 
+    pub fn class_link_in_mro(&self, db: &'db Database, link: PointLink) -> bool {
+        if self.node_ref.as_link() == link {
+            return true;
+        }
+        let class_infos = self.use_cached_class_infos(db);
+        class_infos
+            .mro
+            .iter()
+            .any(|b| matches!(&b.type_, DbType::Class(c) if link == c.link))
+    }
+
     pub fn is_object_class(&self, db: &Database) -> Match {
         (self.node_ref == db.python_state.object_node_ref()).into()
     }

@@ -2095,23 +2095,29 @@ fn infer_decorator(
         let i = inference.infer_named_expression(decorator.named_expression());
         i.save_redirect(i_s, file, node_ref.node_index)
     };
-    let saved_link = redirect.maybe_saved_link();
-    if saved_link == Some(i_s.db.python_state.classmethod_node_ref().as_link()) {
-        return InferredDecorator::FunctionKind(FunctionKind::Classmethod);
-    }
-    if saved_link == Some(i_s.db.python_state.staticmethod_node_ref().as_link()) {
-        return InferredDecorator::FunctionKind(FunctionKind::Staticmethod);
-    }
-    if saved_link == Some(i_s.db.python_state.overload_link()) {
-        return InferredDecorator::Overload;
-    }
-    if saved_link == Some(i_s.db.python_state.abstractmethod_link()) {
-        return InferredDecorator::Abstractmethod;
-    }
-    if saved_link == Some(i_s.db.python_state.property_node_ref().as_link())
-        || saved_link == Some(i_s.db.python_state.abstractproperty_link())
-    {
-        return InferredDecorator::FunctionKind(FunctionKind::Property { writable: false });
+    if let Some(saved_link) = redirect.maybe_saved_link() {
+        let node_ref = NodeRef::from_link(i_s.db, saved_link);
+        if saved_link == i_s.db.python_state.overload_link() {
+            return InferredDecorator::Overload;
+        }
+        // All these cases are classes.
+        if let Some(class_def) = node_ref.maybe_class() {
+            if saved_link == i_s.db.python_state.classmethod_node_ref().as_link() {
+                return InferredDecorator::FunctionKind(FunctionKind::Classmethod);
+            }
+            if saved_link == i_s.db.python_state.staticmethod_node_ref().as_link() {
+                return InferredDecorator::FunctionKind(FunctionKind::Staticmethod);
+            }
+            if saved_link == i_s.db.python_state.abstractmethod_link() {
+                return InferredDecorator::Abstractmethod;
+            }
+            let class = Class::from_non_generic_link(i_s.db, saved_link);
+            if class.class_link_in_mro(i_s.db, i_s.db.python_state.property_node_ref().as_link())
+                || saved_link == i_s.db.python_state.abstractproperty_link()
+            {
+                return InferredDecorator::FunctionKind(FunctionKind::Property { writable: false });
+            }
+        }
     }
     InferredDecorator::Inferred(redirect)
 }
