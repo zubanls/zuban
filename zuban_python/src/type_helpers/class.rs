@@ -1178,24 +1178,73 @@ impl fmt::Debug for Class<'_> {
 
 fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
     let mut mro = vec![];
-    for type_ in bases {
+
+    let mut add_to_mro = |base_index: usize, is_direct_base, new_base: &DbType| {
         mro.push(BaseClass {
-            type_,
-            is_direct_base: true,
-        });
-        if let DbType::Class(c) = &mro.last().unwrap().type_ {
-            let mro_index = mro.len() - 1;
-            let class = Class::from_generic_class(db, c);
-            let cached_class_infos = class.use_cached_class_infos(db);
-            for base in cached_class_infos.mro.iter() {
-                mro.push(BaseClass {
-                    is_direct_base: false,
-                    type_: Type::new(&base.type_).replace_type_var_likes(db, &mut |t| {
-                        mro[mro_index].type_.expect_class_generics()[t.index()].clone()
-                    }),
-                });
+            type_: if is_direct_base {
+                new_base.clone()
+            } else {
+                Type::new(new_base).replace_type_var_likes(db, &mut |t| {
+                    bases[base_index].expect_class_generics()[t.index()].clone()
+                })
+            },
+            is_direct_base,
+        })
+    };
+
+    let mut base_iterators: Vec<_> = bases
+        .iter()
+        .map(|t| {
+            let slice = if let DbType::Class(c) = &t {
+                let class = Class::from_generic_class(db, c);
+                let cached_class_infos = class.use_cached_class_infos(db);
+                cached_class_infos.mro.as_ref()
+            } else {
+                &[]
+            };
+            std::iter::once(t)
+                .chain(slice.iter().map(|base| &base.type_))
+                .enumerate()
+                .peekable()
+        })
+        .collect();
+    let mut had_entry = true;
+    let mut linearizable = true;
+    while had_entry {
+        let mut added_base = false;
+        had_entry = false;
+        for base_index in 0..base_iterators.len() {
+            if let Some((i, candidate)) = base_iterators[base_index].peek() {
+                let i = *i;
+                let candidate = candidate.clone();
+                had_entry = true;
+                if !base_iterators.iter().any(|base_bases| {
+                    base_bases
+                        .clone()
+                        .skip(1)
+                        .any(|(_, other)| candidate == other)
+                }) {
+                    added_base = true;
+                    for base_bases in base_iterators.iter_mut() {
+                        base_bases.next_if(|(_, next)| &candidate == next);
+                    }
+                    add_to_mro(base_index, i == 0, candidate);
+                    break;
+                }
             }
         }
+        if !added_base {
+            linearizable = false;
+            for (base_index, base_bases) in base_iterators.iter_mut().enumerate() {
+                if let Some((i, type_)) = base_bases.next() {
+                    add_to_mro(base_index, i == 0, type_);
+                    break;
+                }
+            }
+        }
+    }
+    if !linearizable {
+        debug!("TODO Add issue here");
     }
     mro.into_boxed_slice()
 }
