@@ -419,6 +419,7 @@ impl PythonState {
     builtins_attribute_node_ref!(staticmethod_node_ref, builtins_staticmethod_index);
     builtins_attribute_node_ref!(property_node_ref, builtins_property_index);
     builtins_attribute_node_ref!(function_node_ref, builtins_function_index);
+    builtins_attribute_node_ref!(base_exception_node_ref, builtins_base_exception_index);
 
     node_ref_to_class!(pub object_class, object_node_ref);
     node_ref_to_class!(int, int_node_ref);
@@ -434,18 +435,6 @@ impl PythonState {
     node_ref_to_db_type_class_without_generic!(pub bool_db_type, bool_node_ref);
     node_ref_to_db_type_class_without_generic!(pub module_db_type, module_node_ref);
     node_ref_to_db_type_class_without_generic!(pub function_db_type, function_node_ref);
-
-    #[inline]
-    pub fn base_exception(&self) -> DbType {
-        debug_assert!(self.builtins_base_exception_index != 0);
-        DbType::new_class(
-            PointLink::new(
-                self.builtins().file_index(),
-                self.builtins_base_exception_index,
-            ),
-            ClassGenerics::None,
-        )
-    }
 
     #[inline]
     fn none_type_node_ref(&self) -> NodeRef {

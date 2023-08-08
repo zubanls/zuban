@@ -707,7 +707,8 @@ impl<'db> Inference<'db, '_, '_> {
 fn valid_raise_type(db: &Database, t: Type, allow_none: bool) -> bool {
     let check = |generic_class| {
         let cls = Class::from_generic_class(db, generic_class);
-        cls.incomplete_mro(db) || cls.in_mro(db, &db.python_state.base_exception())
+        cls.incomplete_mro(db)
+            || cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
     };
     match t.into_db_type() {
         DbType::Class(c) => check(&c),
@@ -731,7 +732,9 @@ fn is_valid_except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> 
             let db = i_s.db;
             Type::new(t.as_ref())
                 .maybe_class(i_s.db)
-                .is_some_and(|cls| cls.in_mro(db, &db.python_state.base_exception()))
+                .is_some_and(|cls| {
+                    cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
+                })
         }
         DbType::Tuple(content) if allow_tuple => match &content.args {
             Some(TupleTypeArguments::FixedLength(ts)) => ts.iter().all(|t| match t {

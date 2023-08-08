@@ -388,12 +388,9 @@ impl<'db: 'a, 'a> Class<'a> {
                             })) => {
                                 let c = Class::from_non_generic_link(i_s.db, link);
                                 if c.incomplete_mro(i_s.db)
-                                    || c.in_mro(
+                                    || c.class_link_in_mro(
                                         i_s.db,
-                                        &DbType::Class(GenericClass {
-                                            link: i_s.db.python_state.type_node_ref().as_link(),
-                                            generics: ClassGenerics::None,
-                                        }),
+                                        i_s.db.python_state.type_node_ref().as_link(),
                                     )
                                 {
                                     Self::update_metaclass(
@@ -896,17 +893,6 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn mro(&self, db: &'db Database) -> MroIterator<'db, 'a> {
         self.mro_maybe_without_object(db, self.node_ref == db.python_state.object_node_ref())
-    }
-
-    pub fn in_mro(&self, db: &'db Database, t: &DbType) -> bool {
-        if let DbType::Class(c) = t {
-            if self.node_ref.as_link() == c.link {
-                return true;
-            }
-        }
-        let class_infos = self.use_cached_class_infos(db);
-        // TODO this might be an issue with generics.
-        class_infos.mro.iter().any(|b| &b.type_ == t)
     }
 
     pub fn class_link_in_mro(&self, db: &'db Database, link: PointLink) -> bool {
