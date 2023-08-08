@@ -54,6 +54,7 @@ pub(crate) enum IssueType {
     MetaclassConflict,
     CannotSubclassNewType,
     DuplicateBaseClass { name: Box<str> },
+    InconsistentMro { name: Box<str> },
     CyclicDefinition { name: Box<str> },
     EnsureSingleGenericOrProtocol,
 
@@ -471,6 +472,9 @@ impl<'db> Diagnostic<'db> {
                  a (non-strict) subclass of the metaclasses of all its bases".to_string(),
             CannotSubclassNewType => "Cannot subclass \"NewType\"".to_string(),
             DuplicateBaseClass{name} => format!("Duplicate base class \"{name}\""),
+            InconsistentMro{name} => format!(
+                "Cannot determine consistent method resolution order (MRO) for \"{name}\""
+            ),
             CyclicDefinition{name} =>
                 format!("Cannot resolve name {name:?} (possible cyclic definition)"),
             EnsureSingleGenericOrProtocol =>

@@ -542,7 +542,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         Box::new(ClassInfos {
-            mro: linearize_mro(db, bases),
+            mro: linearize_mro(i_s, self, bases),
             metaclass,
             incomplete_mro,
             class_type,
@@ -1176,7 +1176,11 @@ impl fmt::Debug for Class<'_> {
     }
 }
 
-fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
+fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box<[BaseClass]> {
+    if bases.is_empty() {
+        return Box::default();
+    }
+
     let mut mro = vec![];
 
     let mut add_to_mro = |base_index: usize, is_direct_base, new_base: &DbType| {
@@ -1184,7 +1188,7 @@ fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
             type_: if is_direct_base {
                 new_base.clone()
             } else {
-                Type::new(new_base).replace_type_var_likes(db, &mut |t| {
+                Type::new(new_base).replace_type_var_likes(i_s.db, &mut |t| {
                     bases[base_index].expect_class_generics()[t.index()].clone()
                 })
             },
@@ -1196,8 +1200,8 @@ fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
         .iter()
         .map(|t| {
             let slice = if let DbType::Class(c) = &t {
-                let class = Class::from_generic_class(db, c);
-                let cached_class_infos = class.use_cached_class_infos(db);
+                let class = Class::from_generic_class(i_s.db, c);
+                let cached_class_infos = class.use_cached_class_infos(i_s.db);
                 cached_class_infos.mro.as_ref()
             } else {
                 &[]
@@ -1208,22 +1212,22 @@ fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
                 .peekable()
         })
         .collect();
-    let mut had_entry = true;
     let mut linearizable = true;
-    while had_entry {
+    loop {
         let mut added_base = false;
-        had_entry = false;
+        let mut had_entry = false;
         for base_index in 0..base_iterators.len() {
             if let Some((i, candidate)) = base_iterators[base_index].peek() {
                 let i = *i;
                 let candidate = candidate.clone();
                 had_entry = true;
-                if !base_iterators.iter().any(|base_bases| {
+                let conflicts = base_iterators.iter().any(|base_bases| {
                     base_bases
                         .clone()
                         .skip(1)
                         .any(|(_, other)| candidate == other)
-                }) {
+                });
+                if !conflicts {
                     added_base = true;
                     for base_bases in base_iterators.iter_mut() {
                         base_bases.next_if(|(_, next)| &candidate == next);
@@ -1232,6 +1236,9 @@ fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
                     break;
                 }
             }
+        }
+        if !had_entry {
+            break;
         }
         if !added_base {
             linearizable = false;
@@ -1244,7 +1251,8 @@ fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
         }
     }
     if !linearizable {
-        debug!("TODO Add issue here");
+        //NodeRef::new(class.node_ref.file, class.node().arguments().unwrap().index())
+        //    .add_issue(i_s, IssueType::InconsistentMro { name: class.name().into()});
     }
     mro.into_boxed_slice()
 }
