@@ -119,11 +119,14 @@ pub fn lookup_on_enum_member_instance(
                 )))
             }
             "value" | "_value_" => {
-                return LookupResult::UnknownName(infer_value_on_member(
-                    i_s,
-                    &member.enum_,
-                    member.value(),
-                ))
+                let value = member.value();
+                if value.is_none() {
+                    let result = Instance::new(enum_class, None).lookup(i_s, from, name);
+                    if result.is_some() {
+                        return result;
+                    }
+                }
+                return LookupResult::UnknownName(infer_value_on_member(i_s, &member.enum_, value));
             }
             "_ignore_" => return LookupResult::None,
             _ => (),

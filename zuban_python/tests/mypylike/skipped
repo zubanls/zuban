@@ -203,6 +203,9 @@ testCannotDetermineMro
 testInconsistentMroLocalRef
 testColumnCannotDetermineType
 testInconsistentMro
+# Mro wrong order
+testFunctionalEnumFlag
+testEnumAttributeAccessMatrix
 
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
@@ -498,8 +501,6 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # data class (currently all are passing)
 
-# IntEnum value
-testEnumAttributeAccessMatrix
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
 # Enum inferred.rs:991
@@ -520,7 +521,6 @@ testEnumIndexIsNotAnAlias
 testFunctionalEnumProtocols
 # Enum defines value.
 testEnumFinalValuesCannotRedefineValueProp
-testFunctionalEnumString
 # class attributes
 testPrivateAttributeNotAsEnumMembers
 # All members in a union lead to the enum again

@@ -19,6 +19,10 @@ impl LookupResult {
         Self::UnknownName(Inferred::new_any())
     }
 
+    pub fn is_some(&self) -> bool {
+        !matches!(self, Self::None)
+    }
+
     pub fn into_maybe_inferred(self) -> Option<Inferred> {
         // TODO is it ok that map does not include FileReference(_)? (probably not)
         match self {
