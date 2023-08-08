@@ -357,9 +357,10 @@ impl<'db: 'a, 'a> Class<'a> {
     fn calculate_class_infos(&self, i_s: &InferenceState<'db, '_>) -> Box<ClassInfos> {
         debug!("Calculate class infos for {}", self.name());
         // Calculate all type vars beforehand
+        let db = i_s.db;
         let type_vars = self.type_vars(i_s);
 
-        let mut mro: Vec<BaseClass> = vec![];
+        let mut bases: Vec<DbType> = vec![];
         let mut incomplete_mro = false;
         let mut class_type = ClassType::Normal;
         let mut metaclass = MetaclassState::None;
@@ -386,11 +387,11 @@ impl<'db: 'a, 'a> Class<'a> {
                                 link,
                                 generics: ClassGenerics::None,
                             })) => {
-                                let c = Class::from_non_generic_link(i_s.db, link);
-                                if c.incomplete_mro(i_s.db)
+                                let c = Class::from_non_generic_link(db, link);
+                                if c.incomplete_mro(db)
                                     || c.class_link_in_mro(
-                                        i_s.db,
-                                        i_s.db.python_state.type_node_ref().as_link(),
+                                        db,
+                                        db.python_state.type_node_ref().as_link(),
                                     )
                                 {
                                     Self::update_metaclass(
@@ -425,7 +426,6 @@ impl<'db: 'a, 'a> Class<'a> {
             for argument in arguments.iter() {
                 match argument {
                     Argument::Positional(n) => {
-                        let db = i_s.db;
                         let mut inference = self.node_ref.file.inference(i_s);
                         let base = TypeComputation::new(
                             &mut inference,
@@ -450,22 +450,17 @@ impl<'db: 'a, 'a> Class<'a> {
                         .compute_base_class(n.expression());
                         match base {
                             CalculatedBaseClass::DbType(t) => {
-                                let mro_index = mro.len();
-                                if let Some(name) = mro.iter().find_map(|base| {
-                                    Type::new(&base.type_)
-                                        .check_duplicate_base_class(db, &Type::new(&t))
+                                if let Some(name) = bases.iter().find_map(|base| {
+                                    Type::new(base).check_duplicate_base_class(db, &Type::new(&t))
                                 }) {
                                     NodeRef::new(self.node_ref.file, n.index())
                                         .add_issue(i_s, IssueType::DuplicateBaseClass { name });
                                     incomplete_mro = true;
                                     continue;
                                 }
-                                mro.push(BaseClass {
-                                    is_direct_base: true,
-                                    type_: t,
-                                });
-                                let class = match &mro.last().unwrap().type_ {
-                                    DbType::Class(c) => Some(Class::from_generic_class(i_s.db, c)),
+                                bases.push(t);
+                                let class = match &bases.last().unwrap() {
+                                    DbType::Class(c) => Some(Class::from_generic_class(db, c)),
                                     DbType::Tuple(content) => None,
                                     DbType::Callable(content) => None,
                                     _ => unreachable!(),
@@ -473,7 +468,7 @@ impl<'db: 'a, 'a> Class<'a> {
                                 if let Some(class) = class {
                                     if class.is_calculating_class_infos() {
                                         let name = Box::<str>::from(class.name());
-                                        mro.pop();
+                                        bases.pop();
                                         incomplete_mro = true;
                                         NodeRef::new(self.node_ref.file, n.index())
                                             .add_issue(i_s, IssueType::CyclicDefinition { name });
@@ -496,17 +491,6 @@ impl<'db: 'a, 'a> Class<'a> {
                                                 todo!()
                                             }
                                         }
-                                        for base in cached_class_infos.mro.iter() {
-                                            mro.push(BaseClass {
-                                                is_direct_base: false,
-                                                type_: Type::new(&base.type_)
-                                                    .replace_type_var_likes(db, &mut |t| {
-                                                        mro[mro_index].type_.expect_class_generics()
-                                                            [t.index()]
-                                                        .clone()
-                                                    }),
-                                            });
-                                        }
                                     }
                                 }
                             }
@@ -518,19 +502,13 @@ impl<'db: 'a, 'a> Class<'a> {
                             CalculatedBaseClass::NamedTuple(named_tuple) => {
                                 let named_tuple =
                                     named_tuple.clone_with_new_init_class(self.name_string_slice());
-                                mro.push(BaseClass {
-                                    type_: DbType::NamedTuple(named_tuple.clone()),
-                                    is_direct_base: true,
-                                });
+                                bases.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::NewNamedTuple => {
                                 let named_tuple = self
                                     .named_tuple_from_class(&i_s.with_class_context(self), *self);
-                                mro.push(BaseClass {
-                                    type_: DbType::NamedTuple(named_tuple.clone()),
-                                    is_direct_base: true,
-                                });
+                                bases.push(DbType::NamedTuple(named_tuple.clone()));
                                 class_type = ClassType::NamedTuple(named_tuple);
                             }
                             CalculatedBaseClass::Generic => (),
@@ -564,7 +542,7 @@ impl<'db: 'a, 'a> Class<'a> {
             }
         }
         Box::new(ClassInfos {
-            mro: mro.into_boxed_slice(),
+            mro: linearize_mro(db, bases),
             metaclass,
             incomplete_mro,
             class_type,
@@ -1196,6 +1174,30 @@ impl fmt::Debug for Class<'_> {
             .field("type_var_remap", &self.type_var_remap)
             .finish()
     }
+}
+
+fn linearize_mro(db: &Database, bases: Vec<DbType>) -> Box<[BaseClass]> {
+    let mut mro = vec![];
+    for type_ in bases {
+        mro.push(BaseClass {
+            type_,
+            is_direct_base: true,
+        });
+        if let DbType::Class(c) = &mro.last().unwrap().type_ {
+            let mro_index = mro.len() - 1;
+            let class = Class::from_generic_class(db, c);
+            let cached_class_infos = class.use_cached_class_infos(db);
+            for base in cached_class_infos.mro.iter() {
+                mro.push(BaseClass {
+                    is_direct_base: false,
+                    type_: Type::new(&base.type_).replace_type_var_likes(db, &mut |t| {
+                        mro[mro_index].type_.expect_class_generics()[t.index()].clone()
+                    }),
+                });
+            }
+        }
+    }
+    mro.into_boxed_slice()
 }
 
 pub struct MroIterator<'db, 'a> {
