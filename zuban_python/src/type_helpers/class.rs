@@ -1263,13 +1263,11 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
         }
         for (base_index, base_bases) in base_iterators.iter_mut().enumerate() {
             if let Some((i, type_)) = base_bases.next() {
-                linearizable = false;
-                /*
-                dbg!(type_, base_bases.clone().map(|b| to_base_kind(b.1)).collect::<Vec<_>>());
-                if !base_bases.clone().any(|b| to_base_kind(b.1) == to_base_kind(type_)) {
-                    linearizable = false
+                // If it doesn't have to do with one of the first type, it is caused by
+                // inconsistencies earlier.
+                if bases.contains(type_) {
+                    linearizable = false;
                 }
-                */
                 add_to_mro(base_index, i == 0, type_, &mut allowed_to_use);
                 continue 'outer;
             }
