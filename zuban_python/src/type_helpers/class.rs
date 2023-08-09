@@ -1202,6 +1202,13 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
     let mut mro = vec![];
 
     let object = i_s.db.python_state.object_db_type();
+    if let Some(index) = bases.iter().position(|base| base == &object) {
+        // Instead of adding object to each iterator (because in our mro, object is not saved), we
+        // just check for object in bases here. If it's not in the last position it's wrong.
+        if index != bases.len() - 1 {
+            add_inconsistency_issue(i_s, class)
+        }
+    }
     let mut add_to_mro =
         |base_index: usize, is_direct_base, new_base: &DbType, allowed_to_use: &mut usize| {
             if new_base != &object {
@@ -1231,7 +1238,6 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
             };
             std::iter::once(t)
                 .chain(slice.iter().map(|base| &base.type_))
-                .chain(std::iter::once(&object))
                 .enumerate()
                 .peekable()
         })
@@ -1243,10 +1249,11 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
         for base_index in 0..allowed_to_use.min(bases.len()) {
             if let Some((i, candidate)) = base_iterators[base_index].peek().copied() {
                 had_entry = true;
-                let conflicts = base_iterators.iter().enumerate().any(|(b, base_bases)| {
-                    base_bases.clone().skip(1).any(|(_, other)| {
-                        b != base_index && to_base_kind(candidate) == to_base_kind(other)
-                    })
+                let conflicts = base_iterators.iter().any(|base_bases| {
+                    base_bases
+                        .clone()
+                        .skip(1)
+                        .any(|(_, other)| to_base_kind(candidate) == to_base_kind(other))
                 });
                 if !conflicts {
                     for base_bases in base_iterators.iter_mut() {
@@ -1275,18 +1282,22 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
         unreachable!()
     }
     if !linearizable {
-        NodeRef::new(
-            class.node_ref.file,
-            class.node().arguments().unwrap().index(),
-        )
-        .add_issue(
-            i_s,
-            IssueType::InconsistentMro {
-                name: class.name().into(),
-            },
-        );
+        add_inconsistency_issue(i_s, class)
     }
     mro.into_boxed_slice()
+}
+
+fn add_inconsistency_issue(i_s: &InferenceState, class: &Class) {
+    NodeRef::new(
+        class.node_ref.file,
+        class.node().arguments().unwrap().index(),
+    )
+    .add_issue(
+        i_s,
+        IssueType::InconsistentMro {
+            name: class.name().into(),
+        },
+    );
 }
 
 pub struct MroIterator<'db, 'a> {
