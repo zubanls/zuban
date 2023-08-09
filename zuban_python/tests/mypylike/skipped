@@ -494,8 +494,6 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
-# Enum inferred.rs:991
-testEnumFinalSpecialProps
 # int | str leads to object instead of Any when using Enum().value
 testEnumValueInhomogenous
 testNewSetsUnexpectedValueType
@@ -505,6 +503,7 @@ testIntEnum_functionTakingIntEnum
 testEnumCall
 # function lookups
 testEnumMethods
+# "Enum index should be a string (actual index type "int")"
 # Enum getitem
 testEnumIndex
 testEnumIndexError
@@ -531,11 +530,9 @@ testEnumFromEnumMetaGeneric
 testGenericEnum
 # "Enum type as attribute is not supported"
 testAssignEnumAsAttribute
-# "Enum index should be a string (actual index type "int")"
-# "Enum() expects a string literal as the first argument"
-# "Enum type as attribute is not supported"
 # "Cannot assign to final attribute "gold""
 testEnumFinalValues
+testEnumFinalSpecialProps
 # "Attempted to reuse member name "A" in Enum definition "Foo""
 testEnumReusedKeys
 # "Cannot extend enum with existing members: "NonEmptyEnum""
