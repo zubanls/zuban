@@ -1055,9 +1055,6 @@ testFromImportAsInStub
 testImportAsInStub
 testReExportChildStubs3
 
-# "Invalid metaclass "Explicit"" when Explicit: TypeAlias = type
-testValidTypeAliasAsMetaclass
-testValidTypeAliasOfTypeAliasAsMetaclass
 # Metaclass self type
 testSelfTypeProtocolMetaclassMatch
 testMetaclassSelfType

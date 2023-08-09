@@ -458,6 +458,12 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     DbType::Class(..) | DbType::Tuple(_) | DbType::Callable(_) => {
                         CalculatedBaseClass::DbType(db_type)
                     }
+                    DbType::Type(t) if matches!(t.as_ref(), DbType::Any) => {
+                        CalculatedBaseClass::DbType(DbType::new_class(
+                            self.inference.i_s.db.python_state.type_node_ref().as_link(),
+                            ClassGenerics::None,
+                        ))
+                    }
                     DbType::NamedTuple(nt) => {
                         // TODO performance: this is already an Rc and should not need to be
                         // duplicated.
