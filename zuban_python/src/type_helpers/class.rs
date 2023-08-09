@@ -1201,19 +1201,22 @@ fn to_base_kind(t: &DbType) -> BaseKind {
 fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box<[BaseClass]> {
     let mut mro = vec![];
 
+    let object = i_s.db.python_state.object_db_type();
     let mut add_to_mro =
         |base_index: usize, is_direct_base, new_base: &DbType, allowed_to_use: &mut usize| {
-            mro.push(BaseClass {
-                type_: if is_direct_base {
-                    *allowed_to_use += 1;
-                    new_base.clone()
-                } else {
-                    Type::new(new_base).replace_type_var_likes(i_s.db, &mut |t| {
-                        bases[base_index].expect_class_generics()[t.index()].clone()
-                    })
-                },
-                is_direct_base,
-            })
+            if new_base != &object {
+                mro.push(BaseClass {
+                    type_: if is_direct_base {
+                        *allowed_to_use += 1;
+                        new_base.clone()
+                    } else {
+                        Type::new(new_base).replace_type_var_likes(i_s.db, &mut |t| {
+                            bases[base_index].expect_class_generics()[t.index()].clone()
+                        })
+                    },
+                    is_direct_base,
+                })
+            }
         };
 
     let mut base_iterators: Vec<_> = bases
@@ -1228,6 +1231,7 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
             };
             std::iter::once(t)
                 .chain(slice.iter().map(|base| &base.type_))
+                .chain(std::iter::once(&object))
                 .enumerate()
                 .peekable()
         })

@@ -200,9 +200,6 @@ testNoComplainInferredNoneStrict
 
 # "Cannot determine consistent method resolution order (MRO) for "B""
 testCannotDetermineMro
-testInconsistentMroLocalRef
-testColumnCannotDetermineType
-testInconsistentMro
 
 # cycle for self.a = self.f(self.a) where f(T) -> T
 testGenericTypeBody1
@@ -2247,6 +2244,7 @@ testAccessingClassAttributeWithTypeInferenceIssue
 testClassObjectsNotUnpackableWithoutIterableMetaclass
 testErrorCodeCannotDetermineType
 testCannotDetermineTypeFromOtherModule
+testColumnCannotDetermineType
 # "Cannot determine type of "X" in base class"
 testCannotDetermineTypeInMultipleInheritance
 
