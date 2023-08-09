@@ -1176,6 +1176,28 @@ impl fmt::Debug for Class<'_> {
     }
 }
 
+#[derive(PartialEq, Eq)]
+enum BaseKind {
+    Class(PointLink),
+    NamedTuple,
+    Tuple,
+    Type,
+    Enum,
+    Callable,
+}
+
+fn to_base_kind(t: &DbType) -> BaseKind {
+    match t {
+        DbType::Class(c) => BaseKind::Class(c.link),
+        DbType::Type(_) => BaseKind::Type,
+        DbType::Tuple(_) => BaseKind::Tuple,
+        DbType::NamedTuple(_) => BaseKind::NamedTuple,
+        DbType::Enum(_) => BaseKind::Enum,
+        DbType::Callable(_) => BaseKind::Callable,
+        _ => unreachable!("{t:?}"),
+    }
+}
+
 fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box<[BaseClass]> {
     if bases.is_empty() {
         return Box::default();
@@ -1225,12 +1247,13 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
                     base_bases
                         .clone()
                         .skip(1)
-                        .any(|(_, other)| candidate == other)
+                        .any(|(_, other)| to_base_kind(candidate) == to_base_kind(other))
                 });
                 if !conflicts {
                     added_base = true;
                     for base_bases in base_iterators.iter_mut() {
-                        base_bases.next_if(|(_, next)| &candidate == next);
+                        base_bases
+                            .next_if(|(_, next)| to_base_kind(&candidate) == to_base_kind(next));
                     }
                     add_to_mro(base_index, i == 0, candidate);
                     break;
@@ -1251,8 +1274,16 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
         }
     }
     if !linearizable {
-        //NodeRef::new(class.node_ref.file, class.node().arguments().unwrap().index())
-        //    .add_issue(i_s, IssueType::InconsistentMro { name: class.name().into()});
+        NodeRef::new(
+            class.node_ref.file,
+            class.node().arguments().unwrap().index(),
+        )
+        .add_issue(
+            i_s,
+            IssueType::InconsistentMro {
+                name: class.name().into(),
+            },
+        );
     }
     mro.into_boxed_slice()
 }
