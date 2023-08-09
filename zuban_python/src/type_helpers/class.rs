@@ -1199,10 +1199,6 @@ fn to_base_kind(t: &DbType) -> BaseKind {
 }
 
 fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box<[BaseClass]> {
-    if bases.is_empty() {
-        return Box::default();
-    }
-
     let mut mro = vec![];
 
     let mut add_to_mro = |base_index: usize, is_direct_base, new_base: &DbType| {
@@ -1235,13 +1231,10 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
         })
         .collect();
     let mut linearizable = true;
-    loop {
-        let mut added_base = false;
+    'outer: loop {
         let mut had_entry = false;
         for base_index in 0..base_iterators.len() {
-            if let Some((i, candidate)) = base_iterators[base_index].peek() {
-                let i = *i;
-                let candidate = candidate.clone();
+            if let Some((i, candidate)) = base_iterators[base_index].peek().copied() {
                 had_entry = true;
                 let conflicts = base_iterators.iter().any(|base_bases| {
                     base_bases
@@ -1250,26 +1243,23 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
                         .any(|(_, other)| to_base_kind(candidate) == to_base_kind(other))
                 });
                 if !conflicts {
-                    added_base = true;
                     for base_bases in base_iterators.iter_mut() {
                         base_bases
                             .next_if(|(_, next)| to_base_kind(&candidate) == to_base_kind(next));
                     }
                     add_to_mro(base_index, i == 0, candidate);
-                    break;
+                    continue 'outer;
                 }
             }
         }
         if !had_entry {
             break;
         }
-        if !added_base {
-            linearizable = false;
-            for (base_index, base_bases) in base_iterators.iter_mut().enumerate() {
-                if let Some((i, type_)) = base_bases.next() {
-                    add_to_mro(base_index, i == 0, type_);
-                    break;
-                }
+        linearizable = false;
+        for (base_index, base_bases) in base_iterators.iter_mut().enumerate() {
+            if let Some((i, type_)) = base_bases.next() {
+                add_to_mro(base_index, i == 0, type_);
+                break;
             }
         }
     }
