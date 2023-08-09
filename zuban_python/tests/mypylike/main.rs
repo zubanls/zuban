@@ -292,8 +292,8 @@ impl<'name, 'code> TestCase<'name, 'code> {
             wanted.sort_by_key(|line| line.split(':').next().unwrap().to_owned());
 
             assert_eq!(
-                actual_lines,
                 wanted_lower,
+                actual_lines,
                 "\n\nError in {} ({}): Step {}/{}\n\nWanted:\n{}\n\nActual:\n{}\n",
                 &self.name,
                 self.file_name,
