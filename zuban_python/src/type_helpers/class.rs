@@ -407,14 +407,6 @@ impl<'db: 'a, 'a> Class<'a> {
                             }
                             CalculatedBaseClass::Unknown => metaclass = MetaclassState::Unknown,
                             _ => {
-                                /*
-                                node_ref.add_issue(
-                                    i_s,
-                                    IssueType::DynamicMetaclassNotSupported {
-                                        class_name: Box::from(self.name()),
-                                    },
-                                );
-                                */
                                 node_ref.add_issue(i_s, IssueType::InvalidMetaclass);
                             }
                         }

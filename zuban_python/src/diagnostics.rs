@@ -49,7 +49,6 @@ pub(crate) enum IssueType {
     OnlyClassTypeApplication,
     InvalidBaseClass,
     InvalidMetaclass,
-    DynamicMetaclassNotSupported { class_name: Box<str> },
     MetaclassMustInheritFromType,
     MetaclassConflict,
     CannotSubclassNewType,
@@ -462,9 +461,6 @@ impl<'db> Diagnostic<'db> {
                 "Can use starred expression only as assignment target".to_string(),
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
             InvalidMetaclass => format!("Invalid metaclass {:?}", self.code_under_issue()),
-            DynamicMetaclassNotSupported{class_name} => {
-                format!("Dynamic metaclass not supported for \"{class_name}\"")
-            }
             MetaclassMustInheritFromType =>
                 "Metaclasses not inheriting from \"type\" are not supported".to_string(),
             MetaclassConflict =>
