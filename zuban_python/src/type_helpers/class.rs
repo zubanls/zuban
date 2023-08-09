@@ -1176,7 +1176,7 @@ impl fmt::Debug for Class<'_> {
     }
 }
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 enum BaseKind {
     Class(PointLink),
     NamedTuple,
@@ -1201,18 +1201,20 @@ fn to_base_kind(t: &DbType) -> BaseKind {
 fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box<[BaseClass]> {
     let mut mro = vec![];
 
-    let mut add_to_mro = |base_index: usize, is_direct_base, new_base: &DbType| {
-        mro.push(BaseClass {
-            type_: if is_direct_base {
-                new_base.clone()
-            } else {
-                Type::new(new_base).replace_type_var_likes(i_s.db, &mut |t| {
-                    bases[base_index].expect_class_generics()[t.index()].clone()
-                })
-            },
-            is_direct_base,
-        })
-    };
+    let mut add_to_mro =
+        |base_index: usize, is_direct_base, new_base: &DbType, allowed_to_use: &mut usize| {
+            mro.push(BaseClass {
+                type_: if is_direct_base {
+                    *allowed_to_use += 1;
+                    new_base.clone()
+                } else {
+                    Type::new(new_base).replace_type_var_likes(i_s.db, &mut |t| {
+                        bases[base_index].expect_class_generics()[t.index()].clone()
+                    })
+                },
+                is_direct_base,
+            })
+        };
 
     let mut base_iterators: Vec<_> = bases
         .iter()
@@ -1231,23 +1233,23 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
         })
         .collect();
     let mut linearizable = true;
+    let mut allowed_to_use = 1;
     'outer: loop {
         let mut had_entry = false;
-        for base_index in 0..base_iterators.len() {
+        for base_index in 0..allowed_to_use.min(bases.len()) {
             if let Some((i, candidate)) = base_iterators[base_index].peek().copied() {
                 had_entry = true;
-                let conflicts = base_iterators.iter().any(|base_bases| {
-                    base_bases
-                        .clone()
-                        .skip(1)
-                        .any(|(_, other)| to_base_kind(candidate) == to_base_kind(other))
+                let conflicts = base_iterators.iter().enumerate().any(|(b, base_bases)| {
+                    base_bases.clone().skip(1).any(|(_, other)| {
+                        b != base_index && to_base_kind(candidate) == to_base_kind(other)
+                    })
                 });
                 if !conflicts {
                     for base_bases in base_iterators.iter_mut() {
                         base_bases
                             .next_if(|(_, next)| to_base_kind(&candidate) == to_base_kind(next));
                     }
-                    add_to_mro(base_index, i == 0, candidate);
+                    add_to_mro(base_index, i == 0, candidate, &mut allowed_to_use);
                     continue 'outer;
                 }
             }
@@ -1255,13 +1257,20 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
         if !had_entry {
             break;
         }
-        linearizable = false;
         for (base_index, base_bases) in base_iterators.iter_mut().enumerate() {
             if let Some((i, type_)) = base_bases.next() {
-                add_to_mro(base_index, i == 0, type_);
-                break;
+                linearizable = false;
+                /*
+                dbg!(type_, base_bases.clone().map(|b| to_base_kind(b.1)).collect::<Vec<_>>());
+                if !base_bases.clone().any(|b| to_base_kind(b.1) == to_base_kind(type_)) {
+                    linearizable = false
+                }
+                */
+                add_to_mro(base_index, i == 0, type_, &mut allowed_to_use);
+                continue 'outer;
             }
         }
+        unreachable!()
     }
     if !linearizable {
         NodeRef::new(
