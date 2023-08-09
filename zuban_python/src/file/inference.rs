@@ -1232,9 +1232,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 Some(node_ref),
                 op.magic_method,
                 &mut |l_type, lookup_result| {
-                    let left_op_method = l_type
-                        .lookup_without_error(self.i_s, op.magic_method)
-                        .into_maybe_inferred();
+                    let left_op_method = lookup_result.into_maybe_inferred();
                     right.as_type(i_s).run_on_each_union_type(&mut |r_type| {
                         let error = Cell::new(LookupError::NoError);
                         if let Some(left) = left_op_method.as_ref() {
