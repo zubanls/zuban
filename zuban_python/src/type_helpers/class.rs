@@ -1145,6 +1145,18 @@ impl<'db: 'a, 'a> Class<'a> {
         slice_type: &SliceType,
         result_context: &mut ResultContext,
     ) -> Inferred {
+        match self.use_cached_class_infos(i_s.db).metaclass {
+            MetaclassState::Some(link) => {
+                let meta = Class::from_non_generic_link(i_s.db, link);
+                if meta.lookup(i_s, None, "__getitem__").is_some() {
+                    return Instance::new(meta, None).get_item(i_s, slice_type, result_context);
+                }
+            }
+            MetaclassState::Unknown => {
+                todo!()
+            }
+            MetaclassState::None => (),
+        }
         slice_type
             .file
             .inference(i_s)

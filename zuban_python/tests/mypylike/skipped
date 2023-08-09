@@ -1064,12 +1064,9 @@ testTypingSelfMetaClassDisabled
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass
 # Metaclass iter/getitem/addition
-testMetaclassGetitem
 testMetaclassIterable
 testInferringLvarTypesUnpackedFromIterableClassObject
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
-testMetaclassOperators
-testMetaclassOperatorsDirect
 # Metaclass instance vs. class members
 testMetaclassConflictingInstanceVars
 
