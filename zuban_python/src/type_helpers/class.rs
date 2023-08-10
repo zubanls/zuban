@@ -914,10 +914,7 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn as_inferred(&self, i_s: &InferenceState) -> Inferred {
-        match self.use_cached_type_vars(i_s.db).is_some() {
-            false => Inferred::from_saved_node_ref(self.node_ref),
-            true => Inferred::from_type(self.as_type(i_s).into_db_type()),
-        }
+        Inferred::from_type(self.as_type(i_s).into_db_type())
     }
 
     pub fn generics_as_list(&self, db: &Database) -> ClassGenerics {
