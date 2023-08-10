@@ -660,7 +660,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let file = self.node_ref.file;
         let mut functions = vec![];
         let mut add_func = |inf: Inferred| {
-            if let Some(callable) = inf.as_type(i_s).maybe_callable(i_s, Some(self.node_ref)) {
+            if let Some(callable) = inf.as_type(i_s).maybe_callable(i_s) {
                 functions.push(rc_unwrap_or_clone(callable))
             } else {
                 todo!()
@@ -742,7 +742,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             function_link: func_ref.as_link(),
                             callable: CallableContent::new_any_with_defined_at(func_ref.as_link()),
                         });
-                    } else if let Some(callable) = t.maybe_callable(i_s, Some(self.node_ref)) {
+                    } else if let Some(callable) = t.maybe_callable(i_s) {
                         implementation = Some(OverloadImplementation {
                             function_link: func_ref.as_link(),
                             callable: rc_unwrap_or_clone(callable),

@@ -1483,21 +1483,16 @@ pub struct NewOrInitConstructor<'a> {
 }
 
 impl NewOrInitConstructor<'_> {
-    pub fn maybe_callable(
-        self,
-        i_s: &InferenceState,
-        cls: Class,
-        from: Option<NodeRef>,
-    ) -> Option<Rc<CallableContent>> {
+    pub fn maybe_callable(self, i_s: &InferenceState, cls: Class) -> Option<Rc<CallableContent>> {
         let inf = self.constructor.into_inferred();
         if self.is_new {
-            inf.as_type(i_s).maybe_callable(i_s, from)
+            inf.as_type(i_s).maybe_callable(i_s)
         } else {
             let callable = if let Some(c) = self.init_class {
                 let i_s = &i_s.with_class_context(&c);
-                inf.as_type(i_s).maybe_callable(i_s, from)
+                inf.as_type(i_s).maybe_callable(i_s)
             } else {
-                inf.as_type(i_s).maybe_callable(i_s, from)
+                inf.as_type(i_s).maybe_callable(i_s)
             };
             callable.and_then(|c| {
                 // Since __init__ does not have a return, We need to check the params
