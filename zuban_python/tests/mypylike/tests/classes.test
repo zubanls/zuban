@@ -247,6 +247,24 @@ reveal_type(Foo[int].d1)  # E: Access to generic instance variables via class is
                           # N: Revealed type is "int"
 reveal_type(Foo[int].d2)  # N: Revealed type is "int"
 
+[case descriptor_with_wrong_annotations]
+class Descriptor():
+    def __get__(self, instance: None, cls: None) -> int:
+        raise NotImplementedError
+
+class Foo:
+    d1: Descriptor
+    d2 = Descriptor()
+
+x: int
+x = Foo().d1  # E: Argument 1 to "__get__" of "Descriptor" has incompatible type "Foo"; expected "None" \
+              # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
+x = Foo().d2  # E: Argument 1 to "__get__" of "Descriptor" has incompatible type "Foo"; expected "None" \
+              # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
+x = Foo.d1  # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
+x = Foo.d2  # E: Argument 2 to "__get__" of "Descriptor" has incompatible type "Type[Foo]"; expected "None"
+
+
 [case class_context_super_class]
 from typing import TypeVar, Generic
 

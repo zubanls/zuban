@@ -742,6 +742,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
                         | Specific::AnnotationOrTypeCommentClassVar) => {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             if let Some(inf) = Self::bind_instance_descriptors_for_type(
@@ -1055,6 +1056,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             return Some(Inferred::from_type(t.into_db_type()));
                         }
                         Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
                         | Specific::AnnotationOrTypeCommentClassVar => {
                             let t = use_cached_annotation_or_type_comment(
                                 i_s,
