@@ -841,7 +841,7 @@ impl<'db, 'a> Iterator for ArgumentIterator<'db, 'a> {
 #[derive(Debug, Clone)]
 enum ArgsKwargsIterator<'a> {
     Args {
-        iterator: IteratorContent<'a>,
+        iterator: IteratorContent,
         position: usize,
         node_ref: NodeRef<'a>,
     },

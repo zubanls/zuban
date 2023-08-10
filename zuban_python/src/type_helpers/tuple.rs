@@ -21,13 +21,13 @@ impl<'a> Tuple<'a> {
         Self { content }
     }
 
-    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent<'a> {
+    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         match &self.content.args {
             Some(args @ TupleTypeArguments::FixedLength(ts)) => {
                 if args.has_type_var_tuple().is_some() {
                     todo!()
                 } else {
-                    IteratorContent::FixedLengthTupleGenerics(ts.iter())
+                    IteratorContent::new_tuple(ts.clone())
                 }
             }
             Some(TupleTypeArguments::ArbitraryLength(t)) => {

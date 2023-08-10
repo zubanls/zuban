@@ -65,11 +65,11 @@ impl<'a> NamedTupleValue<'a> {
         format!("tuple[{types}, fallback={name}]",).into()
     }
 
-    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent<'a> {
+    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent {
         let TupleTypeArguments::FixedLength(t) = self.nt.as_tuple().args.as_ref().unwrap() else {
             unreachable!()
         };
-        IteratorContent::FixedLengthTupleGenerics(t.iter())
+        IteratorContent::new_tuple(t.clone())
     }
 
     pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {

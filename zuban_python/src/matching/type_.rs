@@ -1950,11 +1950,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn iter_on_borrowed(
-        &self,
-        i_s: &InferenceState<'a, '_>,
-        from: NodeRef,
-    ) -> IteratorContent<'a> {
+    pub fn iter_on_borrowed(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent {
         match self.maybe_borrowed_db_type() {
             Some(DbType::Class(c)) => {
                 Instance::new(Class::from_generic_class(i_s.db, c), None).iter(i_s, from)

@@ -9,6 +9,8 @@ mod result_context;
 mod type_;
 mod utils;
 
+use std::rc::Rc;
+
 pub use format_data::{FormatData, ParamsStyle};
 pub use generic::Generic;
 pub use generics::{Generics, GenericsIterator};
@@ -102,21 +104,35 @@ pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
 pub type OnLookupError<'a> = &'a dyn Fn(&Type);
 
 #[derive(Debug, Clone)]
-pub enum IteratorContent<'a> {
+pub enum IteratorContent {
     Inferred(Inferred),
     // The code before makes sure that no type var tuples are passed.
-    FixedLengthTupleGenerics(std::slice::Iter<'a, TypeOrTypeVarTuple>),
-    Union(Vec<IteratorContent<'a>>),
+    FixedLengthTupleGenerics {
+        entries: Rc<[TypeOrTypeVarTuple]>,
+        current_index: usize,
+    },
+    Union(Vec<IteratorContent>),
     Empty,
     Any,
 }
 
-impl IteratorContent<'_> {
+impl IteratorContent {
+    pub fn new_tuple(entries: Rc<[TypeOrTypeVarTuple]>) -> IteratorContent {
+        Self::FixedLengthTupleGenerics {
+            entries,
+            current_index: 0,
+        }
+    }
+
     pub fn infer_all(self, i_s: &InferenceState) -> Inferred {
         match self {
             Self::Inferred(inferred) => inferred,
-            Self::FixedLengthTupleGenerics(generics) => {
-                Inferred::from_type(generics.fold(DbType::Never, |a, b| {
+            Self::FixedLengthTupleGenerics {
+                entries,
+                current_index,
+            } => Inferred::from_type(entries.iter().skip(current_index).fold(
+                DbType::Never,
+                |a, b| {
                     a.union(
                         i_s.db,
                         match b {
@@ -124,8 +140,8 @@ impl IteratorContent<'_> {
                             TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
                         },
                     )
-                }))
-            }
+                },
+            )),
             Self::Union(iterators) => Inferred::gather_union(i_s, |add| {
                 for iterator in iterators {
                     add(iterator.infer_all(i_s))
@@ -139,12 +155,19 @@ impl IteratorContent<'_> {
     pub fn next(&mut self, i_s: &InferenceState) -> Option<Inferred> {
         match self {
             Self::Inferred(inferred) => Some(inferred.clone()),
-            Self::FixedLengthTupleGenerics(t) => t.next().map(|t| {
-                Inferred::from_type(match t {
-                    TypeOrTypeVarTuple::Type(t) => t.clone(),
-                    TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+            Self::FixedLengthTupleGenerics {
+                entries,
+                current_index,
+            } => {
+                let result = entries.get(*current_index);
+                *current_index += 1;
+                result.map(|result| {
+                    Inferred::from_type(match result {
+                        TypeOrTypeVarTuple::Type(t) => t.clone(),
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                    })
                 })
-            }),
+            }
             Self::Union(iterators) => {
                 let mut had_next = false;
                 let result = Inferred::gather_union(i_s, |add| {
@@ -165,7 +188,10 @@ impl IteratorContent<'_> {
     pub fn len(&self) -> Option<usize> {
         match self {
             Self::Inferred(_) | Self::Any => None,
-            Self::FixedLengthTupleGenerics(t) => Some(t.len()),
+            Self::FixedLengthTupleGenerics {
+                entries,
+                current_index,
+            } => Some(entries.as_ref().len() - current_index),
             Self::Union(iterators) => todo!(),
             Self::Empty => todo!(),
         }

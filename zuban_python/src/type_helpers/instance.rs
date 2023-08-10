@@ -136,7 +136,7 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent<'a> {
+    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent {
         if let ClassType::NamedTuple(ref named_tuple) =
             self.class.use_cached_class_infos(i_s.db).class_type
         {

@@ -1714,11 +1714,7 @@ impl<'db: 'slf, 'slf> Inferred {
             .get_item(i_s, Some(self), slice_type, result_context)
     }
 
-    pub fn save_and_iter(
-        self,
-        i_s: &InferenceState<'db, '_>,
-        from: NodeRef,
-    ) -> IteratorContent<'db> {
+    pub fn save_and_iter(self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent {
         let inferred = self.save_if_unsaved(i_s, from.file, from.node_index);
         let t = inferred.saved_as_type(i_s).unwrap();
         t.iter_on_borrowed(i_s, from)
