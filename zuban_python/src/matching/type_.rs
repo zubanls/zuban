@@ -2227,7 +2227,7 @@ impl<'a> Type<'a> {
             ),
             DbType::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
-                callable(self, module.lookup(i_s, from, name))
+                callable(self, module.lookup(i_s, name))
             }
             DbType::Namespace(namespace) => callable(
                 self,
@@ -2267,10 +2267,9 @@ impl<'a> Type<'a> {
                 }
                 callable(self, result)
             }
-            DbType::NamedTuple(nt) => callable(
-                self,
-                NamedTupleValue::new(i_s.db, nt).lookup(i_s, from, name),
-            ),
+            DbType::NamedTuple(nt) => {
+                callable(self, NamedTupleValue::new(i_s.db, nt).lookup(i_s, name))
+            }
             DbType::Never => (),
             DbType::NewType(new_type) => Type::new(new_type.type_(i_s))
                 .run_after_lookup_on_each_union_member(
@@ -2344,7 +2343,7 @@ impl<'a> Type<'a> {
         match self.as_ref() {
             DbType::Class(c) => todo!(),
             DbType::Tuple(t) => LookupResult::None, // TODO this probably omits index/count
-            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, None, name),
+            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).lookup(i_s, name),
             DbType::Callable(t) => todo!(),
             _ => todo!("{name:?} {self:?}"),
         }

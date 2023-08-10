@@ -72,12 +72,7 @@ impl<'a> NamedTupleValue<'a> {
         IteratorContent::FixedLengthTupleGenerics(t.iter())
     }
 
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         for p in self.nt.params() {
             if name == p.name.unwrap().as_str(i_s.db) {
                 return LookupResult::UnknownName(Inferred::from_type(

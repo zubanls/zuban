@@ -8,7 +8,6 @@ use crate::inference_state::InferenceState;
 
 use crate::inferred::Inferred;
 use crate::matching::{LookupResult, Type};
-use crate::node_ref::NodeRef;
 use crate::workspaces::{Directory, Parent};
 
 #[derive(Copy, Clone)]
@@ -59,12 +58,7 @@ impl<'a> Module<'a> {
         }
     }
 
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
         self.file
             .symbol_table
             .lookup_symbol(name)
