@@ -83,7 +83,7 @@ pub fn infer_value_on_member(
                                 }) {
                                     return None;
                                 }
-                                inf.as_type(i_s).maybe_callable(i_s)
+                                inf.as_type(i_s).maybe_callable(i_s, Some(node_ref))
                             })
                             .map(|callable| callable.result_type.clone())
                             .unwrap_or(i_s.db.python_state.int_db_type()),
