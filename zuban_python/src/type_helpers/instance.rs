@@ -71,7 +71,7 @@ impl<'a> Instance<'a> {
                                 DbType::Class(c) => {
                                     let descriptor = Class::from_generic_class(i_s.db, c);
                                     if let Some(set) = Instance::new(descriptor, None)
-                                        .lookup(i_s, Some(from), "__set__")
+                                        .lookup(i_s, from, "__set__")
                                         .into_maybe_inferred()
                                     {
                                         had_set = true;
@@ -122,10 +122,7 @@ impl<'a> Instance<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let node_ref = args.as_node_ref();
-        if let Some(inf) = self
-            .lookup(i_s, Some(node_ref), "__call__")
-            .into_maybe_inferred()
-        {
+        if let Some(inf) = self.lookup(i_s, node_ref, "__call__").into_maybe_inferred() {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
         } else {
             let t = self.class.format_short(i_s.db);
@@ -192,7 +189,7 @@ impl<'a> Instance<'a> {
     pub fn lookup_and_maybe_ignore_super_count(
         &self,
         i_s: &'a InferenceState,
-        node_ref: Option<NodeRef>,
+        node_ref: NodeRef,
         name: &str,
         super_count: usize,
     ) -> (TypeOrClass, LookupResult) {
@@ -238,12 +235,7 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
         self.lookup_and_maybe_ignore_super_count(i_s, node_ref, name, 0)
             .1
     }
@@ -372,7 +364,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                                 self.i_s,
                                 self.instance,
                                 class,
-                                Some(self.from),
+                                self.from,
                                 mro_index,
                             )
                         })

@@ -143,8 +143,10 @@ impl<'a> Type<'a> {
             DbType::Any => Some(i_s.db.python_state.any_callable.clone()),
             DbType::Class(c) => {
                 let cls = Class::from_generic_class(i_s.db, c);
+                debug!("TODO this from is completely wrong and should never be used.");
+                let hack = cls.node_ref;
                 Instance::new(cls, None)
-                    .lookup(i_s, None, "__call__")
+                    .lookup(i_s, hack, "__call__")
                     .into_maybe_inferred()
                     .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
             }
@@ -2120,7 +2122,7 @@ impl<'a> Type<'a> {
         &self,
         i_s: &InferenceState,
         from_inferred: Option<&Inferred>,
-        from: Option<NodeRef>,
+        from: NodeRef,
         name: &str,
         result_context: &mut ResultContext,
         callable: &mut impl FnMut(&Type, LookupResult),
@@ -2208,7 +2210,7 @@ impl<'a> Type<'a> {
                     for t in union.iter() {
                         callable(
                             self,
-                            TypingType::new(i_s.db, t).lookup(i_s, None, name, result_context),
+                            TypingType::new(i_s.db, t).lookup(i_s, from, name, result_context),
                         )
                     }
                 }
@@ -2228,12 +2230,7 @@ impl<'a> Type<'a> {
             }
             DbType::Namespace(namespace) => callable(
                 self,
-                lookup_in_namespace(
-                    i_s.db,
-                    from.unwrap_or_else(|| todo!()).file_index(),
-                    namespace,
-                    name,
-                ),
+                lookup_in_namespace(i_s.db, from.file_index(), namespace, name),
             ),
             DbType::Self_ => {
                 let current_class = i_s.current_class().unwrap();
@@ -2253,14 +2250,12 @@ impl<'a> Type<'a> {
             DbType::Super { class, mro_index } => {
                 let instance = Instance::new(Class::from_generic_class(i_s.db, class), None);
                 let result = instance
-                    .lookup_and_maybe_ignore_super_count(i_s, None, name, mro_index + 1)
+                    .lookup_and_maybe_ignore_super_count(i_s, from, name, mro_index + 1)
                     .1;
                 if matches!(&result, LookupResult::None) {
-                    if let Some(from) = from {
-                        from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });
-                        callable(self, LookupResult::UnknownName(Inferred::new_any()));
-                        return;
-                    }
+                    from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });
+                    callable(self, LookupResult::UnknownName(Inferred::new_any()));
+                    return;
                 }
                 callable(self, result)
             }
@@ -2289,10 +2284,6 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn lookup_without_error(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        self.lookup_helper(i_s, None, name, &mut ResultContext::Unknown, &|_| ())
-    }
-
     pub fn lookup_with_error(
         &self,
         i_s: &InferenceState,
@@ -2301,14 +2292,14 @@ impl<'a> Type<'a> {
         result_context: &mut ResultContext,
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
-        self.lookup_helper(i_s, Some(from), name, result_context, on_lookup_error)
+        self.lookup_helper(i_s, from, name, result_context, on_lookup_error)
     }
 
     #[inline]
     fn lookup_helper(
         &self,
         i_s: &InferenceState,
-        from: Option<NodeRef>,
+        from: NodeRef,
         name: &str,
         result_context: &mut ResultContext,
         on_lookup_error: OnLookupError,

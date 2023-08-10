@@ -724,6 +724,12 @@ testParamSpecLiteralsTypeApplication
 # Param Spec lambda type inference
 testParamSpecInferredFromLambda
 
+# Protocol invalid "Access to generic instance variables via class is ambiguous"
+testGenericSubProtocols
+testProtocolConcreteUpdateTypeMethodGeneric
+testProtocolUpdateBaseGeneric
+testProtocolConcreteUpdateBaseGeneric
+testProtocolChangeGeneric
 # NewType with Protocol
 testNewAnalyzerNoCrashForwardRefToBrokenDoubleNewTypeClass
 testNoCrashForwardRefToBrokenDoubleNewType

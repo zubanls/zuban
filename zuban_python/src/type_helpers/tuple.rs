@@ -37,12 +37,7 @@ impl<'a> Tuple<'a> {
         }
     }
 
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
         let tuple_cls = i_s.db.python_state.tuple_class(i_s.db, self.content);
         let tuple_instance = Instance::new(tuple_cls, None);
         for (mro_index, class_or_type) in tuple_cls.mro(i_s.db) {

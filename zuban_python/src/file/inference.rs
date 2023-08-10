@@ -699,7 +699,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 // there the __get__ descriptor should not be applied.
                                 c.lookup_with_or_without_descriptors(
                                     i_s,
-                                    Some(node_ref),
+                                    node_ref,
                                     name_definition.as_code(),
                                     false,
                                 )
@@ -1623,7 +1623,11 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .db
                 .python_state
                 .module_instance()
-                .lookup(self.i_s, None, name.as_code())
+                .lookup(
+                    self.i_s,
+                    NodeRef::new(self.file, name.index()),
+                    name.as_code(),
+                )
                 .save_name(self.i_s, self.file, name)
             {
                 return inf;

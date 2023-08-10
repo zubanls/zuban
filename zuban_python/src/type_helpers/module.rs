@@ -59,7 +59,7 @@ impl<'a> Module<'a> {
         }
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, from: Option<NodeRef>, name: &str) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, from: NodeRef, name: &str) -> LookupResult {
         self.file
             .symbol_table
             .lookup_symbol(name)

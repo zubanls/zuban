@@ -600,6 +600,8 @@ impl<'db: 'a, 'a> Class<'a> {
         let mut had_conflict_note = false;
 
         let mut protocol_member_count = 0;
+        debug!("TODO this from is completely wrong and should never be used.");
+        let hack = self.node_ref;
         for (mro_index, c) in self.mro_maybe_without_object(i_s.db, true) {
             let TypeOrClass::Class(c) = c else {
                 todo!()
@@ -611,7 +613,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // __call__.
                 if name == "__call__" && !matches!(other.as_ref(), DbType::Class(_)) {
                     let inf1 = Instance::new(c, None)
-                        .lookup(i_s, None, name)
+                        .lookup(i_s, hack, name)
                         .into_inferred();
                     let t1 = inf1.as_type(i_s);
                     if t1.matches(i_s, matcher, other, variance).bool() {
@@ -619,9 +621,12 @@ impl<'db: 'a, 'a> Class<'a> {
                     }
                 }
 
-                if let Some(l) = other.lookup_without_error(i_s, name).into_maybe_inferred() {
+                if let Some(l) = other
+                    .lookup_with_error(i_s, hack, name, &mut ResultContext::Unknown, &|_| ())
+                    .into_maybe_inferred()
+                {
                     let inf1 = Instance::new(c, None)
-                        .lookup(i_s, None, name)
+                        .lookup(i_s, hack, name)
                         .into_inferred();
                     let t1 = inf1.as_type(i_s);
                     let t2 = l.as_type(i_s);
@@ -657,8 +662,8 @@ impl<'db: 'a, 'a> Class<'a> {
                                     name,
                                     &t1,
                                     &t2,
-                                    &c.lookup(i_s, None, name).into_inferred().as_type(i_s),
-                                    &cls.lookup(i_s, None, name).into_inferred().as_type(i_s),
+                                    &c.lookup(i_s, hack, name).into_inferred().as_type(i_s),
+                                    &cls.lookup(i_s, hack, name).into_inferred().as_type(i_s),
                                 ),
                                 None => {
                                     add_protocol_mismatch(i_s, &mut notes, name, &t1, &t2, &t1, &t2)
@@ -774,16 +779,17 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn lookup_and_class_and_maybe_ignore_self(
         &self,
         i_s: &InferenceState<'db, '_>,
+        hack: NodeRef,
         name: &str,
         ignore_self: bool,
     ) -> (LookupResult, Option<Class>) {
-        self.lookup_with_or_without_descriptors_internal(i_s, None, name, false, ignore_self)
+        self.lookup_with_or_without_descriptors_internal(i_s, hack, name, false, ignore_self)
     }
 
     pub fn lookup_with_or_without_descriptors(
         &self,
         i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
+        node_ref: NodeRef,
         name: &str,
         use_descriptors: bool,
     ) -> LookupResult {
@@ -800,7 +806,7 @@ impl<'db: 'a, 'a> Class<'a> {
     pub fn lookup_with_or_without_descriptors_internal(
         &self,
         i_s: &InferenceState<'db, '_>,
-        node_ref: Option<NodeRef>,
+        node_ref: NodeRef,
         name: &str,
         use_descriptors: bool,
         ignore_self: bool,
@@ -1067,7 +1073,9 @@ impl<'db: 'a, 'a> Class<'a> {
                 Class::from_non_generic_link(i_s.db, i_s.db.python_state.enum_meta_link()),
                 None,
             );
-            let call = metaclass.lookup(i_s, None, "__call__").into_inferred();
+            let call = metaclass
+                .lookup(i_s, args.as_node_ref(), "__call__")
+                .into_inferred();
             let DbType::FunctionOverload(o) = call.as_db_type(i_s) else {
                 todo!()
             };
@@ -1124,13 +1132,13 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn lookup(
-        &self,
-        i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
-        name: &str,
-    ) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
         self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
+    }
+
+    pub fn type_lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+        let hack = self.node_ref;
+        self.lookup_with_or_without_descriptors(i_s, hack, name, true)
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
@@ -1152,7 +1160,10 @@ impl<'db: 'a, 'a> Class<'a> {
         match self.use_cached_class_infos(i_s.db).metaclass {
             MetaclassState::Some(link) => {
                 let meta = Class::from_non_generic_link(i_s.db, link);
-                if meta.lookup(i_s, None, "__getitem__").is_some() {
+                if meta
+                    .lookup(i_s, slice_type.as_node_ref(), "__getitem__")
+                    .is_some()
+                {
                     return Instance::new(meta, None).get_item(i_s, slice_type, result_context);
                 }
             }

@@ -643,7 +643,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
         func_class: Class,
-        from: Option<NodeRef>,
+        from: NodeRef,
         mro_index: MroIndex,
     ) -> Option<Self> {
         self.bind_instance_descriptors_internal(
@@ -661,7 +661,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
         func_class: Class,
-        from: Option<NodeRef>,
+        from: NodeRef,
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Self> {
@@ -689,7 +689,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(
                                         DbType::Callable(Rc::new(t)),
                                     )))
-                                } else if let Some(from) = from {
+                                } else {
                                     let t = IssueType::InvalidSelfArgument {
                                         argument_type: instance.class.format_short(i_s.db),
                                         function_name: Box::from(func.name()),
@@ -697,11 +697,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                     };
                                     from.add_issue(i_s, t);
                                     Some(Self::new_any())
-                                } else {
-                                    // In case there is no node ref, we do not want to just
-                                    // ignore the type error and we basically say that the
-                                    // attribute does not even exist.
-                                    None
                                 }
                             } else {
                                 Some(Self::new_bound_method(
@@ -795,34 +790,27 @@ impl<'db: 'slf, 'slf> Inferred {
                                         .collect();
                                     match results.len() {
                                         0 => {
-                                            if let Some(from) = from {
-                                                let overload = OverloadedFunction::new(
-                                                    &o.functions,
-                                                    Some(func_class),
-                                                );
-                                                let t =
-                                                    IssueType::InvalidClassMethodFirstArgument {
-                                                        argument_type: instance
-                                                            .class
-                                                            .as_type(i_s)
-                                                            .format_short(i_s.db),
-                                                        function_name: Box::from(
-                                                            overload.name(i_s.db),
-                                                        ),
-                                                        // Mypy just picks the first function.
-                                                        callable: o
-                                                            .functions
-                                                            .iter_functions()
-                                                            .next()
-                                                            .unwrap()
-                                                            .format(&FormatData::new_short(i_s.db))
-                                                            .into(),
-                                                    };
-                                                from.add_issue(i_s, t);
-                                                return Some(Self::new_any());
-                                            } else {
-                                                todo!()
-                                            }
+                                            let overload = OverloadedFunction::new(
+                                                &o.functions,
+                                                Some(func_class),
+                                            );
+                                            let t = IssueType::InvalidClassMethodFirstArgument {
+                                                argument_type: instance
+                                                    .class
+                                                    .as_type(i_s)
+                                                    .format_short(i_s.db),
+                                                function_name: Box::from(overload.name(i_s.db)),
+                                                // Mypy just picks the first function.
+                                                callable: o
+                                                    .functions
+                                                    .iter_functions()
+                                                    .next()
+                                                    .unwrap()
+                                                    .format(&FormatData::new_short(i_s.db))
+                                                    .into(),
+                                            };
+                                            from.add_issue(i_s, t);
+                                            return Some(Self::new_any());
                                         }
                                         1 => {
                                             return Some(Inferred::from_type(DbType::Callable(
@@ -904,7 +892,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
         func_class: Class,
-        from: Option<NodeRef>,
+        from: NodeRef,
         mro_index: MroIndex,
         definition: Option<PointLink>,
         t: &DbType,
@@ -944,18 +932,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Classmethod => {
                     let result = infer_class_method(i_s, instance.class, func_class, c);
                     if result.is_none() {
-                        if let Some(from) = from {
-                            let func = prepare_func(i_s, c.defined_at, func_class);
-                            let t = IssueType::InvalidClassMethodFirstArgument {
-                                argument_type: instance.class.as_type(i_s).format_short(i_s.db),
-                                function_name: Box::from(func.name()),
-                                callable: func.as_type(i_s).format_short(i_s.db),
-                            };
-                            from.add_issue(i_s, t);
-                            return Some(Some(Self::new_any()));
-                        } else {
-                            todo!()
-                        }
+                        let func = prepare_func(i_s, c.defined_at, func_class);
+                        let t = IssueType::InvalidClassMethodFirstArgument {
+                            argument_type: instance.class.as_type(i_s).format_short(i_s.db),
+                            function_name: Box::from(func.name()),
+                            callable: func.as_type(i_s).format_short(i_s.db),
+                        };
+                        from.add_issue(i_s, t);
+                        return Some(Some(Self::new_any()));
                     }
                     return Some(result.map(callable_into_inferred));
                 }
@@ -984,7 +968,6 @@ impl<'db: 'slf, 'slf> Inferred {
                 None,
             );
             if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
-                let from = from.unwrap_or_else(|| todo!());
                 let class_as_inferred = instance.class.as_inferred(i_s);
                 return Some(Some(inf.execute(
                     i_s,
@@ -1006,7 +989,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
-        from: Option<NodeRef>,
+        from: NodeRef,
         apply_descriptor: bool,
     ) -> Option<Self> {
         match &self.state {
@@ -1033,11 +1016,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars => {
-                            if let Some(from) = from {
-                                from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
-                            } else {
-                                return None;
-                            }
+                            from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
                             let t = use_cached_annotation_or_type_comment(
                                 i_s,
                                 NodeRef::from_link(i_s.db, *definition),
@@ -1126,7 +1105,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         class: &Class,
         attribute_class: Class, // The (sub-)class in which an attribute is defined
-        from: Option<NodeRef>,
+        from: NodeRef,
         apply_descriptor: bool,
         definition: PointLink,
         t: &DbType,
@@ -1139,18 +1118,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Classmethod => {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
                     if result.is_none() {
-                        if let Some(from) = from {
-                            let func = prepare_func(i_s, c.defined_at, attribute_class);
-                            let t = IssueType::InvalidSelfArgument {
-                                argument_type: class.as_type(i_s).format_short(i_s.db),
-                                function_name: Box::from(func.name()),
-                                callable: func.as_type(i_s).format_short(i_s.db),
-                            };
-                            from.add_issue(i_s, t);
-                            return Some(Some(Self::new_any()));
-                        } else {
-                            todo!()
-                        }
+                        let func = prepare_func(i_s, c.defined_at, attribute_class);
+                        let t = IssueType::InvalidSelfArgument {
+                            argument_type: class.as_type(i_s).format_short(i_s.db),
+                            function_name: Box::from(func.name()),
+                            callable: func.as_type(i_s).format_short(i_s.db),
+                        };
+                        from.add_issue(i_s, t);
+                        return Some(Some(Self::new_any()));
                     }
                     return Some(result.map(callable_into_inferred));
                 }
@@ -1180,7 +1155,6 @@ impl<'db: 'slf, 'slf> Inferred {
                     None,
                 );
                 if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
-                    let from = from.unwrap_or_else(|| todo!());
                     let class_as_inferred = class.as_inferred(i_s);
                     return Some(Some(inf.execute(
                         i_s,
@@ -1363,7 +1337,7 @@ impl<'db: 'slf, 'slf> Inferred {
         self.as_type(i_s).run_after_lookup_on_each_union_member(
             i_s,
             Some(self),
-            Some(from),
+            from,
             name,
             &mut ResultContext::Unknown,
             callable,

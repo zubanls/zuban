@@ -32,7 +32,7 @@ pub fn lookup_on_enum_class(
 
 pub fn lookup_on_enum_instance(
     i_s: &InferenceState,
-    from: Option<NodeRef>,
+    from: NodeRef,
     enum_: &Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
@@ -73,7 +73,7 @@ pub fn infer_value_on_member(
                     Inferred::from_type(
                         enum_
                             .class(i_s.db)
-                            .lookup(i_s, None, "_generate_next_value_")
+                            .type_lookup(i_s, "_generate_next_value_")
                             .into_maybe_inferred()
                             .and_then(|inf| {
                                 // Check We have a proper callable that is not part of the enum module
@@ -98,7 +98,7 @@ pub fn infer_value_on_member(
 
 pub fn lookup_on_enum_member_instance(
     i_s: &InferenceState,
-    from: Option<NodeRef>,
+    from: NodeRef,
     member: &EnumMember,
     name: &str,
 ) -> LookupResult {

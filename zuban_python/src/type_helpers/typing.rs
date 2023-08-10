@@ -81,7 +81,7 @@ impl<'a> TypingType<'a> {
     pub fn lookup(
         &self,
         i_s: &InferenceState,
-        node_ref: Option<NodeRef>,
+        node_ref: NodeRef,
         name: &str,
         result_context: &mut ResultContext,
     ) -> LookupResult {

@@ -251,6 +251,8 @@ impl<'db> Inference<'db, '_, '_> {
     fn calc_class_diagnostics(&mut self, class: ClassDef) {
         let (_, block) = class.unpack();
         let name_def = NodeRef::new(self.file, class.name_definition().index());
+        debug!("TODO this from is completely wrong and should never be used.");
+        let hack = name_def;
         self.cache_class(name_def, class);
         let class_node_ref = NodeRef::new(self.file, class.index());
         let c = Class::with_self_generics(self.i_s.db, class_node_ref);
@@ -275,7 +277,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if name.starts_with("__") {
                         return;
                     }
-                    if let Some(inf) = instance2.lookup(self.i_s, None, name).into_maybe_inferred()
+                    if let Some(inf) = instance2.lookup(self.i_s, hack, name).into_maybe_inferred()
                     {
                         if c.lookup_symbol(self.i_s, name).into_maybe_inferred().is_some() {
                             // These checks happen elsewhere.
@@ -283,7 +285,7 @@ impl<'db> Inference<'db, '_, '_> {
                             return
                         }
                         let second = inf.as_type(self.i_s);
-                        let first = instance1.lookup(self.i_s, None, name).into_inferred();
+                        let first = instance1.lookup(self.i_s, hack, name).into_inferred();
                         let first = first.as_type(self.i_s);
                         if !first
                             .is_sub_type_of(
@@ -320,10 +322,10 @@ impl<'db> Inference<'db, '_, '_> {
                     continue;
                 }
                 let (defined_in, result) =
-                    instance.lookup_and_maybe_ignore_super_count(self.i_s, None, name, 1);
+                    instance.lookup_and_maybe_ignore_super_count(self.i_s, hack, name, 1);
                 if let Some(inf) = result.into_maybe_inferred() {
                     let expected = inf.as_type(self.i_s);
-                    let got = instance.lookup(self.i_s, None, name).into_inferred();
+                    let got = instance.lookup(self.i_s, hack, name).into_inferred();
                     let got = got.as_type(self.i_s);
                     if !expected
                         .is_same_type(self.i_s, &mut Matcher::new_class_matcher(self.i_s, c), &got)
@@ -341,15 +343,17 @@ impl<'db> Inference<'db, '_, '_> {
                                         TypeOrClass::Type(_) => c,
                                     }),
                                     expected,
-                                    c.lookup_and_class_and_maybe_ignore_self(self.i_s, name, true)
-                                        .0,
+                                    c.lookup_and_class_and_maybe_ignore_self(
+                                        self.i_s, hack, name, true,
+                                    )
+                                    .0,
                                 );
                                 notes.push("     Subclass:".into());
                                 try_pretty_format(
                                     &mut notes,
                                     &self.i_s.with_class_context(&c),
                                     got,
-                                    c.lookup(self.i_s, None, name),
+                                    c.lookup(self.i_s, hack, name),
                                 );
 
                                 IssueType::SignatureIncompatibleWithSupertype {
