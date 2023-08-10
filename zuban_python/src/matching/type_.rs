@@ -2292,18 +2292,6 @@ impl<'a> Type<'a> {
         result_context: &mut ResultContext,
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
-        self.lookup_helper(i_s, from, name, result_context, on_lookup_error)
-    }
-
-    #[inline]
-    fn lookup_helper(
-        &self,
-        i_s: &InferenceState,
-        from: NodeRef,
-        name: &str,
-        result_context: &mut ResultContext,
-        on_lookup_error: OnLookupError,
-    ) -> LookupResult {
         let mut result: Option<LookupResult> = None;
         self.run_after_lookup_on_each_union_member(
             i_s,
