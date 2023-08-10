@@ -553,6 +553,13 @@ impl PythonState {
         )
     }
 
+    pub fn module_instance(&self) -> Instance {
+        Instance::new(
+            Class::from_non_generic_node_ref(self.module_node_ref()),
+            None,
+        )
+    }
+
     pub fn literal_type(&self, literal_kind: &LiteralKind) -> Type {
         Type::owned(self.literal_db_type(literal_kind))
     }

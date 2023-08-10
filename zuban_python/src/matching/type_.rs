@@ -2224,7 +2224,7 @@ impl<'a> Type<'a> {
             ),
             DbType::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
-                callable(self, module.lookup(i_s, name))
+                callable(self, module.lookup(i_s, from, name))
             }
             DbType::Namespace(namespace) => callable(
                 self,

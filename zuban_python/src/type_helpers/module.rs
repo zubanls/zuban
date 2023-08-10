@@ -5,9 +5,10 @@ use crate::file::File;
 use crate::file::PythonFile;
 use crate::imports::{python_import, ImportResult};
 use crate::inference_state::InferenceState;
+use crate::node_ref::NodeRef;
 
 use crate::inferred::Inferred;
-use crate::matching::{LookupResult, Type};
+use crate::matching::LookupResult;
 use crate::workspaces::{Directory, Parent};
 
 #[derive(Copy, Clone)]
@@ -58,7 +59,7 @@ impl<'a> Module<'a> {
         }
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
+    pub fn lookup(&self, i_s: &InferenceState, from: Option<NodeRef>, name: &str) -> LookupResult {
         self.file
             .symbol_table
             .lookup_symbol(name)
@@ -75,7 +76,10 @@ impl<'a> Module<'a> {
                 })
             })
             .unwrap_or_else(|| {
-                Type::owned(i_s.db.python_state.module_db_type()).lookup_without_error(i_s, name)
+                i_s.db
+                    .python_state
+                    .module_instance()
+                    .lookup(i_s, from, name)
             })
     }
 }

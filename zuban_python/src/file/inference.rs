@@ -1618,8 +1618,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 "{:?}",
                 name
             );
-            if let Some(inf) = Type::owned(self.i_s.db.python_state.module_db_type())
-                .lookup_without_error(self.i_s, name.as_code())
+            if let Some(inf) = self
+                .i_s
+                .db
+                .python_state
+                .module_instance()
+                .lookup(self.i_s, None, name.as_code())
                 .save_name(self.i_s, self.file, name)
             {
                 return inf;
