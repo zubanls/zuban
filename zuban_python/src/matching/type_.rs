@@ -154,10 +154,10 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn maybe_borrowed_db_type(&self) -> Option<&'a DbType> {
+    pub fn expect_borrowed_db_type(&self) -> &'a DbType {
         match self.0 {
-            Cow::Borrowed(t) => Some(t),
-            _ => None,
+            Cow::Borrowed(t) => t,
+            _ => unreachable!(),
         }
     }
 

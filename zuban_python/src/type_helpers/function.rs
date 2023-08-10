@@ -1252,7 +1252,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
             .annotation()
             .map(|annotation| use_cached_annotation_type(db, self.file, annotation));
         fn dbt<'a>(t: Option<&Type<'a>>) -> Option<&'a DbType> {
-            t.and_then(|t| t.maybe_borrowed_db_type())
+            t.map(|t| t.expect_borrowed_db_type())
         }
         match self.kind(db) {
             ParamKind::PositionalOnly => WrappedParamSpecific::PositionalOnly(t),
@@ -1263,7 +1263,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     WrappedStarred::ParamSpecArgs(param_spec_usage)
                 }
                 _ => WrappedStarred::ArbitraryLength(t.map(|t| {
-                    let DbType::Tuple(t) = t.maybe_borrowed_db_type().unwrap() else {
+                    let DbType::Tuple(t) = t.expect_borrowed_db_type() else {
                         unreachable!()
                     };
                     match t.args.as_ref().unwrap() {
@@ -1277,7 +1277,7 @@ impl<'x> Param<'x> for FunctionParam<'x> {
                     WrappedDoubleStarred::ParamSpecKwargs(param_spec_usage)
                 }
                 _ => WrappedDoubleStarred::ValueType(t.map(|t| {
-                    let DbType::Class(GenericClass {generics: ClassGenerics::List(generics), ..}) = t.maybe_borrowed_db_type().unwrap() else {
+                    let DbType::Class(GenericClass {generics: ClassGenerics::List(generics), ..}) = t.expect_borrowed_db_type() else {
                         unreachable!()
                     };
                     let GenericItem::TypeArgument(t) = &generics[1.into()] else {
