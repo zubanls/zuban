@@ -647,13 +647,13 @@ impl<'db: 'slf, 'slf> Inferred {
         self,
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
-        func_class: Class,
+        attribute_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Self> {
-        let needs_remapping = || match func_class.generics {
-            Generics::Self_ { .. } => func_class.type_var_remap.is_some(),
+        let needs_remapping = || match attribute_class.generics {
+            Generics::Self_ { .. } => attribute_class.type_var_remap.is_some(),
             _ => true,
         };
         match &self.state {
@@ -663,14 +663,14 @@ impl<'db: 'slf, 'slf> Inferred {
                 match point.type_() {
                     PointType::Specific => match point.specific() {
                         Specific::Function => {
-                            let func = prepare_func(i_s, *definition, func_class);
+                            let func = prepare_func(i_s, *definition, attribute_class);
                             return if let Some(first_type) = func.first_param_annotation_type(i_s) {
                                 if let Some(t) = create_signature_without_self(
                                     i_s,
                                     Matcher::new_function_matcher(None, func, func.type_vars(i_s)),
                                     || func.as_callable(i_s, FirstParamProperties::Skip(instance)),
                                     instance,
-                                    &func_class,
+                                    &attribute_class,
                                     first_type.as_ref(),
                                 ) {
                                     Some(Self::new_unsaved_complex(ComplexPoint::TypeInstance(
@@ -694,11 +694,11 @@ impl<'db: 'slf, 'slf> Inferred {
                             };
                         }
                         Specific::DecoratedFunction => {
-                            let func = prepare_func(i_s, *definition, func_class);
+                            let func = prepare_func(i_s, *definition, attribute_class);
                             return func.decorated(i_s).bind_instance_descriptors_internal(
                                 i_s,
                                 instance,
-                                func_class,
+                                attribute_class,
                                 from,
                                 mro_index,
                                 // Class vars are remapped separatly
@@ -711,12 +711,12 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s.db,
                                 t.as_ref(),
                                 &instance.class,
-                                &func_class,
+                                &attribute_class,
                             );
                             return Inferred::from_type(t).bind_instance_descriptors_internal(
                                 i_s,
                                 instance,
-                                func_class,
+                                attribute_class,
                                 from,
                                 mro_index,
                                 ApplyDescriptorsKind::NoBoundMethod,
@@ -730,7 +730,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                 i_s,
                                 instance,
-                                func_class,
+                                attribute_class,
                                 from,
                                 mro_index,
                                 None,
@@ -753,7 +753,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 let has_self_arguments = o.iter_functions().any(|c| {
                                     Function::new(
                                         NodeRef::from_link(i_s.db, c.defined_at),
-                                        Some(func_class),
+                                        Some(attribute_class),
                                     )
                                     .first_param_annotation_type(i_s)
                                     .is_some()
@@ -767,7 +767,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                     i_s,
                                                     callable,
                                                     instance,
-                                                    &func_class,
+                                                    &attribute_class,
                                                     t,
                                                 )
                                             } else {
@@ -779,7 +779,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                         0 => {
                                             let overload = OverloadedFunction::new(
                                                 &o.functions,
-                                                Some(func_class),
+                                                Some(attribute_class),
                                             );
                                             let t = IssueType::InvalidClassMethodFirstArgument {
                                                 argument_type: instance
@@ -826,7 +826,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                     i_s,
                                     instance,
-                                    func_class,
+                                    attribute_class,
                                     from,
                                     mro_index,
                                     Some(*definition),
@@ -856,7 +856,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     if let Some(inf) = Self::bind_instance_descriptors_for_type(
                         i_s,
                         instance,
-                        func_class,
+                        attribute_class,
                         from,
                         mro_index,
                         None,
@@ -878,7 +878,7 @@ impl<'db: 'slf, 'slf> Inferred {
     fn bind_instance_descriptors_for_type(
         i_s: &InferenceState<'db, '_>,
         instance: &Instance,
-        func_class: Class,
+        attribute_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
         definition: Option<PointLink>,
@@ -898,7 +898,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s,
                                 c,
                                 instance,
-                                &func_class,
+                                &attribute_class,
                                 f,
                             )
                             .map(|c| Inferred::from_type(DbType::Callable(Rc::new(c)))),
@@ -913,13 +913,13 @@ impl<'db: 'slf, 'slf> Inferred {
                         i_s.db,
                         &c.result_type,
                         &instance.class,
-                        &func_class,
+                        &attribute_class,
                     ))))
                 }
                 FunctionKind::Classmethod => {
-                    let result = infer_class_method(i_s, instance.class, func_class, c);
+                    let result = infer_class_method(i_s, instance.class, attribute_class, c);
                     if result.is_none() {
-                        let func = prepare_func(i_s, c.defined_at, func_class);
+                        let func = prepare_func(i_s, c.defined_at, attribute_class);
                         let t = IssueType::InvalidClassMethodFirstArgument {
                             argument_type: instance.class.as_type(i_s).format_short(i_s.db),
                             function_name: Box::from(func.name()),
@@ -935,15 +935,15 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
 
-        let needs_remapping = !(matches!(func_class.generics, Generics::Self_ { .. })
-            && func_class.type_var_remap.is_none());
+        let needs_remapping = !(matches!(attribute_class.generics, Generics::Self_ { .. })
+            && attribute_class.type_var_remap.is_none());
         let mut new = None;
         if needs_remapping {
             new = Some(replace_class_type_vars(
                 i_s.db,
                 &t,
                 &instance.class,
-                &func_class,
+                &attribute_class,
             ));
             t = new.as_ref().unwrap();
         }
