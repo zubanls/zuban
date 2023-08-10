@@ -1345,13 +1345,6 @@ impl<'a> TypeOrClass<'a> {
         }
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        match self {
-            Self::Class(class) => class.lookup(i_s, None, name),
-            Self::Type(t) => todo!(),
-        }
-    }
-
     pub fn name(&self) -> &str {
         match self {
             Self::Class(class) => class.name(),
