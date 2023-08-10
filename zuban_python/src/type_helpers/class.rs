@@ -581,6 +581,19 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    pub fn is_metaclass(&self, db: &Database) -> bool {
+        let python_type = DbType::new_class(
+            db.python_state.type_node_ref().as_link(),
+            ClassGenerics::None,
+        );
+        dbg!(&python_type);
+        dbg!(&self.use_cached_class_infos(db).mro);
+        self.use_cached_class_infos(db)
+            .mro
+            .iter()
+            .any(|t| t.type_ == python_type)
+    }
+
     pub fn is_protocol(&self, db: &Database) -> bool {
         self.use_cached_class_infos(db).class_type == ClassType::Protocol
     }

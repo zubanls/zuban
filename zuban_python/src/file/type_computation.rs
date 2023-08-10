@@ -618,9 +618,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     fn as_db_type(&mut self, type_: TypeContent, node_ref: NodeRef) -> DbType {
+        let db = self.inference.i_s.db;
         match type_ {
             TypeContent::Class { node_ref, .. } => {
-                let db = self.inference.i_s.db;
                 Class::with_undefined_generics(node_ref).as_db_type(db)
             }
             TypeContent::SimpleGeneric {
@@ -630,10 +630,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             } => DbType::new_class(class_link, generics),
             TypeContent::DbType(d) => d,
             TypeContent::Module(file) => {
-                self.add_module_issue(
-                    node_ref,
-                    &Module::new(file).qualified_name(self.inference.i_s.db),
-                );
+                self.add_module_issue(node_ref, &Module::new(file).qualified_name(db));
                 DbType::Any
             }
             TypeContent::Namespace(n) => {
@@ -642,19 +639,19 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             }
             TypeContent::TypeAlias(a) => {
                 self.is_recursive_alias |= a.is_recursive();
-                a.as_db_type_and_set_type_vars_any(self.inference.i_s.db)
+                a.as_db_type_and_set_type_vars_any(db)
             }
             TypeContent::SpecialType(m) => match m {
                 SpecialType::Callable => DbType::Callable(Rc::new(CallableContent::new_any())),
                 SpecialType::Any => DbType::Any,
-                SpecialType::Type => self.inference.i_s.db.python_state.type_of_any.clone(),
+                SpecialType::Type => db.python_state.type_of_any.clone(),
                 SpecialType::Tuple => DbType::Tuple(TupleContent::new_empty()),
                 SpecialType::ClassVar => {
                     self.add_issue(node_ref, IssueType::ClassVarNestedInsideOtherType);
                     DbType::Any
                 }
                 SpecialType::LiteralString => DbType::new_class(
-                    self.inference.i_s.db.python_state.str_node_ref().as_link(),
+                    db.python_state.str_node_ref().as_link(),
                     ClassGenerics::None,
                 ),
                 SpecialType::Literal => {
@@ -672,8 +669,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         TypeComputationOrigin::Constraint | TypeComputationOrigin::BaseClass
                     ) && self.inference.i_s.current_class().is_some() =>
                 {
-                    self.has_type_vars = true;
-                    DbType::Self_
+                    if self.inference.i_s.current_class().unwrap().is_metaclass(db) {
+                        self.add_issue(node_ref, IssueType::SelfTypeInMetaclass);
+                        DbType::Any
+                    } else {
+                        self.has_type_vars = true;
+                        DbType::Self_
+                    }
                 }
                 SpecialType::Self_ => {
                     self.add_issue(

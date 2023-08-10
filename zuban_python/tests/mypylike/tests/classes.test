@@ -68,6 +68,23 @@ class Try2(B, A): ... # E: Metaclass conflict: the metaclass of a derived class 
 class Try3(C, A): ...
 class Try4(A, C): ...
 
+[case self_type_in_metaclass]
+# Similar to testTypingSelfMetaClassDisabled, but with additional tests
+from typing import Self
+
+class Meta(type):
+    def __new__(cls, *args: Any) -> Self:  # E: Self type cannot be used in a metaclass
+        return 1
+    def meth(cls) -> Self: ...  # E: Self type cannot be used in a metaclass
+    def other(cls, next: Self) -> None: ...  # E: Self type cannot be used in a metaclass
+    x: Self  # E: Self type cannot be used in a metaclass
+
+class Bar(metaclass=Meta): ...
+
+reveal_type(Bar.x)  # N: Revealed type is "Any"
+reveal_type(Bar.meth)  # N: Revealed type is "def () -> Any"
+reveal_type(Bar.other)  # N: Revealed type is "def (next: Any)"
+
 [case kwargs_base_class]
 from typing import Type
 foo: dict[str, Type[Any]]

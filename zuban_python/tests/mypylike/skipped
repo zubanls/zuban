@@ -1057,8 +1057,6 @@ testReExportChildStubs3
 testSelfTypeProtocolMetaclassMatch
 testMetaclassSelfType
 testSelfTypeStructureMetaclassMatch
-# "Self type cannot be used in a metaclass"
-testTypingSelfMetaClassDisabled
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass
 # Metaclass iter/getitem/addition
