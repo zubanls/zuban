@@ -554,7 +554,7 @@ pub struct TypeArguments {
 }
 
 impl TypeArguments {
-    pub fn new_fixed_length(args: Box<[TypeOrTypeVarTuple]>) -> Self {
+    pub fn new_fixed_length(args: Rc<[TypeOrTypeVarTuple]>) -> Self {
         Self {
             args: TupleTypeArguments::FixedLength(args),
         }
@@ -1277,7 +1277,7 @@ impl TypeOrTypeVarTuple {
         match self {
             Self::Type(t) => t.clone(),
             Self::TypeVarTuple(t) => {
-                DbType::Tuple(Rc::new(TupleContent::new_fixed_length(Box::new([
+                DbType::Tuple(Rc::new(TupleContent::new_fixed_length(Rc::new([
                     TypeOrTypeVarTuple::TypeVarTuple(t.clone()),
                 ]))))
             }
@@ -1297,7 +1297,7 @@ impl TypeOrTypeVarTuple {
 
 #[derive(Debug, Clone, PartialEq)]
 pub enum TupleTypeArguments {
-    FixedLength(Box<[TypeOrTypeVarTuple]>),
+    FixedLength(Rc<[TypeOrTypeVarTuple]>),
     ArbitraryLength(Box<DbType>),
 }
 
@@ -1365,7 +1365,7 @@ impl TupleContent {
         }
     }
 
-    pub fn new_fixed_length(args: Box<[TypeOrTypeVarTuple]>) -> Self {
+    pub fn new_fixed_length(args: Rc<[TypeOrTypeVarTuple]>) -> Self {
         Self::new(TupleTypeArguments::FixedLength(args))
     }
 
@@ -2594,7 +2594,7 @@ impl NamedTuple {
                             t.param_specific.expect_positional_db_type_as_ref().clone(),
                         )
                     })
-                    .collect::<Box<_>>(),
+                    .collect(),
             ))
         })
     }

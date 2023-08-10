@@ -1560,7 +1560,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 }
             }
         }
-        let content = TupleContent::new_fixed_length(generics.into_boxed_slice());
+        let content = TupleContent::new_fixed_length(generics.into());
         debug!(
             "Inferred: {}",
             content.format(&FormatData::new_short(self.i_s.db))

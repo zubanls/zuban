@@ -1393,7 +1393,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                                     .collect()
                             } else {
                                 // If not enough type arguments are given, an error is raised elsewhere.
-                                Box::new([])
+                                Rc::new([])
                             },
                         ))
                     }
@@ -1433,7 +1433,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     fn compute_type_get_item_on_tuple(&mut self, slice_type: SliceType) -> TypeContent<'db, 'db> {
         let mut iterator = slice_type.iter();
         let first = iterator.next().unwrap();
-        let generics: Box<[_]> = if let Some(slice_or_simple) = iterator.next() {
+        let generics: Rc<[_]> = if let Some(slice_or_simple) = iterator.next() {
             if let SliceOrSimple::Simple(s) = slice_or_simple {
                 if s.named_expr.is_ellipsis_literal() {
                     let t = self.compute_slice_db_type(first);
@@ -1459,9 +1459,9 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             // Handle Tuple[()]
             match t {
                 TypeContent::InvalidVariable(InvalidVariableType::Tuple { tuple_length: 0 }) => {
-                    Box::new([])
+                    Rc::new([])
                 }
-                _ => Box::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
+                _ => Rc::new([self.convert_slice_type_or_type_var_tuple(t, first)]),
             }
         };
         TypeContent::DbType(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(

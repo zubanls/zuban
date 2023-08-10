@@ -1259,9 +1259,11 @@ impl<'a> Type<'a> {
                             TypeOrTypeVarTuple::TypeVarTuple(t) => {
                                 match callable(TypeVarLikeUsage::TypeVarTuple(Cow::Borrowed(t))) {
                                     GenericItem::TypeArguments(new) => {
-                                        new_args.extend(match new.args {
+                                        match new.args {
                                             TupleTypeArguments::FixedLength(fixed) => {
-                                                fixed.into_vec().into_iter()
+                                                // Performance issue: clone could probably be removed. Rc -> Vec check
+                                                // https://github.com/rust-lang/rust/issues/93610#issuecomment-1528108612
+                                                new_args.extend(fixed.iter().cloned())
                                             }
                                             TupleTypeArguments::ArbitraryLength(t) => {
                                                 match ts.len() {
@@ -1274,7 +1276,7 @@ impl<'a> Type<'a> {
                                                     _ => todo!(),
                                                 }
                                             }
-                                        })
+                                        }
                                     }
                                     x => unreachable!("{x:?}"),
                                 }
@@ -2439,20 +2441,20 @@ impl<'a> Type<'a> {
                             if ts1.len() == ts2.len() =>
                         {
                             Rc::new(TupleContent::new_fixed_length(
-                                ts1.into_vec()
-                                    .into_iter()
-                                    .zip(ts2.into_vec().into_iter())
+                                // Performance issue: Same as above
+                                ts1.iter()
+                                    .zip(ts2.iter())
                                     .map(|(t1, t2)| match (t1, t2) {
                                         (
                                             TypeOrTypeVarTuple::Type(t1),
                                             TypeOrTypeVarTuple::Type(t2),
                                         ) => TypeOrTypeVarTuple::Type(
-                                            Type::owned(t1)
-                                                .merge_matching_parts(db, Type::owned(t2))
+                                            Type::new(t1)
+                                                .merge_matching_parts(db, Type::new(t2))
                                                 .into_db_type(),
                                         ),
                                         (t1, t2) => match t1 == t2 {
-                                            true => t1,
+                                            true => t1.clone(),
                                             false => todo!(),
                                         },
                                     })

@@ -10,6 +10,7 @@ pub use utils::{
 };
 
 use std::borrow::Cow;
+use std::rc::Rc;
 
 use super::params::{matches_simple_params, InferrableParamIterator2};
 use super::{FormatData, Generic, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
@@ -269,7 +270,7 @@ impl<'a> Matcher<'a> {
                                         &mut t2_iterator.by_ref().take(fetch),
                                     );
                                 } else {
-                                    let types: Box<_> =
+                                    let types: Rc<_> =
                                         t2_iterator.by_ref().take(fetch).cloned().collect();
                                     calculated.type_ = BoundKind::TypeVarTuple(
                                         TypeArguments::new_fixed_length(types),

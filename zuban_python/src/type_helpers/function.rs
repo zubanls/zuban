@@ -1444,7 +1444,7 @@ impl<'db> InferrableParam<'db, '_> {
                         arg.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s),
                     ))
                 }
-                let t = TupleContent::new_fixed_length(list.into_boxed_slice());
+                let t = TupleContent::new_fixed_length(list.into());
                 Some(Inferred::from_type(DbType::Tuple(Rc::new(t))))
             }
             ParamInput::None => None,

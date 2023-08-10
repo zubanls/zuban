@@ -1,3 +1,5 @@
+use std::rc::Rc;
+
 use parsa_python_ast::ParamKind;
 
 use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
@@ -114,14 +116,18 @@ impl CalculatedTypeVarLike {
             BoundKind::TypeVarTuple(ts) => match &mut ts.args {
                 TupleTypeArguments::FixedLength(calc_ts) => {
                     if fetch == calc_ts.len() {
-                        for (t1, t2) in calc_ts.iter_mut().zip(items) {
+                        let mut new = vec![];
+                        for (t1, t2) in calc_ts.iter().zip(items) {
                             match (t1, t2) {
                                 (TypeOrTypeVarTuple::Type(t1), TypeOrTypeVarTuple::Type(t2)) => {
-                                    *t1 = Type::new(t1).common_base_type(i_s, &Type::new(t2));
+                                    new.push(TypeOrTypeVarTuple::Type(
+                                        Type::new(t1).common_base_type(i_s, &Type::new(t2)),
+                                    ));
                                 }
                                 _ => todo!(),
                             }
                         }
+                        *calc_ts = new.into();
                     } else {
                         // We use map to make an iterator with covariant lifetimes.
                         #[allow(clippy::map_identity)]
@@ -151,7 +157,7 @@ impl CalculatedTypeVarLike {
                 TypeVarLike::TypeVar(_) => GenericItem::TypeArgument(DbType::Never),
                 // TODO TypeVarTuple: this feels wrong, should maybe be never?
                 TypeVarLike::TypeVarTuple(_) => {
-                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(Box::new([])))
+                    GenericItem::TypeArguments(TypeArguments::new_fixed_length(Rc::new([])))
                 }
                 // TODO ParamSpec: this feels wrong, should maybe be never?
                 TypeVarLike::ParamSpec(_) => {
