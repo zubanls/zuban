@@ -1027,7 +1027,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 let from = NodeRef::new(self.file, op.index());
                                 second.run_after_lookup_on_each_union_member(
                                     self.i_s,
-                                    Some(from),
+                                    from,
                                     "__contains__",
                                     &mut |r_type, lookup_result| {
                                         if let Some(method) = lookup_result.into_maybe_inferred() {
@@ -1229,7 +1229,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         let result = Inferred::gather_union(i_s, |add_to_union| {
             left.run_after_lookup_on_each_union_member(
                 i_s,
-                Some(node_ref),
+                node_ref,
                 op.magic_method,
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
