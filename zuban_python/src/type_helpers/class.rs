@@ -1136,11 +1136,6 @@ impl<'db: 'a, 'a> Class<'a> {
         self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
     }
 
-    pub fn type_lookup(&self, i_s: &InferenceState, name: &str) -> LookupResult {
-        let hack = self.node_ref;
-        self.lookup_with_or_without_descriptors(i_s, hack, name, true)
-    }
-
     pub fn qualified_name(&self, db: &Database) -> String {
         self.class_storage
             .parent_scope
