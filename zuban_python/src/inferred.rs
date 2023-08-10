@@ -1334,13 +1334,11 @@ impl<'db: 'slf, 'slf> Inferred {
                         point.specific(),
                         Specific::AnnotationOrTypeCommentWithTypeVars
                             | Specific::AnnotationOrTypeCommentWithoutTypeVars
+                            | Specific::AnnotationOrTypeCommentSimpleClassInstance
                     ) {
-                        // TODO the node_ref may not be an annotation.
-                        matches!(
-                            use_cached_annotation_or_type_comment(i_s, node_ref).as_ref(),
-                            DbType::Union(_)
-                        )
+                        use_cached_annotation_or_type_comment(i_s, node_ref).is_union()
                     } else {
+                        // TODO the node_ref may not be an annotation.
                         false
                     }
                 } else {
