@@ -2459,8 +2459,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         )
     }
 
-    // TODO make this private again
-    pub fn use_cached_annotation_or_type_comment_type_internal(
+    fn use_cached_annotation_or_type_comment_type_internal(
         &mut self,
         annotation_index: NodeIndex,
         expr: Expression,
@@ -2485,29 +2484,6 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         }
     }
 
-    pub fn use_db_type_of_annotation_or_type_comment(
-        &self,
-        node_index: NodeIndex,
-    ) -> &'file DbType {
-        debug_assert!(matches!(
-            self.file.points.get(node_index).specific(),
-            Specific::AnnotationOrTypeCommentWithTypeVars
-                | Specific::AnnotationOrTypeCommentWithoutTypeVars
-                | Specific::AnnotationOrTypeCommentClassVar
-        ));
-        // annotations look like `":" expr`
-        let complex_index = self
-            .file
-            .points
-            .get(node_index + ANNOTATION_TO_EXPR_DIFFERENCE)
-            .complex_index();
-        if let ComplexPoint::TypeInstance(db_type) = self.file.complex_points.get(complex_index) {
-            db_type
-        } else {
-            unreachable!()
-        }
-    }
-
     pub fn recalculate_annotation_type_vars(
         &self,
         node_index: NodeIndex,
@@ -2516,7 +2492,13 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         if self.file.points.get(node_index).specific()
             == Specific::AnnotationOrTypeCommentWithTypeVars
         {
-            let new_t = recalculate(self.use_db_type_of_annotation_or_type_comment(node_index));
+            let new_t = recalculate(
+                use_cached_annotation_or_type_comment(
+                    self.i_s,
+                    NodeRef::new(self.file, node_index),
+                )
+                .as_ref(),
+            );
             self.file.complex_points.insert(
                 &self.file.points,
                 node_index + ANNOTATION_TO_EXPR_DIFFERENCE,

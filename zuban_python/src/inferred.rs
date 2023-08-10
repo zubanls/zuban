@@ -343,11 +343,8 @@ impl<'db: 'slf, 'slf> Inferred {
                         //return i_s.infer_param(&definition);
                     }
                     Specific::AnnotationOrTypeCommentWithTypeVars => {
-                        let file = i_s.db.loaded_python_file(link.file);
-                        let t = file
-                            .inference(i_s)
-                            .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                        let d = replace_class_type_vars(i_s.db, t, class, attribute_class);
+                        let t = use_cached_annotation_or_type_comment(i_s, definition);
+                        let d = replace_class_type_vars(i_s.db, t.as_ref(), class, attribute_class);
                         return Inferred::from_type(d);
                     }
                     _ => (),
@@ -727,12 +724,13 @@ impl<'db: 'slf, 'slf> Inferred {
                             );
                         }
                         Specific::AnnotationOrTypeCommentWithTypeVars if needs_remapping() => {
-                            let t = node_ref
-                                .file
-                                .inference(i_s)
-                                .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                            let t =
-                                replace_class_type_vars(i_s.db, t, &instance.class, &func_class);
+                            let t = use_cached_annotation_or_type_comment(i_s, node_ref);
+                            let t = replace_class_type_vars(
+                                i_s.db,
+                                t.as_ref(),
+                                &instance.class,
+                                &func_class,
+                            );
                             return Inferred::from_type(t).bind_instance_descriptors_internal(
                                 i_s,
                                 instance,
@@ -745,10 +743,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         specific @ (Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar) => {
-                            let t = node_ref
-                                .file
-                                .inference(i_s)
-                                .use_db_type_of_annotation_or_type_comment(node_ref.node_index);
+                            let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                 i_s,
                                 instance,
@@ -756,7 +751,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 from,
                                 mro_index,
                                 None,
-                                t,
+                                t.as_ref(),
                                 if specific == Specific::AnnotationOrTypeCommentClassVar {
                                     ApplyDescriptorsKind::All
                                 } else {
@@ -1042,11 +1037,10 @@ impl<'db: 'slf, 'slf> Inferred {
                             } else {
                                 return None;
                             }
-                            let file = i_s.db.loaded_python_file(definition.file);
-                            let t = file
-                                .inference(i_s)
-                                .use_db_type_of_annotation_or_type_comment(definition.node_index);
-                            let t = replace_class_type_vars(i_s.db, t, class, &attribute_class);
+                            let t = use_cached_annotation_or_type_comment(
+                                i_s,
+                                NodeRef::from_link(i_s.db, *definition),
+                            );
                             if let Some(r) = Self::bind_class_descriptors_for_type(
                                 i_s,
                                 class,
@@ -1054,18 +1048,18 @@ impl<'db: 'slf, 'slf> Inferred {
                                 from,
                                 apply_descriptor,
                                 *definition,
-                                &t,
+                                t.as_ref(),
                             ) {
                                 return r;
                             }
-                            return Some(Inferred::from_type(t));
+                            return Some(Inferred::from_type(t.into_db_type()));
                         }
                         Specific::AnnotationOrTypeCommentWithoutTypeVars
                         | Specific::AnnotationOrTypeCommentClassVar => {
-                            let file = i_s.db.loaded_python_file(definition.file);
-                            let t = file
-                                .inference(i_s)
-                                .use_db_type_of_annotation_or_type_comment(definition.node_index);
+                            let t = use_cached_annotation_or_type_comment(
+                                i_s,
+                                NodeRef::from_link(i_s.db, *definition),
+                            );
                             if let Some(r) = Self::bind_class_descriptors_for_type(
                                 i_s,
                                 class,
@@ -1073,7 +1067,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 from,
                                 apply_descriptor,
                                 *definition,
-                                t,
+                                t.as_ref(),
                             ) {
                                 return r;
                             }
@@ -1343,10 +1337,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     ) {
                         // TODO the node_ref may not be an annotation.
                         matches!(
-                            node_ref
-                                .file
-                                .inference(i_s)
-                                .use_db_type_of_annotation_or_type_comment(node_ref.node_index),
+                            use_cached_annotation_or_type_comment(i_s, node_ref).as_ref(),
                             DbType::Union(_)
                         )
                     } else {
