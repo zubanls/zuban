@@ -599,7 +599,7 @@ impl<'db> Inference<'db, '_, '_> {
         }
         let element = self
             .infer_star_expressions(star_exprs, &mut ResultContext::Unknown)
-            .save_and_iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
+            .iter(self.i_s, NodeRef::new(self.file, star_exprs.index()))
             .infer_all(self.i_s);
         debug!("For loop input: {}", element.format_short(self.i_s));
         self.assign_targets(

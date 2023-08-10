@@ -169,7 +169,6 @@ impl<'a> Instance<'a> {
                     if let DbType::Tuple(tup) = t.as_ref() {
                         return Tuple::new(tup).iter(i_s, from);
                     } else {
-                        // Might happen when generics are passed to a tuple
                         todo!();
                     }
                 }

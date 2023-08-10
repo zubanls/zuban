@@ -782,7 +782,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
     ) {
         match target {
             Target::Tuple(mut targets) => {
-                let mut value_iterator = value.save_and_iter(self.i_s, value_node_ref);
+                let mut value_iterator = value.iter(self.i_s, value_node_ref);
                 let mut counter = 0;
                 while let Some(target) = targets.next() {
                     counter += 1;
@@ -1545,8 +1545,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 StarLikeExpression::StarNamedExpression(e) => {
                     let inferred = self
                         .infer_expression_part(e.expression_part(), &mut ResultContext::Unknown);
-                    let mut iterator =
-                        inferred.save_and_iter(self.i_s, NodeRef::new(self.file, e.index()));
+                    let mut iterator = inferred.iter(self.i_s, NodeRef::new(self.file, e.index()));
                     if iterator.len().is_some() {
                         while let Some(inf) = iterator.next(self.i_s) {
                             generics.push(TypeOrTypeVarTuple::Type(inf.as_db_type(self.i_s)))

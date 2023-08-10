@@ -525,19 +525,6 @@ impl<'db: 'slf, 'slf> Inferred {
         Self::new_saved(file, index)
     }
 
-    pub fn save_if_unsaved(
-        self,
-        i_s: &InferenceState,
-        file: &'db PythonFile,
-        index: NodeIndex,
-    ) -> Self {
-        if matches!(self.state, InferredState::Saved(_)) {
-            self
-        } else {
-            self.save_redirect(i_s, file, index)
-        }
-    }
-
     pub fn init_as_function<'a>(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1714,10 +1701,8 @@ impl<'db: 'slf, 'slf> Inferred {
             .get_item(i_s, Some(self), slice_type, result_context)
     }
 
-    pub fn save_and_iter(self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent {
-        let inferred = self.save_if_unsaved(i_s, from.file, from.node_index);
-        let t = inferred.saved_as_type(i_s).unwrap();
-        t.iter(i_s, from)
+    pub fn iter(self, i_s: &InferenceState<'db, '_>, from: NodeRef) -> IteratorContent {
+        self.as_type(i_s).iter(i_s, from)
     }
 }
 

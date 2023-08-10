@@ -560,7 +560,7 @@ impl<'db, 'a> Iterator for ArgumentIteratorBase<'db, 'a> {
                                 }
                                 _ => {
                                     Some(BaseArgumentReturn::ArgsKwargs(ArgsKwargsIterator::Args {
-                                        iterator: inf.save_and_iter(i_s, node_ref),
+                                        iterator: inf.iter(i_s, node_ref),
                                         node_ref,
                                         position: i + 1,
                                     }))

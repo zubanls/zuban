@@ -31,7 +31,7 @@ impl<'db> Inference<'db, '_, '_> {
                 }
                 StarLikeExpression::StarNamedExpression(e) => self
                     .infer_expression_part(e.expression_part(), &mut ResultContext::Unknown)
-                    .save_and_iter(self.i_s, NodeRef::new(self.file, e.index()))
+                    .iter(self.i_s, NodeRef::new(self.file, e.index()))
                     .infer_all(self.i_s)
                     .as_db_type(self.i_s),
                 StarLikeExpression::Expression(_) | StarLikeExpression::StarExpression(_) => {
