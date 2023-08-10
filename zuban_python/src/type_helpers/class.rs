@@ -75,7 +75,11 @@ impl<'db: 'a, 'a> Class<'a> {
     }
 
     pub fn from_non_generic_link(db: &'db Database, link: PointLink) -> Self {
-        Self::from_position(NodeRef::from_link(db, link), Generics::None, None)
+        Self::from_non_generic_node_ref(NodeRef::from_link(db, link))
+    }
+
+    pub fn from_non_generic_node_ref(node_ref: NodeRef<'db>) -> Self {
+        Self::from_position(node_ref, Generics::None, None)
     }
 
     #[inline]

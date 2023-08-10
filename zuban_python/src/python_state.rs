@@ -11,7 +11,7 @@ use crate::file::PythonFile;
 use crate::inferred::Inferred;
 use crate::matching::{Generics, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::{Class, Function};
+use crate::type_helpers::{Class, Function, Instance};
 use crate::{InferenceState, PythonProject};
 
 // This is a bit hacky, but I'm sure the tests will fail somewhere if this constant is
@@ -442,11 +442,11 @@ impl PythonState {
         NodeRef::new(self.types(), self.types_none_type_index)
     }
 
-    pub fn none_type(&self) -> Type {
-        Type::owned(DbType::new_class(
-            self.none_type_node_ref().as_link(),
-            ClassGenerics::None,
-        ))
+    pub fn none_instance(&self) -> Instance {
+        Instance::new(
+            Class::from_non_generic_node_ref(self.none_type_node_ref()),
+            None,
+        )
     }
 
     #[inline]
