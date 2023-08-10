@@ -42,12 +42,6 @@ testUnionSimplificationSpecialCases2
 # "Invalid type argument value for "C""
 testErrorCodeInvalidTypeArg
 
-# ""int" has no attribute "__iter__" (not iterable)"
-testErrorCodeNoAttribute
-
-# Self vs implicit self issues (I think Mypy is wrong here)
-testNewNamedTupleTypeReferenceToClassDerivedFrom
-
 # raise with brackets and no parentheses
 testRaiseClassObjectCustomInit
 # tuple assignment tuple[Any, ...] to tuple[A, A]
@@ -989,6 +983,7 @@ testImportMisspellingSingleCandidate
 testImportMisspellingMultipleCandidates
 testImportMisspellingMultipleCandidatesTruncated
 testColumnHasNoAttribute
+testErrorCodeNoAttribute
 
 # Unexpected keyword argument "otter" for "f"; did you mean "other"?
 testKeywordMisspelling

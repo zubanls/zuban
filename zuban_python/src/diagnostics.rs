@@ -180,9 +180,10 @@ impl IssueType {
         use IssueType::*;
         Some(match &self {
             Note(_) | InvariantNote { .. } => return None,
-            AttributeError { .. } | ImportAttributeError { .. } | ModuleAttributeError { .. } => {
-                "attr-defined"
-            }
+            AttributeError { .. }
+            | ImportAttributeError { .. }
+            | ModuleAttributeError { .. }
+            | NotIterable { .. } => "attr-defined",
             NameError { .. } => "name-defined",
             UnionAttributeError { .. } | UnionAttributeErrorOfUpperBound(..) => "union-attr",
             ArgumentTypeIssue(s) => "arg-type",
