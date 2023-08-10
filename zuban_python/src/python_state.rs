@@ -537,19 +537,29 @@ impl PythonState {
             .decorated(&InferenceState::new(db))
     }
 
+    fn literal_node_ref(&self, literal_kind: &LiteralKind) -> NodeRef {
+        match literal_kind {
+            LiteralKind::Int(_) => self.int_node_ref(),
+            LiteralKind::String(_) => self.str_node_ref(),
+            LiteralKind::Bool(_) => self.bool_node_ref(),
+            LiteralKind::Bytes(_) => self.bytes_node_ref(),
+        }
+    }
+
+    pub fn literal_instance(&self, literal_kind: &LiteralKind) -> Instance {
+        Instance::new(
+            Class::from_non_generic_node_ref(self.literal_node_ref(literal_kind)),
+            None,
+        )
+    }
+
     pub fn literal_type(&self, literal_kind: &LiteralKind) -> Type {
         Type::owned(self.literal_db_type(literal_kind))
     }
 
     pub fn literal_db_type(&self, literal_kind: &LiteralKind) -> DbType {
         DbType::new_class(
-            match literal_kind {
-                LiteralKind::Int(_) => self.int_node_ref(),
-                LiteralKind::String(_) => self.str_node_ref(),
-                LiteralKind::Bool(_) => self.bool_node_ref(),
-                LiteralKind::Bytes(_) => self.bytes_node_ref(),
-            }
-            .as_link(),
+            self.literal_node_ref(literal_kind).as_link(),
             ClassGenerics::None,
         )
     }

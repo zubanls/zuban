@@ -2139,8 +2139,8 @@ impl<'a> Type<'a> {
                 i_s.db.python_state.none_instance().lookup(i_s, from, name),
             ),
             DbType::Literal(literal) => {
-                let t = i_s.db.python_state.literal_type(&literal.kind);
-                callable(self, t.lookup_without_error(i_s, name))
+                let instance = i_s.db.python_state.literal_instance(&literal.kind);
+                callable(self, instance.lookup(i_s, from, name))
             }
             t @ DbType::TypeVar(tv) => {
                 if !tv.type_var.restrictions.is_empty() {
