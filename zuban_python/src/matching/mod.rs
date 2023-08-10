@@ -31,7 +31,7 @@ pub use utils::{
 
 use crate::{
     arguments::Argument,
-    database::{Database, DbType, TypeOrTypeVarTuple},
+    database::{Database, TypeOrTypeVarTuple},
     inference_state::InferenceState,
     inferred::Inferred,
     type_helpers::Class,

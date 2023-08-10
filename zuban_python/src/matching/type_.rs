@@ -1950,26 +1950,26 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn iter_on_borrowed(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent {
-        match self.maybe_borrowed_db_type() {
-            Some(DbType::Class(c)) => {
+    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
+        match self.as_ref() {
+            DbType::Class(c) => {
                 Instance::new(Class::from_generic_class(i_s.db, c), None).iter(i_s, from)
             }
-            Some(DbType::Tuple(content)) => Tuple::new(content).iter(i_s, from),
-            Some(DbType::NamedTuple(nt)) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
-            Some(DbType::Any | DbType::Never) => IteratorContent::Any,
-            Some(DbType::Union(union)) => {
+            DbType::Tuple(content) => Tuple::new(content).iter(i_s, from),
+            DbType::NamedTuple(nt) => NamedTupleValue::new(i_s.db, nt).iter(i_s, from),
+            DbType::Any | DbType::Never => IteratorContent::Any,
+            DbType::Union(union) => {
                 let mut items = vec![];
                 for t in union.iter() {
-                    items.push(Type::new(t).iter_on_borrowed(i_s, from));
+                    items.push(Type::new(t).iter(i_s, from));
                 }
                 IteratorContent::Union(items)
             }
-            Some(DbType::TypeVar(tv)) if tv.type_var.bound.is_some() => {
-                Type::new(tv.type_var.bound.as_ref().unwrap()).iter_on_borrowed(i_s, from)
+            DbType::TypeVar(tv) if tv.type_var.bound.is_some() => {
+                Type::new(tv.type_var.bound.as_ref().unwrap()).iter(i_s, from)
             }
-            Some(DbType::NewType(n)) => Type::new(n.type_(i_s)).iter_on_borrowed(i_s, from),
-            Some(DbType::Self_) => todo!(), //Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
+            DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
+            DbType::Self_ => todo!(), //Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => {
                 if let DbType::Class(
                     c @ GenericClass {

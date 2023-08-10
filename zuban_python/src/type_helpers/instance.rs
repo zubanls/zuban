@@ -136,7 +136,7 @@ impl<'a> Instance<'a> {
         }
     }
 
-    pub fn iter(&self, i_s: &InferenceState<'a, '_>, from: NodeRef) -> IteratorContent {
+    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
         if let ClassType::NamedTuple(ref named_tuple) =
             self.class.use_cached_class_infos(i_s.db).class_type
         {
@@ -166,11 +166,11 @@ impl<'a> Instance<'a> {
                     );
                 }
                 FoundOnClass::UnresolvedType(t) => {
-                    if let Some(DbType::Tuple(tup)) = t.maybe_borrowed_db_type() {
+                    if let DbType::Tuple(tup) = t.as_ref() {
                         return Tuple::new(tup).iter(i_s, from);
                     } else {
                         // Might happen when generics are passed to a tuple
-                        todo!("TODO Owned tuples won't work with iter currently");
+                        todo!();
                     }
                 }
             }
