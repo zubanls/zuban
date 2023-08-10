@@ -130,18 +130,14 @@ impl IteratorContent {
             Self::FixedLengthTupleGenerics {
                 entries,
                 current_index,
-            } => Inferred::from_type(entries.iter().skip(current_index).fold(
-                DbType::Never,
-                |a, b| {
-                    a.union(
-                        i_s.db,
-                        match b {
-                            TypeOrTypeVarTuple::Type(b) => b.clone(),
-                            TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
-                        },
-                    )
-                },
-            )),
+            } => Inferred::gather_union(i_s, |add| {
+                for entry in entries.iter().skip(current_index) {
+                    match entry {
+                        TypeOrTypeVarTuple::Type(b) => add(Inferred::from_type(b.clone())),
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => unreachable!(),
+                    }
+                }
+            }),
             Self::Union(iterators) => Inferred::gather_union(i_s, |add| {
                 for iterator in iterators {
                     add(iterator.infer_all(i_s))
