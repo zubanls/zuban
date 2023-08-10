@@ -45,10 +45,7 @@ testErrorCodeInvalidTypeArg
 # ""int" has no attribute "__iter__" (not iterable)"
 testErrorCodeNoAttribute
 
-# iter on Self
-testNamedTupleTypeReferenceToClassDerivedFrom
-testNamedTupleSelfTypeWithNamedTupleAsBase
-testNewNamedTupleSelfTypeWithNamedTupleAsBase
+# Self vs implicit self issues (I think Mypy is wrong here)
 testNewNamedTupleTypeReferenceToClassDerivedFrom
 
 # raise with brackets and no parentheses

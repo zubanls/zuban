@@ -1969,7 +1969,7 @@ impl<'a> Type<'a> {
                 Type::new(tv.type_var.bound.as_ref().unwrap()).iter(i_s, from)
             }
             DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
-            DbType::Self_ => todo!(), //Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
+            DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => {
                 if let DbType::Class(
                     c @ GenericClass {
