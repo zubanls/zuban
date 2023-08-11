@@ -867,6 +867,10 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
+    pub fn has_simple_self_generics(&self) -> bool {
+        matches!(self.generics, Generics::Self_ { .. }) && self.type_var_remap.is_none()
+    }
+
     fn mro_maybe_without_object(
         &self,
         db: &'db Database,

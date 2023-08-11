@@ -326,9 +326,7 @@ impl<'db: 'slf, 'slf> Inferred {
         class: &Class,
         attribute_class: &Class,
     ) -> Self {
-        if matches!(attribute_class.generics, Generics::Self_ { .. })
-            && attribute_class.type_var_remap.is_none()
-        {
+        if attribute_class.has_simple_self_generics() {
             return self;
         }
         if let InferredState::Saved(link) = self.state {
@@ -652,10 +650,6 @@ impl<'db: 'slf, 'slf> Inferred {
         mro_index: MroIndex,
         apply_descriptors_kind: ApplyDescriptorsKind,
     ) -> Option<Self> {
-        let needs_remapping = || match attribute_class.generics {
-            Generics::Self_ { .. } => attribute_class.type_var_remap.is_some(),
-            _ => true,
-        };
         match &self.state {
             InferredState::Saved(definition) => {
                 let node_ref = NodeRef::from_link(i_s.db, *definition);
@@ -714,7 +708,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_descriptors_kind,
                             );
                         }
-                        Specific::AnnotationOrTypeCommentWithTypeVars if needs_remapping() => {
+                        Specific::AnnotationOrTypeCommentWithTypeVars
+                            if !attribute_class.has_simple_self_generics() =>
+                        {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             let t = replace_class_type_vars(
                                 i_s.db,
@@ -944,10 +940,8 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
 
-        let needs_remapping = !(matches!(attribute_class.generics, Generics::Self_ { .. })
-            && attribute_class.type_var_remap.is_none());
         let mut new = None;
-        if needs_remapping {
+        if !attribute_class.has_simple_self_generics() {
             new = Some(replace_class_type_vars(
                 i_s.db,
                 &t,
@@ -1129,7 +1123,7 @@ impl<'db: 'slf, 'slf> Inferred {
             }
         }
         let needs_remapping = match attribute_class.generics {
-            Generics::Self_ { .. } => attribute_class.type_var_remap.is_some(),
+            Generics::Self_ { .. } => !attribute_class.has_simple_self_generics(),
             _ => attribute_class.type_vars(i_s).is_some(),
         };
         let mut new = None;
