@@ -29,6 +29,9 @@ macro_rules! replace_class_vars {
 pub enum Generics<'a> {
     ExpressionWithClassType(&'a PythonFile, Expression<'a>),
     SlicesWithClassTypes(&'a PythonFile, Slices<'a>),
+    // The remapping of type vars is done by List(). In a lot of
+    // cases this is T -> T and S -> S, but it could also be T -> S and S
+    // -> List[T] or something completely arbitrary. Therefore we have two generics.
     List(&'a GenericsList, Option<&'a Generics<'a>>),
     Self_ {
         class_definition: PointLink,

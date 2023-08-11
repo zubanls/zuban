@@ -164,13 +164,10 @@ impl<'a> Matcher<'a> {
         // If we're in a class context, we must also be in a method.
         if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
             if t1.in_definition == func_class.node_ref.as_link() {
-                // By definition, because the class did not match there will never be a
-                // type_var_remap that is not defined.
-                let type_var_remap = func_class.type_var_remap.unwrap();
-                let g = Generic::new(&type_var_remap[t1.index]).expect_type_argument();
-                // The remapping of type vars needs to be checked now. In a lot of
-                // cases this is T -> T and S -> S, but it could also be T -> S and S
-                // -> List[T] or something completely arbitrary.
+                let g = func_class
+                    .generics()
+                    .nth_usage(i_s.db, &TypeVarLikeUsage::TypeVar(Cow::Borrowed(t1)))
+                    .expect_type_argument();
                 return g.matches(i_s, self, value_type, t1.type_var.variance);
             }
             // The case that the if does not hit happens e.g. for
