@@ -537,8 +537,10 @@ impl<'a> Matcher<'a> {
         }
         if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
             if usage.in_definition() == func_class.node_ref.as_link() {
-                let type_var_remap = func_class.type_var_remap.unwrap();
-                return Generic::new(&type_var_remap[usage.index()]).format(format_data);
+                return func_class
+                    .generics()
+                    .nth_usage(format_data.db, usage)
+                    .format(format_data);
             }
         }
         usage.format_without_matcher(format_data.db, params_style)
