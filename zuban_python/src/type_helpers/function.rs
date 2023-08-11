@@ -1849,8 +1849,8 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                         replace_class_type_vars_in_callable(
                             i_s.db,
                             &callable.remove_first_param().unwrap(),
-                            &instance.class,
                             self.class.as_ref(),
+                            &mut || instance.class.as_db_type(i_s.db),
                         )
                     })
                     .collect(),

@@ -4,6 +4,7 @@ use crate::database::{
 use crate::inference_state::InferenceState;
 use crate::type_helpers::{Class, Instance};
 
+use super::type_::ReplaceSelf;
 use super::{Matcher, Type};
 
 pub fn replace_class_type_vars(
@@ -25,8 +26,8 @@ pub fn replace_class_type_vars(
 pub fn replace_class_type_vars_in_callable(
     db: &Database,
     callable: &CallableContent,
-    instance_class: &Class,
     func_class: Option<&Class>,
+    as_self_instance: ReplaceSelf,
 ) -> CallableContent {
     Type::replace_type_var_likes_and_self_for_callable(
         &callable,
@@ -36,7 +37,7 @@ pub fn replace_class_type_vars_in_callable(
                 .and_then(|c| maybe_class_usage(db, c, &usage))
                 .unwrap_or_else(|| usage.into_generic_item())
         },
-        &mut || instance_class.as_db_type(db),
+        as_self_instance,
     )
 }
 
@@ -68,7 +69,9 @@ pub fn create_signature_without_self_for_callable(
             let c = callable
                 .remove_first_param()
                 .expect("Signatures without any params should have been filtered before");
-            replace_class_type_vars_in_callable(i_s.db, &c, &instance.class, Some(func_class))
+            replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &mut || {
+                instance.class.as_db_type(i_s.db)
+            })
         },
         instance,
         func_class,

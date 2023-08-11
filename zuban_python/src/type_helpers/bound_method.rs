@@ -78,8 +78,8 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                     replace_class_type_vars_in_callable(
                         i_s.db,
                         &callable,
-                        &self.instance.class,
                         c.defined_in.as_ref(),
+                        &mut || self.instance.class.as_db_type(i_s.db),
                     )
                 }))
             }
