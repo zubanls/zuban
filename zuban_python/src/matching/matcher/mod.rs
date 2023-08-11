@@ -102,16 +102,6 @@ impl<'a> Matcher<'a> {
         }
     }
 
-    pub fn new_reverse_function_matcher(
-        class: Option<&'a Class<'a>>,
-        function: Function<'a, 'a>,
-        type_vars: Option<&TypeVarLikes>,
-    ) -> Self {
-        let mut m = Self::new_function_matcher(class, function, type_vars);
-        m.match_reverse = true;
-        m
-    }
-
     pub fn with_ignored_promotions() -> Self {
         Self {
             ignore_promotions: true,
