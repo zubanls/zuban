@@ -68,7 +68,9 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                     to_self_instance: &|| self.instance.class.as_db_type(i_s.db),
                 },
             ),
-            BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(self.instance)),
+            BoundMethodFunction::Overload(f) => {
+                f.as_db_type(i_s, Some(&mut || self.instance.class.as_db_type(i_s.db)))
+            }
             BoundMethodFunction::Callable(c) => {
                 let callable = c
                     .content

@@ -8,7 +8,7 @@ use std::cell::Cell;
 use std::fmt;
 use std::rc::Rc;
 
-use super::{Callable, Instance, Module};
+use super::{Callable, Module};
 use crate::arguments::{Argument, ArgumentIterator, ArgumentKind, Arguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, ClassGenerics, ComplexPoint, Database, DbType,
@@ -33,7 +33,7 @@ use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_function_type_vars_and_return, maybe_class_usage,
     replace_class_type_vars_in_callable, ArgumentIndexWithParam, CalculatedTypeArguments,
-    FormatData, FunctionOrCallable, Generic, LookupResult, OnTypeError, ResultContext,
+    FormatData, FunctionOrCallable, Generic, LookupResult, OnTypeError, ReplaceSelf, ResultContext,
     SignatureMatch, Type,
 };
 use crate::node_ref::NodeRef;
@@ -1839,9 +1839,9 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
     pub fn as_db_type(
         &self,
         i_s: &InferenceState<'db, '_>,
-        remove_first_param: Option<&Instance>,
+        replace_self_type: Option<ReplaceSelf>,
     ) -> DbType {
-        if let Some(instance) = remove_first_param {
+        if let Some(replace_self_type) = replace_self_type {
             DbType::FunctionOverload(FunctionOverload::new(
                 self.overload
                     .iter_functions()
@@ -1850,7 +1850,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                             i_s.db,
                             &callable.remove_first_param().unwrap(),
                             self.class.as_ref(),
-                            &mut || instance.class.as_db_type(i_s.db),
+                            replace_self_type,
                         )
                     })
                     .collect(),
