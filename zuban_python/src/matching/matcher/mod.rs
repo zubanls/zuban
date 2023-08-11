@@ -535,17 +535,7 @@ impl<'a> Matcher<'a> {
                     .format(&format_data.remove_matcher());
             }
         }
-        let func_class = match self.func_or_callable {
-            Some(FunctionOrCallable::Function(f)) => f.class,
-            Some(FunctionOrCallable::Callable(c)) => {
-                if usage.in_definition() == c.content.defined_at {
-                    todo!()
-                }
-                c.defined_in
-            }
-            None => None,
-        };
-        if let Some(func_class) = func_class {
+        if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
             if usage.in_definition() == func_class.node_ref.as_link() {
                 let type_var_remap = func_class.type_var_remap.unwrap();
                 return Generic::new(&type_var_remap[usage.index()]).format(format_data);
