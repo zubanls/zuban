@@ -180,11 +180,6 @@ impl<'a> Matcher<'a> {
                     // testInvalidNumberOfTypeArgs:
                     // class C:  # Forgot to add type params here
                     //     def __init__(self, t: T) -> None: pass
-                } else {
-                    debug!(
-                        "TODO Maybe nested generic functions??? {:?}",
-                        t1.in_definition,
-                    )
                 }
             }
             Some(FunctionOrCallable::Callable(c)) => {
@@ -200,8 +195,6 @@ impl<'a> Matcher<'a> {
                         return g.matches(i_s, self, value_type, t1.type_var.variance);
                     }
                 }
-                return Type::owned(DbType::TypeVar(t1.clone()))
-                    .simple_matches(i_s, value_type, variance);
             }
             _ => (),
         };
