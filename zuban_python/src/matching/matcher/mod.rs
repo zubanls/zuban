@@ -161,43 +161,23 @@ impl<'a> Matcher<'a> {
                 return g.simple_matches(i_s, value_type, t1.type_var.variance);
             }
         }
-        match self.func_or_callable {
-            // TODO this should probably moved out
-            Some(FunctionOrCallable::Function(f)) => {
-                // If we're in a class context, we must also be in a method.
-                if let Some(func_class) = f.class {
-                    if t1.in_definition == func_class.node_ref.as_link() {
-                        // By definition, because the class did not match there will never be a
-                        // type_var_remap that is not defined.
-                        let type_var_remap = func_class.type_var_remap.unwrap();
-                        let g = Generic::new(&type_var_remap[t1.index]).expect_type_argument();
-                        // The remapping of type vars needs to be checked now. In a lot of
-                        // cases this is T -> T and S -> S, but it could also be T -> S and S
-                        // -> List[T] or something completely arbitrary.
-                        return g.matches(i_s, self, value_type, t1.type_var.variance);
-                    }
-                    // The case that the if does not hit happens e.g. for
-                    // testInvalidNumberOfTypeArgs:
-                    // class C:  # Forgot to add type params here
-                    //     def __init__(self, t: T) -> None: pass
-                }
+        // If we're in a class context, we must also be in a method.
+        if let Some(func_class) = self.func_or_callable.as_ref().and_then(|f| f.class()) {
+            if t1.in_definition == func_class.node_ref.as_link() {
+                // By definition, because the class did not match there will never be a
+                // type_var_remap that is not defined.
+                let type_var_remap = func_class.type_var_remap.unwrap();
+                let g = Generic::new(&type_var_remap[t1.index]).expect_type_argument();
+                // The remapping of type vars needs to be checked now. In a lot of
+                // cases this is T -> T and S -> S, but it could also be T -> S and S
+                // -> List[T] or something completely arbitrary.
+                return g.matches(i_s, self, value_type, t1.type_var.variance);
             }
-            Some(FunctionOrCallable::Callable(c)) => {
-                if let Some(func_class) = c.defined_in {
-                    if t1.in_definition == func_class.node_ref.as_link() {
-                        // By definition, because the class did not match there will never be a
-                        // type_var_remap that is not defined.
-                        let type_var_remap = func_class.type_var_remap.unwrap();
-                        let g = Generic::new(&type_var_remap[t1.index]).expect_type_argument();
-                        // The remapping of type vars needs to be checked now. In a lot of
-                        // cases this is T -> T and S -> S, but it could also be T -> S and S
-                        // -> List[T] or something completely arbitrary.
-                        return g.matches(i_s, self, value_type, t1.type_var.variance);
-                    }
-                }
-            }
-            _ => (),
-        };
+            // The case that the if does not hit happens e.g. for
+            // testInvalidNumberOfTypeArgs:
+            // class C:  # Forgot to add type params here
+            //     def __init__(self, t: T) -> None: pass
+        }
         match value_type.as_ref() {
             DbType::TypeVar(t2) => {
                 (t1.index == t2.index && t1.in_definition == t2.in_definition).into()

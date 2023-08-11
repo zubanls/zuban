@@ -48,7 +48,7 @@ impl<'db: 'a, 'a> FunctionOrCallable<'a> {
         }
     }
 
-    pub fn class(&self) -> Option<Class> {
+    pub fn class(&self) -> Option<Class<'a>> {
         match self {
             Self::Function(function) => function.class,
             Self::Callable(c) => c.defined_in,
