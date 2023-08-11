@@ -668,7 +668,16 @@ impl<'db: 'slf, 'slf> Inferred {
                                 if let Some(t) = create_signature_without_self(
                                     i_s,
                                     Matcher::new_function_matcher(None, func, func.type_vars(i_s)),
-                                    || func.as_callable(i_s, FirstParamProperties::Skip(instance)),
+                                    || {
+                                        func.as_callable(
+                                            i_s,
+                                            FirstParamProperties::Skip {
+                                                to_self_instance: &|| {
+                                                    instance.class.as_db_type(i_s.db)
+                                                },
+                                            },
+                                        )
+                                    },
                                     instance,
                                     &attribute_class,
                                     first_type.as_ref(),

@@ -62,9 +62,12 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
 
     pub fn as_type<'db: 'a>(&self, i_s: &InferenceState<'db, '_>) -> Type<'a> {
         let t = match &self.function {
-            BoundMethodFunction::Function(f) => {
-                f.as_db_type(i_s, FirstParamProperties::Skip(self.instance))
-            }
+            BoundMethodFunction::Function(f) => f.as_db_type(
+                i_s,
+                FirstParamProperties::Skip {
+                    to_self_instance: &|| self.instance.class.as_db_type(i_s.db),
+                },
+            ),
             BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(self.instance)),
             BoundMethodFunction::Callable(c) => {
                 let callable = c

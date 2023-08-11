@@ -847,7 +847,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     type_vars.insert(0, TypeVarLike::TypeVar(self_type_var));
                 }
             }
-            FirstParamProperties::Skip(_) => {
+            FirstParamProperties::Skip { .. } => {
                 params.next();
             }
             FirstParamProperties::None => (),
@@ -881,8 +881,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 &mut || {
                     if let Some(self_type_var_usage) = self_type_var_usage {
                         DbType::TypeVar(self_type_var_usage.clone())
-                    } else if let FirstParamProperties::Skip(instance) = first {
-                        instance.class.as_db_type(i_s.db)
+                    } else if let FirstParamProperties::Skip { to_self_instance } = first {
+                        to_self_instance()
                     } else {
                         DbType::Self_
                     }
@@ -1199,7 +1199,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
 
 #[derive(Copy, Clone)]
 pub enum FirstParamProperties<'a> {
-    Skip(&'a Instance<'a>),
+    Skip {
+        to_self_instance: &'a dyn Fn() -> DbType,
+    },
     MethodAccessedOnClass,
     None,
 }
