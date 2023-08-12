@@ -196,7 +196,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 func_link,
             } => {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
-                load_bound_method(i_s, &instance, class, *func_link).as_type(i_s)
+                load_bound_method(i_s, instance, class, *func_link).as_type(i_s)
             }
             InferredState::Unknown => Type::new(&DbType::Any),
         }
@@ -715,7 +715,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                 i_s,
-                                instance.clone(),
+                                instance,
                                 attribute_class,
                                 from,
                                 mro_index,
@@ -927,7 +927,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if !attribute_class.has_simple_self_generics() {
             new = Some(replace_class_type_vars(
                 i_s.db,
-                &t,
+                t,
                 &attribute_class,
                 &mut || instance.clone(),
             ));
@@ -1113,7 +1113,7 @@ impl<'db: 'slf, 'slf> Inferred {
         if needs_remapping {
             new = Some(replace_class_type_vars(
                 i_s.db,
-                &t,
+                t,
                 &attribute_class,
                 &mut || class.as_db_type(i_s.db),
             ));
@@ -1588,7 +1588,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 func_link,
             } => {
                 let class = Self::load_bound_method_class(i_s, instance, *mro_index);
-                return load_bound_method(i_s, &instance, class, *func_link).execute(
+                return load_bound_method(i_s, instance, class, *func_link).execute(
                     i_s,
                     args,
                     result_context,
@@ -1834,7 +1834,7 @@ fn proper_classmethod_callable(
             if let Some(t) = first_param.param_specific.maybe_positional_db_type() {
                 let mut matcher = Matcher::new_callable_matcher(&callable);
                 let instance_t = class.as_type(i_s);
-                let t = replace_class_type_vars(i_s.db, &t, func_class, &mut || {
+                let t = replace_class_type_vars(i_s.db, t, func_class, &mut || {
                     class.as_db_type(i_s.db)
                 });
                 if !Type::new(&t)

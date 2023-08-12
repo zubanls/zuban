@@ -2558,7 +2558,7 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
             let in_definition = cached_type_node_ref.as_link();
             if inferred.maybe_saved_specific(self.i_s.db) == Some(Specific::Any) {
                 // Happens e.g. when an invalid enum is defined somewhere.
-                return TypeNameLookup::Unknown;
+                TypeNameLookup::Unknown
             } else if let Some(tv) = inferred.maybe_type_var_like(self.i_s) {
                 TypeNameLookup::TypeVarLike(tv)
             } else if let Some(n) = inferred.maybe_new_type(self.i_s) {

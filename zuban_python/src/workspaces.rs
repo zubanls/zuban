@@ -208,12 +208,7 @@ impl FileEntry {
     }
 }
 
-fn ensure_dirs_and_file<'a>(
-    parent: Parent,
-    dir: &Directory,
-    vfs: &dyn Vfs,
-    path: &'a str,
-) -> AddedFile {
+fn ensure_dirs_and_file(parent: Parent, dir: &Directory, vfs: &dyn Vfs, path: &str) -> AddedFile {
     let (name, rest) = vfs.split_off_folder(path);
     if let Some(rest) = rest {
         let mut invs = Default::default();
@@ -356,7 +351,7 @@ impl Directory {
         };
         AddedFile {
             invalidations,
-            file_entry: file_entry.clone(),
+            file_entry: file_entry,
         }
     }
 

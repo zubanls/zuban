@@ -1654,7 +1654,7 @@ impl CallableContent {
                     None
                 }
             },
-            CallableParams::WithParamSpec(_, _) => return Some(WrongPositionalCount::TooMany),
+            CallableParams::WithParamSpec(_, _) => Some(WrongPositionalCount::TooMany),
             CallableParams::Any => None,
         }
     }

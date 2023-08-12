@@ -556,10 +556,8 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             callable_content.class_name = self.class.map(|c| c.name_string_slice());
             callable_content.kind = kind;
             inferred = Inferred::from_type(DbType::Callable(Rc::new(callable_content)));
-        } else {
-            if !matches!(kind, FunctionKind::Function | FunctionKind::Staticmethod) {
-                todo!("{kind:?}")
-            }
+        } else if !matches!(kind, FunctionKind::Function | FunctionKind::Staticmethod) {
+            todo!("{kind:?}")
         }
         Some(FunctionDetails {
             inferred,
@@ -947,17 +945,15 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                             } else {
                                 self.class.unwrap().as_type(i_s).into_db_type()
                             }
+                        } else if has_self_type_var_usage {
+                            DbType::Self_
                         } else {
-                            if has_self_type_var_usage {
-                                DbType::Self_
-                            } else {
-                                match kind {
-                                    FunctionKind::Function | FunctionKind::Property { .. } => {
-                                        self.class.unwrap().as_db_type(i_s.db)
-                                    }
-                                    FunctionKind::Classmethod => DbType::Any,
-                                    FunctionKind::Staticmethod => DbType::Any,
+                            match kind {
+                                FunctionKind::Function | FunctionKind::Property { .. } => {
+                                    self.class.unwrap().as_db_type(i_s.db)
                                 }
+                                FunctionKind::Classmethod => DbType::Any,
+                                FunctionKind::Staticmethod => DbType::Any,
                             }
                         }
                     } else {
@@ -1638,23 +1634,21 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             // This is also how mypy does it. See `check_overload_call` (9943444c7)
             let calculated_type_args = match_signature(i_s, result_context, callable);
             return OverloadResult::Single(callable);
+        } else if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
+            on_overload_mismatch(i_s, class)
         } else {
-            if let Some(on_overload_mismatch) = on_type_error.on_overload_mismatch {
-                on_overload_mismatch(i_s, class)
-            } else {
-                let f_or_c = FunctionOrCallable::Callable(Callable::new(
-                    self.overload.iter_functions().next().unwrap(),
-                    self.class,
-                ));
-                let t = IssueType::OverloadMismatch {
-                    name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db)
-                        .unwrap_or_else(|| todo!())
-                        .into(),
-                    args: args.iter().into_argument_types(i_s),
-                    variants: self.variants(i_s, search_init),
-                };
-                args.as_node_ref().add_issue(i_s, t);
-            }
+            let f_or_c = FunctionOrCallable::Callable(Callable::new(
+                self.overload.iter_functions().next().unwrap(),
+                self.class,
+            ));
+            let t = IssueType::OverloadMismatch {
+                name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db)
+                    .unwrap_or_else(|| todo!())
+                    .into(),
+                args: args.iter().into_argument_types(i_s),
+                variants: self.variants(i_s, search_init),
+            };
+            args.as_node_ref().add_issue(i_s, t);
         }
         if let Some(callable) = had_error_in_func {
             // Need to run the whole thing again to generate errors, because the function is not
@@ -1755,7 +1749,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         } else {
             let mut first_similar = None;
             for (i, callable) in self.overload.iter_functions().enumerate() {
-                let callable = Callable::new(&callable, self.class);
+                let callable = Callable::new(callable, self.class);
                 let (calculated_type_args, had_error) = i_s.do_overload_check(|i_s| {
                     if search_init {
                         calculate_callable_init_type_vars_and_return(
@@ -1909,10 +1903,8 @@ fn are_any_arguments_ambiguous_in_overload(
     // `testOverloadWithOverlappingItemsAndAnyArgument4` for more information.
     for p1 in a {
         for p2 in b {
-            if p1.argument_index == p2.argument_index {
-                if p1.type_ != p2.type_ {
-                    return true;
-                }
+            if p1.argument_index == p2.argument_index && p1.type_ != p2.type_ {
+                return true;
             }
         }
     }

@@ -88,7 +88,7 @@ pub fn python_import<'a>(
         match entry {
             DirectoryEntry::Directory(dir2) => {
                 if dir2.name.as_ref() == name {
-                    let result = load_init_file(db, &dir2, |child| {
+                    let result = load_init_file(db, dir2, |child| {
                         format!(
                             "{dir_path}{SEPARATOR}{dir_name}{SEPARATOR}{child}",
                             dir_name = dir2.name

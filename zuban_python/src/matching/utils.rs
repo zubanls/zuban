@@ -30,7 +30,7 @@ pub fn replace_class_type_vars_in_callable(
     as_self_instance: ReplaceSelf,
 ) -> CallableContent {
     Type::replace_type_var_likes_and_self_for_callable(
-        &callable,
+        callable,
         db,
         &mut |usage| {
             func_class
@@ -49,7 +49,7 @@ pub fn maybe_class_usage(
     (attribute_class.node_ref.as_link() == usage.in_definition()).then(|| {
         attribute_class
             .generics()
-            .nth_usage(db, &usage)
+            .nth_usage(db, usage)
             .into_generic_item(db)
     })
 }

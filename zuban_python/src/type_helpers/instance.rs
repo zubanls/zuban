@@ -417,10 +417,10 @@ fn execute_super_internal<'db>(
             debug!("super() with incomplete base class leads to any");
             return Ok(Inferred::new_any());
         }
-        return Ok(Inferred::from_type(DbType::Super {
+        Ok(Inferred::from_type(DbType::Super {
             class: Rc::new(c),
             mro_index,
-        }));
+        }))
     };
     let first_type = match next_arg() {
         Some(result) => match get_relevant_type_for_super(result?.as_type(i_s).as_ref()) {
@@ -454,7 +454,7 @@ fn execute_super_internal<'db>(
     };
     let cls = match get_relevant_type_for_super(instance.as_type(i_s).as_ref()) {
         DbType::Self_ => i_s.current_class().unwrap().as_generic_class(i_s.db),
-        DbType::Class(g) => g.clone(),
+        DbType::Class(g) => g,
         DbType::Any => return Ok(Inferred::new_any()),
         _ => return Err(IssueType::SuperUnsupportedArgument { argument_index: 2 }),
     };

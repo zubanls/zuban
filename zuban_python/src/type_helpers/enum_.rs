@@ -147,7 +147,7 @@ fn lookup_members_on_enum(
     match Enum::lookup(enum_, i_s.db, name) {
         Some(m) => LookupResult::UnknownName(Inferred::from_type(
             match result_context.is_literal_context(i_s) {
-                true => DbType::EnumMember(m.clone()),
+                true => DbType::EnumMember(m),
                 false => DbType::Enum(enum_.clone()),
             },
         )),
@@ -292,7 +292,7 @@ fn gather_functional_enum_members(
             };
             members.add_member(i_s, EnumMemberDefinition::new(name.into(), None))
         }
-        return Some(());
+        Some(())
     };
 
     let mut add_from_iterator_with_error = |iterator| -> Option<()> {
@@ -359,7 +359,7 @@ fn gather_functional_enum_members(
 fn split_enum_members(i_s: &InferenceState, members: &mut EnumMembers, s: &DbString) {
     let mut start = 0;
     for part in s.as_str(i_s.db).split(&[',', ' ']) {
-        if part == "" {
+        if part.is_empty() {
             start += 1;
             continue;
         }

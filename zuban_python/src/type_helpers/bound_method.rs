@@ -37,17 +37,17 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         let args = CombinedArguments::new(&instance_arg, args);
         match &self.function {
             BoundMethodFunction::Function(f) => f.execute_internal(
-                &i_s,
+                i_s,
                 &args,
                 on_type_error,
                 &mut || self.instance.clone(),
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => {
-                f.execute(&i_s, &args, result_context, on_type_error)
+                f.execute(i_s, &args, result_context, on_type_error)
             }
             BoundMethodFunction::Callable(f) => {
-                f.execute(&i_s, &args, on_type_error, result_context)
+                f.execute(i_s, &args, on_type_error, result_context)
             }
         }
     }

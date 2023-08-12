@@ -1053,7 +1053,7 @@ impl<'db: 'a, 'a> Class<'a> {
             constructor: match is_new {
                 false => __init__,
                 true => __new__
-                    .and_then(|inf| Some(inf.bind_new_descriptors(&i_s, self, new_class)))
+                    .and_then(|inf| Some(inf.bind_new_descriptors(i_s, self, new_class)))
                     .unwrap(),
             },
             init_class,
@@ -1283,7 +1283,7 @@ fn linearize_mro(i_s: &InferenceState, class: &Class, bases: Vec<DbType>) -> Box
                 if !conflicts {
                     for base_bases in base_iterators.iter_mut() {
                         base_bases
-                            .next_if(|(_, next)| to_base_kind(&candidate) == to_base_kind(next));
+                            .next_if(|(_, next)| to_base_kind(candidate) == to_base_kind(next));
                     }
                     add_to_mro(base_index, i == 0, candidate, &mut allowed_to_use);
                     continue 'outer;

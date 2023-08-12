@@ -384,10 +384,10 @@ impl<'db> Inference<'db, '_, '_> {
             is_overload_member = true;
             for (i, c1) in o.iter_functions().enumerate() {
                 if let Some(implementation) = &o.implementation {
-                    self.calc_overload_implementation_diagnostics(&c1, implementation, i + 1)
+                    self.calc_overload_implementation_diagnostics(c1, implementation, i + 1)
                 }
                 for (k, c2) in o.iter_functions().skip(i + 1).enumerate() {
-                    if is_overload_unmatchable(self.i_s, &c1, &c2) {
+                    if is_overload_unmatchable(self.i_s, c1, c2) {
                         NodeRef::from_link(self.i_s.db, c2.defined_at).add_issue(
                             self.i_s,
                             IssueType::OverloadUnmatchable {
@@ -395,20 +395,18 @@ impl<'db> Inference<'db, '_, '_> {
                                 unmatchable_signature_index: i + k + 2,
                             },
                         );
-                    } else {
-                        if !Type::new(&c1.result_type)
-                            .is_simple_sub_type_of(self.i_s, &Type::new(&c2.result_type))
-                            .bool()
-                            && has_overlapping_params(self.i_s, &c1.params, &c2.params)
-                        {
-                            NodeRef::from_link(self.i_s.db, c1.defined_at).add_issue(
-                                self.i_s,
-                                IssueType::OverloadIncompatibleReturnTypes {
-                                    first_signature_index: i + 1,
-                                    second_signature_index: i + k + 2,
-                                },
-                            );
-                        }
+                    } else if !Type::new(&c1.result_type)
+                        .is_simple_sub_type_of(self.i_s, &Type::new(&c2.result_type))
+                        .bool()
+                        && has_overlapping_params(self.i_s, &c1.params, &c2.params)
+                    {
+                        NodeRef::from_link(self.i_s.db, c1.defined_at).add_issue(
+                            self.i_s,
+                            IssueType::OverloadIncompatibleReturnTypes {
+                                first_signature_index: i + 1,
+                                second_signature_index: i + k + 2,
+                            },
+                        );
                     }
                 }
             }
@@ -798,7 +796,7 @@ fn is_overload_unmatchable(
     c1: &CallableContent,
     c2: &CallableContent,
 ) -> bool {
-    let mut matcher = Matcher::new_reverse_callable_matcher(&c1);
+    let mut matcher = Matcher::new_reverse_callable_matcher(c1);
     let result = matches_params(
         i_s,
         &mut matcher,
