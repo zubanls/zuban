@@ -1054,6 +1054,8 @@ testFromImportAsInStub
 testImportAsInStub
 testReExportChildStubs3
 
+# Metaclass descriptor
+metaclass_descriptor
 # Metaclass self type
 testSelfTypeStructureMetaclassMatch
 # Metaclass Union

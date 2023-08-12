@@ -85,6 +85,27 @@ reveal_type(Bar.x)  # N: Revealed type is "Any"
 reveal_type(Bar.meth)  # N: Revealed type is "def () -> Any"
 reveal_type(Bar.other)  # N: Revealed type is "def (next: Any)"
 
+[case metaclass_descriptor]
+from typing import TypeVar, Tuple
+T = TypeVar("T")
+S = TypeVar("S")
+class Descriptor():
+    def __get__(self, instance: S, cls: T) -> Tuple[S, T]:
+        return instance, cls
+
+class Meta(type):
+    a = Descriptor()
+
+
+class A(metaclass=Meta): ...
+
+# This differs in Mypy and CPython:
+# >>> A.a
+# (<class '__main__.A'>, <class '__main__.Meta'>)
+# However in mypy it's tuple[None, Type[x2.A@1369]]
+reveal_type(A.a)  # N: Revealed type is "tuple[Type[__main__.A], Type[__main__.Meta]]"
+reveal_type(Meta(A()).a)  # N: Revealed type is "tuple[__main__.Meta, Type[__main__.Meta]]"
+
 [case kwargs_base_class]
 from typing import Type
 foo: dict[str, Type[Any]]
