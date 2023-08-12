@@ -577,7 +577,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         );
                     },
                     OnTypeError::with_overload_mismatch(
-                        &|_, _, _, _, _, _| had_error.set(true),
+                        &|_, _, _, _, _| had_error.set(true),
                         Some(&|_, _| had_error.set(true)),
                     ),
                 );
@@ -757,12 +757,12 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     &|_| {
                         debug!("TODO __setitem__ not found");
                     },
-                    OnTypeError::new(&|i_s, class, function, arg, actual, expected| {
+                    OnTypeError::new(&|i_s, function, arg, actual, expected| {
                         arg.as_node_ref().add_issue(
                             i_s,
                             IssueType::InvalidGetItem {
                                 actual,
-                                type_: class.unwrap().format_short(i_s.db),
+                                type_: base.format_short(i_s),
                                 expected,
                             },
                         )
@@ -1035,7 +1035,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 self.i_s,
                                                 &KnownArguments::new(&first, from),
                                                 &mut ResultContext::Unknown,
-                                                OnTypeError::new(&|i_s, _, _, _, got, _| {
+                                                OnTypeError::new(&|i_s, _, _, got, _| {
                                                     let right = r_type.format_short(i_s.db);
                                                     from.add_issue(
                                                         i_s,
@@ -1243,7 +1243,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 &KnownArguments::new(&right_inf, node_ref),
                                 &mut ResultContext::Unknown,
                                 OnTypeError::with_overload_mismatch(
-                                    &|_, _, _, _, _, _| had_left_error.set(true),
+                                    &|_, _, _, _, _| had_left_error.set(true),
                                     Some(&|_, _| had_left_error.set(true)),
                                 ),
                             );
@@ -1282,7 +1282,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     &KnownArguments::new(&left_inf, node_ref),
                                     &mut ResultContext::Unknown,
                                     OnTypeError::with_overload_mismatch(
-                                        &|_, _, _, _, _, _| error.set(LookupError::BothSidesError),
+                                        &|_, _, _, _, _| error.set(LookupError::BothSidesError),
                                         Some(&|_, _| error.set(LookupError::BothSidesError)),
                                     ),
                                 )

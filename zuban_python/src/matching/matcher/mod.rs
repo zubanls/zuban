@@ -483,7 +483,6 @@ impl<'a> Matcher<'a> {
                             if let Some(on_type_error) = on_type_error {
                                 (on_type_error.callback)(
                                     i_s,
-                                    class,
                                     &|_| todo!(),
                                     &last_arg,
                                     Box::from("TODO X"),

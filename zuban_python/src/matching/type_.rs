@@ -2601,7 +2601,7 @@ pub fn execute_type_of_type<'db>(
                 i_s,
                 &inferred_tup,
                 |i_s: &InferenceState<'db, '_>, t1, t2| {
-                    (on_type_error.callback)(i_s, None, &|_| todo!(), &arg, t1, t2);
+                    (on_type_error.callback)(i_s, &|_| todo!(), &arg, t1, t2);
                     args.as_node_ref().to_db_lifetime(i_s.db)
                 },
             );

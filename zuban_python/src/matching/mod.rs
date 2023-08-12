@@ -97,7 +97,6 @@ fn func_or_callable_diagnostic_string(
 
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(
     &InferenceState<'db, '_>,
-    Option<&Class>,
     &dyn Fn(&str) -> Option<Box<str>>, // error_text; argument is a prefix
     &Argument,
     Box<str>,

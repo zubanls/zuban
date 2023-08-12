@@ -15,7 +15,6 @@ use crate::inference_state::InferenceState;
 use crate::inferred::UnionValue;
 use crate::matching::{Matcher, MismatchReason, ResultContext, Type};
 use crate::node_ref::NodeRef;
-use crate::type_helpers::Class;
 use crate::{debug, Inferred};
 
 impl<'db> Inference<'db, '_, '_> {
@@ -222,7 +221,6 @@ fn check_list_with_context<'db>(
 
 pub fn on_argument_type_error(
     i_s: &InferenceState,
-    class: Option<&Class>,
     error_text: &dyn Fn(&str) -> Option<Box<str>>,
     arg: &Argument,
     t1: Box<str>,

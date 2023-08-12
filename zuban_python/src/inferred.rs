@@ -1561,7 +1561,6 @@ impl<'db: 'slf, 'slf> Inferred {
                                         |i_s: &InferenceState<'db, '_>, t1, t2| {
                                             (on_type_error.callback)(
                                                 i_s,
-                                                None,
                                                 &|_| {
                                                     Some(
                                                         format!(

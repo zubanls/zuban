@@ -548,7 +548,6 @@ pub fn match_arguments_against_params<
                                 }
                                 _ => (on_type_error.callback)(
                                     i_s,
-                                    class,
                                     &diagnostic_string,
                                     &argument,
                                     t1,
