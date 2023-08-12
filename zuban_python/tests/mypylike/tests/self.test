@@ -71,6 +71,10 @@ class Foo:
 
 reveal_type(Foo().x)  # N: Revealed type is "__main__.Foo"
 reveal_type(Foo().x.y)  # N: Revealed type is "int"
+reveal_type(Foo.x)  # E: Access to generic instance variables via class is ambiguous \
+                    # N: Revealed type is "__main__.Foo"
+reveal_type(Foo.x.y)  # E: Access to generic instance variables via class is ambiguous \
+                      # N: Revealed type is "int"
 
 [case self_instance_variable3]
 from typing import Self
@@ -79,6 +83,17 @@ class Foo:
     def foo(self) -> Self:
         return self.x
 
+[case self_instance_with_classvar]
+from typing import Self
+class Foo:
+    x: ClassVar[Self]
+    y: int
+    def foo(self) -> None: ...
+
+reveal_type(Foo().x)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo().x.y)  # N: Revealed type is "int"
+reveal_type(Foo.x)  # N: Revealed type is "__main__.Foo"
+reveal_type(Foo.x.y)  # N: Revealed type is "int"
 
 [case self_with_generics]
 from typing import Self, TypeVar, Generic

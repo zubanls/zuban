@@ -998,16 +998,25 @@ impl<'db: 'slf, 'slf> Inferred {
                                 );
                         }
                         specific @ (Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentClassVar
                         | Specific::AnnotationOrTypeCommentWithTypeVars
-                        | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                        | Specific::AnnotationOrTypeCommentClassVar) => {
+                        | Specific::AnnotationOrTypeCommentSimpleClassInstance) => {
                             if specific == Specific::AnnotationOrTypeCommentWithTypeVars {
                                 from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
                             }
-                            let t = use_cached_annotation_or_type_comment(
+                            let mut t = use_cached_annotation_or_type_comment(
                                 i_s,
                                 NodeRef::from_link(i_s.db, *definition),
                             );
+                            let has_explicit_self = t.has_explicit_self_type(i_s.db);
+                            if has_explicit_self {
+                                t = Type::owned(replace_class_type_vars(
+                                    i_s.db,
+                                    t.as_ref(),
+                                    &attribute_class,
+                                    &|| class.as_db_type(i_s.db),
+                                ));
+                            }
                             if let Some(r) = Self::bind_class_descriptors_for_type(
                                 i_s,
                                 class,
@@ -1018,6 +1027,9 @@ impl<'db: 'slf, 'slf> Inferred {
                                 t.as_ref(),
                             ) {
                                 return r;
+                            }
+                            if has_explicit_self {
+                                return Some(Inferred::from_type(t.into_db_type()));
                             }
                         }
                         _ => (),
