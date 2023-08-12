@@ -31,7 +31,7 @@ use crate::type_helpers::{
 use crate::utils::rc_unwrap_or_clone;
 
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
-pub type ReplaceSelf<'x> = &'x mut dyn FnMut() -> DbType;
+pub type ReplaceSelf<'x> = &'x dyn Fn() -> DbType;
 
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
