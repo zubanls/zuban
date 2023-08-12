@@ -196,7 +196,7 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     let func_or_callable = FunctionOrCallable::Function(function);
     calculate_type_vars(
         i_s,
-        get_matcher(class, func_or_callable, match_in_definition, type_vars),
+        get_matcher(None, func_or_callable, match_in_definition, type_vars),
         class,
         func_or_callable,
         None,
@@ -225,7 +225,7 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     calculate_type_vars(
         i_s,
         get_matcher(
-            class,
+            None,
             func_or_callable,
             callable.content.defined_at,
             type_vars,

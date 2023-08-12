@@ -429,6 +429,7 @@ impl<'a> Matcher<'a> {
         args_node_ref: &impl Fn() -> NodeRef<'c>,
         on_type_error: Option<OnTypeError<'db, '_>>,
     ) -> SignatureMatch {
+        let func_class = self.func_or_callable.and_then(|f| f.class());
         let param_spec_arg = if let Some(type_var_matcher) = &self.type_var_matcher {
             if type_var_matcher.match_in_definition == usage.in_definition {
                 match &type_var_matcher.calculated_type_vars[usage.index.as_usize()].type_ {
@@ -440,7 +441,7 @@ impl<'a> Matcher<'a> {
             } else {
                 todo!("why?")
             }
-        } else if let Some(class) = self.class {
+        } else if let Some(class) = self.class.or(func_class.as_ref()) {
             class.generics().nth_param_spec_usage(i_s.db, usage)
         } else {
             todo!("When does this even happen?")
