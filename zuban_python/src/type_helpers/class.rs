@@ -1072,7 +1072,7 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> Inferred {
         let i_s = &original_i_s.with_class_context(self);
         let had_type_error = Cell::new(false);
-        let d = |_: &FunctionOrCallable, _: &Database, _: Option<&Class>| {
+        let d = |_: &FunctionOrCallable, _: &Database| {
             had_type_error.set(true);
             Some(format!("\"{}\"", self.name()))
         };

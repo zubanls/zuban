@@ -1643,7 +1643,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     self.class,
                 ));
                 let t = IssueType::OverloadMismatch {
-                    name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db, None)
+                    name: (on_type_error.generate_diagnostic_string)(&f_or_c, i_s.db)
                         .unwrap_or_else(|| todo!())
                         .into(),
                     args: args.iter().into_argument_types(i_s),

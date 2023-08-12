@@ -40,8 +40,7 @@ use crate::{
 };
 
 type OnOverloadMismatch<'db, 'a> = Option<&'a dyn Fn(&InferenceState<'db, '_>, Option<&Class>)>;
-type GenerateDiagnosticString<'a> =
-    &'a dyn Fn(&FunctionOrCallable, &Database, Option<&Class>) -> Option<String>;
+type GenerateDiagnosticString<'a> = &'a dyn Fn(&FunctionOrCallable, &Database) -> Option<String>;
 
 #[derive(Clone, Copy)]
 pub struct OnTypeError<'db, 'a> {
@@ -87,11 +86,7 @@ impl<'db, 'a> OnTypeError<'db, 'a> {
 
 // For whatever reason we cannot just pass FunctionOrCallable::diagnostic_string, even though it
 // results in the exactly same behavior. Probably a Rust bug.
-fn func_or_callable_diagnostic_string(
-    f: &FunctionOrCallable,
-    db: &Database,
-    c: Option<&Class>,
-) -> Option<String> {
+fn func_or_callable_diagnostic_string(f: &FunctionOrCallable, db: &Database) -> Option<String> {
     f.diagnostic_string(db)
 }
 
