@@ -426,7 +426,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             debug!(
                 "Calculated type vars for {}: [{}]",
                 func_or_callable
-                    .diagnostic_string(i_s.db, None)
+                    .diagnostic_string(i_s.db)
                     .as_deref()
                     .unwrap_or("function"),
                 type_arguments.format(&FormatData::new_short(i_s.db)),

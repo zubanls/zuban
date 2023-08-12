@@ -92,7 +92,7 @@ fn func_or_callable_diagnostic_string(
     db: &Database,
     c: Option<&Class>,
 ) -> Option<String> {
-    f.diagnostic_string(db, c)
+    f.diagnostic_string(db)
 }
 
 pub type OnTypeErrorCallback<'db, 'a> = &'a dyn Fn(

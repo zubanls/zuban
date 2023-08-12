@@ -1104,11 +1104,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         }
     }
 
-    pub fn diagnostic_string(&self, class: Option<&Class>) -> String {
+    pub fn diagnostic_string(&self) -> String {
         let name = self.name();
-        match class {
-            Some(instance_class) => {
-                format!("{:?} of {:?}", name, self.class.unwrap().name())
+        match self.class {
+            Some(class) => {
+                format!("{:?} of {:?}", name, class.name())
             }
             None => format!("{:?}", name),
         }
