@@ -592,6 +592,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                             self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
                             DbType::Any
                         } else {
+                            let i_s = self.inference.i_s;
+                            if i_s.current_class().unwrap().type_vars(i_s).is_some() {
+                                self.add_issue(
+                                    node_ref,
+                                    IssueType::ClassVarCannotContainSelfTypeInGenericClass,
+                                );
+                            }
                             t
                         }
                     } else {

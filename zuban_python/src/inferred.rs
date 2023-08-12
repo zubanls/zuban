@@ -697,6 +697,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 apply_descriptors_kind,
                             );
                         }
+                        // TODO this should have the case of Specific::AnnotationOrTypeCommentClassVar as well
                         Specific::AnnotationOrTypeCommentWithTypeVars
                             if !attribute_class.has_simple_self_generics() =>
                         {
