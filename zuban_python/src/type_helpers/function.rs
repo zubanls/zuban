@@ -1028,7 +1028,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         i_s: &InferenceState<'db, '_>,
         args: &dyn Arguments<'db>,
         on_type_error: OnTypeError<'db, '_>,
-        class: Option<&Class>,
+        replace_self_type: ReplaceSelf,
         result_context: &mut ResultContext,
     ) -> Inferred {
         let return_annotation = self.return_annotation();
@@ -1048,7 +1048,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
             self.apply_type_args_in_return_annotation(
                 i_s,
                 calculated_type_vars,
-                class,
+                replace_self_type,
                 return_annotation,
             )
         } else {
@@ -1068,7 +1068,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         &self,
         i_s: &InferenceState<'db, '_>,
         calculated_type_vars: CalculatedTypeArguments,
-        class: Option<&Class>,
+        replace_self_type: ReplaceSelf,
         return_annotation: ReturnAnnotation,
     ) -> Inferred {
         // We check first if type vars are involved, because if they aren't we can reuse the
@@ -1093,7 +1093,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                     i_s,
                     &calculated_type_vars,
                     self.class.as_ref(),
-                    &mut || class.map(|c| c.as_db_type(i_s.db)).unwrap_or(DbType::Self_),
+                    replace_self_type,
                 )
         } else {
             self.node_ref
@@ -1164,11 +1164,17 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 &i_s.with_class_context(class),
                 args,
                 on_type_error,
-                Some(class),
+                &mut || class.as_db_type(i_s.db),
                 result_context,
             )
         } else {
-            self.execute_internal(i_s, args, on_type_error, None, result_context)
+            self.execute_internal(
+                i_s,
+                args,
+                on_type_error,
+                &mut || DbType::Self_,
+                result_context,
+            )
         }
     }
 

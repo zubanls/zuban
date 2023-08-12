@@ -41,7 +41,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 &i_s.with_class_context(class),
                 &args,
                 on_type_error,
-                Some(class),
+                &mut || class.as_db_type(i_s.db),
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => f.execute_internal(
