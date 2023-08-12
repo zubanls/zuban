@@ -1871,24 +1871,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         Type::owned(self.as_db_type(i_s, None))
     }
 
-    pub(super) fn execute_internal(
-        &self,
-        i_s: &InferenceState<'db, '_>,
-        args: &dyn Arguments<'db>,
-        on_type_error: OnTypeError<'db, '_>,
-        class: Option<&Class>,
-        result_context: &mut ResultContext,
-    ) -> Inferred {
-        debug!("Execute overloaded function {}", self.name(i_s.db));
-        match self.find_matching_function(i_s, args, class, false, result_context, on_type_error) {
-            OverloadResult::Single(callable) => {
-                callable.execute(i_s, args, on_type_error, result_context)
-            }
-            OverloadResult::Union(t) => Inferred::from_type(t),
-            OverloadResult::NotFound => self.fallback_type(i_s),
-        }
-    }
-
     pub fn execute(
         &self,
         i_s: &InferenceState<'db, '_>,
@@ -1896,7 +1878,14 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        self.execute_internal(i_s, args, on_type_error, None, result_context)
+        debug!("Execute overloaded function {}", self.name(i_s.db));
+        match self.find_matching_function(i_s, args, None, false, result_context, on_type_error) {
+            OverloadResult::Single(callable) => {
+                callable.execute(i_s, args, on_type_error, result_context)
+            }
+            OverloadResult::Union(t) => Inferred::from_type(t),
+            OverloadResult::NotFound => self.fallback_type(i_s),
+        }
     }
 
     pub fn name(&self, db: &'a Database) -> &'a str {

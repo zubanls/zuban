@@ -45,7 +45,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => {
-                f.execute_internal(&i_s, &args, on_type_error, Some(class), result_context)
+                f.execute(&i_s, &args, result_context, on_type_error)
             }
             BoundMethodFunction::Callable(f) => f.execute(
                 &i_s.with_class_context(class),
