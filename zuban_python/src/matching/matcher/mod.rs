@@ -13,7 +13,7 @@ use std::borrow::Cow;
 use std::rc::Rc;
 
 use super::params::{matches_simple_params, InferrableParamIterator2};
-use super::{FormatData, Generic, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
+use super::{FormatData, Match, OnTypeError, ParamsStyle, SignatureMatch, Type};
 use crate::arguments::{Argument, ArgumentKind};
 use crate::database::{
     CallableContent, CallableParam, CallableParams, Database, DbType, GenericItem,
@@ -88,14 +88,12 @@ impl<'a> Matcher<'a> {
     }
 
     pub fn new_function_matcher(
-        class: Option<&'a Class<'a>>,
         function: Function<'a, 'a>,
         type_vars: Option<&TypeVarLikes>,
     ) -> Self {
         let type_var_matcher = type_vars
             .map(|type_vars| TypeVarMatcher::new(function.node_ref.as_link(), type_vars.len()));
         Self {
-            class,
             type_var_matcher,
             func_or_callable: Some(FunctionOrCallable::Function(function)),
             ..Self::default()
