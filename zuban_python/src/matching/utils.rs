@@ -11,7 +11,7 @@ pub fn replace_class_type_vars(
     db: &Database,
     t: &DbType,
     attribute_class: &Class,
-    self_instance: impl Fn() -> DbType,
+    self_instance: ReplaceSelf,
 ) -> DbType {
     Type::new(t).replace_type_var_likes_and_self(
         db,
@@ -19,7 +19,7 @@ pub fn replace_class_type_vars(
             maybe_class_usage(db, attribute_class, &usage)
                 .unwrap_or_else(|| usage.into_generic_item())
         },
-        &mut || self_instance(),
+        self_instance,
     )
 }
 
@@ -87,7 +87,7 @@ pub fn create_signature_without_self(
     func_class: &Class,
     first_type: &DbType,
 ) -> Option<CallableContent> {
-    let expected = replace_class_type_vars(i_s.db, first_type, func_class, || {
+    let expected = replace_class_type_vars(i_s.db, first_type, func_class, &mut || {
         func_class.as_db_type(i_s.db)
     });
     if !Type::owned(expected)

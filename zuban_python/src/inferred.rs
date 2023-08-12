@@ -324,10 +324,12 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::AnnotationOrTypeCommentWithTypeVars => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
-                        let d =
-                            replace_class_type_vars(i_s.db, t.as_ref(), attribute_class, || {
-                                class.as_db_type(i_s.db)
-                            });
+                        let d = replace_class_type_vars(
+                            i_s.db,
+                            t.as_ref(),
+                            attribute_class,
+                            &mut || class.as_db_type(i_s.db),
+                        );
                         return Inferred::from_type(d);
                     }
                     _ => (),
@@ -695,7 +697,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                 i_s.db,
                                 t.as_ref(),
                                 &attribute_class,
-                                || instance.clone(),
+                                &mut || instance.clone(),
                             );
                             return Inferred::from_type(t).bind_instance_descriptors_internal(
                                 i_s,
@@ -895,7 +897,7 @@ impl<'db: 'slf, 'slf> Inferred {
                         i_s.db,
                         &c.result_type,
                         &attribute_class,
-                        || instance.clone(),
+                        &mut || instance.clone(),
                     ))))
                 }
                 FunctionKind::Classmethod => {
@@ -927,7 +929,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s.db,
                 &t,
                 &attribute_class,
-                || instance.clone(),
+                &mut || instance.clone(),
             ));
             t = new.as_ref().unwrap();
         }
@@ -1113,7 +1115,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 i_s.db,
                 &t,
                 &attribute_class,
-                || class.as_db_type(i_s.db),
+                &mut || class.as_db_type(i_s.db),
             ));
             t = new.as_ref().unwrap();
         }
@@ -1832,8 +1834,9 @@ fn proper_classmethod_callable(
             if let Some(t) = first_param.param_specific.maybe_positional_db_type() {
                 let mut matcher = Matcher::new_callable_matcher(&callable);
                 let instance_t = class.as_type(i_s);
-                let t =
-                    replace_class_type_vars(i_s.db, &t, func_class, || class.as_db_type(i_s.db));
+                let t = replace_class_type_vars(i_s.db, &t, func_class, &mut || {
+                    class.as_db_type(i_s.db)
+                });
                 if !Type::new(&t)
                     .is_super_type_of(i_s, &mut matcher, &instance_t)
                     .bool()
