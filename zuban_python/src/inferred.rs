@@ -6,8 +6,8 @@ use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
     FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
-    Literal as DbLiteral, LiteralKind, Locality, MroIndex, NewType, OverloadDefinition, Point,
-    PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
+    Literal as DbLiteral, LiteralKind, Locality, MetaclassState, MroIndex, NewType,
+    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -219,10 +219,20 @@ impl<'db: 'slf, 'slf> Inferred {
         instance: &'slf DbType,
         mro_index: MroIndex,
     ) -> Class<'slf> {
-        let DbType::Class(instance_class) = instance else {
-            unreachable!();
+        let instance_class = match instance {
+            DbType::Class(c) => Class::from_generic_class(i_s.db, c),
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Class(c) => {
+                    let c = Class::from_generic_class(i_s.db, c);
+                    let MetaclassState::Some(link) = c.use_cached_class_infos(i_s.db).metaclass else {
+                        unreachable!();
+                    };
+                    Class::from_non_generic_link(i_s.db, link)
+                }
+                _ => unreachable!(),
+            },
+            _ => unreachable!(),
         };
-        let instance_class = Class::from_generic_class(i_s.db, instance_class);
         let class_t = instance_class
             .mro(i_s.db)
             .nth(mro_index.0 as usize)

@@ -841,7 +841,11 @@ impl<'db: 'a, 'a> Class<'a> {
                     MetaclassState::Some(link) => {
                         let instance =
                             Instance::new(Class::from_non_generic_link(i_s.db, link), None);
-                        instance.lookup(i_s, node_ref, name)
+                        instance
+                            .lookup_with_explicit_self_binding(i_s, node_ref, name, 0, || {
+                                self.as_type(i_s).into_db_type()
+                            })
+                            .1
                     }
                     MetaclassState::Unknown => LookupResult::any(),
                     MetaclassState::None => LookupResult::None,

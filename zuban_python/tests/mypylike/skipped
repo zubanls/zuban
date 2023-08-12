@@ -734,6 +734,7 @@ testNamedTupleNoBytes
 # "Cannot instantiate protocol class "P""
 testInstantiationProtocolInTypeForAliases
 testInstantiationProtocolInTypeForFunctions
+testSelfTypeProtocolMetaclassMatch
 # Protocol instantiations in classmethods
 testInstantiationProtocolInTypeForClassMethods
 # "Can only assign concrete classes to a variable of type "Type[P]""
@@ -1054,8 +1055,6 @@ testImportAsInStub
 testReExportChildStubs3
 
 # Metaclass self type
-testSelfTypeProtocolMetaclassMatch
-testMetaclassSelfType
 testSelfTypeStructureMetaclassMatch
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass

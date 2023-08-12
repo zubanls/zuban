@@ -185,25 +185,20 @@ impl<'a> Instance<'a> {
         IteratorContent::Any
     }
 
-    pub fn lookup_and_maybe_ignore_super_count(
+    pub fn lookup_with_explicit_self_binding(
         &self,
         i_s: &'a InferenceState,
         node_ref: NodeRef,
         name: &str,
         super_count: usize,
+        as_self_instance: impl Fn() -> DbType,
     ) -> (TypeOrClass, LookupResult) {
         for (mro_index, class) in self.class.mro(i_s.db).skip(super_count) {
             // First check class infos
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let TypeOrClass::Class(c) = class {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.bind_instance_descriptors(
-                        &i_s,
-                        self.class.as_db_type(i_s.db),
-                        c,
-                        node_ref,
-                        mro_index,
-                    )
+                    inf.bind_instance_descriptors(&i_s, as_self_instance(), c, node_ref, mro_index)
                 } else {
                     Some(inf)
                 }
@@ -238,6 +233,18 @@ impl<'a> Instance<'a> {
         } else {
             (TypeOrClass::Class(self.class), LookupResult::None)
         }
+    }
+
+    pub fn lookup_and_maybe_ignore_super_count(
+        &self,
+        i_s: &'a InferenceState,
+        node_ref: NodeRef,
+        name: &str,
+        super_count: usize,
+    ) -> (TypeOrClass, LookupResult) {
+        self.lookup_with_explicit_self_binding(i_s, node_ref, name, super_count, || {
+            self.class.as_db_type(i_s.db)
+        })
     }
 
     pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
