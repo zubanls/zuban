@@ -397,11 +397,8 @@ fn calculate_type_vars<'db: 'a, 'a>(
                     if let ArgumentKind::ParamSpec { usage, .. } = &arg.kind {
                         if usage.in_definition == param_spec.in_definition {
                             SignatureMatch::new_true()
-                        } else if class.is_none() {
-                            SignatureMatch::False { similar: false }
                         } else {
-                            dbg!(class);
-                            todo!("{:?}, {:?}", param_spec.in_definition, usage.in_definition)
+                            SignatureMatch::False { similar: false }
                         }
                     } else {
                         todo!()
@@ -429,7 +426,7 @@ fn calculate_type_vars<'db: 'a, 'a>(
             debug!(
                 "Calculated type vars for {}: [{}]",
                 func_or_callable
-                    .diagnostic_string(i_s.db, class)
+                    .diagnostic_string(i_s.db, None)
                     .as_deref()
                     .unwrap_or("function"),
                 type_arguments.format(&FormatData::new_short(i_s.db)),
