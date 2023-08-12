@@ -1091,9 +1091,9 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 .use_cached_return_annotation_type(return_annotation)
                 .execute_and_resolve_type_vars(
                     i_s,
-                    self.class.as_ref(),
-                    class,
                     &calculated_type_vars,
+                    self.class.as_ref(),
+                    &mut || class.map(|c| c.as_db_type(i_s.db)).unwrap_or(DbType::Self_),
                 )
         } else {
             self.node_ref
@@ -1785,9 +1785,13 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                 result: Type::new(&callable.content.result_type)
                                     .execute_and_resolve_type_vars(
                                         i_s,
-                                        self.class.as_ref(),
-                                        class,
                                         &calculated_type_args,
+                                        self.class.as_ref(),
+                                        &mut || {
+                                            class
+                                                .map(|c| c.as_db_type(i_s.db))
+                                                .unwrap_or(DbType::Self_)
+                                        },
                                     )
                                     .as_db_type(i_s),
                                 first_similar_index: i,

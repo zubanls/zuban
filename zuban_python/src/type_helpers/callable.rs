@@ -1,7 +1,7 @@
 use super::function::{format_pretty_function_like, format_pretty_function_with_params};
 use super::Class;
 use crate::arguments::Arguments;
-use crate::database::{CallableContent, CallableParams, Database, FormatStyle};
+use crate::database::{CallableContent, CallableParams, Database, DbType, FormatStyle};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
 use crate::matching::{
@@ -51,9 +51,13 @@ impl<'a> Callable<'a> {
         let g_o = Type::new(&self.content.result_type);
         g_o.execute_and_resolve_type_vars(
             i_s,
-            self.defined_in.as_ref(),
-            self.defined_in.as_ref(),
             &calculated_type_vars,
+            self.defined_in.as_ref(),
+            &mut || {
+                self.defined_in
+                    .map(|c| c.as_db_type(i_s.db))
+                    .unwrap_or(DbType::Self_)
+            },
         )
     }
 }

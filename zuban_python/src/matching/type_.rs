@@ -1196,11 +1196,12 @@ impl<'a> Type<'a> {
     pub fn execute_and_resolve_type_vars(
         &self,
         i_s: &InferenceState,
-        class: Option<&Class>,
-        self_class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
+        class: Option<&Class>,
+        replace_self_type: ReplaceSelf,
     ) -> Inferred {
-        let db_type = self.internal_resolve_type_vars(i_s, class, self_class, calculated_type_args);
+        let db_type =
+            self.internal_resolve_type_vars(i_s, calculated_type_args, class, replace_self_type);
         debug!(
             "Resolved type vars: {}",
             Type::new(&db_type).format_short(i_s.db)
@@ -1211,19 +1212,14 @@ impl<'a> Type<'a> {
     fn internal_resolve_type_vars(
         &self,
         i_s: &InferenceState,
-        class: Option<&Class>,
-        self_class: Option<&Class>,
         calculated_type_args: &CalculatedTypeArguments,
+        class: Option<&Class>,
+        replace_self_type: ReplaceSelf,
     ) -> DbType {
-        let mut replace_self = || {
-            self_class
-                .map(|c| c.as_db_type(i_s.db))
-                .unwrap_or(DbType::Self_)
-        };
         self.replace_type_var_likes_and_self(
             i_s.db,
             &mut |t| calculated_type_args.lookup_type_var_usage(i_s, class, t),
-            &mut replace_self,
+            replace_self_type,
         )
     }
 
