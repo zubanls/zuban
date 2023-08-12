@@ -38,19 +38,15 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         let class = &self.instance.class;
         match &self.function {
             BoundMethodFunction::Function(f) => f.execute_internal(
-                &i_s.with_class_context(class),
+                &i_s,
                 &args,
                 on_type_error,
                 &mut || class.as_db_type(i_s.db),
                 result_context,
             ),
-            BoundMethodFunction::Overload(f) => f.execute_internal(
-                &i_s.with_class_context(class),
-                &args,
-                on_type_error,
-                Some(class),
-                result_context,
-            ),
+            BoundMethodFunction::Overload(f) => {
+                f.execute_internal(&i_s, &args, on_type_error, Some(class), result_context)
+            }
             BoundMethodFunction::Callable(f) => f.execute(
                 &i_s.with_class_context(class),
                 &args,
