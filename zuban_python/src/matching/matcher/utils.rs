@@ -95,7 +95,6 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         let mut type_arguments = calculate_type_vars(
             i_s,
             matcher,
-            Some(class),
             func_or_callable,
             None,
             args,
@@ -118,7 +117,6 @@ fn calculate_init_type_vars_and_return<'db: 'a, 'a>(
         calculate_type_vars(
             i_s,
             matcher,
-            Some(class),
             func_or_callable,
             Some(class),
             args,
@@ -178,7 +176,6 @@ impl CalculatedTypeArguments {
 
 pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
-    class: Option<&Class>,
     function: Function<'a, 'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
     args_node_ref: &impl Fn() -> NodeRef<'a>,
@@ -188,16 +185,11 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
     result_context: &mut ResultContext,
     on_type_error: Option<OnTypeError<'db, '_>>,
 ) -> CalculatedTypeArguments {
-    debug!(
-        "Calculate type vars for {} in {}",
-        function.name(),
-        class.map(|c| c.name()).unwrap_or("-")
-    );
+    debug!("Calculate type vars for {}", function.diagnostic_string());
     let func_or_callable = FunctionOrCallable::Function(function);
     calculate_type_vars(
         i_s,
         get_matcher(None, func_or_callable, match_in_definition, type_vars),
-        class,
         func_or_callable,
         None,
         args,
@@ -212,7 +204,6 @@ pub fn calculate_function_type_vars_and_return<'db: 'a, 'a>(
 
 pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
-    class: Option<&Class>,
     callable: Callable<'a>,
     args: impl Iterator<Item = Argument<'db, 'a>>,
     args_node_ref: &impl Fn() -> NodeRef<'a>,
@@ -230,7 +221,6 @@ pub fn calculate_callable_type_vars_and_return<'db: 'a, 'a>(
             callable.content.defined_at,
             type_vars,
         ),
-        class,
         func_or_callable,
         None,
         args,
@@ -292,7 +282,6 @@ fn add_generics_from_result_context_class(
 fn calculate_type_vars<'db: 'a, 'a>(
     i_s: &InferenceState<'db, '_>,
     mut matcher: Matcher,
-    class: Option<&Class>,
     func_or_callable: FunctionOrCallable<'a>,
     expected_return_class: Option<&Class>,
     mut args: impl Iterator<Item = Argument<'db, 'a>>,
@@ -367,7 +356,6 @@ fn calculate_type_vars<'db: 'a, 'a>(
         FunctionOrCallable::Function(function) => calculate_type_vars_for_params(
             i_s,
             &mut matcher,
-            class,
             func_or_callable,
             args_node_ref,
             on_type_error,
@@ -377,7 +365,6 @@ fn calculate_type_vars<'db: 'a, 'a>(
             CallableParams::Simple(params) => calculate_type_vars_for_params(
                 i_s,
                 &mut matcher,
-                class,
                 func_or_callable,
                 args_node_ref,
                 on_type_error,
@@ -449,7 +436,6 @@ pub fn match_arguments_against_params<
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
     args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -571,7 +557,6 @@ pub fn match_arguments_against_params<
                     i_s,
                     &param_spec,
                     args,
-                    class,
                     func_or_callable,
                     args_node_ref,
                     on_type_error,
@@ -693,7 +678,6 @@ fn calculate_type_vars_for_params<
 >(
     i_s: &InferenceState<'db, '_>,
     matcher: &mut Matcher,
-    class: Option<&Class>,
     func_or_callable: FunctionOrCallable,
     args_node_ref: &impl Fn() -> NodeRef<'c>,
     on_type_error: Option<OnTypeError<'db, '_>>,
@@ -702,7 +686,6 @@ fn calculate_type_vars_for_params<
     match_arguments_against_params(
         i_s,
         matcher,
-        class,
         func_or_callable,
         args_node_ref,
         on_type_error,

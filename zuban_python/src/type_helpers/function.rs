@@ -1035,7 +1035,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
         let func_type_vars = return_annotation.and_then(|_| self.type_vars(i_s));
         let calculated_type_vars = calculate_function_type_vars_and_return(
             i_s,
-            class,
             *self,
             args.iter(),
             &|| args.as_node_ref(),
@@ -1506,7 +1505,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
             } else {
                 calculate_callable_type_vars_and_return(
                     i_s,
-                    class,
                     callable,
                     args.iter(),
                     &|| args.as_node_ref(),
@@ -1766,7 +1764,6 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                     } else {
                         calculate_callable_type_vars_and_return(
                             i_s,
-                            class,
                             callable,
                             non_union_args.clone().into_iter(),
                             &|| args_node_ref,

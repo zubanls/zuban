@@ -160,7 +160,6 @@ impl<'db: 'a, 'a> Class<'a> {
                     // Happens for example when NamedTuples are involved.
                     None => calculate_callable_type_vars_and_return(
                         i_s,
-                        None,
                         Callable::new(&callable_content, Some(*self)),
                         args.iter(),
                         &|| args.as_node_ref(),

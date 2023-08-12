@@ -2640,7 +2640,6 @@ pub fn execute_type_of_type<'db>(
         DbType::NamedTuple(nt) => {
             let calculated_type_vars = calculate_callable_type_vars_and_return(
                 i_s,
-                None,
                 Callable::new(&nt.__new__, None),
                 args.iter(),
                 &|| args.as_node_ref(),

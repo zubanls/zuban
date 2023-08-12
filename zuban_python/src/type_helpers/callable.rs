@@ -41,7 +41,6 @@ impl<'a> Callable<'a> {
     ) -> Inferred {
         let calculated_type_vars = calculate_callable_type_vars_and_return(
             i_s,
-            self.defined_in.as_ref(),
             *self,
             args.iter(),
             &|| args.as_node_ref(),

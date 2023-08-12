@@ -422,7 +422,6 @@ impl<'a> Matcher<'a> {
         i_s: &InferenceState<'db, '_>,
         usage: &ParamSpecUsage,
         args: Box<[Argument<'db, 'b>]>,
-        class: Option<&Class>,
         func_or_callable: FunctionOrCallable,
         args_node_ref: &impl Fn() -> NodeRef<'c>,
         on_type_error: Option<OnTypeError<'db, '_>>,
@@ -454,7 +453,6 @@ impl<'a> Matcher<'a> {
                 match_arguments_against_params(
                     i_s,
                     &mut Matcher::default(),
-                    class,
                     func_or_callable,
                     args_node_ref,
                     on_type_error,
