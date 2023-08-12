@@ -361,7 +361,7 @@ pub struct TypeComputation<'db, 'file, 'i_s, 'c> {
     // It's therefore unclear if type inference or type computation is needed. So once we encounter
     // a type alias we check in the database if the error was already calculated and set the flag.
     errors_already_calculated: bool,
-    pub has_type_vars: bool,
+    pub has_type_vars_or_self: bool,
     origin: TypeComputationOrigin,
     is_recursive_alias: bool,
 }
@@ -380,7 +380,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             type_var_manager: TypeVarManager::default(),
             type_var_callback,
             errors_already_calculated: false,
-            has_type_vars: false,
+            has_type_vars_or_self: false,
             origin,
             is_recursive_alias: false,
         }
@@ -410,13 +410,13 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 for_definition: self.for_definition,
                 type_var_callback: self.type_var_callback,
                 errors_already_calculated: self.errors_already_calculated,
-                has_type_vars: false,
+                has_type_vars_or_self: false,
                 origin: self.origin,
                 is_recursive_alias: false,
             };
             let type_ = compute_type(&mut comp);
             self.type_var_manager = comp.type_var_manager;
-            self.has_type_vars |= comp.has_type_vars;
+            self.has_type_vars_or_self |= comp.has_type_vars_or_self;
             self.is_recursive_alias |= comp.is_recursive_alias;
             type_
         } else {
@@ -585,7 +585,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     if self.origin != TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                         DbType::Any
-                    } else if self.has_type_vars {
+                    } else if self.has_type_vars_or_self {
                         let mut has_type_var = false;
                         t.search_type_vars(&mut |usage| has_type_var = true);
                         if has_type_var {
@@ -612,7 +612,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         annotation_node_ref.set_point(Point::new_simple_specific(
             if is_class_var {
                 Specific::AnnotationOrTypeCommentClassVar
-            } else if self.has_type_vars {
+            } else if self.has_type_vars_or_self {
                 Specific::AnnotationOrTypeCommentWithTypeVars
             } else {
                 Specific::AnnotationOrTypeCommentWithoutTypeVars
@@ -677,7 +677,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.add_issue(node_ref, IssueType::SelfTypeInMetaclass);
                         DbType::Any
                     } else {
-                        self.has_type_vars = true;
+                        self.has_type_vars_or_self = true;
                         DbType::Self_
                     }
                 }
@@ -2042,7 +2042,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     .is_some(),
             },
             TypeNameLookup::TypeVarLike(type_var_like) => {
-                self.has_type_vars = true;
+                self.has_type_vars_or_self = true;
                 match (self.type_var_callback)(
                     self.inference.i_s,
                     &self.type_var_manager,
