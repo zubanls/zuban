@@ -197,7 +197,13 @@ impl<'a> Instance<'a> {
             let result = class.lookup_symbol(i_s, name).and_then(|inf| {
                 if let TypeOrClass::Class(c) = class {
                     let i_s = i_s.with_class_context(&self.class);
-                    inf.bind_instance_descriptors(&i_s, self, c, node_ref, mro_index)
+                    inf.bind_instance_descriptors(
+                        &i_s,
+                        self.class.as_db_type(i_s.db),
+                        c,
+                        node_ref,
+                        mro_index,
+                    )
                 } else {
                     Some(inf)
                 }
@@ -361,7 +367,7 @@ impl<'db: 'a, 'a> Iterator for ClassMroFinder<'db, 'a, '_> {
                         .and_then(|inf| {
                             inf.bind_instance_descriptors(
                                 self.i_s,
-                                self.instance,
+                                self.instance.class.as_db_type(self.i_s.db),
                                 class,
                                 self.from,
                                 mro_index,

@@ -2,7 +2,7 @@ use crate::database::{
     CallableContent, Database, DbType, GenericItem, TypeVarLikeUsage, TypeVarLikes,
 };
 use crate::inference_state::InferenceState;
-use crate::type_helpers::{Class, Instance};
+use crate::type_helpers::Class;
 
 use super::type_::ReplaceSelf;
 use super::{Matcher, Type};
@@ -10,8 +10,8 @@ use super::{Matcher, Type};
 pub fn replace_class_type_vars(
     db: &Database,
     t: &DbType,
-    instance_class: &Class,
     attribute_class: &Class,
+    self_instance: impl Fn() -> DbType,
 ) -> DbType {
     Type::new(t).replace_type_var_likes_and_self(
         db,
@@ -19,7 +19,7 @@ pub fn replace_class_type_vars(
             maybe_class_usage(db, attribute_class, &usage)
                 .unwrap_or_else(|| usage.into_generic_item())
         },
-        &mut || instance_class.as_db_type(db),
+        &mut || self_instance(),
     )
 }
 
@@ -57,9 +57,9 @@ pub fn maybe_class_usage(
 pub fn create_signature_without_self_for_callable(
     i_s: &InferenceState,
     callable: &CallableContent,
-    instance: &Instance,
+    instance: &DbType,
     func_class: &Class,
-    self_type: &DbType,
+    first_type: &DbType,
 ) -> Option<CallableContent> {
     let matcher = Matcher::new_callable_matcher(callable);
     create_signature_without_self(
@@ -70,12 +70,12 @@ pub fn create_signature_without_self_for_callable(
                 .remove_first_param()
                 .expect("Signatures without any params should have been filtered before");
             replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &mut || {
-                instance.class.as_db_type(i_s.db)
+                instance.clone()
             })
         },
         instance,
         func_class,
-        self_type,
+        first_type,
     )
 }
 
@@ -83,17 +83,15 @@ pub fn create_signature_without_self(
     i_s: &InferenceState,
     mut matcher: Matcher,
     get_callable: impl FnOnce() -> CallableContent,
-    instance: &Instance,
+    instance: &DbType,
     func_class: &Class,
-    self_type: &DbType,
+    first_type: &DbType,
 ) -> Option<CallableContent> {
-    let expected = replace_class_type_vars(i_s.db, self_type, func_class, func_class);
+    let expected = replace_class_type_vars(i_s.db, first_type, func_class, || {
+        func_class.as_db_type(i_s.db)
+    });
     if !Type::owned(expected)
-        .is_super_type_of(
-            i_s,
-            &mut matcher,
-            &Type::owned(instance.class.as_db_type(i_s.db)),
-        )
+        .is_super_type_of(i_s, &mut matcher, &Type::new(instance))
         .bool()
     {
         return None;

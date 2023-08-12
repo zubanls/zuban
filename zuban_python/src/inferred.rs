@@ -42,7 +42,7 @@ enum InferredState {
     UnsavedComplex(ComplexPoint),
     UnsavedSpecific(Specific),
     BoundMethod {
-        instance: BoundMethodInstance,
+        instance: DbType,
         mro_index: MroIndex,
         func_link: PointLink,
     },
@@ -82,11 +82,7 @@ impl<'db: 'slf, 'slf> Inferred {
         }
     }
 
-    fn new_bound_method(
-        instance: BoundMethodInstance,
-        mro_index: MroIndex,
-        func_link: PointLink,
-    ) -> Self {
+    fn new_bound_method(instance: DbType, mro_index: MroIndex, func_link: PointLink) -> Self {
         Self {
             state: InferredState::BoundMethod {
                 instance,
@@ -199,9 +195,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
-                // TODO this is potentially not needed, a class could lazily be fetched with a
-                // closure
-                let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
+                let class = Self::load_bound_method_class(i_s, instance, *mro_index);
                 load_bound_method(i_s, &instance, class, *func_link).as_type(i_s)
             }
             InferredState::Unknown => Type::new(&DbType::Any),
@@ -220,28 +214,16 @@ impl<'db: 'slf, 'slf> Inferred {
         self.format(i_s, &FormatData::new_short(i_s.db))
     }
 
-    fn load_bound_method_instance(
+    fn load_bound_method_class(
         i_s: &InferenceState<'db, '_>,
-        instance: &'slf BoundMethodInstance,
+        instance: &'slf DbType,
         mro_index: MroIndex,
-    ) -> (Instance<'slf>, Class<'slf>) {
-        let instance = Instance::new(
-            match instance {
-                BoundMethodInstance::Reference(def) => NodeRef::from_link(i_s.db, *def)
-                    .into_saved_inferred()
-                    .saved_as_type(i_s)
-                    .unwrap()
-                    .expect_borrowed_class(i_s.db),
-                BoundMethodInstance::Complex(ComplexPoint::TypeInstance(DbType::Class(c))) => {
-                    Class::from_generic_class(i_s.db, c)
-                }
-                _ => unreachable!(),
-            },
-            None,
-        );
-
-        let class_t = instance
-            .class
+    ) -> Class<'slf> {
+        let DbType::Class(instance_class) = instance else {
+            unreachable!();
+        };
+        let instance_class = Class::from_generic_class(i_s.db, instance_class);
+        let class_t = instance_class
             .mro(i_s.db)
             .nth(mro_index.0 as usize)
             .unwrap()
@@ -250,7 +232,7 @@ impl<'db: 'slf, 'slf> Inferred {
         let TypeOrClass::Class(class) = class_t else {
             unreachable!()
         };
-        (instance, class)
+        class
     }
     pub fn maybe_type_var_like(&self, i_s: &InferenceState<'db, '_>) -> Option<TypeVarLike> {
         if let InferredState::Saved(definition) = self.state {
@@ -342,7 +324,10 @@ impl<'db: 'slf, 'slf> Inferred {
                     }
                     Specific::AnnotationOrTypeCommentWithTypeVars => {
                         let t = use_cached_annotation_or_type_comment(i_s, definition);
-                        let d = replace_class_type_vars(i_s.db, t.as_ref(), class, attribute_class);
+                        let d =
+                            replace_class_type_vars(i_s.db, t.as_ref(), attribute_class, || {
+                                class.as_db_type(i_s.db)
+                            });
                         return Inferred::from_type(d);
                     }
                     _ => (),
@@ -507,7 +492,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
-                let (instance, class) = Self::load_bound_method_instance(i_s, &instance, mro_index);
+                let class = Self::load_bound_method_class(i_s, &instance, mro_index);
                 let bound_method = load_bound_method(i_s, &instance, class, func_link);
                 file.complex_points.insert(
                     &file.points,
@@ -626,7 +611,7 @@ impl<'db: 'slf, 'slf> Inferred {
     pub fn bind_instance_descriptors(
         self,
         i_s: &InferenceState<'db, '_>,
-        instance: &Instance,
+        instance: DbType,
         func_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
@@ -644,7 +629,7 @@ impl<'db: 'slf, 'slf> Inferred {
     fn bind_instance_descriptors_internal(
         self,
         i_s: &InferenceState<'db, '_>,
-        instance: &Instance,
+        instance: DbType,
         attribute_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
@@ -666,13 +651,11 @@ impl<'db: 'slf, 'slf> Inferred {
                                         func.as_callable(
                                             i_s,
                                             FirstParamProperties::Skip {
-                                                to_self_instance: &|| {
-                                                    instance.class.as_db_type(i_s.db)
-                                                },
+                                                to_self_instance: &|| instance.clone(),
                                             },
                                         )
                                     },
-                                    instance,
+                                    &instance,
                                     &attribute_class,
                                     first_type.as_ref(),
                                 ) {
@@ -681,7 +664,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     )))
                                 } else {
                                     let t = IssueType::InvalidSelfArgument {
-                                        argument_type: instance.class.format_short(i_s.db),
+                                        argument_type: instance.format_short(i_s.db),
                                         function_name: Box::from(func.name()),
                                         callable: func.as_type(i_s).format_short(i_s.db),
                                     };
@@ -689,11 +672,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     Some(Self::new_any())
                                 }
                             } else {
-                                Some(Self::new_bound_method(
-                                    instance.as_inferred(i_s).as_bound_method_instance(i_s),
-                                    mro_index,
-                                    *definition,
-                                ))
+                                Some(Self::new_bound_method(instance, mro_index, *definition))
                             };
                         }
                         Specific::DecoratedFunction => {
@@ -715,8 +694,8 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = replace_class_type_vars(
                                 i_s.db,
                                 t.as_ref(),
-                                &instance.class,
                                 &attribute_class,
+                                || instance.clone(),
                             );
                             return Inferred::from_type(t).bind_instance_descriptors_internal(
                                 i_s,
@@ -734,7 +713,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             let t = use_cached_annotation_or_type_comment(i_s, node_ref);
                             if let Some(inf) = Self::bind_instance_descriptors_for_type(
                                 i_s,
-                                instance,
+                                instance.clone(),
                                 attribute_class,
                                 from,
                                 mro_index,
@@ -771,7 +750,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 create_signature_without_self_for_callable(
                                                     i_s,
                                                     callable,
-                                                    instance,
+                                                    &instance,
                                                     &attribute_class,
                                                     t,
                                                 )
@@ -787,9 +766,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                                 Some(attribute_class),
                                             );
                                             let t = IssueType::InvalidClassMethodFirstArgument {
-                                                argument_type: instance
-                                                    .class
-                                                    .as_type(i_s)
+                                                argument_type: DbType::Type(Rc::new(instance))
                                                     .format_short(i_s.db),
                                                 function_name: Box::from(overload.name(i_s.db)),
                                                 // Mypy just picks the first function.
@@ -822,7 +799,7 @@ impl<'db: 'slf, 'slf> Inferred {
                                     }
                                 }
                                 return Some(Self::new_bound_method(
-                                    instance.as_inferred(i_s).as_bound_method_instance(i_s),
+                                    instance,
                                     mro_index,
                                     *definition,
                                 ));
@@ -882,7 +859,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
     fn bind_instance_descriptors_for_type(
         i_s: &InferenceState<'db, '_>,
-        instance: &Instance,
+        instance: DbType,
         attribute_class: Class,
         from: NodeRef,
         mro_index: MroIndex,
@@ -902,7 +879,7 @@ impl<'db: 'slf, 'slf> Inferred {
                             create_signature_without_self_for_callable(
                                 i_s,
                                 c,
-                                instance,
+                                &instance,
                                 &attribute_class,
                                 f,
                             )
@@ -917,16 +894,20 @@ impl<'db: 'slf, 'slf> Inferred {
                     return Some(Some(Inferred::from_type(replace_class_type_vars(
                         i_s.db,
                         &c.result_type,
-                        &instance.class,
                         &attribute_class,
+                        || instance.clone(),
                     ))))
                 }
                 FunctionKind::Classmethod => {
-                    let result = infer_class_method(i_s, instance.class, attribute_class, c);
+                    let DbType::Class(instance_cls) = &instance else {
+                        todo!("Is this always the case?")
+                    };
+                    let instance_cls = Class::from_generic_class(i_s.db, instance_cls);
+                    let result = infer_class_method(i_s, instance_cls, attribute_class, c);
                     if result.is_none() {
                         let func = prepare_func(i_s, c.defined_at, attribute_class);
                         let t = IssueType::InvalidClassMethodFirstArgument {
-                            argument_type: instance.class.as_type(i_s).format_short(i_s.db),
+                            argument_type: DbType::Type(Rc::new(instance)).format_short(i_s.db),
                             function_name: Box::from(func.name()),
                             callable: func.as_type(i_s).format_short(i_s.db),
                         };
@@ -945,8 +926,8 @@ impl<'db: 'slf, 'slf> Inferred {
             new = Some(replace_class_type_vars(
                 i_s.db,
                 &t,
-                &instance.class,
                 &attribute_class,
+                || instance.clone(),
             ));
             t = new.as_ref().unwrap();
         }
@@ -958,12 +939,12 @@ impl<'db: 'slf, 'slf> Inferred {
                 None,
             );
             if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
-                let class_as_inferred = instance.class.as_inferred(i_s);
+                let c_t = DbType::Type(Rc::new(instance.clone()));
                 return Some(Some(inf.execute(
                     i_s,
                     &CombinedArguments::new(
-                        &KnownArguments::new(&instance.as_inferred(i_s), from),
-                        &KnownArguments::new(&class_as_inferred, from),
+                        &KnownArguments::new(&Inferred::from_type(instance), from),
+                        &KnownArguments::new(&Inferred::from_type(c_t), from),
                     ),
                 )));
             }
@@ -1131,8 +1112,8 @@ impl<'db: 'slf, 'slf> Inferred {
             new = Some(replace_class_type_vars(
                 i_s.db,
                 &t,
-                &class,
                 &attribute_class,
+                || class.as_db_type(i_s.db),
             ));
             t = new.as_ref().unwrap();
         }
@@ -1255,17 +1236,6 @@ impl<'db: 'slf, 'slf> Inferred {
             "description = {}\ndebug = {self:?}\ndetails = {details}",
             "",
         )
-    }
-
-    fn as_bound_method_instance(&self, i_s: &InferenceState<'db, '_>) -> BoundMethodInstance {
-        match &self.state {
-            InferredState::Saved(definition) => BoundMethodInstance::Reference(*definition),
-            InferredState::UnsavedComplex(complex) => BoundMethodInstance::Complex(complex.clone()),
-            InferredState::UnsavedSpecific(specific) => todo!(),
-            InferredState::UnsavedFileReference(file_index) => unreachable!(),
-            InferredState::BoundMethod { .. } => unreachable!(),
-            InferredState::Unknown => unreachable!(),
-        }
     }
 
     fn expect_class_generics(definition: NodeRef<'db>, point: Point) -> ClassGenerics {
@@ -1615,7 +1585,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 mro_index,
                 func_link,
             } => {
-                let (instance, class) = Self::load_bound_method_instance(i_s, instance, *mro_index);
+                let class = Self::load_bound_method_class(i_s, instance, *mro_index);
                 return load_bound_method(i_s, &instance, class, *func_link).execute(
                     i_s,
                     args,
@@ -1710,7 +1680,7 @@ impl<'db: 'slf, 'slf> Inferred {
 
 fn load_bound_method<'db: 'a, 'a, 'b>(
     i_s: &InferenceState<'db, '_>,
-    instance: &'b Instance<'a>,
+    instance: &'b DbType,
     class: Class<'a>,
     func_link: PointLink,
 ) -> BoundMethod<'a, 'b> {
@@ -1862,7 +1832,8 @@ fn proper_classmethod_callable(
             if let Some(t) = first_param.param_specific.maybe_positional_db_type() {
                 let mut matcher = Matcher::new_callable_matcher(&callable);
                 let instance_t = class.as_type(i_s);
-                let t = replace_class_type_vars(i_s.db, &t, class, func_class);
+                let t =
+                    replace_class_type_vars(i_s.db, &t, func_class, || class.as_db_type(i_s.db));
                 if !Type::new(&t)
                     .is_super_type_of(i_s, &mut matcher, &instance_t)
                     .bool()
@@ -2088,12 +2059,6 @@ fn saved_as_type<'db>(i_s: &InferenceState<'db, '_>, definition: PointLink) -> T
         PointType::FileReference => Type::owned(DbType::Module(point.file_index())),
         x => unreachable!("{x:?}"),
     }
-}
-
-#[derive(Debug, Clone, PartialEq)]
-enum BoundMethodInstance {
-    Reference(PointLink),
-    Complex(ComplexPoint),
 }
 
 enum ApplyDescriptorsKind {

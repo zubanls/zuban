@@ -45,7 +45,13 @@ impl<'a> Tuple<'a> {
                 let TypeOrClass::Class(cls) = class_or_type else {
                     unreachable!();
                 };
-                inf.bind_instance_descriptors(i_s, &tuple_instance, cls, node_ref, mro_index)
+                inf.bind_instance_descriptors(
+                    i_s,
+                    tuple_cls.as_db_type(i_s.db),
+                    cls,
+                    node_ref,
+                    mro_index,
+                )
             });
             match result {
                 Some(LookupResult::None) => (),

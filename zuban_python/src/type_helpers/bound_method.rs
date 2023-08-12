@@ -1,6 +1,6 @@
 use std::rc::Rc;
 
-use super::{Callable, FirstParamProperties, Function, Instance, OverloadedFunction};
+use super::{Callable, FirstParamProperties, Function, OverloadedFunction};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments};
 use crate::database::DbType;
 use crate::inference_state::InferenceState;
@@ -16,12 +16,12 @@ pub enum BoundMethodFunction<'a> {
 
 #[derive(Debug)]
 pub struct BoundMethod<'a, 'b> {
-    instance: &'b Instance<'a>,
+    instance: &'b DbType,
     function: BoundMethodFunction<'a>,
 }
 
 impl<'a, 'b> BoundMethod<'a, 'b> {
-    pub fn new(instance: &'b Instance<'a>, function: BoundMethodFunction<'a>) -> Self {
+    pub fn new(instance: &'b DbType, function: BoundMethodFunction<'a>) -> Self {
         Self { instance, function }
     }
 
@@ -32,27 +32,23 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
         result_context: &mut ResultContext,
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
-        let instance_inf = self.instance.as_inferred(i_s);
+        let instance_inf = Inferred::from_type(self.instance.clone());
         let instance_arg = KnownArguments::new_bound(&instance_inf, args.as_node_ref());
         let args = CombinedArguments::new(&instance_arg, args);
-        let class = &self.instance.class;
         match &self.function {
             BoundMethodFunction::Function(f) => f.execute_internal(
                 &i_s,
                 &args,
                 on_type_error,
-                &mut || class.as_db_type(i_s.db),
+                &mut || self.instance.clone(),
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => {
                 f.execute(&i_s, &args, result_context, on_type_error)
             }
-            BoundMethodFunction::Callable(f) => f.execute(
-                &i_s.with_class_context(class),
-                &args,
-                on_type_error,
-                result_context,
-            ),
+            BoundMethodFunction::Callable(f) => {
+                f.execute(&i_s, &args, on_type_error, result_context)
+            }
         }
     }
 
@@ -61,11 +57,11 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
             BoundMethodFunction::Function(f) => f.as_db_type(
                 i_s,
                 FirstParamProperties::Skip {
-                    to_self_instance: &|| self.instance.class.as_db_type(i_s.db),
+                    to_self_instance: &|| self.instance.clone(),
                 },
             ),
             BoundMethodFunction::Overload(f) => {
-                f.as_db_type(i_s, Some(&mut || self.instance.class.as_db_type(i_s.db)))
+                f.as_db_type(i_s, Some(&mut || self.instance.clone()))
             }
             BoundMethodFunction::Callable(c) => {
                 let callable = c
@@ -77,7 +73,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                         i_s.db,
                         &callable,
                         c.defined_in.as_ref(),
-                        &mut || self.instance.class.as_db_type(i_s.db),
+                        &mut || self.instance.clone(),
                     )
                 }))
             }
