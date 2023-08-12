@@ -582,16 +582,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                 }
                 TypeContent::ClassVar(t) => {
                     is_class_var = true;
-                    if self.has_type_vars {
-                        self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
-                        DbType::Any
-                    } else if self.origin
-                        == TypeComputationOrigin::AssignmentTypeCommentOrAnnotation
-                    {
-                        t
-                    } else {
+                    if self.origin != TypeComputationOrigin::AssignmentTypeCommentOrAnnotation {
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                         DbType::Any
+                    } else if self.has_type_vars {
+                        let mut has_type_var = false;
+                        t.search_type_vars(&mut |usage| has_type_var = true);
+                        if has_type_var {
+                            self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
+                            DbType::Any
+                        } else {
+                            t
+                        }
+                    } else {
+                        t
                     }
                 }
                 _ => self.as_db_type(type_, node_ref),
