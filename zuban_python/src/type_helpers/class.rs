@@ -585,8 +585,6 @@ impl<'db: 'a, 'a> Class<'a> {
             db.python_state.type_node_ref().as_link(),
             ClassGenerics::None,
         );
-        dbg!(&python_type);
-        dbg!(&self.use_cached_class_infos(db).mro);
         self.use_cached_class_infos(db)
             .mro
             .iter()
