@@ -1228,7 +1228,7 @@ impl<'a> Type<'a> {
         db: &Database,
         callable: &mut impl FnMut(TypeVarLikeUsage) -> GenericItem,
     ) -> DbType {
-        self.replace_type_var_likes_and_self(db, callable, &mut || DbType::Self_)
+        self.replace_type_var_likes_and_self(db, callable, &|| DbType::Self_)
     }
 
     pub fn replace_type_var_likes_and_self(

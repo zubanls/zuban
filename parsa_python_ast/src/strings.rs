@@ -72,7 +72,7 @@ impl<'db> PythonString<'db> {
             }
             if let Some(mut string) = string {
                 string.push_str(&inner[previous_insert..inner.len()]);
-                Self::String(literal.start() + start as u32, string.into())
+                Self::String(literal.start() + start as u32, string)
             } else {
                 Self::Ref(literal.start() + start as u32, inner)
             }
@@ -83,7 +83,7 @@ impl<'db> PythonString<'db> {
         match other {
             Self::Ref(start, s2) => match self {
                 Self::Ref(_, s1) => Self::String(start, s1.to_owned() + s2),
-                Self::String(_, s1) => Self::String(start, s1 + &s2),
+                Self::String(_, s1) => Self::String(start, s1 + s2),
                 Self::FString => todo!(),
             },
             Self::String(start, s2) => match self {

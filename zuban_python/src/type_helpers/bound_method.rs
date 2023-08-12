@@ -40,7 +40,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                 i_s,
                 &args,
                 on_type_error,
-                &mut || self.instance.clone(),
+                &|| self.instance.clone(),
                 result_context,
             ),
             BoundMethodFunction::Overload(f) => {
@@ -60,9 +60,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                     to_self_instance: &|| self.instance.clone(),
                 },
             ),
-            BoundMethodFunction::Overload(f) => {
-                f.as_db_type(i_s, Some(&mut || self.instance.clone()))
-            }
+            BoundMethodFunction::Overload(f) => f.as_db_type(i_s, Some(&|| self.instance.clone())),
             BoundMethodFunction::Callable(c) => {
                 let callable = c
                     .content
@@ -73,7 +71,7 @@ impl<'a, 'b> BoundMethod<'a, 'b> {
                         i_s.db,
                         &callable,
                         c.defined_in.as_ref(),
-                        &mut || self.instance.clone(),
+                        &|| self.instance.clone(),
                     )
                 }))
             }

@@ -69,9 +69,7 @@ pub fn create_signature_without_self_for_callable(
             let c = callable
                 .remove_first_param()
                 .expect("Signatures without any params should have been filtered before");
-            replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &mut || {
-                instance.clone()
-            })
+            replace_class_type_vars_in_callable(i_s.db, &c, Some(func_class), &|| instance.clone())
         },
         instance,
         func_class,
@@ -87,7 +85,7 @@ pub fn create_signature_without_self(
     func_class: &Class,
     first_type: &DbType,
 ) -> Option<CallableContent> {
-    let expected = replace_class_type_vars(i_s.db, first_type, func_class, &mut || {
+    let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| {
         func_class.as_db_type(i_s.db)
     });
     if !Type::owned(expected)
@@ -117,7 +115,7 @@ pub fn create_signature_without_self(
                     .count();
                 usage.into_generic_item_with_new_index(new_index.into())
             },
-            &mut || unreachable!("Self should have been remapped already"),
+            &|| unreachable!("Self should have been remapped already"),
         );
         let mut old_type_vars = callable.type_vars.take().unwrap().as_vec();
         for (i, c) in calculated.iter().enumerate().rev() {

@@ -876,7 +876,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         usage.into_generic_item()
                     }
                 },
-                &mut || {
+                &|| {
                     if let Some(self_type_var_usage) = self_type_var_usage {
                         DbType::TypeVar(self_type_var_usage.clone())
                     } else if let FirstParamProperties::Skip { to_self_instance } = first {
@@ -1160,17 +1160,11 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 &i_s.with_class_context(class),
                 args,
                 on_type_error,
-                &mut || class.as_db_type(i_s.db),
+                &|| class.as_db_type(i_s.db),
                 result_context,
             )
         } else {
-            self.execute_internal(
-                i_s,
-                args,
-                on_type_error,
-                &mut || DbType::Self_,
-                result_context,
-            )
+            self.execute_internal(i_s, args, on_type_error, &|| DbType::Self_, result_context)
         }
     }
 
@@ -1787,7 +1781,7 @@ impl<'db: 'a, 'a> OverloadedFunction<'a> {
                                         i_s,
                                         &calculated_type_args,
                                         self.class.as_ref(),
-                                        &mut || {
+                                        &|| {
                                             class
                                                 .map(|c| c.as_db_type(i_s.db))
                                                 .unwrap_or(DbType::Self_)
@@ -2051,7 +2045,7 @@ fn format_function_type(format_data: &FormatData, t: &Type, class: Option<Class>
                 maybe_class_usage(format_data.db, &func_class, &usage)
                     .unwrap_or_else(|| usage.into_generic_item())
             },
-            &mut || todo!(),
+            &|| todo!(),
         );
         t.format(format_data)
     } else {

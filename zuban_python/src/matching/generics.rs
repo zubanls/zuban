@@ -19,7 +19,7 @@ macro_rules! replace_class_vars {
             Some(type_var_generics) => Generic::owned($g.replace_type_var_likes(
                 $db,
                 &mut |t| type_var_generics.nth_usage($db, &t).into_generic_item($db),
-                &mut || DbType::Self_,
+                &|| DbType::Self_,
             )),
         }
     };

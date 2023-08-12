@@ -1423,7 +1423,7 @@ fn apply_generics_to_base_class<'a>(
         _ => TypeOrClass::Type(Type::owned(Type::new(t).replace_type_var_likes_and_self(
             db,
             &mut |usage| generics.nth_usage(db, &usage).into_generic_item(db),
-            &mut || todo!(),
+            &|| todo!(),
         ))),
     }
 }
@@ -1437,24 +1437,20 @@ fn find_stmt_named_tuple_types(
     for simple in simple_stmts.iter() {
         match simple.unpack() {
             SimpleStmtContent::Assignment(assignment) => match assignment.unpack() {
-                AssignmentContent::WithAnnotation(target, annot, default) => match target {
-                    Target::Name(name) => {
-                        if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
-                            NodeRef::new(file, assignment.index())
-                                .add_issue(i_s, IssueType::NamedTupleNonDefaultFieldFollowsDefault);
-                            continue;
-                        }
-                        file.inference(i_s).ensure_cached_annotation(annot);
-                        let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
-                        vec.push(CallableParam {
-                            param_specific: ParamSpecific::PositionalOrKeyword(t),
-                            has_default: default.is_some(),
-                            name: Some(StringSlice::from_name(file.file_index(), name.name())),
-                        })
+                AssignmentContent::WithAnnotation(Target::Name(name), annot, default) => {
+                    if default.is_none() && vec.last().is_some_and(|last| last.has_default) {
+                        NodeRef::new(file, assignment.index())
+                            .add_issue(i_s, IssueType::NamedTupleNonDefaultFieldFollowsDefault);
+                        continue;
                     }
-                    _ => NodeRef::new(file, assignment.index())
-                        .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
-                },
+                    file.inference(i_s).ensure_cached_annotation(annot);
+                    let t = use_cached_annotation_type(i_s.db, file, annot).into_db_type();
+                    vec.push(CallableParam {
+                        param_specific: ParamSpecific::PositionalOrKeyword(t),
+                        has_default: default.is_some(),
+                        name: Some(StringSlice::from_name(file.file_index(), name.name())),
+                    })
+                }
                 _ => NodeRef::new(file, assignment.index())
                     .add_issue(i_s, IssueType::InvalidStmtInNamedTuple),
             },

@@ -53,7 +53,7 @@ impl<'a> Callable<'a> {
             i_s,
             &calculated_type_vars,
             self.defined_in.as_ref(),
-            &mut || {
+            &|| {
                 self.defined_in
                     .map(|c| c.as_db_type(i_s.db))
                     .unwrap_or(DbType::Self_)

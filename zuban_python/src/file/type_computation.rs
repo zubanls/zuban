@@ -2546,8 +2546,8 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
                     return TypeNameLookup::Unknown;
                 }
             }
-            if expr.maybe_single_string_literal().is_some() && !is_explicit
-                || annotation.is_some() && !is_explicit
+            if !is_explicit
+                && (expr.maybe_single_string_literal().is_some() || annotation.is_some())
             {
                 return TypeNameLookup::InvalidVariable(InvalidVariableType::Variable(
                     NodeRef::new(file, name_def.index()),

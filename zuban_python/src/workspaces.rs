@@ -351,7 +351,7 @@ impl Directory {
         };
         AddedFile {
             invalidations,
-            file_entry: file_entry,
+            file_entry,
         }
     }
 

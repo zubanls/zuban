@@ -54,7 +54,7 @@ impl<'a> NamedTupleValue<'a> {
                                         .nth_usage(format_data.db, &usage)
                                         .into_generic_item(format_data.db)
                                 },
-                                &mut || todo!(),
+                                &|| todo!(),
                             )
                             .format(format_data),
                     }
