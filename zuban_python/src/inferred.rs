@@ -997,28 +997,13 @@ impl<'db: 'slf, 'slf> Inferred {
                                     apply_descriptor,
                                 );
                         }
-                        Specific::AnnotationOrTypeCommentWithTypeVars => {
-                            from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
-                            let t = use_cached_annotation_or_type_comment(
-                                i_s,
-                                NodeRef::from_link(i_s.db, *definition),
-                            );
-                            if let Some(r) = Self::bind_class_descriptors_for_type(
-                                i_s,
-                                class,
-                                attribute_class,
-                                from,
-                                apply_descriptor,
-                                *definition,
-                                t.as_ref(),
-                            ) {
-                                return r;
-                            }
-                            return Some(Inferred::from_type(t.into_db_type()));
-                        }
-                        Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        specific @ (Specific::AnnotationOrTypeCommentWithoutTypeVars
+                        | Specific::AnnotationOrTypeCommentWithTypeVars
                         | Specific::AnnotationOrTypeCommentSimpleClassInstance
-                        | Specific::AnnotationOrTypeCommentClassVar => {
+                        | Specific::AnnotationOrTypeCommentClassVar) => {
+                            if specific == Specific::AnnotationOrTypeCommentWithTypeVars {
+                                from.add_issue(i_s, IssueType::AmbigousClassVariableAccess);
+                            }
                             let t = use_cached_annotation_or_type_comment(
                                 i_s,
                                 NodeRef::from_link(i_s.db, *definition),
