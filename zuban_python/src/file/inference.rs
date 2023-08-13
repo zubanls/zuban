@@ -1631,7 +1631,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 .db
                 .python_state
                 .module_instance()
-                .lookup(
+                .type_lookup(
                     self.i_s,
                     NodeRef::new(self.file, name.index()),
                     name.as_code(),

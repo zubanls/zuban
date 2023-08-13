@@ -278,7 +278,7 @@ impl<'db> Inference<'db, '_, '_> {
                     if name.starts_with("__") {
                         return;
                     }
-                    if let Some(inf) = instance2.lookup(self.i_s, hack, name).into_maybe_inferred()
+                    if let Some(inf) = instance2.full_lookup(self.i_s, hack, name).into_maybe_inferred()
                     {
                         if c.lookup_symbol(self.i_s, name).into_maybe_inferred().is_some() {
                             // These checks happen elsewhere.
@@ -286,7 +286,7 @@ impl<'db> Inference<'db, '_, '_> {
                             return
                         }
                         let second = inf.as_type(self.i_s);
-                        let first = instance1.lookup(self.i_s, hack, name).into_inferred();
+                        let first = instance1.full_lookup(self.i_s, hack, name).into_inferred();
                         let first = first.as_type(self.i_s);
                         if !first
                             .is_sub_type_of(
@@ -312,6 +312,7 @@ impl<'db> Inference<'db, '_, '_> {
             }
         }
         let instance = Instance::new(c, None);
+        let kind = LookupKind::Normal;
         for table in [
             &c.class_storage.class_symbol_table,
             &c.class_storage.self_symbol_table,
@@ -323,10 +324,10 @@ impl<'db> Inference<'db, '_, '_> {
                     continue;
                 }
                 let (defined_in, result) =
-                    instance.lookup_and_maybe_ignore_super_count(self.i_s, hack, name, 1);
+                    instance.lookup_and_maybe_ignore_super_count(self.i_s, hack, name, kind, 1);
                 if let Some(inf) = result.into_maybe_inferred() {
                     let expected = inf.as_type(self.i_s);
-                    let got = instance.lookup(self.i_s, hack, name).into_inferred();
+                    let got = instance.full_lookup(self.i_s, hack, name).into_inferred();
                     let got = got.as_type(self.i_s);
                     if !expected
                         .is_same_type(self.i_s, &mut Matcher::new_class_matcher(self.i_s, c), &got)
@@ -345,11 +346,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     }),
                                     expected,
                                     c.lookup_and_class_and_maybe_ignore_self(
-                                        self.i_s,
-                                        hack,
-                                        name,
-                                        LookupKind::Normal,
-                                        true,
+                                        self.i_s, hack, name, kind, true,
                                     )
                                     .0,
                                 );
@@ -358,7 +355,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     &mut notes,
                                     &self.i_s.with_class_context(&c),
                                     got,
-                                    c.lookup(self.i_s, hack, name, LookupKind::Normal),
+                                    c.lookup(self.i_s, hack, name, kind),
                                 );
 
                                 IssueType::SignatureIncompatibleWithSupertype {

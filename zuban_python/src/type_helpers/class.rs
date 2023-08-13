@@ -623,7 +623,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 // __call__.
                 if name == "__call__" && !matches!(other.as_ref(), DbType::Class(_)) {
                     let inf1 = Instance::new(c, None)
-                        .lookup(i_s, hack, name)
+                        .type_lookup(i_s, hack, name)
                         .into_inferred();
                     let t1 = inf1.as_type(i_s);
                     if t1.matches(i_s, matcher, other, variance).bool() {
@@ -643,7 +643,7 @@ impl<'db: 'a, 'a> Class<'a> {
                     .into_maybe_inferred()
                 {
                     let inf1 = Instance::new(c, None)
-                        .lookup(i_s, hack, name)
+                        .full_lookup(i_s, hack, name)
                         .into_inferred();
                     let t1 = inf1.as_type(i_s);
                     let t2 = l.as_type(i_s);
@@ -862,9 +862,14 @@ impl<'db: 'a, 'a> Class<'a> {
                         let instance =
                             Instance::new(Class::from_non_generic_link(i_s.db, link), None);
                         instance
-                            .lookup_with_explicit_self_binding(i_s, node_ref, name, 0, || {
-                                self.as_type(i_s).into_db_type()
-                            })
+                            .lookup_with_explicit_self_binding(
+                                i_s,
+                                node_ref,
+                                name,
+                                LookupKind::Normal,
+                                0,
+                                || self.as_type(i_s).into_db_type(),
+                            )
                             .1
                     }
                     MetaclassState::Unknown => LookupResult::any(),
@@ -1109,7 +1114,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 None,
             );
             let call = metaclass
-                .lookup(i_s, args.as_node_ref(), "__call__")
+                .type_lookup(i_s, args.as_node_ref(), "__call__")
                 .into_inferred();
             let DbType::FunctionOverload(o) = call.as_db_type(i_s) else {
                 todo!()

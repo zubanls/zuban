@@ -155,7 +155,7 @@ impl<'a> Type<'a> {
                 debug!("TODO this from is completely wrong and should never be used.");
                 let hack = cls.node_ref;
                 Instance::new(cls, None)
-                    .lookup(i_s, hack, "__call__")
+                    .type_lookup(i_s, hack, "__call__")
                     .into_maybe_inferred()
                     .and_then(|i| i.as_type(i_s).maybe_callable(i_s))
             }
@@ -2136,17 +2136,20 @@ impl<'a> Type<'a> {
                 let cls = Class::from_generic_class(i_s.db, c);
                 callable(
                     self,
-                    Instance::new(cls, from_inferred).lookup(i_s, from, name),
+                    Instance::new(cls, from_inferred).lookup(i_s, from, name, kind),
                 )
             }
             DbType::Any => callable(self, LookupResult::any()),
             DbType::None => callable(
                 self,
-                i_s.db.python_state.none_instance().lookup(i_s, from, name),
+                i_s.db
+                    .python_state
+                    .none_instance()
+                    .lookup(i_s, from, name, kind),
             ),
             DbType::Literal(literal) => {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
-                callable(self, instance.lookup(i_s, from, name))
+                callable(self, instance.lookup(i_s, from, name, kind))
             }
             t @ DbType::TypeVar(tv) => {
                 if !tv.type_var.restrictions.is_empty() {
@@ -2192,7 +2195,7 @@ impl<'a> Type<'a> {
                     // should just use a precreated object() from somewhere.
                     callable(
                         self,
-                        Instance::new(s.object_class(), None).lookup(i_s, from, name),
+                        Instance::new(s.object_class(), None).lookup(i_s, from, name, kind),
                     )
                 }
             }
@@ -2234,7 +2237,8 @@ impl<'a> Type<'a> {
             },
             DbType::Callable(_) | DbType::FunctionOverload(_) => callable(
                 self,
-                Instance::new(i_s.db.python_state.function_class(), None).lookup(i_s, from, name),
+                Instance::new(i_s.db.python_state.function_class(), None)
+                    .lookup(i_s, from, name, kind),
             ),
             DbType::Module(file_index) => {
                 let module = Module::from_file_index(i_s.db, *file_index);
@@ -2256,13 +2260,19 @@ impl<'a> Type<'a> {
                         ),
                         from_inferred,
                     )
-                    .lookup(i_s, from, name),
+                    .lookup(i_s, from, name, kind),
                 )
             }
             DbType::Super { class, mro_index } => {
                 let instance = Instance::new(Class::from_generic_class(i_s.db, class), None);
                 let result = instance
-                    .lookup_and_maybe_ignore_super_count(i_s, from, name, mro_index + 1)
+                    .lookup_and_maybe_ignore_super_count(
+                        i_s,
+                        from,
+                        name,
+                        LookupKind::OnlyType,
+                        mro_index + 1,
+                    )
                     .1;
                 if matches!(&result, LookupResult::None) {
                     from.add_issue(i_s, IssueType::UndefinedInSuperclass { name: name.into() });

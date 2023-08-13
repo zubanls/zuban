@@ -79,7 +79,7 @@ impl<'a> Module<'a> {
                 i_s.db
                     .python_state
                     .module_instance()
-                    .lookup(i_s, from, name)
+                    .type_lookup(i_s, from, name)
             })
     }
 }

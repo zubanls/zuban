@@ -962,7 +962,7 @@ impl<'db: 'slf, 'slf> Inferred {
                 Generics::from_class_generics(i_s.db, &c.generics),
                 None,
             );
-            if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
+            if let Some(inf) = inst.type_lookup(i_s, from, "__get__").into_maybe_inferred() {
                 let c_t = DbType::Type(Rc::new(instance.clone()));
                 return Some(Some(inf.execute(
                     i_s,
@@ -1146,7 +1146,7 @@ impl<'db: 'slf, 'slf> Inferred {
                     Generics::from_class_generics(i_s.db, &c.generics),
                     None,
                 );
-                if let Some(inf) = inst.lookup(i_s, from, "__get__").into_maybe_inferred() {
+                if let Some(inf) = inst.type_lookup(i_s, from, "__get__").into_maybe_inferred() {
                     let class_as_inferred = class.as_inferred(i_s);
                     return Some(Some(inf.execute(
                         i_s,

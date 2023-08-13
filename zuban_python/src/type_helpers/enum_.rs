@@ -121,7 +121,7 @@ pub fn lookup_on_enum_member_instance(
             "value" | "_value_" => {
                 let value = member.value();
                 if value.is_none() {
-                    let result = Instance::new(enum_class, None).lookup(i_s, from, name);
+                    let result = Instance::new(enum_class, None).type_lookup(i_s, from, name);
                     if result.is_some() {
                         return result;
                     }
@@ -132,7 +132,7 @@ pub fn lookup_on_enum_member_instance(
             _ => (),
         }
     }
-    Instance::new(enum_class, None).lookup(i_s, from, name)
+    Instance::new(enum_class, None).full_lookup(i_s, from, name)
 }
 
 fn lookup_members_on_enum(

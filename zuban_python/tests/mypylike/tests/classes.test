@@ -309,8 +309,7 @@ class Foo:
     def __init__(self) -> None:
         self.__call__ = call
 
-# This is wrong in CPython (it's not actually callable), but it works the same way in Mypy
-Foo()()  # E: Missing positional argument "x" in call to "call"
+Foo()()  # E: "Foo" not callable
 
 [case class_context_super_class]
 from typing import TypeVar, Generic

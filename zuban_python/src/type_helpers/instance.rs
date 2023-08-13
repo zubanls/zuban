@@ -12,7 +12,9 @@ use crate::file::{on_argument_type_error, File};
 use crate::getitem::SliceType;
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{IteratorContent, LookupResult, OnTypeError, ResultContext, Type};
+use crate::matching::{
+    IteratorContent, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
+};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -71,7 +73,7 @@ impl<'a> Instance<'a> {
                                 DbType::Class(c) => {
                                     let descriptor = Class::from_generic_class(i_s.db, c);
                                     if let Some(set) = Instance::new(descriptor, None)
-                                        .lookup(i_s, from, "__set__")
+                                        .type_lookup(i_s, from, "__set__")
                                         .into_maybe_inferred()
                                     {
                                         had_set = true;
@@ -122,7 +124,10 @@ impl<'a> Instance<'a> {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Inferred {
         let node_ref = args.as_node_ref();
-        if let Some(inf) = self.lookup(i_s, node_ref, "__call__").into_maybe_inferred() {
+        if let Some(inf) = self
+            .type_lookup(i_s, node_ref, "__call__")
+            .into_maybe_inferred()
+        {
             inf.execute_with_details(i_s, args, result_context, on_type_error)
         } else {
             let t = self.class.format_short(i_s.db);
@@ -190,6 +195,7 @@ impl<'a> Instance<'a> {
         i_s: &'a InferenceState,
         node_ref: NodeRef,
         name: &str,
+        kind: LookupKind,
         super_count: usize,
         as_self_instance: impl Fn() -> DbType,
     ) -> (TypeOrClass, LookupResult) {
@@ -210,21 +216,24 @@ impl<'a> Instance<'a> {
                 None => return (class, LookupResult::None),
                 Some(x) => return (class, x),
             }
-            // Then check self attributes
-            if let TypeOrClass::Class(c) = class {
-                if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name) {
-                    let i_s = i_s.with_class_context(&c);
-                    return (
-                        class,
-                        LookupResult::GotoName(
-                            PointLink::new(c.node_ref.file.file_index(), self_symbol),
-                            c.node_ref
-                                .file
-                                .inference(&i_s)
-                                .infer_name_by_index(self_symbol)
-                                .resolve_class_type_vars(&i_s, &self.class, &c),
-                        ),
-                    );
+            if kind == LookupKind::Normal {
+                // Then check self attributes
+                if let TypeOrClass::Class(c) = class {
+                    if let Some(self_symbol) = c.class_storage.self_symbol_table.lookup_symbol(name)
+                    {
+                        let i_s = i_s.with_class_context(&c);
+                        return (
+                            class,
+                            LookupResult::GotoName(
+                                PointLink::new(c.node_ref.file.file_index(), self_symbol),
+                                c.node_ref
+                                    .file
+                                    .inference(&i_s)
+                                    .infer_name_by_index(self_symbol)
+                                    .resolve_class_type_vars(&i_s, &self.class, &c),
+                            ),
+                        );
+                    }
                 }
             }
         }
@@ -240,16 +249,31 @@ impl<'a> Instance<'a> {
         i_s: &'a InferenceState,
         node_ref: NodeRef,
         name: &str,
+        kind: LookupKind,
         super_count: usize,
     ) -> (TypeOrClass, LookupResult) {
-        self.lookup_with_explicit_self_binding(i_s, node_ref, name, super_count, || {
+        self.lookup_with_explicit_self_binding(i_s, node_ref, name, kind, super_count, || {
             self.class.as_db_type(i_s.db)
         })
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
-        self.lookup_and_maybe_ignore_super_count(i_s, node_ref, name, 0)
+    pub fn lookup(
+        &self,
+        i_s: &InferenceState,
+        node_ref: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        self.lookup_and_maybe_ignore_super_count(i_s, node_ref, name, kind, 0)
             .1
+    }
+
+    pub fn full_lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
+        self.lookup(i_s, node_ref, name, LookupKind::Normal)
+    }
+
+    pub fn type_lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
+        self.lookup(i_s, node_ref, name, LookupKind::OnlyType)
     }
 
     pub fn run_on_symbols(&self, mut callable: impl FnMut(&str)) {
