@@ -478,6 +478,7 @@ testNewAnalyzerNamedTupleClassNestedMethod
 testNewAnalyzerNamedTupleCallNested
 testNewAnalyzerNamedTupleCallNestedMethod
 testIncrementalInnerClassAttrInMethodReveal
+testSelfTypeProperSupertypeAttributeTuple
 # Formatting qualified names like tuple[int, fallback=b.C.Hidden@5]
 testNewAnalyzerIncrementalMethodNamedTuple
 
@@ -779,6 +780,7 @@ testNamedTupleWithNoArgsCallableField
 testNamedTupleWithManyArgsCallableField
 testErrorsForProtocolsInDifferentPlaces
 testBasicNamedTupleStructuralSubtyping
+testClassVarProtocolImmutable
 # staticmethod/classmethod
 testStaticAndClassMethodsInProtocols
 testBuiltinClassMethod
@@ -1056,8 +1058,6 @@ testReExportChildStubs3
 
 # Metaclass descriptor
 metaclass_descriptor
-# Metaclass self type
-testSelfTypeStructureMetaclassMatch
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass
 # Metaclass iter/getitem/addition
@@ -1153,12 +1153,6 @@ testMetaclassStrictSupertypeOfTypeWithClassmethods
 testClassVarsInProtocols
 # "ClassVar protocol member P.foo can never be matched by a class object"
 testProtocolClassObjectClassVarRejected
-# class property lookups
-testSelfTypeProperSupertypeAttribute
-testSelfTypeProperSupertypeAttributeTuple
-testSelfTypeProperSupertypeAttributeMeta
-testSelfTypeProperSupertypeAttributeGeneric
-testClassVarProtocolImmutable
 # x = 1  # type: ClassVar
 testClassVarWithoutArguments
 testIncrementalClassVar

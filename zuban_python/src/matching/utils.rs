@@ -147,13 +147,27 @@ pub fn calculate_property_return(
     func_class: &Class,
     callable: &CallableContent,
 ) -> Option<DbType> {
-    let mut matcher = Matcher::new_callable_matcher(callable);
     let first_type = callable.first_positional_type().unwrap();
+    let mut matcher = Matcher::new_callable_matcher(callable);
     match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
-    Some(replace_class_type_vars(
-        i_s.db,
-        &callable.result_type,
-        &func_class,
-        &|| instance.clone(),
-    ))
+
+    let t = replace_class_type_vars(i_s.db, &callable.result_type, &func_class, &|| {
+        instance.clone()
+    });
+
+    if let Some(type_vars) = &callable.type_vars {
+        let calculated = matcher.unwrap_calculated_type_args();
+        Some(Type::owned(t).replace_type_var_likes(i_s.db, &mut |usage| {
+            let index = usage.index().as_usize();
+            if usage.in_definition() == callable.defined_at {
+                let c = &calculated[index];
+                if c.calculated() {
+                    return (*c).clone().into_generic_item(i_s.db, &type_vars[index]);
+                }
+            }
+            usage.into_generic_item()
+        }))
+    } else {
+        Some(t)
+    }
 }
