@@ -683,7 +683,7 @@ impl<'db> Inference<'db, '_, '_> {
                 let node_ref = NodeRef::new(self.file, name_def.index());
                 // We do a normal lookup to check that the attribute is there.
                 self.infer_primary_target_or_atom(primary_target.first())
-                    .lookup_with_error(self.i_s, node_ref, name_def.as_code());
+                    .lookup(self.i_s, node_ref, name_def.as_code());
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -692,7 +692,7 @@ impl<'db> Inference<'db, '_, '_> {
                 };
                 let slice_type = SliceType::new(self.file, primary_target.index(), s);
                 let node_ref = slice_type.as_node_ref();
-                base.lookup_with_error(self.i_s, node_ref, "__delitem__")
+                base.lookup(self.i_s, node_ref, "__delitem__")
                     .into_inferred()
                     .execute(self.i_s, &slice_type.as_args(*self.i_s));
             }

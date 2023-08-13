@@ -632,7 +632,7 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
 
                 if let Some(l) = other
-                    .lookup_with_error(i_s, hack, name, &mut ResultContext::Unknown, &|_| ())
+                    .lookup(i_s, hack, name, &mut ResultContext::Unknown, &|_| ())
                     .into_maybe_inferred()
                 {
                     let inf1 = Instance::new(c, None)

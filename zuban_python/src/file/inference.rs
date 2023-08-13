@@ -706,7 +706,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                 .into_maybe_inferred()
                             })
                             .unwrap_or_else(|| {
-                                t.lookup_with_error(
+                                t.lookup(
                                     i_s,
                                     node_ref,
                                     name_definition.as_code(),
@@ -1049,7 +1049,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                             );
                                         } else {
                                             r_type
-                                                .lookup_with_error(
+                                                .lookup(
                                                     self.i_s,
                                                     from,
                                                     "__iter__",
@@ -1263,7 +1263,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                         let result = if error.get() != LookupError::ShortCircuit {
                             let left_inf = Inferred::execute_db_type_allocation_todo(i_s, l_type);
                             r_type
-                                .lookup_with_error(
+                                .lookup(
                                     i_s,
                                     node_ref,
                                     op.reverse_magic_method,
@@ -1378,14 +1378,9 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                base.lookup_with_error_and_result_context(
-                    self.i_s,
-                    node_ref,
-                    name.as_str(),
-                    result_context,
-                )
-                .save_name(self.i_s, self.file, name)
-                .unwrap_or_else(Inferred::new_unknown)
+                base.lookup_with_result_context(self.i_s, node_ref, name.as_str(), result_context)
+                    .save_name(self.i_s, self.file, name)
+                    .unwrap_or_else(Inferred::new_unknown)
             }
             PrimaryContent::Execution(details) => {
                 let f = self.file;

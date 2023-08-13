@@ -2278,7 +2278,7 @@ impl<'a> Type<'a> {
         }
     }
 
-    pub fn lookup_with_error(
+    pub fn lookup(
         &self,
         i_s: &InferenceState,
         from: NodeRef,
