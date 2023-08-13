@@ -31,7 +31,7 @@ use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
-    LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
+    LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -632,7 +632,14 @@ impl<'db: 'a, 'a> Class<'a> {
                 }
 
                 if let Some(l) = other
-                    .lookup(i_s, hack, name, &mut ResultContext::Unknown, &|_| ())
+                    .lookup(
+                        i_s,
+                        hack,
+                        name,
+                        LookupKind::Normal,
+                        &mut ResultContext::Unknown,
+                        &|_| (),
+                    )
                     .into_maybe_inferred()
                 {
                     let inf1 = Instance::new(c, None)

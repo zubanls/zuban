@@ -33,6 +33,15 @@ use crate::utils::rc_unwrap_or_clone;
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
 pub type ReplaceSelf<'x> = &'x dyn Fn() -> DbType;
 
+#[derive(Clone, Copy)]
+pub enum LookupKind {
+    Normal,
+    // In CPython there is PyTypeObject (for documentation see CPython's `Doc/c-api/typeobj.rst`).
+    // This type object is used to access __and__, when a user types `int & int`. Note that int
+    // defines __and__ as well, but the type of int does not, hence it should lead to an error.
+    OnlyType,
+}
+
 #[derive(Debug, Clone)]
 #[allow(clippy::enum_variant_names)]
 pub struct Type<'a>(Cow<'a, DbType>);
@@ -2118,6 +2127,7 @@ impl<'a> Type<'a> {
         from_inferred: Option<&Inferred>,
         from: NodeRef,
         name: &str,
+        kind: LookupKind,
         result_context: &mut ResultContext,
         callable: &mut impl FnMut(&Type, LookupResult),
     ) {
@@ -2160,6 +2170,7 @@ impl<'a> Type<'a> {
                         None,
                         from,
                         name,
+                        kind,
                         result_context,
                         callable,
                     );
@@ -2193,6 +2204,7 @@ impl<'a> Type<'a> {
                         None,
                         from,
                         name,
+                        kind,
                         result_context,
                         callable,
                     )
@@ -2263,6 +2275,7 @@ impl<'a> Type<'a> {
                     None,
                     from,
                     name,
+                    kind,
                     result_context,
                     callable,
                 ),
@@ -2283,6 +2296,7 @@ impl<'a> Type<'a> {
         i_s: &InferenceState,
         from: NodeRef,
         name: &str,
+        lookup_kind: LookupKind,
         result_context: &mut ResultContext,
         on_lookup_error: OnLookupError,
     ) -> LookupResult {
@@ -2292,6 +2306,7 @@ impl<'a> Type<'a> {
             None,
             from,
             name,
+            lookup_kind,
             result_context,
             &mut |t, lookup_result| {
                 if matches!(lookup_result, LookupResult::None) {

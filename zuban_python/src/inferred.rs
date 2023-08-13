@@ -19,8 +19,8 @@ use crate::inference_state::InferenceState;
 use crate::matching::{
     calculate_property_return, create_signature_without_self,
     create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
-    FormatData, Generics, IteratorContent, LookupResult, Matcher, OnLookupError, OnTypeError,
-    ResultContext, Type,
+    FormatData, Generics, IteratorContent, LookupKind, LookupResult, Matcher, OnLookupError,
+    OnTypeError, ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -1310,6 +1310,7 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
         name: &str,
+        kind: LookupKind,
         callable: &mut impl FnMut(&Type, LookupResult),
     ) {
         self.as_type(i_s).run_after_lookup_on_each_union_member(
@@ -1317,6 +1318,7 @@ impl<'db: 'slf, 'slf> Inferred {
             Some(self),
             from,
             name,
+            kind,
             &mut ResultContext::Unknown,
             callable,
         )
@@ -1327,8 +1329,9 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
+        kind: LookupKind,
     ) -> LookupResult {
-        self.lookup_with_result_context(i_s, node_ref, name, &mut ResultContext::Unknown)
+        self.lookup_with_result_context(i_s, node_ref, name, kind, &mut ResultContext::Unknown)
     }
 
     pub fn lookup_with_result_context(
@@ -1336,10 +1339,11 @@ impl<'db: 'slf, 'slf> Inferred {
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
+        kind: LookupKind,
         result_context: &mut ResultContext,
     ) -> LookupResult {
         let base_type = self.as_type(i_s);
-        base_type.lookup(i_s, node_ref, name, result_context, &|t| {
+        base_type.lookup(i_s, node_ref, name, kind, result_context, &|t| {
             add_attribute_error(i_s, node_ref, &base_type, t, name)
         })
     }
@@ -1372,22 +1376,28 @@ impl<'db: 'slf, 'slf> Inferred {
         on_type_error: OnTypeError<'db, '_>,
     ) -> Self {
         let mut result: Option<Inferred> = None;
-        self.run_after_lookup_on_each_union_member(i_s, from, name, &mut |_, lookup_result| {
-            if matches!(lookup_result, LookupResult::None) {
-                on_lookup_error(&self.as_type(i_s));
-            }
-            let inf = lookup_result.into_inferred().execute_with_details(
-                i_s,
-                args,
-                &mut ResultContext::Unknown,
-                on_type_error,
-            );
-            result = if let Some(r) = result.take() {
-                Some(r.union(i_s, inf))
-            } else {
-                Some(inf)
-            }
-        });
+        self.run_after_lookup_on_each_union_member(
+            i_s,
+            from,
+            name,
+            LookupKind::OnlyType,
+            &mut |_, lookup_result| {
+                if matches!(lookup_result, LookupResult::None) {
+                    on_lookup_error(&self.as_type(i_s));
+                }
+                let inf = lookup_result.into_inferred().execute_with_details(
+                    i_s,
+                    args,
+                    &mut ResultContext::Unknown,
+                    on_type_error,
+                );
+                result = if let Some(r) = result.take() {
+                    Some(r.union(i_s, inf))
+                } else {
+                    Some(inf)
+                }
+            },
+        );
         result.unwrap_or_else(|| todo!())
     }
 

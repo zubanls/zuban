@@ -14,7 +14,8 @@ use crate::inference_state::InferenceState;
 use crate::inferred::infer_class_method;
 use crate::matching::params::has_overlapping_params;
 use crate::matching::{
-    matches_params, FormatData, Generics, LookupResult, Match, Matcher, ResultContext, Type,
+    matches_params, FormatData, Generics, LookupKind, LookupResult, Match, Matcher, ResultContext,
+    Type,
 };
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{
@@ -683,7 +684,7 @@ impl<'db> Inference<'db, '_, '_> {
                 let node_ref = NodeRef::new(self.file, name_def.index());
                 // We do a normal lookup to check that the attribute is there.
                 self.infer_primary_target_or_atom(primary_target.first())
-                    .lookup(self.i_s, node_ref, name_def.as_code());
+                    .lookup(self.i_s, node_ref, name_def.as_code(), LookupKind::Normal);
             }
             Target::IndexExpression(primary_target) => {
                 let base = self.infer_primary_target_or_atom(primary_target.first());
@@ -692,7 +693,7 @@ impl<'db> Inference<'db, '_, '_> {
                 };
                 let slice_type = SliceType::new(self.file, primary_target.index(), s);
                 let node_ref = slice_type.as_node_ref();
-                base.lookup(self.i_s, node_ref, "__delitem__")
+                base.lookup(self.i_s, node_ref, "__delitem__", LookupKind::OnlyType)
                     .into_inferred()
                     .execute(self.i_s, &slice_type.as_args(*self.i_s));
             }

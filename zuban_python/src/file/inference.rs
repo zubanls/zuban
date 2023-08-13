@@ -17,7 +17,9 @@ use crate::getitem::SliceType;
 use crate::imports::{find_ancestor, global_import, python_import, ImportResult};
 use crate::inference_state::InferenceState;
 use crate::inferred::{add_attribute_error, Inferred, UnionValue};
-use crate::matching::{FormatData, Generics, LookupResult, OnTypeError, ResultContext, Type};
+use crate::matching::{
+    FormatData, Generics, LookupKind, LookupResult, OnTypeError, ResultContext, Type,
+};
 use crate::node_ref::NodeRef;
 use crate::type_helpers::{lookup_in_namespace, Class, FirstParamKind, Function, Instance, Module};
 use crate::utils::debug_indent;
@@ -710,6 +712,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     node_ref,
                                     name_definition.as_code(),
+                                    LookupKind::Normal,
                                     &mut ResultContext::Unknown,
                                     &|t| {
                                         add_attribute_error(
@@ -1029,6 +1032,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.i_s,
                                     from,
                                     "__contains__",
+                                    LookupKind::OnlyType,
                                     &mut |r_type, lookup_result| {
                                         if let Some(method) = lookup_result.into_maybe_inferred() {
                                             method.execute_with_details(
@@ -1053,6 +1057,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                     self.i_s,
                                                     from,
                                                     "__iter__",
+                                                    LookupKind::OnlyType,
                                                     &mut ResultContext::Unknown,
                                                     &|_| {
                                                         let right = second.format_short(self.i_s);
@@ -1231,6 +1236,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 i_s,
                 node_ref,
                 op.magic_method,
+                LookupKind::OnlyType,
                 &mut |l_type, lookup_result| {
                     let left_op_method = lookup_result.into_maybe_inferred();
                     right.as_type(i_s).run_on_each_union_type(&mut |r_type| {
@@ -1267,6 +1273,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     i_s,
                                     node_ref,
                                     op.reverse_magic_method,
+                                    LookupKind::OnlyType,
                                     &mut ResultContext::Unknown,
                                     &|_| {
                                         if left_op_method.as_ref().is_some() {
@@ -1378,9 +1385,15 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
         match second {
             PrimaryContent::Attribute(name) => {
                 debug!("Lookup {}.{}", base.format_short(self.i_s), name.as_str());
-                base.lookup_with_result_context(self.i_s, node_ref, name.as_str(), result_context)
-                    .save_name(self.i_s, self.file, name)
-                    .unwrap_or_else(Inferred::new_unknown)
+                base.lookup_with_result_context(
+                    self.i_s,
+                    node_ref,
+                    name.as_str(),
+                    LookupKind::Normal,
+                    result_context,
+                )
+                .save_name(self.i_s, self.file, name)
+                .unwrap_or_else(Inferred::new_unknown)
             }
             PrimaryContent::Execution(details) => {
                 let f = self.file;
