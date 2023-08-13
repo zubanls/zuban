@@ -589,7 +589,11 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         let i_s = self.inference.i_s;
                         let class = i_s.current_class().unwrap();
                         let mut uses_class_generics = false;
-                        t.search_type_vars(&mut |usage| uses_class_generics = true);
+                        t.search_type_vars(&mut |usage| {
+                            if usage.in_definition() == class.node_ref.as_link() {
+                                uses_class_generics = true
+                            }
+                        });
                         if uses_class_generics {
                             self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
                             DbType::Any
@@ -2503,9 +2507,11 @@ impl<'db: 'x, 'file, 'i_s, 'x> Inference<'db, 'file, 'i_s> {
         node_index: NodeIndex,
         recalculate: impl Fn(&DbType) -> DbType,
     ) {
-        if self.file.points.get(node_index).specific()
-            == Specific::AnnotationOrTypeCommentWithTypeVars
-        {
+        if matches!(
+            self.file.points.get(node_index).specific(),
+            Specific::AnnotationOrTypeCommentWithTypeVars
+                | Specific::AnnotationOrTypeCommentClassVar
+        ) {
             let new_t = recalculate(
                 use_cached_annotation_or_type_comment(
                     self.i_s,

@@ -1151,9 +1151,9 @@ testOverrideOnSelf
 testOverrideOnSelfInSubclass
 testMetaclassStrictSupertypeOfTypeWithClassmethods
 testClassVarsInProtocols
-# class property lookups
-testSelfTypeCallableClassVarOldStyle
+# "ClassVar protocol member P.foo can never be matched by a class object"
 testProtocolClassObjectClassVarRejected
+# class property lookups
 testSelfTypeProperSupertypeAttribute
 testSelfTypeProperSupertypeAttributeTuple
 testSelfTypeProperSupertypeAttributeMeta
