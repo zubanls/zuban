@@ -31,7 +31,8 @@ use crate::inferred::{FunctionOrOverload, Inferred};
 use crate::matching::{
     calculate_callable_init_type_vars_and_return, calculate_callable_type_vars_and_return,
     calculate_class_init_type_vars_and_return, FormatData, FunctionOrCallable, Generics,
-    LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError, ResultContext, Type,
+    IteratorContent, LookupKind, LookupResult, Match, Matcher, MismatchReason, OnTypeError,
+    ResultContext, Type,
 };
 use crate::node_ref::NodeRef;
 use crate::python_state::NAME_TO_FUNCTION_DIFF;
@@ -1226,6 +1227,21 @@ impl<'db: 'a, 'a> Class<'a> {
                 *slice_type,
                 matches!(result_context, ResultContext::AssignmentNewDefinition),
             )
+    }
+
+    pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> Option<IteratorContent> {
+        match self.use_cached_class_infos(i_s.db).metaclass {
+            MetaclassState::Some(link) => {
+                let meta = Class::from_non_generic_link(i_s.db, link);
+                meta.lookup(i_s, from, "__iter__", LookupKind::Normal)
+                    .is_some()
+                    .then(|| Instance::new(meta, None).iter(i_s, from))
+            }
+            MetaclassState::Unknown => {
+                todo!()
+            }
+            MetaclassState::None => None,
+        }
     }
 }
 

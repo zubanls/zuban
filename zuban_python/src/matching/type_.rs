@@ -1956,6 +1956,16 @@ impl<'a> Type<'a> {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
+        let on_error = || {
+            let t = self.format_short(i_s.db);
+            from.add_issue(
+                i_s,
+                IssueType::NotIterable {
+                    type_: format!("\"{}\"", t).into(),
+                },
+            );
+            IteratorContent::Any
+        };
         match self.as_ref() {
             DbType::Class(c) => {
                 Instance::new(Class::from_generic_class(i_s.db, c), None).iter(i_s, from)
@@ -1975,16 +1985,17 @@ impl<'a> Type<'a> {
             }
             DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
             DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
-            _ => {
-                let t = self.format_short(i_s.db);
-                from.add_issue(
-                    i_s,
-                    IssueType::NotIterable {
-                        type_: format!("\"{}\"", t).into(),
-                    },
-                );
-                IteratorContent::Any
-            }
+            DbType::Type(t) => match t.as_ref() {
+                DbType::Class(c) => {
+                    if let Some(result) = Class::from_generic_class(i_s.db, c).iter(i_s, from) {
+                        return result;
+                    } else {
+                        on_error()
+                    }
+                }
+                _ => on_error(),
+            },
+            _ => on_error(),
         }
     }
 

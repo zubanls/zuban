@@ -1061,7 +1061,6 @@ metaclass_descriptor
 # Metaclass Union
 testNotSimplifyingUnionWithMetaclass
 # Metaclass iter/getitem/addition
-testMetaclassIterable
 testInferringLvarTypesUnpackedFromIterableClassObject
 testInferringLvarTypesUnpackedFromIterableClassObjectWithGenericIter
 # Metaclass instance vs. class members
