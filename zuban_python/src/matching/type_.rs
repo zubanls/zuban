@@ -33,7 +33,7 @@ use crate::utils::rc_unwrap_or_clone;
 pub type ReplaceTypeVarLike<'x> = &'x mut dyn FnMut(TypeVarLikeUsage) -> GenericItem;
 pub type ReplaceSelf<'x> = &'x dyn Fn() -> DbType;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum LookupKind {
     Normal,
     // In CPython there is PyTypeObject (for documentation see CPython's `Doc/c-api/typeobj.rst`).
@@ -2216,14 +2216,20 @@ impl<'a> Type<'a> {
                     for t in union.iter() {
                         callable(
                             self,
-                            TypingType::new(i_s.db, t).lookup(i_s, from, name, result_context),
+                            TypingType::new(i_s.db, t).lookup(
+                                i_s,
+                                from,
+                                name,
+                                kind,
+                                result_context,
+                            ),
                         )
                     }
                 }
                 DbType::Any => callable(self, LookupResult::any()),
                 _ => callable(
                     self,
-                    TypingType::new(i_s.db, t).lookup(i_s, from, name, result_context),
+                    TypingType::new(i_s.db, t).lookup(i_s, from, name, kind, result_context),
                 ),
             },
             DbType::Callable(_) | DbType::FunctionOverload(_) => callable(

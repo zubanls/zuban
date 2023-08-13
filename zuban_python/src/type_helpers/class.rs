@@ -679,8 +679,12 @@ impl<'db: 'a, 'a> Class<'a> {
                                     name,
                                     &t1,
                                     &t2,
-                                    &c.lookup(i_s, hack, name).into_inferred().as_type(i_s),
-                                    &cls.lookup(i_s, hack, name).into_inferred().as_type(i_s),
+                                    &c.lookup(i_s, hack, name, LookupKind::Normal)
+                                        .into_inferred()
+                                        .as_type(i_s),
+                                    &cls.lookup(i_s, hack, name, LookupKind::Normal)
+                                        .into_inferred()
+                                        .as_type(i_s),
                                 ),
                                 None => {
                                     add_protocol_mismatch(i_s, &mut notes, name, &t1, &t2, &t1, &t2)
@@ -798,9 +802,10 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         hack: NodeRef,
         name: &str,
+        kind: LookupKind,
         ignore_self: bool,
     ) -> (LookupResult, Option<Class>) {
-        self.lookup_with_or_without_descriptors_internal(i_s, hack, name, false, ignore_self)
+        self.lookup_with_or_without_descriptors_internal(i_s, hack, name, kind, false, ignore_self)
     }
 
     pub fn lookup_with_or_without_descriptors(
@@ -808,12 +813,14 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState,
         node_ref: NodeRef,
         name: &str,
+        kind: LookupKind,
         use_descriptors: bool,
     ) -> LookupResult {
         self.lookup_with_or_without_descriptors_internal(
             i_s,
             node_ref,
             name,
+            kind,
             use_descriptors,
             false,
         )
@@ -825,23 +832,29 @@ impl<'db: 'a, 'a> Class<'a> {
         i_s: &InferenceState<'db, '_>,
         node_ref: NodeRef,
         name: &str,
+        kind: LookupKind,
         use_descriptors: bool,
         ignore_self: bool,
     ) -> (LookupResult, Option<Class>) {
         let class_infos = self.use_cached_class_infos(i_s.db);
-        if class_infos.class_type == ClassType::Enum && use_descriptors && name == "_ignore_" {
-            return (LookupResult::None, Some(*self));
-        }
-        let (lookup_result, in_class, _) =
-            self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
-        let result = lookup_result.and_then(|inf| {
-            if let Some(in_class) = in_class {
-                let i_s = i_s.with_class_context(&in_class);
-                inf.bind_class_descriptors(&i_s, self, in_class, node_ref, use_descriptors)
-            } else {
-                todo!()
+        let (result, in_class) = if kind == LookupKind::Normal {
+            if class_infos.class_type == ClassType::Enum && use_descriptors && name == "_ignore_" {
+                return (LookupResult::None, Some(*self));
             }
-        });
+            let (lookup_result, in_class, _) =
+                self.lookup_and_class_and_maybe_ignore_self_internal(i_s, name, ignore_self);
+            let result = lookup_result.and_then(|inf| {
+                if let Some(in_class) = in_class {
+                    let i_s = i_s.with_class_context(&in_class);
+                    inf.bind_class_descriptors(&i_s, self, in_class, node_ref, use_descriptors)
+                } else {
+                    todo!()
+                }
+            });
+            (result, in_class)
+        } else {
+            (None, None)
+        };
         match result {
             Some(LookupResult::None) | None => {
                 let result = match class_infos.metaclass {
@@ -1154,8 +1167,14 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    pub fn lookup(&self, i_s: &InferenceState, node_ref: NodeRef, name: &str) -> LookupResult {
-        self.lookup_with_or_without_descriptors(i_s, node_ref, name, true)
+    pub fn lookup(
+        &self,
+        i_s: &InferenceState,
+        node_ref: NodeRef,
+        name: &str,
+        kind: LookupKind,
+    ) -> LookupResult {
+        self.lookup_with_or_without_descriptors(i_s, node_ref, name, kind, true)
     }
 
     pub fn qualified_name(&self, db: &Database) -> String {
@@ -1178,7 +1197,12 @@ impl<'db: 'a, 'a> Class<'a> {
             MetaclassState::Some(link) => {
                 let meta = Class::from_non_generic_link(i_s.db, link);
                 if meta
-                    .lookup(i_s, slice_type.as_node_ref(), "__getitem__")
+                    .lookup(
+                        i_s,
+                        slice_type.as_node_ref(),
+                        "__getitem__",
+                        LookupKind::Normal,
+                    )
                     .is_some()
                 {
                     return Instance::new(meta, None).get_item(i_s, slice_type, result_context);

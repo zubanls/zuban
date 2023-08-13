@@ -15,7 +15,7 @@ use crate::{
     file::File,
     inference_state::InferenceState,
     inferred::Inferred,
-    matching::{LookupResult, ResultContext},
+    matching::{LookupKind, LookupResult, ResultContext},
     node_ref::NodeRef,
 };
 
@@ -73,7 +73,7 @@ pub fn infer_value_on_member(
                     Inferred::from_type(
                         enum_
                             .class(i_s.db)
-                            .lookup(i_s, node_ref, "_generate_next_value_")
+                            .lookup(i_s, node_ref, "_generate_next_value_", LookupKind::Normal)
                             .into_maybe_inferred()
                             .and_then(|inf| {
                                 // Check We have a proper callable that is not part of the enum module

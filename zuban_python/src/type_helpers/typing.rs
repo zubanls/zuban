@@ -12,7 +12,7 @@ use crate::diagnostics::IssueType;
 use crate::file::{new_collections_named_tuple, new_typing_named_tuple};
 use crate::inference_state::InferenceState;
 use crate::inferred::Inferred;
-use crate::matching::{FormatData, LookupResult, OnTypeError, ResultContext, Type};
+use crate::matching::{FormatData, LookupKind, LookupResult, OnTypeError, ResultContext, Type};
 use crate::node_ref::NodeRef;
 
 #[derive(Debug, Clone, Copy)]
@@ -83,19 +83,31 @@ impl<'a> TypingType<'a> {
         i_s: &InferenceState,
         node_ref: NodeRef,
         name: &str,
+        kind: LookupKind,
         result_context: &mut ResultContext,
     ) -> LookupResult {
         match self.db_type {
             DbType::TypeVar(t) => {
                 if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).lookup(i_s, node_ref, name, result_context)
+                    TypingType::new(self.db, bound).lookup(
+                        i_s,
+                        node_ref,
+                        name,
+                        kind,
+                        result_context,
+                    )
                 } else {
                     todo!("{t:?}")
                 }
             }
-            DbType::Class(g) => Class::from_generic_class(i_s.db, g).lookup(i_s, node_ref, name),
+            DbType::Class(g) => {
+                Class::from_generic_class(i_s.db, g).lookup(i_s, node_ref, name, kind)
+            }
             DbType::Callable(_) => LookupResult::None,
-            DbType::Self_ => i_s.current_class().unwrap().lookup(i_s, node_ref, name),
+            DbType::Self_ => i_s
+                .current_class()
+                .unwrap()
+                .lookup(i_s, node_ref, name, kind),
             DbType::Any => LookupResult::any(),
             t @ DbType::Enum(e) => lookup_on_enum_class(i_s, e, name, result_context),
             DbType::NamedTuple(nt) => match name {

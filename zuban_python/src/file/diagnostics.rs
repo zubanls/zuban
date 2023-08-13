@@ -345,7 +345,11 @@ impl<'db> Inference<'db, '_, '_> {
                                     }),
                                     expected,
                                     c.lookup_and_class_and_maybe_ignore_self(
-                                        self.i_s, hack, name, true,
+                                        self.i_s,
+                                        hack,
+                                        name,
+                                        LookupKind::Normal,
+                                        true,
                                     )
                                     .0,
                                 );
@@ -354,7 +358,7 @@ impl<'db> Inference<'db, '_, '_> {
                                     &mut notes,
                                     &self.i_s.with_class_context(&c),
                                     got,
-                                    c.lookup(self.i_s, hack, name),
+                                    c.lookup(self.i_s, hack, name, LookupKind::Normal),
                                 );
 
                                 IssueType::SignatureIncompatibleWithSupertype {

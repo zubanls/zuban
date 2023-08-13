@@ -336,3 +336,8 @@ class D(A, B): pass # E: Cannot determine consistent method resolution order (MR
 class A2(A): pass
 class B2(B): pass
 class D2(A2, B2): pass  # This is fine
+
+[case classes_with__and__]
+# int() supports __and__, but int should not.
+int & int  # E: Unsupported left operand type for & ("Type[int]")
+int() & int()
