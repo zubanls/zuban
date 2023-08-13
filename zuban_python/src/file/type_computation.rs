@@ -586,19 +586,20 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                         self.add_issue(node_ref, IssueType::ClassVarOnlyInAssignmentsInClass);
                         DbType::Any
                     } else if self.has_type_vars_or_self {
-                        let mut has_type_var = false;
-                        t.search_type_vars(&mut |usage| has_type_var = true);
-                        if has_type_var {
+                        let i_s = self.inference.i_s;
+                        let class = i_s.current_class().unwrap();
+                        let mut uses_class_generics = false;
+                        t.search_type_vars(&mut |usage| uses_class_generics = true);
+                        if uses_class_generics {
                             self.add_issue(node_ref, IssueType::ClassVarCannotContainTypeVariables);
                             DbType::Any
+                        } else if class.type_vars(i_s).is_some() && t.has_self_type() {
+                            self.add_issue(
+                                node_ref,
+                                IssueType::ClassVarCannotContainSelfTypeInGenericClass,
+                            );
+                            t
                         } else {
-                            let i_s = self.inference.i_s;
-                            if i_s.current_class().unwrap().type_vars(i_s).is_some() {
-                                self.add_issue(
-                                    node_ref,
-                                    IssueType::ClassVarCannotContainSelfTypeInGenericClass,
-                                );
-                            }
                             t
                         }
                     } else {
