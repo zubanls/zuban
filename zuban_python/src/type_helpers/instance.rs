@@ -156,7 +156,7 @@ impl<'a> Instance<'a> {
                 FoundOnClass::Attribute(inf) => {
                     return IteratorContent::Inferred(
                         inf.execute(i_s, &NoArguments::new(from))
-                            .lookup_and_execute(
+                            .type_lookup_and_execute(
                                 i_s,
                                 from,
                                 "__next__",

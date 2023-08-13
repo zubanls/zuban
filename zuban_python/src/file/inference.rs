@@ -563,7 +563,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     self.infer_assignment_right_side(right_side, &mut ResultContext::Unknown);
                 let left = self.infer_single_target(target);
                 let had_error = Cell::new(false);
-                let result = left.lookup_and_execute_with_details(
+                let result = left.type_lookup_and_execute_with_details(
                     self.i_s,
                     node_ref,
                     normal,
@@ -752,7 +752,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let slice = SliceType::new(self.file, primary_target.index(), slice_type);
                 let args = slice.as_args(*self.i_s);
                 debug!("Set Item on {}", base.format_short(self.i_s));
-                base.lookup_and_execute_with_details(
+                base.type_lookup_and_execute_with_details(
                     self.i_s,
                     node_ref,
                     "__setitem__",
@@ -1005,7 +1005,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                     self.infer_expression_part(second, &mut ResultContext::Unknown);
                                 let from = NodeRef::new(self.file, op.index());
                                 // TODO this does not implement __ne__ for NotEquals
-                                first.lookup_and_execute(
+                                first.type_lookup_and_execute(
                                     self.i_s,
                                     from,
                                     "__eq__",
@@ -1069,7 +1069,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                                 )
                                                 .into_inferred()
                                                 .execute(self.i_s, &NoArguments::new(from))
-                                                .lookup_and_execute(
+                                                .type_lookup_and_execute(
                                                     self.i_s,
                                                     from,
                                                     "__next__",
@@ -1147,7 +1147,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                     }
                 }
                 let node_ref = NodeRef::new(self.file, f.index());
-                inf.lookup_and_execute(
+                inf.type_lookup_and_execute(
                     self.i_s,
                     node_ref,
                     method_name,

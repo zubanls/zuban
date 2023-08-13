@@ -1348,7 +1348,7 @@ impl<'db: 'slf, 'slf> Inferred {
         })
     }
 
-    pub fn lookup_and_execute(
+    pub fn type_lookup_and_execute(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
@@ -1356,7 +1356,7 @@ impl<'db: 'slf, 'slf> Inferred {
         args: &dyn Arguments<'db>,
         on_lookup_error: OnLookupError,
     ) -> Self {
-        self.lookup_and_execute_with_details(
+        self.type_lookup_and_execute_with_details(
             i_s,
             from,
             name,
@@ -1366,7 +1366,7 @@ impl<'db: 'slf, 'slf> Inferred {
         )
     }
 
-    pub fn lookup_and_execute_with_details(
+    pub fn type_lookup_and_execute_with_details(
         &self,
         i_s: &InferenceState<'db, '_>,
         from: NodeRef,
