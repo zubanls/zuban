@@ -820,3 +820,15 @@ if int():
 c_int = C(1) # type: C[int]
 if int():
     y = c_int # E: Incompatible types in assignment (expression has type "C[int]", variable has type "C[str]")
+
+[case self_type_property_with_generics]
+T = TypeVar("T")
+class Foo(Generic[T]):
+    @property
+    def f(self: Foo[int]) -> T: raise NotImplementedError
+
+foo: Foo[int]
+bar: Foo[str]
+reveal_type(foo.f)  # N: Revealed type is "builtins.int"
+reveal_type(bar.f)  # E: Invalid self argument "Foo[str]" to attribute function "f" with type "Callable[[Foo[int]], T]" \
+                    # N: Revealed type is "Any"

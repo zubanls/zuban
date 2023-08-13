@@ -146,9 +146,14 @@ pub fn calculate_property_return(
     instance: &DbType,
     func_class: &Class,
     callable: &CallableContent,
-) -> DbType {
-    let matcher = Matcher::new_callable_matcher(callable);
-    replace_class_type_vars(i_s.db, &callable.result_type, &func_class, &|| {
-        instance.clone()
-    })
+) -> Option<DbType> {
+    let mut matcher = Matcher::new_callable_matcher(callable);
+    let first_type = callable.first_positional_type().unwrap();
+    match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
+    Some(replace_class_type_vars(
+        i_s.db,
+        &callable.result_type,
+        &func_class,
+        &|| instance.clone(),
+    ))
 }

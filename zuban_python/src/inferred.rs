@@ -904,12 +904,23 @@ impl<'db: 'slf, 'slf> Inferred {
                 FunctionKind::Function => (),
                 FunctionKind::Property { .. } => {
                     let first = c.first_positional_type();
-                    return Some(Some(Inferred::from_type(calculate_property_return(
-                        i_s,
-                        &instance,
-                        &attribute_class,
-                        c,
-                    ))));
+                    return Some(Some(
+                        if let Some(t) =
+                            calculate_property_return(i_s, &instance, &attribute_class, c)
+                        {
+                            Inferred::from_type(t)
+                        } else {
+                            let inv = IssueType::InvalidSelfArgument {
+                                argument_type: instance.format_short(i_s.db),
+                                function_name: Box::from(
+                                    c.name.map(|n| n.as_str(i_s.db)).unwrap_or(""),
+                                ),
+                                callable: c.format(&FormatData::new_short(i_s.db)).into(),
+                            };
+                            from.add_issue(i_s, inv);
+                            Inferred::new_any()
+                        },
+                    ));
                 }
                 FunctionKind::Classmethod => {
                     let DbType::Class(instance_cls) = &instance else {
@@ -1100,12 +1111,12 @@ impl<'db: 'slf, 'slf> Inferred {
                     let result = infer_class_method(i_s, *class, attribute_class, c);
                     if result.is_none() {
                         let func = prepare_func(i_s, c.defined_at, attribute_class);
-                        let t = IssueType::InvalidSelfArgument {
+                        let inv = IssueType::InvalidSelfArgument {
                             argument_type: class.as_type(i_s).format_short(i_s.db),
                             function_name: Box::from(func.name()),
                             callable: func.as_type(i_s).format_short(i_s.db),
                         };
-                        from.add_issue(i_s, t);
+                        from.add_issue(i_s, inv);
                         return Some(Some(Self::new_any()));
                     }
                     return Some(result.map(callable_into_inferred));
