@@ -1976,16 +1976,6 @@ impl<'a> Type<'a> {
             DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
             DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             _ => {
-                if let DbType::Class(
-                    c @ GenericClass {
-                        generics: ClassGenerics::None,
-                        ..
-                    },
-                ) = self.as_ref()
-                {
-                    return Instance::new(Class::from_non_generic_link(i_s.db, c.link), None)
-                        .iter(i_s, from);
-                }
                 let t = self.format_short(i_s.db);
                 from.add_issue(
                     i_s,
