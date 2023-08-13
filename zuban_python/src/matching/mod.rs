@@ -27,8 +27,9 @@ pub use type_::{
     common_base_type, execute_type_of_type, match_tuple_type_arguments, ReplaceSelf, Type,
 };
 pub use utils::{
-    create_signature_without_self, create_signature_without_self_for_callable, maybe_class_usage,
-    replace_class_type_vars, replace_class_type_vars_in_callable,
+    calculate_property_return, create_signature_without_self,
+    create_signature_without_self_for_callable, maybe_class_usage, replace_class_type_vars,
+    replace_class_type_vars_in_callable,
 };
 
 use crate::{

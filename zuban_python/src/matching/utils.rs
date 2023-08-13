@@ -77,6 +77,25 @@ pub fn create_signature_without_self_for_callable(
     )
 }
 
+fn match_self_type(
+    i_s: &InferenceState,
+    matcher: &mut Matcher,
+    instance: &DbType,
+    func_class: &Class,
+    first_type: &DbType,
+) -> Option<()> {
+    let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| {
+        func_class.as_db_type(i_s.db)
+    });
+    if !Type::owned(expected)
+        .is_super_type_of(i_s, matcher, &Type::new(instance))
+        .bool()
+    {
+        return None;
+    }
+    Some(())
+}
+
 pub fn create_signature_without_self(
     i_s: &InferenceState,
     mut matcher: Matcher,
@@ -85,15 +104,7 @@ pub fn create_signature_without_self(
     func_class: &Class,
     first_type: &DbType,
 ) -> Option<CallableContent> {
-    let expected = replace_class_type_vars(i_s.db, first_type, func_class, &|| {
-        func_class.as_db_type(i_s.db)
-    });
-    if !Type::owned(expected)
-        .is_super_type_of(i_s, &mut matcher, &Type::new(instance))
-        .bool()
-    {
-        return None;
-    }
+    match_self_type(i_s, &mut matcher, instance, func_class, first_type)?;
     let mut callable = get_callable();
     if let Some(type_vars) = &callable.type_vars {
         let calculated = matcher.unwrap_calculated_type_args();
@@ -128,4 +139,16 @@ pub fn create_signature_without_self(
         }
     }
     Some(callable)
+}
+
+pub fn calculate_property_return(
+    i_s: &InferenceState,
+    instance: &DbType,
+    func_class: &Class,
+    callable: &CallableContent,
+) -> DbType {
+    let matcher = Matcher::new_callable_matcher(callable);
+    replace_class_type_vars(i_s.db, &callable.result_type, &func_class, &|| {
+        instance.clone()
+    })
 }
