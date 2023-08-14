@@ -1956,8 +1956,8 @@ impl<'a> Type<'a> {
     }
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> IteratorContent {
-        let on_error = || {
-            let t = self.format_short(i_s.db);
+        let on_error = |t: &DbType| {
+            let t = t.format_short(i_s.db);
             from.add_issue(
                 i_s,
                 IssueType::NotIterable {
@@ -1985,17 +1985,8 @@ impl<'a> Type<'a> {
             }
             DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
             DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
-            DbType::Type(t) => match t.as_ref() {
-                DbType::Class(c) => {
-                    if let Some(result) = Class::from_generic_class(i_s.db, c).iter(i_s, from) {
-                        return result;
-                    } else {
-                        on_error()
-                    }
-                }
-                _ => on_error(),
-            },
-            _ => on_error(),
+            DbType::Type(t) => iter_on_type(i_s, t, from, &on_error),
+            _ => on_error(self.as_ref()),
         }
     }
 
@@ -2576,6 +2567,30 @@ pub fn match_tuple_type_arguments(
         }
         (_, _, _) => unreachable!(),
     }
+}
+
+fn iter_on_type(
+    i_s: &InferenceState,
+    t: &DbType,
+    from: NodeRef,
+    on_error: &impl Fn(&DbType) -> IteratorContent,
+) -> IteratorContent {
+    match t {
+        DbType::Class(c) => {
+            if let Some(result) = Class::from_generic_class(i_s.db, c).iter(i_s, from) {
+                return result;
+            }
+        }
+        DbType::Union(union) => {
+            let mut items = vec![];
+            for t in union.iter() {
+                items.push(iter_on_type(i_s, t, from, on_error));
+            }
+            return IteratorContent::Union(items);
+        }
+        _ => (),
+    }
+    on_error(&DbType::Type(Rc::new(t.clone())))
 }
 
 pub fn common_base_type<'x, I: Iterator<Item = &'x TypeOrTypeVarTuple>>(
