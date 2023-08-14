@@ -506,8 +506,7 @@ testFunctionalEnumListOfPairs
 testFinalWithMethodAssignment
 # Enum access merging leads to int | Any instead of Any
 testEnumValueUnionSimplification
-# "Enum class cannot be generic"
-testEnumFromEnumMetaGeneric
+# Generic Enums
 testGenericEnum
 # "Enum type as attribute is not supported"
 testAssignEnumAsAttribute

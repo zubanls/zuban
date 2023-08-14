@@ -290,6 +290,9 @@ impl<'db: 'a, 'a> Class<'a> {
             let mut was_enum = None;
             if let MetaclassState::Some(link) = class_infos.metaclass {
                 if link == i_s.db.python_state.enum_meta_link() {
+                    if self.use_cached_type_vars(i_s.db).is_some() {
+                        self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
+                    }
                     class_infos.class_type = ClassType::Enum;
                     let members = self.enum_members();
                     if !members.is_empty() {

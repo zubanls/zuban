@@ -165,6 +165,7 @@ pub(crate) enum IssueType {
     EnumUnexpectedArguments { name: Box<str> },
     EnumAttemptedReuseOfMemberName { member_name: Box<str>, enum_name: Box<str> },
     EnumIndexShouldBeAString { actual: Box<str> },
+    EnumCannotBeGeneric,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -447,6 +448,7 @@ impl<'db> Diagnostic<'db> {
             EnumIndexShouldBeAString { actual } => format!(
                 r#"Enum index should be a string (actual index type "{actual}")"#
             ),
+            EnumCannotBeGeneric => "Enum class cannot be generic".to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>
