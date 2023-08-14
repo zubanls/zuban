@@ -496,8 +496,6 @@ testValueTypeWithNewInParentClass
 # SpecificEnum(1)
 testIntEnum_functionTakingIntEnum
 testEnumCall
-# function lookups
-testEnumMethods
 # "Enum index should be a string (actual index type "int")"
 # Enum getitem
 testEnumIndexError

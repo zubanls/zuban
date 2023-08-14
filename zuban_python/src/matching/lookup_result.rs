@@ -93,4 +93,11 @@ impl LookupResult {
             _ => Some(self),
         }
     }
+
+    pub fn or_else(self, c: impl FnOnce() -> Self) -> Self {
+        match self {
+            Self::None => c(),
+            _ => self,
+        }
+    }
 }

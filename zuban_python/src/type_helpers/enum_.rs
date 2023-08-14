@@ -23,11 +23,16 @@ use super::{Class, Instance, TypeOrClass};
 
 pub fn lookup_on_enum_class(
     i_s: &InferenceState,
+    from: NodeRef,
     enum_: &Rc<Enum>,
     name: &str,
     result_context: &mut ResultContext,
 ) -> LookupResult {
-    lookup_members_on_enum(i_s, enum_, name, result_context)
+    lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
+        enum_
+            .class(i_s.db)
+            .lookup(i_s, from, name, LookupKind::Normal)
+    })
 }
 
 pub fn lookup_on_enum_instance(
