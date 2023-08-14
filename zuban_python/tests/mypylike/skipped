@@ -513,8 +513,6 @@ testAssignEnumAsAttribute
 # "Cannot assign to final attribute "gold""
 testEnumFinalValues
 testEnumFinalSpecialProps
-# "Attempted to reuse member name "A" in Enum definition "Foo""
-testEnumReusedKeys
 # "Cannot extend enum with existing members: "NonEmptyEnum""
 testEnumAreStillFinalAfterCache
 testEnumImplicitlyFinalForSubclassing

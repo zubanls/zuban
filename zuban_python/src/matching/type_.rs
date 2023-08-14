@@ -301,15 +301,12 @@ impl<'a> Type<'a> {
             DbType::FunctionOverload(overload) => Match::all(overload.iter_functions(), |c1| {
                 Self::matches_callable_against_arbitrary(i_s, matcher, c1, value_type, variance)
             }),
-            DbType::Literal(literal1) => {
-                debug_assert!(!literal1.implicit);
-                match value_type.as_ref() {
-                    DbType::Literal(literal2) => {
-                        (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
-                    }
-                    _ => Match::new_false(),
+            DbType::Literal(literal1) => match value_type.as_ref() {
+                DbType::Literal(literal2) => {
+                    (literal1.value(i_s.db) == literal2.value(i_s.db)).into()
                 }
-            }
+                _ => Match::new_false(),
+            },
             DbType::NewType(new_type1) => match value_type.as_ref() {
                 DbType::NewType(new_type2) => (new_type1 == new_type2).into(),
                 _ => Match::new_false(),

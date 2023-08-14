@@ -294,7 +294,7 @@ impl<'db: 'a, 'a> Class<'a> {
                         self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
                     }
                     class_infos.class_type = ClassType::Enum;
-                    let members = self.enum_members();
+                    let members = self.enum_members(i_s);
                     if !members.is_empty() {
                         let enum_ = Enum::new(
                             self.name_string_slice(),
@@ -1031,7 +1031,7 @@ impl<'db: 'a, 'a> Class<'a> {
         }
     }
 
-    fn enum_members(&self) -> Box<[EnumMemberDefinition]> {
+    fn enum_members(&self, i_s: &InferenceState) -> Box<[EnumMemberDefinition]> {
         let mut members = vec![];
         let mut name_indexes = vec![];
         for (name, name_index) in unsafe {
@@ -1056,6 +1056,16 @@ impl<'db: 'a, 'a> Class<'a> {
                 .maybe_function()
                 .is_none()
             {
+                let point = name_node_ref.point();
+                if point.calculated() && point.type_() == PointType::MultiDefinition {
+                    NodeRef::new(self.node_ref.file, point.node_index()).add_issue(
+                        i_s,
+                        IssueType::EnumReusedMemberName {
+                            enum_name: self.name().into(),
+                            member_name: name_node_ref.as_code().into(),
+                        },
+                    )
+                }
                 // TODO An enum member is never a descriptor. (that's how 3.10 does it). Here we
                 // however only filter for functions and ignore decorators.
                 members.push(EnumMemberDefinition::new(
