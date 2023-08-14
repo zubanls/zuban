@@ -141,6 +141,8 @@ testReverseComparisonOperator
 testUnsafeOverlappingNamedTuple
 # "Forward operator "__add__" is not callable"
 testReverseOperatorMethodForwardIsAny3
+# Formatting?
+testMiscBinaryOperators
 
 # Overloaded function implementation does not accept all possible arguments with type vars
 testOverloadAndClassTypes
@@ -964,10 +966,6 @@ testNoCrashDoubleReexportBaseEmpty
 testNoCrashDoubleReexportMetaEmpty
 testNoCrashDoubleReexportTupleEmpty
 testNoCrashDoubleReexportOverloadEmpty
-
-# Binary or implementation missing
-testMiscBinaryOperators
-testUnionOrSyntaxWithLiteral
 
 # Module __all__
 testNewAnalyzerExportedValuesInImportAll

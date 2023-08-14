@@ -103,6 +103,12 @@ impl<'a> TypingType<'a> {
             DbType::Class(g) => {
                 Class::from_generic_class(i_s.db, g).lookup(i_s, node_ref, name, kind)
             }
+            DbType::Literal(l) => i_s
+                .db
+                .python_state
+                .literal_instance(&l.kind)
+                .class
+                .lookup(i_s, node_ref, name, kind),
             DbType::Callable(_) => LookupResult::None,
             DbType::Self_ => i_s
                 .current_class()
