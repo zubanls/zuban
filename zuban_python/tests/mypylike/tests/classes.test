@@ -106,6 +106,39 @@ class A(metaclass=Meta): ...
 reveal_type(A.a)  # N: Revealed type is "tuple[Type[__main__.A], Type[__main__.Meta]]"
 reveal_type(Meta(A()).a)  # N: Revealed type is "tuple[__main__.Meta, Type[__main__.Meta]]"
 
+[case metaclass_iter_on_type_bound]
+# Similar to testInferringLvarTypesUnpackedFromIterableClassObject, but with
+# bounds
+from typing import Iterator, Type, TypeVar, Union, overload
+class Meta(type):
+    def __iter__(cls) -> Iterator[int]: raise NotImplementedError
+
+class Meta2(type):
+    def __iter__(cls) -> Iterator[str]: raise NotImplementedError
+
+class Meta3(type): ...
+
+class Foo(metaclass=Meta): ...
+class Bar(metaclass=Meta2): ...
+class Baz(metaclass=Meta3): ...
+class Spam: ...
+
+T = TypeVar("T", bound=Foo)
+def check_bound1(x: Type[T]) -> None:
+    for var in x:
+        reveal_type(var)  # N: Revealed type is "builtins.int"
+
+U = TypeVar("U", bound=Foo | Bar)
+def check_bound1(x: Type[U]) -> None:
+    for var in x:
+        reveal_type(var)  # N: Revealed type is "builtins.int | builtins.str"
+
+V = TypeVar("V", bound=Bar | Baz | Spam)
+def check_bound1(x: Type[V]) -> None:
+    for var in x:  # E: "Type[Baz]" object is not iterable \
+                   # E: "Type[Spam]" object is not iterable
+        reveal_type(var)  # N: Revealed type is "builtins.str | Any"
+
 [case kwargs_base_class]
 from typing import Type
 foo: dict[str, Type[Any]]

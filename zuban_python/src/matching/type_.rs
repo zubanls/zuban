@@ -2588,6 +2588,14 @@ fn iter_on_type(
             }
             return IteratorContent::Union(items);
         }
+        DbType::TypeVar(t) => {
+            if let Some(bound) = &t.type_var.bound {
+                return iter_on_type(i_s, bound, from, on_error);
+            }
+            if !t.type_var.restrictions.is_empty() {
+                todo!()
+            }
+        }
         _ => (),
     }
     on_error(&DbType::Type(Rc::new(t.clone())))
