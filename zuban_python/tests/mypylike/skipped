@@ -506,8 +506,9 @@ testEnumFinalValuesCannotRedefineValueProp
 testPrivateAttributeNotAsEnumMembers
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
-# functional attributes
+# Enum Dict value inferred is int instead of Literal[1]
 testFunctionalEnumDict
+# functional attributes
 testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment

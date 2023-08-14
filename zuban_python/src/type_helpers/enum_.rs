@@ -70,8 +70,10 @@ pub fn infer_value_on_member(
                     .infer_name(name)
             } else {
                 let expr = node_ref.as_expression();
-                node_ref.file.inference(i_s).infer_expression(expr);
-                todo!();
+                node_ref
+                    .file
+                    .inference(i_s)
+                    .infer_expression_with_context(expr, &mut ResultContext::ExpectLiteral)
             };
             match inferred.as_type(i_s).as_ref() {
                 DbType::Class(c) if c.link == i_s.db.python_state.enum_auto_link() => {
@@ -340,7 +342,16 @@ fn gather_functional_enum_members(
                     });
                     return None
                 };
-                members.add_member(i_s, EnumMemberDefinition::new(name.into(), None));
+                members.add_member(
+                    i_s,
+                    EnumMemberDefinition::new(
+                        name.into(),
+                        Some(PointLink::new(
+                            node_ref.file.file_index(),
+                            kv.value().index(),
+                        )),
+                    ),
+                );
             }
         }
         _ => {
