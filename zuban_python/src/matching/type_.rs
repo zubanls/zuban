@@ -2586,6 +2586,7 @@ fn iter_on_type(
             TypeVarKind::Constraints(constraints) => todo!(),
             TypeVarKind::Unrestricted => (),
         },
+        t @ DbType::Enum(_) => return IteratorContent::Inferred(Inferred::from_type(t.clone())),
         _ => (),
     }
     on_error(&DbType::Type(Rc::new(t.clone())))
