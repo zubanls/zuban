@@ -1171,7 +1171,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
     }
 
     #[inline]
-    fn check_restrictions(
+    fn check_constraints(
         &mut self,
         type_var: &TypeVar,
         s: &SliceOrSimple,
@@ -1194,27 +1194,27 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     },
                 );
             }
-        } else if !type_var.restrictions.is_empty() {
+        } else if !type_var.constraints.is_empty() {
             let t2 = self.as_db_type(type_.clone(), s.as_node_ref());
             let i_s = &mut self.inference.i_s;
             if let DbType::TypeVar(usage) = &t2 {
                 let type_var2 = &usage.type_var;
-                if !type_var2.restrictions.is_empty()
-                    && type_var2.restrictions.iter().all(|t2| {
-                        type_var.restrictions.iter().any(|t| {
+                if !type_var2.constraints.is_empty()
+                    && type_var2.constraints.iter().all(|t2| {
+                        type_var.constraints.iter().any(|t| {
                             Type::new(t)
                                 .is_simple_super_type_of(i_s, &Type::new(t2))
                                 .bool()
                         })
                     })
                 {
-                    // The provided type_var2 is a subset of the type_var restrictions.
+                    // The provided type_var2 is a subset of the type_var constraints.
                     return;
                 }
             }
             let t2 = Type::new(&t2);
             if !type_var
-                .restrictions
+                .constraints
                 .iter()
                 .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
             {
@@ -1321,7 +1321,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             };
             if let Some(slice_content) = iterator.next() {
                 let t = self.compute_slice_type(slice_content);
-                self.check_restrictions(type_var, &slice_content, &t, || Box::from(class.name()));
+                self.check_constraints(type_var, &slice_content, &t, || Box::from(class.name()));
                 if !matches!(
                     t,
                     TypeContent::SimpleGeneric { .. }
@@ -1389,7 +1389,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
                     TypeVarLike::TypeVar(type_var) => {
                         if let Some(slice_content) = iterator.next() {
                             let t = self.compute_slice_type(slice_content);
-                            self.check_restrictions(type_var, &slice_content, &t, get_of);
+                            self.check_constraints(type_var, &slice_content, &t, get_of);
                             given_count += 1;
                             GenericItem::TypeArgument(
                                 self.as_db_type(t, slice_content.as_node_ref()),

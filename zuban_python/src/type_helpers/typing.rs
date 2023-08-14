@@ -298,7 +298,7 @@ fn maybe_type_var(
             todo!()
         }
 
-        let mut restrictions = vec![];
+        let mut constraints = vec![];
         let mut bound = None;
         let mut covariant = false;
         let mut contravariant = false;
@@ -309,10 +309,10 @@ fn maybe_type_var(
                     if let Some(t) = inference
                         .compute_type_var_constraint(node_ref.as_named_expression().expression())
                     {
-                        restrictions.push(t);
+                        constraints.push(t);
                     } else {
                         //
-                        debug!("TODO invalid type var restriction, this needs a lint?");
+                        debug!("TODO invalid type var constraint, this needs a lint?");
                         return None;
                     }
                 }
@@ -355,7 +355,7 @@ fn maybe_type_var(
                         }
                     }
                     "bound" => {
-                        if !restrictions.is_empty() {
+                        if !constraints.is_empty() {
                             node_ref.add_issue(i_s, IssueType::TypeVarValuesAndUpperBound);
                             return None;
                         }
@@ -395,7 +395,7 @@ fn maybe_type_var(
                 }
             }
         }
-        if restrictions.len() == 1 {
+        if constraints.len() == 1 {
             args.as_node_ref()
                 .add_issue(i_s, IssueType::TypeVarOnlySingleRestriction);
             return None;
@@ -405,7 +405,7 @@ fn maybe_type_var(
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             }),
-            restrictions: restrictions.into_boxed_slice(),
+            constraints: constraints.into_boxed_slice(),
             bound,
             variance: match (covariant, contravariant) {
                 (false, false) => Variance::Invariant,

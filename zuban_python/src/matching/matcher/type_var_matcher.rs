@@ -247,13 +247,13 @@ impl TypeVarMatcher {
         }
         // Before setting the type var, we need to check if the constraints match.
         let mut mismatch_constraints = false;
-        if !type_var.restrictions.is_empty() {
+        if !type_var.constraints.is_empty() {
             if let DbType::TypeVar(t2) = value_type.as_ref() {
-                if !t2.type_var.restrictions.is_empty() {
+                if !t2.type_var.constraints.is_empty() {
                     if current.calculated() {
                         todo!()
-                    } else if t2.type_var.restrictions.iter().all(|r2| {
-                        type_var.restrictions.iter().any(|r1| {
+                    } else if t2.type_var.constraints.iter().all(|r2| {
+                        type_var.constraints.iter().any(|r1| {
                             Type::new(r1)
                                 .is_simple_super_type_of(i_s, &Type::new(r2))
                                 .bool()
@@ -268,18 +268,18 @@ impl TypeVarMatcher {
                 }
             }
             if !mismatch_constraints {
-                for restriction in type_var.restrictions.iter() {
-                    let m = Type::new(restriction).simple_matches(i_s, value_type, variance);
+                for constraint in type_var.constraints.iter() {
+                    let m = Type::new(constraint).simple_matches(i_s, value_type, variance);
                     if m.bool() {
                         if current.calculated() {
-                            // This means that any is involved and multiple restrictions
+                            // This means that any is involved and multiple constraints
                             // are matching. Therefore just return Any.
                             current.type_ =
                                 BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
                             return m;
                         }
                         current.type_ =
-                            BoundKind::TypeVar(TypeVarBound::Invariant(restriction.clone()));
+                            BoundKind::TypeVar(TypeVarBound::Invariant(constraint.clone()));
                         if !value_type.has_any(i_s) {
                             return m;
                         }

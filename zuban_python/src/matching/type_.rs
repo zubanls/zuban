@@ -175,10 +175,10 @@ impl<'a> Type<'a> {
             DbType::TypeVar(t2_usage) => {
                 return if let Some(bound) = &t2_usage.type_var.bound {
                     self.overlaps(i_s, &bound.into())
-                } else if !t2_usage.type_var.restrictions.is_empty() {
+                } else if !t2_usage.type_var.constraints.is_empty() {
                     t2_usage
                         .type_var
-                        .restrictions
+                        .constraints
                         .iter()
                         .all(|r2| self.overlaps(i_s, &r2.into()))
                 } else {
@@ -228,7 +228,7 @@ impl<'a> Type<'a> {
             DbType::TypeVar(t1) => {
                 if let Some(db_t) = &t1.type_var.bound {
                     Type::new(db_t).overlaps(i_s, other)
-                } else if !t1.type_var.restrictions.is_empty() {
+                } else if !t1.type_var.constraints.is_empty() {
                     todo!("{other:?}")
                 } else {
                     true
@@ -584,10 +584,10 @@ impl<'a> Type<'a> {
                         if m.bool() {
                             return m;
                         }
-                    } else if !t2.type_var.restrictions.is_empty() {
+                    } else if !t2.type_var.constraints.is_empty() {
                         let m = t2
                             .type_var
-                            .restrictions
+                            .constraints
                             .iter()
                             .all(|r| self.simple_matches(i_s, &Type::new(r), variance).bool());
                         if m {
@@ -2144,10 +2144,10 @@ impl<'a> Type<'a> {
                 callable(self, instance.lookup(i_s, from, name, kind))
             }
             t @ DbType::TypeVar(tv) => {
-                if !tv.type_var.restrictions.is_empty() {
+                if !tv.type_var.constraints.is_empty() {
                     debug!("TODO type var values");
                     /*
-                    for db_type in self.type_var_usage.type_var.restrictions.iter() {
+                    for db_type in self.type_var_usage.type_var.constraints.iter() {
                         return match db_type {
                             DbType::Class(link) => Instance::new(
                                 Class::with_undefined_generics(NodeRef::from_link(i_s.db, *link)),
@@ -2592,7 +2592,7 @@ fn iter_on_type(
             if let Some(bound) = &t.type_var.bound {
                 return iter_on_type(i_s, bound, from, on_error);
             }
-            if !t.type_var.restrictions.is_empty() {
+            if !t.type_var.constraints.is_empty() {
                 todo!()
             }
         }

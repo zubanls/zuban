@@ -833,7 +833,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if needs_self_type_variable {
                     let self_type_var = Rc::new(TypeVar {
                         name_string: TypeVarName::Self_,
-                        restrictions: Box::new([]),
+                        constraints: Box::new([]),
                         bound: Some(self.class.unwrap().as_db_type(i_s.db)),
                         variance: Variance::Invariant,
                     });
@@ -2003,10 +2003,10 @@ pub fn format_pretty_function_with_params(
                         let mut s = t.name(format_data.db).to_owned();
                         if let Some(bound) = &t.bound {
                             s += &format!(" <: {}", Type::new(bound).format(format_data));
-                        } else if !t.restrictions.is_empty() {
+                        } else if !t.constraints.is_empty() {
                             s += &format!(
                                 " in ({})",
-                                t.restrictions
+                                t.constraints
                                     .iter()
                                     .map(|t| Type::new(t).format(format_data))
                                     .collect::<Vec<_>>()
