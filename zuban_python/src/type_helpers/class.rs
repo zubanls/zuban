@@ -1201,17 +1201,16 @@ impl<'db: 'a, 'a> Class<'a> {
     ) -> Inferred {
         match self.use_cached_class_infos(i_s.db).metaclass {
             MetaclassState::Some(link) => {
-                let meta = Class::from_non_generic_link(i_s.db, link);
-                if meta
+                if let Some(__getitem__) = self
                     .lookup(
                         i_s,
                         slice_type.as_node_ref(),
                         "__getitem__",
-                        LookupKind::Normal,
+                        LookupKind::OnlyType,
                     )
-                    .is_some()
+                    .into_maybe_inferred()
                 {
-                    return Instance::new(meta, None).get_item(i_s, slice_type, result_context);
+                    return __getitem__.execute(i_s, &slice_type.as_args(*i_s));
                 }
             }
             MetaclassState::Unknown => {
