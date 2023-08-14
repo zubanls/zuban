@@ -499,6 +499,7 @@ testEnumCall
 # "Enum index should be a string (actual index type "int")"
 # Enum getitem
 testEnumIndexError
+# Enum binding IntEnum instead of the enum class, because it's functional
 testFunctionalEnumProtocols
 # Enum defines value.
 testEnumFinalValuesCannotRedefineValueProp
@@ -508,7 +509,6 @@ testPrivateAttributeNotAsEnumMembers
 testEnumTypeCompatibleWithLiteralUnion
 # Enum Dict value inferred is int instead of Literal[1]
 testFunctionalEnumDict
-# functional attributes
 testFunctionalEnumListOfPairs
 # enum member gathering
 testFinalWithMethodAssignment
