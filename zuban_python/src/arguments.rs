@@ -336,20 +336,7 @@ impl<'db, 'a> Argument<'db, 'a> {
                 .file
                 .inference(&i_s.use_mode_of(func_i_s))
                 .infer_expression_with_context(*expression, result_context),
-            ArgumentKind::SlicesTuple { i_s, slices } => {
-                let parts = slices
-                    .iter()
-                    .map(|x| {
-                        let i_s = &i_s.use_mode_of(func_i_s);
-                        TypeOrTypeVarTuple::Type(
-                            x.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s),
-                        )
-                    })
-                    .collect();
-                Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
-                    parts,
-                ))))
-            }
+            ArgumentKind::SlicesTuple { i_s, slices } => slices.infer(&i_s.use_mode_of(func_i_s)),
             ArgumentKind::Comprehension {
                 file,
                 comprehension,

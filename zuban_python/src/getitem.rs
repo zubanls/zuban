@@ -1,9 +1,12 @@
+use std::rc::Rc;
+
 use parsa_python_ast::{
     NamedExpression, NodeIndex, Slice as ASTSlice, SliceContent, SliceIterator as ASTSliceIterator,
     SliceType as ASTSliceType, Slices as ASTSlices,
 };
 
 use crate::arguments::{ArgumentIterator, Arguments, ArgumentsType};
+use crate::database::{DbType, TupleContent, TypeOrTypeVarTuple};
 use crate::debug;
 use crate::file::PythonFile;
 use crate::inference_state::InferenceState;
@@ -119,6 +122,18 @@ impl<'file> Slices<'file> {
 
     pub fn iter(&self) -> SliceIterator<'file> {
         SliceIterator(self.file, self.slices.iter())
+    }
+
+    pub fn infer(&self, i_s: &InferenceState) -> Inferred {
+        let parts = self
+            .iter()
+            .map(|x| {
+                TypeOrTypeVarTuple::Type(x.infer(i_s, &mut ResultContext::Unknown).as_db_type(i_s))
+            })
+            .collect();
+        Inferred::from_type(DbType::Tuple(Rc::new(TupleContent::new_fixed_length(
+            parts,
+        ))))
     }
 }
 
