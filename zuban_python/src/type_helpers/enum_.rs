@@ -49,7 +49,9 @@ pub fn lookup_on_enum_instance(
             }
         }))
     } else {
-        lookup_members_on_enum(i_s, enum_, name, result_context)
+        lookup_members_on_enum(i_s, enum_, name, result_context).or_else(|| {
+            Instance::new(enum_.class(i_s.db), None).lookup(i_s, from, name, LookupKind::Normal)
+        })
     }
 }
 

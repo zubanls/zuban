@@ -491,8 +491,10 @@ testNewAnalyzerIncrementalMethodNamedTuple
 testNamedTupleEnum
 # int | str leads to object instead of Any when using Enum().value?
 testEnumValueInhomogenous
-# Enum binding IntEnum instead of the enum class, because it's functional
+# Enum binding IntEnum instead of the enum class, because it's not an actual class
 testFunctionalEnumProtocols
+testEnumFlag
+testEnumIntFlag
 # dict meets/joins should avoid ors in literals and just be str
 testPrivateAttributeNotAsEnumMembers
 # All members in a union lead to the enum again
@@ -504,9 +506,6 @@ testFunctionalEnumListOfPairs
 testFinalWithMethodAssignment
 # Enum access merging leads to int | Any instead of Any
 testEnumValueUnionSimplification
-# Enum |
-testEnumFlag
-testEnumIntFlag
 # "Enum class cannot be generic"
 testEnumFromEnumMetaGeneric
 testGenericEnum
