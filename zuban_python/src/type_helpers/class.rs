@@ -10,7 +10,7 @@ use parsa_python_ast::{
 use super::enum_::execute_functional_enum;
 use super::function::OverloadResult;
 use super::{Callable, Instance, Module, NamedTupleValue};
-use crate::arguments::Arguments;
+use crate::arguments::{Arguments, NoArguments};
 use crate::database::{
     BaseClass, CallableContent, CallableParam, CallableParams, ClassGenerics, ClassInfos,
     ClassStorage, ClassType, ComplexPoint, Database, DbType, Enum, EnumMemberDefinition,
@@ -1200,7 +1200,7 @@ impl<'db: 'a, 'a> Class<'a> {
         result_context: &mut ResultContext,
     ) -> Inferred {
         match self.use_cached_class_infos(i_s.db).metaclass {
-            MetaclassState::Some(link) => {
+            MetaclassState::Some(_) => {
                 if let Some(__getitem__) = self
                     .lookup(
                         i_s,
@@ -1230,12 +1230,22 @@ impl<'db: 'a, 'a> Class<'a> {
 
     pub fn iter(&self, i_s: &InferenceState, from: NodeRef) -> Option<IteratorContent> {
         match self.use_cached_class_infos(i_s.db).metaclass {
-            MetaclassState::Some(link) => {
-                let meta = Class::from_non_generic_link(i_s.db, link);
-                meta.lookup(i_s, from, "__iter__", LookupKind::Normal)
-                    .is_some()
-                    .then(|| Instance::new(meta, None).iter(i_s, from))
-            }
+            MetaclassState::Some(_) => self
+                .lookup(i_s, from, "__iter__", LookupKind::OnlyType)
+                .into_maybe_inferred()
+                .map(|__iter__| {
+                    IteratorContent::Inferred(
+                        __iter__
+                            .execute(i_s, &NoArguments::new(from))
+                            .type_lookup_and_execute(
+                                i_s,
+                                from,
+                                "__next__",
+                                &NoArguments::new(from),
+                                &|_| todo!(),
+                            ),
+                    )
+                }),
             MetaclassState::Unknown => {
                 todo!()
             }
