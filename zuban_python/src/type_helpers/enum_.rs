@@ -214,7 +214,7 @@ pub fn execute_functional_enum(
         return None
     };
 
-    let members = gather_functional_enum_members(i_s, class, fields_infos.0, fields_infos.1)?;
+    let members = gather_functional_enum_members(i_s, class, name, fields_infos.0, fields_infos.1)?;
     if members.len() == 0 {
         fields_infos.0.add_issue(
             i_s,
@@ -241,9 +241,22 @@ pub fn execute_functional_enum(
 struct EnumMembers(Vec<EnumMemberDefinition>);
 
 impl EnumMembers {
-    fn add_member(&mut self, i_s: &InferenceState, d: EnumMemberDefinition) {
-        if self.0.iter().any(|t| t.name(i_s.db) == d.name(i_s.db)) {
-            // TODO  this still needs to be handled
+    fn add_member(
+        &mut self,
+        i_s: &InferenceState,
+        enum_name: StringSlice,
+        node_ref: NodeRef,
+        d: EnumMemberDefinition,
+    ) {
+        let member_name = d.name(i_s.db);
+        if self.0.iter().any(|t| t.name(i_s.db) == member_name) {
+            node_ref.add_issue(
+                i_s,
+                IssueType::EnumReusedMemberName {
+                    enum_name: enum_name.as_str(i_s.db).into(),
+                    member_name: member_name.into(),
+                },
+            )
         } else {
             self.0.push(d)
         }
@@ -257,6 +270,7 @@ impl EnumMembers {
 fn gather_functional_enum_members(
     i_s: &InferenceState,
     class: Class,
+    enum_name: StringSlice,
     node_ref: NodeRef,
     expression: Expression,
 ) -> Option<Box<[EnumMemberDefinition]>> {
@@ -299,7 +313,12 @@ fn gather_functional_enum_members(
                     ne.expression(),
                 )?,
             };
-            members.add_member(i_s, EnumMemberDefinition::new(name.into(), None))
+            members.add_member(
+                i_s,
+                enum_name,
+                NodeRef::new(node_ref.file, atom.index()),
+                EnumMemberDefinition::new(name.into(), None),
+            )
         }
         Some(())
     };
@@ -326,7 +345,13 @@ fn gather_functional_enum_members(
         }
         AtomContent::Strings(s) => {
             match DbString::from_python_string(node_ref.file_index(), s.as_python_string()) {
-                Some(s) => split_enum_members(i_s, &mut members, &s),
+                Some(s) => split_enum_members(
+                    i_s,
+                    enum_name,
+                    NodeRef::new(node_ref.file, atom.index()),
+                    &mut members,
+                    &s,
+                ),
                 _ => todo!(),
             }
         }
@@ -335,9 +360,10 @@ fn gather_functional_enum_members(
                 let DictElement::KeyValue(kv) = element else {
                     todo!("In test functional_enum_starred_dict_literal_errors")
                 };
+                let key = kv.key();
                 let Some(name) = StringSlice::from_string_in_expression(
                     node_ref.file.file_index(),
-                    kv.key(),
+                    key,
                 ) else {
                     node_ref.add_issue(i_s, IssueType::EnumWithDictRequiresStringLiterals {
                         name: class.name().into(),
@@ -346,6 +372,8 @@ fn gather_functional_enum_members(
                 };
                 members.add_member(
                     i_s,
+                    enum_name,
+                    NodeRef::new(node_ref.file, key.index()),
                     EnumMemberDefinition::new(
                         name.into(),
                         Some(PointLink::new(
@@ -363,7 +391,13 @@ fn gather_functional_enum_members(
                 .infer_atom(atom, &mut ResultContext::Unknown);
             if let DbType::Literal(literal) = inf.as_type(i_s).as_ref() {
                 if let LiteralKind::String(s) = &literal.kind {
-                    split_enum_members(i_s, &mut members, s);
+                    split_enum_members(
+                        i_s,
+                        enum_name,
+                        NodeRef::new(node_ref.file, atom.index()),
+                        &mut members,
+                        s,
+                    );
                     return Some(members.into_boxed_slice());
                 }
             }
@@ -374,7 +408,13 @@ fn gather_functional_enum_members(
     Some(members.into_boxed_slice())
 }
 
-fn split_enum_members(i_s: &InferenceState, members: &mut EnumMembers, s: &DbString) {
+fn split_enum_members(
+    i_s: &InferenceState,
+    enum_name: StringSlice,
+    node_ref: NodeRef,
+    members: &mut EnumMembers,
+    s: &DbString,
+) {
     let mut start = 0;
     for part in s.as_str(i_s.db).split(&[',', ' ']) {
         if part.is_empty() {
@@ -388,7 +428,12 @@ fn split_enum_members(i_s: &InferenceState, members: &mut EnumMembers, s: &DbStr
             }
             DbString::RcStr(_) => DbString::RcStr(part.into()),
         };
-        members.add_member(i_s, EnumMemberDefinition::new(name, None));
+        members.add_member(
+            i_s,
+            enum_name,
+            node_ref,
+            EnumMemberDefinition::new(name, None),
+        );
         start += part.len() as CodeIndex + 1;
     }
 }

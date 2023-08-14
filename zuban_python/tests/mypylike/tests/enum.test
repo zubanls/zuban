@@ -45,3 +45,29 @@ def foo() -> list[str]: return []
 c: list[str]
 E = Enum("E", c) # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
 E = Enum("E", foo()) # E: Second argument of Enum() must be string, tuple, list or dict literal for mypy to determine Enum members
+
+[case functional_enum_attempt_to_reuse_keys]
+# functional cases for testEnumReusedKeys
+from enum import Enum
+from typing import Literal
+
+E1 = Enum("E1", "A B A")  # E: Attempted to reuse member name "A" in Enum definition "E1"
+E2 = Enum("E2", ["A",
+                 "A",  # E: Attempted to reuse member name "A" in Enum definition "E2"
+                 "B",
+                 ])
+E3 = Enum("E3", [("A", 1),
+                 ("A",  # E: Attempted to reuse member name "A" in Enum definition "E3"
+                  2),
+                 ("B", 3),
+                 ])
+E4 = Enum("E4", {"A": 1,
+                 "A":  # E: Attempted to reuse member name "A" in Enum definition "E4"
+                  2,
+                 "B": 3,
+                 })
+reveal_type(E4.A.value)  # N: Revealed type is "int"
+reveal_type(E4.B.value)  # N: Revealed type is "int"
+
+x: Literal["A B A"]
+E5 = Enum("E5", x)  # E: Attempted to reuse member name "A" in Enum definition "E5"
