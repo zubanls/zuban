@@ -489,15 +489,11 @@ testNewAnalyzerIncrementalMethodNamedTuple
 
 # Enum is also a NamedTuple. wtf?
 testNamedTupleEnum
-# int | str leads to object instead of Any when using Enum().value
+# int | str leads to object instead of Any when using Enum().value?
 testEnumValueInhomogenous
-testNewSetsUnexpectedValueType
-testValueTypeWithNewInParentClass
 # Enum binding IntEnum instead of the enum class, because it's functional
 testFunctionalEnumProtocols
-# Enum defines value.
-testEnumFinalValuesCannotRedefineValueProp
-# class attributes
+# dict meets/joins should avoid ors in literals and just be str
 testPrivateAttributeNotAsEnumMembers
 # All members in a union lead to the enum again
 testEnumTypeCompatibleWithLiteralUnion
