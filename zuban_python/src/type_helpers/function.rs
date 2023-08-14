@@ -15,8 +15,8 @@ use crate::database::{
     DoubleStarredParamSpecific, FormatStyle, FunctionKind, FunctionOverload, GenericClass,
     GenericItem, Locality, OverloadDefinition, OverloadImplementation, ParamSpecUsage,
     ParamSpecific, Point, PointType, Specific, StarredParamSpecific, StringSlice, TupleContent,
-    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage, TypeVarLikes,
-    TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
+    TupleTypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike, TypeVarLikeUsage,
+    TypeVarLikes, TypeVarManager, TypeVarName, TypeVarUsage, Variance, WrongPositionalCount,
 };
 use crate::debug;
 use crate::diagnostics::{Issue, IssueType};
@@ -294,7 +294,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if unbound_type_vars.contains(&TypeVarLike::TypeVar(t.type_var.clone())) {
                     let node_ref = self.expect_return_annotation_node_ref();
                     node_ref.add_issue(i_s, IssueType::TypeVarInReturnButNotArgument);
-                    if let Some(bound) = t.type_var.bound.as_ref() {
+                    if let TypeVarKind::Bound(bound) = &t.type_var.kind {
                         node_ref.add_issue(
                             i_s,
                             IssueType::Note(
@@ -835,6 +835,7 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                         name_string: TypeVarName::Self_,
                         constraints: Box::new([]),
                         bound: Some(self.class.unwrap().as_db_type(i_s.db)),
+                        kind: TypeVarKind::Bound(self.class.unwrap().as_db_type(i_s.db)),
                         variance: Variance::Invariant,
                     });
                     self_type_var_usage = Some(TypeVarUsage {
@@ -2001,17 +2002,21 @@ pub fn format_pretty_function_with_params(
                 .map(|t| match t {
                     TypeVarLike::TypeVar(t) => {
                         let mut s = t.name(format_data.db).to_owned();
-                        if let Some(bound) = &t.bound {
-                            s += &format!(" <: {}", Type::new(bound).format(format_data));
-                        } else if !t.constraints.is_empty() {
-                            s += &format!(
-                                " in ({})",
-                                t.constraints
-                                    .iter()
-                                    .map(|t| Type::new(t).format(format_data))
-                                    .collect::<Vec<_>>()
-                                    .join(", ")
-                            );
+                        match &t.kind {
+                            TypeVarKind::Unrestricted => (),
+                            TypeVarKind::Bound(bound) => {
+                                s += &format!(" <: {}", Type::new(bound).format(format_data));
+                            }
+                            TypeVarKind::Constraints(constraints) => {
+                                s += &format!(
+                                    " in ({})",
+                                    constraints
+                                        .iter()
+                                        .map(|t| Type::new(t).format(format_data))
+                                        .collect::<Vec<_>>()
+                                        .join(", ")
+                                );
+                            }
                         }
                         s
                     }

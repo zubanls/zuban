@@ -2199,10 +2199,18 @@ pub enum TypeVarName {
 }
 
 #[derive(Debug, Clone)]
+pub enum TypeVarKind {
+    Unrestricted,
+    Bound(DbType),
+    Constraints(Box<[DbType]>),
+}
+
+#[derive(Debug, Clone)]
 pub struct TypeVar {
     pub name_string: TypeVarName,
     pub constraints: Box<[DbType]>,
     pub bound: Option<DbType>,
+    pub kind: TypeVarKind,
     pub variance: Variance,
 }
 

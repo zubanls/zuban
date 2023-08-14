@@ -5,7 +5,9 @@ use parsa_python_ast::Name;
 use super::class::TypeOrClass;
 use super::{Class, MroIterator, NamedTupleValue, Tuple};
 use crate::arguments::{Arguments, CombinedArguments, KnownArguments, NoArguments};
-use crate::database::{ClassType, DbType, FunctionKind, GenericClass, PointLink, Specific};
+use crate::database::{
+    ClassType, DbType, FunctionKind, GenericClass, PointLink, Specific, TypeVarKind,
+};
 use crate::debug;
 use crate::diagnostics::IssueType;
 use crate::file::{on_argument_type_error, File};
@@ -505,7 +507,7 @@ fn get_relevant_type_for_super(t: &DbType) -> DbType {
     let DbType::TypeVar(usage) = t else {
         return t.clone()
     };
-    if let Some(bound) = &usage.type_var.bound {
+    if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
         return bound.clone();
     }
     t.clone()

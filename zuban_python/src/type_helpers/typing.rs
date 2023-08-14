@@ -5,7 +5,7 @@ use super::{lookup_on_enum_class, Class};
 use crate::arguments::{ArgumentKind, Arguments};
 use crate::database::{
     ComplexPoint, Database, DbType, FormatStyle, NewType, ParamSpec, PointLink, Specific, TypeVar,
-    TypeVarLike, TypeVarName, TypeVarTuple, Variance,
+    TypeVarKind, TypeVarLike, TypeVarName, TypeVarTuple, Variance,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -87,19 +87,17 @@ impl<'a> TypingType<'a> {
         result_context: &mut ResultContext,
     ) -> LookupResult {
         match self.db_type {
-            DbType::TypeVar(t) => {
-                if let Some(bound) = &t.type_var.bound {
-                    TypingType::new(self.db, bound).lookup(
-                        i_s,
-                        node_ref,
-                        name,
-                        kind,
-                        result_context,
-                    )
-                } else {
-                    todo!("{t:?}")
-                }
-            }
+            DbType::TypeVar(t) => match &t.type_var.kind {
+                TypeVarKind::Bound(bound) => TypingType::new(self.db, bound).lookup(
+                    i_s,
+                    node_ref,
+                    name,
+                    kind,
+                    result_context,
+                ),
+                TypeVarKind::Constraints(_) => todo!(),
+                TypeVarKind::Unrestricted => todo!(),
+            },
             DbType::Class(g) => {
                 Class::from_generic_class(i_s.db, g).lookup(i_s, node_ref, name, kind)
             }
@@ -400,6 +398,14 @@ fn maybe_type_var(
                 .add_issue(i_s, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
+        let kind = if let Some(bound) = bound.clone() {
+            debug_assert!(constraints.is_empty());
+            TypeVarKind::Bound(bound)
+        } else if !constraints.is_empty() {
+            TypeVarKind::Constraints(constraints.clone().into())
+        } else {
+            TypeVarKind::Unrestricted
+        };
         Some(TypeVarLike::TypeVar(Rc::new(TypeVar {
             name_string: TypeVarName::PointLink(PointLink {
                 file: name_node.file_index(),
@@ -407,6 +413,7 @@ fn maybe_type_var(
             }),
             constraints: constraints.into_boxed_slice(),
             bound,
+            kind,
             variance: match (covariant, contravariant) {
                 (false, false) => Variance::Invariant,
                 (true, false) => Variance::Covariant,
