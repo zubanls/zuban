@@ -500,9 +500,7 @@ testEnumCall
 testEnumMethods
 # "Enum index should be a string (actual index type "int")"
 # Enum getitem
-testEnumIndex
 testEnumIndexError
-testEnumIndexIsNotAnAlias
 testFunctionalEnumProtocols
 # Enum defines value.
 testEnumFinalValuesCannotRedefineValueProp

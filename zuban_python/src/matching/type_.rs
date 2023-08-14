@@ -2367,6 +2367,7 @@ impl<'a> Type<'a> {
                 DbType::Class(c) => {
                     Class::from_generic_class(i_s.db, c).get_item(i_s, slice_type, result_context)
                 }
+                t @ DbType::Enum(_) => Inferred::from_type(t.clone()),
                 _ => {
                     slice_type
                         .as_node_ref()
