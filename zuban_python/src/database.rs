@@ -2208,8 +2208,6 @@ pub enum TypeVarKind {
 #[derive(Debug, Clone)]
 pub struct TypeVar {
     pub name_string: TypeVarName,
-    pub constraints: Box<[DbType]>,
-    pub bound: Option<DbType>,
     pub kind: TypeVarKind,
     pub variance: Variance,
 }

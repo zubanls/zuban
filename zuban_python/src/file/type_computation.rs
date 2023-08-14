@@ -11,7 +11,7 @@ use crate::database::{
     FunctionKind, GenericClass, GenericItem, GenericsList, Literal, LiteralKind, Locality,
     NamedTuple, Namespace, NewType, ParamSpecArgument, ParamSpecUsage, ParamSpecific, Point,
     PointLink, PointType, RecursiveAlias, Specific, StarredParamSpecific, StringSlice,
-    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike,
+    TupleContent, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
     UnionType,
 };
@@ -1178,54 +1178,56 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
         type_: &TypeContent,
         get_of: impl FnOnce() -> Box<str>,
     ) {
-        if let Some(bound) = &type_var.bound {
-            // Performance: This could be optimized to not create new objects all the time.
-            let t = self.as_db_type(type_.clone(), s.as_node_ref());
-            let i_s = &mut self.inference.i_s;
-            let actual = Type::new(&t);
-            let expected = Type::new(bound);
-            if !expected.is_simple_super_type_of(i_s, &actual).bool() {
-                s.as_node_ref().add_issue(
-                    i_s,
-                    IssueType::TypeVarBoundViolation {
-                        actual: actual.format_short(i_s.db),
-                        of: get_of(),
-                        expected: expected.format_short(i_s.db),
-                    },
-                );
-            }
-        } else if !type_var.constraints.is_empty() {
-            let t2 = self.as_db_type(type_.clone(), s.as_node_ref());
-            let i_s = &mut self.inference.i_s;
-            if let DbType::TypeVar(usage) = &t2 {
-                let type_var2 = &usage.type_var;
-                if !type_var2.constraints.is_empty()
-                    && type_var2.constraints.iter().all(|t2| {
-                        type_var.constraints.iter().any(|t| {
-                            Type::new(t)
-                                .is_simple_super_type_of(i_s, &Type::new(t2))
-                                .bool()
-                        })
-                    })
-                {
-                    // The provided type_var2 is a subset of the type_var constraints.
-                    return;
+        match &type_var.kind {
+            TypeVarKind::Unrestricted => (),
+            TypeVarKind::Bound(bound) => {
+                // Performance: This could be optimized to not create new objects all the time.
+                let t = self.as_db_type(type_.clone(), s.as_node_ref());
+                let i_s = &mut self.inference.i_s;
+                let actual = Type::new(&t);
+                let expected = Type::new(bound);
+                if !expected.is_simple_super_type_of(i_s, &actual).bool() {
+                    s.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::TypeVarBoundViolation {
+                            actual: actual.format_short(i_s.db),
+                            of: get_of(),
+                            expected: expected.format_short(i_s.db),
+                        },
+                    );
                 }
             }
-            let t2 = Type::new(&t2);
-            if !type_var
-                .constraints
-                .iter()
-                .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
-            {
-                s.as_node_ref().add_issue(
-                    i_s,
-                    IssueType::InvalidTypeVarValue {
-                        type_var_name: Box::from(type_var.name(i_s.db)),
-                        of: format!("\"{}\"", get_of()).into(),
-                        actual: t2.format_short(i_s.db),
-                    },
-                );
+            TypeVarKind::Constraints(constraints) => {
+                let t2 = self.as_db_type(type_.clone(), s.as_node_ref());
+                let i_s = &mut self.inference.i_s;
+                if let DbType::TypeVar(usage) = &t2 {
+                    if let TypeVarKind::Constraints(constraints2) = &usage.type_var.kind {
+                        if constraints2.iter().all(|t2| {
+                            constraints.iter().any(|t| {
+                                Type::new(t)
+                                    .is_simple_super_type_of(i_s, &Type::new(t2))
+                                    .bool()
+                            })
+                        }) {
+                            // The provided type_var2 is a subset of the type_var constraints.
+                            return;
+                        }
+                    }
+                }
+                let t2 = Type::new(&t2);
+                if !constraints
+                    .iter()
+                    .any(|t| Type::new(t).is_simple_super_type_of(i_s, &t2).bool())
+                {
+                    s.as_node_ref().add_issue(
+                        i_s,
+                        IssueType::InvalidTypeVarValue {
+                            type_var_name: Box::from(type_var.name(i_s.db)),
+                            of: format!("\"{}\"", get_of()).into(),
+                            actual: t2.format_short(i_s.db),
+                        },
+                    );
+                }
             }
         }
     }

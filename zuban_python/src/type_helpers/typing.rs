@@ -398,11 +398,11 @@ fn maybe_type_var(
                 .add_issue(i_s, IssueType::TypeVarOnlySingleRestriction);
             return None;
         }
-        let kind = if let Some(bound) = bound.clone() {
+        let kind = if let Some(bound) = bound {
             debug_assert!(constraints.is_empty());
             TypeVarKind::Bound(bound)
         } else if !constraints.is_empty() {
-            TypeVarKind::Constraints(constraints.clone().into())
+            TypeVarKind::Constraints(constraints.into())
         } else {
             TypeVarKind::Unrestricted
         };
@@ -411,8 +411,6 @@ fn maybe_type_var(
                 file: name_node.file_index(),
                 node_index: py_string.index(),
             }),
-            constraints: constraints.into_boxed_slice(),
-            bound,
             kind,
             variance: match (covariant, contravariant) {
                 (false, false) => Variance::Invariant,

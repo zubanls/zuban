@@ -6,8 +6,8 @@ use super::super::{common_base_type, Generic, Match, MismatchReason, Type};
 use super::bound::TypeVarBound;
 use crate::database::{
     CallableParams, Database, DbType, GenericItem, ParamSpecArgument, ParamSpecific, PointLink,
-    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarLike, TypeVarLikeUsage,
-    TypeVarLikes, TypeVarUsage, Variance,
+    TupleTypeArguments, TypeArguments, TypeOrTypeVarTuple, TypeVar, TypeVarKind, TypeVarLike,
+    TypeVarLikeUsage, TypeVarLikes, TypeVarUsage, Variance,
 };
 use crate::inference_state::InferenceState;
 use crate::matching::Param;
@@ -247,51 +247,55 @@ impl TypeVarMatcher {
         }
         // Before setting the type var, we need to check if the constraints match.
         let mut mismatch_constraints = false;
-        if !type_var.constraints.is_empty() {
-            if let DbType::TypeVar(t2) = value_type.as_ref() {
-                if !t2.type_var.constraints.is_empty() {
-                    if current.calculated() {
-                        todo!()
-                    } else if t2.type_var.constraints.iter().all(|r2| {
-                        type_var.constraints.iter().any(|r1| {
-                            Type::new(r1)
-                                .is_simple_super_type_of(i_s, &Type::new(r2))
-                                .bool()
-                        })
-                    }) {
-                        current.type_ =
-                            BoundKind::TypeVar(TypeVarBound::Invariant(value_type.as_db_type()));
-                        return Match::new_true();
-                    } else {
-                        mismatch_constraints = true;
-                    }
-                }
+        match &type_var.kind {
+            TypeVarKind::Unrestricted => (),
+            TypeVarKind::Bound(bound) => {
+                mismatch_constraints |= !Type::new(bound)
+                    .is_simple_super_type_of(i_s, value_type)
+                    .bool();
             }
-            if !mismatch_constraints {
-                for constraint in type_var.constraints.iter() {
-                    let m = Type::new(constraint).simple_matches(i_s, value_type, variance);
-                    if m.bool() {
+            TypeVarKind::Constraints(constraints) => {
+                if let DbType::TypeVar(t2) = value_type.as_ref() {
+                    if let TypeVarKind::Constraints(constraints2) = &t2.type_var.kind {
                         if current.calculated() {
-                            // This means that any is involved and multiple constraints
-                            // are matching. Therefore just return Any.
-                            current.type_ =
-                                BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
-                            return m;
-                        }
-                        current.type_ =
-                            BoundKind::TypeVar(TypeVarBound::Invariant(constraint.clone()));
-                        if !value_type.has_any(i_s) {
-                            return m;
+                            todo!()
+                        } else if constraints2.iter().all(|r2| {
+                            constraints.iter().any(|r1| {
+                                Type::new(r1)
+                                    .is_simple_super_type_of(i_s, &Type::new(r2))
+                                    .bool()
+                            })
+                        }) {
+                            current.type_ = BoundKind::TypeVar(TypeVarBound::Invariant(
+                                value_type.as_db_type(),
+                            ));
+                            return Match::new_true();
+                        } else {
+                            mismatch_constraints = true;
                         }
                     }
                 }
-                mismatch_constraints = true;
+                if !mismatch_constraints {
+                    for constraint in constraints.iter() {
+                        let m = Type::new(constraint).simple_matches(i_s, value_type, variance);
+                        if m.bool() {
+                            if current.calculated() {
+                                // This means that any is involved and multiple constraints
+                                // are matching. Therefore just return Any.
+                                current.type_ =
+                                    BoundKind::TypeVar(TypeVarBound::Invariant(DbType::Any));
+                                return m;
+                            }
+                            current.type_ =
+                                BoundKind::TypeVar(TypeVarBound::Invariant(constraint.clone()));
+                            if !value_type.has_any(i_s) {
+                                return m;
+                            }
+                        }
+                    }
+                    mismatch_constraints = true;
+                }
             }
-        }
-        if let Some(bound) = &type_var.bound {
-            mismatch_constraints |= !Type::new(bound)
-                .is_simple_super_type_of(i_s, value_type)
-                .bool();
         }
         if mismatch_constraints {
             return Match::False {

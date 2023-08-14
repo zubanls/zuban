@@ -7,7 +7,8 @@ use crate::database::{
     CallableContent, CallableParams, ClassGenerics, ComplexPoint, Database, DbString, DbType, Enum,
     FileIndex, FunctionKind, FunctionOverload, GenericClass, GenericItem, GenericsList,
     Literal as DbLiteral, LiteralKind, Locality, MetaclassState, MroIndex, NewType,
-    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarLike, TypeVarLikes,
+    OverloadDefinition, Point, PointLink, PointType, Specific, TypeVarKind, TypeVarLike,
+    TypeVarLikes,
 };
 use crate::debug;
 use crate::diagnostics::IssueType;
@@ -2110,7 +2111,7 @@ pub fn add_attribute_error(
     };
     let name = Box::from(name);
     if let DbType::TypeVar(usage) = full_type.as_ref() {
-        if let Some(bound) = &usage.type_var.bound {
+        if let TypeVarKind::Bound(bound) = &usage.type_var.kind {
             if Type::new(bound).is_union() {
                 let bound = bound.format_short(i_s.db);
                 let type_var_name = usage.type_var.name(i_s.db);

@@ -833,8 +833,6 @@ impl<'db: 'a + 'class, 'a, 'class> Function<'a, 'class> {
                 if needs_self_type_variable {
                     let self_type_var = Rc::new(TypeVar {
                         name_string: TypeVarName::Self_,
-                        constraints: Box::new([]),
-                        bound: Some(self.class.unwrap().as_db_type(i_s.db)),
                         kind: TypeVarKind::Bound(self.class.unwrap().as_db_type(i_s.db)),
                         variance: Variance::Invariant,
                     });

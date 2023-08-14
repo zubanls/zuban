@@ -13,7 +13,7 @@ use crate::database::{
     DoubleStarredParamSpecific, EnumMember, GenericClass, GenericItem, GenericsList,
     MetaclassState, NamedTuple, ParamSpecArgument, ParamSpecTypeVars, ParamSpecUsage,
     ParamSpecific, PointLink, RecursiveAlias, StarredParamSpecific, TupleContent,
-    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarLike,
+    TupleTypeArguments, TypeAlias, TypeArguments, TypeOrTypeVarTuple, TypeVarKind, TypeVarLike,
     TypeVarLikeUsage, TypeVarLikes, TypeVarManager, TypeVarTupleUsage, TypeVarUsage, UnionEntry,
     UnionType, Variance,
 };
@@ -173,17 +173,13 @@ impl<'a> Type<'a> {
     pub fn overlaps(&self, i_s: &InferenceState, other: &Self) -> bool {
         match other.as_ref() {
             DbType::TypeVar(t2_usage) => {
-                return if let Some(bound) = &t2_usage.type_var.bound {
-                    self.overlaps(i_s, &bound.into())
-                } else if !t2_usage.type_var.constraints.is_empty() {
-                    t2_usage
-                        .type_var
-                        .constraints
-                        .iter()
-                        .all(|r2| self.overlaps(i_s, &r2.into()))
-                } else {
-                    true
-                };
+                return match &t2_usage.type_var.kind {
+                    TypeVarKind::Unrestricted => true,
+                    TypeVarKind::Bound(bound) => self.overlaps(i_s, &bound.into()),
+                    TypeVarKind::Constraints(constraints) => {
+                        constraints.iter().all(|r2| self.overlaps(i_s, &r2.into()))
+                    }
+                }
             }
             DbType::Union(union_type2) => {
                 return union_type2.iter().any(|t| self.overlaps(i_s, &t.into()))
@@ -225,15 +221,11 @@ impl<'a> Type<'a> {
                     .overlaps(i_s, other),
             },
             DbType::None => matches!(other.as_ref(), DbType::None),
-            DbType::TypeVar(t1) => {
-                if let Some(db_t) = &t1.type_var.bound {
-                    Type::new(db_t).overlaps(i_s, other)
-                } else if !t1.type_var.constraints.is_empty() {
-                    todo!("{other:?}")
-                } else {
-                    true
-                }
-            }
+            DbType::TypeVar(t1) => match &t1.type_var.kind {
+                TypeVarKind::Unrestricted => true,
+                TypeVarKind::Bound(bound) => Type::new(bound).overlaps(i_s, other),
+                TypeVarKind::Constraints(constraints) => todo!("{other:?}"),
+            },
             DbType::Tuple(t1) => match other.as_ref() {
                 DbType::Tuple(t2) => Self::overlaps_tuple(i_s, t1, t2),
                 _ => false,
@@ -579,19 +571,21 @@ impl<'a> Type<'a> {
                     return matcher.match_or_add_type_var(i_s, t2, self, variance.invert());
                 }
                 if variance == Variance::Covariant {
-                    if let Some(bound) = &t2.type_var.bound {
-                        let m = self.simple_matches(i_s, &Type::new(bound), variance);
-                        if m.bool() {
-                            return m;
+                    match &t2.type_var.kind {
+                        TypeVarKind::Unrestricted => (),
+                        TypeVarKind::Bound(bound) => {
+                            let m = self.simple_matches(i_s, &Type::new(bound), variance);
+                            if m.bool() {
+                                return m;
+                            }
                         }
-                    } else if !t2.type_var.constraints.is_empty() {
-                        let m = t2
-                            .type_var
-                            .constraints
-                            .iter()
-                            .all(|r| self.simple_matches(i_s, &Type::new(r), variance).bool());
-                        if m {
-                            return Match::new_true();
+                        TypeVarKind::Constraints(constraints) => {
+                            let m = constraints
+                                .iter()
+                                .all(|r| self.simple_matches(i_s, &Type::new(r), variance).bool());
+                            if m {
+                                return Match::new_true();
+                            }
                         }
                     }
                 }
@@ -1932,11 +1926,11 @@ impl<'a> Type<'a> {
                 result_context,
                 on_type_error,
             ),
-            DbType::TypeVar(tv) => match &tv.type_var.bound {
-                Some(bound) => {
+            DbType::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(bound) => {
                     Type::new(bound).execute(i_s, None, args, result_context, on_type_error)
                 }
-                None => todo!(),
+                _ => todo!(),
             },
             DbType::Any | DbType::Never => {
                 args.iter().calculate_diagnostics(i_s);
@@ -1980,9 +1974,11 @@ impl<'a> Type<'a> {
                 }
                 IteratorContent::Union(items)
             }
-            DbType::TypeVar(tv) if tv.type_var.bound.is_some() => {
-                Type::new(tv.type_var.bound.as_ref().unwrap()).iter(i_s, from)
-            }
+            DbType::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(bound) => Type::new(bound).iter(i_s, from),
+                TypeVarKind::Constraints(_) => todo!(),
+                TypeVarKind::Unrestricted => on_error(self.as_ref()),
+            },
             DbType::NewType(n) => Type::new(n.type_(i_s)).iter(i_s, from),
             DbType::Self_ => Instance::new(*i_s.current_class().unwrap(), None).iter(i_s, from),
             DbType::Type(t) => iter_on_type(i_s, t, from, &on_error),
@@ -2143,11 +2139,22 @@ impl<'a> Type<'a> {
                 let instance = i_s.db.python_state.literal_instance(&literal.kind);
                 callable(self, instance.lookup(i_s, from, name, kind))
             }
-            t @ DbType::TypeVar(tv) => {
-                if !tv.type_var.constraints.is_empty() {
+            t @ DbType::TypeVar(usage) => match &usage.type_var.kind {
+                TypeVarKind::Bound(bound) => {
+                    Type::new(bound).run_after_lookup_on_each_union_member(
+                        i_s,
+                        None,
+                        from,
+                        name,
+                        kind,
+                        result_context,
+                        callable,
+                    );
+                }
+                TypeVarKind::Constraints(constraints) => {
                     debug!("TODO type var values");
                     /*
-                    for db_type in self.type_var_usage.type_var.constraints.iter() {
+                    for db_type in constraints.iter() {
                         return match db_type {
                             DbType::Class(link) => Instance::new(
                                 Class::with_undefined_generics(NodeRef::from_link(i_s.db, *link)),
@@ -2158,30 +2165,6 @@ impl<'a> Type<'a> {
                         }
                     }
                     */
-                }
-                if let Some(t) = &tv.type_var.bound {
-                    Type::new(t).run_after_lookup_on_each_union_member(
-                        i_s,
-                        None,
-                        from,
-                        name,
-                        kind,
-                        result_context,
-                        callable,
-                    );
-                    /*
-                    if matches!(result, LookupResult::None) {
-                        debug!(
-                            "Item \"{}\" of the upper bound \"{}\" of type variable \"{}\" has no attribute \"{}\"",
-                            db_type.format_short(i_s.db),
-                            Type::new(db_type).format_short(i_s.db),
-                            tv.type_var.name(i_s.db),
-                            name,
-                        );
-                    }
-                    result
-                    */
-                } else {
                     let s = &i_s.db.python_state;
                     // TODO it's kind of stupid that we recreate an instance object here all the time, we
                     // should just use a precreated object() from somewhere.
@@ -2190,7 +2173,16 @@ impl<'a> Type<'a> {
                         Instance::new(s.object_class(), None).lookup(i_s, from, name, kind),
                     )
                 }
-            }
+                TypeVarKind::Unrestricted => {
+                    let s = &i_s.db.python_state;
+                    // TODO it's kind of stupid that we recreate an instance object here all the time, we
+                    // should just use a precreated object() from somewhere.
+                    callable(
+                        self,
+                        Instance::new(s.object_class(), None).lookup(i_s, from, name, kind),
+                    )
+                }
+            },
             DbType::Tuple(tup) => callable(self, Tuple::new(tup).lookup(i_s, from, name)),
             DbType::Union(union) => {
                 for t in union.iter() {
@@ -2364,13 +2356,13 @@ impl<'a> Type<'a> {
                     callable(Type::new(t).get_item(i_s, None, slice_type, result_context))
                 }
             }),
-            t @ DbType::TypeVar(tv) => {
-                if let Some(db_type) = &tv.type_var.bound {
-                    Type::new(db_type).get_item(i_s, None, slice_type, result_context)
-                } else {
-                    todo!()
+            t @ DbType::TypeVar(tv) => match &tv.type_var.kind {
+                TypeVarKind::Bound(bound) => {
+                    Type::new(bound).get_item(i_s, None, slice_type, result_context)
                 }
-            }
+                TypeVarKind::Constraints(constraints) => todo!(),
+                TypeVarKind::Unrestricted => todo!(),
+            },
             DbType::Type(t) => match t.as_ref() {
                 DbType::Class(c) => {
                     Class::from_generic_class(i_s.db, c).get_item(i_s, slice_type, result_context)
@@ -2588,14 +2580,11 @@ fn iter_on_type(
             }
             return IteratorContent::Union(items);
         }
-        DbType::TypeVar(t) => {
-            if let Some(bound) = &t.type_var.bound {
-                return iter_on_type(i_s, bound, from, on_error);
-            }
-            if !t.type_var.constraints.is_empty() {
-                todo!()
-            }
-        }
+        DbType::TypeVar(t) => match &t.type_var.kind {
+            TypeVarKind::Bound(bound) => return iter_on_type(i_s, bound, from, on_error),
+            TypeVarKind::Constraints(constraints) => todo!(),
+            TypeVarKind::Unrestricted => (),
+        },
         _ => (),
     }
     on_error(&DbType::Type(Rc::new(t.clone())))
@@ -2661,14 +2650,14 @@ pub fn execute_type_of_type<'db>(
         DbType::Class(c) => {
             Class::from_generic_class(i_s.db, c).execute(i_s, args, result_context, on_type_error)
         }
-        DbType::TypeVar(t) => {
-            if let Some(bound) = &t.type_var.bound {
+        DbType::TypeVar(t) => match &t.type_var.kind {
+            TypeVarKind::Bound(bound) => {
                 execute_type_of_type(i_s, args, result_context, on_type_error, bound);
                 Inferred::from_type(type_.clone())
-            } else {
-                todo!("{t:?}")
             }
-        }
+            TypeVarKind::Constraints(constraints) => todo!(),
+            TypeVarKind::Unrestricted => todo!(),
+        },
         DbType::NewType(n) => {
             let mut iterator = args.iter();
             if let Some(first) = iterator.next() {
