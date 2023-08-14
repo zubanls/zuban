@@ -1,9 +1,6 @@
 use std::mem;
-use std::rc::Rc;
 
-use crate::database::{
-    Database, DbType, GenericItem, ParamSpecUsage, TupleContent, TypeOrTypeVarTuple, Variance,
-};
+use crate::database::{Database, DbType, GenericItem, ParamSpecUsage, Variance};
 use crate::diagnostics::IssueType;
 use crate::file::PythonFile;
 use crate::getitem::{SliceType, SliceTypeContent, Slices};

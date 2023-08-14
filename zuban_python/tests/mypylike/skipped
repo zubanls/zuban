@@ -493,12 +493,6 @@ testNamedTupleEnum
 testEnumValueInhomogenous
 testNewSetsUnexpectedValueType
 testValueTypeWithNewInParentClass
-# SpecificEnum(1)
-testIntEnum_functionTakingIntEnum
-testEnumCall
-# "Enum index should be a string (actual index type "int")"
-# Enum getitem
-testEnumIndexError
 # Enum binding IntEnum instead of the enum class, because it's functional
 testFunctionalEnumProtocols
 # Enum defines value.

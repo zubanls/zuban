@@ -164,6 +164,7 @@ pub(crate) enum IssueType {
     EnumWithDictRequiresStringLiterals { name: Box<str> },
     EnumUnexpectedArguments { name: Box<str> },
     EnumAttemptedReuseOfMemberName { member_name: Box<str>, enum_name: Box<str> },
+    EnumIndexShouldBeAString { actual: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -442,6 +443,9 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumAttemptedReuseOfMemberName { member_name, enum_name } => format!(
                 r#"Attempted to reuse member name "{member_name}" in Enum definition "{enum_name}""#
+            ),
+            EnumIndexShouldBeAString { actual } => format!(
+                r#"Enum index should be a string (actual index type "{actual}")"#
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),

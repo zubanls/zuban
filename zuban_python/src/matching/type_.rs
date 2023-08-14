@@ -2367,7 +2367,22 @@ impl<'a> Type<'a> {
                 DbType::Class(c) => {
                     Class::from_generic_class(i_s.db, c).get_item(i_s, slice_type, result_context)
                 }
-                t @ DbType::Enum(_) => Inferred::from_type(t.clone()),
+                t @ DbType::Enum(_) => {
+                    let enum_index = slice_type.infer(i_s);
+                    if !enum_index
+                        .as_type(i_s)
+                        .is_simple_sub_type_of(i_s, &Type::owned(i_s.db.python_state.str_db_type()))
+                        .bool()
+                    {
+                        slice_type.as_node_ref().add_issue(
+                            i_s,
+                            IssueType::EnumIndexShouldBeAString {
+                                actual: enum_index.format_short(i_s),
+                            },
+                        );
+                    }
+                    Inferred::from_type(t.clone())
+                }
                 _ => {
                     slice_type
                         .as_node_ref()
@@ -2691,6 +2706,10 @@ pub fn execute_type_of_type<'db>(
             );
             debug!("TODO use generics for namedtuple");
             Inferred::from_type(DbType::NamedTuple(nt.clone()))
+        }
+        DbType::Enum(_) => {
+            debug!("TODO did not check arguments in execution of enum");
+            Inferred::from_type(type_.clone())
         }
         _ => todo!("{:?}", type_),
     }

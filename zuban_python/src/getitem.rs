@@ -77,6 +77,14 @@ impl<'db, 'file> SliceType<'file> {
             SliceTypeContent::Slices(s) => SliceTypeIterator::SliceIterator(s.iter()),
         }
     }
+
+    pub(crate) fn infer(&self, i_s: &InferenceState) -> Inferred {
+        match self.unpack() {
+            SliceTypeContent::Simple(s) => s.infer(i_s, &mut ResultContext::Unknown),
+            SliceTypeContent::Slice(s) => s.infer(i_s.db),
+            SliceTypeContent::Slices(s) => s.infer(i_s),
+        }
+    }
 }
 
 #[derive(Debug, Copy, Clone)]
