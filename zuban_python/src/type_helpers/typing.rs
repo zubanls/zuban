@@ -116,7 +116,7 @@ impl<'a> TypingType<'a> {
                 ))),
                 _ => todo!(),
             },
-            _ => todo!("{:?}", self.db_type),
+            _ => todo!("{name} on {:?}", self.db_type),
         }
     }
 }

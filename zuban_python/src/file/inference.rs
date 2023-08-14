@@ -969,12 +969,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             ExpressionPart::Term(term) => self.infer_operation(term.as_operation()),
             ExpressionPart::Power(power) => self.infer_operation(power.as_operation()),
             ExpressionPart::ShiftExpr(shift) => self.infer_operation(shift.as_operation()),
-            ExpressionPart::BitwiseOr(or) => {
-                self.infer_expression_part(or.as_operation().left, &mut ResultContext::Unknown);
-                self.infer_expression_part(or.as_operation().right, &mut ResultContext::Unknown);
-                debug!("TODO Use: self.infer_operation(or.as_operation())");
-                Inferred::new_none()
-            }
+            ExpressionPart::BitwiseOr(or) => self.infer_operation(or.as_operation()),
             ExpressionPart::BitwiseAnd(and) => self.infer_operation(and.as_operation()),
             ExpressionPart::BitwiseXor(xor) => self.infer_operation(xor.as_operation()),
             ExpressionPart::Disjunction(or) => {
