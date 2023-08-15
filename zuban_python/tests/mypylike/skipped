@@ -1,4 +1,5 @@
 # Next up
+testOverloadDetectsPossibleMatchesWithGenerics
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -18,6 +19,8 @@ testInferenceAgainstGenericCallableGenericAlias
 testInferenceAgainstGenericCallableGenericProtocol
 testInferenceAgainstGenericSplitOrder
 testInferenceAgainstGenericSplitOrderGeneric
+testInferenceAgainstGenericCallableNewVariable
+testInferenceAgainstGenericBoundsAndValues
 
 # super with Type[...]
 testSuperWithAny
@@ -978,6 +981,8 @@ testAddedMissingStubsIgnorePackagePartial
 testGenericAliasCollectionsABCReveal
 # import a.b type: ignore
 testFineAddedMissingStubsIgnorePackagePartial
+# imports have different error codes, see https://github.com/python/mypy/commit/78339b97dc911c8c6841184eaddbbc30d0e406da
+testErrorCodeMissingModule
 
 # star imports in modules that are imported
 testRelativeImport3
