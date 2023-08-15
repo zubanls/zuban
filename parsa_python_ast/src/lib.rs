@@ -3274,7 +3274,7 @@ impl<'db> Target<'db> {
         } else {
             debug_assert!(matches!(
                 node.type_(),
-                Nonterminal(star_targets) | Nonterminal(targets)
+                Nonterminal(star_targets) | Nonterminal(del_targets)
             ));
             Self::Tuple(TargetIterator(node.iter_children().step_by(2)))
         }

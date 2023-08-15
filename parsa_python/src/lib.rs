@@ -49,7 +49,7 @@ create_grammar!(
     raise_stmt: "raise" [expression ["from" expression]]
     global_stmt: "global" ",".Name+
     nonlocal_stmt: "nonlocal" ",".Name+
-    del_stmt: "del" targets
+    del_stmt: "del" del_targets
     assert_stmt: "assert" expression ["," expression]
     pass_stmt: "pass"
     break_stmt: "break"
@@ -418,7 +418,6 @@ create_grammar!(
 
     single_target: t_primary | name_definition | "(" single_target ")"
 
-    targets: ",".(t_primary | t_atom)+ [","]
     t_primary:?
           (
               t_primary "." Name
@@ -427,8 +426,14 @@ create_grammar!(
         ) &("."|"["|"(")
         | t_primary "[" slices "]"
         | t_primary "." name_definition
-    t_atom:? name_definition | "(" [targets] ")" | "[" [targets] "]"
+
     name_definition: Name
+
+    // Targets for del statements
+    // --------------------------
+
+    del_targets: ",".(t_primary | del_t_atom)+ [","]
+    del_t_atom:? name_definition | "(" [del_targets] ")" | "[" [del_targets] "]"
 
 );
 

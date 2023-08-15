@@ -8,7 +8,7 @@ file: 0-46
    simple_stmt: 1-8
     del_stmt: 1-8
      Keyword: 1-4 "del"
-     targets: 5-8
+     del_targets: 5-8
       name_definition: 5-8
        Name: 5-8 "foo"
    Newline: 8-9 "\n"
@@ -17,7 +17,7 @@ file: 0-46
    simple_stmt: 9-17
     del_stmt: 9-17
      Keyword: 9-12 "del"
-     targets: 13-17
+     del_targets: 13-17
       name_definition: 13-16
        Name: 13-16 "foo"
       Keyword: 16-17 ","
@@ -27,7 +27,7 @@ file: 0-46
    simple_stmt: 18-34
     del_stmt: 18-34
      Keyword: 18-21 "del"
-     targets: 22-34
+     del_targets: 22-34
       name_definition: 22-25
        Name: 22-25 "foo"
       Keyword: 25-26 ","
@@ -43,7 +43,7 @@ file: 0-46
    simple_stmt: 35-45
     del_stmt: 35-45
      Keyword: 35-38 "del"
-     targets: 39-45
+     del_targets: 39-45
       t_primary: 39-45
        atom: 39-42
         Name: 39-42 "foo"
