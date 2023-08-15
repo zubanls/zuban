@@ -1,5 +1,7 @@
 # Next up
 testOverloadDetectsPossibleMatchesWithGenerics
+testNewSyntaxWithDict
+testNewSyntaxSpecialAssign
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -2024,6 +2026,7 @@ testMemberRedefinitionDefinedInClass
 testDecorateOverloadedFunction
 testErrorCodeAlreadyDefined
 testNewAnalyzerEnumRedefinition
+testNewSyntaxBasics
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
@@ -2763,6 +2766,8 @@ testInvalidLvalueWithExplicitType3
 testInvalidWithTarget
 testInvalidTypeAnnotation2
 testDelMultipleThingsInvalid
+# "invalid syntax"
+testNewSyntaxSyntaxError
 
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException
@@ -2832,6 +2837,9 @@ testExpressionRefersToTypeVariable
 
 # Won't support for now: "Use `from typing_extensions import _FutureFeatureFixture` instead"
 testTypingExtensionsSuggestion
+
+# Probably won't support: invalid version numbers for # flags: --python-version 3.99
+testFeatureVersionSuggestion
 
 # Probably won't support: typing._promote
 testListWithDucktypeCompatibility
