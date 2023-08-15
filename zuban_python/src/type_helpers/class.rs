@@ -1111,8 +1111,13 @@ impl<'db: 'a, 'a> Class<'a> {
         } {
             if name.starts_with('_') {
                 if name == "__members__" {
-                    NodeRef::new(self.node_ref.file, *name_index)
-                        .add_issue(i_s, IssueType::EnumMembersAttributeOverwritten)
+                    let name_node_ref = NodeRef::new(self.node_ref.file, *name_index);
+                    if !name_node_ref
+                        .as_name()
+                        .is_assignment_annotation_without_definition()
+                    {
+                        name_node_ref.add_issue(i_s, IssueType::EnumMembersAttributeOverwritten)
+                    }
                 }
                 continue;
             }

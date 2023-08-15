@@ -438,6 +438,19 @@ impl<'db> Name<'db> {
             NameParent::Other
         }
     }
+
+    pub fn is_assignment_annotation_without_definition(&self) -> bool {
+        let node = self
+            .node
+            .parent_until(&[Nonterminal(single_target), Nonterminal(stmt)])
+            .expect("There should always be a stmt");
+        node.is_type(Nonterminal(single_target)) && {
+            debug_assert_eq!(node.parent().unwrap().type_(), Nonterminal(assignment));
+            let annotation_node = node.next_sibling().unwrap();
+            debug_assert_eq!(annotation_node.type_(), Nonterminal(annotation));
+            annotation_node.next_sibling().is_none()
+        }
+    }
 }
 
 #[derive(Debug)]
