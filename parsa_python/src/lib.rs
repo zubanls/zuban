@@ -173,8 +173,8 @@ create_grammar!(
     // Except statement
     // ----------------
 
-    except_block: except_clause ":" block
-    except_clause: "except" [expression ["as" name_definition]]
+    except_block: "except" [except_expression] ":" block
+    except_expression: expression ["as" name_definition]
     finally_block: "finally" ":" block
 
     // Match statement

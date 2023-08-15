@@ -1223,21 +1223,21 @@ impl<'db> ExceptBlock<'db> {
         Option<NameDefinition<'db>>,
         Block<'db>,
     ) {
-        // except_clause ":" block
-        let mut iterator = self.node.iter_children();
+        // "except" [except_expression] ":" block
+        let mut iterator = self.node.iter_children().skip(1);
         let except_clause_ = iterator.next().unwrap();
-        iterator.next();
-        let block_ = Block::new(iterator.next().unwrap());
+        if except_clause_.is_leaf() {
+            return (None, None, Block::new(iterator.next().unwrap()));
+        } else {
+            iterator.next();
+            let block_ = Block::new(iterator.next().unwrap());
 
-        // except_clause: "except" [expression ["as" name_definition]]
-        let mut clause_iterator = except_clause_.iter_children();
-        clause_iterator.next();
-        if let Some(expr) = clause_iterator.next() {
+            // except_expression: [expression ["as" name_definition]]
+            let mut clause_iterator = except_clause_.iter_children();
+            let expr = clause_iterator.next().unwrap();
             clause_iterator.next();
             let as_name = clause_iterator.next().map(NameDefinition::new);
             (Some(Expression::new(expr)), as_name, block_)
-        } else {
-            (None, None, block_)
         }
     }
 }
