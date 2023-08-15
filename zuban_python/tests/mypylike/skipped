@@ -2,6 +2,7 @@
 testOverloadDetectsPossibleMatchesWithGenerics
 testNewSyntaxWithDict
 testNewSyntaxSpecialAssign
+testNarrowedVariableInNestedModifiedInWalrus
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -81,6 +82,7 @@ testDictWithStarStarExpr
 testDictIncompatibleTypeErrorMessage
 testDictIncompatibleKeyVerbosity
 testDictIncompatibleValueVerbosity
+testDictExpressionErrorLocations
 # star star in dict literal
 testDictStarInference
 testDictStarAnyKeyJoinValue
@@ -657,6 +659,8 @@ testIterableProtocolOnClass
 testIterableProtocolOnMetaclass
 # comprehensions Scoping
 testListComprehensionSpecialScoping
+# "Assignment expression within a comprehension cannot be used in a class body"
+testNoCrashOnAssignmentExprClass
 
 # lambda
 testIncrementalWithDecorators
@@ -1804,6 +1808,7 @@ testNarrowedVariableInNestedFunctionBasic
 testNarrowedVariableInNestedFunctionMore1
 testNarrowedVariableInNestedFunctionMore2
 testAliasRecursiveUnpackMultiple
+testNarrowOnSelfInGeneric
 # narrowing if is
 testEnumReachabilityChecksBasic
 testEnumReachabilityChecksWithOrdering
@@ -2027,6 +2032,7 @@ testDecorateOverloadedFunction
 testErrorCodeAlreadyDefined
 testNewAnalyzerEnumRedefinition
 testNewSyntaxBasics
+testDecoratedClassLine
 # redefinition overload
 testRedefinedOverloadedFunction
 testFakeOverloadCrash
@@ -2241,6 +2247,8 @@ testEmptyBodyProhibitedFunction
 testEmptyBodyProhibitedMethodNonAbstract
 testEmptyBodyProhibitedPropertyNonAbstract
 testEmptyBodyNoteABCMeta
+# "Use "-> None" if function does not return a value"
+testDecoratedFunctionLine
 
 # "Cannot call function of unknown type"
 testUnknownFunctionNotCallable
@@ -2507,6 +2515,11 @@ testErrorCodeWarnUnusedIgnores6_NoDetailWhenSingleErrorCode
 testMethodAssignCoveredByAssignmentUnused
 testUnusedIgnoreTryExcept
 testUnusedIgnoreEnableCode
+testIgnoreDecoratedFunction1
+testIgnoreScopeUnused1
+testIgnoreScopeUnused2
+testIgnoreScopeUnused3
+testUnusedIgnoreVersionCheck
 # --warn-unused-ignores whole module
 testIgnoreWholeModule1
 testImportUnusedIgnore2
