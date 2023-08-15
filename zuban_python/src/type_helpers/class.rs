@@ -334,6 +334,7 @@ impl<'db: 'a, 'a> Class<'a> {
             if was_enum_base {
                 // Check if __new__ was correctly used in combination with enums
                 let mut had_new = 0;
+                let mut enum_spotted = false;
                 for base in self.bases(i_s.db) {
                     if let TypeOrClass::Class(c) = &base {
                         if c.has_customized_enum_new(i_s) {
@@ -349,7 +350,21 @@ impl<'db: 'a, 'a> Class<'a> {
                                     )),
                                 },
                             );
-                            break;
+                        }
+                        let is_enum =
+                            c.use_cached_class_infos(i_s.db).class_type == ClassType::Enum;
+                        if !is_enum && enum_spotted {
+                            self.node_ref.add_issue(
+                                i_s,
+                                IssueType::EnumMixinNotAllowedAfterEnum {
+                                    after: c.format(&FormatData::with_style(
+                                        i_s.db,
+                                        FormatStyle::Qualified,
+                                    )),
+                                },
+                            );
+                        } else if is_enum {
+                            enum_spotted = true;
                         }
                     }
                 }

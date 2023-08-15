@@ -169,6 +169,7 @@ pub(crate) enum IssueType {
     EnumReusedMemberName { enum_name: Box<str>, member_name: Box<str> },
     EnumWithMembersNotExtendable  { name: Box<str> },
     EnumMultipleNew { extra: Box<str> },
+    EnumMixinNotAllowedAfterEnum { after: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -460,6 +461,9 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumMultipleNew { extra } => format!(
                 r#"Only a single data type mixin is allowed for Enum subtypes, found extra "{extra}""#
+            ),
+            EnumMixinNotAllowedAfterEnum { after } => format!(
+                r#"No non-enum mixin classes are allowed after "{after}""#
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
