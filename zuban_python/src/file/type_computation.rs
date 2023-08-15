@@ -242,6 +242,7 @@ pub enum CalculatedBaseClass {
     NewNamedTuple,
     Generic,
     Invalid,
+    InvalidEnum(Rc<Enum>),
     Unknown,
 }
 
@@ -451,6 +452,7 @@ impl<'db: 'x + 'file, 'file, 'i_s, 'c, 'x> TypeComputation<'db, 'file, 'i_s, 'c>
             TypeContent::ParamSpec(_) | TypeContent::InvalidVariable(_) => {
                 CalculatedBaseClass::Invalid
             }
+            TypeContent::DbType(DbType::Enum(e)) => CalculatedBaseClass::InvalidEnum(e),
             _ => {
                 let db_type =
                     self.as_db_type(calculated, NodeRef::new(self.inference.file, expr.index()));

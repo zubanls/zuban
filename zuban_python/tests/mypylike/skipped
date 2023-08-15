@@ -515,7 +515,6 @@ testEnumFinalValues
 testEnumFinalSpecialProps
 # "Cannot extend enum with existing members: "NonEmptyEnum""
 testEnumAreStillFinalAfterCache
-testEnumImplicitlyFinalForSubclassing
 testEnumExplicitlyAndImplicitlyFinal
 testEnumFinalSubtypingMethodAndValueSpecialCase
 testFinalEnumWithClassDef

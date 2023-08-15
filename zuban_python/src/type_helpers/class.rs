@@ -514,6 +514,15 @@ impl<'db: 'a, 'a> Class<'a> {
                             CalculatedBaseClass::Unknown => {
                                 incomplete_mro = true;
                             }
+                            CalculatedBaseClass::InvalidEnum(enum_) => {
+                                NodeRef::new(self.node_ref.file, n.index()).add_issue(
+                                    i_s,
+                                    IssueType::EnumWithMembersNotExtendable {
+                                        name: enum_.name.as_str(i_s.db).into(),
+                                    },
+                                );
+                                incomplete_mro = true;
+                            }
                             CalculatedBaseClass::Invalid => {
                                 NodeRef::new(self.node_ref.file, n.index())
                                     .add_issue(i_s, IssueType::InvalidBaseClass);

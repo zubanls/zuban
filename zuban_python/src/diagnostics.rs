@@ -167,6 +167,7 @@ pub(crate) enum IssueType {
     EnumIndexShouldBeAString { actual: Box<str> },
     EnumCannotBeGeneric,
     EnumReusedMemberName { enum_name: Box<str>, member_name: Box<str> },
+    EnumWithMembersNotExtendable  { name: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -452,6 +453,9 @@ impl<'db> Diagnostic<'db> {
             EnumCannotBeGeneric => "Enum class cannot be generic".to_string(),
             EnumReusedMemberName { enum_name, member_name } => format!(
                 r#"Attempted to reuse member name "{member_name}" in Enum definition "{enum_name}""#
+            ),
+            EnumWithMembersNotExtendable { name } => format!(
+                r#"Cannot extend enum with existing members: "{name}""#
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
