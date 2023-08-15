@@ -120,6 +120,11 @@ impl<'a> TypingType<'a> {
                 ))),
                 _ => todo!(),
             },
+            DbType::Tuple(tup) => i_s
+                .db
+                .python_state
+                .tuple_class(i_s.db, tup)
+                .lookup(i_s, node_ref, name, kind),
             _ => todo!("{name} on {:?}", self.db_type),
         }
     }

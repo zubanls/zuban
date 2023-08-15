@@ -1,5 +1,4 @@
 # Next up
-testTupleWithDifferentArgsStub
 
 # --new-type-inference
 testInferenceAgainstGenericCallable
