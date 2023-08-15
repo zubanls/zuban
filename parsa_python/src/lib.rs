@@ -1,4 +1,6 @@
 // Heavily inspired by https://docs.python.org/3.10/reference/grammar.html
+// and adapted to Python 3.13
+
 #![recursion_limit = "2048"]
 mod tokenizer;
 
@@ -15,8 +17,12 @@ create_grammar!(
         Name: "match" | "case" | "_"
     ]
 
+    // STARTING RULES
+    // ==============
     file: stmt* Endmarker
 
+    // GENERAL STATEMENTS
+    // ==================
     stmt: @error_recovery
           simple_stmts | Newline
         | if_stmt | while_stmt | for_stmt | try_stmt | with_stmt
@@ -28,6 +34,10 @@ create_grammar!(
         | assignment | star_expressions | del_stmt | pass_stmt
         | import_name | import_from | global_stmt | nonlocal_stmt | assert_stmt
         | break_stmt | continue_stmt | return_stmt | raise_stmt | yield_expr
+    async_stmt: "async" (function_def | with_stmt | for_stmt)
+
+    // SIMPLE STATEMENTS
+    // =================
     assignment:
         | (star_targets "=" )+ (yield_expr | star_expressions)
         | single_target annotation ["=" (yield_expr | star_expressions)]
@@ -35,39 +45,140 @@ create_grammar!(
 
     augassign: ("+=" | "-=" | "*=" | "@=" | "/=" | "%=" | "&=" | "|=" | "^=" |
                 "<<=" | ">>=" | "**=" | "//=")
-    del_stmt: "del" targets
-    pass_stmt: "pass"
-    break_stmt: "break"
-    continue_stmt: "continue"
     return_stmt: "return" [star_expressions]
     raise_stmt: "raise" [expression ["from" expression]]
     global_stmt: "global" ",".Name+
     nonlocal_stmt: "nonlocal" ",".Name+
+    del_stmt: "del" targets
     assert_stmt: "assert" expression ["," expression]
+    pass_stmt: "pass"
+    break_stmt: "break"
+    continue_stmt: "continue"
 
+    // Import statements
+    // -----------------
     import_name: "import" dotted_as_names
     // note below: the ("." | "...") is necessary because "..." is tokenized as ELLIPSIS
     import_from:
         | "from" ("." | "...")* dotted_name "import" import_from_targets
         | "from" ("." | "...")+ "import" import_from_targets
+    import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
+    import_from_as_name: Name "as" name_definition | name_definition
     dotted_as_names: ",".dotted_as_name+
     dotted_as_name: dotted_name "as" name_definition | name_definition ["." dotted_name]
     dotted_name: [dotted_name "."] Name
-    import_from_targets: "*" | "(" ",".import_from_as_name+ ","? ")" | ",".import_from_as_name+
-    import_from_as_name: Name "as" name_definition | name_definition
 
-    async_stmt: "async" (function_def | with_stmt | for_stmt)
+    // COMPOUND STATEMENTS
+    // ===================
+
+    // Common elements
+    // ---------------
+
+    block: simple_stmts | Newline Indent stmt+ Dedent
+    decorators: decorator+
+    decorator: "@" named_expression Newline
+    decorated: decorators (class_def | function_def | async_function_def)
+
+    // Class definitions
+    // -----------------
+
+    class_def: "class" name_definition ["(" [arguments] ")"] ":" block
+
+    // Function definitions
+    // --------------------
+
+    async_function_def: "async" function_def
+    function_def: "def" name_definition function_def_parameters return_annotation? ":" block
+    return_annotation: "->" expression
+
+    // Function parameters
+    // -------------------
+
+    function_def_parameters: "(" [parameters] ")"
+
+    parameters:
+        // no-default
+        | ",".param_no_default+ ["," [star_etc]]
+        // no-default slash no-default default
+        | ",".param_no_default+ "," "/" ["," [
+                ",".param_no_default+ [
+                    "," [
+                             ",".param_with_default+ ["," [star_etc]]
+                             | [star_etc]
+                        ]]
+                | star_etc
+            ]]
+        // no-default slash default
+        | ",".param_no_default+ "," "/" ["," [
+                ",".param_with_default+ ["," [star_etc]]
+                | star_etc
+            ]]
+        // no-default default
+        | ",".param_no_default+ "," ",".param_with_default+ (
+            ["," [star_etc]]
+            // no-default default slash default
+            | "," "/" ["," [
+                ",".param_with_default+ ["," [star_etc]]
+                | star_etc
+            ]]
+        )
+        // default slash default
+        | ",".param_with_default+ "," "/" ["," [
+                ",".param_with_default+ ["," [star_etc]]
+                | star_etc
+            ]]
+        // default
+        | ",".param_with_default+ ["," [star_etc]]
+        // just star args
+        | star_etc
+    star_etc:
+        | starred_param ["," ",".param_maybe_default+] ["," [double_starred_param ","?]]
+        | "*" "," ",".param_maybe_default+ ["," [double_starred_param ","?]]
+        | double_starred_param [","]
+    param_no_default: name_definition annotation? !"="
+    param_with_default: name_definition annotation? "=" expression
+    param_maybe_default: name_definition annotation? ["=" expression ]
+    starred_param: "*" name_definition annotation?
+    double_starred_param: "**" name_definition annotation?
+    annotation: ":" expression
+
+    // If statement
+    // ------------
+
     if_stmt: "if" named_expression ":" block ("elif" named_expression ":" block)* else_block?
     else_block: "else" ":" block
+
+    // While statement
+    // ---------------
+
     while_stmt: "while" named_expression ":" block else_block?
+
+    // For statement
+    // -------------
+
     for_stmt: "for" star_targets "in" star_expressions ":" block else_block?
-    try_stmt: "try" ":" block (except_block+ else_block? finally_block? | finally_block)
-    except_block: except_clause ":" block
-    except_clause: "except" [expression ["as" name_definition]]
-    finally_block: "finally" ":" block
+
+    // With statement
+    // --------------
+
     with_stmt: "with" with_items ":" block
     with_items: "(" ",".with_item+ ","? ")" | ",".with_item+
     with_item: expression ["as" star_target]
+
+    // Try statement
+    // -------------
+
+    try_stmt: "try" ":" block (except_block+ else_block? finally_block? | finally_block)
+
+    // Except statement
+    // ----------------
+
+    except_block: except_clause ":" block
+    except_clause: "except" [expression ["as" name_definition]]
+    finally_block: "finally" ":" block
+
+    // Match statement
+    // ---------------
 
     match_stmt: "match" subject_expr ":" Newline Indent case_block+ Dedent
     subject_expr:
@@ -118,18 +229,36 @@ create_grammar!(
     keyword_patterns: ",".keyword_pattern+
     keyword_pattern: Name "=" pattern
 
-    async_function_def: "async" function_def
-    function_def: "def" name_definition function_def_parameters return_annotation? ":" block
-    function_def_parameters: "(" [parameters] ")"
-    return_annotation: "->" expression
+    // Type statement
+    // ---------------
+    //type_alias: "type" Name [type_params] "=" expression
 
-    decorator: "@" named_expression Newline
-    decorators: decorator+
-    decorated: decorators (class_def | function_def | async_function_def)
 
-    class_def: "class" name_definition ["(" [arguments] ")"] ":" block
+    // Type parameter declaration
+    // --------------------------
+    /*
+    type_params: "[" type_param_seq  "]"
 
-    block: simple_stmts | Newline Indent stmt+ Dedent
+    type_param_seq: ",".type_param+ [","]
+
+    type_param:
+        | Name [type_param_bound]
+        | "*" Name ":" expression
+        | "*" Name
+        | "**" Name ":" expression
+        | "**" Name
+
+    type_param_bound: ":" expression
+    */
+
+    // EXPRESSIONS
+    // -----------
+
+    expressions: ",".expression+ [","]
+    expression: disjunction ["if" disjunction "else" expression] | lambda
+
+    yield_expr: "yield" [yield_from | star_expressions]
+    yield_from: "from" expression
 
     star_expressions: ",".(expression|star_expression)+ [","]
     star_expression: "*" bitwise_or
@@ -138,56 +267,53 @@ create_grammar!(
 
     named_expression: name_definition ":=" expression | expression
 
-    expressions: ",".expression+ [","]
-    expression: disjunction ["if" disjunction "else" expression] | lambda
+    disjunction:? [disjunction "or"] conjunction
+    conjunction:? [conjunction "and"] inversion
+    inversion:? "not" inversion | comparison
+
+    // Comparison operators
+    // --------------------
+
+    comparison:? bitwise_or (comp_op bitwise_or)*
+    comp_op: "<"|">"|"=="|">="|"<="|"!="|"in"|"not" "in"|"is"|"is" "not"
+
+    // Bitwise operators
+    // -----------------
+
+    bitwise_or:?   [bitwise_or "|"] bitwise_xor
+    bitwise_xor:? [bitwise_xor "^"] bitwise_and
+    bitwise_and:? [bitwise_and "&"] shift_expr
+    shift_expr:?  [shift_expr ("<<"|">>")] sum
+
+    // Arithmetic operators
+    // --------------------
+
+    sum:? sum ("+"|"-") term | term
+    term:? [term ("*"|"@"|"/"|"%"|"//")] factor
+    factor:? ("+"|"-"|"~") factor | power
+    power:? await_primary ["**" factor]
+
+    // Primary elements
+    // ----------------
+
+    await_primary:? ["await"] primary
+    primary:?
+          primary "." Name
+        | primary "(" [arguments | comprehension] ")"
+        | primary "[" slices "]"
+        | atom
+    slices:? ",".(slice | named_expression)+ [","]
+    slice: expression? ":" expression? [":" expression?]
+    atom:
+          "(" [tuple_content | yield_expr | named_expression | comprehension] ")"
+        | "[" [star_named_expressions | comprehension] "]"
+        | "{" [dict_content | star_named_expressions | dict_comprehension | comprehension] "}"
+        | Name | Number | strings | bytes | "..." | "None" | "True" | "False"
+
+    // Lambda functions
+    // ----------------
 
     lambda: "lambda" [lambda_parameters] ":" expression
-
-    parameters:
-        // no-default
-        | ",".param_no_default+ ["," [star_etc]]
-        // no-default slash no-default default
-        | ",".param_no_default+ "," "/" ["," [
-                ",".param_no_default+ [
-                    "," [
-                             ",".param_with_default+ ["," [star_etc]]
-                             | [star_etc]
-                        ]]
-                | star_etc
-            ]]
-        // no-default slash default
-        | ",".param_no_default+ "," "/" ["," [
-                ",".param_with_default+ ["," [star_etc]]
-                | star_etc
-            ]]
-        // no-default default
-        | ",".param_no_default+ "," ",".param_with_default+ (
-            ["," [star_etc]]
-            // no-default default slash default
-            | "," "/" ["," [
-                ",".param_with_default+ ["," [star_etc]]
-                | star_etc
-            ]]
-        )
-        // default slash default
-        | ",".param_with_default+ "," "/" ["," [
-                ",".param_with_default+ ["," [star_etc]]
-                | star_etc
-            ]]
-        // default
-        | ",".param_with_default+ ["," [star_etc]]
-        // just star args
-        | star_etc
-    star_etc:
-        | starred_param ["," ",".param_maybe_default+] ["," [double_starred_param ","?]]
-        | "*" "," ",".param_maybe_default+ ["," [double_starred_param ","?]]
-        | double_starred_param [","]
-    param_no_default: name_definition annotation? !"="
-    param_with_default: name_definition annotation? "=" expression
-    param_maybe_default: name_definition annotation? ["=" expression ]
-    starred_param: "*" name_definition annotation?
-    double_starred_param: "**" name_definition annotation?
-    annotation: ":" expression
 
     // Lambda params is basically a repetition of normal params without annotations
     lambda_parameters:
@@ -235,48 +361,39 @@ create_grammar!(
     lambda_starred_param: "*" name_definition
     lambda_double_starred_param: "**" name_definition
 
-    disjunction:? [disjunction "or"] conjunction
-    conjunction:? [conjunction "and"] inversion
-    inversion:? "not" inversion | comparison
-    comparison:? bitwise_or (comp_op bitwise_or)*
-    comp_op: "<"|">"|"=="|">="|"<="|"!="|"in"|"not" "in"|"is"|"is" "not"
-    bitwise_or:?   [bitwise_or "|"] bitwise_xor
-    bitwise_xor:? [bitwise_xor "^"] bitwise_and
-    bitwise_and:? [bitwise_and "&"] shift_expr
-    shift_expr:?  [shift_expr ("<<"|">>")] sum
-    sum:? sum ("+"|"-") term | term
-    term:? [term ("*"|"@"|"/"|"%"|"//")] factor
-    factor:? ("+"|"-"|"~") factor | power
-    power:? await_primary ["**" factor]
-    await_primary:? ["await"] primary
-    primary:?
-          primary "." Name
-        | primary "(" [arguments | comprehension] ")"
-        | primary "[" slices "]"
-        | atom
-    atom:
-          "(" [tuple_content | yield_expr | named_expression | comprehension] ")"
-        | "[" [star_named_expressions | comprehension] "]"
-        | "{" [dict_content | star_named_expressions | dict_comprehension | comprehension] "}"
-        | Name | Number | strings | bytes | "..." | "None" | "True" | "False"
-    slices:? ",".(slice | named_expression)+ [","]
-    slice: expression? ":" expression? [":" expression?]
+    // LITERALS
+    // ========
+
+    fstring: FStringStart fstring_content* FStringEnd
+    fstring_content:? FStringString | fstring_expr
+    fstring_conversion: "!" Name
+    fstring_expr: "{" expressions ["="] [ fstring_conversion ] [ fstring_format_spec ] "}"
+    fstring_format_spec: ":" fstring_content*
+
+    strings: (String | fstring)+
+    bytes: Bytes+
+
+    tuple_content: star_named_expression "," [star_named_expressions]
+
+    // Dicts
+    // -----
+
+    dict_content: ",".(dict_starred | dict_key_value)+ [","]
+    dict_starred: "**" bitwise_or
+    dict_key_value: expression ":" expression
+
+    // Comprehensions & Generators
+    // ---------------------------
 
     comprehension: named_expression for_if_clauses
     for_if_clauses: async_for_if_clause+
     async_for_if_clause:? ["async"] sync_for_if_clause
     sync_for_if_clause: "for" star_targets "in" disjunction comp_if*
     comp_if: "if" disjunction
-
     dict_comprehension: dict_key_value for_if_clauses
-    dict_content: ",".(dict_starred | dict_key_value)+ [","]
-    dict_starred: "**" bitwise_or
-    dict_key_value: expression ":" expression
 
-    tuple_content: star_named_expression "," [star_named_expressions]
-
-    yield_expr: "yield" [yield_from | star_expressions]
-    yield_from: "from" expression
+    // FUNCTION CALL ARGUMENTS
+    // =======================
 
     arguments:
         | ",".(starred_expression | named_expression !"=")+ ["," kwargs?]
@@ -285,9 +402,15 @@ create_grammar!(
         | ",".(kwarg | starred_expression)+ ","?
         | ",".(kwarg | starred_expression)+ "," ",".(kwarg | double_starred_expression)+ ","?
         | ",".(kwarg | double_starred_expression)+ ","?
-    kwarg: Name "=" expression
     starred_expression: "*" expression
     double_starred_expression: "**" expression
+    kwarg: Name "=" expression
+
+    // ASSIGNMENT TARGETS
+    // ==================
+
+    // Generic targets
+    // ---------------
 
     star_targets: ",".star_target+ [","]
     star_target:? "*"? (t_primary | star_target_brackets | name_definition)
@@ -307,13 +430,6 @@ create_grammar!(
     t_atom:? name_definition | "(" [targets] ")" | "[" [targets] "]"
     name_definition: Name
 
-    strings: (String | fstring)+
-    bytes: Bytes+
-    fstring: FStringStart fstring_content* FStringEnd
-    fstring_content:? FStringString | fstring_expr
-    fstring_conversion: "!" Name
-    fstring_expr: "{" expressions ["="] [ fstring_conversion ] [ fstring_format_spec ] "}"
-    fstring_format_spec: ":" fstring_content*
 );
 
 pub fn parse(code: Box<str>) -> PyTree {
