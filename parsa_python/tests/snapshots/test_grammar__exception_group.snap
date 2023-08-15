@@ -1,0 +1,101 @@
+---
+source: parsa_python/tests/test_grammar.rs
+expression: tree_to_string(tree)
+---
+file: 0-115
+ stmt: 1-115
+  try_stmt: 1-115
+   Keyword: 1-4 "try"
+   Keyword: 4-5 ":"
+   block: 5-14
+    Newline: 5-6 "\n"
+    Indent: 10-10 ""
+    stmt: 10-14
+     simple_stmts: 10-14
+      simple_stmt: 10-13
+       star_expressions: 10-13
+        expression: 10-13
+         atom: 10-13
+          Keyword: 10-13 "..."
+      Newline: 13-14 "\n"
+    Dedent: 14-14 ""
+   except_star_block: 14-41
+    Keyword: 14-20 "except"
+    Keyword: 20-21 "*"
+    except_expression: 22-31
+     expression: 22-31
+      atom: 22-31
+       Name: 22-31 "SpamError"
+    Keyword: 31-32 ":"
+    block: 32-41
+     Newline: 32-33 "\n"
+     Indent: 37-37 ""
+     stmt: 37-41
+      simple_stmts: 37-41
+       simple_stmt: 37-40
+        star_expressions: 37-40
+         expression: 37-40
+          atom: 37-40
+           Keyword: 37-40 "..."
+       Newline: 40-41 "\n"
+     Dedent: 41-41 ""
+   except_star_block: 41-72
+    Keyword: 41-47 "except"
+    Keyword: 47-48 "*"
+    except_expression: 49-62
+     expression: 49-57
+      atom: 49-57
+       Name: 49-57 "FooError"
+     Keyword: 58-60 "as"
+     name_definition: 61-62
+      Name: 61-62 "e"
+    Keyword: 62-63 ":"
+    block: 63-72
+     Newline: 63-64 "\n"
+     Indent: 68-68 ""
+     stmt: 68-72
+      simple_stmts: 68-72
+       simple_stmt: 68-71
+        star_expressions: 68-71
+         expression: 68-71
+          atom: 68-71
+           Keyword: 68-71 "..."
+       Newline: 71-72 "\n"
+     Dedent: 72-72 ""
+   except_star_block: 72-115
+    Keyword: 72-78 "except"
+    Keyword: 78-79 "*"
+    except_expression: 80-105
+     expression: 80-100
+      atom: 80-100
+       Keyword: 80-81 "("
+       tuple_content: 81-99
+        named_expression: 81-89
+         expression: 81-89
+          atom: 81-89
+           Name: 81-89 "BarError"
+        Keyword: 89-90 ","
+        star_named_expressions: 91-99
+         named_expression: 91-99
+          expression: 91-99
+           atom: 91-99
+            Name: 91-99 "BazError"
+       Keyword: 99-100 ")"
+     Keyword: 101-103 "as"
+     name_definition: 104-105
+      Name: 104-105 "e"
+    Keyword: 105-106 ":"
+    block: 106-115
+     Newline: 106-107 "\n"
+     Indent: 111-111 ""
+     stmt: 111-115
+      simple_stmts: 111-115
+       simple_stmt: 111-114
+        star_expressions: 111-114
+         expression: 111-114
+          atom: 111-114
+           Keyword: 111-114 "..."
+       Newline: 114-115 "\n"
+     Dedent: 115-115 ""
+ Endmarker: 115-115 ""
+

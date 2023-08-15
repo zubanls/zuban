@@ -168,12 +168,13 @@ create_grammar!(
     // Try statement
     // -------------
 
-    try_stmt: "try" ":" block (except_block+ else_block? finally_block? | finally_block)
+    try_stmt: "try" ":" block ((except_block+ | except_star_block+) else_block? finally_block? | finally_block)
 
     // Except statement
     // ----------------
 
     except_block: "except" [except_expression] ":" block
+    except_star_block: "except" "*" except_expression ":" block
     except_expression: expression ["as" name_definition]
     finally_block: "finally" ":" block
 

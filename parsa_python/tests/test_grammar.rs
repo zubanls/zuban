@@ -303,4 +303,14 @@ parametrize_snapshots!(
         bR''
         BR'\''
         "#);
+    exception_group: dedent(r#"
+        try:
+            ...
+        except* SpamError:
+            ...
+        except* FooError as e:
+            ...
+        except* (BarError, BazError) as e:
+            ...
+        "#);
 );
