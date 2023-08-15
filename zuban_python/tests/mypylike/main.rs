@@ -10,7 +10,7 @@ use regex::{Captures, Regex, Replacer};
 
 use zuban_python::{DiagnosticConfig, Project, ProjectOptions};
 
-const USE_MYPY_TEST_FILES: [&str; 78] = [
+const USE_MYPY_TEST_FILES: [&str; 79] = [
     // Type checking tests
     "check-generics.test",
     "check-generic-alias.test",
@@ -87,7 +87,7 @@ const USE_MYPY_TEST_FILES: [&str; 78] = [
     //"check-async-await.test",
     //"check-newsyntax.test",
     //"check-python38.test",
-    //"check-python39.test",
+    "check-python39.test",
     //"check-python310.test",
     //"check-python311.test",
     // Incremental type checking (multi pass per test)

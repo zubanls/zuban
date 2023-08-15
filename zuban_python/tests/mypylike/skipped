@@ -82,6 +82,8 @@ testDictIncompatibleValueVerbosity
 # star star in dict literal
 testDictStarInference
 testDictStarAnyKeyJoinValue
+# star tuples
+testStarredExpressionsInForLoop
 
 # Type var constraints not enforced in type alias
 testValidTypeAliasValues
