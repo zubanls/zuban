@@ -170,6 +170,7 @@ pub(crate) enum IssueType {
     EnumWithMembersNotExtendable  { name: Box<str> },
     EnumMultipleMixinNew { extra: Box<str> },
     EnumMixinNotAllowedAfterEnum { after: Box<str> },
+    EnumMembersAttributeOverwritten,
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -465,6 +466,8 @@ impl<'db> Diagnostic<'db> {
             EnumMixinNotAllowedAfterEnum { after } => format!(
                 r#"No non-enum mixin classes are allowed after "{after}""#
             ),
+            EnumMembersAttributeOverwritten =>
+                r#"Assigned "__members__" will be overridden by "Enum" internally"#.to_string(),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
             FunctionMissingReturnAnnotation =>

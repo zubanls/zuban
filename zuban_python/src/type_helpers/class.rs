@@ -1110,6 +1110,10 @@ impl<'db: 'a, 'a> Class<'a> {
                 .iter_on_finished_table()
         } {
             if name.starts_with('_') {
+                if name == "__members__" {
+                    NodeRef::new(self.node_ref.file, *name_index)
+                        .add_issue(i_s, IssueType::EnumMembersAttributeOverwritten)
+                }
                 continue;
             }
             name_indexes.push(name_index);
