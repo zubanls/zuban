@@ -288,8 +288,10 @@ impl<'db: 'a, 'a> Class<'a> {
             node_ref.set_point(Point::new_calculating());
             let mut class_infos = self.calculate_class_infos(i_s);
             let mut was_enum = None;
+            let mut was_enum_base = false;
             if let MetaclassState::Some(link) = class_infos.metaclass {
                 if link == i_s.db.python_state.enum_meta_link() {
+                    was_enum_base = true;
                     if self.use_cached_type_vars(i_s.db).is_some() {
                         self.node_ref.add_issue(i_s, IssueType::EnumCannotBeGeneric);
                     }
@@ -325,6 +327,30 @@ impl<'db: 'a, 'a> Class<'a> {
                 for member in enum_.members.iter() {
                     if member.value.is_some() {
                         infer_value_on_member(i_s, &enum_, member.value);
+                    }
+                }
+            }
+
+            if was_enum_base {
+                // Check if __new__ was correctly used in combination with enums
+                let mut had_new = 0;
+                for base in self.bases(i_s.db) {
+                    if let TypeOrClass::Class(c) = &base {
+                        if c.has_customized_enum_new(i_s) {
+                            had_new += 1;
+                        }
+                        if had_new > 1 {
+                            self.node_ref.add_issue(
+                                i_s,
+                                IssueType::EnumMultipleNew {
+                                    extra: c.format(&FormatData::with_style(
+                                        i_s.db,
+                                        FormatStyle::Qualified,
+                                    )),
+                                },
+                            );
+                            break;
+                        }
                     }
                 }
             }
@@ -1440,6 +1466,7 @@ impl<'db, 'a> MroIterator<'db, 'a> {
     }
 }
 
+#[derive(Debug)]
 pub enum TypeOrClass<'a> {
     Type(Type<'a>),
     Class(Class<'a>),

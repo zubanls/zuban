@@ -516,8 +516,6 @@ testEnumFinalSpecialProps
 # "Cannot override writable attribute "x" with a final one"
 testEnumNotFinalWithMethodsAndUninitializedValues
 testEnumAreStillFinalAfterCache
-# "Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2""
-testEnumWithNewHierarchy
 # "No non-enum mixin classes are allowed after "__main__.Correct2""
 testEnumBaseClassesOrder
 # "Assigned "__members__" will be overridden by "Enum" internally"

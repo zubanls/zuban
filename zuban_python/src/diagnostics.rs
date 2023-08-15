@@ -168,6 +168,7 @@ pub(crate) enum IssueType {
     EnumCannotBeGeneric,
     EnumReusedMemberName { enum_name: Box<str>, member_name: Box<str> },
     EnumWithMembersNotExtendable  { name: Box<str> },
+    EnumMultipleNew { extra: Box<str> },
 
     // From --disallow-untyped-defs
     FunctionIsDynamic,
@@ -456,6 +457,9 @@ impl<'db> Diagnostic<'db> {
             ),
             EnumWithMembersNotExtendable { name } => format!(
                 r#"Cannot extend enum with existing members: "{name}""#
+            ),
+            EnumMultipleNew { extra } => format!(
+                r#"Only a single data type mixin is allowed for Enum subtypes, found extra "{extra}""#
             ),
 
             FunctionIsDynamic => "Function is missing a type annotation".to_string(),
