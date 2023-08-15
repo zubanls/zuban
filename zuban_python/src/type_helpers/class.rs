@@ -332,39 +332,59 @@ impl<'db: 'a, 'a> Class<'a> {
             }
 
             if was_enum_base {
-                // Check if __new__ was correctly used in combination with enums
+                // Check if __new__ was correctly used in combination with enums (1)
+                // Also check if mixins appear after enums (2)
                 let mut had_new = 0;
-                let mut enum_spotted = false;
+                let mut enum_spotted: Option<Class> = None;
                 for base in self.bases(i_s.db) {
                     if let TypeOrClass::Class(c) = &base {
-                        if c.has_customized_enum_new(i_s) {
-                            had_new += 1;
-                        }
-                        if had_new > 1 {
-                            self.node_ref.add_issue(
-                                i_s,
-                                IssueType::EnumMultipleNew {
-                                    extra: c.format(&FormatData::with_style(
-                                        i_s.db,
-                                        FormatStyle::Qualified,
-                                    )),
-                                },
-                            );
-                        }
                         let is_enum =
                             c.use_cached_class_infos(i_s.db).class_type == ClassType::Enum;
-                        if !is_enum && enum_spotted {
-                            self.node_ref.add_issue(
-                                i_s,
-                                IssueType::EnumMixinNotAllowedAfterEnum {
-                                    after: c.format(&FormatData::with_style(
-                                        i_s.db,
-                                        FormatStyle::Qualified,
-                                    )),
-                                },
-                            );
-                        } else if is_enum {
-                            enum_spotted = true;
+                        let has_mixin_enum_new = if is_enum {
+                            c.bases(i_s.db).any(|inner| match inner {
+                                TypeOrClass::Class(inner) => {
+                                    inner.use_cached_class_infos(i_s.db).class_type
+                                        != ClassType::Enum
+                                        && inner.has_customized_enum_new(i_s)
+                                }
+                                TypeOrClass::Type(_) => false,
+                            })
+                        } else {
+                            c.has_customized_enum_new(i_s)
+                        };
+                        // (1)
+                        if has_mixin_enum_new {
+                            had_new += 1;
+                            if had_new > 1 {
+                                self.node_ref.add_issue(
+                                    i_s,
+                                    IssueType::EnumMultipleMixinNew {
+                                        extra: c.format(&FormatData::with_style(
+                                            i_s.db,
+                                            FormatStyle::Qualified,
+                                        )),
+                                    },
+                                );
+                            }
+                        }
+                        // (2)
+                        match enum_spotted {
+                            Some(after) if !is_enum => {
+                                self.node_ref.add_issue(
+                                    i_s,
+                                    IssueType::EnumMixinNotAllowedAfterEnum {
+                                        after: after.format(&FormatData::with_style(
+                                            i_s.db,
+                                            FormatStyle::Qualified,
+                                        )),
+                                    },
+                                );
+                            }
+                            _ => {
+                                if is_enum {
+                                    enum_spotted = Some(*c);
+                                }
+                            }
                         }
                     }
                 }
