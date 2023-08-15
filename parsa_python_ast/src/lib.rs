@@ -252,6 +252,7 @@ create_nonterminal_structs!(
     TryStmt: try_stmt
     ElseBlock: else_block
     ExceptBlock: except_block
+    ExceptStarBlock: except_star_block
     FinallyBlock: finally_block
     MatchStmt: match_stmt
     AsyncStmt: async_stmt
@@ -1183,6 +1184,7 @@ impl<'db> TryStmt<'db> {
 pub enum TryBlockType<'db> {
     Try(Block<'db>),
     Except(ExceptBlock<'db>),
+    ExceptStar(ExceptStarBlock<'db>),
     Else(ElseBlock<'db>),
     Finally(FinallyBlock<'db>),
 }
@@ -1199,6 +1201,8 @@ impl<'db> Iterator for TryBlockIterator<'db> {
                 return Some(TryBlockType::Try(Block::new(n)));
             } else if n.is_type(Nonterminal(except_block)) {
                 return Some(TryBlockType::Except(ExceptBlock::new(n)));
+            } else if n.is_type(Nonterminal(except_star_block)) {
+                return Some(TryBlockType::ExceptStar(ExceptStarBlock::new(n)));
             } else if n.is_type(Nonterminal(else_block)) {
                 return Some(TryBlockType::Else(ElseBlock::new(n)));
             } else if n.is_type(Nonterminal(finally_block)) {
@@ -1225,20 +1229,38 @@ impl<'db> ExceptBlock<'db> {
     ) {
         // "except" [except_expression] ":" block
         let mut iterator = self.node.iter_children().skip(1);
-        let except_clause_ = iterator.next().unwrap();
-        if except_clause_.is_leaf() {
+        let except_expr = iterator.next().unwrap();
+        if except_expr.is_leaf() {
             return (None, None, Block::new(iterator.next().unwrap()));
         } else {
             iterator.next();
             let block_ = Block::new(iterator.next().unwrap());
 
-            // except_expression: [expression ["as" name_definition]]
-            let mut clause_iterator = except_clause_.iter_children();
-            let expr = clause_iterator.next().unwrap();
-            clause_iterator.next();
-            let as_name = clause_iterator.next().map(NameDefinition::new);
-            (Some(Expression::new(expr)), as_name, block_)
+            let (expr, as_name) = unpack_except_expression(except_expr);
+            (Some(expr), as_name, block_)
         }
+    }
+}
+
+fn unpack_except_expression(except_expr: PyNode) -> (Expression, Option<NameDefinition>) {
+    // except_expression: [expression ["as" name_definition]]
+    let mut clause_iterator = except_expr.iter_children();
+    let expr = clause_iterator.next().unwrap();
+    clause_iterator.next();
+    let as_name = clause_iterator.next().map(NameDefinition::new);
+    (Expression::new(expr), as_name)
+}
+
+impl<'db> ExceptStarBlock<'db> {
+    pub fn unpack(&self) -> (Expression<'db>, Option<NameDefinition<'db>>, Block<'db>) {
+        // "except" except_expression ":" block
+        let mut iterator = self.node.iter_children().skip(1);
+        let except_expr = iterator.next().unwrap();
+        iterator.next();
+        let block_ = Block::new(iterator.next().unwrap());
+
+        let (expr, as_name) = unpack_except_expression(except_expr);
+        (expr, as_name, block_)
     }
 }
 

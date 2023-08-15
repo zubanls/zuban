@@ -571,6 +571,7 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                     }
                     self.index_block(block, ordered, false)
                 }
+                TryBlockType::ExceptStar(except_star) => todo!(),
                 TryBlockType::Else(else_) => self.index_block(else_.block(), ordered, false),
                 TryBlockType::Finally(finally) => self.index_block(finally.block(), ordered, false),
             };

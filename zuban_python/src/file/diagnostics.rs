@@ -648,6 +648,7 @@ impl<'db> Inference<'db, '_, '_> {
                     }
                     self.calc_block_diagnostics(block, class, func)
                 }
+                TryBlockType::ExceptStar(_) => todo!(),
                 TryBlockType::Else(b) => self.calc_block_diagnostics(b.block(), class, func),
                 TryBlockType::Finally(b) => self.calc_block_diagnostics(b.block(), class, func),
             }
