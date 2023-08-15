@@ -513,14 +513,9 @@ testAssignEnumAsAttribute
 # "Cannot assign to final attribute "gold""
 testEnumFinalValues
 testEnumFinalSpecialProps
-# "Cannot extend enum with existing members: "NonEmptyEnum""
-testEnumAreStillFinalAfterCache
-testEnumExplicitlyAndImplicitlyFinal
-testEnumFinalSubtypingMethodAndValueSpecialCase
-testFinalEnumWithClassDef
-testEnumNotFinalWithMethodsAndUninitializedValuesStub
-# "Cannot override final attribute "x" (previously declared in base class "NonEmptyEnum")"
+# "Cannot override writable attribute "x" with a final one"
 testEnumNotFinalWithMethodsAndUninitializedValues
+testEnumAreStillFinalAfterCache
 # "Only a single data type mixin is allowed for Enum subtypes, found extra "__main__.Correct2""
 testEnumWithNewHierarchy
 # "No non-enum mixin classes are allowed after "__main__.Correct2""
@@ -1648,6 +1643,7 @@ testTypingSelfAllowAliasUseInFinalClasses
 testFinalClassWithAbstractAttributes
 testFinalClassWithoutABCMeta
 testFinalClassInheritedAbstractAttributes
+testEnumExplicitlyAndImplicitlyFinal
 # Final: "Cannot assign to final name "x""
 testNewAnalyzerFinalReassignModuleReexport
 testNewAnalyzerFinalOverrideInSubclass
