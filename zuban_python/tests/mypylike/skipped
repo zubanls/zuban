@@ -1,5 +1,9 @@
 # Next up
 
+# EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
+testStrEnumCreation
+testRegression12258
+
 # --new-type-inference
 testInferenceAgainstGenericCallable
 testInferenceAgainstGenericCallableNoLeak
