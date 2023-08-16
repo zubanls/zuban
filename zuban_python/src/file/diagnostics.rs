@@ -659,7 +659,10 @@ impl<'db> Inference<'db, '_, '_> {
                     match except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true) {
                         ExceptType::ContainsOnlyBaseExceptions => (),
                         ExceptType::HasExceptionGroup => {
-                            todo!()
+                            NodeRef::new(self.file, expression.index()).add_issue(
+                                self.i_s,
+                                IssueType::ExceptStarIsNotAllowedToBeAnExceptionGroup,
+                            );
                         }
                         ExceptType::Invalid => {
                             NodeRef::new(self.file, expression.index())
@@ -761,13 +764,15 @@ fn except_type(i_s: &InferenceState, t: &DbType, allow_tuple: bool) -> ExceptTyp
         DbType::Type(t) => {
             let db = i_s.db;
             if let Some(cls) = Type::new(t.as_ref()).maybe_class(i_s.db) {
-                if cls.class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link()) {
-                    return ExceptType::ContainsOnlyBaseExceptions;
-                } else if cls.class_link_in_mro(
+                if cls.class_link_in_mro(
                     db,
                     db.python_state.base_exception_group_node_ref().as_link(),
                 ) {
                     return ExceptType::HasExceptionGroup;
+                } else if cls
+                    .class_link_in_mro(db, db.python_state.base_exception_node_ref().as_link())
+                {
+                    return ExceptType::ContainsOnlyBaseExceptions;
                 }
             }
             ExceptType::Invalid

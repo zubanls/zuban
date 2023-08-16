@@ -16,6 +16,7 @@ pub(crate) enum IssueType {
     // Mypy somehow has a different error here than the one for imports.
     ImportAttributeError { module_name: Box<str>, name: Box<str> },
     ModuleAttributeError { name: Box<str> },
+    UnsupportedClassScopedImport,
     NameError { name: Box<str> },
     ArgumentIssue(Box<str>),
     ArgumentTypeIssue(Box<str>),
@@ -46,6 +47,7 @@ pub(crate) enum IssueType {
     NotIndexable { type_: Box<str> },
     TooFewValuesToUnpack { actual: usize, expected: usize },
     StarredExpressionOnlyNoTarget,
+    StmtOutsideFunction { keyword: &'static str },
     OnlyClassTypeApplication,
     InvalidBaseClass,
     InvalidMetaclass,
@@ -123,9 +125,8 @@ pub(crate) enum IssueType {
 
     BaseExceptionExpected,
     BaseExceptionExpectedForRaise,
-    UnsupportedClassScopedImport,
+    ExceptStarIsNotAllowedToBeAnExceptionGroup,
 
-    StmtOutsideFunction { keyword: &'static str },
     TupleIndexOutOfRange,
     NamedTupleExpectsStringLiteralAsFirstArg { name: &'static str },
     StringLiteralExpectedAsNamedTupleItem,
@@ -337,6 +338,8 @@ impl<'db> Diagnostic<'db> {
             ModuleAttributeError{name} => {
                 format!("Module has no attribute {name:?}")
             }
+            UnsupportedClassScopedImport =>
+                "Unsupported class scoped import".to_string(),
             NameError{name} => format!("Name {name:?} is not defined"),
             IncompatibleReturn{got, expected} => {
                 format!("Incompatible return value type (got {got:?}, expected {expected:?})")
@@ -487,6 +490,7 @@ impl<'db> Diagnostic<'db> {
             },
             StarredExpressionOnlyNoTarget =>
                 "Can use starred expression only as assignment target".to_string(),
+            StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
             InvalidBaseClass => format!("Invalid base class {:?}", self.code_under_issue()),
             InvalidMetaclass => format!("Invalid metaclass {:?}", self.code_under_issue()),
             MetaclassMustInheritFromType =>
@@ -646,9 +650,9 @@ impl<'db> Diagnostic<'db> {
                  tuple of exception classes)".to_string(),
             BaseExceptionExpectedForRaise =>
                 "Exception must be derived from BaseException".to_string(),
-            UnsupportedClassScopedImport =>
-                "Unsupported class scoped import".to_string(),
-            StmtOutsideFunction{keyword} => format!("{keyword:?} outside function"),
+            ExceptStarIsNotAllowedToBeAnExceptionGroup =>
+                "Exception type in except* cannot derive from BaseExceptionGroup".to_string(),
+
             TupleIndexOutOfRange => "Tuple index out of range".to_string(),
             NamedTupleExpectsStringLiteralAsFirstArg{name} =>
                 format!("\"{name}()\" expects a string literal as the first argument"),
