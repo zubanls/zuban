@@ -662,6 +662,8 @@ testIterableProtocolOnMetaclass
 testListComprehensionSpecialScoping
 # "Assignment expression within a comprehension cannot be used in a class body"
 testNoCrashOnAssignmentExprClass
+# async comprehensions
+testAsyncGeneratorWithinComprehension
 
 # lambda
 testIncrementalWithDecorators
@@ -2145,7 +2147,6 @@ testAsyncGeneratorExpressionAwait
 testAwaitAnd__await__-only_when_nocache
 testAsyncWith2-only_when_nocache
 test__aiter__and__anext__
-testAsyncGeneratorWithinComprehension
 
 # "Trying to read deleted variable "Foo""
 testDelStmtWithTypeInfo

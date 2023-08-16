@@ -1190,7 +1190,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                 let from = NodeRef::new(self.file, await_.index());
                 Inferred::from_type(get_generator_return_type(
                     self.i_s.db,
-                    self.infer_primary(await_.primary(), &mut ResultContext::Unknown)
+                    self.infer_expression_part(await_.primary(), &mut ResultContext::Unknown)
                         .type_lookup_and_execute(
                             self.i_s,
                             from,

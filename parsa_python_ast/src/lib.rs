@@ -2285,8 +2285,8 @@ impl<'db> RaiseStmt<'db> {
 }
 
 impl<'db> AwaitPrimary<'db> {
-    pub fn primary(&self) -> Primary<'db> {
-        Primary::new(self.node.nth_child(1))
+    pub fn primary(&self) -> ExpressionPart<'db> {
+        ExpressionPart::new(self.node.nth_child(1))
     }
 }
 
