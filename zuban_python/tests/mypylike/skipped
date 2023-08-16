@@ -4,9 +4,9 @@ testNewSyntaxWithDict
 testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
 
-# Exception group issues
+# Except Foo as bar where bar is bound over its existence as a variable
 testTryStarMultiple
-testTryStarTuple
+# Exception group issues
 testTryStarInvalidType
 testTryStarGroupInvalid
 testTryStarGroupInvalidTuple

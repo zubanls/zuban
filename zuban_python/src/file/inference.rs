@@ -151,7 +151,7 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
                                         .exception_group_node_ref()
                                         .as_link(),
                                     ClassGenerics::List(GenericsList::new_generics(Rc::new([
-                                        GenericItem::TypeArgument(instantiate_except(
+                                        GenericItem::TypeArgument(instantiate_except_star(
                                             self.i_s,
                                             inf.as_type(self.i_s).as_ref(),
                                         )),
@@ -2019,6 +2019,46 @@ fn instantiate_except(i_s: &InferenceState, t: &DbType) -> DbType {
             }
             Some(TupleTypeArguments::ArbitraryLength(t)) => {
                 add(i_s, Inferred::from_type(instantiate_except(i_s, t)))
+            }
+            _ => todo!(),
+        })
+        .as_type(i_s)
+        .into_db_type(),
+        DbType::Union(union) => DbType::Union(UnionType::new(
+            union
+                .entries
+                .iter()
+                .map(|e| UnionEntry {
+                    type_: instantiate_except(i_s, &e.type_),
+                    format_index: e.format_index,
+                })
+                .collect(),
+        )),
+        _ => todo!("{t:?}"),
+    }
+}
+
+fn instantiate_except_star(i_s: &InferenceState, t: &DbType) -> DbType {
+    match t {
+        // Diagnostics are calculated when calculating diagnostics, not here.
+        DbType::Type(t) => match t.as_ref() {
+            inner @ DbType::Class(..) => inner.clone(),
+            _ => todo!(),
+        },
+        DbType::Any => DbType::Any,
+        DbType::Tuple(content) => Inferred::gather_union(i_s, |add| match &content.args {
+            Some(TupleTypeArguments::FixedLength(ts)) => {
+                for t in ts.iter() {
+                    match t {
+                        TypeOrTypeVarTuple::Type(t) => {
+                            add(Inferred::from_type(instantiate_except(i_s, t)))
+                        }
+                        TypeOrTypeVarTuple::TypeVarTuple(_) => todo!(),
+                    }
+                }
+            }
+            Some(TupleTypeArguments::ArbitraryLength(t)) => {
+                add(Inferred::from_type(instantiate_except(i_s, t)))
             }
             _ => todo!(),
         })
