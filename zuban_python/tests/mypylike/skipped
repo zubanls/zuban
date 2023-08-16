@@ -10,7 +10,6 @@ testStrEnumCreation
 testRegression12258
 
 # parser issues
-testAssert
 testOperatorAssignment
 
 # --new-type-inference

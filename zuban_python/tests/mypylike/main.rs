@@ -175,6 +175,7 @@ lazy_static::lazy_static! {
         r"(?m)^\[(file|out\d*|builtins|typing|stale\d*|rechecked|targets\d?|delete|triggered|fixture)",
         r"(?: ([^\]]*))?\][ \t]*\n"
     )).unwrap();
+    static ref SPLIT_OUT: Regex = Regex::new(r"(\n|^)==").unwrap();
     static ref REPLACE_COMMENTS: Regex = Regex::new(r"(?m)^--.*$\n").unwrap();
     static ref REPLACE_TUPLE: Regex = Regex::new(r"\bTuple\b").unwrap();
     static ref REPLACE_MYPY: Regex = Regex::new(r"`-?\d+").unwrap();
@@ -388,7 +389,7 @@ impl<'name, 'code> TestCase<'name, 'code> {
                 {
                     assert_eq!(rest, "");
                 }
-                for (i, part) in in_between.split("==\n").enumerate() {
+                for (i, part) in SPLIT_OUT.split(in_between).enumerate() {
                     process_step_part2(i + 1, "out", part, rest)
                 }
             } else {
