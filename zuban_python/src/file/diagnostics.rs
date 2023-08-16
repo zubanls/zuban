@@ -638,11 +638,12 @@ impl<'db> Inference<'db, '_, '_> {
             match b {
                 TryBlockType::Try(block) => self.calc_block_diagnostics(block, class, func),
                 TryBlockType::Except(b) => {
-                    let (exception, _name_def, block) = b.unpack();
-                    if let Some(exception) = exception {
-                        let inf = self.infer_expression(exception);
+                    let (except_expression, block) = b.unpack();
+                    if let Some(except_expression) = except_expression {
+                        let expression = except_expression.expression();
+                        let inf = self.infer_expression(expression);
                         if !is_valid_except_type(self.i_s, inf.as_type(self.i_s).as_ref(), true) {
-                            NodeRef::new(self.file, exception.index())
+                            NodeRef::new(self.file, expression.index())
                                 .add_issue(self.i_s, IssueType::BaseExceptionExpected);
                         }
                     }

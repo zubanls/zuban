@@ -560,8 +560,9 @@ impl<'db, 'a> NameBinder<'db, 'a> {
             let latest = match b {
                 TryBlockType::Try(block) => self.index_block(block, ordered, false),
                 TryBlockType::Except(except) => {
-                    let (expression, name_def, block) = except.unpack();
-                    if let Some(expression) = expression {
+                    let (except_expression, block) = except.unpack();
+                    if let Some(except_expression) = except_expression {
+                        let (expression, name_def) = except_expression.unpack();
                         let latest = self.index_non_block_node(&expression, ordered, false);
                         latest_return_or_yield =
                             self.merge_latest_return_or_yield(latest_return_or_yield, latest);

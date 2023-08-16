@@ -120,20 +120,27 @@ impl<'db, 'file, 'i_s> Inference<'db, 'file, 'i_s> {
             },
             StmtContent::TryStmt(try_stmt) => {
                 for block in try_stmt.iter_blocks() {
-                    if let TryBlockType::Except(except_clause) = block {
-                        if let (Some(expr), Some(name_def), _) = except_clause.unpack() {
-                            let inf = self.infer_expression(expr);
-                            Inferred::from_type(instantiate_except(
-                                self.i_s,
-                                inf.as_type(self.i_s).as_ref(),
-                            ))
-                            .maybe_save_redirect(
-                                self.i_s,
-                                self.file,
-                                name_def.index(),
-                                true,
-                            );
+                    match block {
+                        TryBlockType::Except(except_block) => {
+                            if let (Some(except_expr), _) = except_block.unpack() {
+                                let (expr, name_def) = except_expr.unpack();
+                                if let Some(name_def) = name_def {
+                                    let inf = self.infer_expression(expr);
+                                    Inferred::from_type(instantiate_except(
+                                        self.i_s,
+                                        inf.as_type(self.i_s).as_ref(),
+                                    ))
+                                    .maybe_save_redirect(
+                                        self.i_s,
+                                        self.file,
+                                        name_def.index(),
+                                        true,
+                                    );
+                                }
+                            }
                         }
+                        TryBlockType::ExceptStar(_) => todo!(),
+                        _ => (),
                     }
                 }
             }
