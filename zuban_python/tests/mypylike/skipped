@@ -5,6 +5,11 @@ testNewSyntaxSpecialAssign
 testNarrowedVariableInNestedModifiedInWalrus
 testNewNamedTupleWithMethods
 testWhitespaceInStringLiteralType
+# used to be parser issues
+testTwoStarExpressionsInForStmt
+testTwoStarExpressionsInGeneratorExpr
+testInvalidDel3
+testInvalidLvalueWithExplicitType3
 
 # EnumMeta does not inherit from ABCMeta anymore: https://github.com/python/typeshed/pull/10577
 testStrEnumCreation
@@ -2778,25 +2783,23 @@ testContinueOutsideLoop
 testInvalidGlobalDecl
 testAssignToTypeDef
 
-# parser shit
-testInvalidLvalues*
-testTwoStarExpressionsInForStmt
-testTwoStarExpressionsInGeneratorExpr
-testStarExpressionRhs
-testStarExpressionInExp
-testInvalidDel1
-testInvalidDel2
-testInvalidDel3
-testInvalidTypeDeclaration
-testIndexedAssignmentWithTypeDeclaration
-testInvalidLvalueWithExplicitType
-testInvalidLvalueWithExplicitType3
-testInvalidWithTarget
-testInvalidTypeAnnotation2
-testDelMultipleThingsInvalid
 # "invalid syntax. Perhaps you forgot a comma?"
 testNotAsBinaryOp
 testBinaryNegAsBinaryOp
+# "cannot delete function call"
+testInvalidDel1
+# "cannot delete expression"
+testInvalidDel2
+# "cannot assign to function call here. Maybe you meant '==' instead of '='?"
+testInvalidLvalueWithExplicitType
+testInvalidTypeDeclaration
+# "Cannot assign to literal"
+testInvalidWithTarget
+# "cannot assign to literal here. Maybe you meant '==' instead of '='?"
+testInvalidLvalues*
+testInvalidTypeAnnotation2
+# "cannot delete expression"
+testDelMultipleThingsInvalid
 
 # "Not all union combinations were tried because there are too many unions"
 testTooManyUnionsException
