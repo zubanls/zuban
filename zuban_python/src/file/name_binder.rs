@@ -562,18 +562,14 @@ impl<'db, 'a> NameBinder<'db, 'a> {
                 TryBlockType::Except(except) => {
                     let (except_expression, block) = except.unpack();
                     if let Some(except_expression) = except_expression {
-                        let latest = self.index_except_expression(except_expression, ordered);
-                        let latest_return_or_yield =
-                            self.merge_latest_return_or_yield(latest_return_or_yield, latest);
+                        self.index_except_expression_with_block(except_expression, block, ordered)
+                    } else {
+                        self.index_block(block, ordered, false)
                     }
-                    self.index_block(block, ordered, false)
                 }
                 TryBlockType::ExceptStar(except_star) => {
                     let (except_expression, block) = except_star.unpack();
-                    let latest = self.index_except_expression(except_expression, ordered);
-                    let latest_return_or_yield =
-                        self.merge_latest_return_or_yield(latest_return_or_yield, latest);
-                    self.index_block(block, ordered, false)
+                    self.index_except_expression_with_block(except_expression, block, ordered)
                 }
                 TryBlockType::Else(else_) => self.index_block(else_.block(), ordered, false),
                 TryBlockType::Finally(finally) => self.index_block(finally.block(), ordered, false),
@@ -584,16 +580,19 @@ impl<'db, 'a> NameBinder<'db, 'a> {
         latest_return_or_yield
     }
 
-    fn index_except_expression(
+    fn index_except_expression_with_block(
         &mut self,
         except_expr: ExceptExpression<'db>,
+        block: Block<'db>,
         ordered: bool,
     ) -> NodeIndex {
         let (expression, name_def) = except_expr.unpack();
         if let Some(name_def) = name_def {
             self.add_new_definition(name_def, Point::new_uncalculated(), false)
         }
-        self.index_non_block_node(&expression, ordered, false)
+        let latest1 = self.index_non_block_node(&expression, ordered, false);
+        let latest2 = self.index_block(block, ordered, false);
+        self.merge_latest_return_or_yield(latest1, latest2)
     }
 
     fn index_class(&mut self, class: ClassDef<'db>, is_decorated: bool, in_base_scope: bool) {
